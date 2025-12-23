@@ -1,17 +1,17 @@
 'use client'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconInfo } from '@/models/datasets'
+import { RiCloseLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import AppIcon from '@/app/components/base/app-icon'
-import { noop } from 'lodash-es'
 import { useStore } from '@/app/components/workflow/store'
-import type { IconInfo } from '@/models/datasets'
 
 type PublishAsKnowledgePipelineModalProps = {
   confirmDisabled?: boolean

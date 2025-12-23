@@ -1,6 +1,6 @@
-import { memo } from 'react'
 import { headers } from 'next/headers'
 import Script from 'next/script'
+import { memo } from 'react'
 import { IS_CE_EDITION, ZENDESK_WIDGET_KEY } from '@/config'
 
 const Zendesk = async () => {

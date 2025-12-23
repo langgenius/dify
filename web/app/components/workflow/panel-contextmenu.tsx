@@ -1,13 +1,12 @@
+import { useClickAway } from 'ahooks'
 import {
   memo,
   useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
+import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
-import ShortcutsName from './shortcuts-name'
-import { useStore } from './store'
 import {
   useDSL,
   useNodesInteractions,
@@ -16,7 +15,8 @@ import {
 } from './hooks'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
-import { cn } from '@/utils/classnames'
+import ShortcutsName from './shortcuts-name'
+import { useStore } from './store'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()

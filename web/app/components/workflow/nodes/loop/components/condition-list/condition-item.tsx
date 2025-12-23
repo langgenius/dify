@@ -1,42 +1,42 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { produce } from 'immer'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
   HandleRemoveCondition,
+  handleRemoveSubVariableCondition,
   HandleToggleSubVariableConditionLogicalOperator,
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
-  handleRemoveSubVariableCondition,
 } from '../../types'
-import {
-  ComparisonOperator,
-} from '../../types'
-import ConditionNumberInput from '../condition-number-input'
-import ConditionWrap from '../condition-wrap'
-import { comparisonOperatorNotRequireValue, getOperators } from './../../utils'
-import ConditionOperator from './condition-operator'
-import ConditionInput from './condition-input'
-import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from './../../default'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { produce } from 'immer'
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { SimpleSelect as Select } from '@/app/components/base/select'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
-import { SimpleSelect as Select } from '@/app/components/base/select'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import {
+  ComparisonOperator,
+} from '../../types'
+import ConditionNumberInput from '../condition-number-input'
+import ConditionWrap from '../condition-wrap'
+import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from './../../default'
+import { comparisonOperatorNotRequireValue, getOperators } from './../../utils'
+import ConditionInput from './condition-input'
+import ConditionOperator from './condition-operator'
 import ConditionVarSelector from './condition-var-selector'
-import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 

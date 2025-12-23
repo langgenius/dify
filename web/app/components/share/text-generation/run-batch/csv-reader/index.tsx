@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useCSVReader,
 } from 'react-papaparse'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
+import { cn } from '@/utils/classnames'
 
 export type Props = {
   onParsed: (data: string[][]) => void

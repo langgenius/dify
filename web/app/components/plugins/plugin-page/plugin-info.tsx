@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import KeyValueItem from '../base/key-value-item'
 import Modal from '../../base/modal'
+import KeyValueItem from '../base/key-value-item'
 import { convertRepoToUrl } from '../install-plugin/utils'
 
 const i18nPrefix = 'plugin.pluginInfoModal'

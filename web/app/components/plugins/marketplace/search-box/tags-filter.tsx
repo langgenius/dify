@@ -1,13 +1,13 @@
 'use client'
 
 import { useState } from 'react'
+import Checkbox from '@/app/components/base/checkbox'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Checkbox from '@/app/components/base/checkbox'
-import Input from '@/app/components/base/input'
 import { useTags } from '@/app/components/plugins/hooks'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import MarketplaceTrigger from './trigger/marketplace'

@@ -1,7 +1,7 @@
 import type { RefObject } from 'react'
+import type { CaseItem, Condition, IfElseNodeType } from './types'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
-import type { CaseItem, Condition, IfElseNodeType } from './types'
 
 type Params = {
   id: string

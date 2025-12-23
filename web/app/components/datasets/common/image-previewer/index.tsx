@@ -1,10 +1,10 @@
+import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useHotkeys } from 'react-hotkeys-hook'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
 import { formatFileSize } from '@/utils/format'
-import { RiArrowLeftLine, RiArrowRightLine, RiCloseLine, RiRefreshLine } from '@remixicon/react'
-import { createPortal } from 'react-dom'
-import { useHotkeys } from 'react-hotkeys-hook'
 
 type CachedImage = {
   blobUrl?: string

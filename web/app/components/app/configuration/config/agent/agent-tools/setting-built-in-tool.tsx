@@ -1,34 +1,34 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import type { Collection, Tool } from '@/app/components/tools/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import {
   RiArrowLeftLine,
   RiCloseLine,
 } from '@remixicon/react'
+import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import ActionButton from '@/app/components/base/action-button'
+import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
-import ActionButton from '@/app/components/base/action-button'
-import Icon from '@/app/components/plugins/card/base/card-icon'
-import OrgInfo from '@/app/components/plugins/card/base/org-info'
-import Description from '@/app/components/plugins/card/base/description'
 import TabSlider from '@/app/components/base/tab-slider-plain'
-import Button from '@/app/components/base/button'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
-import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import type { Collection, Tool } from '@/app/components/tools/types'
-import { CollectionType } from '@/app/components/tools/types'
-import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
-import I18n from '@/context/i18n'
-import { getLanguage } from '@/i18n-config/language'
-import { cn } from '@/utils/classnames'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
+import Icon from '@/app/components/plugins/card/base/card-icon'
+import Description from '@/app/components/plugins/card/base/description'
+import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import {
   AuthCategory,
   PluginAuthInAgent,
 } from '@/app/components/plugins/plugin-auth'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { CollectionType } from '@/app/components/tools/types'
+import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import I18n from '@/context/i18n'
+import { getLanguage } from '@/i18n-config/language'
+import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   showBackButton?: boolean

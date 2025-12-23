@@ -1,9 +1,9 @@
-import { useTranslation } from 'react-i18next'
 import { useRouter } from 'next/navigation'
-import Button from '@/app/components/base/button'
-import { useAppContext } from '@/context/app-context'
+import { useTranslation } from 'react-i18next'
 import Avatar from '@/app/components/base/avatar'
+import Button from '@/app/components/base/button'
 import { Triangle } from '@/app/components/base/icons/src/public/education'
+import { useAppContext } from '@/context/app-context'
 import { useLogout } from '@/service/use-common'
 
 const UserInfo = () => {

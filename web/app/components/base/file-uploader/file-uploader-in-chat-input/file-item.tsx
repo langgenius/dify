@@ -1,25 +1,25 @@
+import type { FileEntity } from '../types'
 import {
   RiCloseLine,
   RiDownloadLine,
 } from '@remixicon/react'
 import { useState } from 'react'
+import ActionButton from '@/app/components/base/action-button'
+import Button from '@/app/components/base/button'
+import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
+import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
+import VideoPreview from '@/app/components/base/file-uploader/video-preview'
+import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
+import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
+import { cn } from '@/utils/classnames'
+import { formatFileSize } from '@/utils/format'
+import FileTypeIcon from '../file-type-icon'
 import {
   downloadFile,
   fileIsUploaded,
   getFileAppearanceType,
   getFileExtension,
 } from '../utils'
-import FileTypeIcon from '../file-type-icon'
-import type { FileEntity } from '../types'
-import { cn } from '@/utils/classnames'
-import { formatFileSize } from '@/utils/format'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
-import ActionButton from '@/app/components/base/action-button'
-import Button from '@/app/components/base/button'
-import PdfPreview from '@/app/components/base/file-uploader/dynamic-pdf-preview'
-import AudioPreview from '@/app/components/base/file-uploader/audio-preview'
-import VideoPreview from '@/app/components/base/file-uploader/video-preview'
 
 type FileItemProps = {
   file: FileEntity

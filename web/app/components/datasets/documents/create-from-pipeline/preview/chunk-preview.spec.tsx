@@ -1,11 +1,11 @@
+import type { NotionPage } from '@/models/common'
+import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
-import ChunkPreview from './chunk-preview'
 import { ChunkingMode } from '@/models/datasets'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
-import type { NotionPage } from '@/models/common'
-import type { OnlineDriveFile } from '@/models/pipeline'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import ChunkPreview from './chunk-preview'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
 

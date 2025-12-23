@@ -1,13 +1,13 @@
+import type { DataSourceCredential } from '@/types/pipeline'
+import { useBoolean } from 'ahooks'
 import React, { useCallback, useEffect, useMemo } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { DataSourceCredential } from '@/types/pipeline'
-import { useBoolean } from 'ahooks'
-import Trigger from './trigger'
 import List from './list'
+import Trigger from './trigger'
 
 export type CredentialSelectorProps = {
   currentCredentialId: string

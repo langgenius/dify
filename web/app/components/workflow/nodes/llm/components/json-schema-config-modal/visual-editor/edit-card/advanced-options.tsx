@@ -1,4 +1,5 @@
-import React, { type FC, useCallback, useState } from 'react'
+import type { FC } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Textarea from '@/app/components/base/textarea'

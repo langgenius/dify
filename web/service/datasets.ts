@@ -1,7 +1,13 @@
-import qs from 'qs'
-import { del, get, patch, post, put } from './base'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
+import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
+import type {
+  ApiKeysListResponse,
+  CreateApiKeyResponse,
+} from '@/models/app'
+import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 import type {
   CreateDocumentReq,
+  createDocumentResponse,
   DataSet,
   DataSetListResponse,
   ErrorDocsResponse,
@@ -21,17 +27,11 @@ import type {
   IndexingStatusResponse,
   ProcessRuleResponse,
   RelatedAppResponse,
-  createDocumentResponse,
 } from '@/models/datasets'
-import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
-import { DataSourceProvider } from '@/models/common'
-import type {
-  ApiKeysListResponse,
-  CreateApiKeyResponse,
-} from '@/models/app'
 import type { RetrievalConfig } from '@/types/app'
+import qs from 'qs'
+import { DataSourceProvider } from '@/models/common'
+import { del, get, patch, post, put } from './base'
 
 // apis for documents in a dataset
 

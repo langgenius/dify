@@ -1,30 +1,30 @@
+import type { WorkflowHistoryState } from '../workflow-history-store'
+import {
+  RiCloseLine,
+  RiHistoryLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
   useMemo,
   useState,
 } from 'react'
-import {
-  RiCloseLine,
-  RiHistoryLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { useStoreApi } from 'reactflow'
-import {
-  useNodesReadOnly,
-  useWorkflowHistory,
-} from '../hooks'
-import TipPopup from '../operator/tip-popup'
-import type { WorkflowHistoryState } from '../workflow-history-store'
-import Divider from '../../base/divider'
+import { useShallow } from 'zustand/react/shallow'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { cn } from '@/utils/classnames'
+import Divider from '../../base/divider'
+import {
+  useNodesReadOnly,
+  useWorkflowHistory,
+} from '../hooks'
+import TipPopup from '../operator/tip-popup'
 
 type ChangeHistoryEntry = {
   label: string

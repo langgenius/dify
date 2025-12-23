@@ -5,13 +5,13 @@ import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import type { RETRIEVE_TYPE } from '@/types/app'
 import type {
   DataSet,
   MetadataInDoc,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import type { RETRIEVE_TYPE } from '@/types/app'
 
 export type MultipleRetrievalConfig = {
   top_k: number

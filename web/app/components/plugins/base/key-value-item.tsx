@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import copy from 'copy-to-clipboard'
 import {
   RiClipboardLine,
 } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
+import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import { cn } from '@/utils/classnames'
 import { CopyCheck } from '../../base/icons/src/vender/line/files'
 import Tooltip from '../../base/tooltip'
-import { cn } from '@/utils/classnames'
-import ActionButton from '@/app/components/base/action-button'
 
 type Props = {
   label: string

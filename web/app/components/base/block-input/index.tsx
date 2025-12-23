@@ -3,10 +3,10 @@
 import type { ChangeEvent, FC } from 'react'
 import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarHighlight from '../../app/configuration/base/var-highlight'
-import Toast from '../toast'
 import { cn } from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
+import VarHighlight from '../../app/configuration/base/var-highlight'
+import Toast from '../toast'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g

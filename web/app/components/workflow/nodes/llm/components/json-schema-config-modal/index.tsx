@@ -1,6 +1,7 @@
-import React, { type FC } from 'react'
-import Modal from '../../../../../base/modal'
+import type { FC } from 'react'
 import type { SchemaRoot } from '../../types'
+import React from 'react'
+import Modal from '../../../../../base/modal'
 import JsonSchemaConfig from './json-schema-config'
 
 type JsonSchemaConfigModalProps = {

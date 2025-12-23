@@ -1,10 +1,11 @@
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { NodeDefault, Var } from '../../types'
+import type { Field, StructuredOutput } from '../llm/types'
+import type { PluginTriggerNodeType } from './types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 import { BlockEnum, VarType } from '../../types'
 import { genNodeMetaData } from '../../utils'
 import { VarKindType } from '../_base/types'
-import { type Field, type StructuredOutput, Type } from '../llm/types'
-import type { PluginTriggerNodeType } from './types'
+import { Type } from '../llm/types'
 
 const normalizeJsonSchemaType = (schema: any): string | undefined => {
   if (!schema) return undefined

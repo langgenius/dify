@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
+import {
+  VariableLabelInText,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { cn } from '@/utils/classnames'
 import { useWorkflow } from '../../../hooks'
 import { BlockEnum } from '../../../types'
 import { getNodeInfoById, isSystemVar } from './variable/utils'
-import {
-  VariableLabelInText,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+
 type Props = {
   nodeId: string
   value: string

@@ -1,33 +1,33 @@
+import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type {
+  EnableType,
+  OnSend,
+} from '../../types'
+import type { InputForm } from '../type'
+import type { FileUpload } from '@/app/components/base/features/types'
+import { decode } from 'html-entities'
+import Recorder from 'js-audio-recorder'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
-import Textarea from 'react-textarea-autosize'
 import { useTranslation } from 'react-i18next'
-import Recorder from 'js-audio-recorder'
-import { decode } from 'html-entities'
-import type {
-  EnableType,
-  OnSend,
-} from '../../types'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import type { InputForm } from '../type'
-import { useCheckInputsForms } from '../check-input-forms-hooks'
-import { useTextAreaHeight } from './hooks'
-import Operation from './operation'
-import { cn } from '@/utils/classnames'
+import Textarea from 'react-textarea-autosize'
+import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
 import { FileListInChatInput } from '@/app/components/base/file-uploader'
 import { useFile } from '@/app/components/base/file-uploader/hooks'
 import {
   FileContextProvider,
   useFileStore,
 } from '@/app/components/base/file-uploader/store'
-import VoiceInput from '@/app/components/base/voice-input'
 import { useToastContext } from '@/app/components/base/toast'
-import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
-import type { FileUpload } from '@/app/components/base/features/types'
+import VoiceInput from '@/app/components/base/voice-input'
 import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { useCheckInputsForms } from '../check-input-forms-hooks'
+import { useTextAreaHeight } from './hooks'
+import Operation from './operation'
 
 type ChatInputAreaProps = {
   botName?: string

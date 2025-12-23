@@ -1,8 +1,8 @@
 'use client'
-import TabHeader from '@/app/components/base/tab-header'
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import TabHeader from '@/app/components/base/tab-header'
 
 export enum TabType {
   settings = 'settings',

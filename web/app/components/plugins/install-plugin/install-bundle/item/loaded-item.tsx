@@ -1,13 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { Plugin, VersionProps } from '../../../types'
 import React from 'react'
-import type { Plugin } from '../../../types'
-import Card from '../../../card'
 import Checkbox from '@/app/components/base/checkbox'
-import useGetIcon from '../../base/use-get-icon'
 import { MARKETPLACE_API_PREFIX } from '@/config'
+import Card from '../../../card'
+import useGetIcon from '../../base/use-get-icon'
 import Version from '../../base/version'
-import type { VersionProps } from '../../../types'
 import usePluginInstallLimit from '../../hooks/use-install-plugin-limit'
 
 type Props = {

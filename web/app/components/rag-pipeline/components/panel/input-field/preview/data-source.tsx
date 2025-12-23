@@ -1,10 +1,10 @@
+import type { Datasource } from '../../test-run/types'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import DataSourceOptions from '../../test-run/preparation/data-source-options'
-import Form from './form'
-import type { Datasource } from '../../test-run/types'
 import { useStore } from '@/app/components/workflow/store'
 import { useDraftPipelinePreProcessingParams } from '@/service/use-pipeline'
+import DataSourceOptions from '../../test-run/preparation/data-source-options'
+import Form from './form'
 
 type DatasourceProps = {
   onSelect: (dataSource: Datasource) => void

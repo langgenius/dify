@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiSparklingFill,
 } from '@remixicon/react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 
 export type IAutomaticBtnProps = {

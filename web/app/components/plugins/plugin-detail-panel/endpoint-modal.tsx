@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
+import type { FormSchema } from '../../base/form/types'
+import type { PluginDetail } from '../types'
+import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
-import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Toast from '@/app/components/base/toast'
+import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 import { ReadmeEntrance } from '../readme-panel/entrance'
-import type { PluginDetail } from '../types'
-import type { FormSchema } from '../../base/form/types'
 
 type Props = {
   formSchemas: FormSchema[]

@@ -1,3 +1,7 @@
+import type { StartNodeType } from '../../nodes/start/types'
+
+import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
+import { debounce, noop } from 'lodash-es'
 import {
   memo,
   useCallback,
@@ -5,25 +9,21 @@ import {
   useRef,
   useState,
 } from 'react'
-
-import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
+import Tooltip from '@/app/components/base/tooltip'
+import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
+import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import { useStore } from '@/app/components/workflow/store'
+import { cn } from '@/utils/classnames'
 import {
   useWorkflowInteractions,
 } from '../../hooks'
-import { useEdgesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-edges-interactions-without-sync'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
-import { BlockEnum } from '../../types'
-import type { StartNodeType } from '../../nodes/start/types'
 import { useResizePanel } from '../../nodes/_base/hooks/use-resize-panel'
+import { BlockEnum } from '../../types'
 import ChatWrapper from './chat-wrapper'
-import { cn } from '@/utils/classnames'
-import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
-import Tooltip from '@/app/components/base/tooltip'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import { useStore } from '@/app/components/workflow/store'
-import { debounce, noop } from 'lodash-es'
 
 export type ChatWrapperRefType = {
   handleRestart: () => void

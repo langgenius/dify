@@ -1,13 +1,13 @@
-import Checkbox from '@/app/components/base/checkbox'
-import Radio from '@/app/components/base/radio/ui'
+import type { Placement } from '@floating-ui/react'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import React, { useCallback } from 'react'
-import FileIcon from './file-icon'
-import { formatFileSize } from '@/utils/format'
-import Tooltip from '@/app/components/base/tooltip'
 import { useTranslation } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
+import Radio from '@/app/components/base/radio/ui'
+import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
-import type { Placement } from '@floating-ui/react'
+import { formatFileSize } from '@/utils/format'
+import FileIcon from './file-icon'
 
 type ItemProps = {
   file: OnlineDriveFile

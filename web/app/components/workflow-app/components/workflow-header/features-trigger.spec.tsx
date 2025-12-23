@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Plan } from '@/app/components/billing/type'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import { ToastContext } from '@/app/components/base/toast'
+import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import FeaturesTrigger from './features-trigger'
 

@@ -1,7 +1,8 @@
-import * as React from 'react'
+import type { Props } from './var-picker'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import VarPicker, { type Props } from './var-picker'
+import * as React from 'react'
+import VarPicker from './var-picker'
 
 // Mock external dependencies only
 vi.mock('next/navigation', () => ({

@@ -1,12 +1,12 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
 import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
+import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalMethodConfig from './index'
 
 // Mock provider context with controllable supportRetrievalMethods

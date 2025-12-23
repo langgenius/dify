@@ -1,21 +1,21 @@
 'use client'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { lt } from 'semver'
+import Badge from '@/app/components/base/badge'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Badge from '@/app/components/base/badge'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import { useVersionListOfPlugin } from '@/service/use-plugins'
 import useTimestamp from '@/hooks/use-timestamp'
+import { useVersionListOfPlugin } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import { lt } from 'semver'
 
 type Props = {
   disabled?: boolean

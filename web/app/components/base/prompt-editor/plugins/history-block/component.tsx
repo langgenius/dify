@@ -1,13 +1,10 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { RoleName } from './index'
 import {
   RiMoreFill,
 } from '@remixicon/react'
-import { useSelectOrDelete, useTrigger } from '../../hooks'
-import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
-import type { RoleName } from './index'
-import { DELETE_HISTORY_BLOCK_COMMAND } from './index'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { MessageClockCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import {
   PortalToFollowElem,
@@ -15,6 +12,9 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { UPDATE_HISTORY_EVENT_EMITTER } from '../../constants'
+import { useSelectOrDelete, useTrigger } from '../../hooks'
+import { DELETE_HISTORY_BLOCK_COMMAND } from './index'
 
 type HistoryBlockComponentProps = {
   nodeKey: string

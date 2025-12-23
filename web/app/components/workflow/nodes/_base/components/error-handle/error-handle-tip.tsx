@@ -1,6 +1,6 @@
+import { RiAlertFill } from '@remixicon/react'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAlertFill } from '@remixicon/react'
 import { ErrorHandleTypeEnum } from './types'
 
 type ErrorHandleTipProps = {

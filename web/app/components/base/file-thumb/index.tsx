@@ -1,11 +1,11 @@
-import React, { useCallback } from 'react'
-import ImageRender from './image-render'
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
+import React, { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
-import { getFileAppearanceType } from '../file-uploader/utils'
 import { FileTypeIcon } from '../file-uploader'
+import { getFileAppearanceType } from '../file-uploader/utils'
 import Tooltip from '../tooltip'
+import ImageRender from './image-render'
 
 const FileThumbVariants = cva(
   'flex items-center justify-center cursor-pointer',

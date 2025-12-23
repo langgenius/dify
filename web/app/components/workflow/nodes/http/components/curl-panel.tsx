@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import type { HttpNodeType } from '../types'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BodyPayloadValueType, BodyType, type HttpNodeType, Method } from '../types'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
 import { useNodesInteractions } from '@/app/components/workflow/hooks'
+import { BodyPayloadValueType, BodyType, Method } from '../types'
 
 type Props = {
   nodeId: string

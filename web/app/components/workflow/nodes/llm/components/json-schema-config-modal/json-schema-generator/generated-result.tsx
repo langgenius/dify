@@ -1,12 +1,13 @@
-import React, { type FC, useCallback, useMemo, useState } from 'react'
+import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
 import { RiArrowLeftLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Loading from '@/app/components/base/loading'
+import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
 import CodeEditor from '../code-editor'
 import ErrorMessage from '../error-message'
-import { getValidationErrorMessage, validateSchemaAgainstDraft7 } from '../../../utils'
-import Loading from '@/app/components/base/loading'
 
 type GeneratedResultProps = {
   schema: SchemaRoot

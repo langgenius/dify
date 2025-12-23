@@ -1,30 +1,30 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { VarInInspect } from '@/types/workflow'
 import { useDebounceFn } from 'ahooks'
-import Textarea from '@/app/components/base/textarea'
-import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
+import React, { useEffect, useMemo, useRef, useState } from 'react'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import Textarea from '@/app/components/base/textarea'
 import ErrorMessage from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/error-message'
+import SchemaEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/schema-editor'
 import {
   checkJsonSchemaDepth,
   getValidationErrorMessage,
   validateSchemaAgainstDraft7,
 } from '@/app/components/workflow/nodes/llm/utils'
+import { useStore } from '@/app/components/workflow/store'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import {
   validateJSONSchema,
 } from '@/app/components/workflow/variable-inspect/utils'
-import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
 import { TransferMethod } from '@/types/app'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { VarInInspect } from '@/types/workflow'
 import { VarInInspectType } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
-import LargeDataAlert from './large-data-alert'
-import BoolValue from '../panel/chat-variable-panel/components/bool-value'
-import { useStore } from '@/app/components/workflow/store'
 import { PreviewMode } from '../../base/features/types'
+import BoolValue from '../panel/chat-variable-panel/components/bool-value'
 import DisplayContent from './display-content'
+import LargeDataAlert from './large-data-alert'
 import { CHUNK_SCHEMA_TYPES, PreviewType } from './types'
 
 type Props = {

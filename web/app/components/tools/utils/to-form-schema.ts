@@ -1,7 +1,7 @@
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import type { TriggerEventParameter } from '../../plugins/types'
 import type { ToolCredential, ToolParameter } from '../types'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 
 export const toType = (type: string) => {
   switch (type) {

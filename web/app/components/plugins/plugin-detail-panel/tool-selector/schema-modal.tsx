@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import { RiCloseLine } from '@remixicon/react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import { MittProvider, VisualEditorContextProvider } from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor/context'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
 
 type Props = {
   isShow: boolean

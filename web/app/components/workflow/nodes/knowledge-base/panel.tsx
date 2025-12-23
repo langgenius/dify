@@ -1,33 +1,32 @@
 import type { FC } from 'react'
+import type { KnowledgeBaseNodeType } from './types'
+import type { NodePanelProps, Var } from '@/app/components/workflow/types'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { KnowledgeBaseNodeType } from './types'
-import {
-  ChunkStructureEnum,
-  IndexMethodEnum,
-} from './types'
-import ChunkStructure from './components/chunk-structure'
-import IndexMethod from './components/index-method'
-import RetrievalSetting from './components/retrieval-setting'
-import EmbeddingModel from './components/embedding-model'
-import { useConfig } from './hooks/use-config'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroup,
   BoxGroupField,
   Group,
 } from '@/app/components/workflow/nodes/_base/components/layout'
-import Split from '../_base/components/split'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { Var } from '@/app/components/workflow/types'
-import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Split from '../_base/components/split'
+import ChunkStructure from './components/chunk-structure'
+import EmbeddingModel from './components/embedding-model'
+import IndexMethod from './components/index-method'
+import RetrievalSetting from './components/retrieval-setting'
+import { useConfig } from './hooks/use-config'
+import {
+  ChunkStructureEnum,
+  IndexMethodEnum,
+} from './types'
 
 const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   id,

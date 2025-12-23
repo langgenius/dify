@@ -1,9 +1,9 @@
-import React from 'react'
+import type { Locale } from '@/i18n-config'
 import { render, screen } from '@testing-library/react'
-import CSVDownload from './csv-downloader'
+import React from 'react'
 import I18nContext from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
-import type { Locale } from '@/i18n-config'
+import CSVDownload from './csv-downloader'
 
 const downloaderProps: any[] = []
 

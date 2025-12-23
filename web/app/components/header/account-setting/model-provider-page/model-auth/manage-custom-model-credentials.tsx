@@ -1,3 +1,7 @@
+import type {
+  CustomConfigurationModelFixedFields,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   memo,
   useCallback,
@@ -6,19 +10,15 @@ import { useTranslation } from 'react-i18next'
 import {
   Button,
 } from '@/app/components/base/button'
-import type {
-  CustomConfigurationModelFixedFields,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import {
   ConfigurationMethodEnum,
   ModelModalModeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { cn } from '@/utils/classnames'
 import Authorized from './authorized'
 import {
   useCustomModels,
 } from './hooks'
-import { cn } from '@/utils/classnames'
 
 type ManageCustomModelCredentialsProps = {
   provider: ModelProvider

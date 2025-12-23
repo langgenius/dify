@@ -1,21 +1,21 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { Fragment, useCallback } from 'react'
+import type { AppIconType, AppModeEnum } from '@/types/app'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import {
   RiAddLine,
   RiArrowDownSLine,
   RiArrowRightSLine,
 } from '@remixicon/react'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { useRouter } from 'next/navigation'
 import { debounce } from 'lodash-es'
-import { cn } from '@/utils/classnames'
-import AppIcon from '@/app/components/base/app-icon'
-import { AppTypeIcon } from '@/app/components/app/type-selector'
-import { useAppContext } from '@/context/app-context'
+import { useRouter } from 'next/navigation'
+import { Fragment, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { AppTypeIcon } from '@/app/components/app/type-selector'
+import AppIcon from '@/app/components/base/app-icon'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
-import type { AppIconType, AppModeEnum } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
+import { cn } from '@/utils/classnames'
 
 export type NavItem = {
   id: string

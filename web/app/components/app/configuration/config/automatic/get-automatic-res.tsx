@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean, useSessionStorageState } from 'ahooks'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+// type
+import type { GenRes } from '@/service/debug'
+import type { AppModeEnum, CompletionParams, Model, ModelModeType } from '@/types/app'
 import {
   RiDatabase2Line,
   RiFileExcel2Line,
@@ -14,32 +15,30 @@ import {
   RiTranslate,
   RiUser2Line,
 } from '@remixicon/react'
-import s from './style.module.css'
-import Modal from '@/app/components/base/modal'
+import { useBoolean, useSessionStorageState } from 'ahooks'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
-import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
-import type { AppModeEnum, CompletionParams, Model } from '@/types/app'
-import Loading from '@/app/components/base/loading'
 import Confirm from '@/app/components/base/confirm'
-
-// type
-import type { GenRes } from '@/service/debug'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import Loading from '@/app/components/base/loading'
 
+import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import type { ModelModeType } from '@/types/app'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
-import InstructionEditorInBasic from './instruction-editor'
-import { GeneratorType } from './types'
-import Result from './result'
-import useGenData from './use-gen-data'
-import IdeaOutput from './idea-output'
-import ResPlaceholder from './res-placeholder'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { generateBasicAppFirstTimeRule, generateRule } from '@/service/debug'
 import { useGenerateRuleTemplate } from '@/service/use-apps'
+import IdeaOutput from './idea-output'
+import InstructionEditorInBasic from './instruction-editor'
+import InstructionEditorInWorkflow from './instruction-editor-in-workflow'
+import ResPlaceholder from './res-placeholder'
+import Result from './result'
+import s from './style.module.css'
+import { GeneratorType } from './types'
+import useGenData from './use-gen-data'
 
 const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {

@@ -1,15 +1,13 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import { useEffect, useState } from 'react'
-import { useCallback } from 'react'
-import { useWebAppStore } from '@/context/web-app-context'
 import { useRouter, useSearchParams } from 'next/navigation'
-import AppUnavailable from '@/app/components/base/app-unavailable'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
-import { fetchAccessToken } from '@/service/share'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
-import { setWebAppAccessToken, setWebAppPassport } from '@/service/webapp-auth'
+import { useWebAppStore } from '@/context/web-app-context'
+import { fetchAccessToken } from '@/service/share'
+import { setWebAppAccessToken, setWebAppPassport, webAppLoginStatus, webAppLogout } from '@/service/webapp-auth'
 
 const Splash: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()

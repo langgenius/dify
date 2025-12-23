@@ -1,15 +1,16 @@
 'use client'
 
 import type { ChangeEvent, FC } from 'react'
+import type { Area, CropperProps } from 'react-easy-crop'
 import { createRef, useEffect, useState } from 'react'
-import Cropper, { type Area, type CropperProps } from 'react-easy-crop'
-import { cn } from '@/utils/classnames'
+import Cropper from 'react-easy-crop'
 import { useTranslation } from 'react-i18next'
+import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
+import { cn } from '@/utils/classnames'
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
 import { checkIsAnimatedImage } from './utils'
-import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 export type OnImageInput = {
   (isCropped: true, tempUrl: string, croppedAreaPixels: Area, fileName: string): void

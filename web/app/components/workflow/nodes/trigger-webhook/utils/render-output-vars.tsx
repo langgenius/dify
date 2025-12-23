@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import React from 'react'
 import type { Variable } from '@/app/components/workflow/types'
+import React from 'react'
 
 type OutputVariablesContentProps = {
   variables?: Variable[]

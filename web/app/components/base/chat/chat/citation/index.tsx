@@ -1,8 +1,8 @@
-import { useEffect, useMemo, useRef, useState } from 'react'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import type { CitationItem } from '../type'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Popup from './popup'
 
 export type Resources = {

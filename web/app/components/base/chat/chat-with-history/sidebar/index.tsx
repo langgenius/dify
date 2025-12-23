@@ -1,25 +1,25 @@
-import {
-  useCallback,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ConversationItem } from '@/models/share'
 import {
   RiEditBoxLine,
   RiExpandRightLine,
   RiLayoutLeft2Line,
 } from '@remixicon/react'
-import { useChatWithHistoryContext } from '../context'
-import AppIcon from '@/app/components/base/app-icon'
+import {
+  useCallback,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
-import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
-import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import Confirm from '@/app/components/base/confirm'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import type { ConversationItem } from '@/models/share'
-import { cn } from '@/utils/classnames'
+import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@/utils/classnames'
+import { useChatWithHistoryContext } from '../context'
 
 type Props = {
   isPanel?: boolean

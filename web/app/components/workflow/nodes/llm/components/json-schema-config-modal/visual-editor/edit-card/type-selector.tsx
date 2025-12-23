@@ -1,8 +1,8 @@
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import type { ArrayType, Type } from '../../../../types'
 import type { FC } from 'react'
-import { useState } from 'react'
+import type { ArrayType, Type } from '../../../../types'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import { useState } from 'react'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 
 export type TypeItem = {

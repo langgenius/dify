@@ -1,13 +1,13 @@
 'use client'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
 import {
   RiArrowDownSLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 
 type Props = {

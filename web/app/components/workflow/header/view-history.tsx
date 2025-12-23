@@ -1,44 +1,44 @@
-import {
-  memo,
-  useState,
-} from 'react'
 import type { Fetcher } from 'swr'
-import useSWR from 'swr'
-import { useTranslation } from 'react-i18next'
-import { noop } from 'lodash-es'
+import type { WorkflowRunHistoryResponse } from '@/types/workflow'
 import {
   RiCheckboxCircleLine,
   RiCloseLine,
   RiErrorWarningLine,
 } from '@remixicon/react'
+import { noop } from 'lodash-es'
 import {
-  useIsChatMode,
-  useNodesInteractions,
-  useWorkflowInteractions,
-  useWorkflowRun,
-} from '../hooks'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { ControlMode, WorkflowRunningStatus } from '../types'
-import { formatWorkflowRunIdentifier } from '../utils'
-import { cn } from '@/utils/classnames'
+  memo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import useSWR from 'swr'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import {
+  ClockPlay,
+  ClockPlaySlim,
+} from '@/app/components/base/icons/src/vender/line/time'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Tooltip from '@/app/components/base/tooltip'
-import {
-  ClockPlay,
-  ClockPlaySlim,
-} from '@/app/components/base/icons/src/vender/line/time'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import Loading from '@/app/components/base/loading'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import type { WorkflowRunHistoryResponse } from '@/types/workflow'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { cn } from '@/utils/classnames'
+import {
+  useIsChatMode,
+  useNodesInteractions,
+  useWorkflowInteractions,
+  useWorkflowRun,
+} from '../hooks'
+import { ControlMode, WorkflowRunningStatus } from '../types'
+import { formatWorkflowRunIdentifier } from '../utils'
 
 export type ViewHistoryProps = {
   withText?: boolean

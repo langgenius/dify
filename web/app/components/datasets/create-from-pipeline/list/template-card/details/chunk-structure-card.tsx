@@ -1,6 +1,6 @@
+import type { Option } from './types'
 import React from 'react'
 import { cn } from '@/utils/classnames'
-import type { Option } from './types'
 import { EffectColor } from './types'
 
 const HEADER_EFFECT_MAP: Record<EffectColor, string> = {

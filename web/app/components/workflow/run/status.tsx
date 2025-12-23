@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
 
 type ResultProps = {
   status: string

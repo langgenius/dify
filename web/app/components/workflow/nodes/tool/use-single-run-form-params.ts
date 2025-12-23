@@ -1,15 +1,15 @@
 import type { RefObject } from 'react'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { useCallback, useMemo, useState } from 'react'
-import useNodeCrud from '../_base/hooks/use-node-crud'
-import { type ToolNodeType, VarType } from './types'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ToolNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { produce } from 'immer'
+import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
+import { produce } from 'immer'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-log'
 import { useToolIcon } from '../../hooks'
+import useNodeCrud from '../_base/hooks/use-node-crud'
+import { VarType } from './types'
 
 type Params = {
   id: string

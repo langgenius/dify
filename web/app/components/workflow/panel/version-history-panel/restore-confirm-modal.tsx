@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
-import Modal from '@/app/components/base/modal'
+import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
 
 type RestoreConfirmModalProps = {
   isOpen: boolean

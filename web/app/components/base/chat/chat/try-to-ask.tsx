@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import type { OnSend } from '../types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { OnSend } from '../types'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 

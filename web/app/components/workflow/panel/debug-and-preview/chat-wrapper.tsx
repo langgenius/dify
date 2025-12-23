@@ -1,28 +1,28 @@
+import type { StartNodeType } from '../../nodes/start/types'
+import type { ChatWrapperRefType } from './index'
+import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useEffect, useImperativeHandle, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { BlockEnum } from '../../types'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../../store'
-import type { StartNodeType } from '../../nodes/start/types'
-import Empty from './empty'
-import UserInput from './user-input'
-import ConversationVariableModal from './conversation-variable-modal'
-import { useChat } from './hooks'
-import type { ChatWrapperRefType } from './index'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem, OnSend } from '@/app/components/base/chat/types'
+import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../../store'
+import { BlockEnum } from '../../types'
+import ConversationVariableModal from './conversation-variable-modal'
+import Empty from './empty'
+import { useChat } from './hooks'
+import UserInput from './user-input'
 
 type ChatWrapperProps = {
   showConversationVariableModal: boolean

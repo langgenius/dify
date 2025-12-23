@@ -1,10 +1,11 @@
-import React, { type FC, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FC } from 'react'
 import { useKeyPress } from 'ahooks'
-import { useDocumentContext } from '../../context'
+import React, { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import { ChunkingMode } from '@/models/datasets'
+import { useDocumentContext } from '../../context'
 
 type IActionButtonsProps = {
   handleCancel: () => void

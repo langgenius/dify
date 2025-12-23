@@ -1,5 +1,15 @@
-import CheckboxList from '@/app/components/base/checkbox-list'
+import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
+import { RiExternalLinkLine } from '@remixicon/react'
+import { useStore } from '@tanstack/react-form'
+import {
+  isValidElement,
+  memo,
+  useCallback,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import CheckboxList from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio'
@@ -9,16 +19,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { cn } from '@/utils/classnames'
-import { RiExternalLinkLine } from '@remixicon/react'
-import type { AnyFieldApi } from '@tanstack/react-form'
-import { useStore } from '@tanstack/react-form'
-import {
-  isValidElement,
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {

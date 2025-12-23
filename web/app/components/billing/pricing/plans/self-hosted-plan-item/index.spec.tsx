@@ -1,11 +1,11 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import SelfHostedPlanItem from './index'
-import { SelfHostedPlan } from '../../../type'
-import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
+import React from 'react'
 import { useAppContext } from '@/context/app-context'
 import Toast from '../../../../base/toast'
+import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
+import { SelfHostedPlan } from '../../../type'
+import SelfHostedPlanItem from './index'
 
 const featuresTranslations: Record<string, string[]> = {
   'billing.plans.community.features': ['community-feature-1', 'community-feature-2'],

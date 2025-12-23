@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import {
   useCallback,
   useEffect,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { BlockEnum } from '@/app/components/workflow/types'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import Modal from '@/app/components/base/modal'
-import StartNodeSelectionPanel from './start-node-selection-panel'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
+import StartNodeSelectionPanel from './start-node-selection-panel'
 
 type WorkflowOnboardingModalProps = {
   isShow: boolean

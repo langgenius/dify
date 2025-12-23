@@ -1,15 +1,16 @@
-import React, { type FC, useCallback } from 'react'
+import type { FC } from 'react'
 import { RiMoreFill } from '@remixicon/react'
-import { VersionHistoryContextMenuOptions } from '../../../types'
-import MenuItem from './menu-item'
-import useContextMenu from './use-context-menu'
+import React, { useCallback } from 'react'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
+import { VersionHistoryContextMenuOptions } from '../../../types'
+import MenuItem from './menu-item'
+import useContextMenu from './use-context-menu'
 
 export type ContextMenuProps = {
   isShowDelete: boolean

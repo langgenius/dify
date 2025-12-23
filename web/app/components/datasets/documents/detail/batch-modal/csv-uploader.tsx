@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { FileItem } from '@/models/datasets'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { cn } from '@/utils/classnames'
-import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
-import { ToastContext } from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import type { FileItem } from '@/models/datasets'
-import { upload } from '@/service/base'
 import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
+import { Csv as CSVIcon } from '@/app/components/base/icons/src/public/files'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
-import { Theme } from '@/types/app'
+import { ToastContext } from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
+import { upload } from '@/service/base'
 import { useFileUploadConfig } from '@/service/use-common'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 export type Props = {
   file: FileItem | undefined

@@ -1,14 +1,14 @@
 import type { ButtonProps } from '@/app/components/base/button'
+import { RiCloseLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
-import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
-import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
 
 type ModalProps = {
   onClose?: () => void

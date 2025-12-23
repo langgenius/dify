@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { ConfigurationMethodEnum } from '../declarations'
-import { useTranslation } from 'react-i18next'
 
 type ConfigurationButtonProps = {
   modelProvider: any

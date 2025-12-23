@@ -2,39 +2,39 @@
 
 import type { MouseEventHandler } from 'react'
 import {
+  RiAlertFill,
+  RiCloseLine,
+  RiFileDownloadLine,
+} from '@remixicon/react'
+import {
   memo,
   useCallback,
   useRef,
   useState,
 } from 'react'
-import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAlertFill,
-  RiCloseLine,
-  RiFileDownloadLine,
-} from '@remixicon/react'
+import { useContext } from 'use-context-selector'
+import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+import { ToastContext } from '@/app/components/base/toast'
 import { WORKFLOW_DATA_UPDATE } from '@/app/components/workflow/constants'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   initialEdges,
   initialNodes,
 } from '@/app/components/workflow/utils'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import {
+  DSLImportMode,
+  DSLImportStatus,
+} from '@/models/app'
 import {
   useImportPipelineDSL,
   useImportPipelineDSLConfirm,
 } from '@/service/use-pipeline'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import {
-  DSLImportMode,
-  DSLImportStatus,
-} from '@/models/app'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
-import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 
 type UpdateDSLModalProps = {
   onCancel: () => void

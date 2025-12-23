@@ -1,18 +1,18 @@
+import type { NodeDefault } from '../types'
+import { groupBy } from 'lodash-es'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
-import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
-import { groupBy } from 'lodash-es'
+import { useStoreApi } from 'reactflow'
+import Badge from '@/app/components/base/badge'
+import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '../block-icon'
 import { BlockEnum } from '../types'
-import type { NodeDefault } from '../types'
 import { BLOCK_CLASSIFICATIONS } from './constants'
 import { useBlocks } from './hooks'
-import Tooltip from '@/app/components/base/tooltip'
-import Badge from '@/app/components/base/badge'
 
 type BlocksProps = {
   searchText: string

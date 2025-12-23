@@ -1,15 +1,15 @@
 import type { FC } from 'react'
-import { useEffect, useRef, useState } from 'react'
 import type { ModelParameterRule } from '../declarations'
-import { useLanguage } from '../hooks'
-import { isNullOrUndefined } from '../utils'
-import { cn } from '@/utils/classnames'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import Slider from '@/app/components/base/slider'
+import { useEffect, useRef, useState } from 'react'
 import Radio from '@/app/components/base/radio'
 import { SimpleSelect } from '@/app/components/base/select'
+import Slider from '@/app/components/base/slider'
+import Switch from '@/app/components/base/switch'
 import TagInput from '@/app/components/base/tag-input'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import { useLanguage } from '../hooks'
+import { isNullOrUndefined } from '../utils'
 
 export type ParameterValue = number | string | string[] | boolean | undefined
 

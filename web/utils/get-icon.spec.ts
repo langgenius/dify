@@ -1,9 +1,9 @@
+import { MARKETPLACE_API_PREFIX } from '@/config'
 /**
  * Test suite for icon utility functions
  * Tests the generation of marketplace plugin icon URLs
  */
 import { getIconFromMarketPlace } from './get-icon'
-import { MARKETPLACE_API_PREFIX } from '@/config'
 
 describe('get-icon', () => {
   describe('getIconFromMarketPlace', () => {

@@ -1,32 +1,33 @@
 'use client'
+import type { AppDetailResponse } from '@/models/app'
+import type { AppSSO } from '@/types/app'
+import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiEditLine, RiLoopLeftLine } from '@remixicon/react'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import CopyFeedback from '@/app/components/base/copy-feedback'
+import Divider from '@/app/components/base/divider'
 import {
   Mcp,
 } from '@/app/components/base/icons/src/vender/other'
-import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
 import Switch from '@/app/components/base/switch'
-import Divider from '@/app/components/base/divider'
-import CopyFeedback from '@/app/components/base/copy-feedback'
-import Confirm from '@/app/components/base/confirm'
-import type { AppDetailResponse } from '@/models/app'
-import { useAppContext } from '@/context/app-context'
-import { AppModeEnum, type AppSSO } from '@/types/app'
+import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import MCPServerModal from '@/app/components/tools/mcp/mcp-server-modal'
-import { useAppWorkflow } from '@/service/use-workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
+import { fetchAppDetail } from '@/service/apps'
 import {
   useInvalidateMCPServerDetail,
   useMCPServerDetail,
   useRefreshMCPServerCode,
   useUpdateMCPServer,
 } from '@/service/use-tools'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { useAppWorkflow } from '@/service/use-workflow'
+import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import { fetchAppDetail } from '@/service/apps'
-import { useDocLink } from '@/context/i18n'
 
 export type IAppCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>

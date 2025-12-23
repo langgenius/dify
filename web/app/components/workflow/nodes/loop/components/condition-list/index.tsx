@@ -1,22 +1,17 @@
-import { RiLoopLeftLine } from '@remixicon/react'
-import { useCallback, useMemo } from 'react'
-import {
-  type Condition,
-  type HandleAddSubVariableCondition,
-  type HandleRemoveCondition,
-  type HandleToggleConditionLogicalOperator,
-  type HandleToggleSubVariableConditionLogicalOperator,
-  type HandleUpdateCondition,
-  type HandleUpdateSubVariableCondition,
-  LogicalOperator,
-  type handleRemoveSubVariableCondition,
-} from '../../types'
-import ConditionItem from './condition-item'
+import type { Condition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../../types'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { RiLoopLeftLine } from '@remixicon/react'
+import { useCallback, useMemo } from 'react'
 import { cn } from '@/utils/classnames'
+import {
+
+  LogicalOperator,
+
+} from '../../types'
+import ConditionItem from './condition-item'
 
 type ConditionListProps = {
   isSubVariable?: boolean

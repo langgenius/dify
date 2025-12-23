@@ -1,8 +1,8 @@
 'use client'
-import { useCallback } from 'react'
-import MailForm from './components/input-mail'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import MailForm from './components/input-mail'
 
 const Signup = () => {
   const router = useRouter()

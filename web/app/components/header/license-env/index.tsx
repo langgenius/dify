@@ -1,11 +1,11 @@
 'use client'
 
-import { LicenseStatus } from '@/types/feature'
-import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
-import PremiumBadge from '../../base/premium-badge'
 import { RiHourglass2Fill } from '@remixicon/react'
+import dayjs from 'dayjs'
+import { useTranslation } from 'react-i18next'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { LicenseStatus } from '@/types/feature'
+import PremiumBadge from '../../base/premium-badge'
 
 const LicenseNav = () => {
   const { t } = useTranslation()

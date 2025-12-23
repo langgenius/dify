@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import PromptEditor from '@/app/components/base/prompt-editor'
 import type { GeneratorType } from './types'
-import { cn } from '@/utils/classnames'
 import type { Node, NodeOutPutVar, ValueSelector } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
+import PromptEditor from '@/app/components/base/prompt-editor'
 import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   editorKey: string

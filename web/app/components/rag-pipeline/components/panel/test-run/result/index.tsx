@@ -2,15 +2,15 @@ import {
   memo,
   useState,
 } from 'react'
+import Loading from '@/app/components/base/loading'
 import ResultPanel from '@/app/components/workflow/run/result-panel'
 import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { useStore } from '@/app/components/workflow/store'
 import {
   WorkflowRunningStatus,
 } from '@/app/components/workflow/types'
-import Loading from '@/app/components/base/loading'
-import Tabs from './tabs'
 import ResultPreview from './result-preview'
+import Tabs from './tabs'
 
 const Result = () => {
   const workflowRunningData = useStore(s => s.workflowRunningData)

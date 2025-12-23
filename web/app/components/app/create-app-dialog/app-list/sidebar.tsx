@@ -1,8 +1,8 @@
 'use client'
 import { RiStickyNoteAddLine, RiThumbUpLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
+import { cn } from '@/utils/classnames'
 
 export enum AppCategories {
   RECOMMENDED = 'Recommended',

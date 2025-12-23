@@ -1,9 +1,11 @@
-import React, { type FC } from 'react'
-import Button from '../../button'
-import { type DatePickerFooterProps, ViewType } from '../types'
+import type { FC } from 'react'
+import type { DatePickerFooterProps } from '../types'
 import { RiTimeLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import Button from '../../button'
+import { ViewType } from '../types'
 
 const Footer: FC<DatePickerFooterProps> = ({
   needTimePicker,

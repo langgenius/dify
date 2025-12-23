@@ -1,15 +1,15 @@
 'use client'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiClipboardFill,
   RiClipboardLine,
 } from '@remixicon/react'
-import { debounce } from 'lodash-es'
 import copy from 'copy-to-clipboard'
-import copyStyle from './style.module.css'
-import Tooltip from '@/app/components/base/tooltip'
+import { debounce } from 'lodash-es'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import Tooltip from '@/app/components/base/tooltip'
+import copyStyle from './style.module.css'
 
 type Props = {
   content: string

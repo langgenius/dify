@@ -1,8 +1,8 @@
+import { RiEqualizer2Line } from '@remixicon/react'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiEqualizer2Line } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'

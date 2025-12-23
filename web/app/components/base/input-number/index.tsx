@@ -1,7 +1,9 @@
-import { type FC, useCallback } from 'react'
+import type { FC } from 'react'
+import type { InputProps } from '../input'
 import { RiArrowDownSLine, RiArrowUpSLine } from '@remixicon/react'
-import Input, { type InputProps } from '../input'
+import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
+import Input from '../input'
 
 export type InputNumberProps = {
   unit?: string

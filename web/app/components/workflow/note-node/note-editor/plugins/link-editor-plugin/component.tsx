@@ -1,27 +1,27 @@
 import {
-  memo,
-  useEffect,
-  useState,
-} from 'react'
-import { escape } from 'lodash-es'
-import {
-  FloatingPortal,
   flip,
+  FloatingPortal,
   offset,
   shift,
   useFloating,
 } from '@floating-ui/react'
-import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
 import {
   RiEditLine,
   RiExternalLinkLine,
   RiLinkUnlinkM,
 } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
+import { escape } from 'lodash-es'
+import {
+  memo,
+  useEffect,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { cn } from '@/utils/classnames'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
-import { cn } from '@/utils/classnames'
-import Button from '@/app/components/base/button'
 
 type LinkEditorComponentProps = {
   containerElement: HTMLDivElement | null

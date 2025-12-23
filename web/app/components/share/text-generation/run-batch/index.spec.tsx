@@ -1,8 +1,8 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import RunBatch from './index'
+import React from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import RunBatch from './index'
 
 vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()

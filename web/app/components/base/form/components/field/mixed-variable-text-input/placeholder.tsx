@@ -1,9 +1,8 @@
-import { useCallback } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { FOCUS_COMMAND } from 'lexical'
-import { $insertNodes } from 'lexical'
-import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
+import { $insertNodes, FOCUS_COMMAND } from 'lexical'
+import { useCallback } from 'react'
 import Badge from '@/app/components/base/badge'
+import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 
 const Placeholder = () => {
   const [editor] = useLexicalComposerContext()

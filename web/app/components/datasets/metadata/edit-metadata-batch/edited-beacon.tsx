@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
-import { useHover } from 'ahooks'
 import { RiResetLeftLine } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
+import { useHover } from 'ahooks'
+import React, { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
   onReset: () => void

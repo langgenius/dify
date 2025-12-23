@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { NodeTracing } from '@/types/workflow'
 import {
   RiArrowRightSLine,
   RiCloseLine,
 } from '@remixicon/react'
-import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
-import TracingPanel from './tracing-panel'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { cn } from '@/utils/classnames'
-import type { NodeTracing } from '@/types/workflow'
+import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
+import TracingPanel from './tracing-panel'
 
 const i18nPrefix = 'workflow.singleRun'
 

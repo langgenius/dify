@@ -2,6 +2,18 @@ import type {
   FC,
   ReactNode,
 } from 'react'
+import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
+import type {
+  ChatConfig,
+  ChatItem,
+  Feedback,
+  OnRegenerate,
+  OnSend,
+} from '../types'
+import type { InputForm } from './type'
+import type { Emoji } from '@/app/components/tools/types'
+import type { AppData } from '@/models/share'
+import { debounce } from 'lodash-es'
 import {
   memo,
   useCallback,
@@ -10,30 +22,18 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { debounce } from 'lodash-es'
 import { useShallow } from 'zustand/react/shallow'
-import type {
-  ChatConfig,
-  ChatItem,
-  Feedback,
-  OnRegenerate,
-  OnSend,
-} from '../types'
-import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
-import Question from './question'
-import Answer from './answer'
-import ChatInputArea from './chat-input-area'
-import TryToAsk from './try-to-ask'
-import { ChatContextProvider } from './context'
-import type { InputForm } from './type'
-import { cn } from '@/utils/classnames'
-import type { Emoji } from '@/app/components/tools/types'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import AgentLogModal from '@/app/components/base/agent-log-modal'
 import Button from '@/app/components/base/button'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import AgentLogModal from '@/app/components/base/agent-log-modal'
 import PromptLogModal from '@/app/components/base/prompt-log-modal'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import type { AppData } from '@/models/share'
+import { cn } from '@/utils/classnames'
+import Answer from './answer'
+import ChatInputArea from './chat-input-area'
+import { ChatContextProvider } from './context'
+import Question from './question'
+import TryToAsk from './try-to-ask'
 
 export type ChatProps = {
   appData?: AppData

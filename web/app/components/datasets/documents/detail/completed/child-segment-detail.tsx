@@ -1,21 +1,22 @@
-import React, { type FC, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FC } from 'react'
+import type { ChildChunkDetail, ChunkingMode } from '@/models/datasets'
 import {
   RiCloseLine,
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
+import React, { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { cn } from '@/utils/classnames'
+import { formatNumber } from '@/utils/format'
+import { formatTime } from '@/utils/time'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
 import Dot from './common/dot'
 import { SegmentIndexTag } from './common/segment-index-tag'
 import { useSegmentListContext } from './index'
-import type { ChildChunkDetail, ChunkingMode } from '@/models/datasets'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { formatNumber } from '@/utils/format'
-import { cn } from '@/utils/classnames'
-import Divider from '@/app/components/base/divider'
-import { formatTime } from '@/utils/time'
 
 type IChildSegmentDetailProps = {
   chunkId: string

@@ -1,25 +1,25 @@
-import { useCallback, useState } from 'react'
-import { useTheme } from 'next-themes'
-import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
+import type {
+  ModelProvider,
+} from './declarations'
+import type { Plugin } from '@/app/components/plugins/types'
 import {
   RiArrowDownSLine,
   RiArrowRightUpLine,
 } from '@remixicon/react'
-import type {
-  ModelProvider,
-} from './declarations'
+import { useTheme } from 'next-themes'
+import Link from 'next/link'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import Loading from '@/app/components/base/loading'
+import List from '@/app/components/plugins/marketplace/list'
+import ProviderCard from '@/app/components/plugins/provider-card'
+import { getLocaleOnClient } from '@/i18n-config'
+import { cn } from '@/utils/classnames'
+import { getMarketplaceUrl } from '@/utils/var'
 import {
   useMarketplaceAllPlugins,
 } from './hooks'
-import Divider from '@/app/components/base/divider'
-import Loading from '@/app/components/base/loading'
-import ProviderCard from '@/app/components/plugins/provider-card'
-import List from '@/app/components/plugins/marketplace/list'
-import type { Plugin } from '@/app/components/plugins/types'
-import { cn } from '@/utils/classnames'
-import { getLocaleOnClient } from '@/i18n-config'
-import { getMarketplaceUrl } from '@/utils/var'
 
 type InstallFromMarketplaceProps = {
   providers: ModelProvider[]

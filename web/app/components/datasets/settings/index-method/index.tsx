@@ -1,15 +1,15 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { useRef } from 'react'
 import { useHover } from 'ahooks'
-import { IndexingType } from '../../create/step-two'
-import { cn } from '@/utils/classnames'
+import { useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Economic, HighQuality } from '@/app/components/base/icons/src/vender/knowledge'
+import { cn } from '@/utils/classnames'
+import { IndexingType } from '../../create/step-two'
 import { EffectColor } from '../chunk-structure/types'
 import OptionCard from '../option-card'
 import KeywordNumber from './keyword-number'

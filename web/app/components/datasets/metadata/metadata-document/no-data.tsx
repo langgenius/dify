@@ -1,9 +1,9 @@
 'use client'
-import Button from '@/app/components/base/button'
-import { RiArrowRightLine } from '@remixicon/react'
 import type { FC } from 'react'
+import { RiArrowRightLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 
 type Props = {
   onStart: () => void

@@ -1,9 +1,9 @@
 import type { RefObject } from 'react'
+import type { AssignerNodeType } from './types'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import { useMemo } from 'react'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import { type AssignerNodeType, WriteMode } from './types'
-import { writeModeTypesNum } from './types'
+import { WriteMode, writeModeTypesNum } from './types'
 
 type Params = {
   id: string

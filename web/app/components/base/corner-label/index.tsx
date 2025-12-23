@@ -1,5 +1,5 @@
-import { Corner } from '../icons/src/vender/solid/shapes'
 import { cn } from '@/utils/classnames'
+import { Corner } from '../icons/src/vender/solid/shapes'
 
 type CornerLabelProps = {
   label: string

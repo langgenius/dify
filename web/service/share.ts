@@ -13,28 +13,28 @@ import type {
   IOnMessageReplace,
   IOnNodeFinished,
   IOnNodeStarted,
-  IOnTTSChunk,
-  IOnTTSEnd,
   IOnTextChunk,
   IOnTextReplace,
   IOnThought,
+  IOnTTSChunk,
+  IOnTTSEnd,
   IOnWorkflowFinished,
   IOnWorkflowStarted,
 } from './base'
-import {
-  del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
-  delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
-} from './base'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { ChatConfig } from '@/app/components/base/chat/types'
+import type { AccessMode } from '@/models/access-control'
 import type {
   AppConversationData,
   AppData,
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import type { ChatConfig } from '@/app/components/base/chat/types'
-import type { AccessMode } from '@/models/access-control'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import {
+  del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
+  delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
+} from './base'
 import { getWebAppAccessToken } from './webapp-auth'
 
 function getAction(action: 'get' | 'post' | 'del' | 'patch', isInstalledApp: boolean) {

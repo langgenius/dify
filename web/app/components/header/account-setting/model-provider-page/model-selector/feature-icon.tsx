@@ -1,18 +1,18 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import ModelBadge from '../model-badge'
-import {
-  ModelFeatureEnum,
-  ModelFeatureTextEnum,
-} from '../declarations'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   RiFileTextLine,
   RiFilmAiLine,
   RiImageCircleAiLine,
   RiVoiceAiFill,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
+import {
+  ModelFeatureEnum,
+  ModelFeatureTextEnum,
+} from '../declarations'
+import ModelBadge from '../model-badge'
 
 type FeatureIconProps = {
   feature: ModelFeatureEnum

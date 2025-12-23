@@ -1,19 +1,20 @@
+import type { ComparisonOperator } from '../../types'
+import type { VarType } from '@/app/components/workflow/types'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
-import type { ComparisonOperator } from '../../types'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
+import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
+
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 type ConditionOperatorProps = {

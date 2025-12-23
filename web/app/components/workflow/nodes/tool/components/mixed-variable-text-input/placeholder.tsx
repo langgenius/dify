@@ -1,10 +1,9 @@
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { $insertNodes, FOCUS_COMMAND } from 'lexical'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { FOCUS_COMMAND } from 'lexical'
-import { $insertNodes } from 'lexical'
-import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 import Badge from '@/app/components/base/badge'
+import { CustomTextNode } from '@/app/components/base/prompt-editor/plugins/custom-text/node'
 
 type PlaceholderProps = {
   disableVariableInsertion?: boolean

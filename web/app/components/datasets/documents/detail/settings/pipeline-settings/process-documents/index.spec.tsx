@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import ProcessDocuments from './index'
-import { PipelineInputVarType } from '@/models/pipeline'
 import type { RAGPipelineVariable } from '@/models/pipeline'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { PipelineInputVarType } from '@/models/pipeline'
+import ProcessDocuments from './index'
 
 // Mock dataset detail context - required for useInputVariables hook
 const mockPipelineId = 'pipeline-123'

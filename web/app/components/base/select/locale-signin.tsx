@@ -1,7 +1,7 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { Fragment } from 'react'
 import { GlobeAltIcon } from '@heroicons/react/24/outline'
+import { Fragment } from 'react'
 
 type ISelectProps = {
   items: Array<{ value: string, name: string }>

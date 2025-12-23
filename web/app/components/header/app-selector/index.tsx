@@ -1,15 +1,15 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { Fragment, useState } from 'react'
-import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { useRouter } from 'next/navigation'
-import Indicator from '../indicator'
 import type { AppDetailResponse } from '@/models/app'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
+import { noop } from 'lodash-es'
+import { useRouter } from 'next/navigation'
+import { Fragment, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import CreateAppDialog from '@/app/components/app/create-app-dialog'
 import AppIcon from '@/app/components/base/app-icon'
 import { useAppContext } from '@/context/app-context'
-import { noop } from 'lodash-es'
+import Indicator from '../indicator'
 
 type IAppSelectorProps = {
   appItems: AppDetailResponse[]

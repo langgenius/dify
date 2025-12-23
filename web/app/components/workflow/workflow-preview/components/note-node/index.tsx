@@ -1,15 +1,15 @@
+import type { NodeProps } from 'reactflow'
+import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import {
   memo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { NodeProps } from 'reactflow'
+import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
 import {
   NoteEditor,
   NoteEditorContextProvider,
 } from '@/app/components/workflow/note-node/note-editor'
-import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
-import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import { cn } from '@/utils/classnames'
 
 const NoteNode = ({

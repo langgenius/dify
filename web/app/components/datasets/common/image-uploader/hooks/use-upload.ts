@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useFileUploadConfig } from '@/service/use-common'
 import type { FileEntity, FileUploadConfig } from '../types'
-import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
-import Toast from '@/app/components/base/toast'
+import { produce } from 'immer'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
+import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
+import Toast from '@/app/components/base/toast'
+import { useFileUploadConfig } from '@/service/use-common'
 import { ACCEPT_TYPES } from '../constants'
 import { useFileStore } from '../store'
-import { produce } from 'immer'
-import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { v4 as uuid4 } from 'uuid'
+import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
 
 export const useUpload = () => {
   const { t } = useTranslation()

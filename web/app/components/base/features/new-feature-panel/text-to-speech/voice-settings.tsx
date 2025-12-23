@@ -1,12 +1,12 @@
 'use client'
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { memo } from 'react'
+import ParamConfigContent from '@/app/components/base/features/new-feature-panel/text-to-speech/param-config-content'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import ParamConfigContent from '@/app/components/base/features/new-feature-panel/text-to-speech/param-config-content'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
 
 type VoiceSettingsProps = {
   open: boolean

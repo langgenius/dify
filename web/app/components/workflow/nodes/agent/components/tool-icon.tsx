@@ -1,12 +1,12 @@
+import { memo, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
+import { Group } from '@/app/components/base/icons/src/vender/other'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
-import { cn } from '@/utils/classnames'
-import { memo, useMemo, useRef, useState } from 'react'
 import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
 import { getIconFromMarketPlace } from '@/utils/get-icon'
-import { useTranslation } from 'react-i18next'
-import { Group } from '@/app/components/base/icons/src/vender/other'
-import AppIcon from '@/app/components/base/app-icon'
 
 type Status = 'not-installed' | 'not-authorized' | undefined
 

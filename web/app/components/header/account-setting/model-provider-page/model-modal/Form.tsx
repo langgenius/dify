@@ -1,6 +1,5 @@
-import { useCallback, useState } from 'react'
 import type { ReactNode } from 'react'
-import { ValidatingTip } from '../../key-validator/ValidateStatus'
+import type { Node } from 'reactflow'
 import type {
   CredentialFormSchema,
   CredentialFormSchemaNumberInput,
@@ -10,23 +9,24 @@ import type {
   CredentialFormSchemaTextInput,
   FormValue,
 } from '../declarations'
-import { FormTypeEnum } from '../declarations'
-import { useLanguage } from '../hooks'
-import Input from './Input'
-import { cn } from '@/utils/classnames'
-import { SimpleSelect } from '@/app/components/base/select'
-import Tooltip from '@/app/components/base/tooltip'
-import Radio from '@/app/components/base/radio'
-import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
-import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import RadioE from '@/app/components/base/radio/ui'
 import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import type { Node } from 'reactflow'
+import { useCallback, useState } from 'react'
+import Radio from '@/app/components/base/radio'
+import RadioE from '@/app/components/base/radio/ui'
+import { SimpleSelect } from '@/app/components/base/select'
+import Tooltip from '@/app/components/base/tooltip'
+import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import MultipleToolSelector from '@/app/components/plugins/plugin-detail-panel/multiple-tool-selector'
+import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { cn } from '@/utils/classnames'
+import { ValidatingTip } from '../../key-validator/ValidateStatus'
+import { FormTypeEnum } from '../declarations'
+import { useLanguage } from '../hooks'
+import Input from './Input'
 
 type FormProps<
   CustomFormSchema extends Omit<CredentialFormSchema, 'type'> & { type: string } = never,

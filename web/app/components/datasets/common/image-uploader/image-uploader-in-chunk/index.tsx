@@ -1,15 +1,15 @@
+import type { FileEntity } from '../types'
+import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
+import { useCallback, useState } from 'react'
+import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
+import { cn } from '@/utils/classnames'
+import { useUpload } from '../hooks/use-upload'
 import {
   FileContextProvider,
   useFileStoreWithSelector,
 } from '../store'
-import type { FileEntity } from '../types'
-import FileItem from './image-item'
-import { useUpload } from '../hooks/use-upload'
 import ImageInput from './image-input'
-import { cn } from '@/utils/classnames'
-import { useCallback, useState } from 'react'
-import type { ImageInfo } from '@/app/components/datasets/common/image-previewer'
-import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
+import FileItem from './image-item'
 
 type ImageUploaderInChunkProps = {
   disabled?: boolean

@@ -1,13 +1,13 @@
 import type { FC } from 'react'
+import { debounce } from 'lodash-es'
 import {
   useCallback,
   useMemo,
 } from 'react'
-import { debounce } from 'lodash-es'
-import { useStore } from '../store'
-import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
-import Panel from './panel'
 import { cn } from '@/utils/classnames'
+import { useResizePanel } from '../nodes/_base/hooks/use-resize-panel'
+import { useStore } from '../store'
+import Panel from './panel'
 
 const VariableInspectPanel: FC = () => {
   const showVariableInspectPanel = useStore(s => s.showVariableInspectPanel)

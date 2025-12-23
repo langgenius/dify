@@ -1,18 +1,18 @@
 'use client'
-import type { ChangeEvent, FC } from 'react'
-import React, { useState } from 'react'
-import data from '@emoji-mart/data'
 import type { EmojiMartData } from '@emoji-mart/data'
-import { init } from 'emoji-mart'
+import type { ChangeEvent, FC } from 'react'
+import data from '@emoji-mart/data'
 import {
   ChevronDownIcon,
   ChevronUpIcon,
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
-import Input from '@/app/components/base/input'
+import { init } from 'emoji-mart'
+import React, { useState } from 'react'
 import Divider from '@/app/components/base/divider'
-import { searchEmoji } from '@/utils/emoji'
+import Input from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'
+import { searchEmoji } from '@/utils/emoji'
 
 init({ data })
 

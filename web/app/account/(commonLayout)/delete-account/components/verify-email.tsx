@@ -1,11 +1,11 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
-import Input from '@/app/components/base/input'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
+import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
 
 const CODE_EXP = /[A-Za-z\d]{6}/gi
 

@@ -1,18 +1,18 @@
 import type { FC } from 'react'
+import type { ModelAndParameter } from '../configuration/debug/types'
+import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import type { ModelAndParameter } from '../configuration/debug/types'
-import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useProviderContext } from '@/context/provider-context'
-import type { Model, ModelItem } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useProviderContext } from '@/context/provider-context'
+import ModelIcon from '../../header/account-setting/model-provider-page/model-icon'
 
 type PublishWithMultipleModelProps = {
   multipleModelConfigs: ModelAndParameter[]

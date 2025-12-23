@@ -1,20 +1,20 @@
 'use client'
 import type { FC } from 'react'
 import React, { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useInstalledPluginList } from '@/service/use-plugins'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
-import { useTranslation } from 'react-i18next'
+import { useInstalledPluginList } from '@/service/use-plugins'
 import { cn } from '@/utils/classnames'
-import ToolItem from './tool-item'
-import Loading from '@/app/components/base/loading'
-import NoDataPlaceholder from './no-data-placeholder'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../../marketplace/plugin-type-switch'
 import { PluginSource } from '../../types'
+import NoDataPlaceholder from './no-data-placeholder'
+import ToolItem from './tool-item'
 
 type Props = {
   trigger: React.ReactNode

@@ -1,17 +1,17 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useParams, usePathname } from 'next/navigation'
 import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import Recorder from 'js-audio-recorder'
 import { useRafInterval } from 'ahooks'
-import { convertToMp3 } from './utils'
-import s from './index.module.css'
-import { cn } from '@/utils/classnames'
+import Recorder from 'js-audio-recorder'
+import { useParams, usePathname } from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { audioToText } from '@/service/share'
+import { cn } from '@/utils/classnames'
+import s from './index.module.css'
+import { convertToMp3 } from './utils'
 
 type VoiceInputTypes = {
   onConverted: (text: string) => void

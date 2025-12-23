@@ -1,17 +1,17 @@
 import type { FC } from 'react'
+import type { IfElseNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import useConfig from './use-config'
-import type { IfElseNodeType } from './types'
-import ConditionWrap from './components/condition-wrap'
 import Button from '@/app/components/base/button'
-import type { NodePanelProps } from '@/app/components/workflow/types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
+import ConditionWrap from './components/condition-wrap'
+import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.ifElse'
 

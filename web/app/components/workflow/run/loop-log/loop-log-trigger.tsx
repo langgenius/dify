@@ -1,11 +1,11 @@
-import { useTranslation } from 'react-i18next'
-import { RiArrowRightSLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
 import type {
   LoopDurationMap,
   LoopVariableMap,
   NodeTracing,
 } from '@/types/workflow'
+import { RiArrowRightSLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 
 type LoopLogTriggerProps = {

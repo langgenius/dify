@@ -1,7 +1,7 @@
+import type { ScheduleFrequency } from '../types'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { SimpleSelect } from '@/app/components/base/select'
-import type { ScheduleFrequency } from '../types'
 
 type FrequencySelectorProps = {
   frequency: ScheduleFrequency

@@ -1,10 +1,10 @@
 'use client'
-import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import type { VariantProps } from 'class-variance-authority'
+import type { FC } from 'react'
 import { cva } from 'class-variance-authority'
-import { cn } from '@/utils/classnames'
+import React, { useCallback } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 
 const variants = cva([], {
   variants: {

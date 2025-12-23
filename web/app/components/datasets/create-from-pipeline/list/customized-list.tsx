@@ -1,6 +1,6 @@
-import TemplateCard from './template-card'
-import { usePipelineTemplateList } from '@/service/use-pipeline'
 import { useTranslation } from 'react-i18next'
+import { usePipelineTemplateList } from '@/service/use-pipeline'
+import TemplateCard from './template-card'
 
 const CustomizedList = () => {
   const { t } = useTranslation()

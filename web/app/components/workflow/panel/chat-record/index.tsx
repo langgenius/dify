@@ -1,25 +1,25 @@
+import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
+import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useEffect,
   useState,
 } from 'react'
-import { RiCloseLine } from '@remixicon/react'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Chat from '@/app/components/base/chat/chat'
+import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
+import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import Loading from '@/app/components/base/loading'
+import { fetchConversationMessages } from '@/service/debug'
+import { useWorkflowRun } from '../../hooks'
 import {
   useStore,
   useWorkflowStore,
 } from '../../store'
-import { useWorkflowRun } from '../../hooks'
 import { formatWorkflowRunIdentifier } from '../../utils'
 import UserInput from './user-input'
-import Chat from '@/app/components/base/chat/chat'
-import type { ChatItem, ChatItemInTree } from '@/app/components/base/chat/types'
-import { fetchConversationMessages } from '@/service/debug'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import Loading from '@/app/components/base/loading'
-import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
-import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import { buildChatItemTree, getThreadMessages } from '@/app/components/base/chat/utils'
 
 function getFormattedChatList(messages: any[]) {
   const res: ChatItem[] = []

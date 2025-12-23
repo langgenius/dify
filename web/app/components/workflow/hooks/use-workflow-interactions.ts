@@ -1,16 +1,23 @@
+import type { WorkflowDataUpdater } from '../types'
+import type { LayoutResult } from '../utils'
+import { produce } from 'immer'
 import {
   useCallback,
 } from 'react'
 import { useReactFlow, useStoreApi } from 'reactflow'
-import { produce } from 'immer'
-import { useStore, useWorkflowStore } from '../store'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,
   NODE_LAYOUT_VERTICAL_PADDING,
   WORKFLOW_DATA_UPDATE,
 } from '../constants'
-import type { WorkflowDataUpdater } from '../types'
+import {
+  useNodesReadOnly,
+  useSelectionInteractions,
+  useWorkflowReadOnly,
+} from '../hooks'
+import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum, ControlMode } from '../types'
 import {
   getLayoutByDagre,
@@ -18,17 +25,10 @@ import {
   initialEdges,
   initialNodes,
 } from '../utils'
-import type { LayoutResult } from '../utils'
-import {
-  useNodesReadOnly,
-  useSelectionInteractions,
-  useWorkflowReadOnly,
-} from '../hooks'
 import { useEdgesInteractionsWithoutSync } from './use-edges-interactions-without-sync'
 import { useNodesInteractionsWithoutSync } from './use-nodes-interactions-without-sync'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 export const useWorkflowInteractions = () => {
   const workflowStore = useWorkflowStore()

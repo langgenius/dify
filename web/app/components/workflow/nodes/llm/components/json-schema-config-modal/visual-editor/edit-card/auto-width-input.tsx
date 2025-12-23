@@ -1,5 +1,5 @@
-import React, { useEffect, useState } from 'react'
 import type { FC } from 'react'
+import React, { useEffect, useState } from 'react'
 import { cn } from '@/utils/classnames'
 
 type AutoWidthInputProps = {

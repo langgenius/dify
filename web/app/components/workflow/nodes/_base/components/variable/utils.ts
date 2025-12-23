@@ -1,32 +1,26 @@
-import { produce } from 'immer'
-import { isArray, uniq } from 'lodash-es'
-import type { CodeNodeType } from '../../../code/types'
-import type { EndNodeType } from '../../../end/types'
+import type { AgentNodeType } from '../../../agent/types'
 import type { AnswerNodeType } from '../../../answer/types'
-import {
-  type LLMNodeType,
-  type StructuredOutput,
-  Type,
-} from '../../../llm/types'
-import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
-import type { IfElseNodeType } from '../../../if-else/types'
-import type { TemplateTransformNodeType } from '../../../template-transform/types'
-import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
-import type { HttpNodeType } from '../../../http/types'
-import { VarType as ToolVarType } from '../../../tool/types'
-import type { ToolNodeType } from '../../../tool/types'
-import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
-import type { IterationNodeType } from '../../../iteration/types'
-import type { LoopNodeType } from '../../../loop/types'
-import type { ListFilterNodeType } from '../../../list-operator/types'
-import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
+import type { CodeNodeType } from '../../../code/types'
 import type { DocExtractorNodeType } from '../../../document-extractor/types'
-import {
-  BlockEnum,
-  InputVarType,
-  VarType,
-} from '@/app/components/workflow/types'
+import type { EndNodeType } from '../../../end/types'
+import type { HttpNodeType } from '../../../http/types'
+import type { IfElseNodeType } from '../../../if-else/types'
+import type { IterationNodeType } from '../../../iteration/types'
+import type { KnowledgeRetrievalNodeType } from '../../../knowledge-retrieval/types'
+import type { ListFilterNodeType } from '../../../list-operator/types'
+import type { LLMNodeType, StructuredOutput } from '../../../llm/types'
+import type { LoopNodeType } from '../../../loop/types'
+import type { ParameterExtractorNodeType } from '../../../parameter-extractor/types'
+import type { QuestionClassifierNodeType } from '../../../question-classifier/types'
+import type { TemplateTransformNodeType } from '../../../template-transform/types'
+import type { ToolNodeType } from '../../../tool/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
+import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
+import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
 import type {
   ConversationVariable,
   EnvironmentVariable,
@@ -36,16 +30,15 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import type { VariableAssignerNodeType } from '@/app/components/workflow/nodes/variable-assigner/types'
-import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
+import type { PromptItem } from '@/models/debug'
 import type { RAGPipelineVariable } from '@/models/pipeline'
-import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
-import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
+import { produce } from 'immer'
+import { isArray, uniq } from 'lodash-es'
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
+  getGlobalVars,
   HTTP_REQUEST_OUTPUT_STRUCT,
   KNOWLEDGE_RETRIEVAL_OUTPUT_STRUCT,
   LLM_OUTPUT_STRUCT,
@@ -54,16 +47,23 @@ import {
   SUPPORT_OUTPUT_VARS_NODE,
   TEMPLATE_TRANSFORM_OUTPUT_STRUCT,
   TOOL_OUTPUT_STRUCT,
-  getGlobalVars,
 } from '@/app/components/workflow/constants'
-import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import type { PromptItem } from '@/models/debug'
+import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
+import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
+import {
+  BlockEnum,
+  InputVarType,
+  VarType,
+} from '@/app/components/workflow/types'
 import { VAR_REGEX } from '@/config'
-import type { AgentNodeType } from '../../../agent/types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 import { AppModeEnum } from '@/types/app'
+import { OUTPUT_FILE_SUB_VARIABLES } from '../../../constants'
+import {
+
+  Type,
+} from '../../../llm/types'
+import { VarType as ToolVarType } from '../../../tool/types'
 
 export const isSystemVar = (valueSelector: ValueSelector) => {
   return valueSelector[0] === 'sys' || valueSelector[1] === 'sys'

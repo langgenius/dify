@@ -1,10 +1,9 @@
 'use client'
-import { RiCloseLine, RiSearchLine } from '@remixicon/react'
-import TagsFilter from './tags-filter'
+import { RiAddLine, RiCloseLine, RiSearchLine } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
-import { cn } from '@/utils/classnames'
-import { RiAddLine } from '@remixicon/react'
 import Divider from '@/app/components/base/divider'
+import { cn } from '@/utils/classnames'
+import TagsFilter from './tags-filter'
 
 type SearchBoxProps = {
   search: string

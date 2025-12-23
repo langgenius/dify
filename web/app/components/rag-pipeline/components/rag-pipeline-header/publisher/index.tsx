@@ -1,10 +1,10 @@
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,

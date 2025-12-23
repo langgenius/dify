@@ -1,9 +1,9 @@
 'use client'
 import { Dialog, DialogBackdrop, DialogTitle } from '@headlessui/react'
-import { useTranslation } from 'react-i18next'
 import { XMarkIcon } from '@heroicons/react/24/outline'
-import Button from '../button'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
+import Button from '../button'
 
 export type IDrawerProps = {
   title?: string

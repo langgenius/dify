@@ -1,12 +1,12 @@
 'use client'
-import React from 'react'
-import { cn } from '@/utils/classnames'
 import { useSearchParams } from 'next/navigation'
+import React from 'react'
+import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { cn } from '@/utils/classnames'
 import Header from '../signin/_header'
 import ForgotPasswordForm from './ForgotPasswordForm'
-import ChangePasswordForm from '@/app/forgot-password/ChangePasswordForm'
-import useDocumentTitle from '@/hooks/use-document-title'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const ForgotPassword = () => {
   useDocumentTitle('')

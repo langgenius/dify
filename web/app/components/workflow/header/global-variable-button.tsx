@@ -1,10 +1,10 @@
 import { memo } from 'react'
 import Button from '@/app/components/base/button'
 import { GlobalVariable } from '@/app/components/base/icons/src/vender/line/others'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()

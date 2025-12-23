@@ -1,9 +1,8 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import TimePicker from './index'
-import dayjs from '../utils/dayjs'
-import { isDayjsObject } from '../utils/dayjs'
 import type { TimePickerProps } from '../types'
+import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
+import dayjs, { isDayjsObject } from '../utils/dayjs'
+import TimePicker from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

@@ -1,26 +1,24 @@
-import { useContext } from 'react'
+import type { FileUpload } from '../../base/features/types'
+import type {
+  BlockEnum,
+  Node,
+  NodeDefault,
+  ToolWithProvider,
+  ValueSelector,
+} from '@/app/components/workflow/types'
+import type { IOtherOptions } from '@/service/base'
+import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { FlowType } from '@/types/common'
+import type { VarInInspect } from '@/types/workflow'
 import {
   noop,
 } from 'lodash-es'
+import { useContext } from 'react'
 import {
   useStore as useZustandStore,
 } from 'zustand'
 import { createStore } from 'zustand/vanilla'
 import { HooksStoreContext } from './provider'
-import type {
-  BlockEnum,
-  NodeDefault,
-  ToolWithProvider,
-} from '@/app/components/workflow/types'
-import type { IOtherOptions } from '@/service/base'
-import type { VarInInspect } from '@/types/workflow'
-import type {
-  Node,
-  ValueSelector,
-} from '@/app/components/workflow/types'
-import type { FlowType } from '@/types/common'
-import type { FileUpload } from '../../base/features/types'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 
 export type AvailableNodesMetaData = {
   nodes: NodeDefault[]

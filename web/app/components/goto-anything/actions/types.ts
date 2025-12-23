@@ -1,9 +1,9 @@
 import type { ReactNode } from 'react'
 import type { TypeWithI18N } from '../../base/form/types'
-import type { App } from '@/types/app'
 import type { Plugin } from '../../plugins/types'
-import type { DataSet } from '@/models/datasets'
 import type { CommonNodeType } from '../../workflow/types'
+import type { DataSet } from '@/models/datasets'
+import type { App } from '@/types/app'
 
 export type SearchResultType = 'app' | 'knowledge' | 'plugin' | 'workflow-node' | 'command'
 

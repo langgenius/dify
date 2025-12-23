@@ -1,15 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import { useContext } from 'use-context-selector'
-import QueryInput from './components/query-input'
-import s from './style.module.css'
-import ModifyRetrievalModal from './modify-retrieval-modal'
-import ResultItem from './components/result-item'
-import ResultItemExternal from './components/result-item-external'
-import { cn } from '@/utils/classnames'
 import type {
   ExternalKnowledgeBaseHitTesting,
   ExternalKnowledgeBaseHitTestingResponse,
@@ -18,22 +8,32 @@ import type {
   HitTestingResponse,
   Query,
 } from '@/models/datasets'
-import Loading from '@/app/components/base/loading'
-import Drawer from '@/app/components/base/drawer'
-import Pagination from '@/app/components/base/pagination'
-import FloatRightContainer from '@/app/components/base/float-right-container'
-import DatasetDetailContext from '@/context/dataset-detail'
 import type { RetrievalConfig } from '@/types/app'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useBoolean } from 'ahooks'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import Drawer from '@/app/components/base/drawer'
+import FloatRightContainer from '@/app/components/base/float-right-container'
+import Loading from '@/app/components/base/loading'
+import Pagination from '@/app/components/base/pagination'
 import docStyle from '@/app/components/datasets/documents/detail/completed/style.module.css'
-import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
-import EmptyRecords from './components/empty-records'
-import Records from './components/records'
+import DatasetDetailContext from '@/context/dataset-detail'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
 import {
   useExternalKnowledgeBaseHitTesting,
   useHitTesting,
 } from '@/service/knowledge/use-hit-testing'
-import { useDatasetTestingRecords } from '@/service/knowledge/use-dataset'
+import { cn } from '@/utils/classnames'
+import { CardSkelton } from '../documents/detail/completed/skeleton/general-list-skeleton'
+import EmptyRecords from './components/empty-records'
+import QueryInput from './components/query-input'
+import Records from './components/records'
+import ResultItem from './components/result-item'
+import ResultItemExternal from './components/result-item-external'
+import ModifyRetrievalModal from './modify-retrieval-modal'
+import s from './style.module.css'
 
 const limit = 10
 

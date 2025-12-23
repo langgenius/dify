@@ -1,11 +1,11 @@
-import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import type { Node } from 'reactflow'
+import { memo, useCallback, useEffect, useMemo, useRef } from 'react'
 import { MiniMap } from 'reactflow'
 import UndoRedo from '../header/undo-redo'
-import ZoomInOut from './zoom-in-out'
-import VariableTrigger from '../variable-inspect/trigger'
-import VariableInspectPanel from '../variable-inspect'
 import { useStore } from '../store'
+import VariableInspectPanel from '../variable-inspect'
+import VariableTrigger from '../variable-inspect/trigger'
+import ZoomInOut from './zoom-in-out'
 
 export type OperatorProps = {
   handleUndo: () => void

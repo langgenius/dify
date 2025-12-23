@@ -1,15 +1,15 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
 import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataFilterSelectorProps = {

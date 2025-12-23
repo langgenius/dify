@@ -1,12 +1,12 @@
 'use client'
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import Loading from './loading'
 import type { CustomFile as File } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
+import React, { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useFilePreview } from '@/service/use-common'
-import DocumentFileIcon from '../../../common/document-file-icon'
 import { formatFileSize, formatNumberAbbreviated } from '@/utils/format'
+import DocumentFileIcon from '../../../common/document-file-icon'
+import Loading from './loading'
 
 type FilePreviewProps = {
   file: File

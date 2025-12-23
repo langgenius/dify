@@ -1,11 +1,12 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { ToolTypeEnum } from '../../workflow/block-selector/types'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useTranslation } from 'react-i18next'
+import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
 import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
-import useTheme from '@/hooks/use-theme'
+import { ToolTypeEnum } from '../../workflow/block-selector/types'
+
 type Props = {
   type?: ToolTypeEnum
   isAgent?: boolean

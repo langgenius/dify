@@ -1,50 +1,48 @@
-import { useCallback, useEffect, useState } from 'react'
+import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
 import type {
   FormOption,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchModelProviderModelList } from '@/service/common'
-import { fetchPluginInfoFromMarketPlace } from '@/service/plugins'
+import type {
+  PluginsSearchParams,
+} from '@/app/components/plugins/marketplace/types'
 import type {
   DebugInfo as DebugInfoTypes,
   Dependency,
   GitHubItemAndMarketPlaceDependency,
-  InstallPackageResponse,
-  InstallStatusResponse,
   InstalledLatestVersionResponse,
   InstalledPluginListWithTotalResponse,
+  InstallPackageResponse,
+  InstallStatusResponse,
   PackageDependency,
   Plugin,
   PluginDeclaration,
   PluginDetail,
   PluginInfoFromMarketPlace,
-  PluginTask,
   PluginsFromMarketplaceByInfoResponse,
   PluginsFromMarketplaceResponse,
+  PluginTask,
   ReferenceSetting,
+  uploadGitHubResponse,
   VersionInfo,
   VersionListResponse,
-  uploadGitHubResponse,
 } from '@/app/components/plugins/types'
-import { TaskStatus } from '@/app/components/plugins/types'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import type {
-  PluginsSearchParams,
-} from '@/app/components/plugins/marketplace/types'
-import { get, getMarketplace, post, postMarketplace } from './base'
-import type { MutateOptions, QueryOptions } from '@tanstack/react-query'
 import {
   useInfiniteQuery,
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { useInvalidateAllBuiltInTools } from './use-tools'
-import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
-import { uninstallPlugin } from '@/service/plugins'
-import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { cloneDeep } from 'lodash-es'
+import { useCallback, useEffect, useState } from 'react'
+import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
+import useReferenceSetting from '@/app/components/plugins/plugin-page/use-reference-setting'
+import { PluginCategoryEnum, TaskStatus } from '@/app/components/plugins/types'
+import { fetchModelProviderModelList } from '@/service/common'
+import { fetchPluginInfoFromMarketPlace, uninstallPlugin } from '@/service/plugins'
+import { get, getMarketplace, post, postMarketplace } from './base'
+import { useInvalidateAllBuiltInTools } from './use-tools'
 
 const NAME_SPACE = 'plugins'
 

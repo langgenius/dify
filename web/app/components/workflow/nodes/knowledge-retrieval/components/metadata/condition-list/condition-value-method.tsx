@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import { capitalize } from 'lodash-es'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { capitalize } from 'lodash-es'
+import { useState } from 'react'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 
 export type ConditionValueMethodProps = {

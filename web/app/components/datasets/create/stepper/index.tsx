@@ -1,5 +1,6 @@
-import { type FC, Fragment } from 'react'
+import type { FC } from 'react'
 import type { Step } from './step'
+import { Fragment } from 'react'
 import { StepperStep } from './step'
 
 export type StepperProps = {

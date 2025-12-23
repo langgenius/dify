@@ -1,6 +1,8 @@
 'use client'
 
 import type { ReactNode, RefObject } from 'react'
+import type { FilterState } from './filter-management'
+import { noop } from 'lodash-es'
 import {
   useMemo,
   useRef,
@@ -10,11 +12,9 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
-import type { FilterState } from './filter-management'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import { noop } from 'lodash-es'
-import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+import { PLUGIN_PAGE_TABS_MAP, usePluginPageTabs } from '../hooks'
 
 export type PluginPageContextValue = {
   containerRef: RefObject<HTMLDivElement | null>

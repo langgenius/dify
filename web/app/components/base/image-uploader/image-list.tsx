@@ -1,17 +1,17 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ImageFile } from '@/types/app'
 import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
-import type { ImageFile } from '@/types/app'
-import { TransferMethod } from '@/types/app'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import Tooltip from '@/app/components/base/tooltip'
+import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 type ImageListProps = {
   list: ImageFile[]

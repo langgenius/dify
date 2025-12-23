@@ -1,26 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import { useRef } from 'react'
-import React, { useCallback, useState } from 'react'
-import {
-  type Dependency,
-  type InstallStatus,
-  type InstallStatusResponse,
-  type Plugin,
-  TaskStatus,
-  type VersionInfo,
-} from '../../../types'
-import Button from '@/app/components/base/button'
-import { RiLoader2Line } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
+import type { Dependency, InstallStatus, InstallStatusResponse, Plugin, VersionInfo } from '../../../types'
 import type { ExposeRefs } from './install-multi'
-import InstallMulti from './install-multi'
-import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
-import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import { RiLoader2Line } from '@remixicon/react'
+import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Checkbox from '@/app/components/base/checkbox'
 import { useCanInstallPluginFromMarketplace } from '@/app/components/plugins/plugin-page/use-reference-setting'
 import { useMittContextSelector } from '@/context/mitt-context'
-import Checkbox from '@/app/components/base/checkbox'
+import { useInstallOrUpdate, usePluginTaskList } from '@/service/use-plugins'
+import {
+
+  TaskStatus,
+
+} from '../../../types'
 import checkTaskStatus from '../../base/check-task-status'
+import useRefreshPluginList from '../../hooks/use-refresh-plugin-list'
+import InstallMulti from './install-multi'
+
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {

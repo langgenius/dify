@@ -1,10 +1,10 @@
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import { PortalSelect } from '@/app/components/base/select'
-import { InputVarType } from '@/app/components/workflow/types'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import Input from '@/app/components/base/input'
+import { PortalSelect } from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
+import { InputVarType } from '@/app/components/workflow/types'
 
 type Props = {
   inputsForms: any[]

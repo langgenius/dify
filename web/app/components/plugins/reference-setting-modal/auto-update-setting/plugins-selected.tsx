@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { cn } from '@/utils/classnames'
-import { MARKETPLACE_API_PREFIX } from '@/config'
 import Icon from '@/app/components/plugins/card/base/card-icon'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import { cn } from '@/utils/classnames'
 
 const MAX_DISPLAY_COUNT = 14
 type Props = {

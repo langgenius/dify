@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { StructuredOutput } from '../../../../../llm/types'
-import Field from './field'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Field from './field'
 
 type Props = {
   payload: StructuredOutput

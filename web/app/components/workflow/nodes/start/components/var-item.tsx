@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef } from 'react'
-import { useBoolean, useHover } from 'ahooks'
-import { useTranslation } from 'react-i18next'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
-import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
-import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
+import { useBoolean, useHover } from 'ahooks'
+import { noop } from 'lodash-es'
+import React, { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
+import Badge from '@/app/components/base/badge'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { Edit03 } from '@/app/components/base/icons/src/vender/solid/general'
-import Badge from '@/app/components/base/badge'
-import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
-import { noop } from 'lodash-es'
 import { cn } from '@/utils/classnames'
+import InputVarTypeIcon from '../../_base/components/input-var-type-icon'
 
 type Props = {
   className?: string

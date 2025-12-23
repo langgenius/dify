@@ -1,9 +1,9 @@
 'use client'
-import React, { useState } from 'react'
 import { usePathname } from 'next/navigation'
-import s from './index.module.css'
+import React, { useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
+import s from './index.module.css'
 
 type HeaderWrapperProps = {
   children: React.ReactNode

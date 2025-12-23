@@ -1,15 +1,15 @@
-import { Fragment } from 'react'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
+import type { Plan } from '@/app/components/billing/type'
 import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { ToastContext } from '@/app/components/base/toast'
+import PlanBadge from '@/app/components/header/plan-badge'
+import { useWorkspacesContext } from '@/context/workspace-context'
+import { switchWorkspace } from '@/service/common'
 import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
-import PlanBadge from '@/app/components/header/plan-badge'
-import { switchWorkspace } from '@/service/common'
-import { useWorkspacesContext } from '@/context/workspace-context'
-import { ToastContext } from '@/app/components/base/toast'
-import type { Plan } from '@/app/components/billing/type'
 
 const WorkplaceSelector = () => {
   const { t } = useTranslation()

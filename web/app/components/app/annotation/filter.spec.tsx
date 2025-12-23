@@ -1,8 +1,9 @@
 import type { Mock } from 'vitest'
-import React from 'react'
+import type { QueryParam } from './filter'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Filter, { type QueryParam } from './filter'
+import React from 'react'
 import useSWR from 'swr'
+import Filter from './filter'
 
 vi.mock('swr', () => ({
   __esModule: true,

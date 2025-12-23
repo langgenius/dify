@@ -1,13 +1,13 @@
 'use client'
+import copy from 'copy-to-clipboard'
+import { debounce } from 'lodash-es'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { debounce } from 'lodash-es'
-import copy from 'copy-to-clipboard'
-import Tooltip from '../tooltip'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
+import Tooltip from '../tooltip'
 
 type Props = {
   content: string

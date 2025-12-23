@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
-
 import type { PopupProps } from './config-popup'
-import ConfigPopup from './config-popup'
-import { cn } from '@/utils/classnames'
+
+import React, { useCallback, useRef, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
+import ConfigPopup from './config-popup'
 
 type Props = {
   readOnly: boolean

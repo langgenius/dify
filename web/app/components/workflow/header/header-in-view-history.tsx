@@ -1,19 +1,19 @@
+import type { ViewHistoryProps } from './view-history'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  useWorkflowStore,
-} from '../store'
+import Button from '@/app/components/base/button'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import Divider from '../../base/divider'
 import {
   useWorkflowRun,
 } from '../hooks'
-import Divider from '../../base/divider'
+import {
+  useWorkflowStore,
+} from '../store'
 import RunningTitle from './running-title'
-import type { ViewHistoryProps } from './view-history'
 import ViewHistory from './view-history'
-import Button from '@/app/components/base/button'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
 
 export type HeaderInHistoryProps = {
   viewHistoryProps?: ViewHistoryProps

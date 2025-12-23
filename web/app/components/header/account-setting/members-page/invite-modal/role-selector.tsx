@@ -1,14 +1,14 @@
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import React, { useState } from 'react'
 import { RiArrowDownSLine } from '@remixicon/react'
-import { useProviderContext } from '@/context/provider-context'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 
 export type RoleSelectorProps = {
   value: string

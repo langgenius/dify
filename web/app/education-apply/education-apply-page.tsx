@@ -1,30 +1,31 @@
 'use client'
 
-import {
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiExternalLinkLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
 import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
-import UserInfo from './user-info'
-import SearchInput from './search-input'
-import RoleSelector from './role-selector'
-import Confirm from './verify-state-modal'
+import {
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
+import { useToastContext } from '@/app/components/base/toast'
+import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
+import { useDocLink } from '@/context/i18n'
+import { useProviderContext } from '@/context/provider-context'
 import {
   useEducationAdd,
   useInvalidateEducationStatus,
 } from '@/service/use-education'
-import { useProviderContext } from '@/context/provider-context'
-import { useToastContext } from '@/app/components/base/toast'
-import { EDUCATION_VERIFYING_LOCALSTORAGE_ITEM } from '@/app/education-apply/constants'
-import { noop } from 'lodash-es'
 import DifyLogo from '../components/base/logo/dify-logo'
-import { useDocLink } from '@/context/i18n'
+import RoleSelector from './role-selector'
+import SearchInput from './search-input'
+import UserInfo from './user-info'
+import Confirm from './verify-state-modal'
+
 const EducationApplyAge = () => {
   const { t } = useTranslation()
   const [schoolName, setSchoolName] = useState('')

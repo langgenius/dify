@@ -1,11 +1,12 @@
-import React from 'react'
+import type { Mock } from 'vitest'
+import type { UsagePlanInfo } from '../../type'
 import { render, screen } from '@testing-library/react'
-import Plans from './index'
-import { Plan, type UsagePlanInfo } from '../../type'
+import React from 'react'
+import { Plan } from '../../type'
 import { PlanRange } from '../plan-switcher/plan-range-switcher'
 import cloudPlanItem from './cloud-plan-item'
+import Plans from './index'
 import selfHostedPlanItem from './self-hosted-plan-item'
-import type { Mock } from 'vitest'
 
 vi.mock('./cloud-plan-item', () => ({
   __esModule: true,

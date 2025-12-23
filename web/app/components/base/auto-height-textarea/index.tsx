@@ -1,6 +1,6 @@
 import { useEffect, useRef } from 'react'
-import { cn } from '@/utils/classnames'
 import { sleep } from '@/utils'
+import { cn } from '@/utils/classnames'
 
 type IProps = {
   placeholder?: string

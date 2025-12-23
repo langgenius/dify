@@ -1,15 +1,15 @@
-import { useTranslation } from 'react-i18next'
-import React, { useState } from 'react'
 import { RiArrowDownSLine, RiCloseCircleFill, RiExchange2Fill, RiFilter3Line } from '@remixicon/react'
-import Checkbox from '../../base/checkbox'
-import { cn } from '@/utils/classnames'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { BubbleTextMod, ChatBot, ListSparkle, Logic } from '@/app/components/base/icons/src/vender/solid/communication'
 import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import Checkbox from '../../base/checkbox'
 
 export type AppSelectorProps = {
   value: Array<AppModeEnum>

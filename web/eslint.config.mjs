@@ -1,8 +1,8 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
+import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
-import sonar from 'eslint-plugin-sonarjs'
 
 export default antfu(
   {
@@ -56,15 +56,7 @@ export default antfu(
       'antfu/curly': 'off',
       'antfu/if-newline': 'off',
       'antfu/top-level-function': 'off',
-      'import/consistent-type-specifier-style': 'off',
-      'import/first': 'off',
-      'import/newline-after-import': 'off',
-      'import/no-duplicates': 'off',
       'no-useless-return': 'off',
-      'perfectionist/sort-exports': 'off',
-      'perfectionist/sort-imports': 'off',
-      'perfectionist/sort-named-exports': 'off',
-      'perfectionist/sort-named-imports': 'off',
       'react/no-context-provider': 'off',
       'react/no-forward-ref': 'off',
       'react/no-use-context': 'off',

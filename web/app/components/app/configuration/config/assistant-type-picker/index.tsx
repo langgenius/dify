@@ -1,21 +1,21 @@
 'use client'
 import type { FC } from 'react'
+import type { AgentConfig } from '@/models/debug'
+import { RiArrowDownSLine } from '@remixicon/react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import AgentSetting from '../agent/agent-setting'
-import { cn } from '@/utils/classnames'
+import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
+import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
+import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { BubbleText } from '@/app/components/base/icons/src/vender/solid/education'
 import Radio from '@/app/components/base/radio/ui'
-import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
-import { Settings04 } from '@/app/components/base/icons/src/vender/line/general'
-import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import type { AgentConfig } from '@/models/debug'
+import { cn } from '@/utils/classnames'
+import AgentSetting from '../agent/agent-setting'
 
 type Props = {
   value: string

@@ -1,21 +1,21 @@
 'use client'
 import type { FC } from 'react'
+import type { RetrievalConfig } from '@/types/app'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import RetrievalParamConfig from '../retrieval-param-config'
-import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
-import { useProviderContext } from '@/context/provider-context'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { FullTextSearch, HybridSearch, VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useProviderContext } from '@/context/provider-context'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import OptionCard from '../../settings/option-card'
-import { FullTextSearch, HybridSearch, VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
+import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'
+import OptionCard from '../../settings/option-card'
+import RetrievalParamConfig from '../retrieval-param-config'
 
 type Props = {
   disabled?: boolean

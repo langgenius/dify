@@ -1,12 +1,13 @@
-import { produce } from 'immer'
 import type { VisualEditorProps } from '.'
+import type { Field } from '../../../types'
+import type { EditData } from './edit-card'
+import { produce } from 'immer'
+import { noop } from 'lodash-es'
+import Toast from '@/app/components/base/toast'
+import { ArrayType, Type } from '../../../types'
+import { findPropertyWithPath } from '../../../utils'
 import { useMittContext } from './context'
 import { useVisualEditorStore } from './store'
-import type { EditData } from './edit-card'
-import { ArrayType, type Field, Type } from '../../../types'
-import Toast from '@/app/components/base/toast'
-import { findPropertyWithPath } from '../../../utils'
-import { noop } from 'lodash-es'
 
 type ChangeEventParams = {
   path: string[]

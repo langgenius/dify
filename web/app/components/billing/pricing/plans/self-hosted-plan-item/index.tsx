@@ -2,15 +2,15 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { SelfHostedPlan } from '../../../type'
-import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
-import Toast from '../../../../base/toast'
-import { cn } from '@/utils/classnames'
+import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
 import { useAppContext } from '@/context/app-context'
+import { cn } from '@/utils/classnames'
+import Toast from '../../../../base/toast'
+import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
+import { SelfHostedPlan } from '../../../type'
+import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
 import Button from './button'
 import List from './list'
-import { Azure, GoogleCloud } from '@/app/components/base/icons/src/public/billing'
-import { Community, Enterprise, EnterpriseNoise, Premium, PremiumNoise } from '../../assets'
 
 const STYLE_MAP = {
   [SelfHostedPlan.community]: {

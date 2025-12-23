@@ -1,7 +1,7 @@
+import { useKeyPress } from 'ahooks'
 import React, { useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/utils/classnames'
-import { useKeyPress } from 'ahooks'
 import { useSegmentListContext } from '..'
 
 type DrawerProps = {

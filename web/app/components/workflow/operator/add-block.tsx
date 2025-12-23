@@ -1,16 +1,21 @@
+import type { OffsetOptions } from '@floating-ui/react'
+import type {
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import { RiAddCircleFill } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import { RiAddCircleFill } from '@remixicon/react'
-import { useStoreApi } from 'reactflow'
 import { useTranslation } from 'react-i18next'
-import type { OffsetOptions } from '@floating-ui/react'
+import { useStoreApi } from 'reactflow'
+import BlockSelector from '@/app/components/workflow/block-selector'
 import {
-  generateNewNode,
-  getNodeCustomTypeByNodeDataType,
-} from '../utils'
+  BlockEnum,
+} from '@/app/components/workflow/types'
+import { FlowType } from '@/types/common'
+import { cn } from '@/utils/classnames'
 import {
   useAvailableBlocks,
   useIsChatMode,
@@ -20,16 +25,11 @@ import {
 } from '../hooks'
 import { useHooksStore } from '../hooks-store'
 import { useWorkflowStore } from '../store'
-import TipPopup from './tip-popup'
-import { cn } from '@/utils/classnames'
-import BlockSelector from '@/app/components/workflow/block-selector'
-import type {
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
 import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
-import { FlowType } from '@/types/common'
+  generateNewNode,
+  getNodeCustomTypeByNodeDataType,
+} from '../utils'
+import TipPopup from './tip-popup'
 
 type AddBlockProps = {
   renderTrigger?: (open: boolean) => React.ReactNode

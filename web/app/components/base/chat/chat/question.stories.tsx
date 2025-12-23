@@ -1,8 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
 
 import type { ChatItem } from '../types'
-import Question from './question'
 import { User } from '@/app/components/base/icons/src/public/avatar'
+import Question from './question'
 
 const meta = {
   title: 'Base/Other/Chat Question',

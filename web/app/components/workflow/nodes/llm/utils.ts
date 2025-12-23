@@ -1,8 +1,8 @@
-import { z } from 'zod'
-import { ArrayType, Type } from './types'
-import type { ArrayItems, Field, LLMNodeType } from './types'
-import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
 import type { ValidationError } from 'jsonschema'
+import type { ArrayItems, Field, LLMNodeType } from './types'
+import { z } from 'zod'
+import { draft07Validator, forbidBooleanProperties } from '@/utils/validators'
+import { ArrayType, Type } from './types'
 
 export const checkNodeValid = (_payload: LLMNodeType) => {
   return true

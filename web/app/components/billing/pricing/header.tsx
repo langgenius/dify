@@ -1,8 +1,8 @@
+import { RiCloseLine } from '@remixicon/react'
 import React from 'react'
-import DifyLogo from '../../base/logo/dify-logo'
 import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
-import { RiCloseLine } from '@remixicon/react'
+import DifyLogo from '../../base/logo/dify-logo'
 
 type HeaderProps = {
   onClose: () => void

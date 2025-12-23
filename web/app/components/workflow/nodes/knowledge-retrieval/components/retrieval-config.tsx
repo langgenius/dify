@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { RiEqualizer2Line } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
 import type { ModelConfig } from '../../../types'
-import { cn } from '@/utils/classnames'
+import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
+import { RiEqualizer2Line } from '@remixicon/react'
+import React, { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
-import { RETRIEVE_TYPE } from '@/types/app'
 import { DATASET_DEFAULT } from '@/config'
-import Button from '@/app/components/base/button'
-import type { DatasetConfigs } from '@/models/debug'
-import type { DataSet } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   payload: {

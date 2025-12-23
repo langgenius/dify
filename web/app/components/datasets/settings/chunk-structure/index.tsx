@@ -1,7 +1,7 @@
 import type { ChunkingMode } from '@/models/datasets'
 import React from 'react'
-import { useChunkStructure } from './hooks'
 import OptionCard from '../option-card'
+import { useChunkStructure } from './hooks'
 
 type ChunkStructureProps = {
   chunkStructure: ChunkingMode

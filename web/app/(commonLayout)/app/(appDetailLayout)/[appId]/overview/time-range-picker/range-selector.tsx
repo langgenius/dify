@@ -1,13 +1,13 @@
 'use client'
-import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/app-chart'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { SimpleSelect } from '@/app/components/base/select'
+import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/app-chart'
 import type { Item } from '@/app/components/base/select'
-import dayjs from 'dayjs'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import dayjs from 'dayjs'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { SimpleSelect } from '@/app/components/base/select'
+import { cn } from '@/utils/classnames'
 
 const today = dayjs()
 

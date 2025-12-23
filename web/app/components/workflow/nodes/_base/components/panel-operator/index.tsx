@@ -1,17 +1,17 @@
+import type { OffsetOptions } from '@floating-ui/react'
+import type { Node } from '@/app/components/workflow/types'
+import { RiMoreFill } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import { RiMoreFill } from '@remixicon/react'
-import type { OffsetOptions } from '@floating-ui/react'
-import PanelOperatorPopup from './panel-operator-popup'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { Node } from '@/app/components/workflow/types'
+import PanelOperatorPopup from './panel-operator-popup'
 
 type PanelOperatorProps = {
   id: string

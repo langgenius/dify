@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
-import Badge from '../badge/index'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
+import React, { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
+import Badge from '../badge/index'
 
 const defaultItems = [
   { value: 1, name: 'option1' },
@@ -434,5 +434,5 @@ const PortalSelect: FC<PortalSelectProps> = ({
     </PortalToFollowElem>
   )
 }
-export { SimpleSelect, PortalSelect }
+export { PortalSelect, SimpleSelect }
 export default React.memo(Select)

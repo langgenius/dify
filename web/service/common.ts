@@ -1,4 +1,16 @@
-import { del, get, patch, post, put } from './base'
+import type {
+  DefaultModelResponse,
+  Model,
+  ModelItem,
+  ModelLoadBalancingConfig,
+  ModelParameterRule,
+  ModelProvider,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  UpdateOpenAIKeyResponse,
+  ValidateOpenAIKeyResponse,
+} from '@/models/app'
 import type {
   AccountIntegrate,
   ApiBasedExtension,
@@ -7,9 +19,9 @@ import type {
   DataSourceNotion,
   FileUploadConfigResponse,
   ICurrentWorkspace,
-  IWorkspace,
   InitValidateStatusResponse,
   InvitationResponse,
+  IWorkspace,
   LangGeniusVersionResponse,
   Member,
   ModerateResponse,
@@ -21,21 +33,9 @@ import type {
   SetupStatusResponse,
   UserProfileOriginResponse,
 } from '@/models/common'
-import type {
-  UpdateOpenAIKeyResponse,
-  ValidateOpenAIKeyResponse,
-} from '@/models/app'
-import type {
-  DefaultModelResponse,
-  Model,
-  ModelItem,
-  ModelLoadBalancingConfig,
-  ModelParameterRule,
-  ModelProvider,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import type { SystemFeatures } from '@/types/feature'
+import { del, get, patch, post, put } from './base'
 
 type LoginSuccess = {
   result: 'success'

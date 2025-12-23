@@ -1,14 +1,13 @@
 'use client'
-import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { Placement } from '@floating-ui/react'
+import type { FC } from 'react'
+import type { SiteInfo } from '@/models/share'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { usePathname, useRouter } from 'next/navigation'
-import Divider from '../../base/divider'
-import InfoModal from './info-modal'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import {
   PortalToFollowElem,
@@ -16,11 +15,12 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import ThemeSwitcher from '@/app/components/base/theme-switcher'
-import type { SiteInfo } from '@/models/share'
-import { cn } from '@/utils/classnames'
-import { AccessMode } from '@/models/access-control'
 import { useWebAppStore } from '@/context/web-app-context'
+import { AccessMode } from '@/models/access-control'
 import { webAppLogout } from '@/service/webapp-auth'
+import { cn } from '@/utils/classnames'
+import Divider from '../../base/divider'
+import InfoModal from './info-modal'
 
 type Props = {
   data?: SiteInfo

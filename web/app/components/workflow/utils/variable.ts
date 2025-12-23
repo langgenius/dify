@@ -1,8 +1,6 @@
 import type {
-  ValueSelector,
-} from '../types'
-import type {
   BlockEnum,
+  ValueSelector,
 } from '../types'
 import { hasErrorHandleNode } from '.'
 

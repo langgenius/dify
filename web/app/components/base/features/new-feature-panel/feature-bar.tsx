@@ -1,11 +1,11 @@
+import { RiApps2AddLine, RiArrowRightLine, RiSparklingFill } from '@remixicon/react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiApps2AddLine, RiArrowRightLine, RiSparklingFill } from '@remixicon/react'
-import { Citations, ContentModeration, FolderUpload, LoveMessage, MessageFast, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
-import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
 import { useFeatures } from '@/app/components/base/features/hooks'
+import VoiceSettings from '@/app/components/base/features/new-feature-panel/text-to-speech/voice-settings'
+import { Citations, ContentModeration, FolderUpload, LoveMessage, MessageFast, Microphone01, TextToAudio, VirtualAssistant } from '@/app/components/base/icons/src/vender/features'
+import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
 
 type Props = {

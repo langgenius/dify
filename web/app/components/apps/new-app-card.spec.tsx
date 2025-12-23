@@ -1,5 +1,8 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
+
+// Import after mocks
+import CreateAppCard from './new-app-card'
 
 // Mock next/navigation
 const mockReplace = vi.fn()
@@ -65,9 +68,6 @@ vi.mock('@/app/components/app/create-from-dsl-modal', () => ({
     FROM_URL: 'from-url',
   },
 }))
-
-// Import after mocks
-import CreateAppCard from './new-app-card'
 
 describe('CreateAppCard', () => {
   const defaultRef = { current: null } as React.RefObject<HTMLDivElement | null>

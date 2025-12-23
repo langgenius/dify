@@ -1,4 +1,5 @@
-import { BlockEnum, type Node, isTriggerNode } from '../types'
+import type { Node } from '../types'
+import { BlockEnum, isTriggerNode } from '../types'
 
 /**
  * Get the workflow entry node

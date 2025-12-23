@@ -1,18 +1,18 @@
-import {
-  useEffect,
-  useState,
-} from 'react'
+import type { ChatItem, WorkflowProcess } from '../../types'
 import {
   RiArrowRightSLine,
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
+import {
+  useEffect,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ChatItem, WorkflowProcess } from '../../types'
-import TracingPanel from '@/app/components/workflow/run/tracing-panel'
-import { cn } from '@/utils/classnames'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type WorkflowProcessProps = {
   data: WorkflowProcess

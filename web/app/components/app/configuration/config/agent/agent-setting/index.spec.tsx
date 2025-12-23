@@ -1,8 +1,8 @@
-import React from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import AgentSetting from './index'
-import { MAX_ITERATIONS_NUM } from '@/config'
 import type { AgentConfig } from '@/models/debug'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
+import { MAX_ITERATIONS_NUM } from '@/config'
+import AgentSetting from './index'
 
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal<typeof import('ahooks')>()

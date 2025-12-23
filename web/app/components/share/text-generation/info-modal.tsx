@@ -1,9 +1,9 @@
-import React from 'react'
-import { cn } from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
-import AppIcon from '@/app/components/base/app-icon'
 import type { SiteInfo } from '@/models/share'
+import React from 'react'
+import AppIcon from '@/app/components/base/app-icon'
+import Modal from '@/app/components/base/modal'
 import { appDefaultIconBackground } from '@/config'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   data?: SiteInfo

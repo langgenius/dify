@@ -1,5 +1,5 @@
-import { generate } from './utils'
 import type { AbstractNode } from './utils'
+import { generate } from './utils'
 
 export type IconData = {
   name: string

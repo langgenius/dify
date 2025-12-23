@@ -1,19 +1,19 @@
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Node } from 'reactflow'
+import type { ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import {
   RiAddLine,
   RiQuestionLine,
 } from '@remixicon/react'
-import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import Divider from '@/app/components/base/divider'
-import type { ToolValue } from '@/app/components/workflow/block-selector/types'
-import type { Node } from 'reactflow'
-import type { NodeOutPutVar } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
 import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import Tooltip from '@/app/components/base/tooltip'
+import ToolSelector from '@/app/components/plugins/plugin-detail-panel/tool-selector'
 import { useAllMCPTools } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   disabled?: boolean

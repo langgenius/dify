@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
 import React, { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PluginSource } from '../types'
-import { RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
 import ActionButton from '@/app/components/base/action-button'
 // import Button from '@/app/components/base/button'
 import {
@@ -11,8 +10,9 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@/utils/classnames'
+import { PluginSource } from '../types'
 
 type Props = {
   source: PluginSource

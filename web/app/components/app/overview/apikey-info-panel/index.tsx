@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
+import { RiCloseLine } from '@remixicon/react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import { IS_CE_EDITION } from '@/config'
-import { useProviderContext } from '@/context/provider-context'
-import { useModalContext } from '@/context/modal-context'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { IS_CE_EDITION } from '@/config'
+import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 
 const APIKeyInfoPanel: FC = () => {
   const isCloud = !IS_CE_EDITION

@@ -1,9 +1,9 @@
-import React, { useCallback } from 'react'
-import Button from '@/app/components/base/button'
 import { RiAddCircleFill } from '@remixicon/react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useVisualEditorStore } from './store'
+import Button from '@/app/components/base/button'
 import { useMittContext } from './context'
+import { useVisualEditorStore } from './store'
 
 const AddField = () => {
   const { t } = useTranslation()

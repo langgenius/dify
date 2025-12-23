@@ -1,10 +1,10 @@
 import type { MockedFunction } from 'vitest'
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Button from './button'
-import { SelfHostedPlan } from '../../../type'
+import React from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { SelfHostedPlan } from '../../../type'
+import Button from './button'
 
 vi.mock('@/hooks/use-theme')
 

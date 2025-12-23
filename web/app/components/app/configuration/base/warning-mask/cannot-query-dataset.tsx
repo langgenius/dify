@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import WarningMask from '.'
 import Button from '@/app/components/base/button'
+import WarningMask from '.'
 
 export type IFormattingChangedProps = {
   onConfirm: () => void

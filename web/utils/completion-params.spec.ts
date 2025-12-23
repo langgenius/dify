@@ -1,5 +1,5 @@
-import { mergeValidCompletionParams } from './completion-params'
 import type { FormValue, ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { mergeValidCompletionParams } from './completion-params'
 
 describe('completion-params', () => {
   describe('mergeValidCompletionParams', () => {

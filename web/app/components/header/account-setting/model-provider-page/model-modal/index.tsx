@@ -1,4 +1,15 @@
 import type { FC } from 'react'
+import type {
+  Credential,
+  CustomConfigurationModelFixedFields,
+  CustomModel,
+  ModelProvider,
+} from '../declarations'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
+import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -7,12 +18,25 @@ import {
   useRef,
   useState,
 } from 'react'
-import { RiCloseLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import type {
-  CustomConfigurationModelFixedFields,
-  ModelProvider,
-} from '../declarations'
+import Badge from '@/app/components/base/badge'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
+import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
+import Loading from '@/app/components/base/loading'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  useAuth,
+  useCredentialData,
+} from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import { useAppContext } from '@/context/app-context'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 import {
   ConfigurationMethodEnum,
   FormTypeEnum,
@@ -21,34 +45,8 @@ import {
 import {
   useLanguage,
 } from '../hooks'
-import Button from '@/app/components/base/button'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-} from '@/app/components/base/portal-to-follow-elem'
-import Confirm from '@/app/components/base/confirm'
-import { useAppContext } from '@/context/app-context'
-import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type {
-  FormRefObject,
-  FormSchema,
-} from '@/app/components/base/form/types'
-import { useModelFormSchemas } from '../model-auth/hooks'
-import type {
-  Credential,
-  CustomModel,
-} from '../declarations'
-import Loading from '@/app/components/base/loading'
-import {
-  useAuth,
-  useCredentialData,
-} from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import Badge from '@/app/components/base/badge'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { CredentialSelector } from '../model-auth'
+import { useModelFormSchemas } from '../model-auth/hooks'
 
 type ModelModalProps = {
   provider: ModelProvider

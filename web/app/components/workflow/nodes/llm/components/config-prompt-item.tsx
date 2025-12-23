@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import type { ModelConfig, PromptItem, Variable } from '../../../types'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ModelConfig, PromptItem, Variable } from '../../../types'
-import { EditionType } from '../../../types'
-import { useWorkflowStore } from '../../../store'
+import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import Tooltip from '@/app/components/base/tooltip'
 import { PromptRole } from '@/models/debug'
+import { useWorkflowStore } from '../../../store'
+import { EditionType } from '../../../types'
 
 const i18nPrefix = 'workflow.nodes.llm'
 

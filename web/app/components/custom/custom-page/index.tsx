@@ -1,9 +1,9 @@
 import { useTranslation } from 'react-i18next'
-import CustomWebAppBrand from '../custom-web-app-brand'
-import { useProviderContext } from '@/context/provider-context'
-import { Plan } from '@/app/components/billing/type'
 import { contactSalesUrl } from '@/app/components/billing/config'
+import { Plan } from '@/app/components/billing/type'
 import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import CustomWebAppBrand from '../custom-web-app-brand'
 
 const CustomPage = () => {
   const { t } = useTranslation()

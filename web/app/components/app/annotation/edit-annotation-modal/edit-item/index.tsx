@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine, RiEditFill, RiEditLine } from '@remixicon/react'
+import Button from '@/app/components/base/button'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import Textarea from '@/app/components/base/textarea'
-import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 
 export enum EditItemType {

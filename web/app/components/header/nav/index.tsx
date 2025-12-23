@@ -1,13 +1,13 @@
 'use client'
 
-import React, { useEffect, useState } from 'react'
+import type { INavSelectorProps } from './nav-selector'
 import Link from 'next/link'
 import { usePathname, useSearchParams, useSelectedLayoutSegment } from 'next/navigation'
-import type { INavSelectorProps } from './nav-selector'
-import NavSelector from './nav-selector'
-import { cn } from '@/utils/classnames'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import React, { useEffect, useState } from 'react'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { cn } from '@/utils/classnames'
+import NavSelector from './nav-selector'
 
 type INavProps = {
   icon: React.ReactNode

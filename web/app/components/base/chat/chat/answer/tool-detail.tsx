@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ToolInfoInThought } from '../type'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
   RiHammerFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import type { ToolInfoInThought } from '../type'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 type ToolDetailProps = {

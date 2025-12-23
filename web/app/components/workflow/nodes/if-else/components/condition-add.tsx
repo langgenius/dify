@@ -1,10 +1,15 @@
+import type { HandleAddCondition } from '../types'
+import type {
+  NodeOutPutVar,
+  ValueSelector,
+  Var,
+} from '@/app/components/workflow/types'
+import { RiAddLine } from '@remixicon/react'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAddLine } from '@remixicon/react'
-import type { HandleAddCondition } from '../types'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -12,11 +17,6 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import type {
-  NodeOutPutVar,
-  ValueSelector,
-  Var,
-} from '@/app/components/workflow/types'
 
 type ConditionAddProps = {
   className?: string

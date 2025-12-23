@@ -1,8 +1,8 @@
-import { useTranslation } from 'react-i18next'
 import {
   RiExternalLinkLine,
   RiPuzzle2Line,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { useDocLink } from '@/context/i18n'
 
 const Empty = () => {

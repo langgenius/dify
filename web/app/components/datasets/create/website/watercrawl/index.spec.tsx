@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WaterCrawl from './index'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
+import WaterCrawl from './index'
 
 // Mock external dependencies
 vi.mock('@/service/datasets', () => ({

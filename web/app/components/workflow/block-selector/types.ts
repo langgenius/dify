@@ -1,6 +1,6 @@
-import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParametersSchema, PluginMeta, PluginTriggerSubscriptionConstructor, SupportedCreationMethods, TriggerEvent } from '../../plugins/types'
 import type { Collection, Event } from '../../tools/types'
+import type { TypeWithI18N } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export enum TabsEnum {
   Start = 'start',

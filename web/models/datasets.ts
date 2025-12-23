@@ -1,12 +1,12 @@
 import type { DataSourceNotionPage, DataSourceProvider } from './common'
-import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
+import type { DatasourceType } from './pipeline'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
+import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
 import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
-import type { DatasourceType } from './pipeline'
 
 export enum DataSourceType {
   FILE = 'upload_file',

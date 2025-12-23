@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import CategoriesFilter from './category-filter'
-import TagFilter from './tag-filter'
-import SearchBox from './search-box'
 import { usePluginPageContext } from '../context'
+import CategoriesFilter from './category-filter'
+import SearchBox from './search-box'
+import TagFilter from './tag-filter'
 
 export type FilterState = {
   categories: string[]

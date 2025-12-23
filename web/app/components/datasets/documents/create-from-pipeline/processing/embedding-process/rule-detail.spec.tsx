@@ -1,9 +1,10 @@
+import type { ProcessRuleResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
-import RuleDetail from './rule-detail'
-import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
-import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { ProcessMode } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
+import RuleDetail from './rule-detail'
 
 // ==========================================
 // Mock External Dependencies

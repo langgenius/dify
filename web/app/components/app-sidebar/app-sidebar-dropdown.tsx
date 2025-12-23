@@ -1,23 +1,23 @@
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import type { NavIcon } from './navLink'
 import {
   RiEqualizer2Line,
   RiMenuLine,
 } from '@remixicon/react'
+import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useAppContext } from '@/context/app-context'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import AppIcon from '../base/app-icon'
 import Divider from '../base/divider'
 import AppInfo from './app-info'
 import NavLink from './navLink'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import type { NavIcon } from './navLink'
-import { cn } from '@/utils/classnames'
-import { AppModeEnum } from '@/types/app'
 
 type Props = {
   navigation: Array<{

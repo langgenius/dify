@@ -1,26 +1,26 @@
+import type { NodeProps } from 'reactflow'
+import type { NoteNodeType } from './types'
+import { useClickAway } from 'ahooks'
 import {
   memo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
-import type { NodeProps } from 'reactflow'
-import NodeResizer from '../nodes/_base/components/node-resizer'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { cn } from '@/utils/classnames'
 import {
   useNodeDataUpdate,
   useNodesInteractions,
 } from '../hooks'
+import NodeResizer from '../nodes/_base/components/node-resizer'
 import { useStore } from '../store'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { THEME_MAP } from './constants'
+import { useNote } from './hooks'
 import {
   NoteEditor,
   NoteEditorContextProvider,
   NoteEditorToolbar,
 } from './note-editor'
-import { THEME_MAP } from './constants'
-import { useNote } from './hooks'
-import type { NoteNodeType } from './types'
-import { cn } from '@/utils/classnames'
 
 const Icon = () => {
   return (

@@ -2,14 +2,14 @@ import {
   memo,
   useState,
 } from 'react'
-import { NoteTheme } from '../../types'
-import { THEME_MAP } from '../../constants'
-import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
+import { THEME_MAP } from '../../constants'
+import { NoteTheme } from '../../types'
 
 export const COLOR_LIST = [
   {

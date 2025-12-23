@@ -11,8 +11,8 @@ import type {
   TracingProvider,
   WeaveConfig,
 } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
-import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 import type { Dependency } from '@/app/components/plugins/types'
+import type { App, AppModeEnum, AppTemplate, SiteConfig } from '@/types/app'
 
 export enum DSLImportMode {
   YAML_CONTENT = 'yaml-content',

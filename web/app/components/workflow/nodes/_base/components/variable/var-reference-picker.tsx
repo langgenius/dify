@@ -1,7 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Tool } from '@/app/components/tools/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import {
   RiArrowDownSLine,
   RiCloseLine,
@@ -10,23 +12,16 @@ import {
   RiMoreLine,
 } from '@remixicon/react'
 import { produce } from 'immer'
+import { noop } from 'lodash-es'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useNodes,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import RemoveButton from '../remove-button'
-import useAvailableVarList from '../../hooks/use-available-var-list'
-import VarReferencePopup from './var-reference-popup'
-import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
-import ConstantField from './constant-field'
-import { cn } from '@/utils/classnames'
-import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { type CredentialFormSchema, type FormOption, FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { VarBlockIcon } from '@/app/components/workflow/block-icon'
+import Badge from '@/app/components/base/badge'
+import AddButton from '@/app/components/base/button/add-button'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
@@ -34,23 +29,28 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import Tooltip from '@/app/components/base/tooltip'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { VarBlockIcon } from '@/app/components/workflow/block-icon'
+import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 import {
   useIsChatMode,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 // import type { BaseResource, BaseResourceProvider } from '@/app/components/workflow/nodes/_base/types'
 import TypeSelector from '@/app/components/workflow/nodes/_base/components/selector'
-import AddButton from '@/app/components/base/button/add-button'
-import Badge from '@/app/components/base/badge'
-import Tooltip from '@/app/components/base/tooltip'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
-import VarFullPathPanel from './var-full-path-panel'
-import { noop } from 'lodash-es'
-import type { Tool } from '@/app/components/tools/types'
-import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
+import { useFetchDynamicOptions } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
+import useAvailableVarList from '../../hooks/use-available-var-list'
+import RemoveButton from '../remove-button'
+import ConstantField from './constant-field'
+import { getNodeInfoById, isConversationVar, isENV, isGlobalVar, isRagVariableVar, isSystemVar, removeFileVars, varTypeToStructType } from './utils'
+import VarFullPathPanel from './var-full-path-panel'
+import VarReferencePopup from './var-reference-popup'
 
 const TRIGGER_DEFAULT_WIDTH = 227
 

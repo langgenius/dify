@@ -1,9 +1,9 @@
-import { cn } from '@/utils/classnames'
-import { useFieldContext } from '../..'
 import type { LabelProps } from '../label'
-import Label from '../label'
 import type { Options } from '@/app/components/app/configuration/config-var/config-select'
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
+import { cn } from '@/utils/classnames'
+import { useFieldContext } from '../..'
+import Label from '../label'
 
 type OptionsFieldProps = {
   label: string

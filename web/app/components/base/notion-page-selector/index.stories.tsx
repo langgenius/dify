@@ -1,9 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { DataSourceCredential } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { NotionPage } from '@/models/common'
 import { useEffect, useMemo, useState } from 'react'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 import { NotionPageSelector } from '.'
-import type { DataSourceCredential } from '@/app/components/header/account-setting/data-source-page-new/types'
-import type { NotionPage } from '@/models/common'
 
 const DATASET_ID = 'dataset-demo'
 const CREDENTIALS: DataSourceCredential[] = [

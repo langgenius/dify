@@ -1,8 +1,8 @@
 'use client'
-import Checkbox from '@/app/components/base/checkbox'
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
 
 type Props = {
   name: string

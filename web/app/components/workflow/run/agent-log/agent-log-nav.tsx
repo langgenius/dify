@@ -1,8 +1,8 @@
+import type { AgentLogItemWithChildren } from '@/types/workflow'
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import AgentLogNavMore from './agent-log-nav-more'
 import Button from '@/app/components/base/button'
-import type { AgentLogItemWithChildren } from '@/types/workflow'
+import AgentLogNavMore from './agent-log-nav-more'
 
 type AgentLogNavProps = {
   agentOrToolLogItemStack: AgentLogItemWithChildren[]

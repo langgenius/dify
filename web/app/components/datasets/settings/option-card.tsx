@@ -1,10 +1,10 @@
 import type { ReactNode } from 'react'
 import React from 'react'
-import { cn } from '@/utils/classnames'
-import Badge from '@/app/components/base/badge'
 import { useTranslation } from 'react-i18next'
-import { EffectColor } from './chunk-structure/types'
+import Badge from '@/app/components/base/badge'
+import { cn } from '@/utils/classnames'
 import { ArrowShape } from '../../base/icons/src/vender/knowledge'
+import { EffectColor } from './chunk-structure/types'
 
 const HEADER_EFFECT_MAP: Record<EffectColor, string> = {
   [EffectColor.indigo]: 'bg-util-colors-indigo-indigo-600 opacity-50',

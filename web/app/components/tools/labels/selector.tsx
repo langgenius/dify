@@ -1,20 +1,20 @@
 import type { FC } from 'react'
+import type { Label } from '@/app/components/tools/labels/constant'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useDebounceFn } from 'ahooks'
+import { noop } from 'lodash-es'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import Checkbox from '@/app/components/base/checkbox'
+import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Input from '@/app/components/base/input'
-import { Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import Checkbox from '@/app/components/base/checkbox'
-import type { Label } from '@/app/components/tools/labels/constant'
 import { useTags } from '@/app/components/plugins/hooks'
-import { noop } from 'lodash-es'
+import { cn } from '@/utils/classnames'
 
 type LabelSelectorProps = {
   value: string[]

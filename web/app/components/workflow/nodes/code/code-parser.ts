@@ -1,5 +1,5 @@
-import { VarType } from '../../types'
 import type { OutputVar } from './types'
+import { VarType } from '../../types'
 import { CodeLanguage } from './types'
 
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {

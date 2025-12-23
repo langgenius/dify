@@ -1,8 +1,5 @@
-import {
-  memo,
-  useCallback,
-  useState,
-} from 'react'
+import type { IconInfo } from '@/models/datasets'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import {
   RiArrowRightUpLine,
   RiHammerLine,
@@ -13,41 +10,44 @@ import {
   useBoolean,
   useKeyPress,
 } from 'ahooks'
+import Link from 'next/link'
+import { useParams, useRouter } from 'next/navigation'
+import {
+  memo,
+  useCallback,
+  useState,
+} from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import Divider from '@/app/components/base/divider'
+import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
+import PremiumBadge from '@/app/components/base/premium-badge'
+import { useToastContext } from '@/app/components/base/toast'
+import {
+  useChecklistBeforePublish,
+} from '@/app/components/workflow/hooks'
 import {
   useStore,
   useWorkflowStore,
 } from '@/app/components/workflow/store'
-import Button from '@/app/components/base/button'
-import {
-  useChecklistBeforePublish,
-} from '@/app/components/workflow/hooks'
-import Divider from '@/app/components/base/divider'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
-import { usePublishWorkflow } from '@/service/use-workflow'
-import type { PublishWorkflowParams } from '@/types/workflow'
-import { useToastContext } from '@/app/components/base/toast'
-import { useParams, useRouter } from 'next/navigation'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import {
   publishedPipelineInfoQueryKeyPrefix,
   useInvalidCustomizedTemplateList,
   usePublishAsCustomizedPipeline,
 } from '@/service/use-pipeline'
-import Confirm from '@/app/components/base/confirm'
-import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
-import type { IconInfo } from '@/models/datasets'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { useProviderContext } from '@/context/provider-context'
+import { usePublishWorkflow } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
-import PremiumBadge from '@/app/components/base/premium-badge'
-import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
-import { useModalContextSelector } from '@/context/modal-context'
-import Link from 'next/link'
-import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
-import { trackEvent } from '@/app/components/base/amplitude'
+import PublishAsKnowledgePipelineModal from '../../publish-as-knowledge-pipeline-modal'
 
 const PUBLISH_SHORTCUT = ['ctrl', '⇧', 'P']
 

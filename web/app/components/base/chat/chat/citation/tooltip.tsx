@@ -1,5 +1,5 @@
-import React, { useState } from 'react'
 import type { FC } from 'react'
+import React, { useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

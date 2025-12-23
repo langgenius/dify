@@ -1,24 +1,3 @@
-import {
-  Fragment,
-  memo,
-  useCallback,
-  useState,
-} from 'react'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import type {
-  PortalToFollowElemOptions,
-} from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -27,6 +6,27 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  RiAddLine,
+} from '@remixicon/react'
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 

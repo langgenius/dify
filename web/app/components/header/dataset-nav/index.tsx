@@ -1,18 +1,18 @@
 'use client'
 
-import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useParams, useRouter } from 'next/navigation'
+import type { NavItem } from '../nav/nav-selector'
+import type { DataSet } from '@/models/datasets'
 import {
   RiBook2Fill,
   RiBook2Line,
 } from '@remixicon/react'
 import { flatten } from 'lodash-es'
-import Nav from '../nav'
-import type { NavItem } from '../nav/nav-selector'
-import { basePath } from '@/utils/var'
+import { useParams, useRouter } from 'next/navigation'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useDatasetDetail, useDatasetList } from '@/service/knowledge/use-dataset'
-import type { DataSet } from '@/models/datasets'
+import { basePath } from '@/utils/var'
+import Nav from '../nav'
 
 const DatasetNav = () => {
   const { t } = useTranslation()

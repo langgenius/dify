@@ -1,13 +1,13 @@
 'use client'
 
-import { RiArrowRightSLine } from '@remixicon/react'
 import type { MarketplaceCollection } from '../types'
-import CardWrapper from './card-wrapper'
+import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
+import { RiArrowRightSLine } from '@remixicon/react'
+import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
-import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
-import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import CardWrapper from './card-wrapper'
 
 type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]

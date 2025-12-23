@@ -1,9 +1,9 @@
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 /**
  * Test suite for tool call utility functions
  * Tests detection of function/tool call support in AI models
  */
 import { supportFunctionCall } from './tool-call'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 describe('tool-call', () => {
   /**

@@ -1,15 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import type { TriggerWithProvider } from '../types'
+import type { TriggerDefaultValue, TriggerWithProvider } from '../types'
 import type { Event } from '@/app/components/tools/types'
-import { BlockEnum } from '../../types'
-import type { TriggerDefaultValue } from '../types'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { useGetLanguage } from '@/context/i18n'
-import BlockIcon from '../../block-icon'
 import { cn } from '@/utils/classnames'
-import { useTranslation } from 'react-i18next'
+import BlockIcon from '../../block-icon'
+import { BlockEnum } from '../../types'
 
 type Props = {
   provider: TriggerWithProvider

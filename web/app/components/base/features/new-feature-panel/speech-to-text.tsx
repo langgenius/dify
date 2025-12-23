@@ -1,11 +1,11 @@
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { produce } from 'immer'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import { Microphone01 } from '@/app/components/base/icons/src/vender/features'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
+import { Microphone01 } from '@/app/components/base/icons/src/vender/features'
 
 type Props = {
   disabled: boolean

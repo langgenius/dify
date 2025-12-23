@@ -1,14 +1,14 @@
 'use client'
+import type { InitValidateStatusResponse } from '@/models/common'
+import { useRouter } from 'next/navigation'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import Toast from '../components/base/toast'
-import Loading from '../components/base/loading'
 import Button from '@/app/components/base/button'
-import { basePath } from '@/utils/var'
-import { fetchInitValidateStatus, initValidate } from '@/service/common'
-import type { InitValidateStatusResponse } from '@/models/common'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { fetchInitValidateStatus, initValidate } from '@/service/common'
+import { basePath } from '@/utils/var'
+import Loading from '../components/base/loading'
+import Toast from '../components/base/toast'
 
 const InitPasswordPopup = () => {
   useDocumentTitle('')

@@ -1,10 +1,11 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
 
 const i18nPrefix = 'appAnnotation.batchAction'
 

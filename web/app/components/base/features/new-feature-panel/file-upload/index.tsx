@@ -1,14 +1,14 @@
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { RiEqualizer2Line } from '@remixicon/react'
+import { produce } from 'immer'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import { RiEqualizer2Line } from '@remixicon/react'
-import { FolderUpload } from '@/app/components/base/icons/src/vender/features'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
+import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
+import { FolderUpload } from '@/app/components/base/icons/src/vender/features'
 
 type Props = {
   disabled: boolean

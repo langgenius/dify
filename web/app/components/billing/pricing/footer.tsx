@@ -1,9 +1,10 @@
-import React from 'react'
-import Link from 'next/link'
-import { useTranslation } from 'react-i18next'
+import type { Category } from '.'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import { type Category, CategoryEnum } from '.'
+import Link from 'next/link'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
+import { CategoryEnum } from '.'
 
 type FooterProps = {
   pricingPageURL: string

@@ -1,30 +1,30 @@
 'use client'
 import type { FC } from 'react'
+import type { IAppCardProps } from '@/app/components/app/overview/app-card'
+import type { BlockEnum } from '@/app/components/workflow/types'
+import type { UpdateAppSiteCodeResponse } from '@/models/app'
+import type { App } from '@/types/app'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppCard from '@/app/components/app/overview/app-card'
-import Loading from '@/app/components/base/loading'
-import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
 import TriggerCard from '@/app/components/app/overview/trigger-card'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Loading from '@/app/components/base/loading'
 import { ToastContext } from '@/app/components/base/toast'
+import MCPServiceCard from '@/app/components/tools/mcp/mcp-service-card'
+import { isTriggerNode } from '@/app/components/workflow/types'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useDocLink } from '@/context/i18n'
 import {
   fetchAppDetail,
   updateAppSiteAccessToken,
   updateAppSiteConfig,
   updateAppSiteStatus,
 } from '@/service/apps'
-import type { App } from '@/types/app'
-import { AppModeEnum } from '@/types/app'
-import type { UpdateAppSiteCodeResponse } from '@/models/app'
-import { asyncRunSafe } from '@/utils'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import type { IAppCardProps } from '@/app/components/app/overview/app-card'
-import { useStore as useAppStore } from '@/app/components/app/store'
 import { useAppWorkflow } from '@/service/use-workflow'
-import type { BlockEnum } from '@/app/components/workflow/types'
-import { isTriggerNode } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
+import { AppModeEnum } from '@/types/app'
+import { asyncRunSafe } from '@/utils'
 
 export type ICardViewProps = {
   appId: string

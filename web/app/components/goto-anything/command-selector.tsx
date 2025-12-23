@@ -1,9 +1,9 @@
 import type { FC } from 'react'
-import { useEffect, useMemo } from 'react'
-import { usePathname } from 'next/navigation'
-import { Command } from 'cmdk'
-import { useTranslation } from 'react-i18next'
 import type { ActionItem } from './actions/types'
+import { Command } from 'cmdk'
+import { usePathname } from 'next/navigation'
+import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { slashCommandRegistry } from './actions/commands/registry'
 
 type Props = {
@@ -101,30 +101,32 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
               {item.shortcut}
             </span>
             <span className="ml-3 text-sm text-text-secondary">
-              {isSlashMode ? (
-                (() => {
-                  const slashKeyMap: Record<string, string> = {
-                    '/theme': 'app.gotoAnything.actions.themeCategoryDesc',
-                    '/language': 'app.gotoAnything.actions.languageChangeDesc',
-                    '/account': 'app.gotoAnything.actions.accountDesc',
-                    '/feedback': 'app.gotoAnything.actions.feedbackDesc',
-                    '/docs': 'app.gotoAnything.actions.docDesc',
-                    '/community': 'app.gotoAnything.actions.communityDesc',
-                    '/zen': 'app.gotoAnything.actions.zenDesc',
-                  }
-                  return t(slashKeyMap[item.key] || item.description)
-                })()
-              ) : (
-                (() => {
-                  const keyMap: Record<string, string> = {
-                    '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
-                    '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
-                    '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
-                    '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
-                  }
-                  return t(keyMap[item.key])
-                })()
-              )}
+              {isSlashMode
+                ? (
+                    (() => {
+                      const slashKeyMap: Record<string, string> = {
+                        '/theme': 'app.gotoAnything.actions.themeCategoryDesc',
+                        '/language': 'app.gotoAnything.actions.languageChangeDesc',
+                        '/account': 'app.gotoAnything.actions.accountDesc',
+                        '/feedback': 'app.gotoAnything.actions.feedbackDesc',
+                        '/docs': 'app.gotoAnything.actions.docDesc',
+                        '/community': 'app.gotoAnything.actions.communityDesc',
+                        '/zen': 'app.gotoAnything.actions.zenDesc',
+                      }
+                      return t(slashKeyMap[item.key] || item.description)
+                    })()
+                  )
+                : (
+                    (() => {
+                      const keyMap: Record<string, string> = {
+                        '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
+                        '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
+                        '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
+                        '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
+                      }
+                      return t(keyMap[item.key])
+                    })()
+                  )}
             </span>
           </Command.Item>
         ))}

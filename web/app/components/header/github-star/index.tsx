@@ -1,8 +1,8 @@
 'use client'
-import { useQuery } from '@tanstack/react-query'
 import type { FC } from 'react'
 import type { GithubRepo } from '@/models/common'
 import { RiLoader2Line } from '@remixicon/react'
+import { useQuery } from '@tanstack/react-query'
 
 const defaultData = {
   stargazers_count: 110918,

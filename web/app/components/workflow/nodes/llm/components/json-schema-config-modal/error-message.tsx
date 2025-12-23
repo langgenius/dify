@@ -1,6 +1,6 @@
-import React from 'react'
 import type { FC } from 'react'
 import { RiErrorWarningFill } from '@remixicon/react'
+import React from 'react'
 import { cn } from '@/utils/classnames'
 
 type ErrorMessageProps = {

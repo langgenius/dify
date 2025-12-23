@@ -1,7 +1,5 @@
 'use client'
 import type { ReactNode } from 'react'
-import React, { useEffect, useState } from 'react'
-import { createRoot } from 'react-dom/client'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -9,10 +7,12 @@ import {
   RiErrorWarningFill,
   RiInformation2Fill,
 } from '@remixicon/react'
+import { noop } from 'lodash-es'
+import React, { useEffect, useState } from 'react'
+import { createRoot } from 'react-dom/client'
 import { createContext, useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
 
 export type IToastProps = {
   type?: 'success' | 'error' | 'warning' | 'info'

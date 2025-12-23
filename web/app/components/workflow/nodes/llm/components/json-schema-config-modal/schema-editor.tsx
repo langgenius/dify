@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
-import CodeEditor from './code-editor'
-import { cn } from '@/utils/classnames'
+import type { FC } from 'react'
+import React from 'react'
 import LargeDataAlert from '@/app/components/workflow/variable-inspect/large-data-alert'
+import { cn } from '@/utils/classnames'
+import CodeEditor from './code-editor'
 
 type SchemaEditorProps = {
   schema: string

@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { ITabHeaderProps } from '.'
 import { useState } from 'react'
 import TabHeader from '.'
-import type { ITabHeaderProps } from '.'
 
 const items: ITabHeaderProps['items'] = [
   { id: 'overview', name: 'Overview' },

@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import FileIcon from '../document-file-icon'
-import { cn } from '@/utils/classnames'
 import type { DocumentItem } from '@/models/datasets'
+import React, { useCallback } from 'react'
+import { cn } from '@/utils/classnames'
+import FileIcon from '../document-file-icon'
 
 type Props = {
   className?: string

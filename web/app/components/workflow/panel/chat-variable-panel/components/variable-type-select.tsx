@@ -1,6 +1,6 @@
 'use client'
-import React, { useState } from 'react'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
+import React, { useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,

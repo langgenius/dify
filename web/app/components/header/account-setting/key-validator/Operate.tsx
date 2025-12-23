@@ -1,6 +1,6 @@
+import type { Status } from './declarations'
 import { useTranslation } from 'react-i18next'
 import Indicator from '../../indicator'
-import type { Status } from './declarations'
 
 type OperateProps = {
   isOpen: boolean

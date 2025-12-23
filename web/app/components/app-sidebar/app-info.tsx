@@ -1,7 +1,7 @@
-import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
-import React, { useCallback, useState } from 'react'
+import type { Operation } from './app-operations'
+import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
+import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -11,26 +11,26 @@ import {
   RiFileDownloadLine,
   RiFileUploadLine,
 } from '@remixicon/react'
-import AppIcon from '../base/app-icon'
+import dynamic from 'next/dynamic'
+import { useRouter } from 'next/navigation'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import Button from '@/app/components/base/button'
+import ContentDialog from '@/app/components/base/content-dialog'
 import { ToastContext } from '@/app/components/base/toast'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { copyApp, deleteApp, exportAppConfig, updateAppInfo } from '@/service/apps'
-import type { DuplicateAppModalProps } from '@/app/components/app/duplicate-modal'
-import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { getRedirection } from '@/utils/app-redirection'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { fetchWorkflowDraft } from '@/service/workflow'
-import ContentDialog from '@/app/components/base/content-dialog'
-import Button from '@/app/components/base/button'
-import CardView from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/card-view'
-import type { Operation } from './app-operations'
-import AppOperations from './app-operations'
-import dynamic from 'next/dynamic'
-import { cn } from '@/utils/classnames'
 import { AppModeEnum } from '@/types/app'
+import { getRedirection } from '@/utils/app-redirection'
+import { cn } from '@/utils/classnames'
+import AppIcon from '../base/app-icon'
+import AppOperations from './app-operations'
 
 const SwitchAppModal = dynamic(() => import('@/app/components/app/switch-app-modal'), {
   ssr: false,

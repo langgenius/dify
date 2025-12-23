@@ -1,10 +1,10 @@
 'use client'
-import { useTranslation } from 'react-i18next'
 import type { FC } from 'react'
-import ToolCall from './tool-call'
-import Divider from '@/app/components/base/divider'
 import type { AgentIteration } from '@/models/log'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
+import ToolCall from './tool-call'
 
 type Props = {
   isFinal: boolean

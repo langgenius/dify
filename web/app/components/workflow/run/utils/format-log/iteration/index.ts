@@ -1,5 +1,5 @@
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeTracing } from '@/types/workflow'
+import { BlockEnum } from '@/app/components/workflow/types'
 import formatParallelNode from '../parallel'
 
 export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {

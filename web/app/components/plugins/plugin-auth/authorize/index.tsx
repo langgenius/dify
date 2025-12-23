@@ -1,15 +1,15 @@
+import type { PluginPayload } from '../types'
+import type { AddApiKeyButtonProps } from './add-api-key-button'
+import type { AddOAuthButtonProps } from './add-oauth-button'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import AddOAuthButton from './add-oauth-button'
-import type { AddOAuthButtonProps } from './add-oauth-button'
-import AddApiKeyButton from './add-api-key-button'
-import type { AddApiKeyButtonProps } from './add-api-key-button'
-import type { PluginPayload } from '../types'
-import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import AddApiKeyButton from './add-api-key-button'
+import AddOAuthButton from './add-oauth-button'
 
 type AuthorizeProps = {
   pluginPayload: PluginPayload

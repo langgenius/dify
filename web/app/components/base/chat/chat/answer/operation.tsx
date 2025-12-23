@@ -1,32 +1,32 @@
 import type { FC } from 'react'
-import {
-  memo,
-  useMemo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import type {
+  ChatItem,
+  Feedback,
+} from '../../types'
 import {
   RiClipboardLine,
   RiResetLeftLine,
   RiThumbDownLine,
   RiThumbUpLine,
 } from '@remixicon/react'
-import type {
-  ChatItem,
-  Feedback,
-} from '../../types'
-import { useChatContext } from '../context'
 import copy from 'copy-to-clipboard'
-import Toast from '@/app/components/base/toast'
-import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
+import {
+  memo,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import EditReplyModal from '@/app/components/app/annotation/edit-annotation-modal'
-import Log from '@/app/components/base/chat/chat/log'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import NewAudioButton from '@/app/components/base/new-audio-button'
+import Log from '@/app/components/base/chat/chat/log'
+import AnnotationCtrlButton from '@/app/components/base/features/new-feature-panel/annotation-reply/annotation-ctrl-button'
 import Modal from '@/app/components/base/modal/modal'
+import NewAudioButton from '@/app/components/base/new-audio-button'
 import Textarea from '@/app/components/base/textarea'
+import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
+import { useChatContext } from '../context'
 
 type OperationProps = {
   item: ChatItem

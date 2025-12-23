@@ -1,15 +1,16 @@
-import React, { type FC, useCallback, useEffect, useRef, useState } from 'react'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
-import { useTranslation } from 'react-i18next'
+import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { checkJsonDepth } from '../../utils'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { cn } from '@/utils/classnames'
+import { checkJsonDepth } from '../../utils'
 import CodeEditor from './code-editor'
 import ErrorMessage from './error-message'
-import { useVisualEditorStore } from './visual-editor/store'
 import { useMittContext } from './visual-editor/context'
+import { useVisualEditorStore } from './visual-editor/store'
 
 type JsonImporterProps = {
   onSubmit: (schema: any) => void

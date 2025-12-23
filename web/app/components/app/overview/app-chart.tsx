@@ -1,17 +1,16 @@
 'use client'
-import type { FC } from 'react'
-import React from 'react'
-import ReactECharts from 'echarts-for-react'
-import type { EChartsOption } from 'echarts'
 import type { Dayjs } from 'dayjs'
+import type { EChartsOption } from 'echarts'
+import type { FC } from 'react'
+import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppTokenCostsResponse } from '@/models/app'
 import dayjs from 'dayjs'
-import { get } from 'lodash-es'
 import Decimal from 'decimal.js'
+import ReactECharts from 'echarts-for-react'
+import { get } from 'lodash-es'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatNumber } from '@/utils/format'
 import Basic from '@/app/components/app-sidebar/basic'
 import Loading from '@/app/components/base/loading'
-import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppTokenCostsResponse } from '@/models/app'
 import {
   useAppAverageResponseTime,
   useAppAverageSessionInteractions,
@@ -26,6 +25,8 @@ import {
   useWorkflowDailyTerminals,
   useWorkflowTokenCosts,
 } from '@/service/use-apps'
+import { formatNumber } from '@/utils/format'
+
 const valueFormatter = (v: string | number) => v
 
 const COLOR_TYPE_MAP = {

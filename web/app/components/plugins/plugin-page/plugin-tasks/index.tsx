@@ -1,29 +1,29 @@
 import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
-import {
   RiCheckboxCircleFill,
   RiErrorWarningFill,
   RiInstallLine,
   RiLoaderLine,
 } from '@remixicon/react'
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import { usePluginTaskStatus } from './hooks'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
 import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import CardIcon from '@/app/components/plugins/card/base/card-icon'
-import { cn } from '@/utils/classnames'
-import { useGetLanguage } from '@/context/i18n'
-import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
-import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
 import Tooltip from '@/app/components/base/tooltip'
+import DownloadingIcon from '@/app/components/header/plugins-nav/downloading-icon'
+import CardIcon from '@/app/components/plugins/card/base/card-icon'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import { useGetLanguage } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
+import { usePluginTaskStatus } from './hooks'
 
 const PluginTasks = () => {
   const { t } = useTranslation()

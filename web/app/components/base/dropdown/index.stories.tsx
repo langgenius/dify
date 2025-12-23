@@ -1,7 +1,8 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
+import type { Item } from '.'
 import { useState } from 'react'
-import Dropdown, { type Item } from '.'
+import { fn } from 'storybook/test'
+import Dropdown from '.'
 
 const PRIMARY_ITEMS: Item[] = [
   { value: 'rename', text: 'Rename' },

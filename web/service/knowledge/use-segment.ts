@@ -1,5 +1,3 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
-import { del, get, patch, post } from '../base'
 import type { CommonResponse } from '@/models/common'
 import type {
   BatchImportResponse,
@@ -7,9 +5,11 @@ import type {
   ChildSegmentsResponse,
   ChunkingMode,
   SegmentDetailModel,
-  SegmentUpdater,
   SegmentsResponse,
+  SegmentUpdater,
 } from '@/models/datasets'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { del, get, patch, post } from '../base'
 
 const NAME_SPACE = 'segment'
 

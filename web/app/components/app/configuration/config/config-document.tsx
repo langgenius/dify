@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
+import { produce } from 'immer'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
 import { useContext } from 'use-context-selector'
 
-import { Document } from '@/app/components/base/icons/src/vender/features'
-import Tooltip from '@/app/components/base/tooltip'
-import ConfigContext from '@/context/debug-configuration'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
+import { Document } from '@/app/components/base/icons/src/vender/features'
 import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import ConfigContext from '@/context/debug-configuration'
 
 const ConfigDocument: FC = () => {
   const { t } = useTranslation()

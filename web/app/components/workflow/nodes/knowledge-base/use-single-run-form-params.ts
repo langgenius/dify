@@ -1,8 +1,8 @@
-import { useTranslation } from 'react-i18next'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { InputVarType } from '@/app/components/workflow/types'
 
 type Params = {
   id: string

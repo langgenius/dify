@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Param } from '../../types'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
-import type { Param } from '../../types'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
 type Props = {

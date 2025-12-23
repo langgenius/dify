@@ -1,6 +1,6 @@
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Tooltip from '../../tooltip'
-import { useTranslation } from 'react-i18next'
 
 export type LabelProps = {
   htmlFor: string

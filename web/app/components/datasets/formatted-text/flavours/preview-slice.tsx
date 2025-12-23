@@ -1,7 +1,7 @@
-import { useState } from 'react'
 import type { FC, ReactNode } from 'react'
-import { autoUpdate, flip, inline, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
 import type { SliceProps } from './type'
+import { autoUpdate, flip, inline, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
+import { useState } from 'react'
 import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared'
 
 type PreviewSliceProps = SliceProps<{

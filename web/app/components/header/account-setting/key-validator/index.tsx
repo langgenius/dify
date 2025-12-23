@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import Operate from './Operate'
-import KeyInput from './KeyInput'
-import { useValidate } from './hooks'
 import type { Form, KeyFrom, Status, ValidateValue } from './declarations'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useState } from 'react'
 import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useValidate } from './hooks'
+import KeyInput from './KeyInput'
+import Operate from './Operate'
 
 export type KeyValidatorProps = {
   type: string

@@ -1,9 +1,9 @@
-import Button from '@/app/components/base/button'
 import { RiLoader2Line } from '@remixicon/react'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChunkCardList } from '../../../../chunk-card-list'
+import Button from '@/app/components/base/button'
 import { RAG_PIPELINE_PREVIEW_CHUNK_NUM } from '@/config'
+import { ChunkCardList } from '../../../../chunk-card-list'
 import { formatPreviewChunks } from './utils'
 
 type ResultTextProps = {

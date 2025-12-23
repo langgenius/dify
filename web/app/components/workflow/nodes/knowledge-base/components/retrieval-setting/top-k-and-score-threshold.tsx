@@ -1,8 +1,8 @@
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import Switch from '@/app/components/base/switch'
 import { InputNumber } from '@/app/components/base/input-number'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 
 export type TopKAndScoreThresholdProps = {
   topK: number

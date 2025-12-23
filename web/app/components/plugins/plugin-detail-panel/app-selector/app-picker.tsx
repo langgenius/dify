@@ -1,19 +1,20 @@
 'use client'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
 import type { FC } from 'react'
+import type { App } from '@/types/app'
 import React, { useCallback, useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import Input from '@/app/components/base/input'
-import AppIcon from '@/app/components/base/app-icon'
-import { type App, AppModeEnum } from '@/types/app'
-import { useTranslation } from 'react-i18next'
+import { AppModeEnum } from '@/types/app'
 
 type Props = {
   scope: string

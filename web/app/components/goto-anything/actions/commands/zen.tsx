@@ -1,9 +1,9 @@
 import type { SlashCommandHandler } from './types'
-import React from 'react'
 import { RiFullscreenLine } from '@remixicon/react'
+import React from 'react'
+import { isInWorkflowPage } from '@/app/components/workflow/constants'
 import i18n from '@/i18n-config/i18next-config'
 import { registerCommands, unregisterCommands } from './command-bus'
-import { isInWorkflowPage } from '@/app/components/workflow/constants'
 
 // Zen command dependency types - no external dependencies needed
 type ZenDeps = Record<string, never>

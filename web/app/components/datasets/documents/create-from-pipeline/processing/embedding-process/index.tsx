@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { IndexingStatusResponse } from '@/models/datasets'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import type { RETRIEVE_METHOD } from '@/types/app'
 import {
   RiAedFill,
   RiArrowRightLine,
@@ -9,25 +10,25 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import type { IndexingStatusResponse } from '@/models/datasets'
+import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
+import Tooltip from '@/app/components/base/tooltip'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useProviderContext } from '@/context/provider-context'
-import Tooltip from '@/app/components/base/tooltip'
-import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
-import RuleDetail from './rule-detail'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { RETRIEVE_METHOD } from '@/types/app'
-import { DatasourceType, type InitialDocumentDetail } from '@/models/pipeline'
-import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
-import Divider from '@/app/components/base/divider'
+import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
-import Link from 'next/link'
+import { DatasourceType } from '@/models/pipeline'
+import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
+import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { cn } from '@/utils/classnames'
+import RuleDetail from './rule-detail'
 
 type EmbeddingProcessProps = {
   datasetId: string

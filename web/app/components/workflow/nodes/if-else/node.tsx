@@ -1,13 +1,14 @@
 import type { FC } from 'react'
+import type { NodeProps } from 'reactflow'
+import type { Condition, IfElseNodeType } from './types'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { NodeProps } from 'reactflow'
-import { NodeSourceHandle } from '../_base/components/node-handle'
-import { isEmptyRelatedOperator } from './utils'
-import type { Condition, IfElseNodeType } from './types'
-import ConditionValue from './components/condition-value'
-import ConditionFilesListValue from './components/condition-files-list-value'
 import { VarType } from '../../types'
+import { NodeSourceHandle } from '../_base/components/node-handle'
+import ConditionFilesListValue from './components/condition-files-list-value'
+import ConditionValue from './components/condition-value'
+import { isEmptyRelatedOperator } from './utils'
+
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {

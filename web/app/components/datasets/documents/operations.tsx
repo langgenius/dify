@@ -1,8 +1,22 @@
-import React, { useCallback, useState } from 'react'
-import { useContext } from 'use-context-selector'
-import { ToastContext } from '../../base/toast'
-import { useTranslation } from 'react-i18next'
+import type { OperationName } from './types'
+import type { CommonResponse } from '@/models/common'
+import {
+  RiArchive2Line,
+  RiDeleteBinLine,
+  RiEditLine,
+  RiEqualizer2Line,
+  RiLoopLeftLine,
+  RiMoreFill,
+  RiPauseCircleLine,
+  RiPlayCircleLine,
+} from '@remixicon/react'
+import { useBoolean, useDebounceFn } from 'ahooks'
+import { noop } from 'lodash-es'
 import { useRouter } from 'next/navigation'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import {
   useDocumentArchive,
   useDocumentDelete,
@@ -14,30 +28,16 @@ import {
   useSyncDocument,
   useSyncWebsite,
 } from '@/service/knowledge/use-document'
-import type { OperationName } from './types'
 import { asyncRunSafe } from '@/utils'
-import type { CommonResponse } from '@/models/common'
-import { useBoolean, useDebounceFn } from 'ahooks'
-import Switch from '../../base/switch'
-import { noop } from 'lodash-es'
-import Tooltip from '../../base/tooltip'
-import Divider from '../../base/divider'
 import { cn } from '@/utils/classnames'
-import {
-  RiArchive2Line,
-  RiDeleteBinLine,
-  RiEditLine,
-  RiEqualizer2Line,
-  RiLoopLeftLine,
-  RiMoreFill,
-  RiPauseCircleLine,
-  RiPlayCircleLine,
-} from '@remixicon/react'
-import CustomPopover from '../../base/popover'
-import s from './style.module.css'
-import { DataSourceType, DocumentActionType } from '@/models/datasets'
 import Confirm from '../../base/confirm'
+import Divider from '../../base/divider'
+import CustomPopover from '../../base/popover'
+import Switch from '../../base/switch'
+import { ToastContext } from '../../base/toast'
+import Tooltip from '../../base/tooltip'
 import RenameModal from './rename-modal'
+import s from './style.module.css'
 
 type OperationsProps = {
   embeddingAvailable: boolean

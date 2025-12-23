@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
 import type { KeyValue } from '../../../types'
-import KeyValueItem from './item'
+import { produce } from 'immer'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
+import KeyValueItem from './item'
 
 const i18nPrefix = 'workflow.nodes.http'
 

@@ -267,7 +267,7 @@ const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs =
 ### Example Structure
 
 ```tsx
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Component from './index'
 
 // ✅ Import real project components (DO NOT mock these)

@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
-import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import Tooltip from '@/app/components/base/tooltip'
+import { useBoolean } from 'ahooks'
 import { noop } from 'lodash-es'
+import React, { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import Tooltip from '@/app/components/base/tooltip'
 import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   instanceId?: string

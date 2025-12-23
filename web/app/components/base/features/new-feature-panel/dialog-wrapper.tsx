@@ -1,6 +1,6 @@
-import { Fragment, useCallback } from 'react'
 import type { ReactNode } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
+import { Fragment, useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 
 type DialogProps = {

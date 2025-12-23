@@ -1,20 +1,20 @@
 'use client'
 
-import { useState } from 'react'
 import {
   RiArrowDownSLine,
   RiCloseCircleFill,
 } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Checkbox from '@/app/components/base/checkbox'
 import { cn } from '@/utils/classnames'
-import Input from '@/app/components/base/input'
 import { useCategories } from '../../hooks'
-import { useTranslation } from 'react-i18next'
 
 type CategoriesFilterProps = {
   value: string[]

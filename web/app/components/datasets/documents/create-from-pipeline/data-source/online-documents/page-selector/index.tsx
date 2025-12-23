@@ -1,7 +1,7 @@
+import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FixedSizeList as List } from 'react-window'
-import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import Item from './item'
 import { recursivePushInParentDescendants } from './utils'
 

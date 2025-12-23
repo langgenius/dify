@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import s from './style.module.css'
 import { cn } from '@/utils/classnames'
+import s from './style.module.css'
 
 type Props = {
   className?: string

@@ -1,16 +1,16 @@
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
-import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
-import Loading from '@/app/components/base/loading'
 import type {
   FormValue,
   ModelParameterRule,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ParameterValue } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
+import React, { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
+import ParameterItem from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/parameter-item'
+import PresetsParameter from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/presets-parameter'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
-import { cn } from '@/utils/classnames'
 import { useModelParameterRules } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   isAdvancedMode: boolean

@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
 import React from 'react'
 import { Variable02 } from '../icons/src/vender/solid/development'
-import VerticalLine from './vertical-line'
 import HorizontalLine from './horizontal-line'
+import VerticalLine from './vertical-line'
 
 type ListEmptyProps = {
   title?: string

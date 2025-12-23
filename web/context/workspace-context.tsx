@@ -1,8 +1,8 @@
 'use client'
 
+import type { IWorkspace } from '@/models/common'
 import { createContext, useContext } from 'use-context-selector'
 import { useWorkspaces } from '@/service/use-common'
-import type { IWorkspace } from '@/models/common'
 
 export type WorkspacesContextValue = {
   workspaces: IWorkspace[]

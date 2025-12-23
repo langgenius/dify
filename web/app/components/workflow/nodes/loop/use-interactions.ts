@@ -1,19 +1,19 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
-import { useStoreApi } from 'reactflow'
 import type {
   BlockEnum,
   Node,
 } from '../../types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
+import { useStoreApi } from 'reactflow'
+import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import {
+  LOOP_PADDING,
+} from '../../constants'
 import {
   generateNewNode,
   getNodeCustomTypeByNodeDataType,
 } from '../../utils'
-import {
-  LOOP_PADDING,
-} from '../../constants'
 import { CUSTOM_LOOP_START_NODE } from '../loop-start/constants'
-import { useNodesMetaData } from '@/app/components/workflow/hooks'
 
 export const useNodeLoopInteractions = () => {
   const store = useStoreApi()

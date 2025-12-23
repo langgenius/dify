@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import TextEditor from '@/app/components/workflow/nodes/_base/components/editor/text-editor'
 import { LayoutGrid02 } from '@/app/components/base/icons/src/vender/line/layout'
+import TextEditor from '@/app/components/workflow/nodes/_base/components/editor/text-editor'
 
 const i18nPrefix = 'workflow.nodes.http'
 

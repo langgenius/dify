@@ -1,9 +1,11 @@
-import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
-import { refreshAccessTokenOrRelogin } from './refresh-token'
-import Toast from '@/app/components/base/toast'
-import { basePath } from '@/utils/var'
+import type { FetchOptionType, ResponseError } from './fetch'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
+import type {
+  DataSourceNodeCompletedResponse,
+  DataSourceNodeErrorResponse,
+  DataSourceNodeProcessingResponse,
+} from '@/types/pipeline'
 import type {
   AgentLogResponse,
   IterationFinishedResponse,
@@ -21,16 +23,15 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, getBaseOptions } from './fetch'
-import { asyncRunSafe } from '@/utils'
-import type {
-  DataSourceNodeCompletedResponse,
-  DataSourceNodeErrorResponse,
-  DataSourceNodeProcessingResponse,
-} from '@/types/pipeline'
 import Cookies from 'js-cookie'
+import Toast from '@/app/components/base/toast'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { asyncRunSafe } from '@/utils'
+import { basePath } from '@/utils/var'
+import { base, ContentType, getBaseOptions } from './fetch'
+import { refreshAccessTokenOrRelogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
+
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {

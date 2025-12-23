@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import s from './style.module.css'
 import Button from '@/app/components/base/button'
+import s from './style.module.css'
 
 export type IContrlBtnGroupProps = {
   onSave: () => void

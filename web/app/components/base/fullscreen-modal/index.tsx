@@ -1,7 +1,7 @@
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLargeLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 import { noop } from 'lodash-es'
+import { cn } from '@/utils/classnames'
 
 type IModal = {
   className?: string

@@ -1,15 +1,17 @@
 'use client'
 import type { FC } from 'react'
+import type { ValueSelector, Var, VisionSetting } from '@/app/components/workflow/types'
+import { produce } from 'immer'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import VarReferencePicker from './variable/var-reference-picker'
-import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
-import { type ValueSelector, type Var, VarType, type VisionSetting } from '@/app/components/workflow/types'
-import { Resolution } from '@/types/app'
 import Tooltip from '@/app/components/base/tooltip'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import ResolutionPicker from '@/app/components/workflow/nodes/llm/components/resolution-picker'
+import { VarType } from '@/app/components/workflow/types'
+import { Resolution } from '@/types/app'
+import VarReferencePicker from './variable/var-reference-picker'
+
 const i18nPrefix = 'workflow.nodes.llm'
 
 type Props = {

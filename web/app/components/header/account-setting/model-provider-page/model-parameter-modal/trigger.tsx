@@ -1,20 +1,20 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import type {
   Model,
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import Tooltip from '@/app/components/base/tooltip'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 import { MODEL_STATUS_TEXT } from '../declarations'
 import { useLanguage } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import { cn } from '@/utils/classnames'
-import { useProviderContext } from '@/context/provider-context'
-import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
 
 export type TriggerProps = {
   open?: boolean

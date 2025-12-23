@@ -1,5 +1,6 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import { RiFileList2Line } from '@remixicon/react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type IEmptyProps = {

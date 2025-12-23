@@ -1,13 +1,13 @@
-import React, { useCallback } from 'react'
 import type { FC } from 'react'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Model } from '@/types/app'
 import { RiCloseLine, RiSparklingFill } from '@remixicon/react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
-import Button from '@/app/components/base/button'
-import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import type { Model } from '@/types/app'
 
 export type ModelInfo = {
   modelId: string

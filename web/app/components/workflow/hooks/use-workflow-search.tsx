@@ -1,23 +1,23 @@
 'use client'
 
+import type { LLMNodeType } from '../nodes/llm/types'
+import type { CommonNodeType } from '../types'
+import type { Emoji } from '@/app/components/tools/types'
 import { useCallback, useEffect, useMemo } from 'react'
 import { useNodes } from 'reactflow'
-import { useNodesInteractions } from './use-nodes-interactions'
-import type { CommonNodeType } from '../types'
 import { workflowNodesAction } from '@/app/components/goto-anything/actions/workflow-nodes'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { setupNodeSelectionListener } from '../utils/node-navigation'
-import { BlockEnum } from '../types'
-import type { Emoji } from '@/app/components/tools/types'
 import { CollectionType } from '@/app/components/tools/types'
-import { canFindTool } from '@/utils'
-import type { LLMNodeType } from '../nodes/llm/types'
+import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { canFindTool } from '@/utils'
+import { BlockEnum } from '../types'
+import { setupNodeSelectionListener } from '../utils/node-navigation'
+import { useNodesInteractions } from './use-nodes-interactions'
 
 /**
  * Hook to register workflow nodes search functionality

@@ -1,8 +1,18 @@
+import { RiHistoryLine } from '@remixicon/react'
 import {
   useCallback,
 } from 'react'
-import { RiHistoryLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import useTheme from '@/hooks/use-theme'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { cn } from '@/utils/classnames'
+import Toast from '../../base/toast'
+import {
+  useNodesSyncDraft,
+  useWorkflowRun,
+} from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import {
   useStore,
   useWorkflowStore,
@@ -10,17 +20,7 @@ import {
 import {
   WorkflowVersion,
 } from '../types'
-import {
-  useNodesSyncDraft,
-  useWorkflowRun,
-} from '../hooks'
-import Toast from '../../base/toast'
 import RestoringTitle from './restoring-title'
-import Button from '@/app/components/base/button'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
-import { useHooksStore } from '../hooks-store'
-import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void

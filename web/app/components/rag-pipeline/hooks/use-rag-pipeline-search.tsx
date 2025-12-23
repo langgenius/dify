@@ -1,17 +1,17 @@
 'use client'
 
-import { useCallback, useEffect, useMemo } from 'react'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
-import type { CommonNodeType } from '@/app/components/workflow/types'
-import { ragPipelineNodesAction } from '@/app/components/goto-anything/actions/rag-pipeline-nodes'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { setupNodeSelectionListener } from '@/app/components/workflow/utils/node-navigation'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { LLMNodeType } from '@/app/components/workflow/nodes/llm/types'
 import type { ToolNodeType } from '@/app/components/workflow/nodes/tool/types'
-import type { KnowledgeRetrievalNodeType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { CommonNodeType } from '@/app/components/workflow/types'
+import { useCallback, useEffect, useMemo } from 'react'
+import { ragPipelineNodesAction } from '@/app/components/goto-anything/actions/rag-pipeline-nodes'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { useNodesInteractions } from '@/app/components/workflow/hooks/use-nodes-interactions'
 import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { setupNodeSelectionListener } from '@/app/components/workflow/utils/node-navigation'
 
 /**
  * Hook to register RAG pipeline nodes search functionality

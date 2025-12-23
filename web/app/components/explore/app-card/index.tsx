@@ -1,12 +1,13 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { PlusIcon } from '@heroicons/react/20/solid'
-import Button from '../../base/button'
-import { cn } from '@/utils/classnames'
 import type { App } from '@/models/explore'
+import { PlusIcon } from '@heroicons/react/20/solid'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import { AppTypeIcon } from '../../app/type-selector'
 import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { AppTypeIcon } from '../../app/type-selector'
+import Button from '../../base/button'
+
 export type AppCardProps = {
   app: App
   canCreate: boolean

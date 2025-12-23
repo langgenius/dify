@@ -3,8 +3,8 @@
  * This test verifies that the CSS-based text rendering fixes work correctly
  */
 
-import React from 'react'
 import { render } from '@testing-library/react'
+import React from 'react'
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({

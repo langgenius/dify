@@ -1,17 +1,17 @@
 'use client'
 
-import { useCallback, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import KnowledgeBaseInfo from './KnowledgeBaseInfo'
-import ExternalApiSelection from './ExternalApiSelection'
-import RetrievalSettings from './RetrievalSettings'
-import InfoPanel from './InfoPanel'
 import type { CreateKnowledgeBaseReq } from './declarations'
-import Divider from '@/app/components/base/divider'
+import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
+import { useRouter } from 'next/navigation'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import { useDocLink } from '@/context/i18n'
+import ExternalApiSelection from './ExternalApiSelection'
+import InfoPanel from './InfoPanel'
+import KnowledgeBaseInfo from './KnowledgeBaseInfo'
+import RetrievalSettings from './RetrievalSettings'
 
 type ExternalKnowledgeBaseCreateProps = {
   onConnect: (formValue: CreateKnowledgeBaseReq) => void

@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import StatusPanel from '@/app/components/workflow/run/status'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import StatusPanel from '@/app/components/workflow/run/status'
 import useTimestamp from '@/hooks/use-timestamp'
 
 type ResultPanelProps = {

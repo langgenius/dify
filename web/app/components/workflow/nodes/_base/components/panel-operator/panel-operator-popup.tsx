@@ -1,13 +1,11 @@
+import type { Node } from '@/app/components/workflow/types'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useEdges } from 'reactflow'
-import ChangeBlock from './change-block'
-import {
-  canRunBySingle,
-} from '@/app/components/workflow/utils'
+import { CollectionType } from '@/app/components/tools/types'
 import {
   useNodeDataUpdate,
   useNodeMetaData,
@@ -16,11 +14,13 @@ import {
   useNodesSyncDraft,
 } from '@/app/components/workflow/hooks'
 import ShortcutsName from '@/app/components/workflow/shortcuts-name'
-import type { Node } from '@/app/components/workflow/types'
 import { BlockEnum } from '@/app/components/workflow/types'
-import { CollectionType } from '@/app/components/tools/types'
+import {
+  canRunBySingle,
+} from '@/app/components/workflow/utils'
 import { useAllWorkflowTools } from '@/service/use-tools'
 import { canFindTool } from '@/utils'
+import ChangeBlock from './change-block'
 
 type PanelOperatorPopupProps = {
   id: string

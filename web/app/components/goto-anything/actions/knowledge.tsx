@@ -1,8 +1,8 @@
 import type { ActionItem, KnowledgeSearchResult } from './types'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
-import { Folder } from '../../base/icons/src/vender/solid/files'
 import { cn } from '@/utils/classnames'
+import { Folder } from '../../base/icons/src/vender/solid/files'
 
 const EXTERNAL_PROVIDER = 'external' as const
 const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER

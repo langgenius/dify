@@ -1,21 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useContext } from 'use-context-selector'
-import { produce } from 'immer'
+import type { PromptItem, PromptVariable } from '@/models/debug'
+import type { AppModeEnum } from '@/types/app'
 import {
   RiAddLine,
 } from '@remixicon/react'
+import { produce } from 'immer'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import SimplePromptInput from './simple-prompt-input'
-import Button from '@/app/components/base/button'
+import { useContext } from 'use-context-selector'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
-import { PromptRole } from '@/models/debug'
-import type { PromptItem, PromptVariable } from '@/models/debug'
-import type { AppModeEnum } from '@/types/app'
-import { ModelModeType } from '@/types/app'
-import ConfigContext from '@/context/debug-configuration'
+import Button from '@/app/components/base/button'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
+import ConfigContext from '@/context/debug-configuration'
+import { PromptRole } from '@/models/debug'
+import { ModelModeType } from '@/types/app'
+import SimplePromptInput from './simple-prompt-input'
 
 export type IPromptProps = {
   mode: AppModeEnum

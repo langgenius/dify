@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
-import copy from 'copy-to-clipboard'
-import ToggleExpandBtn from '../toggle-expand-btn'
-import CodeGeneratorButton from '../code-generator-button'
 import type { CodeLanguage } from '../../../code/types'
-import Wrap from './wrap'
-import { cn } from '@/utils/classnames'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import copy from 'copy-to-clipboard'
+import React, { useCallback, useRef, useState } from 'react'
 import PromptEditorHeightResizeWrap from '@/app/components/app/configuration/config-prompt/prompt-editor-height-resize-wrap'
+import ActionButton from '@/app/components/base/action-button'
+import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import FileListInLog from '@/app/components/base/file-uploader/file-list-in-log'
-import ActionButton from '@/app/components/base/action-button'
-import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import CodeGeneratorButton from '../code-generator-button'
+import ToggleExpandBtn from '../toggle-expand-btn'
+import Wrap from './wrap'
 
 type Props = {
   nodeId?: string

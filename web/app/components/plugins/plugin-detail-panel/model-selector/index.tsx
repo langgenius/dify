@@ -2,32 +2,32 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
   FormValue,
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import {
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
-import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import LLMParamsPanel from './llm-params-panel'
-import TTSParamsPanel from './tts-params-panel'
+import Toast from '@/app/components/base/toast'
+import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  useModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
+import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
-import Toast from '@/app/components/base/toast'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import LLMParamsPanel from './llm-params-panel'
+import TTSParamsPanel from './tts-params-panel'
 
 export type ModelParameterModalProps = {
   popupClassName?: string

@@ -1,10 +1,10 @@
 import type { Viewport } from 'reactflow'
-import type { VisionFile } from '@/types/app'
+import type { Metadata } from '@/app/components/base/chat/chat/type'
 import type {
   Edge,
   Node,
 } from '@/app/components/workflow/types'
-import type { Metadata } from '@/app/components/base/chat/chat/type'
+import type { VisionFile } from '@/types/app'
 
 // Log type contains key:string conversation_id:string created_at:string question:string answer:string
 export type Conversation = {

@@ -1,27 +1,26 @@
 'use client'
-import React, { useCallback } from 'react'
-import { useMount } from 'ahooks'
-import { useTranslation } from 'react-i18next'
-import { capitalize } from 'lodash-es'
-import copy from 'copy-to-clipboard'
+import type {
+  ConversationVariable,
+} from '@/app/components/workflow/types'
 import { RiCloseLine } from '@remixicon/react'
-import Modal from '@/app/components/base/modal'
-import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import { useMount } from 'ahooks'
+import copy from 'copy-to-clipboard'
+import { capitalize, noop } from 'lodash-es'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import { useStore } from '@/app/components/workflow/store'
-import type {
-  ConversationVariable,
-} from '@/app/components/workflow/types'
-import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { BubbleX } from '@/app/components/base/icons/src/vender/line/others'
+import Modal from '@/app/components/base/modal'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import { useStore } from '@/app/components/workflow/store'
 import useTimestamp from '@/hooks/use-timestamp'
 import { fetchCurrentValueOfConversationVariable } from '@/service/workflow'
 import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
 
 export type Props = {
   conversationID: string

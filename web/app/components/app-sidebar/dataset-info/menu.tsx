@@ -1,9 +1,9 @@
+import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import MenuItem from './menu-item'
-import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
-import Divider from '../../base/divider'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import Divider from '../../base/divider'
+import MenuItem from './menu-item'
 
 type MenuProps = {
   showDelete: boolean

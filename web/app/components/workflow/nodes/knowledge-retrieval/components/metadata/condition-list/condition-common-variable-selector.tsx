@@ -1,12 +1,12 @@
+import type { VarType } from '@/app/components/workflow/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { VarType } from '@/app/components/workflow/types'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionCommonVariableSelectorProps = {
   variables?: { name: string, type: string, value: string }[]

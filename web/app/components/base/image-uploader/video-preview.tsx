@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import { createPortal } from 'react-dom'
 import { RiCloseLine } from '@remixicon/react'
+import { createPortal } from 'react-dom'
 
 type VideoPreviewProps = {
   url: string

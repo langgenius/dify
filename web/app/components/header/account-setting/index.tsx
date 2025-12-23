@@ -1,6 +1,5 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { useEffect, useRef, useState } from 'react'
+import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import {
   RiBrain2Fill,
   RiBrain2Line,
@@ -17,24 +16,26 @@ import {
   RiPuzzle2Line,
   RiTranslate2,
 } from '@remixicon/react'
-import Button from '../../base/button'
-import MembersPage from './members-page'
-import LanguagePage from './language-page'
-import ApiBasedExtensionPage from './api-based-extension-page'
-import DataSourcePage from './data-source-page-new'
-import ModelProviderPage from './model-provider-page'
-import { cn } from '@/utils/classnames'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
 import BillingPage from '@/app/components/billing/billing-page'
 import CustomPage from '@/app/components/custom/custom-page'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { useProviderContext } from '@/context/provider-context'
-import { useAppContext } from '@/context/app-context'
-import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
-import Input from '@/app/components/base/input'
 import {
   ACCOUNT_SETTING_TAB,
-  type AccountSettingTab,
+
 } from '@/app/components/header/account-setting/constants'
+import MenuDialog from '@/app/components/header/account-setting/menu-dialog'
+import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { cn } from '@/utils/classnames'
+import Button from '../../base/button'
+import ApiBasedExtensionPage from './api-based-extension-page'
+import DataSourcePage from './data-source-page-new'
+import LanguagePage from './language-page'
+import MembersPage from './members-page'
+import ModelProviderPage from './model-provider-page'
 
 const iconClassName = `
   w-5 h-5 mr-2

@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
-import { useStore } from '@/app/components/workflow/store'
 import { useStore as useReactflow } from 'reactflow'
 import { useShallow } from 'zustand/react/shallow'
+import { useStore } from '@/app/components/workflow/store'
 
 export const useFloatingRight = (targetElementWidth: number) => {
   const [floatingRight, setFloatingRight] = useState(false)

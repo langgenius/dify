@@ -1,9 +1,9 @@
-// import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
-import { AppModeEnum } from '@/types/app'
-import { BlockEnum, EditionType } from '../../types'
-import { type NodeDefault, type PromptItem, PromptRole } from '../../types'
+import type { NodeDefault, PromptItem } from '../../types'
 import type { LLMNodeType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
+// import { RETRIEVAL_OUTPUT_STRUCT } from '../../constants'
+import { AppModeEnum } from '@/types/app'
+import { BlockEnum, EditionType, PromptRole } from '../../types'
 
 const RETRIEVAL_OUTPUT_STRUCT = `{
   "content": "",

@@ -1,6 +1,6 @@
+import { noop } from 'lodash-es'
 import format from '.'
 import graphToLogStruct from '../graph-to-log-struct'
-import { noop } from 'lodash-es'
 
 describe('iteration', () => {
   const list = graphToLogStruct('start -> (iteration, iterationNode, plainNode1 -> plainNode2)')

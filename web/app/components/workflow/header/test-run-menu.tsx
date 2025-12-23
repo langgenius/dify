@@ -1,10 +1,9 @@
+import type { MouseEvent, MouseEventHandler, ReactElement } from 'react'
 import {
-  type MouseEvent,
-  type MouseEventHandler,
-  type ReactElement,
   cloneElement,
   forwardRef,
   isValidElement,
+
   useCallback,
   useEffect,
   useImperativeHandle,

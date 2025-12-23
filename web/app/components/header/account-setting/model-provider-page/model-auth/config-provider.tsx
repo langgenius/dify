@@ -1,22 +1,22 @@
+import type {
+  CustomConfigurationModelFixedFields,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
-import {
   Button,
 } from '@/app/components/base/button'
-import type {
-  CustomConfigurationModelFixedFields,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Tooltip from '@/app/components/base/tooltip'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
 import { useCredentialStatus } from './hooks'
-import Tooltip from '@/app/components/base/tooltip'
 
 type ConfigProviderProps = {
   provider: ModelProvider

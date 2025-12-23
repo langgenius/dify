@@ -1,5 +1,5 @@
-import type { Locale } from '@/i18n-config'
 import type { Dayjs } from 'dayjs'
+import type { Locale } from '@/i18n-config'
 import 'dayjs/locale/de'
 import 'dayjs/locale/es'
 import 'dayjs/locale/fa'

@@ -1,11 +1,11 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import vm from 'node:vm'
-import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { transpile } from 'typescript'
-import { parseModule, generateCode, loadFile } from 'magicast'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import vm from 'node:vm'
 import { translate } from 'bing-translate-api'
+import { generateCode, loadFile, parseModule } from 'magicast'
+import { transpile } from 'typescript'
 
 const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)

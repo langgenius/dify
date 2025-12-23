@@ -1,5 +1,6 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import ReactEcharts from 'echarts-for-react'
+import dynamic from 'next/dynamic'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import SyntaxHighlighter from 'react-syntax-highlighter'
 import {
   atelierHeathDark,
@@ -7,13 +8,12 @@ import {
 } from 'react-syntax-highlighter/dist/esm/styles/hljs'
 import ActionButton from '@/app/components/base/action-button'
 import CopyIcon from '@/app/components/base/copy-icon'
-import SVGBtn from '@/app/components/base/svg'
-import { Theme } from '@/types/app'
-import useTheme from '@/hooks/use-theme'
-import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 import MarkdownMusic from '@/app/components/base/markdown-blocks/music'
 import ErrorBoundary from '@/app/components/base/markdown/error-boundary'
-import dynamic from 'next/dynamic'
+import SVGBtn from '@/app/components/base/svg'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import SVGRenderer from '../svg-gallery' // Assumes svg-gallery.tsx is in /base directory
 
 const Flowchart = dynamic(() => import('@/app/components/base/mermaid'), { ssr: false })
 

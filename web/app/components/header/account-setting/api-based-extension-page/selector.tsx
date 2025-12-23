@@ -1,20 +1,20 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
   RiArrowDownSLine,
 } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import {
+  ArrowUpRight,
+} from '@/app/components/base/icons/src/vender/line/arrows'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  ArrowUpRight,
-} from '@/app/components/base/icons/src/vender/line/arrows'
-import { useModalContext } from '@/context/modal-context'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useModalContext } from '@/context/modal-context'
 import { useApiBasedExtensions } from '@/service/use-common'
 
 type ApiBasedExtensionSelectorProps = {

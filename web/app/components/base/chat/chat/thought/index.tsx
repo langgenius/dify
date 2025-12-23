@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { ThoughtItem, ToolInfoInThought } from '../type'
+import React from 'react'
 import ToolDetail from '@/app/components/base/chat/chat/answer/tool-detail'
 
 export type IThoughtProps = {

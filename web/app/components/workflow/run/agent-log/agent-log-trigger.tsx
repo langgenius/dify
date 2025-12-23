@@ -1,9 +1,9 @@
-import { RiArrowRightLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import type {
   AgentLogItemWithChildren,
   NodeTracing,
 } from '@/types/workflow'
+import { RiArrowRightLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 
 type AgentLogTriggerProps = {
   nodeInfo: NodeTracing

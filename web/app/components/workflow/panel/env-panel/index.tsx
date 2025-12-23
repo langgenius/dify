@@ -1,23 +1,23 @@
+import type {
+  EnvironmentVariable,
+} from '@/app/components/workflow/types'
+import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useStoreApi,
 } from 'reactflow'
-import { RiCloseLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
-import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
-import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
-import type {
-  EnvironmentVariable,
-} from '@/app/components/workflow/types'
-import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
-import { cn } from '@/utils/classnames'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
+import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import EnvItem from '@/app/components/workflow/panel/env-panel/env-item'
+import VariableTrigger from '@/app/components/workflow/panel/env-panel/variable-trigger'
+import { useStore } from '@/app/components/workflow/store'
+import { cn } from '@/utils/classnames'
 
 const EnvPanel = () => {
   const { t } = useTranslation()

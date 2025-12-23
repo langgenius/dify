@@ -1,22 +1,22 @@
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { MetadataInDoc } from '@/models/datasets'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   useCallback,
   useMemo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import MetadataIcon from './metadata-icon'
+import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { MetadataInDoc } from '@/models/datasets'
+import MetadataIcon from './metadata-icon'
 
 const AddCondition = ({
   metadataList,

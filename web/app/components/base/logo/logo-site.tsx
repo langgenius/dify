@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { basePath } from '@/utils/var'
 import { cn } from '@/utils/classnames'
+import { basePath } from '@/utils/var'
 
 type LogoSiteProps = {
   className?: string

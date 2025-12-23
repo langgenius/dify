@@ -1,12 +1,22 @@
-import {
-  memo,
-  useState,
-} from 'react'
+import type { FileEntity } from '../types'
 import {
   RiDeleteBinLine,
   RiDownloadLine,
   RiEyeLine,
 } from '@remixicon/react'
+import {
+  memo,
+  useState,
+} from 'react'
+import ActionButton from '@/app/components/base/action-button'
+import { PreviewMode } from '@/app/components/base/features/types'
+import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import { formatFileSize } from '@/utils/format'
+import FileImageRender from '../file-image-render'
 import FileTypeIcon from '../file-type-icon'
 import {
   downloadFile,
@@ -14,16 +24,6 @@ import {
   getFileAppearanceType,
   getFileExtension,
 } from '../utils'
-import FileImageRender from '../file-image-render'
-import type { FileEntity } from '../types'
-import ActionButton from '@/app/components/base/action-button'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { formatFileSize } from '@/utils/format'
-import { cn } from '@/utils/classnames'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import { PreviewMode } from '@/app/components/base/features/types'
 
 type FileInAttachmentItemProps = {
   file: FileEntity

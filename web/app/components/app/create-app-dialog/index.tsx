@@ -1,8 +1,8 @@
 'use client'
-import { useCallback } from 'react'
 import { useKeyPress } from 'ahooks'
-import AppList from './app-list'
+import { useCallback } from 'react'
 import FullScreenModal from '@/app/components/base/fullscreen-modal'
+import AppList from './app-list'
 
 type CreateAppDialogProps = {
   show: boolean

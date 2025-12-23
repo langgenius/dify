@@ -1,10 +1,14 @@
+import type {
+  Node,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import { intersection } from 'lodash-es'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { intersection } from 'lodash-es'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
@@ -12,10 +16,6 @@ import {
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
-import type {
-  Node,
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
 import { BlockEnum, isTriggerNode } from '@/app/components/workflow/types'
 
 import { FlowType } from '@/types/common'

@@ -1,7 +1,7 @@
 import { useState } from 'react'
 import { X } from '@/app/components/base/icons/src/vender/line/general'
-import { NOTICE_I18N } from '@/i18n-config/language'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { NOTICE_I18N } from '@/i18n-config/language'
 
 const MaintenanceNotice = () => {
   const locale = useLanguage()

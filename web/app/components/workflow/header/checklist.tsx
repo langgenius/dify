@@ -1,3 +1,12 @@
+import type { ChecklistItem } from '../hooks/use-checklist'
+import type {
+  BlockEnum,
+  CommonEdgeType,
+} from '../types'
+import {
+  RiCloseLine,
+  RiListCheck3,
+} from '@remixicon/react'
 import {
   memo,
   useState,
@@ -6,34 +15,23 @@ import { useTranslation } from 'react-i18next'
 import {
   useEdges,
 } from 'reactflow'
+import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { IconR } from '@/app/components/base/icons/src/vender/line/arrows'
 import {
-  RiCloseLine,
-  RiListCheck3,
-} from '@remixicon/react'
-import BlockIcon from '../block-icon'
-import {
-  useChecklist,
-  useNodesInteractions,
-} from '../hooks'
-import type { ChecklistItem } from '../hooks/use-checklist'
-import type {
-  CommonEdgeType,
-} from '../types'
-import { cn } from '@/utils/classnames'
+  ChecklistSquare,
+} from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import {
-  ChecklistSquare,
-} from '@/app/components/base/icons/src/vender/line/general'
-import { Warning } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import { IconR } from '@/app/components/base/icons/src/vender/line/arrows'
-import type {
-  BlockEnum,
-} from '../types'
 import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { cn } from '@/utils/classnames'
+import BlockIcon from '../block-icon'
+import {
+  useChecklist,
+  useNodesInteractions,
+} from '../hooks'
 
 type WorkflowChecklistProps = {
   disabled: boolean

@@ -1,28 +1,28 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
+import type { CommonResponse } from '@/models/common'
+import type { IndexingStatusResponse, ProcessRuleResponse } from '@/models/datasets'
 import { RiLoader2Line, RiPauseCircleLine, RiPlayCircleLine } from '@remixicon/react'
 import Image from 'next/image'
-import { FieldInfo } from '../metadata'
-import { useDocumentContext } from '../context'
-import { IndexingType } from '../../../create/step-two'
-import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
-import EmbeddingSkeleton from './skeleton'
-import { RETRIEVE_METHOD } from '@/types/app'
-import { cn } from '@/utils/classnames'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Divider from '@/app/components/base/divider'
 import { ToastContext } from '@/app/components/base/toast'
-import type { IndexingStatusResponse } from '@/models/datasets'
-import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
-import { asyncRunSafe, sleep } from '@/utils'
+import { ProcessMode } from '@/models/datasets'
 import {
   fetchIndexingStatus as doFetchIndexingStatus,
   pauseDocIndexing,
   resumeDocIndexing,
 } from '@/service/datasets'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { asyncRunSafe, sleep } from '@/utils'
+import { cn } from '@/utils/classnames'
+import { indexMethodIcon, retrievalIcon } from '../../../create/icons'
+import { IndexingType } from '../../../create/step-two'
+import { useDocumentContext } from '../context'
+import { FieldInfo } from '../metadata'
+import EmbeddingSkeleton from './skeleton'
 
 type IEmbeddingDetailProps = {
   datasetId?: string

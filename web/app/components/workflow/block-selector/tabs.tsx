@@ -1,24 +1,24 @@
 import type { Dispatch, FC, SetStateAction } from 'react'
-import { memo, useEffect, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
 import type {
   BlockEnum,
   NodeDefault,
   OnSelectBlock,
   ToolWithProvider,
 } from '../types'
-import { TabsEnum } from './types'
-import Blocks from './blocks'
+import { memo, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
+import { useAllBuiltInTools, useAllCustomTools, useAllMCPTools, useAllWorkflowTools, useInvalidateAllBuiltInTools } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
+import { basePath } from '@/utils/var'
+import { useWorkflowStore } from '../store'
 import AllStartBlocks from './all-start-blocks'
 import AllTools from './all-tools'
+import Blocks from './blocks'
 import DataSources from './data-sources'
-import { cn } from '@/utils/classnames'
-import { useFeaturedToolsRecommendations } from '@/service/use-plugins'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useWorkflowStore } from '../store'
-import { basePath } from '@/utils/var'
-import Tooltip from '@/app/components/base/tooltip'
+import { TabsEnum } from './types'
 
 export type TabsProps = {
   activeTab: TabsEnum

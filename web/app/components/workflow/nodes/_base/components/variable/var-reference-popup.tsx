@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarReferenceVars from './var-reference-vars'
-import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import ListEmpty from '@/app/components/base/list-empty'
 import { useStore } from '@/app/components/workflow/store'
 import { useDocLink } from '@/context/i18n'
+import VarReferenceVars from './var-reference-vars'
 
 type Props = {
   vars: NodeOutPutVar[]

@@ -1,13 +1,13 @@
 'use client'
+import type { Placement } from '@floating-ui/react'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import type { MetadataItem } from '../types'
 import type { Props as CreateContentProps } from './create-content'
+import React, { useCallback, useState } from 'react'
+import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
 import CreateContent from './create-content'
 import SelectMetadata from './select-metadata'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
-import type { MetadataItem } from '../types'
-import type { Placement } from '@floating-ui/react'
-import { useDatasetMetaData } from '@/service/knowledge/use-metadata'
 
 type Props = {
   datasetId: string

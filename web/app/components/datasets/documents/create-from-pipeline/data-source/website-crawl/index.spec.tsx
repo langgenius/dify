@@ -1,10 +1,10 @@
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
-import WebsiteCrawl from './index'
-import type { CrawlResultItem } from '@/models/datasets'
-import { CrawlStep } from '@/models/datasets'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { CrawlStep } from '@/models/datasets'
+import WebsiteCrawl from './index'
 
 // ==========================================
 // Mock Modules

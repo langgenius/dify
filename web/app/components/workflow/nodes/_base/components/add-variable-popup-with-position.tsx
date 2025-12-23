@@ -1,22 +1,22 @@
+import type {
+  ValueSelector,
+  Var,
+  VarType,
+} from '../../../types'
+import { useClickAway } from 'ahooks'
 import {
   memo,
   useCallback,
   useMemo,
   useRef,
 } from 'react'
-import { useClickAway } from 'ahooks'
-import { useStore } from '../../../store'
 import {
   useIsChatMode,
   useNodeDataUpdate,
   useWorkflow,
   useWorkflowVariables,
 } from '../../../hooks'
-import type {
-  ValueSelector,
-  Var,
-  VarType,
-} from '../../../types'
+import { useStore } from '../../../store'
 import { useVariableAssigner } from '../../variable-assigner/hooks'
 import { filterVar } from '../../variable-assigner/utils'
 import AddVariablePopup from './add-variable-popup'

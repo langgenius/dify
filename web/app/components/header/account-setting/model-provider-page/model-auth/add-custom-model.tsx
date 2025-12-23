@@ -1,3 +1,12 @@
+import type {
+  ConfigurationMethodEnum,
+  CustomConfigurationModelFixedFields,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  RiAddCircleFill,
+  RiAddLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -5,28 +14,19 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiAddCircleFill,
-  RiAddLine,
-} from '@remixicon/react'
-import {
   Button,
 } from '@/app/components/base/button'
-import type {
-  ConfigurationMethodEnum,
-  CustomConfigurationModelFixedFields,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import ModelIcon from '../model-icon'
-import { useCanAddedModels } from './hooks/use-custom-models'
-import { useAuth } from './hooks/use-auth'
 import Tooltip from '@/app/components/base/tooltip'
+import { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { cn } from '@/utils/classnames'
+import ModelIcon from '../model-icon'
+import { useAuth } from './hooks/use-auth'
+import { useCanAddedModels } from './hooks/use-custom-models'
 
 type AddCustomModelProps = {
   provider: ModelProvider

@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { Group } from '../../../base/icons/src/vender/other'
-import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'
-import Checkbox from '@/app/components/base/checkbox'
 import { RiCloseLine } from '@remixicon/react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Checkbox from '@/app/components/base/checkbox'
+import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'
+import { Group } from '../../../base/icons/src/vender/other'
 
 const LoadingError: FC = () => {
   const { t } = useTranslation()

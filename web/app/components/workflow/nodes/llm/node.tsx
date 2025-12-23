@@ -1,11 +1,11 @@
 import type { FC } from 'react'
-import React from 'react'
 import type { LLMNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import React from 'react'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import type { NodeProps } from '@/app/components/workflow/types'
 
 const Node: FC<NodeProps<LLMNodeType>> = ({
   data,

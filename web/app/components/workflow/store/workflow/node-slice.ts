@@ -1,10 +1,10 @@
 import type { StateCreator } from 'zustand'
 import type {
-  Node,
-} from '@/app/components/workflow/types'
-import type {
   VariableAssignerNodeType,
 } from '@/app/components/workflow/nodes/variable-assigner/types'
+import type {
+  Node,
+} from '@/app/components/workflow/types'
 import type {
   NodeTracing,
 } from '@/types/workflow'

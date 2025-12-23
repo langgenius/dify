@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import type { YearAndMonthPickerOptionsProps } from '../types'
-import { useMonths, useYearOptions } from '../hooks'
+import React from 'react'
 import OptionListItem from '../common/option-list-item'
+import { useMonths, useYearOptions } from '../hooks'
 
 const Options: FC<YearAndMonthPickerOptionsProps> = ({
   selectedMonth,

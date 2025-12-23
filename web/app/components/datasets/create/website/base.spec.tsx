@@ -1,10 +1,10 @@
+import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Input from './base/input'
-import Header from './base/header'
 import CrawledResult from './base/crawled-result'
 import CrawledResultItem from './base/crawled-result-item'
-import type { CrawlResultItem } from '@/models/datasets'
+import Header from './base/header'
+import Input from './base/input'
 
 // ============================================================================
 // Test Data Factories

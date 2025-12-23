@@ -1,16 +1,16 @@
+import type { GlobalVariable } from '../../types'
+
+import { RiCloseLine } from '@remixicon/react'
 import {
   memo,
 } from 'react'
-
-import { RiCloseLine } from '@remixicon/react'
-import type { GlobalVariable } from '../../types'
-import Item from './item'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 
 import { cn } from '@/utils/classnames'
-import { useTranslation } from 'react-i18next'
-import { useIsChatMode } from '../../hooks'
 import { isInWorkflowPage } from '../../constants'
+import { useIsChatMode } from '../../hooks'
+import Item from './item'
 
 const Panel = () => {
   const { t } = useTranslation()

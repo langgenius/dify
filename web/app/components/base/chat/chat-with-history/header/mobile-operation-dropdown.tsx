@@ -1,10 +1,10 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiMoreFill,
 } from '@remixicon/react'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 type Props = {
   handleResetChat: () => void

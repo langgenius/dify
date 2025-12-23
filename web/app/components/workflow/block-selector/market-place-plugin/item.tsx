@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
-import Action from './action'
 import type { Plugin } from '@/app/components/plugins/types.ts'
+import { useBoolean } from 'ahooks'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import I18n from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 
 import { formatNumber } from '@/utils/format'
-import { useBoolean } from 'ahooks'
+import Action from './action'
 
 enum ActionType {
   install = 'install',

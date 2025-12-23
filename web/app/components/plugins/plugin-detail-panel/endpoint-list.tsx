@@ -1,26 +1,26 @@
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
-import { useBoolean } from 'ahooks'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import {
   RiAddLine,
   RiApps2AddLine,
   RiBookOpenLine,
 } from '@remixicon/react'
-import EndpointModal from './endpoint-modal'
-import EndpointCard from './endpoint-card'
-import { NAME_FIELD } from './utils'
-import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { useBoolean } from 'ahooks'
+import React, { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
 import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import { toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { useDocLink } from '@/context/i18n'
 import {
   useCreateEndpoint,
   useEndpointList,
   useInvalidateEndpointList,
 } from '@/service/use-endpoints'
-import type { PluginDetail } from '@/app/components/plugins/types'
 import { cn } from '@/utils/classnames'
+import EndpointCard from './endpoint-card'
+import EndpointModal from './endpoint-modal'
+import { NAME_FIELD } from './utils'
 
 type Props = {
   detail: PluginDetail

@@ -1,3 +1,11 @@
+import type { PluginPayload } from '../types'
+import type { ButtonProps } from '@/app/components/base/button'
+import type { FormSchema } from '@/app/components/base/form/types'
+import {
+  RiClipboardLine,
+  RiEqualizer2Line,
+  RiInformation2Fill,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -5,26 +13,18 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiClipboardLine,
-  RiEqualizer2Line,
-  RiInformation2Fill,
-} from '@remixicon/react'
-import Button from '@/app/components/base/button'
-import type { ButtonProps } from '@/app/components/base/button'
-import OAuthClientSettings from './oauth-client-settings'
-import { cn } from '@/utils/classnames'
-import type { PluginPayload } from '../types'
-import { openOAuthPopup } from '@/hooks/use-oauth'
+import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
+import Button from '@/app/components/base/button'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { openOAuthPopup } from '@/hooks/use-oauth'
+import { cn } from '@/utils/classnames'
 import {
   useGetPluginOAuthClientSchemaHook,
   useGetPluginOAuthUrlHook,
 } from '../hooks/use-credential'
-import type { FormSchema } from '@/app/components/base/form/types'
-import { FormTypeEnum } from '@/app/components/base/form/types'
-import ActionButton from '@/app/components/base/action-button'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
+import OAuthClientSettings from './oauth-client-settings'
 
 export type AddOAuthButtonProps = {
   pluginPayload: PluginPayload

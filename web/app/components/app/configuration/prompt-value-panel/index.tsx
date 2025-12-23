@@ -1,28 +1,28 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import type { Inputs } from '@/models/debug'
+import type { VisionFile, VisionSettings } from '@/types/app'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
   RiPlayLargeFill,
 } from '@remixicon/react'
-import ConfigContext from '@/context/debug-configuration'
-import type { Inputs } from '@/models/debug'
-import { AppModeEnum, ModelModeType } from '@/types/app'
-import Select from '@/app/components/base/select'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
+import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
+import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
 import Input from '@/app/components/base/input'
+import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
 import Tooltip from '@/app/components/base/tooltip'
-import TextGenerationImageUploader from '@/app/components/base/image-uploader/text-generation-image-uploader'
-import FeatureBar from '@/app/components/base/features/new-feature-panel/feature-bar'
-import type { VisionFile, VisionSettings } from '@/types/app'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { cn } from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
+import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import ConfigContext from '@/context/debug-configuration'
+import { AppModeEnum, ModelModeType } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 export type IPromptValuePanelProps = {
   appType: AppModeEnum

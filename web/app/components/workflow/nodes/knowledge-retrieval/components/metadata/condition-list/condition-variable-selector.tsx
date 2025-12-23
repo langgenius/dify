@@ -1,5 +1,12 @@
+import type {
+  Node,
+  NodeOutPutVar,
+  ValueSelector,
+  Var,
+} from '@/app/components/workflow/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
@@ -7,14 +14,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import type {
-  Node,
-  NodeOutPutVar,
-  ValueSelector,
-  Var,
-} from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 
 type ConditionVariableSelectorProps = {
   valueSelector?: ValueSelector

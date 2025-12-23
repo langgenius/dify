@@ -1,15 +1,15 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ApiBasedExtension } from '@/models/common'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import type { ApiBasedExtension } from '@/models/common'
+import Confirm from '@/app/components/base/confirm'
 import { useModalContext } from '@/context/modal-context'
 import { deleteApiBasedExtension } from '@/service/common'
-import Confirm from '@/app/components/base/confirm'
 
 type ItemProps = {
   data: ApiBasedExtension

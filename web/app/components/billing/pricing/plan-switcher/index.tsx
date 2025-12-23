@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import React from 'react'
 import type { Category } from '../index'
-import { useTranslation } from 'react-i18next'
-import { Cloud, SelfHosted } from '../assets'
-import Tab from './tab'
-import Divider from '@/app/components/base/divider'
 import type { PlanRange } from './plan-range-switcher'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import { Cloud, SelfHosted } from '../assets'
 import PlanRangeSwitcher from './plan-range-switcher'
+import Tab from './tab'
 
 type PlanSwitcherProps = {
   currentCategory: Category

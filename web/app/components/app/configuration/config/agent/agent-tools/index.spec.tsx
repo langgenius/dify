@@ -1,30 +1,31 @@
-import type { Mock } from 'vitest'
 import type {
   PropsWithChildren,
 } from 'react'
+import type { Mock } from 'vitest'
+import type SettingBuiltInToolType from './setting-built-in-tool'
+import type { Tool, ToolParameter } from '@/app/components/tools/types'
+import type ToolPickerType from '@/app/components/workflow/block-selector/tool-picker'
+import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ModelConfig } from '@/models/debug'
+import type { AgentTool } from '@/types/app'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import copy from 'copy-to-clipboard'
 import React, {
   useEffect,
   useMemo,
   useState,
 } from 'react'
-import { act, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import AgentTools from './index'
-import ConfigContext from '@/context/debug-configuration'
-import type { AgentTool } from '@/types/app'
-import { CollectionType, type Tool, type ToolParameter } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { ModelConfig } from '@/models/debug'
-import { ModelModeType } from '@/types/app'
+import { CollectionType } from '@/app/components/tools/types'
 import {
   DEFAULT_AGENT_SETTING,
   DEFAULT_CHAT_PROMPT_CONFIG,
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
-import copy from 'copy-to-clipboard'
-import type ToolPickerType from '@/app/components/workflow/block-selector/tool-picker'
-import type SettingBuiltInToolType from './setting-built-in-tool'
+import ConfigContext from '@/context/debug-configuration'
+import { ModelModeType } from '@/types/app'
+import AgentTools from './index'
 
 const formattingDispatcherMock = vi.fn()
 vi.mock('@/app/components/app/configuration/debug/hooks', () => ({

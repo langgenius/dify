@@ -1,13 +1,13 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import { cn } from '@/utils/classnames'
-import { Group } from '@/app/components/base/icons/src/vender/other'
 import { useSelectedLayoutSegment } from 'next/navigation'
-import DownloadingIcon from './downloading-icon'
-import { usePluginTaskStatus } from '@/app/components/plugins/plugin-page/plugin-tasks/hooks'
+import { useTranslation } from 'react-i18next'
+import { Group } from '@/app/components/base/icons/src/vender/other'
 import Indicator from '@/app/components/header/indicator'
+import { usePluginTaskStatus } from '@/app/components/plugins/plugin-page/plugin-tasks/hooks'
+import { cn } from '@/utils/classnames'
+import DownloadingIcon from './downloading-icon'
 
 type PluginsNavProps = {
   className?: string

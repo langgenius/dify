@@ -1,7 +1,7 @@
-import { useTranslation } from 'react-i18next'
 import {
   RiErrorWarningFill,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 
 export const ValidatedErrorIcon = () => {

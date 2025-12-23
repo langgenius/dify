@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import type { ConversationHistoriesRole } from '@/models/debug'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
-import type { ConversationHistoriesRole } from '@/models/debug'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+
 type Props = {
   isShow: boolean
   saveLoading: boolean

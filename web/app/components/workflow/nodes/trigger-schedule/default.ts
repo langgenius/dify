@@ -1,10 +1,10 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { ScheduleTriggerNodeType } from './types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
+import { getDefaultScheduleConfig } from './constants'
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
-import { getDefaultScheduleConfig } from './constants'
-import { genNodeMetaData } from '../../utils'
 
 const isValidTimeFormat = (time: string): boolean => {
   const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/

@@ -1,9 +1,9 @@
 'use client'
-import Header from './_header'
-
-import { cn } from '@/utils/classnames'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+
 import useDocumentTitle from '@/hooks/use-document-title'
+import { cn } from '@/utils/classnames'
+import Header from './_header'
 
 export default function SignInLayout({ children }: any) {
   const { systemFeatures } = useGlobalPublicStore()

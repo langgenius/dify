@@ -1,6 +1,6 @@
+import type { BaseFormProps } from '../../components/base'
 import { memo } from 'react'
 import { BaseForm } from '../../components/base'
-import type { BaseFormProps } from '../../components/base'
 
 const AuthForm = ({
   formSchemas = [],

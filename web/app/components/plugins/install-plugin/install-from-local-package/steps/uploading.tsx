@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { RiLoader2Line } from '@remixicon/react'
-import Card from '../../../card'
 import type { Dependency, PluginDeclaration } from '../../../types'
-import Button from '@/app/components/base/button'
+import { RiLoader2Line } from '@remixicon/react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { uploadFile } from '@/service/plugins'
+import Card from '../../../card'
+
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {

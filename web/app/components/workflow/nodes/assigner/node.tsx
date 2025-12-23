@@ -1,14 +1,15 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useNodes } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import type { AssignerNodeType } from './types'
+import type { Node, NodeProps } from '@/app/components/workflow/types'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
+import Badge from '@/app/components/base/badge'
 import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { BlockEnum, type Node, type NodeProps } from '@/app/components/workflow/types'
 import {
   VariableLabelInNode,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import Badge from '@/app/components/base/badge'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 

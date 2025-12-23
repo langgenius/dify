@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
+import type { Credential, CustomCollectionBackend, CustomParamSchema } from '@/app/components/tools/types'
+import { RiSettings2Line } from '@remixicon/react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { RiSettings2Line } from '@remixicon/react'
-import ConfigCredentials from './config-credentials'
-import { AuthType, type Credential, type CustomCollectionBackend, type CustomParamSchema } from '@/app/components/tools/types'
 import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
 import Drawer from '@/app/components/base/drawer-plus'
+import Input from '@/app/components/base/input'
+import { AuthType } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
-import { testAPIAvailable } from '@/service/tools'
 import { getLanguage } from '@/i18n-config/language'
+import { testAPIAvailable } from '@/service/tools'
+import ConfigCredentials from './config-credentials'
 
 type Props = {
   positionCenter?: boolean

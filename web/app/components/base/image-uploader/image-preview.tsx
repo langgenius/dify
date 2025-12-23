@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { t } from 'i18next'
-import { createPortal } from 'react-dom'
 import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
-import { useHotkeys } from 'react-hotkeys-hook'
-import Tooltip from '@/app/components/base/tooltip'
-import Toast from '@/app/components/base/toast'
+import { t } from 'i18next'
 import { noop } from 'lodash-es'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useHotkeys } from 'react-hotkeys-hook'
+import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ImagePreviewProps = {
   url: string

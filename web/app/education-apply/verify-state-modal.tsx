@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { createPortal } from 'react-dom'
-import { useTranslation } from 'react-i18next'
 import {
   RiExternalLinkLine,
 } from '@remixicon/react'
+import React, { useEffect, useRef, useState } from 'react'
+import { createPortal } from 'react-dom'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
 

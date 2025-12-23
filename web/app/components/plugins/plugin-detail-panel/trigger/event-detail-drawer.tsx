@@ -1,4 +1,13 @@
 'use client'
+import type { TFunction } from 'i18next'
+import type { FC } from 'react'
+import type { TriggerEvent } from '@/app/components/plugins/types'
+import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
+import {
+  RiArrowLeftLine,
+  RiCloseLine,
+} from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
 import Drawer from '@/app/components/base/drawer'
@@ -7,17 +16,8 @@ import Icon from '@/app/components/plugins/card/base/card-icon'
 import Description from '@/app/components/plugins/card/base/description'
 import OrgInfo from '@/app/components/plugins/card/base/org-info'
 import { triggerEventParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
 import Field from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show/field'
 import { cn } from '@/utils/classnames'
-import {
-  RiArrowLeftLine,
-  RiCloseLine,
-} from '@remixicon/react'
-import type { TFunction } from 'i18next'
-import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { TriggerEvent } from '@/app/components/plugins/types'
 
 type EventDetailDrawerProps = {
   eventInfo: TriggerEvent

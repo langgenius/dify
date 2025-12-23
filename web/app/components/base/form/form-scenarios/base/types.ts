@@ -1,6 +1,6 @@
-import type { TransferMethod } from '@/types/app'
 import type { Option } from '../../../select/pure'
 import type { CustomActionsProps } from '../../components/form/actions'
+import type { TransferMethod } from '@/types/app'
 
 export enum BaseFieldType {
   textInput = 'text-input',

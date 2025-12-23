@@ -1,6 +1,4 @@
 'use client'
-import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
-import { cn } from '@/utils/classnames'
 import {
   RiArchive2Line,
   RiBrain2Line,
@@ -10,6 +8,8 @@ import {
   RiSpeakAiLine,
 } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
+import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
+import { cn } from '@/utils/classnames'
 import { PluginCategoryEnum } from '../types'
 import { useMarketplaceContext } from './context'
 import { useMixedTranslation } from './hooks'

@@ -1,13 +1,10 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Dataset } from './index'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import { useSelectOrDelete, useTrigger } from '../../hooks'
-import { UPDATE_DATASETS_EVENT_EMITTER } from '../../constants'
-import type { Dataset } from './index'
-import { DELETE_CONTEXT_BLOCK_COMMAND } from './index'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { File05, Folder } from '@/app/components/base/icons/src/vender/solid/files'
 import {
   PortalToFollowElem,
@@ -15,6 +12,9 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { UPDATE_DATASETS_EVENT_EMITTER } from '../../constants'
+import { useSelectOrDelete, useTrigger } from '../../hooks'
+import { DELETE_CONTEXT_BLOCK_COMMAND } from './index'
 
 type ContextBlockComponentProps = {
   nodeKey: string

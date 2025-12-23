@@ -1,15 +1,15 @@
+import type {
+  DataSourceCredential,
+} from './types'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
 import Indicator from '@/app/components/header/indicator'
 import Operator from './operator'
-import type {
-  DataSourceCredential,
-} from './types'
-import Input from '@/app/components/base/input'
-import Button from '@/app/components/base/button'
 
 type ItemProps = {
   credentialItem: DataSourceCredential

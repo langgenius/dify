@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import type { Param } from '../../types'
+import type { MoreInfo } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import type { Param } from '../../types'
 import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import Item from './item'
 import EditParam from './update'
-import type { MoreInfo } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 

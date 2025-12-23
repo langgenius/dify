@@ -1,14 +1,14 @@
-import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
-import type { CollectionType } from '@/app/components/tools/types'
-import type { LanguagesSupported } from '@/i18n-config/language'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import type { CollectionType } from '@/app/components/tools/types'
+import type { UploadFileSetting } from '@/app/components/workflow/types'
+import type { LanguagesSupported } from '@/i18n-config/language'
+import type { AccessMode } from '@/models/access-control'
+import type { ExternalDataTool } from '@/models/common'
 import type {
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import type { UploadFileSetting } from '@/app/components/workflow/types'
-import type { AccessMode } from '@/models/access-control'
-import type { ExternalDataTool } from '@/models/common'
+import type { AnnotationReplyConfig, ChatPromptConfig, CompletionPromptConfig, DatasetConfigs, PromptMode } from '@/models/debug'
 
 export enum Theme {
   light = 'light',

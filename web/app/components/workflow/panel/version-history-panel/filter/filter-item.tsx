@@ -1,6 +1,7 @@
-import { RiCheckLine } from '@remixicon/react'
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import type { WorkflowVersionFilterOptions } from '../../../types'
+import { RiCheckLine } from '@remixicon/react'
+import React from 'react'
 
 type FilterItemProps = {
   item: {

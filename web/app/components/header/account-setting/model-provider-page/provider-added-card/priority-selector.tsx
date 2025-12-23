@@ -1,14 +1,14 @@
-import { Fragment } from 'react'
 import type { FC } from 'react'
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
-import { useTranslation } from 'react-i18next'
 import {
   RiCheckLine,
   RiMoreFill,
 } from '@remixicon/react'
-import { PreferredProviderTypeEnum } from '../declarations'
+import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
+import { PreferredProviderTypeEnum } from '../declarations'
 
 type SelectorProps = {
   value?: string

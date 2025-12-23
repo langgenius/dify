@@ -2,10 +2,10 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import ProgressBar from '../progress-bar'
-import { NUM_INFINITE } from '../config'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
+import { NUM_INFINITE } from '../config'
+import ProgressBar from '../progress-bar'
 
 type Props = {
   className?: string

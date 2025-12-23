@@ -1,8 +1,8 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import vm from 'node:vm'
-import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import vm from 'node:vm'
 import { transpile } from 'typescript'
 
 const require = createRequire(import.meta.url)
@@ -11,6 +11,7 @@ const __dirname = path.dirname(__filename)
 
 const targetLanguage = 'en-US'
 const data = require('./languages.json')
+
 const languages = data.languages.filter(language => language.supported).map(language => language.value)
 
 function parseArgs(argv) {

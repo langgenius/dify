@@ -1,20 +1,20 @@
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useDebounceFn } from 'ahooks'
+import type { Member } from '@/models/common'
 import { RiArrowDownSLine, RiGroup2Line, RiLock2Line } from '@remixicon/react'
+import { useDebounceFn } from 'ahooks'
+import React, { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Avatar from '@/app/components/base/avatar'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Avatar from '@/app/components/base/avatar'
-import Input from '@/app/components/base/input'
-import { DatasetPermission } from '@/models/datasets'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import type { Member } from '@/models/common'
-import Item from './permission-item'
+import { DatasetPermission } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
 import MemberItem from './member-item'
+import Item from './permission-item'
 
 export type RoleSelectorProps = {
   disabled?: boolean

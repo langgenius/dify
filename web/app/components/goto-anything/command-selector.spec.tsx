@@ -1,9 +1,9 @@
-import React from 'react'
+import type { ActionItem } from './actions/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Command } from 'cmdk'
+import React from 'react'
 import CommandSelector from './command-selector'
-import type { ActionItem } from './actions/types'
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/app',

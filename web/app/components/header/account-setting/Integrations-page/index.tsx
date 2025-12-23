@@ -1,10 +1,10 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
-import s from './index.module.css'
-import { cn } from '@/utils/classnames'
+import { useTranslation } from 'react-i18next'
 import { useAccountIntegrates } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
+import s from './index.module.css'
 
 const titleClassName = `
   mb-2 text-sm font-medium text-gray-900

@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { Field, StructuredOutput, TypeWithArray } from '../../../llm/types'
-import { Type } from '../../../llm/types'
-import { PickerPanelMain as Panel } from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
+import React from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { PickerPanelMain as Panel } from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { Type } from '../../../llm/types'
 
 type Props = {
   nodeName: string

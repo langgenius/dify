@@ -1,8 +1,13 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import mermaid, { type MermaidConfig } from 'mermaid'
-import { useTranslation } from 'react-i18next'
+import type { MermaidConfig } from 'mermaid'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
+import mermaid from 'mermaid'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import {
   cleanUpSvgCode,
   isMermaidCodeComplete,
@@ -12,10 +17,6 @@ import {
   svgToBase64,
   waitForDOMElement,
 } from './utils'
-import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
-import { cn } from '@/utils/classnames'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
-import { Theme } from '@/types/app'
 
 // Global flags and cache for mermaid
 let isMermaidInitialized = false

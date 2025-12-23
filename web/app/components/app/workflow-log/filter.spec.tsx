@@ -7,11 +7,11 @@
  * - Keyword search
  */
 
-import { useState } from 'react'
+import type { QueryParam } from './index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
-import type { QueryParam } from './index'
 
 // ============================================================================
 // Mocks

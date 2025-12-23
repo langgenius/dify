@@ -1,11 +1,11 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import AppIcon from '../base/app-icon'
-import Tooltip from '@/app/components/base/tooltip'
 import {
   ApiAggregate,
   WindowCursor,
 } from '@/app/components/base/icons/src/vender/workflow'
+import Tooltip from '@/app/components/base/tooltip'
+import AppIcon from '../base/app-icon'
 
 export type IAppBasicProps = {
   iconType?: 'app' | 'api' | 'dataset' | 'webapp' | 'notion'

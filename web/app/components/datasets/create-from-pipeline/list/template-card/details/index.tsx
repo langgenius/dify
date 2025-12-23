@@ -1,15 +1,15 @@
-import React, { useMemo } from 'react'
-import AppIcon from '@/app/components/base/app-icon'
-import { usePipelineTemplateById } from '@/service/use-pipeline'
 import type { AppIconType } from '@/types/app'
 import { RiAddLine, RiCloseLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
+import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import AppIcon from '@/app/components/base/app-icon'
+import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import { useChunkStructureConfig } from './hooks'
-import ChunkStructureCard from './chunk-structure-card'
+import Tooltip from '@/app/components/base/tooltip'
 import WorkflowPreview from '@/app/components/workflow/workflow-preview'
+import { usePipelineTemplateById } from '@/service/use-pipeline'
+import ChunkStructureCard from './chunk-structure-card'
+import { useChunkStructureConfig } from './hooks'
 
 type DetailsProps = {
   id: string

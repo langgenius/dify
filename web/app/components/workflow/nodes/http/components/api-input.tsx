@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
+import type { Var } from '../../../types'
+import { RiArrowDownSLine } from '@remixicon/react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { Method } from '../types'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { cn } from '@/utils/classnames'
+import { VarType } from '../../../types'
 import Selector from '../../_base/components/selector'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import { VarType } from '../../../types'
-import type { Var } from '../../../types'
-import { cn } from '@/utils/classnames'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { Method } from '../types'
 
 const MethodOptions = [
   { label: 'GET', value: Method.get },

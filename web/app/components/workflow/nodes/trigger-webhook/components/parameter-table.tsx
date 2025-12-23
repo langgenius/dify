@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { WebhookParameter } from '../types'
+import type { ColumnConfig, GenericTableRow } from './generic-table'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import GenericTable from './generic-table'
-import type { ColumnConfig, GenericTableRow } from './generic-table'
-import type { WebhookParameter } from '../types'
-import { createParameterTypeOptions, normalizeParameterType } from '../utils/parameter-type-utils'
 import { VarType } from '@/app/components/workflow/types'
+import { createParameterTypeOptions, normalizeParameterType } from '../utils/parameter-type-utils'
+import GenericTable from './generic-table'
 
 type ParameterTableProps = {
   title: string

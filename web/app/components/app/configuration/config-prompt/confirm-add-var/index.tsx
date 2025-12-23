@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React, { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarHighlight from '../../base/var-highlight'
 import Button from '@/app/components/base/button'
+import VarHighlight from '../../base/var-highlight'
 
 export type IConfirmAddVarProps = {
   varNameArr: string[]

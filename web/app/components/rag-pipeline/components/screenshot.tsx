@@ -1,7 +1,7 @@
+import Image from 'next/image'
 import React from 'react'
 import useTheme from '@/hooks/use-theme'
 import { basePath } from '@/utils/var'
-import Image from 'next/image'
 
 const PipelineScreenShot = () => {
   const { theme } = useTheme()

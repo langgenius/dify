@@ -5,11 +5,11 @@
  * Covers all trigger types: app-run, debugging, webhook, schedule, plugin, rag-pipeline.
  */
 
-import { render, screen } from '@testing-library/react'
-import TriggerByDisplay from './trigger-by-display'
-import { WorkflowRunTriggeredFrom } from '@/models/log'
 import type { TriggerMetadata } from '@/models/log'
+import { render, screen } from '@testing-library/react'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { Theme } from '@/types/app'
+import TriggerByDisplay from './trigger-by-display'
 
 // ============================================================================
 // Mocks

@@ -1,20 +1,20 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import type { WriteMode } from '../types'
+import type { VarType } from '@/app/components/workflow/types'
 import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { WriteMode } from '../types'
-import { getOperationItems } from '../utils'
+import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { VarType } from '@/app/components/workflow/types'
-import Divider from '@/app/components/base/divider'
+import { cn } from '@/utils/classnames'
+import { getOperationItems } from '../utils'
 
 type Item = {
   value: string | number

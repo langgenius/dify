@@ -1,10 +1,10 @@
 import type { MockedFunction } from 'vitest'
-import React, { useCallback } from 'react'
+import type { EntryNodeStatus } from '../store/trigger-status'
+import type { BlockEnum } from '../types'
 import { act, render } from '@testing-library/react'
+import React, { useCallback } from 'react'
 import { useTriggerStatusStore } from '../store/trigger-status'
 import { isTriggerNode } from '../types'
-import type { BlockEnum } from '../types'
-import type { EntryNodeStatus } from '../store/trigger-status'
 
 // Mock the isTriggerNode function while preserving BlockEnum
 vi.mock('../types', async importOriginal => ({

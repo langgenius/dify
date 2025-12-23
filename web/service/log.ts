@@ -1,5 +1,4 @@
 import type { Fetcher } from 'swr'
-import { get, post } from './base'
 import type {
   AgentLogDetailRequest,
   AgentLogDetailResponse,
@@ -21,6 +20,7 @@ import type {
   WorkflowRunDetailResponse,
 } from '@/models/log'
 import type { NodeTracingListResponse } from '@/types/workflow'
+import { get, post } from './base'
 
 export const fetchConversationList: Fetcher<ConversationListResponse, { name: string, appId: string, params?: Record<string, any> }> = ({ appId, params }) => {
   return get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)

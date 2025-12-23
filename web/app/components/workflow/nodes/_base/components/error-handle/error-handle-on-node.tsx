@@ -1,11 +1,11 @@
+import type { Node } from '@/app/components/workflow/types'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useUpdateNodeInternals } from 'reactflow'
-import { NodeSourceHandle } from '../node-handle'
-import { ErrorHandleTypeEnum } from './types'
-import type { Node } from '@/app/components/workflow/types'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
+import { NodeSourceHandle } from '../node-handle'
+import { ErrorHandleTypeEnum } from './types'
 
 type ErrorHandleOnNodeProps = Pick<Node, 'id' | 'data'>
 const ErrorHandleOnNode = ({

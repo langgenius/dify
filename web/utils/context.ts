@@ -1,4 +1,5 @@
-import { type Context, type Provider, createContext, useContext } from 'react'
+import type { Context, Provider } from 'react'
+import { createContext, useContext } from 'react'
 import * as selector from 'use-context-selector'
 
 const createCreateCtxFunction = (

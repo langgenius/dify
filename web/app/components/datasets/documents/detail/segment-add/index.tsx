@@ -1,20 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiAddLine,
   RiArrowDownSLine,
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useBoolean } from 'ahooks'
+import React, { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
 import Popover from '@/app/components/base/popover'
-import { useBoolean } from 'ahooks'
-import { useProviderContext } from '@/context/provider-context'
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
 import { Plan } from '@/app/components/billing/type'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 
 export type ISegmentAddProps = {
   importStatus: ProcessStatus | string | undefined

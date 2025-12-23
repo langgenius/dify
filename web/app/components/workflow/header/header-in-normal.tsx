@@ -1,26 +1,26 @@
+import type { StartNodeType } from '../nodes/start/types'
+import type { RunAndHistoryProps } from './run-and-history'
 import {
   useCallback,
 } from 'react'
 import { useNodes } from 'reactflow'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../store'
-import type { StartNodeType } from '../nodes/start/types'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import Divider from '../../base/divider'
 import {
   useNodesInteractions,
   useNodesReadOnly,
   useWorkflowRun,
 } from '../hooks'
-import Divider from '../../base/divider'
-import type { RunAndHistoryProps } from './run-and-history'
-import RunAndHistory from './run-and-history'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import EditingTitle from './editing-title'
 import EnvButton from './env-button'
-import VersionHistoryButton from './version-history-button'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
-import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
 import GlobalVariableButton from './global-variable-button'
+import RunAndHistory from './run-and-history'
+import ScrollToSelectedNodeButton from './scroll-to-selected-node-button'
+import VersionHistoryButton from './version-history-button'
 
 export type HeaderInNormalProps = {
   components?: {

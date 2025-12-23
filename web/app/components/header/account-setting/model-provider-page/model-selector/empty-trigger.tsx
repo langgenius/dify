@@ -1,8 +1,9 @@
 import type { FC } from 'react'
 import { RiEqualizer2Line } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
 import { cn } from '@/utils/classnames'
-import { useTranslation } from 'react-i18next'
+
 type ModelTriggerProps = {
   open: boolean
   className?: string

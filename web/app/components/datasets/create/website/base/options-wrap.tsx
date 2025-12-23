@@ -1,11 +1,12 @@
 'use client'
-import { useBoolean } from 'ahooks'
 import type { FC } from 'react'
+import { RiEqualizer2Line } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiEqualizer2Line } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { cn } from '@/utils/classnames'
+
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type Props = {

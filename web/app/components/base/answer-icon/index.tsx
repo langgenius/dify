@@ -1,10 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
-import { init } from 'emoji-mart'
-import data from '@emoji-mart/data'
-import { cn } from '@/utils/classnames'
 import type { AppIconType } from '@/types/app'
+import data from '@emoji-mart/data'
+import { init } from 'emoji-mart'
+import { cn } from '@/utils/classnames'
 
 init({ data })
 

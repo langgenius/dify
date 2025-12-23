@@ -1,4 +1,12 @@
 'use client'
+import type {
+  RefObject,
+} from 'react'
+import type { BlockEnum, OnSelectBlock } from '../types'
+import type { ListRef } from './market-place-plugin/list'
+import type { TriggerDefaultValue, TriggerWithProvider } from './types'
+import { RiArrowRightUpLine } from '@remixicon/react'
+import Link from 'next/link'
 import {
   useCallback,
   useEffect,
@@ -6,30 +14,23 @@ import {
   useRef,
   useState,
 } from 'react'
-import type {
-  RefObject,
-} from 'react'
 import { useTranslation } from 'react-i18next'
-import type { BlockEnum, OnSelectBlock } from '../types'
-import type { TriggerDefaultValue, TriggerWithProvider } from './types'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
+import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
+import { cn } from '@/utils/classnames'
+import { getMarketplaceUrl } from '@/utils/var'
+import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
+import { PluginCategoryEnum } from '../../plugins/types'
+import { BlockEnum as BlockEnumValue } from '../types'
+import { ENTRY_NODE_TYPES } from './constants'
+import FeaturedTriggers from './featured-triggers'
+import PluginList from './market-place-plugin/list'
 import StartBlocks from './start-blocks'
 import TriggerPluginList from './trigger-plugin/list'
-import { ENTRY_NODE_TYPES } from './constants'
-import { cn } from '@/utils/classnames'
-import Link from 'next/link'
-import { RiArrowRightUpLine } from '@remixicon/react'
-import { getMarketplaceUrl } from '@/utils/var'
-import Button from '@/app/components/base/button'
-import { SearchMenu } from '@/app/components/base/icons/src/vender/line/general'
-import { BlockEnum as BlockEnumValue } from '../types'
-import FeaturedTriggers from './featured-triggers'
-import Divider from '@/app/components/base/divider'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useAllTriggerPlugins, useInvalidateAllTriggerPlugins } from '@/service/use-triggers'
-import { useFeaturedTriggersRecommendations } from '@/service/use-plugins'
-import { PluginCategoryEnum } from '../../plugins/types'
-import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
-import PluginList, { type ListRef } from './market-place-plugin/list'
 
 const marketplaceFooterClassName = 'system-sm-medium z-10 flex h-8 flex-none cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
 

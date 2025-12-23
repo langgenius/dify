@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import Checkbox from '@/app/components/base/checkbox'
+import { cn } from '@/utils/classnames'
 
 type AddAnotherProps = {
   className?: string

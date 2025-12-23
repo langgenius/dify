@@ -1,6 +1,6 @@
 import React from 'react'
-import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { useTranslation } from 'react-i18next'
+import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import Item from './item'
 
 type TabProps = {

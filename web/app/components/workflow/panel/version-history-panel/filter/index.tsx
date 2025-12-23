@@ -1,16 +1,17 @@
-import React, { type FC, useCallback, useState } from 'react'
+import type { FC } from 'react'
 import { RiFilter3Line } from '@remixicon/react'
-import { WorkflowVersionFilterOptions } from '../../../types'
-import { useFilterOptions } from './use-filter'
-import FilterItem from './filter-item'
-import FilterSwitch from './filter-switch'
+import React, { useCallback, useState } from 'react'
+import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
+import { WorkflowVersionFilterOptions } from '../../../types'
+import FilterItem from './filter-item'
+import FilterSwitch from './filter-switch'
+import { useFilterOptions } from './use-filter'
 
 type FilterProps = {
   filterValue: WorkflowVersionFilterOptions

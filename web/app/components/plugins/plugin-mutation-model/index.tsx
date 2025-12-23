@@ -1,10 +1,10 @@
-import type { FC, ReactNode } from 'react'
-import React, { memo } from 'react'
-import Card from '@/app/components/plugins/card'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import type { Plugin } from '../types'
 import type { UseMutationResult } from '@tanstack/react-query'
+import type { FC, ReactNode } from 'react'
+import type { Plugin } from '../types'
+import React, { memo } from 'react'
+import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+import Card from '@/app/components/plugins/card'
 
 type Props = {
   plugin: Plugin

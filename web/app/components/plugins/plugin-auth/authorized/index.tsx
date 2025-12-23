@@ -1,37 +1,36 @@
+import type { Credential, PluginPayload } from '../types'
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
   useRef,
   useState,
 } from 'react'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type {
-  PortalToFollowElemOptions,
-} from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
+import { useToastContext } from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
 import Authorize from '../authorize'
-import type { Credential } from '../types'
-import { CredentialTypeEnum } from '../types'
 import ApiKeyModal from '../authorize/api-key-modal'
-import Item from './item'
-import { useToastContext } from '@/app/components/base/toast'
-import type { PluginPayload } from '../types'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import { CredentialTypeEnum } from '../types'
+import Item from './item'
 
 type AuthorizedProps = {
   pluginPayload: PluginPayload

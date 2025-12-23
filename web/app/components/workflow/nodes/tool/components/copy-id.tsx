@@ -1,9 +1,9 @@
 'use client'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiFileCopyLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { debounce } from 'lodash-es'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {

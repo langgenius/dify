@@ -1,11 +1,11 @@
 'use client'
-import { useTranslation } from 'react-i18next'
 import { useCallback, useState } from 'react'
-import CheckEmail from './components/check-email'
-import VerifyEmail from './components/verify-email'
-import FeedBack from './components/feed-back'
+import { useTranslation } from 'react-i18next'
 import CustomDialog from '@/app/components/base/dialog'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import CheckEmail from './components/check-email'
+import FeedBack from './components/feed-back'
+import VerifyEmail from './components/verify-email'
 
 type DeleteAccountProps = {
   onCancel: () => void

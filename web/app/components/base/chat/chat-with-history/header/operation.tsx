@@ -1,10 +1,10 @@
 'use client'
-import type { FC } from 'react'
-import React, { useState } from 'react'
 import type { Placement } from '@floating-ui/react'
+import type { FC } from 'react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'

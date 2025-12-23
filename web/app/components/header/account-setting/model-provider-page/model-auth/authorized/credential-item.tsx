@@ -1,19 +1,19 @@
-import {
-  memo,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Credential } from '../../declarations'
 import {
   RiCheckLine,
   RiDeleteBinLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
-import Indicator from '@/app/components/header/indicator'
+import {
+  memo,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
-import type { Credential } from '../../declarations'
 import Badge from '@/app/components/base/badge'
+import Tooltip from '@/app/components/base/tooltip'
+import Indicator from '@/app/components/header/indicator'
+import { cn } from '@/utils/classnames'
 
 type CredentialItemProps = {
   credential: Credential

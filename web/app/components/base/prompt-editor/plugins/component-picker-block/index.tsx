@@ -1,20 +1,5 @@
-import {
-  Fragment,
-  memo,
-  useCallback,
-  useState,
-} from 'react'
-import ReactDOM from 'react-dom'
-import {
-  flip,
-  offset,
-  shift,
-  useFloating,
-} from '@floating-ui/react'
-import type { TextNode } from 'lexical'
 import type { MenuRenderFn } from '@lexical/react/LexicalTypeaheadMenuPlugin'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import type { TextNode } from 'lexical'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -26,19 +11,34 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from '../../types'
-import { useBasicTypeaheadTriggerMatch } from '../../hooks'
-import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
-import { $splitNodeContainingQuery } from '../../utils'
-import { useOptions } from './hooks'
 import type { PickerBlockMenuOption } from './menu'
+import {
+  flip,
+  offset,
+  shift,
+  useFloating,
+} from '@floating-ui/react'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { LexicalTypeaheadMenuPlugin } from '@lexical/react/LexicalTypeaheadMenuPlugin'
+import { KEY_ESCAPE_COMMAND } from 'lexical'
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useState,
+} from 'react'
+import ReactDOM from 'react-dom'
+import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { KEY_ESCAPE_COMMAND } from 'lexical'
+import { useBasicTypeaheadTriggerMatch } from '../../hooks'
+import { $splitNodeContainingQuery } from '../../utils'
 import { INSERT_CURRENT_BLOCK_COMMAND } from '../current-block'
-import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { INSERT_ERROR_MESSAGE_BLOCK_COMMAND } from '../error-message-block'
 import { INSERT_LAST_RUN_BLOCK_COMMAND } from '../last-run-block'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
+import { INSERT_WORKFLOW_VARIABLE_BLOCK_COMMAND } from '../workflow-variable-block'
+import { useOptions } from './hooks'
 
 type ComponentPickerProps = {
   triggerString: string

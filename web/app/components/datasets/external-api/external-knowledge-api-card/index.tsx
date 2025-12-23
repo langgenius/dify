@@ -1,17 +1,17 @@
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { CreateExternalAPIReq } from '../declarations'
+import type { ExternalAPIItem } from '@/models/datasets'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
-import type { CreateExternalAPIReq } from '../declarations'
-import type { ExternalAPIItem } from '@/models/datasets'
-import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI, updateExternalAPI } from '@/service/datasets'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import Confirm from '@/app/components/base/confirm'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useModalContext } from '@/context/modal-context'
-import ActionButton from '@/app/components/base/action-button'
-import Confirm from '@/app/components/base/confirm'
+import { checkUsageExternalAPI, deleteExternalAPI, fetchExternalAPI, updateExternalAPI } from '@/service/datasets'
 
 type ExternalKnowledgeAPICardProps = {
   api: ExternalAPIItem

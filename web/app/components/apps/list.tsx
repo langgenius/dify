@@ -1,11 +1,5 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
-import {
-  useRouter,
-} from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
 import {
   RiApps2Line,
   RiDragDropLine,
@@ -14,25 +8,31 @@ import {
   RiMessage3Line,
   RiRobot3Line,
 } from '@remixicon/react'
-import AppCard from './app-card'
-import NewAppCard from './new-app-card'
-import useAppsQueryState from './hooks/use-apps-query-state'
-import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
-import { useAppContext } from '@/context/app-context'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { CheckModal } from '@/hooks/use-pay'
-import TabSliderNew from '@/app/components/base/tab-slider-new'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import Input from '@/app/components/base/input'
-import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import TagFilter from '@/app/components/base/tag-management/filter'
-import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { useDebounceFn } from 'ahooks'
 import dynamic from 'next/dynamic'
+import {
+  useRouter,
+} from 'next/navigation'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import TabSliderNew from '@/app/components/base/tab-slider-new'
+import TagFilter from '@/app/components/base/tag-management/filter'
+import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
+import CheckboxWithLabel from '@/app/components/datasets/create/website/base/checkbox-with-label'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { CheckModal } from '@/hooks/use-pay'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
+import { useInfiniteAppList } from '@/service/use-apps'
+import { AppModeEnum } from '@/types/app'
+import AppCard from './app-card'
 import Empty from './empty'
 import Footer from './footer'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { AppModeEnum } from '@/types/app'
-import { useInfiniteAppList } from '@/service/use-apps'
+import useAppsQueryState from './hooks/use-apps-query-state'
+import { useDSLDragDrop } from './hooks/use-dsl-drag-drop'
+import NewAppCard from './new-app-card'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,

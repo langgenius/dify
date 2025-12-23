@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { MetadataItemWithEdit } from '../types'
-import { cn } from '@/utils/classnames'
-import Label from './label'
-import InputCombined from './input-combined'
 import { RiIndeterminateCircleLine } from '@remixicon/react'
+import React from 'react'
+import { cn } from '@/utils/classnames'
+import InputCombined from './input-combined'
+import Label from './label'
 
 type Props = {
   className?: string

@@ -1,7 +1,7 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { Dataset } from './index'
 import { DecoratorNode } from 'lexical'
 import ContextBlockComponent from './component'
-import type { Dataset } from './index'
 
 export type SerializedNode = SerializedLexicalNode & { datasets: Dataset[], onAddContext: () => void, canNotAddContext: boolean }
 

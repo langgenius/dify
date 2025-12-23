@@ -3,9 +3,9 @@
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
+import tsParser from '@typescript-eslint/parser'
 import { Linter } from 'eslint'
 import sonarPlugin from 'eslint-plugin-sonarjs'
-import tsParser from '@typescript-eslint/parser'
 
 // ============================================================================
 // Simple Analyzer

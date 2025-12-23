@@ -1,19 +1,19 @@
-import { del, get, post, put } from './base'
+import type { QueryKey } from '@tanstack/react-query'
 import type {
   Collection,
   MCPServerDetail,
   Tool,
 } from '@/app/components/tools/types'
-import { CollectionType } from '@/app/components/tools/types'
 import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
-import { useInvalid } from './use-base'
-import type { QueryKey } from '@tanstack/react-query'
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { CollectionType } from '@/app/components/tools/types'
+import { del, get, post, put } from './base'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'tools'
 

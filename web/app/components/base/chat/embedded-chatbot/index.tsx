@@ -3,23 +3,23 @@ import {
   useEffect,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
+import Header from '@/app/components/base/chat/embedded-chatbot/header'
+import Loading from '@/app/components/base/loading'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
+import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { cn } from '@/utils/classnames'
 import {
   EmbeddedChatbotContext,
   useEmbeddedChatbotContext,
 } from './context'
 import { useEmbeddedChatbot } from './hooks'
-import { isDify } from './utils'
 import { useThemeContext } from './theme/theme-context'
 import { CssTransform } from './theme/utils'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import Loading from '@/app/components/base/loading'
-import LogoHeader from '@/app/components/base/logo/logo-embedded-chat-header'
-import Header from '@/app/components/base/chat/embedded-chatbot/header'
-import ChatWrapper from '@/app/components/base/chat/embedded-chatbot/chat-wrapper'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { cn } from '@/utils/classnames'
-import useDocumentTitle from '@/hooks/use-document-title'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { isDify } from './utils'
 
 const Chatbot = () => {
   const {

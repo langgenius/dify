@@ -1,9 +1,9 @@
 'use client'
-import { RiInformation2Fill } from '@remixicon/react'
 import type { FC } from 'react'
+import { RiInformation2Fill } from '@remixicon/react'
 import React from 'react'
-import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   textHasNoExport?: boolean

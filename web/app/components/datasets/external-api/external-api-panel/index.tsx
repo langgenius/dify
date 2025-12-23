@@ -1,18 +1,18 @@
-import React from 'react'
 import {
   RiAddLine,
   RiBookOpenLine,
   RiCloseLine,
 } from '@remixicon/react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
-import { cn } from '@/utils/classnames'
-import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
-import { useModalContext } from '@/context/modal-context'
+import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
 import { useDocLink } from '@/context/i18n'
+import { useModalContext } from '@/context/modal-context'
+import { cn } from '@/utils/classnames'
+import ExternalKnowledgeAPICard from '../external-knowledge-api-card'
 
 type ExternalAPIPanelProps = {
   onClose: () => void

@@ -1,8 +1,8 @@
 import type { MockedFunction } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import NotionPagePreview from './index'
 import type { NotionPage } from '@/models/common'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { fetchNotionPagePreview } from '@/service/datasets'
+import NotionPagePreview from './index'
 
 // Mock the fetchNotionPagePreview service
 vi.mock('@/service/datasets', () => ({

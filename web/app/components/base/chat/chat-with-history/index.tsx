@@ -1,24 +1,24 @@
 'use client'
 import type { FC } from 'react'
+import type { InstalledApp } from '@/models/explore'
 import {
   useEffect,
   useState,
 } from 'react'
+import Loading from '@/app/components/base/loading'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { cn } from '@/utils/classnames'
 import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
+import ChatWrapper from './chat-wrapper'
 import {
   ChatWithHistoryContext,
   useChatWithHistoryContext,
 } from './context'
-import { useChatWithHistory } from './hooks'
-import Sidebar from './sidebar'
 import Header from './header'
 import HeaderInMobile from './header-in-mobile'
-import ChatWrapper from './chat-wrapper'
-import type { InstalledApp } from '@/models/explore'
-import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
-import useDocumentTitle from '@/hooks/use-document-title'
+import { useChatWithHistory } from './hooks'
+import Sidebar from './sidebar'
 
 type ChatWithHistoryProps = {
   className?: string

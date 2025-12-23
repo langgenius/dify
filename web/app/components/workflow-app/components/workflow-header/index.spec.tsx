@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import type { App } from '@/types/app'
-import { AppModeEnum } from '@/types/app'
 import type { HeaderProps } from '@/app/components/workflow/header'
+import type { App } from '@/types/app'
+import { render, screen } from '@testing-library/react'
+import { AppModeEnum } from '@/types/app'
 import WorkflowHeader from './index'
 
 const mockUseAppStoreSelector = vi.fn()

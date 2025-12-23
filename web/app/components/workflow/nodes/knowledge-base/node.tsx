@@ -1,9 +1,9 @@
 import type { FC } from 'react'
+import type { KnowledgeBaseNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { KnowledgeBaseNodeType } from './types'
 import { useSettingsDisplay } from './hooks/use-settings-display'
-import type { NodeProps } from '@/app/components/workflow/types'
 
 const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
   const { t } = useTranslation()

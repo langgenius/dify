@@ -1,11 +1,11 @@
-import React, { useCallback } from 'react'
-import { RiAddLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 import type { InputVar } from '@/models/pipeline'
+import { RiAddLine } from '@remixicon/react'
+import React, { useCallback } from 'react'
 import ActionButton from '@/app/components/base/action-button'
-import { useFieldList } from './hooks'
-import FieldListContainer from './field-list-container'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
+import { cn } from '@/utils/classnames'
+import FieldListContainer from './field-list-container'
+import { useFieldList } from './hooks'
 
 type FieldListProps = {
   nodeId: string

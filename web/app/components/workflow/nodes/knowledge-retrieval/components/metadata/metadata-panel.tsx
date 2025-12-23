@@ -1,8 +1,8 @@
-import { useTranslation } from 'react-i18next'
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { RiCloseLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import AddCondition from './add-condition'
 import ConditionList from './condition-list'
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 
 type MetadataPanelProps = {
   onCancel: () => void

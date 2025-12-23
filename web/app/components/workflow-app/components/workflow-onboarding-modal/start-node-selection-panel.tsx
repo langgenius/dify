@@ -1,14 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import StartNodeOption from './start-node-option'
+import { Home, TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import NodeSelector from '@/app/components/workflow/block-selector'
-import { Home } from '@/app/components/base/icons/src/vender/workflow'
-import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import { TabsEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import StartNodeOption from './start-node-option'
 
 type StartNodeSelectionPanelProps = {
   onSelectUserInput: () => void

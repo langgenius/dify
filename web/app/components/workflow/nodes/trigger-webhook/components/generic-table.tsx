@@ -1,12 +1,12 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React, { useCallback, useMemo } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
-import Input from '@/app/components/base/input'
+import React, { useCallback, useMemo } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
+import Input from '@/app/components/base/input'
 import { SimpleSelect } from '@/app/components/base/select'
-import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import { cn } from '@/utils/classnames'
+import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
 const isPresent = (v: unknown): boolean => {
@@ -283,13 +283,15 @@ const GenericTable: FC<GenericTableProps> = ({
         <h4 className="system-sm-semibold-uppercase text-text-secondary">{title}</h4>
       </div>
 
-      {showPlaceholder ? (
-        <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs font-normal leading-[18px] text-text-quaternary">
-          {placeholder}
-        </div>
-      ) : (
-        renderTable()
-      )}
+      {showPlaceholder
+        ? (
+            <div className="flex h-7 items-center justify-center rounded-lg border border-divider-regular bg-components-panel-bg text-xs font-normal leading-[18px] text-text-quaternary">
+              {placeholder}
+            </div>
+          )
+        : (
+            renderTable()
+          )}
     </div>
   )
 }

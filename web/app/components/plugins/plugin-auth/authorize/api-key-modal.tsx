@@ -1,3 +1,8 @@
+import type { PluginPayload } from '../types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
 import {
   memo,
   useCallback,
@@ -6,25 +11,20 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal/modal'
-import { CredentialTypeEnum } from '../types'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type {
-  FormRefObject,
-  FormSchema,
-} from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
-import { useToastContext } from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
-import type { PluginPayload } from '../types'
+import Modal from '@/app/components/base/modal/modal'
+import { useToastContext } from '@/app/components/base/toast'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useAddPluginCredentialHook,
   useGetPluginCredentialSchemaHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
-import { ReadmeEntrance } from '../../readme-panel/entrance'
-import { ReadmeShowType } from '../../readme-panel/store'
-import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
+import { CredentialTypeEnum } from '../types'
 
 export type ApiKeyModalProps = {
   pluginPayload: PluginPayload

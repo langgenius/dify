@@ -1,48 +1,46 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import Link from 'next/link'
+import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import {
   RiBookOpenLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
-import {
-  PluginPageContextProvider,
-  usePluginPageContext,
-} from './context'
-import InstallPluginDropdown from './install-plugin-dropdown'
-import { useUploader } from './use-uploader'
-import useReferenceSetting from './use-reference-setting'
-import DebugInfo from './debug-info'
-import PluginTasks from './plugin-tasks'
-import Button from '@/app/components/base/button'
-import TabSlider from '@/app/components/base/tab-slider'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
-import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
-import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
+import { noop } from 'lodash-es'
+import Link from 'next/link'
 import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
-import type { Dependency } from '../types'
-import type { PluginDeclaration, PluginManifestInMarket } from '../types'
-import { sleep } from '@/utils'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import Button from '@/app/components/base/button'
+import TabSlider from '@/app/components/base/tab-slider'
+import Tooltip from '@/app/components/base/tooltip'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
 import { getDocsUrl } from '@/app/components/plugins/utils'
-import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { MARKETPLACE_API_PREFIX } from '@/config'
-import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import I18n from '@/context/i18n'
-import { noop } from 'lodash-es'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
-import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
+import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import I18n from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import { sleep } from '@/utils'
+import { cn } from '@/utils/classnames'
+import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
+import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
+import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
+import {
+  PluginPageContextProvider,
+  usePluginPageContext,
+} from './context'
+import DebugInfo from './debug-info'
+import InstallPluginDropdown from './install-plugin-dropdown'
+import PluginTasks from './plugin-tasks'
+import useReferenceSetting from './use-reference-setting'
+import { useUploader } from './use-uploader'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 const BUNDLE_INFO_KEY = 'bundle-info'

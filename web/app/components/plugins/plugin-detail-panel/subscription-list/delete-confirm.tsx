@@ -1,9 +1,9 @@
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { useDeleteTriggerSubscription } from '@/service/use-triggers'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useSubscriptionList } from './use-subscription-list'
 
 type Props = {

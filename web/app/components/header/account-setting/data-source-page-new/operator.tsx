@@ -1,9 +1,7 @@
-import {
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import type {
+  DataSourceCredential,
+} from './types'
+import type { Item } from '@/app/components/base/dropdown'
 import {
   RiDeleteBinLine,
   RiEditLine,
@@ -11,11 +9,13 @@ import {
   RiHome9Line,
   RiStickyNoteAddLine,
 } from '@remixicon/react'
+import {
+  memo,
+  useCallback,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import Dropdown from '@/app/components/base/dropdown'
-import type { Item } from '@/app/components/base/dropdown'
-import type {
-  DataSourceCredential,
-} from './types'
 import { CredentialTypeEnum } from '@/app/components/plugins/plugin-auth/types'
 
 type OperatorProps = {

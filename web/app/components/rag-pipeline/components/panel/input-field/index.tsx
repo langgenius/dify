@@ -1,27 +1,27 @@
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { Node } from '@/app/components/workflow/types'
+import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
+import { RiCloseLine, RiEyeLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useMemo,
   useRef,
 } from 'react'
-import { useStore } from '@/app/components/workflow/store'
-import { RiCloseLine, RiEyeLine } from '@remixicon/react'
-import type { Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import FieldList from './field-list'
-import FooterTip from './footer-tip'
-import GlobalInputs from './label-right-content/global-inputs'
-import Datasource from './label-right-content/datasource'
-import { useNodes } from 'reactflow'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { useTranslation } from 'react-i18next'
-import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
-import type { InputVar, RAGPipelineVariables } from '@/models/pipeline'
+import { useNodes } from 'reactflow'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import { useNodesSyncDraft } from '@/app/components/workflow/hooks'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import FieldList from './field-list'
+import FooterTip from './footer-tip'
+import Datasource from './label-right-content/datasource'
+import GlobalInputs from './label-right-content/global-inputs'
 
 const InputFieldPanel = () => {
   const { t } = useTranslation()

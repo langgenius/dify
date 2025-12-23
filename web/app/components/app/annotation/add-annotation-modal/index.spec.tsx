@@ -1,8 +1,8 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import AddAnnotationModal from './index'
+import React from 'react'
 import { useProviderContext } from '@/context/provider-context'
+import AddAnnotationModal from './index'
 
 vi.mock('@/context/provider-context', () => ({
   useProviderContext: vi.fn(),

@@ -1,13 +1,13 @@
 'use client'
-import React from 'react'
-import { type FC, useRef } from 'react'
-import { init } from 'emoji-mart'
-import data from '@emoji-mart/data'
-import { cva } from 'class-variance-authority'
+import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
-import { cn } from '@/utils/classnames'
-import { useHover } from 'ahooks'
+import data from '@emoji-mart/data'
 import { RiEditLine } from '@remixicon/react'
+import { useHover } from 'ahooks'
+import { cva } from 'class-variance-authority'
+import { init } from 'emoji-mart'
+import React, { useRef } from 'react'
+import { cn } from '@/utils/classnames'
 
 init({ data })
 

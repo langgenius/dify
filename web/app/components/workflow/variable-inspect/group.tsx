@@ -1,5 +1,5 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { currentVarType } from './panel'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import {
   RiArrowRightSLine,
   RiDeleteBinLine,
@@ -7,16 +7,16 @@ import {
   RiLoader2Line,
   // RiErrorWarningFill,
 } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 // import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import type { currentVarType } from './panel'
+import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { VarInInspectType } from '@/types/workflow'
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import { cn } from '@/utils/classnames'
 import { useToolIcon } from '../hooks'
-import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type Props = {
   nodeData?: NodeWithVar

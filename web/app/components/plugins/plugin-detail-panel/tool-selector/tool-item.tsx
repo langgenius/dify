@@ -1,23 +1,23 @@
 'use client'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
   RiEqualizer2Line,
   RiErrorWarningFill,
 } from '@remixicon/react'
-import { Group } from '@/app/components/base/icons/src/vender/other'
-import AppIcon from '@/app/components/base/app-icon'
-import Switch from '@/app/components/base/switch'
-import Button from '@/app/components/base/button'
-import Indicator from '@/app/components/header/indicator'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
+import Button from '@/app/components/base/button'
+import { Group } from '@/app/components/base/icons/src/vender/other'
+import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
 import { ToolTipContent } from '@/app/components/base/tooltip/content'
+import Indicator from '@/app/components/header/indicator'
 import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import { cn } from '@/utils/classnames'
-import McpToolNotSupportTooltip from '@/app/components/workflow/nodes/_base/components/mcp-tool-not-support-tooltip'
 
 type Props = {
   icon?: any

@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import BoolValue from './bool-value'
+import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import { cn } from '@/utils/classnames'
+import BoolValue from './bool-value'
 
 type Props = {
   className?: string

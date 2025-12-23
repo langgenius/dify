@@ -1,9 +1,4 @@
 import type { Dispatch, SetStateAction } from 'react'
-import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiIndeterminateCircleLine,
-} from '@remixicon/react'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -13,21 +8,26 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
-import { ConfigurationMethodEnum } from '../declarations'
-import Indicator from '../../../indicator'
-import CooldownTimer from './cooldown-timer'
-import { cn } from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
-import Switch from '@/app/components/base/switch'
+import {
+  RiIndeterminateCircleLine,
+} from '@remixicon/react'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Badge from '@/app/components/base/badge/index'
+import GridMask from '@/app/components/base/grid-mask'
 import { Balance } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import s from '@/app/components/custom/style.module.css'
-import GridMask from '@/app/components/base/grid-mask'
-import { useProviderContextSelector } from '@/context/provider-context'
-import { IS_CE_EDITION } from '@/config'
 import { AddCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import Badge from '@/app/components/base/badge/index'
+import { IS_CE_EDITION } from '@/config'
+import { useProviderContextSelector } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
+import Indicator from '../../../indicator'
+import { ConfigurationMethodEnum } from '../declarations'
+import CooldownTimer from './cooldown-timer'
 
 export type ModelLoadBalancingConfigsProps = {
   draftConfig?: ModelLoadBalancingConfig

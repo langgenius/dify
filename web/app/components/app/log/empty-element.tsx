@@ -1,12 +1,12 @@
 'use client'
 import type { FC, SVGProps } from 'react'
-import React from 'react'
-import Link from 'next/link'
-import { Trans, useTranslation } from 'react-i18next'
-import { basePath } from '@/utils/var'
-import { getRedirectionPath } from '@/utils/app-redirection'
 import type { App } from '@/types/app'
+import Link from 'next/link'
+import React from 'react'
+import { Trans, useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
+import { getRedirectionPath } from '@/utils/app-redirection'
+import { basePath } from '@/utils/var'
 
 const ThreeDotsIcon = ({ className }: SVGProps<SVGElement>) => {
   return (

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import Iteration from './iteration'
 import type { AgentIteration } from '@/models/log'
+import Iteration from './iteration'
 
 type TracingPanelProps = {
   list: AgentIteration[]

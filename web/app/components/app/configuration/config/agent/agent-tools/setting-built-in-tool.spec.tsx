@@ -1,9 +1,10 @@
-import React from 'react'
+import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SettingBuiltInTool from './setting-built-in-tool'
+import React from 'react'
+import { CollectionType } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
-import { CollectionType, type Tool, type ToolParameter } from '@/app/components/tools/types'
+import SettingBuiltInTool from './setting-built-in-tool'
 
 const fetchModelToolList = vi.fn()
 const fetchBuiltInToolList = vi.fn()

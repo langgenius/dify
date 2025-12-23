@@ -1,9 +1,11 @@
-import { type FC, useMemo } from 'react'
+import type { FC } from 'react'
+import type { StepperProps } from '../stepper'
 import { RiArrowLeftLine } from '@remixicon/react'
 import Link from 'next/link'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Stepper, type StepperProps } from '../stepper'
 import { cn } from '@/utils/classnames'
+import { Stepper } from '../stepper'
 
 export type TopBarProps = Pick<StepperProps, 'activeIndex'> & {
   className?: string

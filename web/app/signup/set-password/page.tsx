@@ -1,15 +1,15 @@
 'use client'
+import type { MailRegisterResponse } from '@/service/use-common'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
-import Input from '@/app/components/base/input'
-import { validPassword } from '@/config'
-import type { MailRegisterResponse } from '@/service/use-common'
-import { useMailRegister } from '@/service/use-common'
 import { trackEvent } from '@/app/components/base/amplitude'
+import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
+import { validPassword } from '@/config'
+import { useMailRegister } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()

@@ -1,9 +1,9 @@
 import type { NodeDefault } from '../../types'
-import { AuthorizationType, BodyType, Method } from './types'
 import type { BodyPayload, HttpNodeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { AuthorizationType, BodyType, Method } from './types'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Utilities,

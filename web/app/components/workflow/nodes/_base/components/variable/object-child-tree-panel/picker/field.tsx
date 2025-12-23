@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
+import type { Field as FieldType } from '../../../../../llm/types'
+import type { ValueSelector } from '@/app/components/workflow/types'
+import { RiMoreFill } from '@remixicon/react'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 import { Type } from '../../../../../llm/types'
 import { getFieldType } from '../../../../../llm/utils'
-import type { Field as FieldType } from '../../../../../llm/types'
-import { cn } from '@/utils/classnames'
 import TreeIndentLine from '../tree-indent-line'
-import { RiMoreFill } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
-import type { ValueSelector } from '@/app/components/workflow/types'
-import { useTranslation } from 'react-i18next'
 
 const MAX_DEPTH = 10
 

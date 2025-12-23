@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import { createContext, useCallback, useEffect, useRef } from 'react'
-import { createDatasetsDetailStore } from './store'
-import type { CommonNodeType, Node } from '../types'
-import { BlockEnum } from '../types'
 import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { CommonNodeType, Node } from '../types'
+import { createContext, useCallback, useEffect, useRef } from 'react'
 import { fetchDatasets } from '@/service/datasets'
+import { BlockEnum } from '../types'
+import { createDatasetsDetailStore } from './store'
 
 type DatasetsDetailStoreApi = ReturnType<typeof createDatasetsDetailStore>
 

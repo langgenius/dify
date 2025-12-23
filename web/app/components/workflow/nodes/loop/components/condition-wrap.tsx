@@ -1,20 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Node, NodeOutPutVar, Var } from '../../../types'
+import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator } from '../types'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, LogicalOperator, handleRemoveSubVariableCondition } from '../types'
-import type { Node, NodeOutPutVar, Var } from '../../../types'
-import { VarType } from '../../../types'
-import { useGetAvailableVars } from '../../variable-assigner/hooks'
-import ConditionList from './condition-list'
-import ConditionAdd from './condition-add'
-import { SUB_VARIABLES } from './../default'
-import { cn } from '@/utils/classnames'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
+import { cn } from '@/utils/classnames'
+import { VarType } from '../../../types'
+import { useGetAvailableVars } from '../../variable-assigner/hooks'
+import { SUB_VARIABLES } from './../default'
+import ConditionAdd from './condition-add'
+import ConditionList from './condition-list'
 
 type Props = {
   isSubVariable?: boolean

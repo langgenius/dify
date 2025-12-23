@@ -1,24 +1,24 @@
+import type {
+  CommonNodeType,
+  Node,
+} from '@/app/components/workflow/types'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  VariableLabelInText,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
 import { ComparisonOperator } from '../types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
 } from '../utils'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
-import type {
-  CommonNodeType,
-  Node,
-} from '@/app/components/workflow/types'
-import {
-  VariableLabelInText,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type ConditionValueProps = {
   variableSelector: string[]

@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import TopKItem from '@/app/components/base/param-item/top-k-item'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
+import TopKItem from '@/app/components/base/param-item/top-k-item'
 import { cn } from '@/utils/classnames'
 
 type RetrievalSettingsProps = {

@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { cn } from '@/utils/classnames'
 import VarHighlight from '@/app/components/app/configuration/base/var-highlight'
+import { cn } from '@/utils/classnames'
+
 type Props = {
   isFocus?: boolean
   onFocus?: () => void

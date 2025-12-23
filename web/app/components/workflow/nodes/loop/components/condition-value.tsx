@@ -3,16 +3,16 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  VariableLabelInNode,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { ComparisonOperator } from '../types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
 } from '../utils'
 import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from './../default'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import {
-  VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 type ConditionValueProps = {
   variableSelector: string[]

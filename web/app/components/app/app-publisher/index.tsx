@@ -1,11 +1,6 @@
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ModelAndParameter } from '../configuration/debug/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -19,17 +14,17 @@ import {
   RiVerifiedBadgeLine,
 } from '@remixicon/react'
 import { useKeyPress } from 'ahooks'
-import Divider from '../../base/divider'
-import Loading from '../../base/loading'
-import Toast from '../../base/toast'
-import Tooltip from '../../base/tooltip'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
-import AccessControl from '../app-access-control'
-import type { ModelAndParameter } from '../configuration/debug/types'
-import PublishWithMultipleModel from './publish-with-multiple-model'
-import SuggestedAction from './suggested-action'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import EmbeddedModal from '@/app/components/app/overview/embedded'
 import { useStore as useAppStore } from '@/app/components/app/store'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import { CodeBrowser } from '@/app/components/base/icons/src/vender/line/development'
 import {
@@ -37,21 +32,26 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import WorkflowToolConfigureButton from '@/app/components/tools/workflow-tool/configure-button'
-import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { AccessMode } from '@/models/access-control'
 import { useAppWhiteListSubjects, useGetUserCanAccessApp } from '@/service/access-control'
 import { fetchAppDetailDirect } from '@/service/apps'
 import { fetchInstalledAppList } from '@/service/explore'
 import { AppModeEnum } from '@/types/app'
-import type { PublishWorkflowParams } from '@/types/workflow'
 import { basePath } from '@/utils/var'
-import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { trackEvent } from '@/app/components/base/amplitude'
+import Divider from '../../base/divider'
+import Loading from '../../base/loading'
+import Toast from '../../base/toast'
+import Tooltip from '../../base/tooltip'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../../workflow/utils'
+import AccessControl from '../app-access-control'
+import PublishWithMultipleModel from './publish-with-multiple-model'
+import SuggestedAction from './suggested-action'
 
 const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {

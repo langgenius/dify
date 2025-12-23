@@ -1,11 +1,11 @@
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import Button from '@/app/components/base/button'
-import Divider from '@/app/components/base/divider'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
-import { useEmbeddedChatbotContext } from '../context'
+import Divider from '@/app/components/base/divider'
+import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { cn } from '@/utils/classnames'
+import { useEmbeddedChatbotContext } from '../context'
 
 type Props = {
   collapsed: boolean

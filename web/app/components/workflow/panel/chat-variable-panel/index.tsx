@@ -1,25 +1,25 @@
+import type {
+  ConversationVariable,
+} from '@/app/components/workflow/types'
+import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useStoreApi,
 } from 'reactflow'
-import { RiBookOpenLine, RiCloseLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import { BubbleX, LongArrowLeft, LongArrowRight } from '@/app/components/base/icons/src/vender/line/others'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
-import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
-import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
-import type {
-  ConversationVariable,
-} from '@/app/components/workflow/types'
-import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { useNodesSyncDraft } from '@/app/components/workflow/hooks/use-nodes-sync-draft'
+import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
+import { findUsedVarNodes, updateNodeVars } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import VariableItem from '@/app/components/workflow/panel/chat-variable-panel/components/variable-item'
+import VariableModalTrigger from '@/app/components/workflow/panel/chat-variable-panel/components/variable-modal-trigger'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'

@@ -1,15 +1,15 @@
-import { RiCloseLine } from '@remixicon/react'
 import type { FC } from 'react'
-import { cn } from '@/utils/classnames'
-import Divider from '@/app/components/base/divider'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
 import type { DataSet } from '@/models/datasets'
-import { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { RetrievalConfig } from '@/types/app'
-import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import { RiCloseLine } from '@remixicon/react'
+import Divider from '@/app/components/base/divider'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
+import { cn } from '@/utils/classnames'
 
 type CommonSectionProps = {
   rowClass: string

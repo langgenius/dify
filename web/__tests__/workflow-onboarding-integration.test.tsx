@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 // Type for mocked store
 type MockWorkflowStore = {

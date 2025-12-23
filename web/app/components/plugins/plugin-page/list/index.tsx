@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import PluginItem from '../../plugin-item'
 import type { PluginDetail } from '../../types'
+import PluginItem from '../../plugin-item'
 
 type IPluginListProps = {
   pluginList: PluginDetail[]

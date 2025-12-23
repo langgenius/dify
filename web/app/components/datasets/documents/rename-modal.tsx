@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { useBoolean } from 'ahooks'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import Toast from '../../base/toast'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
 import { renameDocumentName } from '@/service/datasets'
+import Toast from '../../base/toast'
 
 type Props = {
   datasetId: string

@@ -1,27 +1,27 @@
 import type {
   ReactElement,
 } from 'react'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type {
+  NodeProps,
+} from '@/app/components/workflow/types'
 import {
   cloneElement,
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import Tooltip from '@/app/components/base/tooltip'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import type {
-  NodeProps,
-} from '@/app/components/workflow/types'
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
 import { hasErrorHandleNode } from '@/app/components/workflow/utils'
-import Tooltip from '@/app/components/base/tooltip'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import { cn } from '@/utils/classnames'
+import ErrorHandleOnNode from '../error-handle-on-node'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
 } from '../node-handle'
-import ErrorHandleOnNode from '../error-handle-on-node'
 
 type NodeChildElement = ReactElement<Partial<NodeProps>>
 

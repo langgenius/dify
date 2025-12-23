@@ -1,11 +1,11 @@
-import type { Viewport } from 'reactflow'
-import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, VarType, Variable } from '@/app/components/workflow/types'
-import type { TransferMethod } from '@/types/app'
-import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
-import type { RAGPipelineVariables } from '@/models/pipeline'
-import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
-import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
 import type { RefObject } from 'react'
+import type { Viewport } from 'reactflow'
+import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
+import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
+import type { BlockEnum, CommonNodeType, ConversationVariable, Edge, EnvironmentVariable, InputVar, Node, ValueSelector, Variable, VarType } from '@/app/components/workflow/types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import type { TransferMethod } from '@/types/app'
 
 export type AgentLogItem = {
   node_execution_id: string

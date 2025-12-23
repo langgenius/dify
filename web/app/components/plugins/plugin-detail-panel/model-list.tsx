@@ -1,9 +1,9 @@
+import type { PluginDetail } from '@/app/components/plugins/types'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import { useModelProviderModelList } from '@/service/use-models'
-import type { PluginDetail } from '@/app/components/plugins/types'
 
 type Props = {
   detail: PluginDetail

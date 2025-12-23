@@ -1,4 +1,15 @@
+import type { PluginDetail } from '../types'
+import {
+  RiArrowLeftRightLine,
+  RiBugLine,
+  RiCloseLine,
+  RiHardDrive3Line,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import React, { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
@@ -17,22 +28,13 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetLanguage, useI18N } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
+import useTheme from '@/hooks/use-theme'
 import { uninstallPlugin } from '@/service/plugins'
 import { useAllToolProviders, useInvalidateAllToolProviders } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
 import { getMarketplaceUrl } from '@/utils/var'
-import {
-  RiArrowLeftRightLine,
-  RiBugLine,
-  RiCloseLine,
-  RiHardDrive3Line,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import useTheme from '@/hooks/use-theme'
-import Verified from '../base/badges/verified'
 import { AutoUpdateLine } from '../../base/icons/src/vender/system'
+import Verified from '../base/badges/verified'
 import DeprecationNotice from '../base/deprecation-notice'
 import Icon from '../card/base/card-icon'
 import Description from '../card/base/description'
@@ -42,9 +44,7 @@ import { useGitHubReleases } from '../install-plugin/hooks'
 import useReferenceSetting from '../plugin-page/use-reference-setting'
 import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting/types'
 import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
-import type { PluginDetail } from '../types'
 import { PluginCategoryEnum, PluginSource } from '../types'
-import { trackEvent } from '@/app/components/base/amplitude'
 
 const i18nPrefix = 'plugin.action'
 

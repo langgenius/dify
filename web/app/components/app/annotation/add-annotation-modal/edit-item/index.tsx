@@ -2,8 +2,8 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Textarea from '@/app/components/base/textarea'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
+import Textarea from '@/app/components/base/textarea'
 
 export enum EditItemType {
   Query = 'query',

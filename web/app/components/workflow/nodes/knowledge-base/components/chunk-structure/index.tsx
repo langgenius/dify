@@ -1,13 +1,13 @@
+import type { ChunkStructureEnum } from '../../types'
+import { RiAddLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAddLine } from '@remixicon/react'
-import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import type { ChunkStructureEnum } from '../../types'
-import OptionCard from '../option-card'
-import Selector from './selector'
-import { useChunkStructure } from './hooks'
 import Button from '@/app/components/base/button'
+import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
+import OptionCard from '../option-card'
+import { useChunkStructure } from './hooks'
 import Instruction from './instruction'
+import Selector from './selector'
 
 type ChunkStructureProps = {
   chunkStructure?: ChunkStructureEnum

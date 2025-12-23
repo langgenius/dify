@@ -1,9 +1,12 @@
 import type { FC } from 'react'
-import { RiArrowDownSLine } from '@remixicon/react'
 import type {
   Model,
   ModelItem,
 } from '../declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 import {
   MODEL_STATUS_TEXT,
   ModelStatusEnum,
@@ -11,9 +14,6 @@ import {
 import { useLanguage } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
 
 type ModelTriggerProps = {
   open: boolean

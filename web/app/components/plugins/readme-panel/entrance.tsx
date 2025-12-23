@@ -1,10 +1,10 @@
+import type { PluginDetail } from '../types'
+import { RiBookReadLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiBookReadLine } from '@remixicon/react'
 import { cn } from '@/utils/classnames'
-import { ReadmeShowType, useReadmePanelStore } from './store'
 import { BUILTIN_TOOLS_ARRAY } from './constants'
-import type { PluginDetail } from '../types'
+import { ReadmeShowType, useReadmePanelStore } from './store'
 
 export const ReadmeEntrance = ({
   pluginDetail,

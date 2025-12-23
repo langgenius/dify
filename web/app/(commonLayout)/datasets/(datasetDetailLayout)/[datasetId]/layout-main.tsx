@@ -1,9 +1,6 @@
 'use client'
-import type { FC } from 'react'
-import React, { useEffect, useMemo, useState } from 'react'
-import { usePathname } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
 import type { RemixiconComponentType } from '@remixicon/react'
+import type { FC } from 'react'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -12,17 +9,20 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
+import { usePathname } from 'next/navigation'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppSideBar from '@/app/components/app-sidebar'
-import Loading from '@/app/components/base/loading'
-import DatasetDetailContext from '@/context/dataset-detail'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
-import useDocumentTitle from '@/hooks/use-document-title'
+import Loading from '@/app/components/base/loading'
 import ExtraInfo from '@/app/components/datasets/extra-info'
+import { useAppContext } from '@/context/app-context'
+import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
 
 export type IAppDetailLayoutProps = {

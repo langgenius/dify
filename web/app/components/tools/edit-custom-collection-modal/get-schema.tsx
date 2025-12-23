@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
 import {
   RiAddLine,
   RiArrowDownSLine,
 } from '@remixicon/react'
-import Toast from '../../base/toast'
-import examples from './examples'
+import { useClickAway } from 'ahooks'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { importSchemaFromURL } from '@/service/tools'
+import Toast from '../../base/toast'
+import examples from './examples'
 
 type Props = {
   onChange: (value: string) => void

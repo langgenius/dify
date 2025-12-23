@@ -1,6 +1,6 @@
+import React from 'react'
 import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
-import React from 'react'
 
 type Step = {
   label: string

@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
+import type { NodeTracing } from '@/types/workflow'
+import {
+  RiArrowDownSLine,
+  RiMenu4Line,
+} from '@remixicon/react'
 import
 React,
 {
   useCallback,
   useState,
 } from 'react'
-import { cn } from '@/utils/classnames'
-import {
-  RiArrowDownSLine,
-  RiMenu4Line,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import formatNodeList from '@/app/components/workflow/run/utils/format-log'
+import { cn } from '@/utils/classnames'
 import { useLogs } from './hooks'
 import NodePanel from './node'
 import SpecialResultPanel from './special-result-panel'
-import type { NodeTracing } from '@/types/workflow'
-import formatNodeList from '@/app/components/workflow/run/utils/format-log'
 
 type TracingPanelProps = {
   list: NodeTracing[]

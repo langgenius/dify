@@ -1,24 +1,24 @@
 import type { FC } from 'react'
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { NodeProps } from '../types'
+import type { VarInInspect } from '@/types/workflow'
 import {
   RiCloseLine,
 } from '@remixicon/react'
-import { useStore } from '../store'
-import useCurrentVars from '../hooks/use-inspect-vars-crud'
-import Empty from './empty'
-import Listening from './listening'
-import Left from './left'
-import Right from './right'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import type { VarInInspect } from '@/types/workflow'
-import { VarInInspectType } from '@/types/workflow'
-
-import { cn } from '@/utils/classnames'
-import type { NodeProps } from '../types'
-import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { VarInInspectType } from '@/types/workflow'
+import { cn } from '@/utils/classnames'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import useMatchSchemaType from '../nodes/_base/components/variable/use-match-schema-type'
+
+import { useStore } from '../store'
+import Empty from './empty'
+import Left from './left'
+import Listening from './listening'
+import Right from './right'
 
 export type currentVarType = {
   nodeId: string

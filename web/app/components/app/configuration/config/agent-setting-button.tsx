@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
+import type { AgentConfig } from '@/models/debug'
+import { RiSettings2Line } from '@remixicon/react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiSettings2Line } from '@remixicon/react'
-import AgentSetting from './agent/agent-setting'
 import Button from '@/app/components/base/button'
-import type { AgentConfig } from '@/models/debug'
+import AgentSetting from './agent/agent-setting'
 
 type Props = {
   isFunctionCall: boolean

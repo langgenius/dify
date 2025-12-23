@@ -1,26 +1,26 @@
-import React, { useCallback, useRef, useState } from 'react'
+import type { NavIcon } from './navLink'
+import type { DataSet } from '@/models/datasets'
 import {
   RiMenuLine,
 } from '@remixicon/react'
+import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useKnowledge } from '@/hooks/use-knowledge'
+import { DOC_FORM_TEXT } from '@/models/datasets'
+import { useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
+import { cn } from '@/utils/classnames'
 import AppIcon from '../base/app-icon'
 import Divider from '../base/divider'
-import NavLink from './navLink'
-import type { NavIcon } from './navLink'
-import { cn } from '@/utils/classnames'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Effect from '../base/effect'
-import Dropdown from './dataset-info/dropdown'
-import type { DataSet } from '@/models/datasets'
-import { DOC_FORM_TEXT } from '@/models/datasets'
-import { useKnowledge } from '@/hooks/use-knowledge'
-import { useTranslation } from 'react-i18next'
-import { useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import ExtraInfo from '../datasets/extra-info'
+import Dropdown from './dataset-info/dropdown'
+import NavLink from './navLink'
 
 type DatasetSidebarDropdownProps = {
   navigation: Array<{

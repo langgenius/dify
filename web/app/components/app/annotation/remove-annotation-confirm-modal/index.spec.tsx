@@ -1,5 +1,5 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 import RemoveAnnotationConfirmModal from './index'
 
 vi.mock('react-i18next', () => ({

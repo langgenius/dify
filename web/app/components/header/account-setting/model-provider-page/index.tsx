@@ -1,15 +1,16 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useDebounce } from 'ahooks'
+import type {
+  ModelProvider,
+} from './declarations'
 import {
   RiAlertFill,
   RiBrainLine,
 } from '@remixicon/react'
-import SystemModelSelector from './system-model-selector'
-import ProviderAddedCard from './provider-added-card'
-import type {
-  ModelProvider,
-} from './declarations'
+import { useDebounce } from 'ahooks'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
@@ -18,9 +19,8 @@ import {
   useDefaultModel,
 } from './hooks'
 import InstallFromMarketplace from './install-from-marketplace'
-import { useProviderContext } from '@/context/provider-context'
-import { cn } from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import ProviderAddedCard from './provider-added-card'
+import SystemModelSelector from './system-model-selector'
 
 type Props = {
   searchText: string

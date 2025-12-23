@@ -1,13 +1,13 @@
+import type { ListChildComponentProps } from 'react-window'
+import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { areEqual } from 'react-window'
-import type { ListChildComponentProps } from 'react-window'
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import Checkbox from '@/app/components/base/checkbox'
 import NotionIcon from '@/app/components/base/notion-icon'
-import { cn } from '@/utils/classnames'
-import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import Radio from '@/app/components/base/radio/ui'
+import { cn } from '@/utils/classnames'
 
 type NotionPageTreeItem = {
   children: Set<string>

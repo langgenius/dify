@@ -1,26 +1,23 @@
 'use client'
-import React, { useCallback, useEffect } from 'react'
 import type { FC } from 'react'
-import { useBoolean } from 'ahooks'
-import copy from 'copy-to-clipboard'
-import { useTranslation } from 'react-i18next'
-import { useAppContext } from '@/context/app-context'
+import type { ToolWithProvider } from '../../../workflow/types'
 import {
   RiCloseLine,
   RiLoader2Line,
   RiLoopLeftLine,
 } from '@remixicon/react'
-import type { ToolWithProvider } from '../../../workflow/types'
-import Icon from '@/app/components/plugins/card/base/card-icon'
+import { useBoolean } from 'ahooks'
+import copy from 'copy-to-clipboard'
+import React, { useCallback, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
-import Indicator from '@/app/components/header/indicator'
 import Tooltip from '@/app/components/base/tooltip'
-import MCPModal from '../modal'
-import OperationDropdown from './operation-dropdown'
-import ListLoading from './list-loading'
-import ToolItem from './tool-item'
+import Indicator from '@/app/components/header/indicator'
+import Icon from '@/app/components/plugins/card/base/card-icon'
+import { useAppContext } from '@/context/app-context'
+import { openOAuthPopup } from '@/hooks/use-oauth'
 import {
   useAuthorizeMCP,
   useDeleteMCP,
@@ -29,8 +26,11 @@ import {
   useUpdateMCP,
   useUpdateMCPTools,
 } from '@/service/use-tools'
-import { openOAuthPopup } from '@/hooks/use-oauth'
 import { cn } from '@/utils/classnames'
+import MCPModal from '../modal'
+import ListLoading from './list-loading'
+import OperationDropdown from './operation-dropdown'
+import ToolItem from './tool-item'
 
 type Props = {
   detail: ToolWithProvider

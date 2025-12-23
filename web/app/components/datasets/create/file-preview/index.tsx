@@ -1,12 +1,12 @@
 'use client'
+import type { CustomFile as File } from '@/models/datasets'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { XMarkIcon } from '@heroicons/react/20/solid'
 import Loading from '@/app/components/base/loading'
-import s from './index.module.css'
-import { cn } from '@/utils/classnames'
-import type { CustomFile as File } from '@/models/datasets'
 import { fetchFilePreview } from '@/service/common'
+import { cn } from '@/utils/classnames'
+import s from './index.module.css'
 
 type IProps = {
   file?: File

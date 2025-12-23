@@ -1,5 +1,5 @@
-import { slashCommandRegistry } from '../../app/components/goto-anything/actions/commands/registry'
 import type { SlashCommandHandler } from '../../app/components/goto-anything/actions/commands/types'
+import { slashCommandRegistry } from '../../app/components/goto-anything/actions/commands/registry'
 
 // Mock the registry
 vi.mock('../../app/components/goto-anything/actions/commands/registry')

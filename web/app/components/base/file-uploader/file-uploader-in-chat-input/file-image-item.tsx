@@ -1,18 +1,18 @@
-import { useState } from 'react'
+import type { FileEntity } from '../types'
 import {
   RiCloseLine,
   RiDownloadLine,
 } from '@remixicon/react'
+import { useState } from 'react'
+import Button from '@/app/components/base/button'
+import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
 import FileImageRender from '../file-image-render'
-import type { FileEntity } from '../types'
 import {
   downloadFile,
   fileIsUploaded,
 } from '../utils'
-import Button from '@/app/components/base/button'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 type FileImageItemProps = {
   file: FileEntity

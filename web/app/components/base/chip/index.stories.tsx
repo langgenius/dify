@@ -1,6 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Item } from '.'
 import { useState } from 'react'
-import Chip, { type Item } from '.'
+import Chip from '.'
 
 const ITEMS: Item[] = [
   { value: 'all', name: 'All items' },

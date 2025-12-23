@@ -1,26 +1,26 @@
+import type {
+  DataSourceAuth,
+  DataSourceCredential,
+} from './types'
 import {
   memo,
   useCallback,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Item from './item'
-import Configure from './configure'
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from './types'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
-import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
+import Confirm from '@/app/components/base/confirm'
 import {
   ApiKeyModal,
   usePluginAuthAction,
 } from '@/app/components/plugins/plugin-auth'
-import { useDataSourceAuthUpdate } from './hooks'
-import Confirm from '@/app/components/base/confirm'
-import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
-import { openOAuthPopup } from '@/hooks/use-oauth'
+import { AuthCategory } from '@/app/components/plugins/plugin-auth/types'
 import { CollectionType } from '@/app/components/tools/types'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { openOAuthPopup } from '@/hooks/use-oauth'
+import { useGetDataSourceOAuthUrl } from '@/service/use-datasource'
+import Configure from './configure'
+import { useDataSourceAuthUpdate } from './hooks'
+import Item from './item'
 
 type CardProps = {
   item: DataSourceAuth

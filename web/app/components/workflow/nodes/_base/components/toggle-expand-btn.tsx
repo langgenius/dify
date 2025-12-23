@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import {
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
+import React, { useCallback } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 
 type Props = {

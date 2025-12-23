@@ -1,13 +1,13 @@
 'use client'
+import type { Locale } from '@/i18n-config'
+import dynamic from 'next/dynamic'
 import React from 'react'
 import { useContext } from 'use-context-selector'
-import LocaleSigninSelect from '@/app/components/base/select/locale-signin'
 import Divider from '@/app/components/base/divider'
-import { languages } from '@/i18n-config/language'
-import type { Locale } from '@/i18n-config'
-import I18n from '@/context/i18n'
-import dynamic from 'next/dynamic'
+import LocaleSigninSelect from '@/app/components/base/select/locale-signin'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import I18n from '@/context/i18n'
+import { languages } from '@/i18n-config/language'
 
 // Avoid rendering the logo and theme selector on the server
 const DifyLogo = dynamic(() => import('@/app/components/base/logo/dify-logo'), {

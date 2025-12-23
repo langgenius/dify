@@ -1,8 +1,8 @@
 import type { RefObject } from 'react'
+import type { CodeNodeType } from './types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
 import { useCallback, useMemo } from 'react'
 import useNodeCrud from '../_base/hooks/use-node-crud'
-import type { CodeNodeType } from './types'
 
 type Params = {
   id: string

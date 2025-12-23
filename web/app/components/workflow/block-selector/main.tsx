@@ -1,7 +1,17 @@
 import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
+import type {
   FC,
   MouseEventHandler,
 } from 'react'
+import type {
+  CommonNodeType,
+  NodeDefault,
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
 import {
   memo,
   useCallback,
@@ -9,31 +19,21 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import type {
-  CommonNodeType,
-  NodeDefault,
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
-import { BlockEnum, isTriggerNode } from '../types'
-import Tabs from './tabs'
-import { TabsEnum } from './types'
-import { useTabs } from './hooks'
+import {
+  Plus02,
+} from '@/app/components/base/icons/src/vender/line/general'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Input from '@/app/components/base/input'
-import {
-  Plus02,
-} from '@/app/components/base/icons/src/vender/line/general'
 import SearchBox from '@/app/components/plugins/marketplace/search-box'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { BlockEnum, isTriggerNode } from '../types'
+import { useTabs } from './hooks'
+import Tabs from './tabs'
+import { TabsEnum } from './types'
 
 export type NodeSelectorProps = {
   open?: boolean

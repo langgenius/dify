@@ -1,46 +1,46 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiBookmark3Line,
-  RiErrorWarningFill,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import { useSearchParams } from 'next/navigation'
-import TabHeader from '../../base/tab-header'
-import MenuDropdown from './menu-dropdown'
-import RunBatch from './run-batch'
-import ResDownload from './run-batch/res-download'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
-import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
   PromptConfig,
   SavedMessage,
   TextToSpeechConfig,
 } from '@/models/debug'
+import type { InstalledApp } from '@/models/explore'
+import type { SiteInfo } from '@/models/share'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import {
+  RiBookmark3Line,
+  RiErrorWarningFill,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { useSearchParams } from 'next/navigation'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { changeLanguage } from '@/i18n-config/i18next-config'
 import Loading from '@/app/components/base/loading'
-import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import Res from '@/app/components/share/text-generation/result'
-import SavedItems from '@/app/components/app/text-generate/saved-items'
-import type { InstalledApp } from '@/models/explore'
-import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
-import Toast from '@/app/components/base/toast'
-import type { VisionFile, VisionSettings } from '@/types/app'
-import { Resolution, TransferMethod } from '@/types/app'
-import { useAppFavicon } from '@/hooks/use-app-favicon'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { cn } from '@/utils/classnames'
-import { AccessMode } from '@/models/access-control'
+import Toast from '@/app/components/base/toast'
+import Res from '@/app/components/share/text-generation/result'
+import RunOnce from '@/app/components/share/text-generation/run-once'
+import { appDefaultIconBackground, DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useAppFavicon } from '@/hooks/use-app-favicon'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { changeLanguage } from '@/i18n-config/i18next-config'
+import { AccessMode } from '@/models/access-control'
+import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { Resolution, TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import TabHeader from '../../base/tab-header'
+import MenuDropdown from './menu-dropdown'
+import RunBatch from './run-batch'
+import ResDownload from './run-batch/res-download'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {

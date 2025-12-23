@@ -1,7 +1,7 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Button from './button'
+import React from 'react'
 import { Plan } from '../../../type'
+import Button from './button'
 
 describe('CloudPlanButton', () => {
   describe('Disabled state', () => {

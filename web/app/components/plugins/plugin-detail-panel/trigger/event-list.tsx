@@ -1,10 +1,10 @@
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { TriggerEvent } from '@/app/components/plugins/types'
 import type { TriggerProviderApiEntity } from '@/app/components/workflow/block-selector/types'
-import { useTriggerProviderInfo } from '@/service/use-triggers'
-import { cn } from '@/utils/classnames'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useTriggerProviderInfo } from '@/service/use-triggers'
+import { cn } from '@/utils/classnames'
 import { usePluginStore } from '../store'
 import { EventDetailDrawer } from './event-detail-drawer'
 

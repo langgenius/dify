@@ -1,5 +1,5 @@
-import { cn } from '@/utils/classnames'
 import React from 'react'
+import { cn } from '@/utils/classnames'
 
 export type Step = {
   label: string

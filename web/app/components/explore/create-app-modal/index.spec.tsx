@@ -1,11 +1,11 @@
-import React from 'react'
-import { act, fireEvent, render, screen } from '@testing-library/react'
+import type { CreateAppModalProps } from './index'
 import type { UsagePlanInfo } from '@/app/components/billing/type'
-import { Plan } from '@/app/components/billing/type'
+import { act, fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 import { createMockPlan, createMockPlanTotal, createMockPlanUsage } from '@/__mocks__/provider-context'
+import { Plan } from '@/app/components/billing/type'
 import { AppModeEnum } from '@/types/app'
 import CreateAppModal from './index'
-import type { CreateAppModalProps } from './index'
 
 let mockTranslationOverrides: Record<string, string | undefined> = {}
 

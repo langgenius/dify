@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
+import { noop } from 'lodash-es'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import EmojiPickerInner from './Inner'
-import { cn } from '@/utils/classnames'
-import Divider from '@/app/components/base/divider'
 import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
 import Modal from '@/app/components/base/modal'
-import { noop } from 'lodash-es'
+import { cn } from '@/utils/classnames'
+import EmojiPickerInner from './Inner'
 
 type IEmojiPickerProps = {
   isModal?: boolean

@@ -1,23 +1,23 @@
 import type { FC } from 'react'
-import { useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiArrowRightUpLine,
-  RiSearchLine,
-} from '@remixicon/react'
 import type {
   DefaultModel,
   Model,
   ModelItem,
 } from '../declarations'
+import {
+  RiArrowRightUpLine,
+  RiSearchLine,
+} from '@remixicon/react'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useModalContext } from '@/context/modal-context'
+import { supportFunctionCall } from '@/utils/tool-call'
 import { ModelFeatureEnum } from '../declarations'
 import { useLanguage } from '../hooks'
 import PopupItem from './popup-item'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import { useModalContext } from '@/context/modal-context'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import { supportFunctionCall } from '@/utils/tool-call'
-import { tooltipManager } from '@/app/components/base/tooltip/TooltipManager'
 
 type PopupProps = {
   defaultModel?: DefaultModel

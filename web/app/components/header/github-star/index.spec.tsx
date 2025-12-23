@@ -1,7 +1,7 @@
-import React from 'react'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import nock from 'nock'
+import React from 'react'
 import GithubStar from './index'
 
 const GITHUB_HOST = 'https://api.github.com'

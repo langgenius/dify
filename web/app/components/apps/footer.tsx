@@ -1,6 +1,6 @@
-import React from 'react'
-import Link from 'next/link'
 import { RiDiscordFill, RiDiscussLine, RiGithubFill } from '@remixicon/react'
+import Link from 'next/link'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type CustomLinkProps = {

@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import PipelineSettings from './index'
-import { DatasourceType } from '@/models/pipeline'
 import type { PipelineExecutionLogResponse } from '@/models/pipeline'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { DatasourceType } from '@/models/pipeline'
+import PipelineSettings from './index'
 
 // Mock Next.js router
 const mockPush = vi.fn()

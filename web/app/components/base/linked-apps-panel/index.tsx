@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import Link from 'next/link'
-import { RiArrowRightUpLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import AppIcon from '@/app/components/base/app-icon'
 import type { RelatedApp } from '@/models/datasets'
+import { RiArrowRightUpLine } from '@remixicon/react'
+import Link from 'next/link'
+import React from 'react'
+import AppIcon from '@/app/components/base/app-icon'
 import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 type ILikedItemProps = {
   appStatus?: boolean

@@ -1,8 +1,8 @@
-import { get, post, ssePost } from './base'
 import type { IOnCompleted, IOnData, IOnError, IOnFile, IOnMessageEnd, IOnMessageReplace, IOnThought } from './base'
+import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ChatPromptConfig, CompletionPromptConfig } from '@/models/debug'
 import type { AppModeEnum, ModelModeType } from '@/types/app'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { get, post, ssePost } from './base'
 
 export type BasicAppFirstRes = {
   prompt: string

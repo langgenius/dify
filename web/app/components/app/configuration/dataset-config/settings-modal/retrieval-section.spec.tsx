@@ -1,10 +1,11 @@
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum } from '@/models/datasets'
-import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 const mockUseModelList = vi.fn()

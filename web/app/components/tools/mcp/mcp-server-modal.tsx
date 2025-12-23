@@ -1,15 +1,15 @@
 'use client'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import Textarea from '@/app/components/base/textarea'
-import Divider from '@/app/components/base/divider'
-import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
 import type {
   MCPServerDetail,
 } from '@/app/components/tools/types'
+import { RiCloseLine } from '@remixicon/react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import Modal from '@/app/components/base/modal'
+import Textarea from '@/app/components/base/textarea'
+import MCPServerParamItem from '@/app/components/tools/mcp/mcp-server-param-item'
 import {
   useCreateMCPServer,
   useInvalidateMCPServerDetail,

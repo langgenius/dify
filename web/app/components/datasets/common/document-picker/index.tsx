@@ -1,23 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import FileIcon from '../document-file-icon'
-import DocumentList from './document-list'
 import type { DocumentItem, ParentMode, SimpleDocumentDetail } from '@/models/datasets'
-import { ChunkingMode } from '@/models/datasets'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import React, { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import SearchInput from '@/app/components/base/search-input'
-import { GeneralChunk, ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
+import { ChunkingMode } from '@/models/datasets'
 import { useDocumentList } from '@/service/knowledge/use-document'
-import Loading from '@/app/components/base/loading'
+import { cn } from '@/utils/classnames'
+import FileIcon from '../document-file-icon'
+import DocumentList from './document-list'
 
 type Props = {
   datasetId: string

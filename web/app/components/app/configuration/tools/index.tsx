@@ -1,24 +1,24 @@
-// abandoned
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import copy from 'copy-to-clipboard'
-import { useContext } from 'use-context-selector'
+import type { ExternalDataTool } from '@/models/common'
 import {
   RiAddLine,
   RiArrowDownSLine,
   RiDeleteBinLine,
 } from '@remixicon/react'
-import ConfigContext from '@/context/debug-configuration'
-import Switch from '@/app/components/base/switch'
-import Tooltip from '@/app/components/base/tooltip'
-import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
+import copy from 'copy-to-clipboard'
+// abandoned
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import AppIcon from '@/app/components/base/app-icon'
 import {
   Settings01,
 } from '@/app/components/base/icons/src/vender/line/general'
-import { useModalContext } from '@/context/modal-context'
-import type { ExternalDataTool } from '@/models/common'
-import AppIcon from '@/app/components/base/app-icon'
+import { Tool03 } from '@/app/components/base/icons/src/vender/solid/general'
+import Switch from '@/app/components/base/switch'
 import { useToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import ConfigContext from '@/context/debug-configuration'
+import { useModalContext } from '@/context/modal-context'
 
 const Tools = () => {
   const { t } = useTranslation()

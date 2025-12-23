@@ -1,23 +1,23 @@
+import { RiQuestionLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiQuestionLine } from '@remixicon/react'
 import {
   Economic,
   HighQuality,
 } from '@/app/components/base/icons/src/vender/knowledge'
-import Tooltip from '@/app/components/base/tooltip'
-import Slider from '@/app/components/base/slider'
 import Input from '@/app/components/base/input'
+import Slider from '@/app/components/base/slider'
+import Tooltip from '@/app/components/base/tooltip'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import OptionCard from './option-card'
 import { cn } from '@/utils/classnames'
 import {
   ChunkStructureEnum,
   IndexMethodEnum,
 } from '../types'
+import OptionCard from './option-card'
 
 type IndexMethodProps = {
   chunkStructure: ChunkStructureEnum

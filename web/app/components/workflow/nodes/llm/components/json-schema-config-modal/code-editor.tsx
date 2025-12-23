@@ -1,12 +1,13 @@
-import React, { type FC, useCallback, useEffect, useMemo, useRef } from 'react'
-import useTheme from '@/hooks/use-theme'
-import { Theme } from '@/types/app'
-import { cn } from '@/utils/classnames'
+import type { FC } from 'react'
 import { Editor } from '@monaco-editor/react'
 import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import Tooltip from '@/app/components/base/tooltip'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import useTheme from '@/hooks/use-theme'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 type CodeEditorProps = {
   value: string

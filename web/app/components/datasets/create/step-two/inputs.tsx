@@ -1,10 +1,10 @@
 import type { FC, PropsWithChildren, ReactNode } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { InputProps } from '@/app/components/base/input'
-import Input from '@/app/components/base/input'
-import Tooltip from '@/app/components/base/tooltip'
 import type { InputNumberProps } from '@/app/components/base/input-number'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
 import { InputNumber } from '@/app/components/base/input-number'
+import Tooltip from '@/app/components/base/tooltip'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
   return <label className="text-xs font-semibold leading-none text-text-secondary">{props.children}</label>

@@ -1,16 +1,16 @@
+import type { FileEntity } from '../types'
+import {
+  RiCloseLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
-import {
-  RiCloseLine,
-} from '@remixicon/react'
-import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
-import type { FileEntity } from '../types'
-import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
-import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
-import { fileIsUploaded } from '../utils'
 import Button from '@/app/components/base/button'
+import FileImageRender from '@/app/components/base/file-uploader/file-image-render'
+import { ReplayLine } from '@/app/components/base/icons/src/vender/other'
+import ProgressCircle from '@/app/components/base/progress-bar/progress-circle'
+import { fileIsUploaded } from '../utils'
 
 type ImageItemProps = {
   file: FileEntity

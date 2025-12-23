@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { InputNumber } from '../input-number'
-import Tooltip from '@/app/components/base/tooltip'
 import Slider from '@/app/components/base/slider'
 import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
+import { InputNumber } from '../input-number'
 
 type Props = {
   className?: string

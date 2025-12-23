@@ -1,7 +1,3 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { $insertNodes } from 'lexical'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -13,24 +9,28 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from '../../types'
-import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
-import { INSERT_HISTORY_BLOCK_COMMAND } from '../history-block'
-import { INSERT_QUERY_BLOCK_COMMAND } from '../query-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
-import { $createCustomTextNode } from '../custom-text/node'
-import { PromptMenuItem } from './prompt-option'
-import { VariableMenuItem } from './variable-option'
-import { PickerBlockMenuOption } from './menu'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { $insertNodes } from 'lexical'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
+import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import {
   MessageClockCircle,
   Tool03,
 } from '@/app/components/base/icons/src/vender/solid/general'
-import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
-import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import AppIcon from '@/app/components/base/app-icon'
 import { VarType } from '@/app/components/workflow/types'
+import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
+import { $createCustomTextNode } from '../custom-text/node'
+import { INSERT_HISTORY_BLOCK_COMMAND } from '../history-block'
+import { INSERT_QUERY_BLOCK_COMMAND } from '../query-block'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
+import { PickerBlockMenuOption } from './menu'
+import { PromptMenuItem } from './prompt-option'
+import { VariableMenuItem } from './variable-option'
 
 export const usePromptOptions = (
   contextBlock?: ContextBlockType,

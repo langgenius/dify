@@ -1,9 +1,9 @@
-import { memo, useCallback } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
-import Run from '../run'
-import { useStore } from '../store'
+import { memo, useCallback } from 'react'
 import { useWorkflowUpdate } from '../hooks'
 import { useHooksStore } from '../hooks-store'
+import Run from '../run'
+import { useStore } from '../store'
 import { formatWorkflowRunIdentifier } from '../utils'
 
 const Record = () => {

@@ -1,6 +1,6 @@
+import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useAppForm } from '@/app/components/base/form'
 import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import type { RAGPipelineVariables } from '@/models/pipeline'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 
 type FormProps = {

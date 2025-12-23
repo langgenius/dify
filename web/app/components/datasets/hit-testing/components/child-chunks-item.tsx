@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
+import type { HitTestingChildChunk } from '@/models/datasets'
 import React from 'react'
 import { SliceContent } from '../../formatted-text/flavours/shared'
 import Score from './score'
-import type { HitTestingChildChunk } from '@/models/datasets'
 
 type Props = {
   payload: HitTestingChildChunk

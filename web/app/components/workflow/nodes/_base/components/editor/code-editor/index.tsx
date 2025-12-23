@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
+import { noop } from 'lodash-es'
 import React, { useEffect, useMemo, useRef, useState } from 'react'
-import Base from '../base'
-import { cn } from '@/utils/classnames'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
-import { Theme } from '@/types/app'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useTheme from '@/hooks/use-theme'
-import './style.css'
-import { noop } from 'lodash-es'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
+import Base from '../base'
+import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
 if (typeof window !== 'undefined')

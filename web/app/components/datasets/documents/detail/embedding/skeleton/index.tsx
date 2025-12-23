@@ -1,11 +1,11 @@
 import React from 'react'
+import Divider from '@/app/components/base/divider'
 import {
   SkeletonContainer,
   SkeletonPoint,
   SkeletonRectangle,
   SkeletonRow,
 } from '@/app/components/base/skeleton'
-import Divider from '@/app/components/base/divider'
 
 const CardSkelton = React.memo(() => {
   return (

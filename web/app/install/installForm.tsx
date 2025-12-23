@@ -1,24 +1,24 @@
 'use client'
-import React, { useCallback, useEffect } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useDebounceFn } from 'ahooks'
-
-import Link from 'next/link'
-import { useRouter } from 'next/navigation'
-
 import type { SubmitHandler } from 'react-hook-form'
-import { useForm } from 'react-hook-form'
-import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import Loading from '../components/base/loading'
-import { cn } from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-
-import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import type { InitValidateStatusResponse, SetupStatusResponse } from '@/models/common'
-import useDocumentTitle from '@/hooks/use-document-title'
-import { useDocLink } from '@/context/i18n'
+import { zodResolver } from '@hookform/resolvers/zod'
+
+import { useDebounceFn } from 'ahooks'
+import Link from 'next/link'
+
+import { useRouter } from 'next/navigation'
+import React, { useCallback, useEffect } from 'react'
+import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
+import { z } from 'zod'
+import Button from '@/app/components/base/button'
 import { validPassword } from '@/config'
+
+import { useDocLink } from '@/context/i18n'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
+import { cn } from '@/utils/classnames'
+import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
   email: z

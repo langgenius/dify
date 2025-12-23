@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import type { Var } from '@/app/components/workflow/types'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
-import { cn } from '@/utils/classnames'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import type { Var } from '@/app/components/workflow/types'
+import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 import { VarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import useAvailableVarList from '../../../../_base/hooks/use-available-var-list'
+
 type Props = {
   className?: string
   instanceId?: string

@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
 import type { MetadataItem } from '../types'
-import SearchInput from '@/app/components/base/search-input'
 import { RiAddLine, RiArrowRightUpLine } from '@remixicon/react'
+import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import SearchInput from '@/app/components/base/search-input'
 import { getIcon } from '../utils/get-icon'
 
 const i18nPrefix = 'dataset.metadata.selectMetadata'

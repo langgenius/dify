@@ -1,7 +1,7 @@
 'use client'
+import { RiKey2Line } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiKey2Line } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import SecretKeyModal from '@/app/components/develop/secret-key/secret-key-modal'
 

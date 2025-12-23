@@ -9,14 +9,14 @@
  * - Loading states
  */
 
+import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WorkflowAppLogList from './list'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { APP_PAGE_LIMIT } from '@/config'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
+import WorkflowAppLogList from './list'
 
 // ============================================================================
 // Mocks

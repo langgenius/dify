@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
-import { useTimeOptions } from '../hooks'
+import type { FC } from 'react'
 import type { TimeOptionsProps } from '../types'
+import React from 'react'
 import OptionListItem from '../common/option-list-item'
+import { useTimeOptions } from '../hooks'
 
 const Options: FC<TimeOptionsProps> = ({
   selectedTime,

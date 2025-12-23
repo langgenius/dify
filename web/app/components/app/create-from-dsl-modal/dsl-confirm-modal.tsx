@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
 
 type DSLConfirmModalProps = {
   versions?: {

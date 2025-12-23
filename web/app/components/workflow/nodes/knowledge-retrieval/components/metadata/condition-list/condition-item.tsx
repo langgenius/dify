@@ -1,21 +1,3 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
-import MetadataIcon from '../metadata-icon'
-import {
-  COMMON_VARIABLE_REGEX,
-  VARIABLE_REGEX,
-  comparisonOperatorNotRequireValue,
-} from './utils'
-import ConditionOperator from './condition-operator'
-import ConditionString from './condition-string'
-import ConditionNumber from './condition-number'
-import ConditionDate from './condition-date'
 import type {
   ComparisonOperator,
   HandleRemoveCondition,
@@ -23,8 +5,26 @@ import type {
   MetadataFilteringCondition,
   MetadataShape,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { cn } from '@/utils/classnames'
+import MetadataIcon from '../metadata-icon'
+import ConditionDate from './condition-date'
+import ConditionNumber from './condition-number'
+import ConditionOperator from './condition-operator'
+import ConditionString from './condition-string'
+import {
+  COMMON_VARIABLE_REGEX,
+  comparisonOperatorNotRequireValue,
+  VARIABLE_REGEX,
+} from './utils'
 
 type ConditionItemProps = {
   className?: string

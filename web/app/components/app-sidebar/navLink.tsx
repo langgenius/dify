@@ -1,9 +1,9 @@
 'use client'
-import React from 'react'
-import { useSelectedLayoutSegment } from 'next/navigation'
-import Link from 'next/link'
-import { cn } from '@/utils/classnames'
 import type { RemixiconComponentType } from '@remixicon/react'
+import Link from 'next/link'
+import { useSelectedLayoutSegment } from 'next/navigation'
+import React from 'react'
+import { cn } from '@/utils/classnames'
 
 export type NavIcon = React.ComponentType<
   React.PropsWithoutRef<React.ComponentProps<'svg'>> & {

@@ -1,24 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { ReactSortable } from 'react-sortablejs'
+import type { Node, NodeOutPutVar, Var } from '../../../types'
+import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, handleRemoveSubVariableCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition } from '../types'
 import {
   RiAddLine,
   RiDeleteBinLine,
   RiDraggable,
 } from '@remixicon/react'
-import type { CaseItem, HandleAddCondition, HandleAddSubVariableCondition, HandleRemoveCondition, HandleToggleConditionLogicalOperator, HandleToggleSubVariableConditionLogicalOperator, HandleUpdateCondition, HandleUpdateSubVariableCondition, handleRemoveSubVariableCondition } from '../types'
-import type { Node, NodeOutPutVar, Var } from '../../../types'
-import { VarType } from '../../../types'
-import { useGetAvailableVars } from '../../variable-assigner/hooks'
-import { SUB_VARIABLES } from '../../constants'
-import ConditionList from './condition-list'
-import ConditionAdd from './condition-add'
-import { cn } from '@/utils/classnames'
+import { noop } from 'lodash-es'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ReactSortable } from 'react-sortablejs'
 import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
-import { noop } from 'lodash-es'
+import { cn } from '@/utils/classnames'
+import { VarType } from '../../../types'
+import { SUB_VARIABLES } from '../../constants'
+import { useGetAvailableVars } from '../../variable-assigner/hooks'
+import ConditionAdd from './condition-add'
+import ConditionList from './condition-list'
 
 type Props = {
   isSubVariable?: boolean

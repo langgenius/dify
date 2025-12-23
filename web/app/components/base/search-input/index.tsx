@@ -1,7 +1,7 @@
 import type { FC } from 'react'
+import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseCircleFill, RiSearchLine } from '@remixicon/react'
 import { cn } from '@/utils/classnames'
 
 type SearchInputProps = {

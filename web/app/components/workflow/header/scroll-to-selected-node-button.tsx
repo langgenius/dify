@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import { useCallback } from 'react'
-import { useNodes } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import type { CommonNodeType } from '../types'
-import { scrollToWorkflowNode } from '../utils/node-navigation'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
 import { cn } from '@/utils/classnames'
+import { scrollToWorkflowNode } from '../utils/node-navigation'
 
 const ScrollToSelectedNodeButton: FC = () => {
   const { t } = useTranslation()

@@ -1,12 +1,12 @@
 import React from 'react'
+import Checkbox from '@/app/components/base/checkbox'
+import Divider from '@/app/components/base/divider'
 import {
   SkeletonContainer,
   SkeletonPoint,
   SkeletonRectangle,
   SkeletonRow,
 } from '@/app/components/base/skeleton'
-import Checkbox from '@/app/components/base/checkbox'
-import Divider from '@/app/components/base/divider'
 
 export const CardSkelton = React.memo(() => {
   return (

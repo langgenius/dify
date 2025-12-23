@@ -1,7 +1,7 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { DecoratorNode } from 'lexical'
 import CurrentBlockComponent from './component'
-import type { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 
 export type SerializedNode = SerializedLexicalNode & { generatorType: GeneratorType }
 

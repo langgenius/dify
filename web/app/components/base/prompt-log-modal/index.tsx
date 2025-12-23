@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import { useEffect, useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
-import { RiCloseLine } from '@remixicon/react'
-import Card from './card'
-import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { RiCloseLine } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
+import { useEffect, useRef, useState } from 'react'
+import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
+import Card from './card'
 
 type PromptLogModalProps = {
   currentLogItem?: IChatItem

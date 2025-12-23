@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import type { IInputTypeIconProps } from './input-type-icon'
 import {
   RiDeleteBinLine,
   RiDraggable,
   RiEditLine,
 } from '@remixicon/react'
-import type { IInputTypeIconProps } from './input-type-icon'
-import IconTypeIcon from './input-type-icon'
-import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
+import React, { useState } from 'react'
 import Badge from '@/app/components/base/badge'
+import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
 import { cn } from '@/utils/classnames'
+import IconTypeIcon from './input-type-icon'
 
 type ItemProps = {
   className?: string

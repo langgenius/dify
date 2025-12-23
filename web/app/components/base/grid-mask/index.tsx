@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import Style from './style.module.css'
 import { cn } from '@/utils/classnames'
+import Style from './style.module.css'
 
 type GridMaskProps = {
   children: React.ReactNode

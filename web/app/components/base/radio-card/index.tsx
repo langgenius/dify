@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { noop } from 'lodash-es'
 import React from 'react'
 import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
 
 type Props = {
   className?: string

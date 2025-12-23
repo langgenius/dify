@@ -1,17 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import type { InputVarType } from '@/app/components/workflow/types'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
+import React, { useState } from 'react'
+import Badge from '@/app/components/base/badge'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
-import type { InputVarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
-import Badge from '@/app/components/base/badge'
 import { inputVarTypeToVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: InputVarType

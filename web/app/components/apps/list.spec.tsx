@@ -1,6 +1,9 @@
-import React from 'react'
 import { act, fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 import { AppModeEnum } from '@/types/app'
+
+// Import after mocks
+import List from './list'
 
 // Mock next/navigation
 const mockReplace = vi.fn()
@@ -230,9 +233,6 @@ vi.mock('./footer', () => ({
     return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
   },
 }))
-
-// Import after mocks
-import List from './list'
 
 // Store IntersectionObserver callback
 let intersectionCallback: IntersectionObserverCallback | null = null

@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TracingProvider } from './type'
-import { cn } from '@/utils/classnames'
 import { AliyunIconBig, ArizeIconBig, DatabricksIconBig, LangfuseIconBig, LangsmithIconBig, MlflowIconBig, OpikIconBig, PhoenixIconBig, TencentIconBig, WeaveIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
+import { cn } from '@/utils/classnames'
+import { TracingProvider } from './type'
 
 const I18N_PREFIX = 'app.tracing'
 

@@ -1,11 +1,12 @@
-import React, { type FC, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FC } from 'react'
 import { RiLoader2Line } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { noop } from 'lodash-es'
+import React, { useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 
 type IDefaultContentProps = {
   onCancel: () => void

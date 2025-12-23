@@ -1,10 +1,10 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import useTimestamp from '@/hooks/use-timestamp'
 import type { Attachment, HitTestingRecord, Query } from '@/models/datasets'
 import { RiApps2Line, RiArrowDownLine, RiFocus2Line } from '@remixicon/react'
+import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImageList from '../../common/image-list'
+import useTimestamp from '@/hooks/use-timestamp'
 import { cn } from '@/utils/classnames'
+import ImageList from '../../common/image-list'
 
 type RecordsProps = {
   records: HitTestingRecord[]

@@ -1,4 +1,8 @@
 import type { FC } from 'react'
+import type { Node } from '../../../types'
+import {
+  RiPlayLargeLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
@@ -6,19 +10,16 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiPlayLargeLine,
-} from '@remixicon/react'
-import {
-  useNodesInteractions,
-} from '../../../hooks'
-import { type Node, NodeRunningStatus } from '../../../types'
-import { canRunBySingle } from '../../../utils'
-import PanelOperator from './panel-operator'
-import {
   Stop,
 } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import {
+  useNodesInteractions,
+} from '../../../hooks'
+import { NodeRunningStatus } from '../../../types'
+import { canRunBySingle } from '../../../utils'
+import PanelOperator from './panel-operator'
 
 type NodeControlProps = Pick<Node, 'id' | 'data'>
 const NodeControl: FC<NodeControlProps> = ({

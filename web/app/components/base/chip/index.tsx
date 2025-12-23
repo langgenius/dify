@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
 import { RiArrowDownSLine, RiCheckLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useMemo, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
 
 export type Item = {
   value: number | string

@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
+import type { IInputTypeIconProps } from '@/app/components/app/configuration/config-var/input-type-icon'
+import { ChevronDownIcon } from '@heroicons/react/24/outline'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ChevronDownIcon } from '@heroicons/react/24/outline'
-import { cn } from '@/utils/classnames'
+import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { IInputTypeIconProps } from '@/app/components/app/configuration/config-var/input-type-icon'
-import IconTypeIcon from '@/app/components/app/configuration/config-var/input-type-icon'
+import { cn } from '@/utils/classnames'
 
 type Option = { name: string, value: string, type: string }
 export type Props = {

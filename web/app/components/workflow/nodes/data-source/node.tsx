@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import { memo, useEffect } from 'react'
-import type { NodeProps } from '@/app/components/workflow/types'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import type { DataSourceNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import { memo, useEffect } from 'react'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 
 const Node: FC<NodeProps<DataSourceNodeType>> = ({
   id,

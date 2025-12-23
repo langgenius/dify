@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import { createPortal } from 'react-dom'
 import { RiCloseLine } from '@remixicon/react'
 import React from 'react'
+import { createPortal } from 'react-dom'
 
 import { useHotkeys } from 'react-hotkeys-hook'
 

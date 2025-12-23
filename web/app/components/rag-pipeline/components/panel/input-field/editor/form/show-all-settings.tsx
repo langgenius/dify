@@ -1,9 +1,9 @@
-import React from 'react'
-import { withForm } from '@/app/components/base/form'
-import { useStore } from '@tanstack/react-form'
-import { useHiddenFieldNames } from './hooks'
-import { useTranslation } from 'react-i18next'
 import { RiArrowRightSLine } from '@remixicon/react'
+import { useStore } from '@tanstack/react-form'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { withForm } from '@/app/components/base/form'
+import { useHiddenFieldNames } from './hooks'
 
 type ShowAllSettingsProps = {
   initialData?: Record<string, any>

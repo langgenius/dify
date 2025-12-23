@@ -1,16 +1,16 @@
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import ConditionValueMethod from './condition-value-method'
 import type { ConditionValueMethodProps } from './condition-value-method'
-import ConditionVariableSelector from './condition-variable-selector'
-import ConditionCommonVariableSelector from './condition-common-variable-selector'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { VarType } from '@/app/components/workflow/types'
+import ConditionCommonVariableSelector from './condition-common-variable-selector'
+import ConditionValueMethod from './condition-value-method'
+import ConditionVariableSelector from './condition-variable-selector'
 
 type ConditionStringProps = {
   value?: string

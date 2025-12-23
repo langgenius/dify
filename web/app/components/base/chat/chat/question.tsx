@@ -2,6 +2,10 @@ import type {
   FC,
   ReactNode,
 } from 'react'
+import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import type { ChatItem } from '../types'
+import { RiClipboardLine, RiEditLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
 import {
   memo,
   useCallback,
@@ -9,21 +13,17 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { ChatItem } from '../types'
-import type { Theme } from '../embedded-chatbot/theme/theme-context'
-import { CssTransform } from '../embedded-chatbot/theme/utils'
-import ContentSwitch from './content-switch'
+import { useTranslation } from 'react-i18next'
+import Textarea from 'react-textarea-autosize'
+import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
-import { FileList } from '@/app/components/base/file-uploader'
-import ActionButton from '../../action-button'
-import { RiClipboardLine, RiEditLine } from '@remixicon/react'
-import Toast from '../../toast'
-import copy from 'copy-to-clipboard'
-import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
-import Textarea from 'react-textarea-autosize'
+import ActionButton from '../../action-button'
 import Button from '../../button'
+import Toast from '../../toast'
+import { CssTransform } from '../embedded-chatbot/theme/utils'
+import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
 
 type QuestionProps = {

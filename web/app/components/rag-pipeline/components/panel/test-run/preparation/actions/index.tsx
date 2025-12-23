@@ -1,6 +1,6 @@
 import React from 'react'
-import Button from '@/app/components/base/button'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 
 type ActionsProps = {
   disabled?: boolean

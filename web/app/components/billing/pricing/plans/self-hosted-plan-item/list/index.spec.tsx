@@ -1,7 +1,7 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
-import List from './index'
+import React from 'react'
 import { SelfHostedPlan } from '@/app/components/billing/type'
+import List from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({

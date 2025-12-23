@@ -1,19 +1,17 @@
+import type {
+  HybridSearchModeEnum,
+  IndexMethodEnum,
+  RetrievalSearchMethodEnum,
+  WeightedScore,
+} from '../../types'
+import type { RerankingModelSelectorProps } from './reranking-model-selector'
+import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Field } from '@/app/components/workflow/nodes/_base/components/layout'
-import type {
-  HybridSearchModeEnum,
-  RetrievalSearchMethodEnum,
-} from '../../types'
-import type {
-  IndexMethodEnum,
-  WeightedScore,
-} from '../../types'
 import { useRetrievalSetting } from './hooks'
-import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
-import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import SearchMethodOption from './search-method-option'
 
 type RetrievalSettingProps = {

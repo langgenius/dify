@@ -1,5 +1,8 @@
 import type { Fetcher } from 'swr'
-import { get, getMarketplace, post, upload } from './base'
+import type {
+  MarketplaceCollectionPluginsResponse,
+  MarketplaceCollectionsResponse,
+} from '@/app/components/plugins/marketplace/types'
 import type {
   Dependency,
   InstallPackageResponse,
@@ -13,10 +16,7 @@ import type {
   updatePackageResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
-import type {
-  MarketplaceCollectionPluginsResponse,
-  MarketplaceCollectionsResponse,
-} from '@/app/components/plugins/marketplace/types'
+import { get, getMarketplace, post, upload } from './base'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()

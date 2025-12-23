@@ -1,17 +1,17 @@
+import type { currentVarType } from './panel'
+
+import type { VarInInspect } from '@/types/workflow'
 // import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import { useStore } from '../store'
 import Button from '@/app/components/base/button'
+import { VarInInspectType } from '@/types/workflow'
+import { cn } from '@/utils/classnames'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useStore } from '../store'
 // import ActionButton from '@/app/components/base/action-button'
 // import Tooltip from '@/app/components/base/tooltip'
 import Group from './group'
-import useCurrentVars from '../hooks/use-inspect-vars-crud'
-import { useNodesInteractions } from '../hooks/use-nodes-interactions'
-import type { currentVarType } from './panel'
-import type { VarInInspect } from '@/types/workflow'
-import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   currentNodeVar?: currentVarType

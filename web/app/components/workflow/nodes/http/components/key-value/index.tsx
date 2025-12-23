@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { KeyValue } from '../../types'
+import React from 'react'
 import KeyValueEdit from './key-value-edit'
 
 type Props = {

@@ -1,17 +1,17 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
-import { useStore as useTagStore } from './store'
-import TagItemEditor from './tag-item-editor'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
 import {
   createTag,
   fetchTagList,
 } from '@/service/tag'
+import { useStore as useTagStore } from './store'
+import TagItemEditor from './tag-item-editor'
 
 type TagManagementModalProps = {
   type: 'knowledge' | 'app'

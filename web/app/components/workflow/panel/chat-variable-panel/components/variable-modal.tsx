@@ -1,23 +1,19 @@
+import type { ConversationVariable } from '@/app/components/workflow/types'
+import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
 import React, { useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'
-import { RiCloseLine, RiDraftLine, RiInputField } from '@remixicon/react'
-import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
-import ObjectValueList from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-list'
-import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
-import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { ToastContext } from '@/app/components/base/toast'
-import { useStore } from '@/app/components/workflow/store'
-import type { ConversationVariable } from '@/app/components/workflow/types'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import ArrayValueList from '@/app/components/workflow/panel/chat-variable-panel/components/array-value-list'
+import { DEFAULT_OBJECT_VALUE } from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-item'
+import ObjectValueList from '@/app/components/workflow/panel/chat-variable-panel/components/object-value-list'
+import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
-import { cn } from '@/utils/classnames'
-import BoolValue from './bool-value'
-import ArrayBoolList from './array-bool-list'
 import {
   arrayBoolPlaceholder,
   arrayNumberPlaceholder,
@@ -25,7 +21,11 @@ import {
   arrayStringPlaceholder,
   objectPlaceholder,
 } from '@/app/components/workflow/panel/chat-variable-panel/utils'
+import { useStore } from '@/app/components/workflow/store'
+import { cn } from '@/utils/classnames'
 import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import ArrayBoolList from './array-bool-list'
+import BoolValue from './bool-value'
 
 export type ModalPropsType = {
   chatVar?: ConversationVariable

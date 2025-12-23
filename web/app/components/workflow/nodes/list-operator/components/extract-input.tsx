@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { Var } from '../../../types'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { VarType } from '../../../types'
-import type { Var } from '../../../types'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { cn } from '@/utils/classnames'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { VarType } from '../../../types'
 
 type Props = {
   nodeId: string

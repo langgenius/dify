@@ -1,10 +1,10 @@
-import { useCallback, useState } from 'react'
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
-import { useTranslation } from 'react-i18next'
-import AutosizeInput from 'react-18-input-autosize'
 import { RiAddLine, RiCloseLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useCallback, useState } from 'react'
+import AutosizeInput from 'react-18-input-autosize'
+import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
+import { cn } from '@/utils/classnames'
 
 type TagInputProps = {
   items: string[]

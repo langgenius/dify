@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Node } from '@/app/components/workflow/types'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import type { Node } from '@/app/components/workflow/types'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 

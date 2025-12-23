@@ -1,23 +1,23 @@
 'use client'
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
+import { RiEqualizer2Line } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { RiEqualizer2Line } from '@remixicon/react'
-import ConfigContent from './config-content'
-import { cn } from '@/utils/classnames'
-import ConfigContext from '@/context/debug-configuration'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import { RETRIEVE_TYPE } from '@/types/app'
+import Modal from '@/app/components/base/modal'
 import Toast from '@/app/components/base/toast'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { RerankingModeEnum } from '@/models/datasets'
-import type { DataSet } from '@/models/datasets'
-import type { DatasetConfigs } from '@/models/debug'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   getMultipleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import ConfigContext from '@/context/debug-configuration'
+import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import ConfigContent from './config-content'
 
 type ParamsConfigProps = {
   disabled?: boolean

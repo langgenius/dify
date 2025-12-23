@@ -1,7 +1,8 @@
-import dayjs, { type Dayjs } from 'dayjs'
+import type { Dayjs } from 'dayjs'
 import type { Day } from '../types'
-import utc from 'dayjs/plugin/utc'
+import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
+import utc from 'dayjs/plugin/utc'
 import tz from '@/utils/timezone.json'
 
 dayjs.extend(utc)

@@ -1,11 +1,12 @@
 'use client'
-import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { FC } from 'react'
-import React from 'react'
+import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { Item } from '@/app/components/base/select'
-import { SimpleSelect } from '@/app/components/base/select'
-import { useTranslation } from 'react-i18next'
 import dayjs from 'dayjs'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { SimpleSelect } from '@/app/components/base/select'
+
 type Props = {
   periodMapping: { [key: string]: { value: number, name: string } }
   onSelect: (payload: PeriodParams) => void

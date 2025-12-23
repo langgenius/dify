@@ -1,7 +1,7 @@
 import type { StateCreator } from 'zustand'
-import { produce } from 'immer'
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
 import type { ValueSelector } from '../../../types'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { produce } from 'immer'
 
 type InspectVarsState = {
   currentFocusNodeId: string | null

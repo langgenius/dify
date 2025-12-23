@@ -1,23 +1,23 @@
 'use client'
 import type { FC } from 'react'
+import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
+import { useBoolean } from 'ahooks'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import Field from './field'
-import type { AliyunConfig, ArizeConfig, DatabricksConfig, LangFuseConfig, LangSmithConfig, MLflowConfig, OpikConfig, PhoenixConfig, TencentConfig, WeaveConfig } from './type'
-import { TracingProvider } from './type'
-import { docURL } from './config'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import Divider from '@/app/components/base/divider'
+import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
+import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Lock01 } from '@/app/components/base/icons/src/vender/solid/security'
-import Button from '@/app/components/base/button'
-import { LinkExternal02 } from '@/app/components/base/icons/src/vender/line/general'
-import Confirm from '@/app/components/base/confirm'
-import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
 import Toast from '@/app/components/base/toast'
-import Divider from '@/app/components/base/divider'
+import { addTracingConfig, removeTracingConfig, updateTracingConfig } from '@/service/apps'
+import { docURL } from './config'
+import Field from './field'
+import { TracingProvider } from './type'
 
 type Props = {
   appId: string

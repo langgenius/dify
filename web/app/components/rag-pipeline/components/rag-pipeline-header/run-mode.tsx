@@ -1,14 +1,14 @@
+import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
-import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
-import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 
 type RunModeProps = {
   text?: string

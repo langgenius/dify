@@ -1,15 +1,15 @@
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { RiArrowRightSLine, RiArrowRightUpLine, RiChatSmile2Line, RiDiscordLine, RiDiscussLine, RiMailSendLine, RiQuestionLine } from '@remixicon/react'
-import { Fragment } from 'react'
 import Link from 'next/link'
+import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import { useProviderContext } from '@/context/provider-context'
-import { Plan } from '@/app/components/billing/type'
 import { toggleZendeskWindow } from '@/app/components/base/zendesk/utils'
-import { mailToSupport } from '../utils/util'
-import { useAppContext } from '@/context/app-context'
+import { Plan } from '@/app/components/billing/type'
 import { ZENDESK_WIDGET_KEY } from '@/config'
+import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
+import { mailToSupport } from '../utils/util'
 
 type SupportProps = {
   closeAccountDropdown: () => void

@@ -1,12 +1,12 @@
 import type { ChangeEvent } from 'react'
+import type { ValidatedStatusState } from './declarations'
+import { ValidatedStatus } from './declarations'
 import {
   ValidatedErrorIcon,
   ValidatedErrorMessage,
   ValidatedSuccessIcon,
   ValidatingTip,
 } from './ValidateStatus'
-import { ValidatedStatus } from './declarations'
-import type { ValidatedStatusState } from './declarations'
 
 type KeyInputProps = {
   value?: string

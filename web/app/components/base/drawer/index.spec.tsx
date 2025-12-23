@@ -1,7 +1,7 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import Drawer from './index'
 import type { IDrawerProps } from './index'
+import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
+import Drawer from './index'
 
 // Capture dialog onClose for testing
 let capturedDialogOnClose: (() => void) | null = null

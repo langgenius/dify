@@ -1,25 +1,25 @@
-import { Fragment, useState } from 'react'
 import type { FC } from 'react'
-import Link from 'next/link'
-import { useTranslation } from 'react-i18next'
-import Tooltip from './tooltip'
-import ProgressTooltip from './progress-tooltip'
 import type { Resources } from './index'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
+import Link from 'next/link'
+import { Fragment, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-icon'
-import {
-  Hash02,
-  Target04,
-} from '@/app/components/base/icons/src/vender/line/general'
 import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import {
   BezierCurve03,
   TypeSquare,
 } from '@/app/components/base/icons/src/vender/line/editor'
+import {
+  Hash02,
+  Target04,
+} from '@/app/components/base/icons/src/vender/line/general'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+import ProgressTooltip from './progress-tooltip'
+import Tooltip from './tooltip'
 
 type PopupProps = {
   data: Resources

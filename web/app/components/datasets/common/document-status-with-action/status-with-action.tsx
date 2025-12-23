@@ -1,9 +1,9 @@
 'use client'
-import { RiAlertFill, RiCheckboxCircleFill, RiErrorWarningFill, RiInformation2Fill } from '@remixicon/react'
 import type { FC } from 'react'
+import { RiAlertFill, RiCheckboxCircleFill, RiErrorWarningFill, RiInformation2Fill } from '@remixicon/react'
 import React from 'react'
-import { cn } from '@/utils/classnames'
 import Divider from '@/app/components/base/divider'
+import { cn } from '@/utils/classnames'
 
 type Status = 'success' | 'error' | 'warning' | 'info'
 type Props = {

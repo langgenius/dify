@@ -1,8 +1,8 @@
+import { RiCloseLine } from '@remixicon/react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useWorkflowInteractions } from '@/app/components/workflow/hooks'
-import { RiCloseLine } from '@remixicon/react'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 
 const Header = () => {
   const workflowStore = useWorkflowStore()

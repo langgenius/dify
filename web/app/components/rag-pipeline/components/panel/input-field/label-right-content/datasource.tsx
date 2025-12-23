@@ -1,7 +1,7 @@
-import React from 'react'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useToolIcon } from '@/app/components/workflow/hooks'
+import React from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { useToolIcon } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'
 
 type DatasourceProps = {

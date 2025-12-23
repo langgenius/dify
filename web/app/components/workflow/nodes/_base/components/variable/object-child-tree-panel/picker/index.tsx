@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
 import type { StructuredOutput } from '../../../../../llm/types'
-import Field from './field'
-import { cn } from '@/utils/classnames'
-import { useHover } from 'ahooks'
 import type { ValueSelector } from '@/app/components/workflow/types'
+import { useHover } from 'ahooks'
+import React, { useRef } from 'react'
+import { cn } from '@/utils/classnames'
+import Field from './field'
 
 type Props = {
   className?: string

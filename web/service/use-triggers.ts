@@ -1,5 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, post } from './base'
 import type {
   TriggerLogEntity,
   TriggerOAuthClientParams,
@@ -9,7 +7,9 @@ import type {
   TriggerSubscriptionBuilder,
   TriggerWithProvider,
 } from '@/app/components/workflow/block-selector/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
+import { del, get, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'

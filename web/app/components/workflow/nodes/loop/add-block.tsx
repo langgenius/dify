@@ -1,26 +1,26 @@
+import type { LoopNodeType } from './types'
+import type {
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import {
+  RiAddLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
-import {
-  RiAddLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import BlockSelector from '@/app/components/workflow/block-selector'
+import {
+  BlockEnum,
+} from '@/app/components/workflow/types'
+
+import { cn } from '@/utils/classnames'
 import {
   useAvailableBlocks,
   useNodesInteractions,
   useNodesReadOnly,
 } from '../../hooks'
-import type { LoopNodeType } from './types'
-import { cn } from '@/utils/classnames'
-import BlockSelector from '@/app/components/workflow/block-selector'
-
-import type {
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-} from '@/app/components/workflow/types'
 
 type AddBlockProps = {
   loopNodeId: string

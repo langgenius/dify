@@ -1,7 +1,7 @@
+import type { DataSourceCredential } from '@/types/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
 import React from 'react'
 import Header from './header'
-import type { DataSourceCredential } from '@/types/pipeline'
 
 // Mock CredentialTypeEnum to avoid deep import chain issues
 enum MockCredentialTypeEnum {

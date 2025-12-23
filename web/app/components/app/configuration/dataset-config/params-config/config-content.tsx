@@ -1,31 +1,31 @@
 'use client'
 
-import { memo, useCallback, useEffect, useMemo } from 'react'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import WeightedScore from './weighted-score'
-import TopKItem from '@/app/components/base/param-item/top-k-item'
-import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
-import { RETRIEVE_TYPE } from '@/types/app'
-import type {
-  DatasetConfigs,
-} from '@/models/debug'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import type { ModelConfig } from '@/app/components/workflow/types'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import Tooltip from '@/app/components/base/tooltip'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   DataSet,
 } from '@/models/datasets'
-import { RerankingModeEnum } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
-import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
+import type {
+  DatasetConfigs,
+} from '@/models/debug'
+import { noop } from 'lodash-es'
+import { memo, useCallback, useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
+import TopKItem from '@/app/components/base/param-item/top-k-item'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
-import Divider from '@/app/components/base/divider'
-import { noop } from 'lodash-es'
+import Tooltip from '@/app/components/base/tooltip'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/hooks'
+import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import WeightedScore from './weighted-score'
 
 type Props = {
   datasetConfigs: DatasetConfigs

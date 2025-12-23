@@ -1,11 +1,11 @@
 'use client'
-import { useTranslation } from 'react-i18next'
+import type { CreateApiKeyResponse } from '@/models/app'
 import { XMarkIcon } from '@heroicons/react/20/solid'
-import InputCopy from './input-copy'
-import s from './style.module.css'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import type { CreateApiKeyResponse } from '@/models/app'
+import InputCopy from './input-copy'
+import s from './style.module.css'
 
 type ISecretKeyGenerateModalProps = {
   isShow: boolean

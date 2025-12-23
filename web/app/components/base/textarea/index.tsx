@@ -1,6 +1,7 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
+import { cva } from 'class-variance-authority'
 import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
 import { cn } from '@/utils/classnames'
 
 const textareaVariants = cva(

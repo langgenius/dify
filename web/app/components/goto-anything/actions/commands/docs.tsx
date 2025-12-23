@@ -1,10 +1,10 @@
 import type { SlashCommandHandler } from './types'
-import React from 'react'
 import { RiBookOpenLine } from '@remixicon/react'
-import i18n from '@/i18n-config/i18next-config'
-import { registerCommands, unregisterCommands } from './command-bus'
+import React from 'react'
 import { defaultDocBaseUrl } from '@/context/i18n'
+import i18n from '@/i18n-config/i18next-config'
 import { getDocLanguage } from '@/i18n-config/language'
+import { registerCommands, unregisterCommands } from './command-bus'
 
 // Documentation command dependency types - no external dependencies needed
 type DocDeps = Record<string, never>

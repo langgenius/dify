@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
 import type { Props as EditorProps } from '.'
-import Editor from '.'
-import { cn } from '@/utils/classnames'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
+import React, { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { cn } from '@/utils/classnames'
+import Editor from '.'
 
 const TO_WINDOW_OFFSET = 8
 

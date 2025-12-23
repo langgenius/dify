@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { RetrievalConfig } from '@/types/app'
+import Image from 'next/image'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Image from 'next/image'
-import { retrievalIcon } from '../../create/icons'
-import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
 import RadioCard from '@/app/components/base/radio-card'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { retrievalIcon } from '../../create/icons'
 
 type Props = {
   value: RetrievalConfig

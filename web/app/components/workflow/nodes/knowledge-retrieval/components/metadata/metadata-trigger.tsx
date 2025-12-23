@@ -1,17 +1,17 @@
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { RiFilter3Line } from '@remixicon/react'
 import {
   useEffect,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiFilter3Line } from '@remixicon/react'
-import MetadataPanel from './metadata-panel'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import MetadataPanel from './metadata-panel'
 
 const MetadataTrigger = ({
   metadataFilteringConditions,

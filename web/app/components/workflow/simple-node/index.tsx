@@ -1,10 +1,9 @@
 import type {
   FC,
 } from 'react'
-import {
-  memo,
-  useMemo,
-} from 'react'
+import type {
+  NodeProps,
+} from '@/app/components/workflow/types'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
@@ -12,20 +11,21 @@ import {
   RiLoader2Line,
 } from '@remixicon/react'
 import {
-  NodeTargetHandle,
-} from '@/app/components/workflow/nodes/_base/components/node-handle'
-import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
-import { cn } from '@/utils/classnames'
+  memo,
+  useMemo,
+} from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
-import type {
-  NodeProps,
-} from '@/app/components/workflow/types'
-import {
-  NodeRunningStatus,
-} from '@/app/components/workflow/types'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import NodeControl from '@/app/components/workflow/nodes/_base/components/node-control'
+import {
+  NodeTargetHandle,
+} from '@/app/components/workflow/nodes/_base/components/node-handle'
+import {
+  NodeRunningStatus,
+} from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type SimpleNodeProps = NodeProps
 

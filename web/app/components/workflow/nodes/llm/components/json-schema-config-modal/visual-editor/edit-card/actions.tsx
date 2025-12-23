@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import React from 'react'
-import Tooltip from '@/app/components/base/tooltip'
 import { RiAddCircleLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 
 type ActionsProps = {
   disableAddBtn: boolean

@@ -1,53 +1,54 @@
-import {
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { produce } from 'immer'
 import type { VarType as NumberVarType } from '../../../tool/types'
 import type {
   Condition,
   HandleAddSubVariableCondition,
   HandleRemoveCondition,
+  handleRemoveSubVariableCondition,
   HandleToggleSubVariableConditionLogicalOperator,
   HandleUpdateCondition,
   HandleUpdateSubVariableCondition,
-  handleRemoveSubVariableCondition,
 } from '../../types'
-import {
-  ComparisonOperator,
-} from '../../types'
-import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
-import ConditionNumberInput from '../condition-number-input'
-import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
-import ConditionWrap from '../condition-wrap'
-import ConditionOperator from './condition-operator'
-import ConditionInput from './condition-input'
-import { useWorkflowStore } from '@/app/components/workflow/store'
-
-import ConditionVarSelector from './condition-var-selector'
 import type {
   Node,
   NodeOutPutVar,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
-import { SimpleSelect as Select } from '@/app/components/base/select'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { produce } from 'immer'
+import {
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
-import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { SimpleSelect as Select } from '@/app/components/base/select'
 import { useIsChatMode } from '@/app/components/workflow/hooks/use-workflow'
-import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
+import { getVarType } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
+import { useWorkflowStore } from '@/app/components/workflow/store'
+import { VarType } from '@/app/components/workflow/types'
+
 import {
   useAllBuiltInTools,
   useAllCustomTools,
   useAllMCPTools,
   useAllWorkflowTools,
 } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
+import useMatchSchemaType from '../../../_base/components/variable/use-match-schema-type'
+import { FILE_TYPE_OPTIONS, SUB_VARIABLES, TRANSFER_METHOD } from '../../../constants'
+import {
+  ComparisonOperator,
+} from '../../types'
+import { comparisonOperatorNotRequireValue, getOperators } from '../../utils'
+import ConditionNumberInput from '../condition-number-input'
+import ConditionWrap from '../condition-wrap'
+import ConditionInput from './condition-input'
+import ConditionOperator from './condition-operator'
+import ConditionVarSelector from './condition-var-selector'
+
 const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
 
 type ConditionItemProps = {

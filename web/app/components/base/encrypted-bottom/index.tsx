@@ -1,7 +1,7 @@
-import { cn } from '@/utils/classnames'
 import { RiLock2Fill } from '@remixicon/react'
 import Link from 'next/link'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string

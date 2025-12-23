@@ -1,5 +1,5 @@
-import React from 'react'
 import type { SelfHostedPlan } from '@/app/components/billing/type'
+import React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Item from './item'
 

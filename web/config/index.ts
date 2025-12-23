@@ -1,10 +1,10 @@
+import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { InputVarType } from '@/app/components/workflow/types'
-import { AgentStrategy } from '@/types/app'
 import { PromptRole } from '@/models/debug'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { AgentStrategy } from '@/types/app'
 import { DatasetAttr } from '@/types/feature'
 import pkg from '../package.json'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 const getBooleanConfig = (
   envVar: string | undefined,

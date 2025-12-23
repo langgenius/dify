@@ -1,17 +1,17 @@
+import { RiMoreFill } from '@remixicon/react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import Switch from '@/app/components/base/switch'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { cn } from '@/utils/classnames'
 
 export type OperatorProps = {
   onCopy: () => void

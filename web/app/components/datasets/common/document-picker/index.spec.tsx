@@ -1,7 +1,7 @@
-import React from 'react'
+import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
+import React from 'react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentPicker from './index'
 

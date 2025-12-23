@@ -1,6 +1,6 @@
+import type { SchemaTypeDefinition } from '@/service/use-common'
 import { VarType } from '@/app/components/workflow/types'
 import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
-import type { SchemaTypeDefinition } from '@/service/use-common'
 
 /**
  * Normalizes a JSON Schema type to a simple string type.

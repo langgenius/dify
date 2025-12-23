@@ -1,14 +1,14 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
-import Button from '@/app/components/base/button'
-import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { UploadFileSetting } from '@/app/components/workflow/types'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { RiCloseLine } from '@remixicon/react'
+import { produce } from 'immer'
+import React, { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 type SettingContentProps = {
   imageUpload?: boolean

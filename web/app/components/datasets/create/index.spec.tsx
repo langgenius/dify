@@ -1,11 +1,11 @@
+import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
-import DatasetUpdateForm from './index'
-import { ChunkingMode, DataSourceType, DatasetPermission } from '@/models/datasets'
-import type { DataSet } from '@/models/datasets'
 import { DataSourceProvider } from '@/models/common'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import DatasetUpdateForm from './index'
 
 // IndexingType values from step-two (defined here since we mock step-two)
 // Using type assertion to match the expected IndexingType enum from step-two

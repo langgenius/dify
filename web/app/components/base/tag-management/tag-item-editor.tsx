@@ -1,22 +1,22 @@
 import type { FC } from 'react'
-import { useState } from 'react'
+import type { Tag } from '@/app/components/base/tag-management/constant'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { useContext } from 'use-context-selector'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useStore as useTagStore } from './store'
+import { useContext } from 'use-context-selector'
 import Confirm from '@/app/components/base/confirm'
-import { cn } from '@/utils/classnames'
-import type { Tag } from '@/app/components/base/tag-management/constant'
 import { ToastContext } from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import {
   deleteTag,
   updateTag,
 } from '@/service/tag'
+import { cn } from '@/utils/classnames'
+import { useStore as useTagStore } from './store'
 
 type TagItemEditorProps = {
   tag: Tag

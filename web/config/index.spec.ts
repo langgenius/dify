@@ -1,5 +1,4 @@
-import { validPassword } from './index'
-import { VAR_REGEX, resetReg } from './index'
+import { resetReg, validPassword, VAR_REGEX } from './index'
 
 describe('config test', () => {
   const passwordRegex = validPassword

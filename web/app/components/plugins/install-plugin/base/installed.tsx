@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Card from '../../card'
-import Button from '@/app/components/base/button'
-import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../../types'
-import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
+import Button from '@/app/components/base/button'
+import Card from '../../card'
+import { pluginManifestInMarketToPluginProps, pluginManifestToCardPluginProps } from '../utils'
 
 type Props = {
   payload?: Plugin | PluginDeclaration | PluginManifestInMarket | null

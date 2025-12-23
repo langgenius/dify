@@ -1,51 +1,51 @@
 'use client'
 
 import type { MouseEventHandler } from 'react'
+import type {
+  CommonNodeType,
+  Node,
+} from './types'
+import {
+  RiAlertFill,
+  RiCloseLine,
+  RiFileDownloadLine,
+} from '@remixicon/react'
+import { load as yamlLoad } from 'js-yaml'
 import {
   memo,
   useCallback,
   useRef,
   useState,
 } from 'react'
-import { useContext } from 'use-context-selector'
 import { useTranslation } from 'react-i18next'
-import { load as yamlLoad } from 'js-yaml'
+import { useContext } from 'use-context-selector'
+import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
+import { ToastContext } from '@/app/components/base/toast'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
-  RiAlertFill,
-  RiCloseLine,
-  RiFileDownloadLine,
-} from '@remixicon/react'
-import { WORKFLOW_DATA_UPDATE } from './constants'
-import {
-  BlockEnum,
-  SupportUploadFileTypes,
-} from './types'
-import type {
-  CommonNodeType,
-  Node,
-} from './types'
-import { AppModeEnum } from '@/types/app'
-import {
-  initialEdges,
-  initialNodes,
-} from './utils'
+  DSLImportMode,
+  DSLImportStatus,
+} from '@/models/app'
 import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
 import { fetchWorkflowDraft } from '@/service/workflow'
+import { AppModeEnum } from '@/types/app'
+import { WORKFLOW_DATA_UPDATE } from './constants'
 import {
-  DSLImportMode,
-  DSLImportStatus,
-} from '@/models/app'
-import Uploader from '@/app/components/app/create-from-dsl-modal/uploader'
-import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
-import { ToastContext } from '@/app/components/base/toast'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+  BlockEnum,
+  SupportUploadFileTypes,
+} from './types'
+import {
+  initialEdges,
+  initialNodes,
+} from './utils'
 
 type UpdateDSLModalProps = {
   onCancel: () => void

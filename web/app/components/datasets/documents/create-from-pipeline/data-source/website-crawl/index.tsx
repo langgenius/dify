@@ -1,32 +1,32 @@
 'use client'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { CrawlResultItem } from '@/models/datasets'
-import { CrawlStep } from '@/models/datasets'
-import Header from '../base/header'
-import Options from './base/options'
-import Crawling from './base/crawling'
-import ErrorMessage from './base/error-message'
-import CrawledResult from './base/crawled-result'
-import {
-  useDraftPipelinePreProcessingParams,
-  usePublishedPipelinePreProcessingParams,
-} from '@/service/use-pipeline'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { DatasourceType } from '@/models/pipeline'
-import { ssePost } from '@/service/base'
 import type {
   DataSourceNodeCompletedResponse,
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import React, { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useGetDataSourceAuth } from '@/service/use-datasource'
-import { useDocLink } from '@/context/i18n'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDocLink } from '@/context/i18n'
+import { useModalContextSelector } from '@/context/modal-context'
+import { CrawlStep } from '@/models/datasets'
+import { DatasourceType } from '@/models/pipeline'
+import { ssePost } from '@/service/base'
+import { useGetDataSourceAuth } from '@/service/use-datasource'
+import {
+  useDraftPipelinePreProcessingParams,
+  usePublishedPipelinePreProcessingParams,
+} from '@/service/use-pipeline'
+import Header from '../base/header'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import CrawledResult from './base/crawled-result'
+import Crawling from './base/crawling'
+import ErrorMessage from './base/error-message'
+import Options from './base/options'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 

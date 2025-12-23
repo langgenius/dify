@@ -1,9 +1,9 @@
-import { useProviderContext } from '@/context/provider-context'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiGraduationCapFill,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import { useProviderContext } from '@/context/provider-context'
 import { SparklesSoft } from '../../base/icons/src/public/common'
 import PremiumBadge from '../../base/premium-badge'
 import { Plan } from '../../billing/type'

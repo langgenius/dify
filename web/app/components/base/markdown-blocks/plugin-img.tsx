@@ -1,3 +1,4 @@
+import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
 /**
  * @fileoverview Img component for rendering <img> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.
@@ -5,9 +6,8 @@
  */
 import React, { useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
-import { getMarkdownImageURL } from './utils'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import { getMarkdownImageURL } from './utils'
 
 type ImgProps = {
   src: string

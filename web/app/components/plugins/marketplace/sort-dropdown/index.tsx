@@ -1,16 +1,16 @@
 'use client'
-import { useState } from 'react'
 import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import { useMarketplaceContext } from '../context'
+import { useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import { useMarketplaceContext } from '../context'
 
 type SortDropdownProps = {
   locale?: string

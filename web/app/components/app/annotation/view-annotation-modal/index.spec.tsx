@@ -1,9 +1,9 @@
 import type { Mock } from 'vitest'
-import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import ViewAnnotationModal from './index'
 import type { AnnotationItem, HitHistoryItem } from '../type'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import React from 'react'
 import { fetchHitHistoryList } from '@/service/annotation'
+import ViewAnnotationModal from './index'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
 

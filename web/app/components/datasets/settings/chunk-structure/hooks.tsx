@@ -1,11 +1,12 @@
+import type { Option } from './types'
+import { useTranslation } from 'react-i18next'
 import {
   GeneralChunk,
   ParentChildChunk,
   QuestionAndAnswer,
 } from '@/app/components/base/icons/src/vender/knowledge'
-import { EffectColor, type Option } from './types'
 import { ChunkingMode } from '@/models/datasets'
-import { useTranslation } from 'react-i18next'
+import { EffectColor } from './types'
 
 export const useChunkStructure = () => {
   const { t } = useTranslation()

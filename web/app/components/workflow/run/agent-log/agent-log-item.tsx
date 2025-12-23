@@ -1,20 +1,20 @@
-import {
-  useMemo,
-  useState,
-} from 'react'
+import type { AgentLogItemWithChildren } from '@/types/workflow'
 import {
   RiArrowRightSLine,
   RiListView,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import {
+  useMemo,
+  useState,
+} from 'react'
 import Button from '@/app/components/base/button'
-import type { AgentLogItemWithChildren } from '@/types/workflow'
-import NodeStatusIcon from '@/app/components/workflow/nodes/_base/components/node-status-icon'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import NodeStatusIcon from '@/app/components/workflow/nodes/_base/components/node-status-icon'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type AgentLogItemProps = {
   item: AgentLogItemWithChildren

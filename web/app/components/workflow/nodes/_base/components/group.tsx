@@ -1,5 +1,5 @@
-import { cn } from '@/utils/classnames'
 import type { ComponentProps, FC, PropsWithChildren, ReactNode } from 'react'
+import { cn } from '@/utils/classnames'
 
 export type GroupLabelProps = ComponentProps<'div'>
 

@@ -1,12 +1,12 @@
-import Button from '@/app/components/base/button'
-import { RiInstallLine, RiLoader2Line } from '@remixicon/react'
 import type { ComponentProps, MouseEventHandler } from 'react'
+import { RiInstallLine, RiLoader2Line } from '@remixicon/react'
 import { useState } from 'react'
-import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import checkTaskStatus from '@/app/components/plugins/install-plugin/base/check-task-status'
 import { TaskStatus } from '@/app/components/plugins/types'
 import { useCheckInstalled, useInstallPackageFromMarketPlace } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
 
 type InstallPluginButtonProps = Omit<ComponentProps<typeof Button>, 'children' | 'loading'> & {
   uniqueIdentifier: string

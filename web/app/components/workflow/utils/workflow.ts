@@ -1,14 +1,14 @@
-import {
-  getOutgoers,
-} from 'reactflow'
-import { v4 as uuid4 } from 'uuid'
-import {
-  uniqBy,
-} from 'lodash-es'
 import type {
   Edge,
   Node,
 } from '../types'
+import {
+  uniqBy,
+} from 'lodash-es'
+import {
+  getOutgoers,
+} from 'reactflow'
+import { v4 as uuid4 } from 'uuid'
 import {
   BlockEnum,
 } from '../types'

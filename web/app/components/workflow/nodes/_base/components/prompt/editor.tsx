@@ -1,41 +1,41 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React, { useCallback, useRef } from 'react'
-import {
-  RiDeleteBinLine,
-} from '@remixicon/react'
-import copy from 'copy-to-clipboard'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import { BlockEnum, EditionType } from '../../../../types'
 import type {
   ModelConfig,
   Node,
   NodeOutPutVar,
   Variable,
 } from '../../../../types'
+import {
+  RiDeleteBinLine,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import copy from 'copy-to-clipboard'
+import React, { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
 
-import Wrap from '../editor/wrap'
-import { CodeLanguage } from '../../../code/types'
-import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
-import { cn } from '@/utils/classnames'
-import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
-import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
-import PromptEditor from '@/app/components/base/prompt-editor'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import ActionButton from '@/app/components/base/action-button'
-import Tooltip from '@/app/components/base/tooltip'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
-import Switch from '@/app/components/base/switch'
 import { Jinja } from '@/app/components/base/icons/src/vender/workflow'
-import { useStore } from '@/app/components/workflow/store'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import { PROMPT_EDITOR_INSERT_QUICKLY } from '@/app/components/base/prompt-editor/plugins/update-block'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 import { useWorkflowVariableType } from '@/app/components/workflow/hooks'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor/editor-support-vars'
+import ToggleExpandBtn from '@/app/components/workflow/nodes/_base/components/toggle-expand-btn'
+import useToggleExpend from '@/app/components/workflow/nodes/_base/hooks/use-toggle-expend'
+import { useStore } from '@/app/components/workflow/store'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { cn } from '@/utils/classnames'
+import { BlockEnum, EditionType } from '../../../../types'
+import { CodeLanguage } from '../../../code/types'
+import PromptGeneratorBtn from '../../../llm/components/prompt-generator-btn'
+import Wrap from '../editor/wrap'
 
 type Props = {
   className?: string

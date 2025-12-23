@@ -1,9 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import { RiSettings2Line } from '@remixicon/react'
 import { memo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiSettings2Line } from '@remixicon/react'
-import ParamConfigContent from './param-config-content'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -11,6 +10,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
+import ParamConfigContent from './param-config-content'
 
 const ParamsConfig: FC = () => {
   const { t } = useTranslation()

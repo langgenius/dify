@@ -2,9 +2,9 @@ import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../../../store'
 import Bucket from './bucket'
-import BreadcrumbItem from './item'
-import Dropdown from './dropdown'
 import Drive from './drive'
+import Dropdown from './dropdown'
+import BreadcrumbItem from './item'
 
 type BreadcrumbsProps = {
   breadcrumbs: string[]

@@ -1,30 +1,30 @@
 'use client'
 import type { FC } from 'react'
+import type { RetrievalConfig } from '@/types/app'
+import Image from 'next/image'
+
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import Image from 'next/image'
-import ProgressIndicator from '../../create/assets/progress-indicator.svg'
-import Reranking from '../../create/assets/rerank.svg'
-import { cn } from '@/utils/classnames'
-import TopKItem from '@/app/components/base/param-item/top-k-item'
+import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
-import { RETRIEVE_METHOD } from '@/types/app'
+import TopKItem from '@/app/components/base/param-item/top-k-item'
+import RadioCard from '@/app/components/base/radio-card'
 import Switch from '@/app/components/base/switch'
+import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
-import type { RetrievalConfig } from '@/types/app'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
-import Toast from '@/app/components/base/toast'
-import RadioCard from '@/app/components/base/radio-card'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import ProgressIndicator from '../../create/assets/progress-indicator.svg'
+import Reranking from '../../create/assets/rerank.svg'
 
 type Props = {
   type: RETRIEVE_METHOD

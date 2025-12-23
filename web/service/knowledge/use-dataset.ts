@@ -1,16 +1,10 @@
 import type { MutationOptions } from '@tanstack/react-query'
-import {
-  keepPreviousData,
-  useInfiniteQuery,
-  useMutation,
-  useQuery,
-  useQueryClient,
-} from '@tanstack/react-query'
-import qs from 'qs'
+import type { ApiKeysListResponse } from '@/models/app'
+import type { CommonResponse } from '@/models/common'
 import type {
   DataSet,
-  DataSetListResponse,
   DatasetListRequest,
+  DataSetListResponse,
   ErrorDocsResponse,
   ExternalAPIListResponse,
   FetchDatasetsParams,
@@ -20,10 +14,16 @@ import type {
   ProcessRuleResponse,
   RelatedAppResponse,
 } from '@/models/datasets'
-import type { ApiKeysListResponse } from '@/models/app'
+import {
+  keepPreviousData,
+  useInfiniteQuery,
+  useMutation,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query'
+import qs from 'qs'
 import { get, post } from '../base'
 import { useInvalid } from '../use-base'
-import type { CommonResponse } from '@/models/common'
 
 const NAME_SPACE = 'dataset'
 

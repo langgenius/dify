@@ -1,7 +1,7 @@
+import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 import React from 'react'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
 
 type HeaderProps = {
   onClickConfiguration?: () => void

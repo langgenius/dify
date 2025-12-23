@@ -1,23 +1,23 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
 import { RiAddLine, RiArrowDownSLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import { FileZip } from '@/app/components/base/icons/src/vender/solid/files'
 import { Github } from '@/app/components/base/icons/src/vender/solid/general'
-import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
-import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
-import { cn } from '@/utils/classnames'
+import { MagicBox } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { useTranslation } from 'react-i18next'
+import InstallFromGitHub from '@/app/components/plugins/install-plugin/install-from-github'
+import InstallFromLocalPackage from '@/app/components/plugins/install-plugin/install-from-local-package'
 import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import { noop } from 'lodash-es'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   onSwitchToMarketplaceTab: () => void

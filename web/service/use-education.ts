@@ -1,10 +1,10 @@
-import { get, post } from './base'
+import type { EducationAddParams } from '@/app/education-apply/types'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
+import { get, post } from './base'
 import { useInvalid } from './use-base'
-import type { EducationAddParams } from '@/app/education-apply/types'
 
 const NAME_SPACE = 'education'
 

@@ -1,15 +1,15 @@
 'use client'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/utils/classnames'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { changeWebAppPasswordWithToken } from '@/service/common'
-import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
 import { validPassword } from '@/config'
+import { changeWebAppPasswordWithToken } from '@/service/common'
+import { cn } from '@/utils/classnames'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()

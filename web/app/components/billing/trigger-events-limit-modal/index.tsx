@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
-import UsageInfo from '@/app/components/billing/usage-info'
 import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import UsageInfo from '@/app/components/billing/usage-info'
 
 type Props = {
   show: boolean

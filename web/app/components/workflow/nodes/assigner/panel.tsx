@@ -1,15 +1,15 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { AssignerNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
   RiAddLine,
 } from '@remixicon/react'
-import VarList from './components/var-list'
-import useConfig from './use-config'
-import type { AssignerNodeType } from './types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
-import { useHandleAddOperationItem } from './hooks'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import VarList from './components/var-list'
+import { useHandleAddOperationItem } from './hooks'
+import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.assigner'
 

@@ -1,15 +1,15 @@
-import {
-  memo,
-  useCallback,
-} from 'react'
-import CredentialItem from './credential-item'
 import type {
   Credential,
   CustomModel,
   CustomModelCredential,
   ModelProvider,
 } from '../../declarations'
+import {
+  memo,
+  useCallback,
+} from 'react'
 import ModelIcon from '../../model-icon'
+import CredentialItem from './credential-item'
 
 type AuthorizedItemProps = {
   provider: ModelProvider

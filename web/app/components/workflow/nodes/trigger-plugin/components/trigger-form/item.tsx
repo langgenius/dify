@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
+import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Event } from '@/app/components/tools/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import {
   RiBracesLine,
 } from '@remixicon/react'
-import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
-import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useBoolean } from 'ahooks'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
-import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
-import { useBoolean } from 'ahooks'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import SchemaModal from '@/app/components/plugins/plugin-detail-panel/tool-selector/schema-modal'
-import type { Event } from '@/app/components/tools/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import FormInputItem from '@/app/components/workflow/nodes/_base/components/form-input-item'
 
 type Props = {
   readOnly: boolean

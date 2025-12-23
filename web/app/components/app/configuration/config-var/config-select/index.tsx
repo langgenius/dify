@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
 import { RiAddLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
+import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { cn } from '@/utils/classnames'

@@ -1,6 +1,7 @@
-import { type NextRequest, NextResponse } from 'next/server'
+import type { NextRequest } from 'next/server'
 import { Octokit } from '@octokit/core'
 import { RequestError } from '@octokit/request-error'
+import { NextResponse } from 'next/server'
 import { GITHUB_ACCESS_TOKEN } from '@/config'
 
 type Params = {

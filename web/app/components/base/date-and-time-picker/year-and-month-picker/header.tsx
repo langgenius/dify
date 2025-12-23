@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import type { YearAndMonthPickerHeaderProps } from '../types'
-import { useMonths } from '../hooks'
 import { RiArrowUpSLine } from '@remixicon/react'
+import React from 'react'
+import { useMonths } from '../hooks'
 
 const Header: FC<YearAndMonthPickerHeaderProps> = ({
   selectedYear,

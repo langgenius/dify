@@ -1,13 +1,13 @@
-import { RiCloseLine } from '@remixicon/react'
-import InputFieldForm from './form'
-import { convertFormDataToINputField, convertToInputFieldFormData } from './utils'
-import { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { InputVar } from '@/models/pipeline'
 import type { FormData } from './form/types'
 import type { MoreInfo } from '@/app/components/workflow/types'
-import { useFloatingRight } from '../hooks'
+import type { InputVar } from '@/models/pipeline'
+import { RiCloseLine } from '@remixicon/react'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
+import { useFloatingRight } from '../hooks'
+import InputFieldForm from './form'
+import { convertFormDataToINputField, convertToInputFieldFormData } from './utils'
 
 export type InputFieldEditorProps = {
   onClose: () => void

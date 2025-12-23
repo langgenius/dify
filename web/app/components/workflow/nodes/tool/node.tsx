@@ -1,11 +1,11 @@
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
-import type { NodeProps } from '@/app/components/workflow/types'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
-import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
-import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
 import type { ToolNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import React, { useEffect } from 'react'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useNodeDataUpdate } from '@/app/components/workflow/hooks/use-node-data-update'
+import { useNodePluginInstallation } from '@/app/components/workflow/hooks/use-node-plugin-installation'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 
 const Node: FC<NodeProps<ToolNodeType>> = ({
   id,

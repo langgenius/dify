@@ -1,14 +1,14 @@
+import type { FormSchema } from '@/app/components/base/form/types'
+import type {
+  Credential,
+  CredentialTypeEnum,
+} from '@/app/components/plugins/plugin-auth/types'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
 import { del, get, post } from './base'
 import { useInvalid } from './use-base'
-import type {
-  Credential,
-  CredentialTypeEnum,
-} from '@/app/components/plugins/plugin-auth/types'
-import type { FormSchema } from '@/app/components/base/form/types'
 
 const NAME_SPACE = 'plugins-auth'
 

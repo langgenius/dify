@@ -4,21 +4,20 @@ import type {
   Viewport,
   XYPosition,
 } from 'reactflow'
-import type { Resolution, TransferMethod } from '@/types/app'
-import type { PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
+import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
 import type { Collection, Tool } from '@/app/components/tools/types'
-import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
+import type { BlockClassificationEnum, PluginDefaultValue } from '@/app/components/workflow/block-selector/types'
 import type {
   DefaultValueForm,
   ErrorHandleTypeEnum,
 } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import type { WorkflowRetryConfig } from '@/app/components/workflow/nodes/_base/components/retry/types'
 import type { StructuredOutput } from '@/app/components/workflow/nodes/llm/types'
-import type { Plugin, PluginMeta } from '@/app/components/plugins/types'
-import type { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import type { Resolution, TransferMethod } from '@/types/app'
+import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
 
 export enum BlockEnum {
   Start = 'start',

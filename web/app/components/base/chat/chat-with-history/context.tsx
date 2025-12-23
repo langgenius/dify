@@ -1,14 +1,13 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
+import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type {
   Callback,
   ChatConfig,
   ChatItemInTree,
   Feedback,
 } from '../types'
-import type { ThemeBuilder } from '../embedded-chatbot/theme/theme-context'
 import type {
   AppConversationData,
   AppData,
@@ -16,6 +15,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
+import { createContext, useContext } from 'use-context-selector'
 
 export type ChatWithHistoryContextValue = {
   appMeta?: AppMeta | null

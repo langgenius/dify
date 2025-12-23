@@ -1,12 +1,12 @@
-import * as React from 'react'
+import type { ComponentProps } from 'react'
+import type { AnnotationItemBasic } from '../type'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ComponentProps } from 'react'
-import HeaderOptions from './index'
+import * as React from 'react'
 import I18NContext from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
-import type { AnnotationItemBasic } from '../type'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import HeaderOptions from './index'
 
 vi.mock('@headlessui/react', () => {
   type PopoverContextValue = { open: boolean, setOpen: (open: boolean) => void }

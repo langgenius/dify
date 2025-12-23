@@ -1,9 +1,9 @@
-import Button from '@/app/components/base/button'
 import { RiAddLine, RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Operations from './operations'
+import Button from '@/app/components/base/button'
 import CustomPopover from '@/app/components/base/popover'
+import Operations from './operations'
 
 type ActionsProps = {
   onApplyTemplate: () => void

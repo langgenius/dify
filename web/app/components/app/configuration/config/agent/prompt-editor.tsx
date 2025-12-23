@@ -1,21 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import type { ExternalDataTool } from '@/models/common'
 import copy from 'copy-to-clipboard'
-import { useContext } from 'use-context-selector'
+import { noop } from 'lodash-es'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import { useContext } from 'use-context-selector'
+import s from '@/app/components/app/configuration/config-prompt/style.module.css'
 import {
   Copy,
   CopyCheck,
 } from '@/app/components/base/icons/src/vender/line/files'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import type { ExternalDataTool } from '@/models/common'
+import { useToastContext } from '@/app/components/base/toast'
 import ConfigContext from '@/context/debug-configuration'
 import { useModalContext } from '@/context/modal-context'
-import { useToastContext } from '@/app/components/base/toast'
-import s from '@/app/components/app/configuration/config-prompt/style.module.css'
-import { noop } from 'lodash-es'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   className?: string

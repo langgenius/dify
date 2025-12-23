@@ -1,12 +1,12 @@
-import type { Edge, EnvironmentVariable, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import type { Viewport } from 'reactflow'
 import type { DSLImportMode, DSLImportStatus } from './app'
 import type { ChunkingMode, DatasetPermission, DocumentIndexingStatus, FileIndexingEstimateResponse, IconInfo } from './datasets'
-import type { Dependency } from '@/app/components/plugins/types'
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
-import type { Viewport } from 'reactflow'
+import type { Dependency } from '@/app/components/plugins/types'
+import type { Edge, EnvironmentVariable, Node, SupportUploadFileTypes } from '@/app/components/workflow/types'
 import type { TransferMethod } from '@/types/app'
-import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import type { NodeRunResult } from '@/types/workflow'
+import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 
 export enum DatasourceType {
   localFile = 'local_file',

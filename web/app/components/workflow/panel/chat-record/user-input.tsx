@@ -1,9 +1,9 @@
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 
 const UserInput = () => {
   const { t } = useTranslation()

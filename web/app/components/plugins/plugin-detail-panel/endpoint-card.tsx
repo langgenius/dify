@@ -1,25 +1,25 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { EndpointListItem, PluginDetail } from '../types'
+import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
-import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
-import type { EndpointListItem, PluginDetail } from '../types'
-import EndpointModal from './endpoint-modal'
-import { NAME_FIELD } from './utils'
-import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
+import React, { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Confirm from '@/app/components/base/confirm'
-import Indicator from '@/app/components/header/indicator'
+import { CopyCheck } from '@/app/components/base/icons/src/vender/line/files'
 import Switch from '@/app/components/base/switch'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import Indicator from '@/app/components/header/indicator'
+import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import {
   useDeleteEndpoint,
   useDisableEndpoint,
   useEnableEndpoint,
   useUpdateEndpoint,
 } from '@/service/use-endpoints'
+import EndpointModal from './endpoint-modal'
+import { NAME_FIELD } from './utils'
 
 type Props = {
   pluginDetail: PluginDetail

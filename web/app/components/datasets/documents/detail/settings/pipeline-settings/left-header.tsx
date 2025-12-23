@@ -1,9 +1,9 @@
-import React, { useCallback } from 'react'
 import { RiArrowLeftLine } from '@remixicon/react'
-import Button from '@/app/components/base/button'
 import { useRouter } from 'next/navigation'
-import Effect from '@/app/components/base/effect'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Effect from '@/app/components/base/effect'
 
 type LeftHeaderProps = {
   title: string

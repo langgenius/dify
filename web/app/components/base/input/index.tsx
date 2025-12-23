@@ -1,10 +1,11 @@
-import { cn } from '@/utils/classnames'
+import type { VariantProps } from 'class-variance-authority'
+import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
-import { type VariantProps, cva } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
 import { noop } from 'lodash-es'
-import type { CSSProperties, ChangeEventHandler, FocusEventHandler } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import { CopyFeedbackNew } from '../copy-feedback'
 
 export const inputVariants = cva(

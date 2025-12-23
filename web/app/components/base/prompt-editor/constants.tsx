@@ -1,4 +1,5 @@
-import { SupportUploadFileTypes, type ValueSelector } from '../../workflow/types'
+import type { ValueSelector } from '../../workflow/types'
+import { SupportUploadFileTypes } from '../../workflow/types'
 
 export const CONTEXT_PLACEHOLDER_TEXT = '{{#context#}}'
 export const HISTORY_PLACEHOLDER_TEXT = '{{#histories#}}'

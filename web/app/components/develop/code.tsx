@@ -1,4 +1,6 @@
 'use client'
+import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
+import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
 import {
   Children,
   createContext,
@@ -7,11 +9,9 @@ import {
   useRef,
   useState,
 } from 'react'
-import { Tab, TabGroup, TabList, TabPanel, TabPanels } from '@headlessui/react'
-import { Tag } from './tag'
 import { cn } from '@/utils/classnames'
 import { writeTextToClipboard } from '@/utils/clipboard'
-import type { PropsWithChildren, ReactElement, ReactNode } from 'react'
+import { Tag } from './tag'
 
 type IChildrenProps = {
   children: React.ReactNode

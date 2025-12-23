@@ -1,14 +1,14 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import CloudPlanItem from './index'
-import { Plan } from '../../../type'
-import { PlanRange } from '../../plan-switcher/plan-range-switcher'
+import React from 'react'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
 import Toast from '../../../../base/toast'
 import { ALL_PLANS } from '../../../config'
+import { Plan } from '../../../type'
+import { PlanRange } from '../../plan-switcher/plan-range-switcher'
+import CloudPlanItem from './index'
 
 vi.mock('../../../../base/toast', () => ({
   __esModule: true,

@@ -1,8 +1,8 @@
 'use client'
-import { Generator } from '@/app/components/base/icons/src/vender/other'
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { Generator } from '@/app/components/base/icons/src/vender/other'
 
 const ResPlaceholder: FC = () => {
   const { t } = useTranslation()

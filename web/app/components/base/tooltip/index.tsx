@@ -1,11 +1,11 @@
 'use client'
-import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useBoolean } from 'ahooks'
 import type { OffsetOptions, Placement } from '@floating-ui/react'
+import type { FC } from 'react'
 import { RiQuestionLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useBoolean } from 'ahooks'
+import React, { useEffect, useRef, useState } from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
 import { tooltipManager } from './TooltipManager'
 
 export type TooltipProps = {

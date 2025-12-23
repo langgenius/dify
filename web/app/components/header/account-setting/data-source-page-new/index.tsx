@@ -1,8 +1,8 @@
 import { memo } from 'react'
-import Card from './card'
-import InstallFromMarketplace from './install-from-marketplace'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useGetDataSourceListAuth } from '@/service/use-datasource'
+import Card from './card'
+import InstallFromMarketplace from './install-from-marketplace'
 
 const DataSourcePage = () => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)

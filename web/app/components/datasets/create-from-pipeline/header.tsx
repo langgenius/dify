@@ -1,8 +1,8 @@
-import React from 'react'
 import { RiArrowLeftLine } from '@remixicon/react'
-import Button from '../../base/button'
-import { useTranslation } from 'react-i18next'
 import Link from 'next/link'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '../../base/button'
 
 const Header = () => {
   const { t } = useTranslation()

@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useContext } from 'use-context-selector'
-import I18n from '@/context/i18n'
 import {
   RiArrowRightUpLine,
   RiBugLine,
 } from '@remixicon/react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import KeyValueItem from '../base/key-value-item'
-import Tooltip from '@/app/components/base/tooltip'
+import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
+import Tooltip from '@/app/components/base/tooltip'
 import { getDocsUrl } from '@/app/components/plugins/utils'
+import I18n from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
+import KeyValueItem from '../base/key-value-item'
 
 const i18nPrefix = 'plugin.debugInfo'
 

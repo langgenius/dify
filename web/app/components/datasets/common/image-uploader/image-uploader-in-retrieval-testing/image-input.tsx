@@ -1,10 +1,10 @@
+import { RiImageAddLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useUpload } from '../hooks/use-upload'
-import { ACCEPT_TYPES } from '../constants'
-import { useFileStoreWithSelector } from '../store'
-import { RiImageAddLine } from '@remixicon/react'
 import Tooltip from '@/app/components/base/tooltip'
+import { ACCEPT_TYPES } from '../constants'
+import { useUpload } from '../hooks/use-upload'
+import { useFileStoreWithSelector } from '../store'
 
 const ImageUploader = () => {
   const { t } = useTranslation()

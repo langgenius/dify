@@ -1,9 +1,9 @@
 import type { MockedFunction } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import React from 'react'
-import EmptyDatasetCreationModal from './index'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import EmptyDatasetCreationModal from './index'
 
 // Mock Next.js router
 const mockPush = vi.fn()

@@ -1,10 +1,10 @@
 import type { FC } from 'react'
+import type { ConversationItem } from '@/models/share'
+import { useHover } from 'ahooks'
 import {
   memo,
   useRef,
 } from 'react'
-import { useHover } from 'ahooks'
-import type { ConversationItem } from '@/models/share'
 import Operation from '@/app/components/base/chat/chat-with-history/sidebar/operation'
 import { cn } from '@/utils/classnames'
 

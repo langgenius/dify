@@ -1,10 +1,10 @@
-import { type FC, useEffect, useState } from 'react'
-import React from 'react'
+import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
-import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
+import React, { useEffect, useState } from 'react'
 import AppIcon from '@/app/components/base/app-icon'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const Node: FC<NodeProps<KnowledgeRetrievalNodeType>> = ({
   data,

@@ -1,10 +1,10 @@
+import type { PluginDetail } from '@/app/components/plugins/types'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import StrategyItem from '@/app/components/plugins/plugin-detail-panel/strategy-item'
 import {
   useStrategyProviderDetail,
 } from '@/service/use-strategy'
-import type { PluginDetail } from '@/app/components/plugins/types'
 
 type Props = {
   detail: PluginDetail

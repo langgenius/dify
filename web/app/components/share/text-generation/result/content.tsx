@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import React from 'react'
-import Header from './header'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import React from 'react'
 import { format } from '@/service/base'
+import Header from './header'
 
 export type IResultProps = {
   content: string

@@ -1,11 +1,3 @@
-import {
-  memo,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useNodes } from 'reactflow'
-import { useStore } from '../../../store'
-import { BlockEnum } from '../../../types'
 import type {
   Node,
   ValueSelector,
@@ -13,17 +5,25 @@ import type {
 } from '../../../types'
 import type { VariableAssignerNodeType } from '../types'
 import {
+  memo,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useNodes } from 'reactflow'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  VariableLabelInNode,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
+import { cn } from '@/utils/classnames'
+import { useStore } from '../../../store'
+import { BlockEnum } from '../../../types'
+import {
   useGetAvailableVars,
   useVariableAssigner,
 } from '../hooks'
 import { filterVar } from '../utils'
 import AddVariable from './add-variable'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import { cn } from '@/utils/classnames'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
-import {
-  VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 
 const i18nPrefix = 'workflow.nodes.variableAssigner'
 type GroupItem = {

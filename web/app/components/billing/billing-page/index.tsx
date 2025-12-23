@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
-import PlanComp from '../plan'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
-import { useBillingUrl } from '@/service/use-billing'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { useBillingUrl } from '@/service/use-billing'
+import PlanComp from '../plan'
 
 const Billing: FC = () => {
   const { t } = useTranslation()

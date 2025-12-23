@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { InstallStatus, Plugin } from '../../../types'
-import Card from '@/app/components/plugins/card'
-import Button from '@/app/components/base/button'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
-import useGetIcon from '../../base/use-get-icon'
+import Button from '@/app/components/base/button'
+import Card from '@/app/components/plugins/card'
 import { MARKETPLACE_API_PREFIX } from '@/config'
+import useGetIcon from '../../base/use-get-icon'
 
 type Props = {
   list: Plugin[]

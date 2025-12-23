@@ -1,5 +1,10 @@
 'use client'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
 import type { FC } from 'react'
+import type { App } from '@/types/app'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -7,14 +12,9 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
-import type { App } from '@/types/app'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
+import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
+import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
 import { useInfiniteAppList } from '@/service/use-apps'
 
 const PAGE_SIZE = 20

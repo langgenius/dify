@@ -10,8 +10,8 @@
 
 import { render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from 'next-themes'
-import useTheme from '@/hooks/use-theme'
 import { useEffect, useState } from 'react'
+import useTheme from '@/hooks/use-theme'
 
 const DARK_MODE_MEDIA_QUERY = /prefers-color-scheme:\s*dark/i
 

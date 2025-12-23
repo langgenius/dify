@@ -1,36 +1,36 @@
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import {
-  RiArrowRightUpLine,
-  RiBracesLine,
-} from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
-import Switch from '@/app/components/base/switch'
-import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import Input from '@/app/components/base/input'
-import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
-import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
-import { SimpleSelect } from '@/app/components/base/select'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Node } from 'reactflow'
+import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
+import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
 import type {
   NodeOutPutVar,
   ValueSelector,
 } from '@/app/components/workflow/types'
-import type { ToolVarInputs } from '@/app/components/workflow/nodes/tool/types'
+import {
+  RiArrowRightUpLine,
+  RiBracesLine,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import { SimpleSelect } from '@/app/components/base/select'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
+import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import FormInputBoolean from '@/app/components/workflow/nodes/_base/components/form-input-boolean'
+import FormInputTypeSwitch from '@/app/components/workflow/nodes/_base/components/form-input-type-switch'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
-import { useBoolean } from 'ahooks'
 import SchemaModal from './schema-modal'
-import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 
 type Props = {
   value: Record<string, any>

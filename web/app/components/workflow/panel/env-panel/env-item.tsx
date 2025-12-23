@@ -1,9 +1,9 @@
-import { memo, useState } from 'react'
-import { capitalize } from 'lodash-es'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { RiDeleteBinLine, RiEditLine, RiLock2Line } from '@remixicon/react'
+import { capitalize } from 'lodash-es'
+import { memo, useState } from 'react'
 import { Env } from '@/app/components/base/icons/src/vender/line/others'
 import { useStore } from '@/app/components/workflow/store'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 
 type EnvItemProps = {

@@ -1,12 +1,12 @@
 'use client'
-import { useBoolean } from 'ahooks'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
 } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { cn } from '@/utils/classnames'

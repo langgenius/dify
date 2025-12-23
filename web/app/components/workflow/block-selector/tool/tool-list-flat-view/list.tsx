@@ -1,12 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import type { ToolWithProvider } from '../../../types'
-import type { BlockEnum } from '../../../types'
+import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
-import Tool from '../tool'
+import React, { useMemo } from 'react'
 import { ViewType } from '../../view-type-select'
-import { useMemo } from 'react'
+import Tool from '../tool'
 
 type Props = {
   payload: ToolWithProvider[]

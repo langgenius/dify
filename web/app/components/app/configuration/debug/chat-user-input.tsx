@@ -1,14 +1,14 @@
+import type { Inputs } from '@/models/debug'
 import React, { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import ConfigContext from '@/context/debug-configuration'
 import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'
 import Textarea from '@/app/components/base/textarea'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import type { Inputs } from '@/models/debug'
-import { cn } from '@/utils/classnames'
 import BoolInput from '@/app/components/workflow/nodes/_base/components/before-run-form/bool-input'
+import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import ConfigContext from '@/context/debug-configuration'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   inputs: Inputs

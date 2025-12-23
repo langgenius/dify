@@ -1,9 +1,9 @@
 import React from 'react'
-import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
-import Line from './line'
-import { cn } from '@/utils/classnames'
 import { useTranslation } from 'react-i18next'
+import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocLink } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
+import Line from './line'
 
 type InstructionProps = {
   className?: string

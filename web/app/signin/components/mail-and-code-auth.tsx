@@ -1,14 +1,15 @@
-import { type FormEvent, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
-import { emailRegex } from '@/config'
+import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { sendEMailLoginCode } from '@/service/common'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { emailRegex } from '@/config'
 import I18NContext from '@/context/i18n'
+import { sendEMailLoginCode } from '@/service/common'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean

@@ -1,20 +1,22 @@
+import type { ValueSelector } from '../../../types'
+import type { Condition } from '../types'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ComparisonOperator, type Condition } from '../types'
+import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import {
+  VariableLabelInNode,
+} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
+import { ComparisonOperator } from '../types'
 import {
   comparisonOperatorNotRequireValue,
   isComparisonOperatorNeedTranslate,
   isEmptyRelatedOperator,
 } from '../utils'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '../../constants'
-import type { ValueSelector } from '../../../types'
-import { isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import {
-  VariableLabelInNode,
-} from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+
 const i18nPrefix = 'workflow.nodes.ifElse'
 
 type ConditionValueProps = {

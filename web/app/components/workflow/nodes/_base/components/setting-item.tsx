@@ -1,7 +1,8 @@
+import type { ComponentProps, PropsWithChildren, ReactNode } from 'react'
+import { memo } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
-import { type ComponentProps, type PropsWithChildren, type ReactNode, memo } from 'react'
 
 export type SettingItemProps = PropsWithChildren<{
   label: string

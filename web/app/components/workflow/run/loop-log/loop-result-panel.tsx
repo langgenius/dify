@@ -1,20 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
 import {
   RiArrowLeftLine,
   RiArrowRightSLine,
   RiErrorWarningLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
-import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
-import { cn } from '@/utils/classnames'
-import type { LoopDurationMap, LoopVariableMap, NodeTracing } from '@/types/workflow'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+
 const i18nPrefix = 'workflow.singleRun'
 
 type Props = {

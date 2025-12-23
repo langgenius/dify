@@ -1,15 +1,19 @@
 'use client'
+import type { FormRefObject } from '@/app/components/base/form/types'
+import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
+import { RiLoader2Line } from '@remixicon/react'
+import { debounce } from 'lodash-es'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 // import { CopyFeedbackNew } from '@/app/components/base/copy-feedback'
 import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 import { BaseForm } from '@/app/components/base/form/components/base'
-import type { FormRefObject } from '@/app/components/base/form/types'
 import { FormTypeEnum } from '@/app/components/base/form/types'
 import Modal from '@/app/components/base/modal/modal'
 import Toast from '@/app/components/base/toast'
 import { SupportedCreationMethods } from '@/app/components/plugins/types'
-import type { TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
-import type { BuildTriggerSubscriptionPayload } from '@/service/use-triggers'
 import {
   useBuildTriggerSubscription,
   useCreateTriggerSubscriptionBuilder,
@@ -19,12 +23,8 @@ import {
 } from '@/service/use-triggers'
 import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
-import { RiLoader2Line } from '@remixicon/react'
-import { debounce } from 'lodash-es'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import LogViewer from '../log-viewer'
 import { usePluginStore } from '../../store'
+import LogViewer from '../log-viewer'
 import { useSubscriptionList } from '../use-subscription-list'
 
 type Props = {

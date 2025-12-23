@@ -1,16 +1,17 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiArrowDownSLine,
   RiCheckLine,
 } from '@remixicon/react'
-import { AUTO_UPDATE_STRATEGY } from './types'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
+import { AUTO_UPDATE_STRATEGY } from './types'
+
 const i18nPrefix = 'plugin.autoUpdate.strategy'
 
 type Props = {

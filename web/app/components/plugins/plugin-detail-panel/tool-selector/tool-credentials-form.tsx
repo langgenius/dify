@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Collection } from '@/app/components/tools/types'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
-import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import type { Collection } from '@/app/components/tools/types'
+import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
-import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { cn } from '@/utils/classnames'
 
 type Props = {

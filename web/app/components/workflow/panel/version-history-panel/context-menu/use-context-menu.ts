@@ -1,8 +1,8 @@
+import type { ContextMenuProps } from './index'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { VersionHistoryContextMenuOptions } from '../../../types'
-import type { ContextMenuProps } from './index'
 import { useStore } from '@/app/components/workflow/store'
+import { VersionHistoryContextMenuOptions } from '../../../types'
 
 const useContextMenu = (props: ContextMenuProps) => {
   const {

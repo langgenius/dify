@@ -1,8 +1,8 @@
-import { useState } from 'react'
-import { useDebounceFn } from 'ahooks'
 import type { DebouncedFunc } from 'lodash-es'
+import type { ValidateCallback, ValidatedStatusState, ValidateValue } from './declarations'
+import { useDebounceFn } from 'ahooks'
+import { useState } from 'react'
 import { ValidatedStatus } from './declarations'
-import type { ValidateCallback, ValidateValue, ValidatedStatusState } from './declarations'
 
 export const useValidate: (value: ValidateValue) => [DebouncedFunc<(validateCallback: ValidateCallback) => Promise<void>>, boolean, ValidatedStatusState] = (value) => {
   const [validating, setValidating] = useState(false)

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { Limit } from '../types'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Limit } from '../types'
-import InputNumberWithSlider from '../../_base/components/input-number-with-slider'
-import { cn } from '@/utils/classnames'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
 import Switch from '@/app/components/base/switch'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import { cn } from '@/utils/classnames'
+import InputNumberWithSlider from '../../_base/components/input-number-with-slider'
 
 const i18nPrefix = 'workflow.nodes.listFilter'
 const LIMIT_SIZE_MIN = 1

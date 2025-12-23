@@ -1,6 +1,6 @@
+import { useLatest } from 'ahooks'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useLatest } from 'ahooks'
 import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import Tooltip from '@/app/components/base/tooltip'
 

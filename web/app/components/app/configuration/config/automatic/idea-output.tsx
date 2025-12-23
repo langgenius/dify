@@ -1,11 +1,11 @@
 'use client'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { useBoolean } from 'ahooks'
 import type { FC } from 'react'
+import { useBoolean } from 'ahooks'
 import React from 'react'
-import { cn } from '@/utils/classnames'
-import Textarea from '@/app/components/base/textarea'
 import { useTranslation } from 'react-i18next'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import Textarea from '@/app/components/base/textarea'
+import { cn } from '@/utils/classnames'
 
 const i18nPrefix = 'appDebug.generate'
 

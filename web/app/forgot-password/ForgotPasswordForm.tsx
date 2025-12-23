@@ -1,23 +1,23 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { InitValidateStatusResponse } from '@/models/common'
+import { zodResolver } from '@hookform/resolvers/zod'
 
 import { useRouter } from 'next/navigation'
 
+import React, { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import Loading from '../components/base/loading'
-import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
-import { basePath } from '@/utils/var'
-
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
   sendForgotPasswordEmail,
 } from '@/service/common'
-import type { InitValidateStatusResponse } from '@/models/common'
+import { basePath } from '@/utils/var'
+
+import Input from '../components/base/input'
+import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
   email: z

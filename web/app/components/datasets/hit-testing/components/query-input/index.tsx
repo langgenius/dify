@@ -1,15 +1,6 @@
+import type { UseMutateAsyncFunction } from '@tanstack/react-query'
 import type { ChangeEvent } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiEqualizer2Line,
-  RiPlayCircleLine,
-} from '@remixicon/react'
-import Image from 'next/image'
-import Button from '@/app/components/base/button'
-import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
-import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
-import { cn } from '@/utils/classnames'
+import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
 import type {
   Attachment,
   ExternalKnowledgeBaseHitTestingRequest,
@@ -18,13 +9,23 @@ import type {
   HitTestingResponse,
   Query,
 } from '@/models/datasets'
-import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
-import type { UseMutateAsyncFunction } from '@tanstack/react-query'
-import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
-import Textarea from './textarea'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import type { RetrievalConfig } from '@/types/app'
+import {
+  RiEqualizer2Line,
+  RiPlayCircleLine,
+} from '@remixicon/react'
+import Image from 'next/image'
+import React, { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
+import Button from '@/app/components/base/button'
+import ImageUploaderInRetrievalTesting from '@/app/components/datasets/common/image-uploader/image-uploader-in-retrieval-testing'
+import { getIcon } from '@/app/components/datasets/common/retrieval-method-info'
+import ModifyExternalRetrievalModal from '@/app/components/datasets/hit-testing/modify-external-retrieval-modal'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import Textarea from './textarea'
 
 type QueryInputProps = {
   onUpdateList: () => void

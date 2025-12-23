@@ -1,12 +1,12 @@
 import type { ChangeEvent } from 'react'
-import { useCallback, useState } from 'react'
+import type { LabelProps } from '../label'
 import { RiEditLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import SegmentedControl from '@/app/components/base/segmented-control'
+import { useCallback, useState } from 'react'
 import { VariableX } from '@/app/components/base/icons/src/vender/workflow'
 import Input from '@/app/components/base/input'
+import SegmentedControl from '@/app/components/base/segmented-control'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { LabelProps } from '../label'
+import { cn } from '@/utils/classnames'
 import Label from '../label'
 
 type VariableOrConstantInputFieldProps = {

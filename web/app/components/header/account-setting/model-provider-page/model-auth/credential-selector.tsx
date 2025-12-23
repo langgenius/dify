@@ -1,22 +1,22 @@
+import type { Credential } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  RiAddLine,
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiAddLine,
-  RiArrowDownSLine,
-} from '@remixicon/react'
+import Badge from '@/app/components/base/badge'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { Credential } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import CredentialItem from './authorized/credential-item'
-import Badge from '@/app/components/base/badge'
 import Indicator from '@/app/components/header/indicator'
+import CredentialItem from './authorized/credential-item'
 
 type CredentialSelectorProps = {
   selectedCredential?: Credential & { addNewCredential?: boolean }

@@ -1,8 +1,8 @@
 import type { ChangeEvent, FC } from 'react'
-import { useState } from 'react'
-import { useLocalFileUploader } from './hooks'
 import type { ImageFile } from '@/types/app'
+import { useState } from 'react'
 import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
+import { useLocalFileUploader } from './hooks'
 
 type UploaderProps = {
   children: (hovering: boolean) => React.JSX.Element

@@ -1,15 +1,15 @@
 'use client'
+import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import { RiAddLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAddLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
-import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { EnvironmentVariable } from '@/app/components/workflow/types'
+import VariableModal from '@/app/components/workflow/panel/env-panel/variable-modal'
 
 type Props = {
   open: boolean

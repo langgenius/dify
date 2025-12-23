@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiArrowLeftLine,
-  RiCloseLine,
-} from '@remixicon/react'
-import Drawer from '@/app/components/base/drawer'
-import ActionButton from '@/app/components/base/action-button'
-import Icon from '@/app/components/plugins/card/base/card-icon'
-import Description from '@/app/components/plugins/card/base/description'
-import Divider from '@/app/components/base/divider'
 import type {
   StrategyDetail as StrategyDetailType,
 } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
+import {
+  RiArrowLeftLine,
+  RiCloseLine,
+} from '@remixicon/react'
+import React, { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import Divider from '@/app/components/base/divider'
+import Drawer from '@/app/components/base/drawer'
+import Icon from '@/app/components/plugins/card/base/card-icon'
+import Description from '@/app/components/plugins/card/base/description'
 import { API_PREFIX } from '@/config'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 
 type Props = {

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import React from 'react'
-import Script from 'next/script'
 import { headers } from 'next/headers'
+import Script from 'next/script'
+import React from 'react'
 import { IS_CE_EDITION } from '@/config'
 
 export enum GaType {

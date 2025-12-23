@@ -1,36 +1,34 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-
 import type {
   DefaultModel,
   Model,
   ModelItem,
 } from '../declarations'
+
+import { useTranslation } from 'react-i18next'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import Tooltip from '@/app/components/base/tooltip'
+import { useModalContext } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 import {
+  ConfigurationMethodEnum,
   ModelFeatureEnum,
+  ModelStatusEnum,
   ModelTypeEnum,
 } from '../declarations'
-import {
-  modelTypeFormat,
-  sizeFormat,
-} from '../utils'
 import {
   useLanguage,
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
+import ModelBadge from '../model-badge'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import ModelBadge from '../model-badge'
 import {
-  ConfigurationMethodEnum,
-  ModelStatusEnum,
-} from '../declarations'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { useModalContext } from '@/context/modal-context'
-import { useProviderContext } from '@/context/provider-context'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
+  modelTypeFormat,
+  sizeFormat,
+} from '../utils'
 import FeatureIcon from './feature-icon'
 
 type PopupItemProps = {

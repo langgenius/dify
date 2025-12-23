@@ -1,16 +1,16 @@
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { PromptVariable } from '@/models/debug'
+import { RiEditLine } from '@remixicon/react'
+import { produce } from 'immer'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import { RiEditLine } from '@remixicon/react'
-import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
+import { LoveMessage } from '@/app/components/base/icons/src/vender/features'
 import { useModalContext } from '@/context/modal-context'
-import type { PromptVariable } from '@/models/debug'
-import type { InputVar } from '@/app/components/workflow/types'
 
 type Props = {
   disabled?: boolean

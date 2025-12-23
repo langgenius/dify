@@ -1,9 +1,9 @@
-import React from 'react'
-import Button from '../base/button'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import Tooltip from '../base/tooltip'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import Button from '../base/button'
+import Tooltip from '../base/tooltip'
 import { getKeyboardKeyNameBySystem } from '../workflow/utils'
 
 type TooltipContentProps = {

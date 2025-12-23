@@ -1,9 +1,9 @@
 import type { ActionItem, AppSearchResult } from './types'
 import type { App } from '@/types/app'
 import { fetchAppList } from '@/service/apps'
-import AppIcon from '../../base/app-icon'
-import { AppTypeIcon } from '../../app/type-selector'
 import { getRedirectionPath } from '@/utils/app-redirection'
+import { AppTypeIcon } from '../../app/type-selector'
+import AppIcon from '../../base/app-icon'
 
 const parser = (apps: App[]): AppSearchResult[] => {
   return apps.map(app => ({

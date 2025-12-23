@@ -1,5 +1,5 @@
-import React from 'react'
 import { RiDragDropLine } from '@remixicon/react'
+import React from 'react'
 
 const FooterTip = () => {
   return (

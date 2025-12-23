@@ -1,15 +1,5 @@
 'use client'
 
-import React, { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import Button from '@/app/components/base/button'
-import Avatar from '@/app/components/base/avatar'
-import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useAppContext } from '@/context/app-context'
-import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 import {
   RiAccountCircleLine,
   RiGlobalLine,
@@ -18,7 +8,17 @@ import {
   RiTranslate2,
 } from '@remixicon/react'
 import dayjs from 'dayjs'
+import { useRouter, useSearchParams } from 'next/navigation'
+import React, { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import Avatar from '@/app/components/base/avatar'
+import Button from '@/app/components/base/button'
+import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useAppContext } from '@/context/app-context'
 import { useIsLogin } from '@/service/use-common'
+import { useAuthorizeOAuthApp, useOAuthAppInfo } from '@/service/use-oauth'
 import {
   OAUTH_AUTHORIZE_PENDING_KEY,
   OAUTH_AUTHORIZE_PENDING_TTL,

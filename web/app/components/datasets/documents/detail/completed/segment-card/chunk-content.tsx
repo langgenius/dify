@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
+import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import { useSegmentListContext } from '..'
-import { Markdown } from '@/app/components/base/markdown'
 
 type ChunkContentProps = {
   detail: {

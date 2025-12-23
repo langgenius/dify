@@ -1,17 +1,17 @@
-import type { MockInstance, MockedFunction } from 'vitest'
-import * as React from 'react'
+import type { MockedFunction, MockInstance } from 'vitest'
+import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ParamsConfig from './index'
-import ConfigContext from '@/context/debug-configuration'
-import type { DatasetConfigs } from '@/models/debug'
-import { RerankingModeEnum } from '@/models/datasets'
-import { RETRIEVE_TYPE } from '@/types/app'
+import * as React from 'react'
 import Toast from '@/app/components/base/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ConfigContext from '@/context/debug-configuration'
+import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import ParamsConfig from './index'
 
 vi.mock('@headlessui/react', () => ({
   Dialog: ({ children, className }: { children: React.ReactNode, className?: string }) => (

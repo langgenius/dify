@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { type MetadataItemWithEdit, UpdateType } from '../types'
-import Label from './label'
+import type { MetadataItemWithEdit } from '../types'
 import { RiDeleteBinLine } from '@remixicon/react'
+import React from 'react'
 import { cn } from '@/utils/classnames'
-import InputHasSetMultipleValue from './input-has-set-multiple-value'
-import InputCombined from './input-combined'
+import { UpdateType } from '../types'
 import EditedBeacon from './edited-beacon'
+import InputCombined from './input-combined'
+import InputHasSetMultipleValue from './input-has-set-multiple-value'
+import Label from './label'
 
 type Props = {
   payload: MetadataItemWithEdit

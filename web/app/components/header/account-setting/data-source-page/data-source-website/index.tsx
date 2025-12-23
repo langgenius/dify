@@ -1,20 +1,20 @@
 'use client'
 import type { FC } from 'react'
+import type { DataSourceItem } from '@/models/common'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
+import s from '@/app/components/datasets/create/website/index.module.css'
+import { useAppContext } from '@/context/app-context'
+import { DataSourceProvider } from '@/models/common'
+import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
+import { cn } from '@/utils/classnames'
 import Panel from '../panel'
+
 import { DataSourceType } from '../panel/types'
 import ConfigFirecrawlModal from './config-firecrawl-modal'
-import ConfigWatercrawlModal from './config-watercrawl-modal'
 import ConfigJinaReaderModal from './config-jina-reader-modal'
-import { cn } from '@/utils/classnames'
-import s from '@/app/components/datasets/create/website/index.module.css'
-import { fetchDataSources, removeDataSourceApiKeyBinding } from '@/service/datasets'
-
-import type { DataSourceItem } from '@/models/common'
-import { DataSourceProvider } from '@/models/common'
-import { useAppContext } from '@/context/app-context'
-import Toast from '@/app/components/base/toast'
+import ConfigWatercrawlModal from './config-watercrawl-modal'
 
 type Props = {
   provider: DataSourceProvider

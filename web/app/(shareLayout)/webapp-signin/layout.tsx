@@ -1,10 +1,10 @@
 'use client'
 
-import { cn } from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import useDocumentTitle from '@/hooks/use-document-title'
 import type { PropsWithChildren } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { cn } from '@/utils/classnames'
 
 export default function SignInLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()

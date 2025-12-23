@@ -1,8 +1,8 @@
 import type { MockedFunction } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import FilePreview from './index'
 import type { CustomFile as File } from '@/models/datasets'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { fetchFilePreview } from '@/service/common'
+import FilePreview from './index'
 
 // Mock the fetchFilePreview service
 vi.mock('@/service/common', () => ({

@@ -1,7 +1,7 @@
+import type { Datasource } from '../../types'
 import { useCallback, useEffect } from 'react'
 import { useDatasourceOptions } from '../hooks'
 import OptionCard from './option-card'
-import type { Datasource } from '../../types'
 
 type DataSourceOptionsProps = {
   dataSourceNodeId: string

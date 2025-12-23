@@ -1,25 +1,25 @@
 import type { FC } from 'react'
-import { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiArrowRightSLine,
-} from '@remixicon/react'
 import type {
   Credential,
   ModelItem,
   ModelProvider,
 } from '../declarations'
 import {
-  ConfigurationMethodEnum,
-} from '../declarations'
-// import Tab from './tab'
-import ModelListItem from './model-list-item'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useAppContext } from '@/context/app-context'
+  RiArrowRightSLine,
+} from '@remixicon/react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { useAppContext } from '@/context/app-context'
+import { useModalContextSelector } from '@/context/modal-context'
+import {
+  ConfigurationMethodEnum,
+} from '../declarations'
+// import Tab from './tab'
+import ModelListItem from './model-list-item'
 
 type ModelListProps = {
   provider: ModelProvider

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
-import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
 
 type Props = {
   isString: boolean

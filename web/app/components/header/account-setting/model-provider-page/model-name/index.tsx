@@ -1,13 +1,13 @@
 import type { FC, PropsWithChildren } from 'react'
+import type { ModelItem } from '../declarations'
+import { cn } from '@/utils/classnames'
+import { useLanguage } from '../hooks'
+import ModelBadge from '../model-badge'
+import FeatureIcon from '../model-selector/feature-icon'
 import {
   modelTypeFormat,
   sizeFormat,
 } from '../utils'
-import { useLanguage } from '../hooks'
-import type { ModelItem } from '../declarations'
-import ModelBadge from '../model-badge'
-import FeatureIcon from '../model-selector/feature-icon'
-import { cn } from '@/utils/classnames'
 
 type ModelNameProps = PropsWithChildren<{
   modelItem: ModelItem

@@ -1,21 +1,21 @@
+import type { FileUpload } from '@/app/components/base/features/types'
+import { RiUploadCloud2Line } from '@remixicon/react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiUploadCloud2Line } from '@remixicon/react'
-import FileInput from '../file-input'
-import { useFile } from '../hooks'
-import { useStore } from '../store'
-import { FILE_URL_REGEX } from '../constants'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@/utils/classnames'
+import { FILE_URL_REGEX } from '../constants'
+import FileInput from '../file-input'
+import { useFile } from '../hooks'
+import { useStore } from '../store'
 
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean

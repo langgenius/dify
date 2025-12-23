@@ -1,14 +1,14 @@
 'use client'
+import type { createDocumentResponse, FullDocumentDetail } from '@/models/datasets'
+import { RiBookOpenLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiBookOpenLine } from '@remixicon/react'
-import EmbeddingProcess from '../embedding-process'
 
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import type { FullDocumentDetail, createDocumentResponse } from '@/models/datasets'
 import AppIcon from '@/app/components/base/app-icon'
 import Divider from '@/app/components/base/divider'
 import { useDocLink } from '@/context/i18n'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import EmbeddingProcess from '../embedding-process'
 
 type StepThreeProps = {
   datasetId?: string

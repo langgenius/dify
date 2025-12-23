@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FC } from 'react'
 import { RiLineHeight } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import { Collapse } from '@/app/components/base/icons/src/vender/knowledge'
+import Tooltip from '@/app/components/base/tooltip'
 
 type DisplayToggleProps = {
   isCollapsed: boolean

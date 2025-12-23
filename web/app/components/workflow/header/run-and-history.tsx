@@ -1,17 +1,17 @@
-import { memo } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ViewHistoryProps } from './view-history'
 import {
   RiPlayLargeLine,
 } from '@remixicon/react'
+import { memo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import {
   useNodesReadOnly,
   useWorkflowStartRun,
 } from '../hooks'
-import type { ViewHistoryProps } from './view-history'
-import ViewHistory from './view-history'
 import Checklist from './checklist'
-import { cn } from '@/utils/classnames'
 import RunMode from './run-mode'
+import ViewHistory from './view-history'
 
 const PreviewMode = memo(() => {
   const { t } = useTranslation()

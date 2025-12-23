@@ -1,19 +1,19 @@
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ConversationItem } from '@/models/share'
 import {
   RiMenuLine,
 } from '@remixicon/react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
+import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
+import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import Confirm from '@/app/components/base/confirm'
+import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import { useChatWithHistoryContext } from './context'
+import MobileOperationDropdown from './header/mobile-operation-dropdown'
 import Operation from './header/operation'
 import Sidebar from './sidebar'
-import MobileOperationDropdown from './header/mobile-operation-dropdown'
-import AppIcon from '@/app/components/base/app-icon'
-import ActionButton from '@/app/components/base/action-button'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
-import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
-import Confirm from '@/app/components/base/confirm'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import type { ConversationItem } from '@/models/share'
 
 const HeaderInMobile = () => {
   const {

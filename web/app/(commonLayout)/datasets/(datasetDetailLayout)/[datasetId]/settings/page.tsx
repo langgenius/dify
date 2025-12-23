@@ -1,6 +1,6 @@
 import React from 'react'
-import { getLocaleOnServer, useTranslation as translate } from '@/i18n-config/server'
 import Form from '@/app/components/datasets/settings/form'
+import { getLocaleOnServer, useTranslation as translate } from '@/i18n-config/server'
 
 const Settings = async () => {
   const locale = await getLocaleOnServer()

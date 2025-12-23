@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import Button from '../../base/button'
 import { RiAddLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import Button from '../../base/button'
 
 type Props = {
   className?: string

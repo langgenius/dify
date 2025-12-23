@@ -1,7 +1,7 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { RoleName } from './index'
 import { DecoratorNode } from 'lexical'
 import HistoryBlockComponent from './component'
-import type { RoleName } from './index'
 
 export type SerializedNode = SerializedLexicalNode & { roleName: RoleName, onEditRole: () => void }
 

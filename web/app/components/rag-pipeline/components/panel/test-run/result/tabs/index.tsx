@@ -1,6 +1,6 @@
+import type { WorkflowRunningData } from '@/app/components/workflow/types'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { WorkflowRunningData } from '@/app/components/workflow/types'
 import Tab from './tab'
 
 type TabsProps = {

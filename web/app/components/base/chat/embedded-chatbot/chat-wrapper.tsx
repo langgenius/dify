@@ -1,30 +1,30 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import Chat from '../chat'
+import type { FileEntity } from '../../file-uploader/types'
 import type {
   ChatConfig,
   ChatItem,
   OnSend,
 } from '../types'
-import { useChat } from '../chat/hooks'
-import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
-import { useEmbeddedChatbotContext } from './context'
-import { isDify } from './utils'
-import { InputVarType } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import AnswerIcon from '@/app/components/base/answer-icon'
+import AppIcon from '@/app/components/base/app-icon'
+import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
 import InputsForm from '@/app/components/base/chat/embedded-chatbot/inputs-form'
+import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
+import { Markdown } from '@/app/components/base/markdown'
+import { InputVarType } from '@/app/components/workflow/types'
 import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
-import AppIcon from '@/app/components/base/app-icon'
-import LogoAvatar from '@/app/components/base/logo/logo-embedded-chat-avatar'
-import AnswerIcon from '@/app/components/base/answer-icon'
-import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
-import { Markdown } from '@/app/components/base/markdown'
+import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import type { FileEntity } from '../../file-uploader/types'
 import Avatar from '../../avatar'
+import Chat from '../chat'
+import { useChat } from '../chat/hooks'
+import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
+import { useEmbeddedChatbotContext } from './context'
+import { isDify } from './utils'
 
 const ChatWrapper = () => {
   const {

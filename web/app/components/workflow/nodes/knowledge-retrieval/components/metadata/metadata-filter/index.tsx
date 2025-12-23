@@ -1,16 +1,16 @@
+import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import { noop } from 'lodash-es'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
+import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import MetadataTrigger from '../metadata-trigger'
 import MetadataFilterSelector from './metadata-filter-selector'
-import Collapse from '@/app/components/workflow/nodes/_base/components/collapse'
-import Tooltip from '@/app/components/base/tooltip'
-import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { MetadataFilteringModeEnum } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import { noop } from 'lodash-es'
 
 type MetadataFilterProps = {
   metadataFilterMode?: MetadataFilteringModeEnum

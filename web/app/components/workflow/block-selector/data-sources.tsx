@@ -1,24 +1,25 @@
+import type {
+  OnSelectBlock,
+  ToolWithProvider,
+} from '../types'
+import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
+import type { ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import {
   useCallback,
   useEffect,
   useMemo,
   useRef,
 } from 'react'
-import { BlockEnum } from '../types'
-import type {
-  OnSelectBlock,
-  ToolWithProvider,
-} from '../types'
-import type { DataSourceDefaultValue, ToolDefaultValue } from './types'
-import Tools from './tools'
-import { ViewType } from './view-type-select'
-import { cn } from '@/utils/classnames'
-import PluginList, { type ListRef } from '@/app/components/workflow/block-selector/market-place-plugin/list'
+import PluginList from '@/app/components/workflow/block-selector/market-place-plugin/list'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
+import { useGetLanguage } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
 import { useMarketplacePlugins } from '../../plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '../../plugins/types'
-import { useGetLanguage } from '@/context/i18n'
+import { BlockEnum } from '../types'
+import { DEFAULT_FILE_EXTENSIONS_IN_LOCAL_FILE_DATA_SOURCE } from './constants'
+import Tools from './tools'
+import { ViewType } from './view-type-select'
 
 type AllToolsProps = {
   className?: string

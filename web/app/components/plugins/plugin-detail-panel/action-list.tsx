@@ -1,3 +1,4 @@
+import type { PluginDetail } from '@/app/components/plugins/types'
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ToolItem from '@/app/components/tools/provider/tool-item'
@@ -5,7 +6,6 @@ import {
   useAllToolProviders,
   useBuiltinTools,
 } from '@/service/use-tools'
-import type { PluginDetail } from '@/app/components/plugins/types'
 
 type Props = {
   detail: PluginDetail

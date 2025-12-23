@@ -1,12 +1,12 @@
 import {
+  RiCloseLine,
+  RiInformation2Fill,
+} from '@remixicon/react'
+import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  RiCloseLine,
-  RiInformation2Fill,
-} from '@remixicon/react'
 import { useStore } from '@/app/components/workflow/store'
 
 const PublishToast = () => {

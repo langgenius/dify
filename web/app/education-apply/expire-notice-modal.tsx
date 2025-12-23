@@ -1,16 +1,16 @@
 'use client'
+import { RiExternalLinkLine } from '@remixicon/react'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import React from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { useDocLink } from '@/context/i18n'
-import Link from 'next/link'
-import { useTranslation } from 'react-i18next'
-import { RiExternalLinkLine } from '@remixicon/react'
-import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
-import useTimestamp from '@/hooks/use-timestamp'
 import { useModalContextSelector } from '@/context/modal-context'
+import useTimestamp from '@/hooks/use-timestamp'
 import { useEducationVerify } from '@/service/use-education'
-import { useRouter } from 'next/navigation'
+import { SparklesSoftAccent } from '../components/base/icons/src/public/common'
 
 export type ExpireNoticeModalPayloadProps = {
   expireAt: number

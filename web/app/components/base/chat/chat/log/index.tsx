@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import { RiFileList3Line } from '@remixicon/react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { RiFileList3Line } from '@remixicon/react'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import ActionButton from '@/app/components/base/action-button'
 

@@ -1,10 +1,10 @@
 'use client'
-import React, { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiQrCodeLine,
 } from '@remixicon/react'
 import { QRCodeCanvas as QRCode } from 'qrcode.react'
+import React, { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
 

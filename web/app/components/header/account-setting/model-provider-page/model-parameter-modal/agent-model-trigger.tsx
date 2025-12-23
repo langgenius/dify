@@ -1,30 +1,29 @@
 import type { FC } from 'react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import { RiEqualizer2Line } from '@remixicon/react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
+import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
+import { useProviderContext } from '@/context/provider-context'
+import { useInvalidateInstalledPluginList, useModelInList, usePluginInfo } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
 import {
   CustomConfigurationStatusEnum,
   ModelTypeEnum,
 } from '../declarations'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import ConfigurationButton from './configuration-button'
-import Loading from '@/app/components/base/loading'
 import {
   useModelModalHandler,
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
 import ModelIcon from '../model-icon'
+import ConfigurationButton from './configuration-button'
 import ModelDisplay from './model-display'
-import { InstallPluginButton } from '@/app/components/workflow/nodes/_base/components/install-plugin-button'
 import StatusIndicators from './status-indicators'
-import { cn } from '@/utils/classnames'
-import { useProviderContext } from '@/context/provider-context'
-import { RiEqualizer2Line } from '@remixicon/react'
-import { useModelInList, usePluginInfo } from '@/service/use-plugins'
 
 export type AgentModelTriggerProps = {
   open?: boolean

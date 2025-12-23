@@ -1,13 +1,13 @@
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { t } from 'i18next'
+import type { CodeDependency } from './types'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
-import type { CodeDependency } from './types'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
-import Input from '@/app/components/base/input'
+import { t } from 'i18next'
+import React, { useCallback, useState } from 'react'
 import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import Input from '@/app/components/base/input'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 type Props = {
   value: CodeDependency

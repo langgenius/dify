@@ -1,6 +1,6 @@
+import type { BlockEnum } from '@/app/components/workflow/types'
 import { memo } from 'react'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-import type { BlockEnum } from '@/app/components/workflow/types'
 
 type VariableNodeLabelProps = {
   nodeType?: BlockEnum

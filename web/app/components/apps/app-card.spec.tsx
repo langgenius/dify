@@ -1,8 +1,16 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
+import React from 'react'
 import { AccessMode } from '@/models/access-control'
+// Mock API services - import for direct manipulation
+import * as appsService from '@/service/apps'
+
+import * as exploreService from '@/service/explore'
+import * as workflowService from '@/service/workflow'
+import { AppModeEnum } from '@/types/app'
+
+// Import component after mocks
+import AppCard from './app-card'
 
 // Mock next/navigation
 const mockPush = vi.fn()
@@ -53,11 +61,6 @@ vi.mock('@/context/global-public-context', () => ({
     },
   }),
 }))
-
-// Mock API services - import for direct manipulation
-import * as appsService from '@/service/apps'
-import * as workflowService from '@/service/workflow'
-import * as exploreService from '@/service/explore'
 
 vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
@@ -230,9 +233,6 @@ vi.mock('@/app/components/base/tag-management/selector', () => ({
 vi.mock('@/app/components/app/type-selector', () => ({
   AppTypeIcon: () => React.createElement('div', { 'data-testid': 'app-type-icon' }),
 }))
-
-// Import component after mocks
-import AppCard from './app-card'
 
 // ============================================================================
 // Test Data Factories

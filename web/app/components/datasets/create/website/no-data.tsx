@@ -2,11 +2,11 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import s from './index.module.css'
-import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 import Button from '@/app/components/base/button'
+import { Icon3Dots } from '@/app/components/base/icons/src/vender/line/others'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceProvider } from '@/models/common'
+import s from './index.module.css'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 

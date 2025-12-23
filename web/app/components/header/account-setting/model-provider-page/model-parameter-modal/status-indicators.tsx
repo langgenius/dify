@@ -1,8 +1,8 @@
-import Tooltip from '@/app/components/base/tooltip'
+import { RiErrorWarningFill } from '@remixicon/react'
 import Link from 'next/link'
+import Tooltip from '@/app/components/base/tooltip'
 import { SwitchPluginVersion } from '@/app/components/workflow/nodes/_base/components/switch-plugin-version'
 import { useInstalledPluginList } from '@/service/use-plugins'
-import { RiErrorWarningFill } from '@remixicon/react'
 
 type StatusIndicatorsProps = {
   needsConfiguration: boolean

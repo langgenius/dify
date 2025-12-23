@@ -1,6 +1,6 @@
+import type { AnyObj } from './match-schema-type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import { useSchemaTypeDefinitions } from '@/service/use-common'
-import type { AnyObj } from './match-schema-type'
 import matchTheSchemaType from './match-schema-type'
 
 export const getMatchedSchemaType = (obj: AnyObj, schemaTypeDefinitions?: SchemaTypeDefinition[]): string => {

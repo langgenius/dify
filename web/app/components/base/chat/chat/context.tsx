@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'use-context-selector'
 import type { ChatProps } from './index'
+import { createContext, useContext } from 'use-context-selector'
 
 export type ChatContextValue = Pick<ChatProps, 'config'
   | 'isResponding'

@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import type { ChunkingMode, FileItem } from '@/models/datasets'
+import { RiCloseLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import CSVUploader from './csv-uploader'
-import CSVDownloader from './csv-downloader'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
-import type { ChunkingMode, FileItem } from '@/models/datasets'
-import { noop } from 'lodash-es'
+import CSVDownloader from './csv-downloader'
+import CSVUploader from './csv-uploader'
 
 export type IBatchModalProps = {
   isShow: boolean

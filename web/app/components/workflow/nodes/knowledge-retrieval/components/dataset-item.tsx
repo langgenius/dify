@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useBoolean } from 'ahooks'
+import type { DataSet } from '@/models/datasets'
 import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { DataSet } from '@/models/datasets'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import SettingsModal from '@/app/components/app/configuration/dataset-config/settings-modal'
-import Drawer from '@/app/components/base/drawer'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import Badge from '@/app/components/base/badge'
-import { useKnowledge } from '@/hooks/use-knowledge'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
-import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
+import Badge from '@/app/components/base/badge'
+import Drawer from '@/app/components/base/drawer'
 import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import FeatureIcon from '@/app/components/header/account-setting/model-provider-page/model-selector/feature-icon'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { useKnowledge } from '@/hooks/use-knowledge'
 
 type Props = {
   payload: DataSet

@@ -1,13 +1,13 @@
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { RiEqualizer2Line, RiImage2Fill } from '@remixicon/react'
+import { produce } from 'immer'
 import React, { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import { RiEqualizer2Line, RiImage2Fill } from '@remixicon/react'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
-import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
+import SettingModal from '@/app/components/base/features/new-feature-panel/file-upload/setting-modal'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
 type Props = {

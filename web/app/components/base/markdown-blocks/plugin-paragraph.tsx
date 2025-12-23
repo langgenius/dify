@@ -1,3 +1,5 @@
+import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
+import React, { useEffect, useMemo, useState } from 'react'
 /**
  * @fileoverview Paragraph component for rendering <p> tags in Markdown.
  * Extracted from the main markdown renderer for modularity.
@@ -5,8 +7,6 @@
  */
 import ImageGallery from '@/app/components/base/image-gallery'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
-import React, { useEffect, useMemo, useState } from 'react'
-import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
 import { getMarkdownImageURL } from './utils'
 
 type PluginParagraphProps = {

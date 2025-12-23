@@ -1,22 +1,37 @@
 'use client'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
 import type { FC } from 'react'
+import type { Node } from 'reactflow'
+import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
+import type { NodeOutPutVar } from '@/app/components/workflow/types'
+import Link from 'next/link'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
+import Divider from '@/app/components/base/divider'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-trigger'
+import TabSlider from '@/app/components/base/tab-slider-plain'
+import Textarea from '@/app/components/base/textarea'
+import {
+  AuthCategory,
+  PluginAuthInAgent,
+} from '@/app/components/plugins/plugin-auth'
+import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
+import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
 import ToolItem from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-item'
+import ToolTrigger from '@/app/components/plugins/plugin-detail-panel/tool-selector/tool-trigger'
+import { CollectionType } from '@/app/components/tools/types'
+import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import ToolPicker from '@/app/components/workflow/block-selector/tool-picker'
 import ToolForm from '@/app/components/workflow/nodes/tool/components/tool-form'
-import Textarea from '@/app/components/base/textarea'
-import Divider from '@/app/components/base/divider'
-import TabSlider from '@/app/components/base/tab-slider-plain'
-import ReasoningConfigForm from '@/app/components/plugins/plugin-detail-panel/tool-selector/reasoning-config-form'
-import { generateFormValue, getPlainValue, getStructureValue, toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import {
   useAllBuiltInTools,
   useAllCustomTools,
@@ -24,22 +39,7 @@ import {
   useAllWorkflowTools,
   useInvalidateAllBuiltInTools,
 } from '@/service/use-tools'
-import { useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import { usePluginInstalledCheck } from '@/app/components/plugins/plugin-detail-panel/tool-selector/hooks'
-import { CollectionType } from '@/app/components/tools/types'
-import type { ToolDefaultValue, ToolValue } from '@/app/components/workflow/block-selector/types'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
-import { MARKETPLACE_API_PREFIX } from '@/config'
-import type { Node } from 'reactflow'
-import type { NodeOutPutVar } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
-import {
-  AuthCategory,
-  PluginAuthInAgent,
-} from '@/app/components/plugins/plugin-auth'
 import { ReadmeEntrance } from '../../readme-panel/entrance'
 
 type Props = {

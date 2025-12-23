@@ -1,9 +1,9 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { t } from 'i18next'
 import {
   RiPauseCircleFill,
   RiPlayLargeFill,
 } from '@remixicon/react'
+import { t } from 'i18next'
+import React, { useCallback, useEffect, useRef, useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'

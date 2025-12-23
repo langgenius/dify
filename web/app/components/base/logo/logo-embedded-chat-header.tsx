@@ -1,5 +1,5 @@
-import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
+import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
 
 type LogoEmbeddedChatHeaderProps = {

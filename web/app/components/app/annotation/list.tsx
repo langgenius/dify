@@ -1,15 +1,15 @@
 'use client'
 import type { FC } from 'react'
+import type { AnnotationItem } from './type'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import React, { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import type { AnnotationItem } from './type'
-import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 import ActionButton from '@/app/components/base/action-button'
+import Checkbox from '@/app/components/base/checkbox'
 import useTimestamp from '@/hooks/use-timestamp'
 import { cn } from '@/utils/classnames'
-import Checkbox from '@/app/components/base/checkbox'
 import BatchAction from './batch-action'
+import RemoveAnnotationConfirmModal from './remove-annotation-confirm-modal'
 
 type Props = {
   list: AnnotationItem[]

@@ -1,15 +1,16 @@
-import { type FC, memo, useMemo } from 'react'
+import type { FC } from 'react'
 import type { NodeProps } from '../../types'
-import type { AgentNodeType } from './types'
-import { SettingItem } from '../_base/components/setting-item'
-import { Group, GroupLabel } from '../_base/components/group'
 import type { ToolIconProps } from './components/tool-icon'
-import { ToolIcon } from './components/tool-icon'
-import useConfig from './use-config'
+import type { AgentNodeType } from './types'
+import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { Group, GroupLabel } from '../_base/components/group'
+import { SettingItem } from '../_base/components/setting-item'
 import { ModelBar } from './components/model-bar'
+import { ToolIcon } from './components/tool-icon'
+import useConfig from './use-config'
 
 const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const { inputs, currentStrategy, currentStrategyStatus, pluginDetail } = useConfig(props.id, props.data)

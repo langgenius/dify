@@ -1,13 +1,13 @@
 'use client'
 
 import type { FC } from 'react'
+import type { Locale } from '@/i18n-config'
+import { usePrefetchQuery } from '@tanstack/react-query'
 import React, { useEffect, useState } from 'react'
 import I18NContext from '@/context/i18n'
-import type { Locale } from '@/i18n-config'
 import { setLocaleOnClient } from '@/i18n-config'
-import Loading from './base/loading'
-import { usePrefetchQuery } from '@tanstack/react-query'
 import { getSystemFeatures } from '@/service/common'
+import Loading from './base/loading'
 
 export type II18nProps = {
   locale: Locale

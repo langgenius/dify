@@ -1,8 +1,9 @@
-import Toast, { type IToastProps } from '@/app/components/base/toast'
+import type { GitHubRepoReleaseResponse } from '../types'
+import type { IToastProps } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
+import { GITHUB_ACCESS_TOKEN } from '@/config'
 import { uploadGitHub } from '@/service/plugins'
 import { compareVersion, getLatestVersion } from '@/utils/semver'
-import type { GitHubRepoReleaseResponse } from '../types'
-import { GITHUB_ACCESS_TOKEN } from '@/config'
 
 const formatReleases = (releases: any) => {
   return releases.map((release: any) => ({

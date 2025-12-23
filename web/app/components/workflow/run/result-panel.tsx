@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import StatusPanel from './status'
-import MetaData from './meta'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import type {
   AgentLogItemWithChildren,
   NodeTracing,
 } from '@/types/workflow'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { hasRetryNode } from '@/app/components/workflow/utils'
+import { useTranslation } from 'react-i18next'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
-import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
+import MetaData from './meta'
+import StatusPanel from './status'
 
 export type ResultPanelProps = {
   nodeInfo?: NodeTracing

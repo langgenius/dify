@@ -1,27 +1,27 @@
+import type { InputForm } from '@/app/components/base/chat/chat/type'
+import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import { memo, useCallback, useImperativeHandle, useMemo } from 'react'
-import {
-  useConfigFromDebugContext,
-  useFormattingChangedSubscription,
-} from '../hooks'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Avatar from '@/app/components/base/avatar'
 import Chat from '@/app/components/base/chat/chat'
 import { useChat } from '@/app/components/base/chat/chat/hooks'
+import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useAppContext } from '@/context/app-context'
 import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import type { ChatConfig, ChatItem, OnSend } from '@/app/components/base/chat/types'
 import { useProviderContext } from '@/context/provider-context'
 import {
   fetchConversationMessages,
   fetchSuggestedQuestions,
   stopChatMessageResponding,
 } from '@/service/debug'
-import Avatar from '@/app/components/base/avatar'
-import { useAppContext } from '@/context/app-context'
-import { ModelFeatureEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { useFeatures } from '@/app/components/base/features/hooks'
-import { getLastAnswer, isValidGeneratedAnswer } from '@/app/components/base/chat/utils'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
 import { canFindTool } from '@/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import {
+  useConfigFromDebugContext,
+  useFormattingChangedSubscription,
+} from '../hooks'
 
 type DebugWithSingleModelProps = {
   checkCanSend?: () => boolean

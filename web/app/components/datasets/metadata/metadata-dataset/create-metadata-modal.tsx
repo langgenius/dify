@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { Props as CreateContentProps } from './create-content'
-import CreateContent from './create-content'
+import React from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../../base/portal-to-follow-elem'
+import CreateContent from './create-content'
 
 type Props = {
   open: boolean

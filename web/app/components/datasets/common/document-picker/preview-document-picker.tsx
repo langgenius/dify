@@ -1,19 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useBoolean } from 'ahooks'
+import type { DocumentItem } from '@/models/datasets'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import FileIcon from '../document-file-icon'
-import DocumentList from './document-list'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
-import Loading from '@/app/components/base/loading'
-import type { DocumentItem } from '@/models/datasets'
+import FileIcon from '../document-file-icon'
+import DocumentList from './document-list'
 
 type Props = {
   className?: string

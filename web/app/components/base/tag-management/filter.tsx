@@ -1,22 +1,22 @@
 import type { FC } from 'react'
+import type { Tag } from '@/app/components/base/tag-management/constant'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useDebounceFn, useMount } from 'ahooks'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDebounceFn, useMount } from 'ahooks'
-import { RiArrowDownSLine } from '@remixicon/react'
-import { useStore as useTagStore } from './store'
-import { cn } from '@/utils/classnames'
+import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Input from '@/app/components/base/input'
-import { Tag01, Tag03 } from '@/app/components/base/icons/src/vender/line/financeAndECommerce'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
-import { XCircle } from '@/app/components/base/icons/src/vender/solid/general'
-import type { Tag } from '@/app/components/base/tag-management/constant'
-
 import { fetchTagList } from '@/service/tag'
+import { cn } from '@/utils/classnames'
+
+import { useStore as useTagStore } from './store'
 
 type TagFilterProps = {
   type: 'knowledge' | 'app'

@@ -1,9 +1,9 @@
-import { MAX_VAR_KEY_LENGTH } from '@/config'
 import type { TFunction } from 'i18next'
-import { z } from 'zod'
 import type { SchemaOptions } from './types'
-import { PipelineInputVarType } from '@/models/pipeline'
+import { z } from 'zod'
 import { InputTypeEnum } from '@/app/components/base/form/components/field/input-type-select/types'
+import { MAX_VAR_KEY_LENGTH } from '@/config'
+import { PipelineInputVarType } from '@/models/pipeline'
 
 export const TEXT_MAX_LENGTH = 256
 

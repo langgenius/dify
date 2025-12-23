@@ -1,9 +1,10 @@
-import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
 import type {
   DefaultModelResponse,
   Model,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { RetrievalConfig } from '@/types/app'
 import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 
 export const isReRankModelSelected = ({
   retrievalConfig,

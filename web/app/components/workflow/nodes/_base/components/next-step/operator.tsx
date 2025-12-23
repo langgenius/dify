@@ -1,24 +1,24 @@
+import type {
+  CommonNodeType,
+  OnSelectBlock,
+} from '@/app/components/workflow/types'
+import { RiMoreFill } from '@remixicon/react'
+import { intersection } from 'lodash-es'
 import {
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiMoreFill } from '@remixicon/react'
-import { intersection } from 'lodash-es'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
 import BlockSelector from '@/app/components/workflow/block-selector'
 import {
   useAvailableBlocks,
   useNodesInteractions,
 } from '@/app/components/workflow/hooks'
-import type {
-  CommonNodeType,
-  OnSelectBlock,
-} from '@/app/components/workflow/types'
 
 type ChangeItemProps = {
   data: CommonNodeType

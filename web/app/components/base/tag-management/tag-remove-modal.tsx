@@ -1,13 +1,13 @@
 'use client'
 
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-import Modal from '@/app/components/base/modal'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'lodash-es'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import Modal from '@/app/components/base/modal'
+import { cn } from '@/utils/classnames'
 
 type TagRemoveModalProps = {
   show: boolean

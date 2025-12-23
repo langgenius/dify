@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import { BlockEnum } from './types'
+import AppIcon from '@/app/components/base/app-icon'
 import {
   Agent,
   Answer,
@@ -26,8 +26,8 @@ import {
   VariableX,
   WebhookLine,
 } from '@/app/components/base/icons/src/vender/workflow'
-import AppIcon from '@/app/components/base/app-icon'
 import { cn } from '@/utils/classnames'
+import { BlockEnum } from './types'
 
 type BlockIconProps = {
   type: BlockEnum

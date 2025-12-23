@@ -1,5 +1,5 @@
-import { cn } from '@/utils/classnames'
 import React, { useCallback, useMemo, useState } from 'react'
+import { cn } from '@/utils/classnames'
 
 type CredentialIconProps = {
   avatarUrl?: string

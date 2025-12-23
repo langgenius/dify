@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
-import Button from '@/app/components/base/button'
 import { RiPlayLine } from '@remixicon/react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
 
 type Props = {
   canSingleRun: boolean

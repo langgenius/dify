@@ -1,8 +1,8 @@
-import { useStore } from '@/app/components/workflow/store'
 import DataSourceProvider from '@/app/components/datasets/documents/create-from-pipeline/data-source/store/provider'
+import { useStore } from '@/app/components/workflow/store'
+import Header from './header'
 import Preparation from './preparation'
 import Result from './result'
-import Header from './header'
 
 const TestRunPanel = () => {
   const isPreparingDataSource = useStore(state => state.isPreparingDataSource)

@@ -1,19 +1,19 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useState } from 'react'
-import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import type { Theme } from '../theme/theme-context'
-import { CssTransform } from '../theme/utils'
+import { RiCollapseDiagonal2Line, RiExpandDiagonal2Line, RiResetLeftLine } from '@remixicon/react'
+import React, { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
+import Divider from '@/app/components/base/divider'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
+import Tooltip from '@/app/components/base/tooltip'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@/utils/classnames'
 import {
   useEmbeddedChatbotContext,
 } from '../context'
-import Tooltip from '@/app/components/base/tooltip'
-import ActionButton from '@/app/components/base/action-button'
-import Divider from '@/app/components/base/divider'
-import ViewFormDropdown from '@/app/components/base/chat/embedded-chatbot/inputs-form/view-form-dropdown'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { cn } from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
+import { CssTransform } from '../theme/utils'
 
 export type IHeaderProps = {
   isMobile?: boolean

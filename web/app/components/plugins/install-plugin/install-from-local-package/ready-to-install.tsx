@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import type { PluginDeclaration } from '../../types'
+import React, { useCallback } from 'react'
 import { InstallStep } from '../../types'
-import Install from './steps/install'
 import Installed from '../base/installed'
 import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
+import Install from './steps/install'
 
 type Props = {
   step: InstallStep

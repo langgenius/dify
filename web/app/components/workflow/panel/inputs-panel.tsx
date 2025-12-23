@@ -1,3 +1,4 @@
+import type { StartNodeType } from '../nodes/start/types'
 import {
   memo,
   useCallback,
@@ -5,25 +6,24 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
+import Button from '@/app/components/base/button'
+import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
+import {
+  getProcessedInputs,
+} from '@/app/components/base/chat/chat/utils'
+import { TransferMethod } from '../../base/text-generation/types'
+import { useWorkflowRun } from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import FormItem from '../nodes/_base/components/before-run-form/form-item'
+import {
+  useStore,
+  useWorkflowStore,
+} from '../store'
 import {
   BlockEnum,
   InputVarType,
   WorkflowRunningStatus,
 } from '../types'
-import {
-  useStore,
-  useWorkflowStore,
-} from '../store'
-import { useWorkflowRun } from '../hooks'
-import type { StartNodeType } from '../nodes/start/types'
-import { TransferMethod } from '../../base/text-generation/types'
-import Button from '@/app/components/base/button'
-import {
-  getProcessedInputs,
-} from '@/app/components/base/chat/chat/utils'
-import { useCheckInputsForms } from '@/app/components/base/chat/chat/check-input-forms-hooks'
-import { useHooksStore } from '../hooks-store'
 
 type Props = {
   onRun: () => void

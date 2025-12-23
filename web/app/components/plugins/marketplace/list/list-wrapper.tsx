@@ -1,12 +1,12 @@
 'use client'
-import { useEffect } from 'react'
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
-import { useMarketplaceContext } from '../context'
-import List from './index'
-import SortDropdown from '../sort-dropdown'
+import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
+import { useMarketplaceContext } from '../context'
+import SortDropdown from '../sort-dropdown'
+import List from './index'
 
 type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]

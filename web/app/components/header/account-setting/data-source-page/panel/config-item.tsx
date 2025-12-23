@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
+import { noop } from 'lodash-es'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import Indicator from '../../../indicator'
 import Operate from '../data-source-notion/operate'
-import { DataSourceType } from './types'
 import s from './style.module.css'
-import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
+import { DataSourceType } from './types'
 
 export type ConfigItemType = {
   id: string

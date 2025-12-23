@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import styles from './style.module.css'
-import { SquareChecklist } from '../../base/icons/src/vender/other'
 import { useModalContext } from '@/context/modal-context'
+import { SquareChecklist } from '../../base/icons/src/vender/other'
+import styles from './style.module.css'
 
 type Props = {
   Icon?: React.ComponentType<React.SVGProps<SVGSVGElement>>

@@ -1,34 +1,34 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type {
+  ModelItem,
+  ModelProvider,
+} from '../declarations'
 import {
   RiArrowRightSLine,
   RiInformation2Fill,
   RiLoader2Line,
 } from '@remixicon/react'
-import type {
-  ModelItem,
-  ModelProvider,
-} from '../declarations'
-import { ConfigurationMethodEnum } from '../declarations'
-import {
-  MODEL_PROVIDER_QUOTA_GET_PAID,
-  modelTypeFormat,
-} from '../utils'
-import ProviderIcon from '../provider-icon'
-import ModelBadge from '../model-badge'
-import CredentialPanel from './credential-panel'
-import QuotaPanel from './quota-panel'
-import ModelList from './model-list'
-import { fetchModelProviderModelList } from '@/service/common'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { IS_CE_EDITION } from '@/config'
-import { useAppContext } from '@/context/app-context'
-import { cn } from '@/utils/classnames'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   AddCustomModel,
   ManageCustomModelCredentials,
 } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { IS_CE_EDITION } from '@/config'
+import { useAppContext } from '@/context/app-context'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { fetchModelProviderModelList } from '@/service/common'
+import { cn } from '@/utils/classnames'
+import { ConfigurationMethodEnum } from '../declarations'
+import ModelBadge from '../model-badge'
+import ProviderIcon from '../provider-icon'
+import {
+  MODEL_PROVIDER_QUOTA_GET_PAID,
+  modelTypeFormat,
+} from '../utils'
+import CredentialPanel from './credential-panel'
+import ModelList from './model-list'
+import QuotaPanel from './quota-panel'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {

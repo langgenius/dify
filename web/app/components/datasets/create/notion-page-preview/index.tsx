@@ -1,13 +1,13 @@
 'use client'
+import type { NotionPage } from '@/models/common'
+import { XMarkIcon } from '@heroicons/react/20/solid'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { XMarkIcon } from '@heroicons/react/20/solid'
 import Loading from '@/app/components/base/loading'
-import s from './index.module.css'
-import { cn } from '@/utils/classnames'
-import type { NotionPage } from '@/models/common'
 import NotionIcon from '@/app/components/base/notion-icon'
 import { fetchNotionPagePreview } from '@/service/datasets'
+import { cn } from '@/utils/classnames'
+import s from './index.module.css'
 
 type IProps = {
   currentPage?: NotionPage

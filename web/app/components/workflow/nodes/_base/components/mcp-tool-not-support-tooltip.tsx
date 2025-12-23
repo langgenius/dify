@@ -1,9 +1,9 @@
 'use client'
-import Tooltip from '@/app/components/base/tooltip'
-import { RiAlertFill } from '@remixicon/react'
 import type { FC } from 'react'
+import { RiAlertFill } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 
 const McpToolNotSupportTooltip: FC = () => {
   const { t } = useTranslation()

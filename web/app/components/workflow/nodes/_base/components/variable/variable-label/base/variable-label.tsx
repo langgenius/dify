@@ -1,17 +1,17 @@
-import { memo } from 'react'
-import { capitalize } from 'lodash-es'
+import type { VariablePayload } from '../types'
 import {
   RiErrorWarningFill,
   RiMoreLine,
 } from '@remixicon/react'
-import type { VariablePayload } from '../types'
+import { capitalize } from 'lodash-es'
+import { memo } from 'react'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
 import { useVarColor } from '../hooks'
-import VariableNodeLabel from './variable-node-label'
 import VariableIcon from './variable-icon'
 import VariableName from './variable-name'
-import { cn } from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
-import { isConversationVar, isENV, isGlobalVar, isRagVariableVar } from '../../utils'
+import VariableNodeLabel from './variable-node-label'
 
 const VariableLabel = ({
   nodeType,

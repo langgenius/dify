@@ -1,11 +1,11 @@
 'use client'
-import { useTranslation } from 'react-i18next'
+import type { App } from '@/models/explore'
 import { PlusIcon } from '@heroicons/react/20/solid'
-import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
-import type { App } from '@/models/explore'
-import AppIcon from '@/app/components/base/app-icon'
+import { AppTypeIcon, AppTypeLabel } from '../../type-selector'
 
 export type AppCardProps = {
   app: App

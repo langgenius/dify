@@ -1,24 +1,24 @@
-import {
-  useCallback,
-} from 'react'
+import type { FileEntity } from '../types'
+import type { FileUpload } from '@/app/components/base/features/types'
 import {
   RiLink,
   RiUploadCloud2Line,
 } from '@remixicon/react'
+import {
+  useCallback,
+} from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import FileFromLinkOrLocal from '../file-from-link-or-local'
+import FileInput from '../file-input'
+import { useFile } from '../hooks'
 import {
   FileContextProvider,
   useStore,
 } from '../store'
-import type { FileEntity } from '../types'
-import FileInput from '../file-input'
-import { useFile } from '../hooks'
 import FileItem from './file-item'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { TransferMethod } from '@/types/app'
 
 type Option = {
   value: string

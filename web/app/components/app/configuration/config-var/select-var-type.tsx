@@ -3,12 +3,12 @@ import type { FC } from 'react'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import OperationBtn from '@/app/components/app/configuration/base/operation-btn'
+import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { ApiConnection } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { InputVarType } from '@/app/components/workflow/types'
 

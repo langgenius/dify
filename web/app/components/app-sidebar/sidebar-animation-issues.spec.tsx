@@ -1,5 +1,5 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 
 // Simple Mock Components that reproduce the exact UI issues
 const MockNavLink = ({ name, mode }: { name: string, mode: string }) => {

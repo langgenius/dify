@@ -1,21 +1,21 @@
+import type {
+  CommonNodeType,
+} from '@/app/components/workflow/types'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import Operator from './operator'
-import type {
-  CommonNodeType,
-} from '@/app/components/workflow/types'
+import Button from '@/app/components/base/button'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
   useNodesInteractions,
   useNodesReadOnly,
   useToolIcon,
 } from '@/app/components/workflow/hooks'
-import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
+import Operator from './operator'
 
 type ItemProps = {
   nodeId: string

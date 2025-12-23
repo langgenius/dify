@@ -1,12 +1,12 @@
 'use client'
 import { useRouter, useSearchParams } from 'next/navigation'
 import React, { useCallback, useEffect } from 'react'
-import Toast from '@/app/components/base/toast'
-import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import { SSOProtocol } from '@/types/feature'
-import Loading from '@/app/components/base/loading'
 import AppUnavailable from '@/app/components/base/app-unavailable'
+import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { fetchWebOAuth2SSOUrl, fetchWebOIDCSSOUrl, fetchWebSAMLSSOUrl } from '@/service/share'
+import { SSOProtocol } from '@/types/feature'
 
 const ExternalMemberSSOAuth = () => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)

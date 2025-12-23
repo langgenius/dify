@@ -1,6 +1,6 @@
 import ReactSlider from 'react-slider'
-import s from './style.module.css'
 import { cn } from '@/utils/classnames'
+import s from './style.module.css'
 
 type ISliderProps = {
   className?: string

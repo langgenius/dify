@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import React from 'react'
-import { AUTO_UPDATE_MODE } from './types'
 import { useTranslation } from 'react-i18next'
+import { AUTO_UPDATE_MODE } from './types'
 
 type Props = {
   updateMode: AUTO_UPDATE_MODE

@@ -1,13 +1,13 @@
 'use client'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/utils/classnames'
 import Button from '@/app/components/base/button'
-
 import Loading from '@/app/components/base/loading'
+
 import useDocumentTitle from '@/hooks/use-document-title'
 import { useInvitationCheck } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
 
 const ActivateForm = () => {
   useDocumentTitle('')

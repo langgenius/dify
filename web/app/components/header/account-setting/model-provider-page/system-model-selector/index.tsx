@@ -1,29 +1,29 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiEqualizer2Line } from '@remixicon/react'
-import ModelSelector from '../model-selector'
-import {
-  useModelList,
-  useSystemDefaultModelAndModelList,
-  useUpdateModelList,
-} from '../hooks'
 import type {
   DefaultModel,
   DefaultModelResponse,
 } from '../declarations'
-import { ModelTypeEnum } from '../declarations'
-import Tooltip from '@/app/components/base/tooltip'
+import { RiEqualizer2Line } from '@remixicon/react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
+import { useToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import { updateDefaultModel } from '@/service/common'
-import { useToastContext } from '@/app/components/base/toast'
-import { useAppContext } from '@/context/app-context'
+import { ModelTypeEnum } from '../declarations'
+import {
+  useModelList,
+  useSystemDefaultModelAndModelList,
+  useUpdateModelList,
+} from '../hooks'
+import ModelSelector from '../model-selector'
 
 type SystemModelSelectorProps = {
   textGenerationDefaultModel: DefaultModelResponse | undefined

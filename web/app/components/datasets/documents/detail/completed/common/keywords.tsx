@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
+import type { FC } from 'react'
 import type { SegmentDetailModel } from '@/models/datasets'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
+import { cn } from '@/utils/classnames'
 
 type IKeywordsProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }

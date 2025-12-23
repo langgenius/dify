@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useEffect, useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
-import { RiCloseLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
-import Run from '@/app/components/workflow/run'
+import { RiCloseLine } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/app/store'
+import Run from '@/app/components/workflow/run'
+import { cn } from '@/utils/classnames'
 
 type MessageLogModalProps = {
   currentLogItem?: IChatItem

@@ -1,3 +1,6 @@
+import type { SortableItem } from './types'
+import type { InputVar } from '@/models/pipeline'
+import { isEqual } from 'lodash-es'
 import {
   memo,
   useCallback,
@@ -5,10 +8,7 @@ import {
 } from 'react'
 import { ReactSortable } from 'react-sortablejs'
 import { cn } from '@/utils/classnames'
-import type { InputVar } from '@/models/pipeline'
 import FieldItem from './field-item'
-import type { SortableItem } from './types'
-import { isEqual } from 'lodash-es'
 
 type FieldListContainerProps = {
   className?: string

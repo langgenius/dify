@@ -1,11 +1,11 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
-import { useEffect, useRef, useState } from 'react'
-import { useClickAway } from 'ahooks'
-import AgentLogDetail from './detail'
-import { cn } from '@/utils/classnames'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
+import { RiCloseLine } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import AgentLogDetail from './detail'
 
 type AgentLogModalProps = {
   currentLogItem?: IChatItem

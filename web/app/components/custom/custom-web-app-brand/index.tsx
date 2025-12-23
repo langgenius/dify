@@ -1,6 +1,4 @@
 import type { ChangeEvent } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiEditBoxLine,
   RiEqualizer2Line,
@@ -10,21 +8,23 @@ import {
   RiLoader2Line,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import DifyLogo from '@/app/components/base/logo/dify-logo'
-import Switch from '@/app/components/base/switch'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import { useProviderContext } from '@/context/provider-context'
-import { Plan } from '@/app/components/billing/type'
-import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
-import { useToastContext } from '@/app/components/base/toast'
 import { BubbleTextMod } from '@/app/components/base/icons/src/vender/solid/communication'
+import { getImageUploadErrorMessage, imageUpload } from '@/app/components/base/image-uploader/utils'
+import DifyLogo from '@/app/components/base/logo/dify-logo'
+import Switch from '@/app/components/base/switch'
+import { useToastContext } from '@/app/components/base/toast'
+import { Plan } from '@/app/components/billing/type'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { useProviderContext } from '@/context/provider-context'
 import {
   updateCurrentWorkspace,
 } from '@/service/common'
-import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const ALLOW_FILE_EXTENSIONS = ['svg', 'png']
 

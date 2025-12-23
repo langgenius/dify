@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
-import VarItem from './var-item'
-import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
-import { ReactSortable } from 'react-sortablejs'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { RiDraggable } from '@remixicon/react'
+import { produce } from 'immer'
+import React, { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ReactSortable } from 'react-sortablejs'
+import Toast from '@/app/components/base/toast'
+import { ChangeType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import { hasDuplicateStr } from '@/utils/var'
-import Toast from '@/app/components/base/toast'
+import VarItem from './var-item'
 
 type Props = {
   readonly: boolean

@@ -1,29 +1,28 @@
 import type { FC } from 'react'
+import type { DataSourceNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
-  useMemo,
+  memo, useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { memo } from 'react'
-import type { DataSourceNodeType } from './types'
-import { DataSourceClassification } from './types'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import TagInput from '@/app/components/base/tag-input'
+import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
+import { useNodesReadOnly } from '@/app/components/workflow/hooks'
 import {
   BoxGroupField,
 } from '@/app/components/workflow/nodes/_base/components/layout'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
-import TagInput from '@/app/components/base/tag-input'
-import { useNodesReadOnly } from '@/app/components/workflow/hooks'
-import { useConfig } from './hooks/use-config'
+import { useStore } from '@/app/components/workflow/store'
+import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
+import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import ToolForm from '../tool/components/tool-form'
 import {
   COMMON_OUTPUT,
   LOCAL_FILE_OUTPUT,
 } from './constants'
-import { useStore } from '@/app/components/workflow/store'
-import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import ToolForm from '../tool/components/tool-form'
-import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
-import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import { useConfig } from './hooks/use-config'
+import { DataSourceClassification } from './types'
 
 const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const { t } = useTranslation()

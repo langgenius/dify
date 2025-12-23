@@ -1,28 +1,30 @@
-import React, { type FC, useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FC } from 'react'
+import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import type { SegmentDetailModel } from '@/models/datasets'
 import {
   RiCloseLine,
   RiCollapseDiagonalLine,
   RiExpandDiagonalLine,
 } from '@remixicon/react'
+import React, { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
+import Divider from '@/app/components/base/divider'
+import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { ChunkingMode } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
+import { formatNumber } from '@/utils/format'
 import { useDocumentContext } from '../context'
 import ActionButtons from './common/action-buttons'
 import ChunkContent from './common/chunk-content'
+import Dot from './common/dot'
 import Keywords from './common/keywords'
 import RegenerationModal from './common/regeneration-modal'
 import { SegmentIndexTag } from './common/segment-index-tag'
-import Dot from './common/dot'
 import { useSegmentListContext } from './index'
-import { ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { formatNumber } from '@/utils/format'
-import { cn } from '@/utils/classnames'
-import Divider from '@/app/components/base/divider'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { IndexingType } from '@/app/components/datasets/create/step-two'
-import ImageUploaderInChunk from '@/app/components/datasets/common/image-uploader/image-uploader-in-chunk'
-import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
-import { v4 as uuid4 } from 'uuid'
 
 type ISegmentDetailProps = {
   segInfo?: Partial<SegmentDetailModel> & { id: string }

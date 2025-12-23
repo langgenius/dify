@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiLoader2Line,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import CSVReader from './csv-reader'
-import CSVDownload from './csv-download'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { cn } from '@/utils/classnames'
+import CSVDownload from './csv-download'
+import CSVReader from './csv-reader'
+
 export type IRunBatchProps = {
   vars: { name: string }[]
   onSend: (data: string[][]) => void

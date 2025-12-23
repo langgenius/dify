@@ -1,11 +1,11 @@
-import { useState } from 'react'
 import {
   RiCloseLine,
 } from '@remixicon/react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
-import Button from '@/app/components/base/button'
 import ActionButton from '@/app/components/base/action-button'
+import Button from '@/app/components/base/button'
+import RetrievalSettings from '../external-knowledge-base/create/RetrievalSettings'
 
 type ModifyExternalRetrievalModalProps = {
   onClose: () => void

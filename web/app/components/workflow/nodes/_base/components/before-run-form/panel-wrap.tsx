@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiCloseLine,
 } from '@remixicon/react'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'workflow.singleRun'
 

@@ -1,9 +1,9 @@
 import React from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
-import { useInputVariables } from './hooks'
-import Form from './form'
-import Actions from './actions'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import Actions from './actions'
+import Form from './form'
+import { useInputVariables } from './hooks'
 
 type ProcessDocumentsProps = {
   dataSourceNodeId: string

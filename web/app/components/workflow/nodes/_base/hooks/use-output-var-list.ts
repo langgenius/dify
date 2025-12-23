@@ -1,6 +1,3 @@
-import { useCallback, useRef, useState } from 'react'
-import { produce } from 'immer'
-import { useBoolean, useDebounceFn } from 'ahooks'
 import type {
   CodeNodeType,
   OutputVar,
@@ -8,15 +5,18 @@ import type {
 import type {
   ValueSelector,
 } from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-  VarType,
-} from '@/app/components/workflow/types'
+import { useBoolean, useDebounceFn } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useRef, useState } from 'react'
 import {
   useWorkflow,
 } from '@/app/components/workflow/hooks'
 import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 import { getDefaultValue } from '@/app/components/workflow/nodes/_base/components/error-handle/utils'
+import {
+  BlockEnum,
+  VarType,
+} from '@/app/components/workflow/types'
 import useInspectVarsCrud from '../../../hooks/use-inspect-vars-crud'
 
 type Params<T> = {

@@ -1,7 +1,11 @@
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
+import type {
+  DataSourceInfo,
+  FullDocumentDetail,
+  IndexingStatusResponse,
+  LegacyDataSourceInfo,
+  ProcessRuleResponse,
+} from '@/models/datasets'
 import {
   RiArrowRightLine,
   RiCheckboxCircleFill,
@@ -10,35 +14,31 @@ import {
   RiTerminalBoxLine,
 } from '@remixicon/react'
 import Image from 'next/image'
-import { indexMethodIcon, retrievalIcon } from '../icons'
-import { IndexingType } from '../step-two'
-import DocumentFileIcon from '../../common/document-file-icon'
-import { cn } from '@/utils/classnames'
-import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import type {
-  DataSourceInfo,
-  FullDocumentDetail,
-  IndexingStatusResponse,
-  LegacyDataSourceInfo,
-  ProcessRuleResponse,
-} from '@/models/datasets'
-import { fetchIndexingStatusBatch as doFetchIndexingStatus } from '@/service/datasets'
-import { DataSourceType, ProcessMode } from '@/models/datasets'
+import Divider from '@/app/components/base/divider'
+import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
 import NotionIcon from '@/app/components/base/notion-icon'
+import Tooltip from '@/app/components/base/tooltip'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { Plan } from '@/app/components/billing/type'
-import { ZapFast } from '@/app/components/base/icons/src/vender/solid/general'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
+import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
 import { useProviderContext } from '@/context/provider-context'
-import { sleep } from '@/utils'
-import { RETRIEVE_METHOD } from '@/types/app'
-import Tooltip from '@/app/components/base/tooltip'
-import { useInvalidDocumentList } from '@/service/knowledge/use-document'
-import Divider from '@/app/components/base/divider'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
-import Link from 'next/link'
+import { DataSourceType, ProcessMode } from '@/models/datasets'
+import { fetchIndexingStatusBatch as doFetchIndexingStatus } from '@/service/datasets'
 import { useProcessRule } from '@/service/knowledge/use-dataset'
+import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { sleep } from '@/utils'
+import { cn } from '@/utils/classnames'
+import DocumentFileIcon from '../../common/document-file-icon'
+import { indexMethodIcon, retrievalIcon } from '../icons'
+import { IndexingType } from '../step-two'
 
 type Props = {
   datasetId: string

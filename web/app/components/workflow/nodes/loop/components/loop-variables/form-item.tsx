@@ -1,13 +1,3 @@
-import {
-  useCallback,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import type {
   LoopVariable,
 } from '@/app/components/workflow/nodes/loop/types'
@@ -15,9 +5,16 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import {
-  ValueType,
-  VarType,
-} from '@/app/components/workflow/types'
+  useCallback,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Textarea from '@/app/components/base/textarea'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import ArrayBoolList from '@/app/components/workflow/panel/chat-variable-panel/components/array-bool-list'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
 import {
@@ -27,7 +24,10 @@ import {
   arrayStringPlaceholder,
   objectPlaceholder,
 } from '@/app/components/workflow/panel/chat-variable-panel/utils'
-import ArrayBoolList from '@/app/components/workflow/panel/chat-variable-panel/components/array-bool-list'
+import {
+  ValueType,
+  VarType,
+} from '@/app/components/workflow/types'
 
 type FormItemProps = {
   nodeId: string

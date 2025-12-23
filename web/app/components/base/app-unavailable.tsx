@@ -1,8 +1,8 @@
 'use client'
-import { cn } from '@/utils/classnames'
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 
 type IAppUnavailableProps = {
   code?: number | string

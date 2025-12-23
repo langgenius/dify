@@ -8,11 +8,11 @@
  * - Run component with detail/tracing URLs
  */
 
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DetailPanel from './detail'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
+import DetailPanel from './detail'
 
 // ============================================================================
 // Mocks

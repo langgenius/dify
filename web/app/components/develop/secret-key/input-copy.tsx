@@ -1,9 +1,9 @@
 'use client'
-import React, { useEffect, useState } from 'react'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
-import Tooltip from '@/app/components/base/tooltip'
+import React, { useEffect, useState } from 'react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import Tooltip from '@/app/components/base/tooltip'
 
 type IInputCopyProps = {
   value?: string

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { PluginDetail } from '@/app/components/plugins/types'
-import Icon from '@/app/components/plugins/card/base/card-icon'
-import { renderI18nObject } from '@/i18n-config'
-import { useGetLanguage } from '@/context/i18n'
-import { MARKETPLACE_API_PREFIX } from '@/config'
+import React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
+import Icon from '@/app/components/plugins/card/base/card-icon'
+import { MARKETPLACE_API_PREFIX } from '@/config'
+import { useGetLanguage } from '@/context/i18n'
+import { renderI18nObject } from '@/i18n-config'
 
 type Props = {
   payload: PluginDetail

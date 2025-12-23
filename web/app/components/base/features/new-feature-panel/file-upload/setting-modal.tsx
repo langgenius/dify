@@ -1,12 +1,12 @@
 'use client'
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { memo } from 'react'
+import SettingContent from '@/app/components/base/features/new-feature-panel/file-upload/setting-content'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import SettingContent from '@/app/components/base/features/new-feature-panel/file-upload/setting-content'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
 
 type FileUploadSettingsProps = {
   open: boolean

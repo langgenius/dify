@@ -1,14 +1,14 @@
 'use client'
 import type { FC } from 'react'
+import type { FileUpload } from '@/app/components/base/features/types'
+import { produce } from 'immer'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { Resolution, TransferMethod } from '@/types/app'
+import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import ParamItem from '@/app/components/base/param-item'
 import Tooltip from '@/app/components/base/tooltip'
-import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { FileUpload } from '@/app/components/base/features/types'
+import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { Resolution, TransferMethod } from '@/types/app'
 
 const MIN = 1
 const MAX = 6

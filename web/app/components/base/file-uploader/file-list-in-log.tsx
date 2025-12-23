@@ -1,16 +1,16 @@
+import type { FileEntity } from './types'
+import { RiArrowRightSLine } from '@remixicon/react'
 import React, { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowRightSLine } from '@remixicon/react'
-import FileImageRender from './file-image-render'
-import FileTypeIcon from './file-type-icon'
-import FileItem from './file-uploader-in-attachment/file-item'
-import type { FileEntity } from './types'
-import {
-  getFileAppearanceType,
-} from './utils'
 import Tooltip from '@/app/components/base/tooltip'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
+import FileImageRender from './file-image-render'
+import FileTypeIcon from './file-type-icon'
+import FileItem from './file-uploader-in-attachment/file-item'
+import {
+  getFileAppearanceType,
+} from './utils'
 
 type Props = {
   fileList: {

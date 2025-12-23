@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
-import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
+import type { FC } from 'react'
 import { useKeyPress } from 'ahooks'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 
 type AdvancedActionsProps = {
   isConfirmDisabled: boolean

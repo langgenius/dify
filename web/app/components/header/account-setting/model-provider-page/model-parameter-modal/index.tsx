@@ -2,34 +2,34 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
   FormValue,
   ModelParameterRule,
 } from '../declarations'
-import { ModelStatusEnum } from '../declarations'
-import ModelSelector from '../model-selector'
-import {
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '../hooks'
-import ParameterItem from './parameter-item'
 import type { ParameterValue } from './parameter-item'
-import Trigger from './trigger'
 import type { TriggerProps } from './trigger'
-import PresetsParameter from './presets-parameter'
-import { cn } from '@/utils/classnames'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Loading from '@/app/components/base/loading'
-import { useProviderContext } from '@/context/provider-context'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useProviderContext } from '@/context/provider-context'
 import { useModelParameterRules } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
+import { ModelStatusEnum } from '../declarations'
+import {
+  useTextGenerationCurrentProviderAndModelAndModelList,
+} from '../hooks'
+import ModelSelector from '../model-selector'
+import ParameterItem from './parameter-item'
+import PresetsParameter from './presets-parameter'
+import Trigger from './trigger'
 
 export type ModelParameterModalProps = {
   popupClassName?: string

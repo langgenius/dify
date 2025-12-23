@@ -4,7 +4,6 @@ import {
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import Badge from '@/app/components/base/badge'
 import {
   OptionCardEffectBlue,
@@ -14,6 +13,7 @@ import {
   OptionCardEffectTeal,
 } from '@/app/components/base/icons/src/public/knowledge'
 import { ArrowShape } from '@/app/components/base/icons/src/vender/knowledge'
+import { cn } from '@/utils/classnames'
 
 const HEADER_EFFECT_MAP: Record<string, ReactNode> = {
   'blue': <OptionCardEffectBlue />,

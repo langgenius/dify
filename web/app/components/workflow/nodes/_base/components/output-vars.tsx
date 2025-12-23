@@ -3,8 +3,8 @@ import type { FC, ReactNode } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
-import TreeIndentLine from './variable/object-child-tree-panel/tree-indent-line'
 import { cn } from '@/utils/classnames'
+import TreeIndentLine from './variable/object-child-tree-panel/tree-indent-line'
 
 type Props = {
   className?: string

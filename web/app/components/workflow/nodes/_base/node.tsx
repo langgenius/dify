@@ -2,6 +2,14 @@ import type {
   FC,
   ReactElement,
 } from 'react'
+import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import {
+  RiAlertFill,
+  RiCheckboxCircleFill,
+  RiErrorWarningFill,
+  RiLoader2Line,
+} from '@remixicon/react'
 import {
   cloneElement,
   memo,
@@ -9,40 +17,32 @@ import {
   useMemo,
   useRef,
 } from 'react'
-import {
-  RiAlertFill,
-  RiCheckboxCircleFill,
-  RiErrorWarningFill,
-  RiLoader2Line,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import type { NodeProps } from '@/app/components/workflow/types'
-import {
-  BlockEnum,
-  NodeRunningStatus,
-  isTriggerNode,
-} from '@/app/components/workflow/types'
+import Tooltip from '@/app/components/base/tooltip'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
 import { useNodesReadOnly, useToolIcon } from '@/app/components/workflow/hooks'
-import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
+import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import { useNodeIterationInteractions } from '@/app/components/workflow/nodes/iteration/use-interactions'
 import { useNodeLoopInteractions } from '@/app/components/workflow/nodes/loop/use-interactions'
-import type { IterationNodeType } from '@/app/components/workflow/nodes/iteration/types'
 import CopyID from '@/app/components/workflow/nodes/tool/components/copy-id'
+import {
+  BlockEnum,
+  isTriggerNode,
+  NodeRunningStatus,
+} from '@/app/components/workflow/types'
+import { hasErrorHandleNode, hasRetryNode } from '@/app/components/workflow/utils'
+import { cn } from '@/utils/classnames'
+import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
+import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
+import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
+import NodeControl from './components/node-control'
 import {
   NodeSourceHandle,
   NodeTargetHandle,
 } from './components/node-handle'
 import NodeResizer from './components/node-resizer'
-import NodeControl from './components/node-control'
-import ErrorHandleOnNode from './components/error-handle/error-handle-on-node'
 import RetryOnNode from './components/retry/retry-on-node'
-import AddVariablePopupWithPosition from './components/add-variable-popup-with-position'
-import EntryNodeContainer, { StartNodeTypeEnum } from './components/entry-node-container'
-import { cn } from '@/utils/classnames'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import Tooltip from '@/app/components/base/tooltip'
-import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { ToolTypeEnum } from '@/app/components/workflow/block-selector/types'
 
 type NodeChildProps = {
   id: string

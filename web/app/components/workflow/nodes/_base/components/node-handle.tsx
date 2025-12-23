@@ -1,22 +1,19 @@
 import type { MouseEvent } from 'react'
+import type { PluginDefaultValue } from '../../../block-selector/types'
+import type { Node } from '../../../types'
 import {
   memo,
   useCallback,
   useEffect,
   useState,
 } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   Handle,
   Position,
 } from 'reactflow'
-import { useTranslation } from 'react-i18next'
-import {
-  BlockEnum,
-  NodeRunningStatus,
-} from '../../../types'
-import type { Node } from '../../../types'
+import { cn } from '@/utils/classnames'
 import BlockSelector from '../../../block-selector'
-import type { PluginDefaultValue } from '../../../block-selector/types'
 import {
   useAvailableBlocks,
   useIsChatMode,
@@ -27,7 +24,10 @@ import {
   useStore,
   useWorkflowStore,
 } from '../../../store'
-import { cn } from '@/utils/classnames'
+import {
+  BlockEnum,
+  NodeRunningStatus,
+} from '../../../types'
 
 type NodeHandleProps = {
   handleId: string

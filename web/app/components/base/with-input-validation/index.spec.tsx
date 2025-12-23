@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
+import { noop } from 'lodash-es'
 import { z } from 'zod'
 import withValidation from '.'
-import { noop } from 'lodash-es'
 
 describe('withValidation HOC', () => {
   // schema for validation

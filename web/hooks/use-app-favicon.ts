@@ -1,7 +1,7 @@
+import type { AppIconType } from '@/types/app'
 import { useAsyncEffect } from 'ahooks'
 import { appDefaultIconBackground } from '@/config'
 import { searchEmoji } from '@/utils/emoji'
-import type { AppIconType } from '@/types/app'
 
 type UseAppFaviconOptions = {
   enable?: boolean

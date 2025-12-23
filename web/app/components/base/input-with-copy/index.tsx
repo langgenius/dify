@@ -1,13 +1,13 @@
 'use client'
+import type { InputProps } from '../input'
+import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
+import { debounce } from 'lodash-es'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
-import { debounce } from 'lodash-es'
-import copy from 'copy-to-clipboard'
-import type { InputProps } from '../input'
-import Tooltip from '../tooltip'
-import ActionButton from '../action-button'
 import { cn } from '@/utils/classnames'
+import ActionButton from '../action-button'
+import Tooltip from '../tooltip'
 
 export type InputWithCopyProps = {
   showCopyButton?: boolean

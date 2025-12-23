@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiEditLine,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import Tooltip from '@/app/components/base/tooltip'
 import { VarType } from '@/app/components/workflow/nodes/tool/types'

@@ -1,5 +1,6 @@
 'use client'
 import type { FC } from 'react'
+import type { TriggerMetadata } from '@/models/log'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -12,7 +13,6 @@ import {
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
 import useTheme from '@/hooks/use-theme'
-import type { TriggerMetadata } from '@/models/log'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { Theme } from '@/types/app'
 

@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
-import { cn } from '@/utils/classnames'
+import type { FC } from 'react'
+import React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 type IconWithTooltipProps = {
   className?: string

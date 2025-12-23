@@ -1,10 +1,10 @@
+import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import { RiSparklingFill } from '@remixicon/react'
+import { produce } from 'immer'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
-import { RiSparklingFill } from '@remixicon/react'
-import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
-import type { OnFeaturesChange } from '@/app/components/base/features/types'
+import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 
 type Props = {

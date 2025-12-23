@@ -1,4 +1,5 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type CardProps = {

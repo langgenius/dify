@@ -1,24 +1,25 @@
 'use client'
+import type { AppDetailResponse } from '@/models/app'
+import type { AppTrigger } from '@/service/use-tools'
+import type { AppSSO } from '@/types/app'
+import Link from 'next/link'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import Switch from '@/app/components/base/switch'
-import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 import {
-  type AppTrigger,
+
   useAppTriggers,
   useInvalidateAppTriggers,
   useUpdateTriggerStatus,
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
-import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
 
 export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>

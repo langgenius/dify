@@ -1,31 +1,31 @@
 import {
+  RiClipboardLine,
+  RiCloseLine,
+} from '@remixicon/react'
+import copy from 'copy-to-clipboard'
+import {
   memo,
   useCallback,
   useEffect,
   useState,
 } from 'react'
-import {
-  RiClipboardLine,
-  RiCloseLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import copy from 'copy-to-clipboard'
-import ResultText from '../run/result-text'
-import ResultPanel from '../run/result-panel'
-import TracingPanel from '../run/tracing-panel'
+import Button from '@/app/components/base/button'
+import Loading from '@/app/components/base/loading'
+import { cn } from '@/utils/classnames'
+import Toast from '../../base/toast'
 import {
   useWorkflowInteractions,
 } from '../hooks'
+import ResultPanel from '../run/result-panel'
+import ResultText from '../run/result-text'
+import TracingPanel from '../run/tracing-panel'
 import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
-import Toast from '../../base/toast'
 import InputsPanel from './inputs-panel'
-import { cn } from '@/utils/classnames'
-import Loading from '@/app/components/base/loading'
-import Button from '@/app/components/base/button'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()

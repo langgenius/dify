@@ -1,7 +1,7 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
-import List from './index'
+import React from 'react'
 import { Plan } from '../../../../type'
+import List from './index'
 
 describe('CloudPlanItem/List', () => {
   it('should show sandbox specific quotas', () => {

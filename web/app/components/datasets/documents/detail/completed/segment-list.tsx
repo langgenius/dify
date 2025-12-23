@@ -1,13 +1,14 @@
+import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
 import React, { useMemo } from 'react'
-import { useDocumentContext } from '../context'
-import SegmentCard from './segment-card'
-import Empty from './common/empty'
-import GeneralListSkeleton from './skeleton/general-list-skeleton'
-import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
-import { useSegmentListContext } from './index'
-import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel } from '@/models/datasets'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
+import { ChunkingMode } from '@/models/datasets'
+import { useDocumentContext } from '../context'
+import Empty from './common/empty'
+import { useSegmentListContext } from './index'
+import SegmentCard from './segment-card'
+import GeneralListSkeleton from './skeleton/general-list-skeleton'
+import ParagraphListSkeleton from './skeleton/paragraph-list-skeleton'
 
 type ISegmentListProps = {
   isLoading: boolean

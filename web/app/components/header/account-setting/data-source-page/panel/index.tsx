@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
+import type { ConfigItemType } from './config-item'
+import { RiAddLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiAddLine } from '@remixicon/react'
-import type { ConfigItemType } from './config-item'
-import ConfigItem from './config-item'
-
-import s from './style.module.css'
-import { DataSourceType } from './types'
 import Button from '@/app/components/base/button'
+
 import { DataSourceProvider } from '@/models/common'
 import { cn } from '@/utils/classnames'
+import ConfigItem from './config-item'
+import s from './style.module.css'
+import { DataSourceType } from './types'
 
 type Props = {
   type: DataSourceType

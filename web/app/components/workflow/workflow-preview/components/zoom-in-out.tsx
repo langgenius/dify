@@ -1,28 +1,28 @@
 import type { FC } from 'react'
 import {
+  RiZoomInLine,
+  RiZoomOutLine,
+} from '@remixicon/react'
+import {
   Fragment,
   memo,
   useCallback,
   useState,
 } from 'react'
-import {
-  RiZoomInLine,
-  RiZoomOutLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import {
   useReactFlow,
   useViewport,
 } from 'reactflow'
-import ShortcutsName from '@/app/components/workflow/shortcuts-name'
 import Divider from '@/app/components/base/divider'
-import TipPopup from '@/app/components/workflow/operator/tip-popup'
-import { cn } from '@/utils/classnames'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import TipPopup from '@/app/components/workflow/operator/tip-popup'
+import ShortcutsName from '@/app/components/workflow/shortcuts-name'
+import { cn } from '@/utils/classnames'
 
 enum ZoomType {
   zoomIn = 'zoomIn',

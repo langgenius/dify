@@ -1,9 +1,9 @@
+import type { DocumentIndexingStatus } from '@/models/datasets'
+import type { InitialDocumentDetail } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
 import React from 'react'
-import Processing from './index'
-import type { InitialDocumentDetail } from '@/models/pipeline'
 import { DatasourceType } from '@/models/pipeline'
-import type { DocumentIndexingStatus } from '@/models/datasets'
+import Processing from './index'
 
 // ==========================================
 // Mock External Dependencies

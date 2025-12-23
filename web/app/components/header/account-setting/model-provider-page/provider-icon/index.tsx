@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
-import { useLanguage } from '../hooks'
-import { Openai } from '@/app/components/base/icons/src/vender/other'
 import { AnthropicDark, AnthropicLight } from '@/app/components/base/icons/src/public/llm'
+import { Openai } from '@/app/components/base/icons/src/vender/other'
+import useTheme from '@/hooks/use-theme'
 import { renderI18nObject } from '@/i18n-config'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import useTheme from '@/hooks/use-theme'
+import { useLanguage } from '../hooks'
 
 type ProviderIconProps = {
   provider: ModelProvider

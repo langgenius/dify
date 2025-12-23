@@ -1,21 +1,21 @@
 import type { FC } from 'react'
+import type { KnowledgeRetrievalNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+import { intersectionBy } from 'lodash-es'
 import {
   memo,
   useMemo,
 } from 'react'
-import { intersectionBy } from 'lodash-es'
 import { useTranslation } from 'react-i18next'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import useConfig from './use-config'
-import RetrievalConfig from './components/retrieval-config'
 import AddKnowledge from './components/add-dataset'
 import DatasetList from './components/dataset-list'
 import MetadataFilter from './components/metadata/metadata-filter'
-import type { KnowledgeRetrievalNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import RetrievalConfig from './components/retrieval-config'
+import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 

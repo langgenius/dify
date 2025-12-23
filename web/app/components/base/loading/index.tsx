@@ -4,6 +4,7 @@ import React from 'react'
 import { useTranslation } from 'react-i18next'
 
 import './style.css'
+
 type ILoadingProps = {
   type?: 'area' | 'app'
 }

@@ -1,6 +1,6 @@
-import Tooltip from '@/app/components/base/tooltip'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
 
 const GlobalInputs = () => {
   const { t } = useTranslation()

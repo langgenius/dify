@@ -1,19 +1,19 @@
 'use client'
-import React, { useCallback, useRef } from 'react'
-import { useHover } from 'ahooks'
-import { useTranslation } from 'react-i18next'
+import type { InputVarType } from '@/app/components/workflow/types'
+import type { InputVar } from '@/models/pipeline'
 import {
   RiDeleteBinLine,
   RiDraggable,
   RiEditLine,
 } from '@remixicon/react'
+import { useHover } from 'ahooks'
+import React, { useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import Badge from '@/app/components/base/badge'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { cn } from '@/utils/classnames'
-import Badge from '@/app/components/base/badge'
-import type { InputVar } from '@/models/pipeline'
-import type { InputVarType } from '@/app/components/workflow/types'
-import ActionButton from '@/app/components/base/action-button'
 
 type FieldItemProps = {
   readonly?: boolean

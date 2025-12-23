@@ -1,11 +1,12 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDraftLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
-import Button from '@/app/components/base/button'
 
 const i18nPrefix = 'dataset.batchAction'
 type IBatchActionProps = {

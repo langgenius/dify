@@ -1,16 +1,19 @@
 'use client'
+import type { CreateApiKeyResponse } from '@/models/app'
+import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
+import { RiDeleteBinLine } from '@remixicon/react'
 import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { PlusIcon, XMarkIcon } from '@heroicons/react/20/solid'
-import SecretKeyGenerateModal from './secret-key-generate'
-import s from './style.module.css'
 import ActionButton from '@/app/components/base/action-button'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import CopyFeedback from '@/app/components/base/copy-feedback'
+import Loading from '@/app/components/base/loading'
+import Modal from '@/app/components/base/modal'
+import { useAppContext } from '@/context/app-context'
+import useTimestamp from '@/hooks/use-timestamp'
 import {
   createApikey as createAppApikey,
   delApikey as delAppApikey,
@@ -19,13 +22,10 @@ import {
   createApikey as createDatasetApikey,
   delApikey as delDatasetApikey,
 } from '@/service/datasets'
-import type { CreateApiKeyResponse } from '@/models/app'
-import Loading from '@/app/components/base/loading'
-import Confirm from '@/app/components/base/confirm'
-import useTimestamp from '@/hooks/use-timestamp'
-import { useAppContext } from '@/context/app-context'
-import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
 import { useDatasetApiKeys, useInvalidateDatasetApiKeys } from '@/service/knowledge/use-dataset'
+import { useAppApiKeys, useInvalidateAppApiKeys } from '@/service/use-apps'
+import SecretKeyGenerateModal from './secret-key-generate'
+import s from './style.module.css'
 
 type ISecretKeyModalProps = {
   isShow: boolean

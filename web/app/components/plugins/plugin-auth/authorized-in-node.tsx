@@ -1,17 +1,17 @@
+import type {
+  Credential,
+  PluginPayload,
+} from './types'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
-import type {
-  Credential,
-  PluginPayload,
-} from './types'
 import {
   Authorized,
   usePluginAuth,

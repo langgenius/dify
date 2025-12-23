@@ -1,9 +1,5 @@
 import type { MouseEvent } from 'react'
 import {
-  memo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import {
   RiAspectRatioFill,
   RiAspectRatioLine,
   RiCursorLine,
@@ -12,21 +8,25 @@ import {
   RiStickyNoteAddLine,
 } from '@remixicon/react'
 import {
+  memo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import Divider from '../../base/divider'
+import {
   useNodesReadOnly,
   useWorkflowCanvasMaximize,
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '../hooks'
+import { useStore } from '../store'
 import {
   ControlMode,
 } from '../types'
-import { useStore } from '../store'
-import Divider from '../../base/divider'
 import AddBlock from './add-block'
-import TipPopup from './tip-popup'
-import MoreActions from './more-actions'
 import { useOperator } from './hooks'
-import { cn } from '@/utils/classnames'
+import MoreActions from './more-actions'
+import TipPopup from './tip-popup'
 
 const Control = () => {
   const { t } = useTranslation()

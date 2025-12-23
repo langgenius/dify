@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import { ArrowTopRightOnSquareIcon } from '@heroicons/react/24/outline'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
-import { AppModeEnum } from '@/types/app'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Tag from '@/app/components/base/tag'
+import { useDocLink } from '@/context/i18n'
+import { AppModeEnum } from '@/types/app'
 
 type IShareLinkProps = {
   isShow: boolean

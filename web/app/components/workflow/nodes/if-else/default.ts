@@ -1,9 +1,12 @@
-import { type NodeDefault, VarType } from '../../types'
-import { type IfElseNodeType, LogicalOperator } from './types'
-import { isEmptyRelatedOperator } from './utils'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { NodeDefault } from '../../types'
+import type { IfElseNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { VarType } from '../../types'
+import { LogicalOperator } from './types'
+import { isEmptyRelatedOperator } from './utils'
+
 const i18nPrefix = 'workflow.errorMsg'
 
 const metaData = genNodeMetaData({

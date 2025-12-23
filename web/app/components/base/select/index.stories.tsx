@@ -1,7 +1,7 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
+import type { Item } from '.'
 import { useState } from 'react'
 import Select, { PortalSelect, SimpleSelect } from '.'
-import type { Item } from '.'
 
 const meta = {
   title: 'Base/Data Entry/Select',

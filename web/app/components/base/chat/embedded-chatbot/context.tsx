@@ -1,7 +1,6 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
 import type {
   ChatConfig,
   ChatItem,
@@ -15,6 +14,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { noop } from 'lodash-es'
+import { createContext, useContext } from 'use-context-selector'
 
 export type EmbeddedChatbotContextValue = {
   appMeta: AppMeta | null

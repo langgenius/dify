@@ -1,4 +1,6 @@
 import type { FC } from 'react'
+import type { LoopNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import {
   memo,
   useEffect,
@@ -8,13 +10,11 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import { LoopStartNodeDumb } from '../loop-start'
-import { useNodeLoopInteractions } from './use-interactions'
-import type { LoopNodeType } from './types'
-import AddBlock from './add-block'
 import { cn } from '@/utils/classnames'
+import { LoopStartNodeDumb } from '../loop-start'
+import AddBlock from './add-block'
 
-import type { NodeProps } from '@/app/components/workflow/types'
+import { useNodeLoopInteractions } from './use-interactions'
 
 const Node: FC<NodeProps<LoopNodeType>> = ({
   id,

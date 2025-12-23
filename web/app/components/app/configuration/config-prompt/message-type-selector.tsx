@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import { useBoolean, useClickAway } from 'ahooks'
-import { cn } from '@/utils/classnames'
-import { PromptRole } from '@/models/debug'
+import React from 'react'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
+import { PromptRole } from '@/models/debug'
+import { cn } from '@/utils/classnames'
+
 type Props = {
   value: PromptRole
   onChange: (value: PromptRole) => void

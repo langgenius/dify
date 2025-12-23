@@ -1,18 +1,18 @@
-import { useCallback } from 'react'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import InputModeSelect from './input-mode-selec'
-import VariableTypeSelect from './variable-type-select'
-import FormItem from './form-item'
-import ActionButton from '@/app/components/base/action-button'
-import Input from '@/app/components/base/input'
 import type {
   LoopVariable,
   LoopVariablesComponentShape,
 } from '@/app/components/workflow/nodes/loop/types'
-import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { ValueType, VarType } from '@/app/components/workflow/types'
+import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
+import FormItem from './form-item'
+import InputModeSelect from './input-mode-selec'
+import VariableTypeSelect from './variable-type-select'
 
 type ItemProps = {
   item: LoopVariable

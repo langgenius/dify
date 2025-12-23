@@ -1,7 +1,7 @@
 import type { Fetcher } from 'swr'
-import { del, get, post } from './base'
 import type { AnnotationCreateResponse, AnnotationEnableStatus, AnnotationItemBasic, EmbeddingModelConfig } from '@/app/components/app/annotation/type'
 import { ANNOTATION_DEFAULT } from '@/config'
+import { del, get, post } from './base'
 
 export const fetchAnnotationConfig = (appId: string) => {
   return get(`apps/${appId}/annotation-setting`)

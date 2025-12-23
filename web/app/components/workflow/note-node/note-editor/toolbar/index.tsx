@@ -1,10 +1,10 @@
-import { memo } from 'react'
-import Divider from './divider'
 import type { ColorPickerProps } from './color-picker'
-import ColorPicker from './color-picker'
-import FontSizeSelector from './font-size-selector'
-import Command from './command'
 import type { OperatorProps } from './operator'
+import { memo } from 'react'
+import ColorPicker from './color-picker'
+import Command from './command'
+import Divider from './divider'
+import FontSizeSelector from './font-size-selector'
 import Operator from './operator'
 
 type ToolbarProps = ColorPickerProps & OperatorProps

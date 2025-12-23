@@ -1,11 +1,11 @@
 'use client'
-import React, { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
-import Checkbox from '@/app/components/base/checkbox'
-import Button from '@/app/components/base/button'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
+import { cn } from '@/utils/classnames'
 
 type CrawledResultItemProps = {
   payload: CrawlResultItemType

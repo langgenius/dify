@@ -1,10 +1,9 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
-import { fn } from 'storybook/test'
-import { useState } from 'react'
-import DatePicker from './date-picker'
-import dayjs from './utils/dayjs'
-import { getDateWithTimezone } from './utils/dayjs'
 import type { DatePickerProps } from './types'
+import { useState } from 'react'
+import { fn } from 'storybook/test'
+import DatePicker from './date-picker'
+import dayjs, { getDateWithTimezone } from './utils/dayjs'
 
 const meta = {
   title: 'Base/Data Entry/DateAndTimePicker',

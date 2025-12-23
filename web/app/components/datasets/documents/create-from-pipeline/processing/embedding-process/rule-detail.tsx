@@ -1,11 +1,12 @@
-import React, { useCallback } from 'react'
-import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
-import { RETRIEVE_METHOD } from '@/types/app'
-import { useTranslation } from 'react-i18next'
-import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
+import type { ProcessRuleResponse } from '@/models/datasets'
 import Image from 'next/image'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { indexMethodIcon, retrievalIcon } from '@/app/components/datasets/create/icons'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
+import { ProcessMode } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 
 type RuleDetailProps = {
   sourceData?: ProcessRuleResponse

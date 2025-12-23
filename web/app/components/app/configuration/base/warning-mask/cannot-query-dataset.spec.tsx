@@ -1,5 +1,5 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import React from 'react'
 import CannotQueryDataset from './cannot-query-dataset'
 
 describe('CannotQueryDataset WarningMask', () => {

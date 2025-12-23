@@ -1,7 +1,7 @@
-import Button from '@/app/components/base/button'
-import { SearchMenu } from '@/app/components/base/icons/src/vender/knowledge'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { SearchMenu } from '@/app/components/base/icons/src/vender/knowledge'
 
 type EmptySearchResultProps = {
   onResetKeywords: () => void

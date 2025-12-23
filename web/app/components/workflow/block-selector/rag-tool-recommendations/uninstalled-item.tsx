@@ -1,13 +1,13 @@
 'use client'
-import React from 'react'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
 import type { Plugin } from '@/app/components/plugins/types'
+import { useBoolean } from 'ahooks'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import I18n from '@/context/i18n'
-import { useBoolean } from 'ahooks'
-import { BlockEnum } from '../../types'
 import BlockIcon from '../../block-icon'
+import { BlockEnum } from '../../types'
 
 type UninstalledItemProps = {
   payload: Plugin

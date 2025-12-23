@@ -1,45 +1,45 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import { useCallback, useEffect, useState } from 'react'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { useSearchParams } from 'next/navigation'
+import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
+import type { OpeningStatement } from '@/app/components/base/features/types'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
+import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import type {
   ConfigurationMethodEnum,
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
-  ModelProvider,
+  ModelModalModeEnum, ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  EDUCATION_PRICING_SHOW_ACTION,
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-} from '@/app/education-apply/constants'
-import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
+import type { UpdatePluginPayload } from '@/app/components/plugins/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
+import type {
+  ApiBasedExtension,
+  ExternalDataTool,
+} from '@/models/common'
+import type { ModerationConfig, PromptVariable } from '@/models/debug'
+import { noop } from 'lodash-es'
+import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import {
   ACCOUNT_SETTING_MODAL_ACTION,
   DEFAULT_ACCOUNT_SETTING_TAB,
   isValidAccountSettingTab,
 } from '@/app/components/header/account-setting/constants'
-import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import type {
-  ApiBasedExtension,
-  ExternalDataTool,
-} from '@/models/common'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
-import type { OpeningStatement } from '@/app/components/base/features/types'
-import type { InputVar } from '@/app/components/workflow/types'
-import type { UpdatePluginPayload } from '@/app/components/plugins/types'
-import { removeSpecificQueryParam } from '@/utils'
-import { noop } from 'lodash-es'
-import dynamic from 'next/dynamic'
-import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
-import type { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useProviderContext } from '@/context/provider-context'
-import { useAppContext } from '@/context/app-context'
 import {
-  type TriggerEventsLimitModalPayload,
+  EDUCATION_PRICING_SHOW_ACTION,
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+} from '@/app/education-apply/constants'
+import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
+import { removeSpecificQueryParam } from '@/utils'
+import {
+
   useTriggerEventsLimitModal,
 } from './hooks/use-trigger-events-limit-modal'
 

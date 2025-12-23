@@ -1,17 +1,17 @@
 import type { FC } from 'react'
+import type { ApiBasedExtension } from '@/models/common'
+import { noop } from 'lodash-es'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useDocLink } from '@/context/i18n'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
-import type { ApiBasedExtension } from '@/models/common'
+import Modal from '@/app/components/base/modal'
+import { useToastContext } from '@/app/components/base/toast'
+import { useDocLink } from '@/context/i18n'
 import {
   addApiBasedExtension,
   updateApiBasedExtension,
 } from '@/service/common'
-import { useToastContext } from '@/app/components/base/toast'
-import { noop } from 'lodash-es'
 
 export type ApiBasedExtensionData = {
   name?: string

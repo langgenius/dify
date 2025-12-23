@@ -1,14 +1,14 @@
-import { memo } from 'react'
 import { RiFontSize } from '@remixicon/react'
+import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFontSize } from './hooks'
-import { cn } from '@/utils/classnames'
+import { Check } from '@/app/components/base/icons/src/vender/line/general'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { Check } from '@/app/components/base/icons/src/vender/line/general'
+import { cn } from '@/utils/classnames'
+import { useFontSize } from './hooks'
 
 const FontSizeSelector = () => {
   const { t } = useTranslation()

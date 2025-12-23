@@ -1,11 +1,11 @@
 'use client'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import { RiBookOpenLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiBookOpenLine } from '@remixicon/react'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
 import EmbeddingProcess from './embedding-process'
-import type { InitialDocumentDetail } from '@/models/pipeline'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 
 type ProcessingProps = {
   batchId: string

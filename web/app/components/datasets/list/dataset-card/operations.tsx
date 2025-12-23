@@ -1,7 +1,7 @@
-import Divider from '@/app/components/base/divider'
+import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
+import Divider from '@/app/components/base/divider'
 import OperationItem from './operation-item'
 
 type OperationsProps = {

@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import { useCallback, useMemo } from 'react'
-import { useStore as useTagStore } from './store'
-import { cn } from '@/utils/classnames'
-import CustomPopover from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
+import { useCallback, useMemo } from 'react'
+import CustomPopover from '@/app/components/base/popover'
 import { fetchTagList } from '@/service/tag'
-import Trigger from './trigger'
+import { cn } from '@/utils/classnames'
 import Panel from './panel'
+import { useStore as useTagStore } from './store'
+import Trigger from './trigger'
 
 export type TagSelectorProps = {
   targetID: string

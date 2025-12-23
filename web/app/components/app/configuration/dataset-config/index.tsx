@@ -1,29 +1,5 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { intersectionBy } from 'lodash-es'
-import { useContext } from 'use-context-selector'
-import { produce } from 'immer'
-import { v4 as uuid4 } from 'uuid'
-import { useFormattingChangedDispatcher } from '../debug/hooks'
-import FeaturePanel from '../base/feature-panel'
-import OperationBtn from '../base/operation-btn'
-import CardItem from './card-item'
-import ParamsConfig from './params-config'
-import ContextVar from './context-var'
-import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum } from '@/types/app'
-import type { DataSet } from '@/models/datasets'
-import {
-  getMultipleRetrievalConfig,
-  getSelectedDatasetsMode,
-} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useSelector as useAppContextSelector } from '@/context/app-context'
-import { hasEditPermissionForDataset } from '@/utils/permission'
-import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import type {
   HandleAddCondition,
   HandleRemoveCondition,
@@ -31,11 +7,35 @@ import type {
   HandleUpdateCondition,
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import type { DataSet } from '@/models/datasets'
+import { produce } from 'immer'
+import { intersectionBy } from 'lodash-es'
+import React, { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { v4 as uuid4 } from 'uuid'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import MetadataFilter from '@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter'
 import {
   ComparisonOperator,
   LogicalOperator,
   MetadataFilteringVariableType,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
+import {
+  getMultipleRetrievalConfig,
+  getSelectedDatasetsMode,
+} from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { useSelector as useAppContextSelector } from '@/context/app-context'
+import ConfigContext from '@/context/debug-configuration'
+import { AppModeEnum } from '@/types/app'
+import { hasEditPermissionForDataset } from '@/utils/permission'
+import FeaturePanel from '../base/feature-panel'
+import OperationBtn from '../base/operation-btn'
+import { useFormattingChangedDispatcher } from '../debug/hooks'
+import CardItem from './card-item'
+import ContextVar from './context-var'
+import ParamsConfig from './params-config'
 
 const DatasetConfig: FC = () => {
   const { t } = useTranslation()

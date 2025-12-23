@@ -1,6 +1,6 @@
 import { memo } from 'react'
-import ShortcutsName from '../shortcuts-name'
 import Tooltip from '@/app/components/base/tooltip'
+import ShortcutsName from '../shortcuts-name'
 
 type TipPopupProps = {
   title: string

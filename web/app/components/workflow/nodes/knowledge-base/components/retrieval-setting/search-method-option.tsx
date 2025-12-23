@@ -1,31 +1,31 @@
+import type {
+  WeightedScore,
+} from '../../types'
+import type { RerankingModelSelectorProps } from './reranking-model-selector'
+import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
+import type {
+  HybridSearchModeOption,
+  Option,
+} from './type'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
-import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
 import {
   HybridSearchModeEnum,
   RetrievalSearchMethodEnum,
 } from '../../types'
-import type {
-  WeightedScore,
-} from '../../types'
 import OptionCard from '../option-card'
-import type {
-  HybridSearchModeOption,
-  Option,
-} from './type'
-import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
-import TopKAndScoreThreshold from './top-k-and-score-threshold'
-import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import RerankingModelSelector from './reranking-model-selector'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import TopKAndScoreThreshold from './top-k-and-score-threshold'
 
 type SearchMethodOptionProps = {
   readonly?: boolean

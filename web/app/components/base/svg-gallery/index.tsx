@@ -1,6 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
 import { SVG } from '@svgdotjs/svg.js'
 import DOMPurify from 'dompurify'
+import { useEffect, useRef, useState } from 'react'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 
 const SVGRenderer = ({ content }: { content: string }) => {

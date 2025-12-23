@@ -1,5 +1,5 @@
-import React from 'react'
 import { RiCheckLine } from '@remixicon/react'
+import React from 'react'
 
 type PermissionItemProps = {
   leftIcon: React.ReactNode

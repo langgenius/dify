@@ -1,10 +1,10 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import RunOnce from './index'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import React, { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
+import RunOnce from './index'
 
 vi.mock('@/hooks/use-breakpoints', () => {
   const MediaType = {

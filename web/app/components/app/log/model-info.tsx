@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiInformation2Line,
 } from '@remixicon/react'
-import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import React from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { useTextGenerationCurrentProviderAndModelAndModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
 import { cn } from '@/utils/classnames'
 
 const PARAM_MAP = {

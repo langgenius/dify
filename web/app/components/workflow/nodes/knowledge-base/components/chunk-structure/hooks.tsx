@@ -1,3 +1,4 @@
+import type { Option } from './type'
 import { useTranslation } from 'react-i18next'
 import {
   GeneralChunk,
@@ -6,7 +7,6 @@ import {
 } from '@/app/components/base/icons/src/vender/knowledge'
 import { cn } from '@/utils/classnames'
 import { ChunkStructureEnum } from '../../types'
-import type { Option } from './type'
 
 export const useChunkStructure = () => {
   const { t } = useTranslation()

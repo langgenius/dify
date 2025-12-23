@@ -1,5 +1,6 @@
+import type { TopBarProps } from './index'
 import { render, screen } from '@testing-library/react'
-import { TopBar, type TopBarProps } from './index'
+import { TopBar } from './index'
 
 // Mock next/link to capture href values
 vi.mock('next/link', () => ({

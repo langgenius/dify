@@ -1,22 +1,23 @@
 import type { FC } from 'react'
+import type { ModelAndParameter } from '../types'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
-import type { ModelAndParameter } from '../types'
-import { useDebugWithMultipleModelContext } from './context'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
-import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
-import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
+import Tooltip from '@/app/components/base/tooltip'
 import {
-  type FormValue,
+
   MODEL_STATUS_TEXT,
   ModelStatusEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useDebugConfigurationContext } from '@/context/debug-configuration'
-import { CubeOutline } from '@/app/components/base/icons/src/vender/line/shapes'
-import Tooltip from '@/app/components/base/tooltip'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
+import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
+import { useDebugConfigurationContext } from '@/context/debug-configuration'
+import { useDebugWithMultipleModelContext } from './context'
 
 type ModelParameterTriggerProps = {
   modelAndParameter: ModelAndParameter

@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { languages } from '@/i18n-config/language'
 import { PortalSelect } from '@/app/components/base/select'
+import { languages } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 
 type Props = {

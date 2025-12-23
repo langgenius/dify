@@ -1,14 +1,4 @@
 import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import {
   RiAlignBottom,
   RiAlignCenter,
   RiAlignJustify,
@@ -16,12 +6,21 @@ import {
   RiAlignRight,
   RiAlignTop,
 } from '@remixicon/react'
-import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
+import { useClickAway } from 'ahooks'
 import { produce } from 'immer'
-import { WorkflowHistoryEvent, useWorkflowHistory } from './hooks/use-workflow-history'
-import { useStore } from './store'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import { useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useSelectionInteractions } from './hooks/use-selection-interactions'
-import { useWorkflowStore } from './store'
+import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
+import { useStore, useWorkflowStore } from './store'
 
 enum AlignType {
   Left = 'left',

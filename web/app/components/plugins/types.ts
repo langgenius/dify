@@ -1,10 +1,10 @@
-import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
-import type { ToolCredential } from '@/app/components/tools/types'
-import type { Locale } from '@/i18n-config'
-import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
-import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { FormTypeEnum } from '../base/form/types'
+import type { CredentialFormSchemaBase } from '../header/account-setting/model-provider-page/declarations'
+import type { AutoUpdateConfig } from './reference-setting-modal/auto-update-setting/types'
 import type { TypeWithI18N } from '@/app/components/base/form/types'
+import type { ToolCredential } from '@/app/components/tools/types'
+import type { AgentFeature } from '@/app/components/workflow/nodes/agent/types'
+import type { Locale } from '@/i18n-config'
 
 export enum PluginCategoryEnum {
   tool = 'tool',

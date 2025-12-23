@@ -1,9 +1,9 @@
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import useTimestamp from '@/hooks/use-timestamp'
 import { useStore } from '../store'
 import { WorkflowVersion } from '../types'
-import useTimestamp from '@/hooks/use-timestamp'
 
 const RestoringTitle = () => {
   const { t } = useTranslation()

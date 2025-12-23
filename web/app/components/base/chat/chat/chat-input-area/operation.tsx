@@ -1,17 +1,17 @@
 import type { FC, Ref } from 'react'
-import { memo } from 'react'
+import type { Theme } from '../../embedded-chatbot/theme/theme-context'
+import type {
+  EnableType,
+} from '../../types'
+import type { FileUpload } from '@/app/components/base/features/types'
 import {
   RiMicLine,
   RiSendPlane2Fill,
 } from '@remixicon/react'
-import type {
-  EnableType,
-} from '../../types'
-import type { Theme } from '../../embedded-chatbot/theme/theme-context'
-import Button from '@/app/components/base/button'
+import { memo } from 'react'
 import ActionButton from '@/app/components/base/action-button'
+import Button from '@/app/components/base/button'
 import { FileUploaderInChatInput } from '@/app/components/base/file-uploader'
-import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@/utils/classnames'
 
 type OperationProps = {

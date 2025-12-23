@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { AgentConfig } from '@/models/debug'
 import { RiCloseLine } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
-import ItemPanel from './item-panel'
+import React, { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { CuteRobot } from '@/app/components/base/icons/src/vender/solid/communication'
 import { Unblur } from '@/app/components/base/icons/src/vender/solid/education'
 import Slider from '@/app/components/base/slider'
-import type { AgentConfig } from '@/models/debug'
 import { DEFAULT_AGENT_PROMPT, MAX_ITERATIONS_NUM } from '@/config'
+import ItemPanel from './item-panel'
 
 type Props = {
   isChatModel: boolean

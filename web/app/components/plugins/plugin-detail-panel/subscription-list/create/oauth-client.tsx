@@ -1,25 +1,25 @@
 'use client'
-import Button from '@/app/components/base/button'
-import { BaseForm } from '@/app/components/base/form/components/base'
 import type { FormRefObject } from '@/app/components/base/form/types'
-import Modal from '@/app/components/base/modal/modal'
-import Toast from '@/app/components/base/toast'
 import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { openOAuthPopup } from '@/hooks/use-oauth'
 import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
-import {
-  useConfigureTriggerOAuth,
-  useDeleteTriggerOAuth,
-  useInitiateTriggerOAuth,
-  useVerifyTriggerSubscriptionBuilder,
-} from '@/service/use-triggers'
 import {
   RiClipboardLine,
   RiInformation2Fill,
 } from '@remixicon/react'
 import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { BaseForm } from '@/app/components/base/form/components/base'
+import Modal from '@/app/components/base/modal/modal'
+import Toast from '@/app/components/base/toast'
+import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { openOAuthPopup } from '@/hooks/use-oauth'
+import {
+  useConfigureTriggerOAuth,
+  useDeleteTriggerOAuth,
+  useInitiateTriggerOAuth,
+  useVerifyTriggerSubscriptionBuilder,
+} from '@/service/use-triggers'
 import { usePluginStore } from '../../store'
 
 type Props = {

@@ -1,9 +1,10 @@
-import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import SegmentCard from './index'
-import { type Attachment, type ChildChunkDetail, ChunkingMode, type ParentMode, type SegmentDetailModel } from '@/models/datasets'
-import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type { SegmentListContextValue } from '@/app/components/datasets/documents/detail/completed'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { Attachment, ChildChunkDetail, ParentMode, SegmentDetailModel } from '@/models/datasets'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import React from 'react'
+import { ChunkingMode } from '@/models/datasets'
+import SegmentCard from './index'
 
 // Mock react-i18next - external dependency
 vi.mock('react-i18next', () => ({

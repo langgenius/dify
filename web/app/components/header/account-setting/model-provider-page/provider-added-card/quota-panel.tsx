@@ -1,6 +1,8 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { ModelProvider } from '../declarations'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import { formatNumber } from '@/utils/format'
 import {
   CustomConfigurationStatusEnum,
   PreferredProviderTypeEnum,
@@ -10,8 +12,6 @@ import {
   MODEL_PROVIDER_QUOTA_GET_PAID,
 } from '../utils'
 import PriorityUseTip from './priority-use-tip'
-import Tooltip from '@/app/components/base/tooltip'
-import { formatNumber } from '@/utils/format'
 
 type QuotaPanelProps = {
   provider: ModelProvider

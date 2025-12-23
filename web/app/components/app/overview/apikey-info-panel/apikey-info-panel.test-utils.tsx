@@ -1,9 +1,12 @@
-import type { Mock, MockedFunction } from 'vitest'
 import type { RenderOptions } from '@testing-library/react'
-import { fireEvent, render } from '@testing-library/react'
-import { defaultPlan } from '@/app/components/billing/config'
-import { noop } from 'lodash-es'
+import type { Mock, MockedFunction } from 'vitest'
 import type { ModalContextState } from '@/context/modal-context'
+import { fireEvent, render } from '@testing-library/react'
+import { noop } from 'lodash-es'
+import { defaultPlan } from '@/app/components/billing/config'
+import { useModalContext as actualUseModalContext } from '@/context/modal-context'
+
+import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
 import APIKeyInfoPanel from './index'
 
 // Mock the modules before importing the functions
@@ -14,9 +17,6 @@ vi.mock('@/context/provider-context', () => ({
 vi.mock('@/context/modal-context', () => ({
   useModalContext: vi.fn(),
 }))
-
-import { useProviderContext as actualUseProviderContext } from '@/context/provider-context'
-import { useModalContext as actualUseModalContext } from '@/context/modal-context'
 
 // Type casting for mocks
 const mockUseProviderContext = actualUseProviderContext as MockedFunction<typeof actualUseProviderContext>
@@ -207,4 +207,4 @@ export function clearAllMocks() {
 }
 
 // Export mock functions for external access
-export { mockUseProviderContext, mockUseModalContext, defaultModalContext }
+export { defaultModalContext, mockUseModalContext, mockUseProviderContext }

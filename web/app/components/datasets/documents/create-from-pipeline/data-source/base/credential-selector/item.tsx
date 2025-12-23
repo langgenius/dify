@@ -1,7 +1,7 @@
-import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 import type { DataSourceCredential } from '@/types/pipeline'
 import { RiCheckLine } from '@remixicon/react'
 import React, { useCallback } from 'react'
+import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 
 type ItemProps = {
   credential: DataSourceCredential

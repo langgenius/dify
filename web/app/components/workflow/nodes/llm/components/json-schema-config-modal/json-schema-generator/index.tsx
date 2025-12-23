@@ -1,24 +1,25 @@
-import React, { type FC, useCallback, useEffect, useState } from 'react'
+import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
+import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { CompletionParams, Model } from '@/types/app'
+import React, { useCallback, useEffect, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import useTheme from '@/hooks/use-theme'
-import type { CompletionParams, Model } from '@/types/app'
-import { ModelModeType } from '@/types/app'
-import { Theme } from '@/types/app'
-import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
-import { cn } from '@/utils/classnames'
-import PromptEditor from './prompt-editor'
-import GeneratedResult from './generated-result'
-import { useGenerateStructuredOutputRules } from '@/service/use-common'
 import Toast from '@/app/components/base/toast'
-import { type FormValue, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { useVisualEditorStore } from '../visual-editor/store'
+import useTheme from '@/hooks/use-theme'
+import { useGenerateStructuredOutputRules } from '@/service/use-common'
+import { ModelModeType, Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { useMittContext } from '../visual-editor/context'
+import { useVisualEditorStore } from '../visual-editor/store'
+import { SchemaGeneratorDark, SchemaGeneratorLight } from './assets'
+import GeneratedResult from './generated-result'
+import PromptEditor from './prompt-editor'
 
 type JsonSchemaGeneratorProps = {
   onApply: (schema: SchemaRoot) => void

@@ -1,8 +1,15 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   ModelProvider,
 } from '../declarations'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
+import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import Indicator from '@/app/components/header/indicator'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { changeModelProviderPriority } from '@/service/common'
+import { cn } from '@/utils/classnames'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -12,16 +19,9 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
+import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
 import PrioritySelector from './priority-selector'
 import PriorityUseTip from './priority-use-tip'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
-import Indicator from '@/app/components/header/indicator'
-import { changeModelProviderPriority } from '@/service/common'
-import { useToastContext } from '@/app/components/base/toast'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
-import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 type CredentialPanelProps = {
   provider: ModelProvider

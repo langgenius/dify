@@ -2,15 +2,15 @@
 import type { FC } from 'react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import UpgradeBtn from '../upgrade-btn'
-import ProgressBar from '@/app/components/billing/progress-bar'
 import Button from '@/app/components/base/button'
-import { mailToSupport } from '@/app/components/header/utils/util'
-import { useProviderContext } from '@/context/provider-context'
-import { useAppContext } from '@/context/app-context'
+import ProgressBar from '@/app/components/billing/progress-bar'
 import { Plan } from '@/app/components/billing/type'
-import s from './style.module.css'
+import { mailToSupport } from '@/app/components/header/utils/util'
+import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
+import UpgradeBtn from '../upgrade-btn'
+import s from './style.module.css'
 
 const LOW = 50
 const MIDDLE = 80

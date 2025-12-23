@@ -1,14 +1,15 @@
 'use client'
-import Button from '@/app/components/base/button'
-import { RiEditLine } from '@remixicon/react'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { type SchemaRoot, type StructuredOutput, Type } from '../types'
-import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
+import type { SchemaRoot, StructuredOutput } from '../types'
+import { RiEditLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import JsonSchemaConfigModal from './json-schema-config-modal'
-import { cn } from '@/utils/classnames'
+import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import ShowPanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
+import { cn } from '@/utils/classnames'
+import { Type } from '../types'
+import JsonSchemaConfigModal from './json-schema-config-modal'
 
 type Props = {
   className?: string

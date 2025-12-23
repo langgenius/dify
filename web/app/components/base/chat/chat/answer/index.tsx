@@ -2,26 +2,26 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
-import Operation from './operation'
+import type { AppData } from '@/models/share'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
+import AnswerIcon from '@/app/components/base/answer-icon'
+import Citation from '@/app/components/base/chat/chat/citation'
+import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
+import { FileList } from '@/app/components/base/file-uploader'
+import { cn } from '@/utils/classnames'
+import ContentSwitch from '../content-switch'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
-import SuggestedQuestions from './suggested-questions'
 import More from './more'
+import Operation from './operation'
+import SuggestedQuestions from './suggested-questions'
 import WorkflowProcessItem from './workflow-process'
-import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
-import Citation from '@/app/components/base/chat/chat/citation'
-import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
-import type { AppData } from '@/models/share'
-import AnswerIcon from '@/app/components/base/answer-icon'
-import { cn } from '@/utils/classnames'
-import { FileList } from '@/app/components/base/file-uploader'
-import ContentSwitch from '../content-switch'
 
 type AnswerProps = {
   item: ChatItem

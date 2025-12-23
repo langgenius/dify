@@ -1,6 +1,7 @@
-import React, { type FC } from 'react'
-import { RiCheckLine } from '@remixicon/react'
+import type { FC } from 'react'
 import type { Item } from '@/app/components/base/select'
+import { RiCheckLine } from '@remixicon/react'
+import React from 'react'
 
 type IStatusItemProps = {
   item: Item

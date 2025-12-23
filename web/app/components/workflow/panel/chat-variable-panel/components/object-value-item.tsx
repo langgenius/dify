@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import { produce } from 'immer'
 import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
 import { useContext } from 'use-context-selector'
 import { ToastContext } from '@/app/components/base/toast'
-import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
+import VariableTypeSelector from '@/app/components/workflow/panel/chat-variable-panel/components/variable-type-select'
 import { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 
 type Props = {

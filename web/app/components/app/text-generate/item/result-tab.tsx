@@ -1,11 +1,11 @@
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
 import {
   memo,
 } from 'react'
+import { FileList } from '@/app/components/base/file-uploader'
 import { Markdown } from '@/app/components/base/markdown'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import { FileList } from '@/app/components/base/file-uploader'
 
 const ResultTab = ({
   data,

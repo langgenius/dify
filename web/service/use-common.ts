@@ -1,27 +1,21 @@
-import { get, post } from './base'
+import type { FileTypesRes } from './datasets'
+import type {
+  Model,
+  ModelParameterRule,
+  ModelProvider, ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   AccountIntegrate,
+  ApiBasedExtension,
+  CodeBasedExtension,
   CommonResponse,
   DataSourceNotion,
   FileUploadConfigResponse,
-  Member,
-  StructuredOutputRulesRequestBody,
-  StructuredOutputRulesResponse,
+  ICurrentWorkspace, IWorkspace, LangGeniusVersionResponse, Member, PluginProvider, StructuredOutputRulesRequestBody, StructuredOutputRulesResponse, UserProfileResponse,
 } from '@/models/common'
-import { useMutation, useQuery } from '@tanstack/react-query'
-import type { FileTypesRes } from './datasets'
-import type { ICurrentWorkspace, IWorkspace, UserProfileResponse } from '@/models/common'
-import type {
-  Model,
-  ModelProvider,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import type { LangGeniusVersionResponse } from '@/models/common'
-import type { PluginProvider } from '@/models/common'
-import type { ApiBasedExtension } from '@/models/common'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CodeBasedExtension } from '@/models/common'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { get, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'

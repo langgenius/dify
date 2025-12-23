@@ -1,16 +1,14 @@
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DatasetConfig from './index'
-import type { DataSet } from '@/models/datasets'
-import { DataSourceType, DatasetPermission } from '@/models/datasets'
-import { AppModeEnum } from '@/types/app'
-import { ModelModeType } from '@/types/app'
-import { RETRIEVE_TYPE } from '@/types/app'
-import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { DatasetConfigs } from '@/models/debug'
 import { useContext } from 'use-context-selector'
-import { hasEditPermissionForDataset } from '@/utils/permission'
+import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { DatasetPermission, DataSourceType } from '@/models/datasets'
+import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import { hasEditPermissionForDataset } from '@/utils/permission'
+import DatasetConfig from './index'
 
 // Mock external dependencies
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({

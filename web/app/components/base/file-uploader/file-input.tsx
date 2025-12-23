@@ -1,8 +1,8 @@
-import { useFile } from './hooks'
-import { useStore } from './store'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useFile } from './hooks'
+import { useStore } from './store'
 
 type FileInputProps = {
   fileConfig: FileUpload

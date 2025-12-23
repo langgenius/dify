@@ -1,9 +1,9 @@
+import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { produce } from 'immer'
-import type { OnSelectBlock } from '@/app/components/workflow/types'
-import { generateNewNode } from '@/app/components/workflow/utils'
 import { useNodesMetaData } from '@/app/components/workflow/hooks'
+import { generateNewNode } from '@/app/components/workflow/utils'
 
 export const useReplaceDataSourceNode = (id: string) => {
   const store = useStoreApi()

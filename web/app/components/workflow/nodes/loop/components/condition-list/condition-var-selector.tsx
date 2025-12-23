@@ -1,7 +1,7 @@
+import type { Node, NodeOutPutVar, ValueSelector, Var, VarType } from '@/app/components/workflow/types'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
-import type { Node, NodeOutPutVar, ValueSelector, Var, VarType } from '@/app/components/workflow/types'
 
 type ConditionVarSelectorProps = {
   open: boolean

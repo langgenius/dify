@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { SiteInfo } from '@/models/share'
 import {
   RiBookmark3Line,
   RiClipboardLine,
@@ -13,24 +14,23 @@ import {
   RiThumbDownLine,
   RiThumbUpLine,
 } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { useParams } from 'next/navigation'
-import { useBoolean } from 'ahooks'
-import ResultTab from './result-tab'
-import { Markdown } from '@/app/components/base/markdown'
-import Loading from '@/app/components/base/loading'
-import Toast from '@/app/components/base/toast'
-import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
-import { fetchTextGenerationMessage } from '@/service/debug'
+import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
-import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import type { SiteInfo } from '@/models/share'
-import { useChatContext } from '@/app/components/base/chat/chat/context'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import WorkflowProcessItem from '@/app/components/base/chat/chat/answer/workflow-process'
+import { useChatContext } from '@/app/components/base/chat/chat/context'
+import Loading from '@/app/components/base/loading'
+import { Markdown } from '@/app/components/base/markdown'
 import NewAudioButton from '@/app/components/base/new-audio-button'
+import Toast from '@/app/components/base/toast'
+import { fetchTextGenerationMessage } from '@/service/debug'
+import { fetchMoreLikeThis, updateFeedback } from '@/service/share'
 import { cn } from '@/utils/classnames'
+import ResultTab from './result-tab'
 
 const MAX_DEPTH = 3
 

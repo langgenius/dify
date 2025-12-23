@@ -1,16 +1,16 @@
+import type {
+  Node,
+  NodeOutPutVar,
+} from '@/app/components/workflow/types'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import Placeholder from './placeholder'
-import type {
-  Node,
-  NodeOutPutVar,
-} from '@/app/components/workflow/types'
+import { useStore } from '@/app/components/workflow/store'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
-import { useStore } from '@/app/components/workflow/store'
+import Placeholder from './placeholder'
 
 type MixedVariableTextInputProps = {
   readOnly?: boolean

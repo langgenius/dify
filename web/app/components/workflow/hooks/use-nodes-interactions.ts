@@ -1,7 +1,4 @@
 import type { MouseEvent } from 'react'
-import { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
 import type {
   NodeDragHandler,
   NodeMouseHandler,
@@ -10,16 +7,21 @@ import type {
   OnConnectStart,
   ResizeParamsWithDirection,
 } from 'reactflow'
+import type { PluginDefaultValue } from '../block-selector/types'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
+import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
+import type { Edge, Node, OnNodeAdd } from '../types'
+import type { RAGPipelineVariables } from '@/models/pipeline'
+import { produce } from 'immer'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   getConnectedEdges,
   getOutgoers,
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import type { PluginDefaultValue } from '../block-selector/types'
-import type { Edge, Node, OnNodeAdd } from '../types'
-import { BlockEnum, isTriggerNode } from '../types'
-import { useWorkflowStore } from '../store'
 import {
   CUSTOM_EDGE,
   ITERATION_CHILDREN_Z_INDEX,
@@ -30,39 +32,37 @@ import {
   X_OFFSET,
   Y_OFFSET,
 } from '../constants'
+import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
+import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
+import { CUSTOM_NOTE_NODE } from '../note-node/constants'
+import { useWorkflowStore } from '../store'
+import { BlockEnum, isTriggerNode } from '../types'
 import {
-  genNewNodeTitleFromOld,
   generateNewNode,
+  genNewNodeTitleFromOld,
   getNestedNodePosition,
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
   getTopLeftNodePosition,
 } from '../utils'
-import { CUSTOM_NOTE_NODE } from '../note-node/constants'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
-import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import type { VariableAssignerNodeType } from '../nodes/variable-assigner/types'
-import { useNodeIterationInteractions } from '../nodes/iteration/use-interactions'
-import { useNodeLoopInteractions } from '../nodes/loop/use-interactions'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
+import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
 import { useHelpline } from './use-helpline'
+import useInspectVarsCrud from './use-inspect-vars-crud'
+import { useNodesMetaData } from './use-nodes-meta-data'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import {
   useNodesReadOnly,
   useWorkflow,
   useWorkflowReadOnly,
 } from './use-workflow'
 import {
-  WorkflowHistoryEvent,
   useWorkflowHistory,
+  WorkflowHistoryEvent,
 } from './use-workflow-history'
-import { useNodesMetaData } from './use-nodes-meta-data'
-import { useAutoGenerateWebhookUrl } from './use-auto-generate-webhook-url'
-import type { RAGPipelineVariables } from '@/models/pipeline'
-import useInspectVarsCrud from './use-inspect-vars-crud'
-import { getNodeUsedVars } from '../nodes/_base/components/variable/utils'
 
 // Entry node deletion restriction has been removed to allow empty workflows
 

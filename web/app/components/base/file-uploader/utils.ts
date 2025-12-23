@@ -1,11 +1,11 @@
-import mime from 'mime'
-import { FileAppearanceTypeEnum } from './types'
 import type { FileEntity } from './types'
-import { upload } from '@/service/base'
+import type { FileResponse } from '@/types/workflow'
+import mime from 'mime'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { FileResponse } from '@/types/workflow'
+import { upload } from '@/service/base'
 import { TransferMethod } from '@/types/app'
+import { FileAppearanceTypeEnum } from './types'
 
 /**
  * Get appropriate error message for file upload errors

@@ -1,13 +1,13 @@
-import { useTranslation } from 'react-i18next'
-import { useRetryConfig } from './hooks'
-import s from './style.module.css'
-import Switch from '@/app/components/base/switch'
-import Slider from '@/app/components/base/slider'
-import Input from '@/app/components/base/input'
 import type {
   Node,
 } from '@/app/components/workflow/types'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Slider from '@/app/components/base/slider'
+import Switch from '@/app/components/base/switch'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { useRetryConfig } from './hooks'
+import s from './style.module.css'
 
 type RetryOnPanelProps = Pick<Node, 'id' | 'data'>
 const RetryOnPanel = ({

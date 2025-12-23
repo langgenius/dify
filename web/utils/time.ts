@@ -1,4 +1,5 @@
-import dayjs, { type ConfigType } from 'dayjs'
+import type { ConfigType } from 'dayjs'
+import dayjs from 'dayjs'
 import utc from 'dayjs/plugin/utc'
 
 dayjs.extend(utc)

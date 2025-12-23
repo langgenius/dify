@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
+import type { Props } from './var-picker'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import type { Props } from './var-picker'
-import VarPicker from './var-picker'
-import { cn } from '@/utils/classnames'
 import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import VarPicker from './var-picker'
 
 const ContextVar: FC<Props> = (props) => {
   const { t } = useTranslation()

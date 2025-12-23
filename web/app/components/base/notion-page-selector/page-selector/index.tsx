@@ -1,12 +1,12 @@
+import type { ListChildComponentProps } from 'react-window'
+import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { memo, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { FixedSizeList as List, areEqual } from 'react-window'
-import type { ListChildComponentProps } from 'react-window'
-import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
+import { areEqual, FixedSizeList as List } from 'react-window'
+import { cn } from '@/utils/classnames'
 import Checkbox from '../../checkbox'
 import NotionIcon from '../../notion-icon'
-import { cn } from '@/utils/classnames'
-import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 
 type PageSelectorProps = {
   value: Set<string>

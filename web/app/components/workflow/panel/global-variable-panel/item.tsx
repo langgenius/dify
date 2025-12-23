@@ -1,8 +1,8 @@
-import { memo } from 'react'
-import { capitalize } from 'lodash-es'
-import { GlobalVariable as GlobalVariableIcon } from '@/app/components/base/icons/src/vender/line/others'
-
 import type { GlobalVariable } from '@/app/components/workflow/types'
+import { capitalize } from 'lodash-es'
+import { memo } from 'react'
+
+import { GlobalVariable as GlobalVariableIcon } from '@/app/components/base/icons/src/vender/line/others'
 import { cn } from '@/utils/classnames'
 
 type Props = {

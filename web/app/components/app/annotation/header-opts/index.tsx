@@ -1,31 +1,30 @@
 'use client'
 import type { FC } from 'react'
-import React, { Fragment, useEffect, useState } from 'react'
-import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-modal'
-import { useTranslation } from 'react-i18next'
+import type { AnnotationItemBasic } from '../type'
+import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
 import {
   RiAddLine,
   RiDeleteBinLine,
   RiMoreFill,
 } from '@remixicon/react'
-import { useContext } from 'use-context-selector'
+import React, { Fragment, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
-import { Menu, MenuButton, MenuItems, Transition } from '@headlessui/react'
+import { useContext } from 'use-context-selector'
+import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
+import CustomPopover from '@/app/components/base/popover'
+import I18n from '@/context/i18n'
+import { LanguagesSupported } from '@/i18n-config/language'
+import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import { cn } from '@/utils/classnames'
+
 import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
-import type { AnnotationItemBasic } from '../type'
 import BatchAddModal from '../batch-add-annotation-modal'
-import { cn } from '@/utils/classnames'
-import CustomPopover from '@/app/components/base/popover'
-import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
-import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
-
-import I18n from '@/context/i18n'
-import { fetchExportAnnotationList } from '@/service/annotation'
-import { clearAllAnnotations } from '@/service/annotation'
-import { LanguagesSupported } from '@/i18n-config/language'
+import ClearAllAnnotationsConfirmModal from '../clear-all-annotations-confirm-modal'
 
 const CSV_HEADER_QA_EN = ['Question', 'Answer']
 const CSV_HEADER_QA_CN = ['问题', '答案']

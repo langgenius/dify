@@ -13,6 +13,9 @@ import type { Mock } from 'vitest'
  * - Returns human-readable relative time strings
  */
 import { renderHook } from '@testing-library/react'
+// Import after mock to get the mocked version
+import { useI18N } from '@/context/i18n'
+
 import { useFormatTimeFromNow } from './use-format-time-from-now'
 
 // Mock the i18n context
@@ -21,9 +24,6 @@ vi.mock('@/context/i18n', () => ({
     locale: 'en-US',
   })),
 }))
-
-// Import after mock to get the mocked version
-import { useI18N } from '@/context/i18n'
 
 describe('useFormatTimeFromNow', () => {
   beforeEach(() => {

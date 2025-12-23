@@ -1,7 +1,8 @@
-import React from 'react'
-import { type BaseConfiguration, BaseFieldType } from './types'
-import { withForm } from '../..'
+import type { BaseConfiguration } from './types'
 import { useStore } from '@tanstack/react-form'
+import React from 'react'
+import { withForm } from '../..'
+import { BaseFieldType } from './types'
 
 type BaseFieldProps = {
   initialData?: Record<string, any>

@@ -1,3 +1,10 @@
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+} from '@remixicon/react'
 import {
   useCallback,
   useMemo,
@@ -5,16 +12,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
-import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import type {
-  PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 

@@ -1,7 +1,7 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import StatusItem from './index'
 import type { DocumentDisplayStatus } from '@/models/datasets'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import StatusItem from './index'
 
 // Mock ToastContext - required to verify notifications
 const mockNotify = vi.fn()

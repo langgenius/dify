@@ -1,9 +1,9 @@
-import { useAppForm } from '@/app/components/base/form'
-import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
-import BaseField from '@/app/components/base/form/form-scenarios/base/field'
-import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import Toast from '@/app/components/base/toast'
 import type { ZodSchema } from 'zod'
+import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
+import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { useAppForm } from '@/app/components/base/form'
+import BaseField from '@/app/components/base/form/form-scenarios/base/field'
+import Toast from '@/app/components/base/toast'
 
 type OptionsProps = {
   initialData: Record<string, any>

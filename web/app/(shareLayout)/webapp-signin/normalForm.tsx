@@ -1,16 +1,16 @@
 'use client'
+import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
+import Link from 'next/link'
 import React, { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import Link from 'next/link'
-import { RiContractLine, RiDoorLockLine, RiErrorWarningFill } from '@remixicon/react'
 import Loading from '@/app/components/base/loading'
+import { IS_CE_EDITION } from '@/config'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { LicenseStatus } from '@/types/feature'
+import { cn } from '@/utils/classnames'
 import MailAndCodeAuth from './components/mail-and-code-auth'
 import MailAndPasswordAuth from './components/mail-and-password-auth'
 import SSOAuth from './components/sso-auth'
-import { cn } from '@/utils/classnames'
-import { LicenseStatus } from '@/types/feature'
-import { IS_CE_EDITION } from '@/config'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
 const NormalForm = () => {
   const { t } = useTranslation()

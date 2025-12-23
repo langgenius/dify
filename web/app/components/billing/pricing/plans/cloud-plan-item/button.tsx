@@ -1,8 +1,8 @@
-import React from 'react'
 import type { BasicPlan } from '../../../type'
-import { Plan } from '../../../type'
-import { cn } from '@/utils/classnames'
 import { RiArrowRightLine } from '@remixicon/react'
+import React from 'react'
+import { cn } from '@/utils/classnames'
+import { Plan } from '../../../type'
 
 const BUTTON_CLASSNAME = {
   [Plan.sandbox]: {

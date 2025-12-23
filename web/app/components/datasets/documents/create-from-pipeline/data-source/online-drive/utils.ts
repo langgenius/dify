@@ -1,5 +1,6 @@
-import { type OnlineDriveFile, OnlineDriveFileType } from '@/models/pipeline'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import type { OnlineDriveData } from '@/types/pipeline'
+import { OnlineDriveFileType } from '@/models/pipeline'
 
 export const isFile = (type: 'file' | 'folder'): boolean => {
   return type === 'file'

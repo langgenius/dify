@@ -1,9 +1,9 @@
+import { noop } from 'lodash-es'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import './weighted-score.css'
 import Slider from '@/app/components/base/slider'
 import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
+import './weighted-score.css'
 
 const formatNumber = (value: number) => {
   if (value > 0 && value < 1)

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Var } from '@/app/components/workflow/types'
+import React, { useCallback } from 'react'
+import { SimpleSelect } from '@/app/components/base/select'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import type { Var } from '@/app/components/workflow/types'
-import { SimpleSelect } from '@/app/components/base/select'
 
 type Props = {
   schema: Partial<CredentialFormSchema>

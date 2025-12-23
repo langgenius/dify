@@ -1,10 +1,10 @@
 import type { Meta, StoryObj } from '@storybook/nextjs'
-import { ThemeProvider } from 'next-themes'
 import type { ReactNode } from 'react'
+import { ThemeProvider } from 'next-themes'
 import DifyLogo from './dify-logo'
-import LogoSite from './logo-site'
-import LogoEmbeddedChatHeader from './logo-embedded-chat-header'
 import LogoEmbeddedChatAvatar from './logo-embedded-chat-avatar'
+import LogoEmbeddedChatHeader from './logo-embedded-chat-header'
+import LogoSite from './logo-site'
 
 const meta = {
   title: 'Base/General/Logo',

@@ -1,12 +1,13 @@
-import React, { type FC, useCallback, useState } from 'react'
-import Modal from '@/app/components/base/modal'
+import type { FC } from 'react'
 import type { VersionHistory } from '@/types/workflow'
-import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
+import React, { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
+import Button from '../../base/button'
 import Input from '../../base/input'
 import Textarea from '../../base/textarea'
-import Button from '../../base/button'
-import Toast from '@/app/components/base/toast'
 
 type VersionInfoModalProps = {
   isOpen: boolean

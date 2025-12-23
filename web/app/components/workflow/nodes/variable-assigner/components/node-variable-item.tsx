@@ -1,17 +1,17 @@
+import type { Node, ValueSelector } from '@/app/components/workflow/types'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-import { Line3 } from '@/app/components/base/icons/src/public/common'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
-import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import Badge from '@/app/components/base/badge'
-import type { Node, ValueSelector } from '@/app/components/workflow/types'
-import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { Line3 } from '@/app/components/base/icons/src/public/common'
+import { BubbleX, Env } from '@/app/components/base/icons/src/vender/line/others'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { VarBlockIcon } from '@/app/components/workflow/block-icon'
+import { isConversationVar, isENV, isRagVariableVar, isSystemVar } from '@/app/components/workflow/nodes/_base/components/variable/utils'
+import { cn } from '@/utils/classnames'
 
 type NodeVariableItemProps = {
   node: Node

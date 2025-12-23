@@ -1,21 +1,21 @@
 'use client'
 
+import type { FC, ReactNode } from 'react'
+import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
+import { useQueryClient } from '@tanstack/react-query'
+import { noop } from 'lodash-es'
 import { useCallback, useEffect, useMemo } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import type { FC, ReactNode } from 'react'
-import { useQueryClient } from '@tanstack/react-query'
+import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import MaintenanceNotice from '@/app/components/header/maintenance-notice'
+import { ZENDESK_FIELD_IDS } from '@/config'
 import {
   useCurrentWorkspace,
   useLangGeniusVersion,
   useUserProfile,
 } from '@/service/use-common'
-import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
-import MaintenanceNotice from '@/app/components/header/maintenance-notice'
-import { noop } from 'lodash-es'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
-import { ZENDESK_FIELD_IDS } from '@/config'
 import { useGlobalPublicStore } from './global-public-context'
-import { setUserId, setUserProperties } from '@/app/components/base/amplitude'
 
 export type AppContextValue = {
   userProfile: UserProfileResponse

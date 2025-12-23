@@ -1,15 +1,15 @@
 'use client'
 import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import { useState } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Countdown from '@/app/components/signin/countdown'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
+import Countdown from '@/app/components/signin/countdown'
 import I18NContext from '@/context/i18n'
+import { sendWebAppResetPasswordCode, verifyWebAppResetPasswordCode } from '@/service/common'
 
 export default function CheckCode() {
   const { t } = useTranslation()

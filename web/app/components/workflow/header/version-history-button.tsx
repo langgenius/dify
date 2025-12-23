@@ -1,12 +1,13 @@
-import React, { type FC, useCallback } from 'react'
+import type { FC } from 'react'
 import { RiHistoryLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import { useKeyPress } from 'ahooks'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import useTheme from '@/hooks/use-theme'
+import { cn } from '@/utils/classnames'
 import Button from '../../base/button'
 import Tooltip from '../../base/tooltip'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '../utils'
-import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 
 type VersionHistoryButtonProps = {
   onClick: () => Promise<unknown> | unknown

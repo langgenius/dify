@@ -1,5 +1,3 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -8,26 +6,28 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
-import {
-  ConfigurationMethodEnum,
-  FormTypeEnum,
-} from '../declarations'
-import ModelIcon from '../model-icon'
-import ModelName from '../model-name'
-import ModelLoadBalancingConfigs from './model-load-balancing-configs'
-import { cn } from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Loading from '@/app/components/base/loading'
+import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import {
   useGetModelCredential,
   useUpdateModelLoadBalancingConfig,
 } from '@/service/use-models'
-import { useAuth } from '../model-auth/hooks/use-auth'
-import Confirm from '@/app/components/base/confirm'
+import { cn } from '@/utils/classnames'
+import {
+  ConfigurationMethodEnum,
+  FormTypeEnum,
+} from '../declarations'
 import { useRefreshModel } from '../hooks'
+import { useAuth } from '../model-auth/hooks/use-auth'
+import ModelIcon from '../model-icon'
+import ModelName from '../model-name'
+import ModelLoadBalancingConfigs from './model-load-balancing-configs'
 
 export type ModelLoadBalancingModalProps = {
   provider: ModelProvider

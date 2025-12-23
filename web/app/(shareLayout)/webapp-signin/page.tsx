@@ -1,15 +1,15 @@
 'use client'
-import { useRouter, useSearchParams } from 'next/navigation'
 import type { FC } from 'react'
+import { useRouter, useSearchParams } from 'next/navigation'
 import React, { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import AppUnavailable from '@/app/components/base/app-unavailable'
-import NormalForm from './normalForm'
-import { AccessMode } from '@/models/access-control'
-import ExternalMemberSsoAuth from './components/external-member-sso-auth'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
+import { AccessMode } from '@/models/access-control'
 import { webAppLogout } from '@/service/webapp-auth'
+import ExternalMemberSsoAuth from './components/external-member-sso-auth'
+import NormalForm from './normalForm'
 
 const WebSSOForm: FC = () => {
   const { t } = useTranslation()

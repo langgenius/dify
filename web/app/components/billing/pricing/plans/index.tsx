@@ -1,7 +1,8 @@
-import Divider from '@/app/components/base/divider'
-import { type BasicPlan, Plan, SelfHostedPlan, type UsagePlanInfo } from '../../type'
-import CloudPlanItem from './cloud-plan-item'
+import type { BasicPlan, UsagePlanInfo } from '../../type'
 import type { PlanRange } from '../plan-switcher/plan-range-switcher'
+import Divider from '@/app/components/base/divider'
+import { Plan, SelfHostedPlan } from '../../type'
+import CloudPlanItem from './cloud-plan-item'
 import SelfHostedPlanItem from './self-hosted-plan-item'
 
 type PlansProps = {

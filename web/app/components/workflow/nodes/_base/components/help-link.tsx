@@ -1,9 +1,9 @@
+import type { BlockEnum } from '@/app/components/workflow/types'
+import { RiBookOpenLine } from '@remixicon/react'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiBookOpenLine } from '@remixicon/react'
-import { useNodeHelpLink } from '../hooks/use-node-help-link'
 import TooltipPlus from '@/app/components/base/tooltip'
-import type { BlockEnum } from '@/app/components/workflow/types'
+import { useNodeHelpLink } from '../hooks/use-node-help-link'
 
 type HelpLinkProps = {
   nodeType: BlockEnum

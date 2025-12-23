@@ -1,29 +1,29 @@
-import {
-  memo,
-  useCallback,
-  useMemo,
-  useState,
-} from 'react'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import {
-  AddApiKeyButton,
-  AddOAuthButton,
-} from '@/app/components/plugins/plugin-auth'
 import type { DataSourceAuth } from './types'
 import type {
   AddApiKeyButtonProps,
   AddOAuthButtonProps,
   PluginPayload,
 } from '@/app/components/plugins/plugin-auth/types'
+import {
+  RiAddLine,
+} from '@remixicon/react'
+import {
+  memo,
+  useCallback,
+  useMemo,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  AddApiKeyButton,
+  AddOAuthButton,
+} from '@/app/components/plugins/plugin-auth'
 
 type ConfigureProps = {
   item: DataSourceAuth

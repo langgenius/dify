@@ -1,11 +1,11 @@
+import type { RelatedAppResponse } from '@/models/datasets'
+import { RiInformation2Line } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
-import Tooltip from '@/app/components/base/tooltip'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
+import Tooltip from '@/app/components/base/tooltip'
 import NoLinkedAppsPanel from '../no-linked-apps-panel'
-import { RiInformation2Line } from '@remixicon/react'
-import type { RelatedAppResponse } from '@/models/datasets'
 
 type StatisticsProps = {
   expand: boolean

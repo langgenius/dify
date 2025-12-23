@@ -1,9 +1,10 @@
-import { type FC, useEffect } from 'react'
+import type { FC } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { useSelectOrDelete } from '../../hooks'
-import { DELETE_LAST_RUN_COMMAND, LastRunBlockNode } from '.'
+import { useEffect } from 'react'
 import { cn } from '@/utils/classnames'
+import { DELETE_LAST_RUN_COMMAND, LastRunBlockNode } from '.'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
+import { useSelectOrDelete } from '../../hooks'
 
 type Props = {
   nodeKey: string

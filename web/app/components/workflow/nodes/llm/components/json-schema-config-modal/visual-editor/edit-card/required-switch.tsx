@@ -1,7 +1,7 @@
-import React from 'react'
 import type { FC } from 'react'
-import Switch from '@/app/components/base/switch'
+import React from 'react'
 import { useTranslation } from 'react-i18next'
+import Switch from '@/app/components/base/switch'
 
 type RequiredSwitchProps = {
   defaultValue: boolean

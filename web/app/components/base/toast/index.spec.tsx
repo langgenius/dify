@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import Toast, { ToastProvider, useToastContext } from '.'
 import { noop } from 'lodash-es'
+import React from 'react'
+import Toast, { ToastProvider, useToastContext } from '.'
 
 const TestComponent = () => {
   const { notify, close } = useToastContext()

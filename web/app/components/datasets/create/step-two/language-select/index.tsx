@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import React from 'react'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n-config/language'
+import { cn } from '@/utils/classnames'
 
 export type ILanguageSelectProps = {
   currentLanguage: string

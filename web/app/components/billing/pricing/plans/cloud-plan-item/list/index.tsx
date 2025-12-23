@@ -1,9 +1,10 @@
+import type { BasicPlan } from '../../../../type'
 import React from 'react'
-import { type BasicPlan, Plan } from '../../../../type'
-import Item from './item'
 import { useTranslation } from 'react-i18next'
-import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
 import Divider from '@/app/components/base/divider'
+import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
+import { Plan } from '../../../../type'
+import Item from './item'
 
 type ListProps = {
   plan: BasicPlan

@@ -1,9 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTheme } from 'next-themes'
-import { useTranslation } from 'react-i18next'
 import { RiMoreFill } from '@remixicon/react'
+import { useQueryClient } from '@tanstack/react-query'
+import { useTheme } from 'next-themes'
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 // import Button from '@/app/components/base/button'
 import {
@@ -11,11 +12,10 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { cn } from '@/utils/classnames'
 import { useDownloadPlugin } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
 import { downloadFile } from '@/utils/format'
 import { getMarketplaceUrl } from '@/utils/var'
-import { useQueryClient } from '@tanstack/react-query'
 
 type Props = {
   open: boolean

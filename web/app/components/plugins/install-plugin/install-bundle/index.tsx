@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import Modal from '@/app/components/base/modal'
-import React, { useCallback, useState } from 'react'
-import { InstallStep } from '../../types'
 import type { Dependency } from '../../types'
-import ReadyToInstall from './ready-to-install'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useHideLogic from '../hooks/use-hide-logic'
+import Modal from '@/app/components/base/modal'
 import { cn } from '@/utils/classnames'
+import { InstallStep } from '../../types'
+import useHideLogic from '../hooks/use-hide-logic'
+import ReadyToInstall from './ready-to-install'
 
 const i18nPrefix = 'plugin.installModal'
 

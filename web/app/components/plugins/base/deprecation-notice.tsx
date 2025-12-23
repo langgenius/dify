@@ -1,11 +1,11 @@
-import React, { useMemo } from 'react'
 import type { FC } from 'react'
-import Link from 'next/link'
-import { cn } from '@/utils/classnames'
 import { RiAlertFill } from '@remixicon/react'
-import { Trans } from 'react-i18next'
-import { useMixedTranslation } from '../marketplace/hooks'
 import { camelCase } from 'lodash-es'
+import Link from 'next/link'
+import React, { useMemo } from 'react'
+import { Trans } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import { useMixedTranslation } from '../marketplace/hooks'
 
 type DeprecationNoticeProps = {
   status: 'deleted' | 'active'

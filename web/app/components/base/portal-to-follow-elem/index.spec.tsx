@@ -1,5 +1,5 @@
-import React from 'react'
 import { cleanup, fireEvent, render } from '@testing-library/react'
+import React from 'react'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '.'
 
 const useFloatingMock = vi.fn()

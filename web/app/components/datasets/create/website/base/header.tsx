@@ -1,8 +1,8 @@
-import React from 'react'
-import Divider from '@/app/components/base/divider'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
+import React from 'react'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import { cn } from '@/utils/classnames'
 
 type HeaderProps = {
   isInPipeline?: boolean

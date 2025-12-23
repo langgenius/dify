@@ -1,20 +1,20 @@
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { SiteInfo } from '@/models/share'
 import {
   RiClipboardFill,
   RiClipboardLine,
 } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import style from './style.module.css'
+import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
 import Modal from '@/app/components/base/modal'
 import Tooltip from '@/app/components/base/tooltip'
-import { useAppContext } from '@/context/app-context'
 import { IS_CE_EDITION } from '@/config'
-import type { SiteInfo } from '@/models/share'
-import { useThemeContext } from '@/app/components/base/chat/embedded-chatbot/theme/theme-context'
-import ActionButton from '@/app/components/base/action-button'
-import { basePath } from '@/utils/var'
+import { useAppContext } from '@/context/app-context'
 import { cn } from '@/utils/classnames'
+import { basePath } from '@/utils/var'
+import style from './style.module.css'
 
 type Props = {
   siteInfo?: SiteInfo

@@ -1,11 +1,12 @@
 import type { FC } from 'react'
+import type { AnswerNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import useConfig from './use-config'
-import type { AnswerNodeType } from './types'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
-import type { NodePanelProps } from '@/app/components/workflow/types'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useConfig from './use-config'
+
 const i18nPrefix = 'workflow.nodes.answer'
 
 const Panel: FC<NodePanelProps<AnswerNodeType>> = ({

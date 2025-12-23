@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiChatSettingsLine,
 } from '@remixicon/react'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import { Message3Fill } from '@/app/components/base/icons/src/public/other'
 import InputsFormContent from '@/app/components/base/chat/chat-with-history/inputs-form/content'
+import { Message3Fill } from '@/app/components/base/icons/src/public/other'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 
 const ViewFormDropdown = () => {
   const { t } = useTranslation()

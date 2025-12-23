@@ -1,14 +1,15 @@
-import React, { type FC, useCallback, useState } from 'react'
-import { type SchemaRoot, Type } from '../../types'
+import type { FC } from 'react'
+import type { SchemaRoot } from '../../types'
 import { RiBracesLine, RiCloseLine, RiExternalLinkLine, RiTimelineView } from '@remixicon/react'
-import { SegmentedControl } from '../../../../../base/segmented-control'
-import JsonSchemaGenerator from './json-schema-generator'
-import Divider from '@/app/components/base/divider'
-import JsonImporter from './json-importer'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import VisualEditor from './visual-editor'
-import SchemaEditor from './schema-editor'
+import Divider from '@/app/components/base/divider'
+import Toast from '@/app/components/base/toast'
+import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
+import { useDocLink } from '@/context/i18n'
+import { SegmentedControl } from '../../../../../base/segmented-control'
+import { Type } from '../../types'
 import {
   checkJsonSchemaDepth,
   getValidationErrorMessage,
@@ -16,12 +17,13 @@ import {
   preValidateSchema,
   validateSchemaAgainstDraft7,
 } from '../../utils'
-import { MittProvider, VisualEditorContextProvider, useMittContext } from './visual-editor/context'
 import ErrorMessage from './error-message'
+import JsonImporter from './json-importer'
+import JsonSchemaGenerator from './json-schema-generator'
+import SchemaEditor from './schema-editor'
+import VisualEditor from './visual-editor'
+import { MittProvider, useMittContext, VisualEditorContextProvider } from './visual-editor/context'
 import { useVisualEditorStore } from './visual-editor/store'
-import Toast from '@/app/components/base/toast'
-import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
-import { useDocLink } from '@/context/i18n'
 
 type JsonSchemaConfigProps = {
   defaultSchema?: SchemaRoot

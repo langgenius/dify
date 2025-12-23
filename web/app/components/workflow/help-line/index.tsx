@@ -1,10 +1,10 @@
-import { memo } from 'react'
-import { useViewport } from 'reactflow'
-import { useStore } from '../store'
 import type {
   HelpLineHorizontalPosition,
   HelpLineVerticalPosition,
 } from './types'
+import { memo } from 'react'
+import { useViewport } from 'reactflow'
+import { useStore } from '../store'
 
 const HelpLineHorizontal = memo(({
   top,

@@ -1,6 +1,27 @@
+import type { FC, ReactNode } from 'react'
+import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
+import type { Node } from '@/app/components/workflow/types'
+import {
+  RiCloseLine,
+  RiPlayLargeLine,
+} from '@remixicon/react'
+import { debounce } from 'lodash-es'
+import React, {
+  cloneElement,
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import { Stop } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import Tooltip from '@/app/components/base/tooltip'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   AuthCategory,
@@ -10,11 +31,9 @@ import {
   PluginAuthInDataSourceNode,
 } from '@/app/components/plugins/plugin-auth'
 import { usePluginStore } from '@/app/components/plugins/plugin-detail-panel/store'
-import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import {
-  WorkflowHistoryEvent,
   useAvailableBlocks,
   useNodeDataUpdate,
   useNodesInteractions,
@@ -22,17 +41,17 @@ import {
   useNodesReadOnly,
   useToolIcon,
   useWorkflowHistory,
+  WorkflowHistoryEvent,
 } from '@/app/components/workflow/hooks'
 import { useHooksStore } from '@/app/components/workflow/hooks-store'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
 import Split from '@/app/components/workflow/nodes/_base/components/split'
 import DataSourceBeforeRunForm from '@/app/components/workflow/nodes/data-source/before-run-form'
-import type { CustomRunFormProps } from '@/app/components/workflow/nodes/data-source/types'
 import { DataSourceClassification } from '@/app/components/workflow/nodes/data-source/types'
 import { useLogs } from '@/app/components/workflow/run/hooks'
 import SpecialResultPanel from '@/app/components/workflow/run/special-result-panel'
 import { useStore } from '@/app/components/workflow/store'
-import { BlockEnum, type Node, NodeRunningStatus } from '@/app/components/workflow/types'
+import { BlockEnum, NodeRunningStatus } from '@/app/components/workflow/types'
 import {
   canRunBySingle,
   hasErrorHandleNode,
@@ -45,24 +64,6 @@ import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { FlowType } from '@/types/common'
 import { canFindTool } from '@/utils'
 import { cn } from '@/utils/classnames'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import {
-  RiCloseLine,
-  RiPlayLargeLine,
-} from '@remixicon/react'
-import { debounce } from 'lodash-es'
-import type { FC, ReactNode } from 'react'
-import React, {
-  cloneElement,
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useShallow } from 'zustand/react/shallow'
 import { useResizePanel } from '../../hooks/use-resize-panel'
 import BeforeRunForm from '../before-run-form'
 import PanelWrap from '../before-run-form/panel-wrap'
