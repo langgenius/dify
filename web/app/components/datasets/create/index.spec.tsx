@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import DatasetUpdateForm from './index'
-import { ChunkingMode, DataSourceType, DatasetPermission } from '@/models/datasets'
-import type { DataSet } from '@/models/datasets'
-import { DataSourceProvider } from '@/models/common'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DataSet } from '@/models/datasets'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { DataSourceProvider } from '@/models/common'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import DatasetUpdateForm from './index'
 
 // IndexingType values from step-two (defined here since we mock step-two)
 // Using type assertion to match the expected IndexingType enum from step-two
@@ -18,23 +18,23 @@ const IndexingTypeValues = {
 // Mock External Dependencies
 // ==========================================
 
-// Mock react-i18next (handled by __mocks__/react-i18next.ts but we override for custom messages)
-jest.mock('react-i18next', () => ({
+// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
 }))
 
 // Mock next/link
-jest.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+vi.mock('next/link', () => {
+  return function MockLink({ children, href }: { children: React.ReactNode, href: string }) {
     return <a href={href}>{children}</a>
   }
 })
 
 // Mock modal context
-const mockSetShowAccountSettingModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowAccountSettingModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: (selector: (state: any) => any) => {
     const state = {
       setShowAccountSettingModal: mockSetShowAccountSettingModal,
@@ -45,7 +45,7 @@ jest.mock('@/context/modal-context', () => ({
 
 // Mock dataset detail context
 let mockDatasetDetail: DataSet | undefined
-jest.mock('@/context/dataset-detail', () => ({
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: any) => any) => {
     const state = {
       dataset: mockDatasetDetail,
@@ -55,11 +55,11 @@ jest.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock useDefaultModel hook
-let mockEmbeddingsDefaultModel: { model: string; provider: string } | undefined
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+let mockEmbeddingsDefaultModel: { model: string, provider: string } | undefined
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
     data: mockEmbeddingsDefaultModel,
-    mutate: jest.fn(),
+    mutate: vi.fn(),
     isLoading: false,
   }),
 }))
@@ -68,7 +68,7 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', (
 let mockDataSourceList: { result: DataSourceAuth[] } | undefined
 let mockIsLoadingDataSourceList = false
 let mockFetchingError = false
-jest.mock('@/service/use-datasource', () => ({
+vi.mock('@/service/use-datasource', () => ({
   useGetDefaultDataSourceListAuth: () => ({
     data: mockDataSourceList,
     isLoading: mockIsLoadingDataSourceList,
@@ -87,7 +87,7 @@ let stepThreeProps: Record<string, any> = {}
 // _topBarProps is assigned but not directly used in assertions - values checked via data-testid
 let _topBarProps: Record<string, any> = {}
 
-jest.mock('./step-one', () => ({
+vi.mock('./step-one', () => ({
   __esModule: true,
   default: (props: Record<string, any>) => {
     stepOneProps = props
@@ -161,7 +161,7 @@ jest.mock('./step-one', () => ({
   },
 }))
 
-jest.mock('./step-two', () => ({
+vi.mock('./step-two', () => ({
   __esModule: true,
   default: (props: Record<string, any>) => {
     stepTwoProps = props
@@ -196,7 +196,7 @@ jest.mock('./step-two', () => ({
   },
 }))
 
-jest.mock('./step-three', () => ({
+vi.mock('./step-three', () => ({
   __esModule: true,
   default: (props: Record<string, any>) => {
     stepThreeProps = props
@@ -211,7 +211,7 @@ jest.mock('./step-three', () => ({
   },
 }))
 
-jest.mock('./top-bar', () => ({
+vi.mock('./top-bar', () => ({
   TopBar: (props: Record<string, any>) => {
     _topBarProps = props
     return (
@@ -300,7 +300,7 @@ const createMockDataSourceAuth = (overrides?: Partial<DataSourceAuth>): DataSour
 
 describe('DatasetUpdateForm', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Reset mock state
     mockDatasetDetail = undefined
     mockEmbeddingsDefaultModel = { model: 'text-embedding-ada-002', provider: 'openai' }

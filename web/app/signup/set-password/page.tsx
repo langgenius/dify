@@ -1,15 +1,15 @@
 'use client'
+import type { MailRegisterResponse } from '@/service/use-common'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
-import Input from '@/app/components/base/input'
-import { validPassword } from '@/config'
-import type { MailRegisterResponse } from '@/service/use-common'
-import { useMailRegister } from '@/service/use-common'
 import { trackEvent } from '@/app/components/base/amplitude'
+import Button from '@/app/components/base/button'
+import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
+import { validPassword } from '@/config'
+import { useMailRegister } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -79,13 +79,14 @@ const ChangePasswordForm = () => {
         'px-6',
         'md:px-[108px]',
       )
-    }>
-      <div className='flex flex-col md:w-[400px]'>
+    }
+    >
+      <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
           <h2 className="title-4xl-semi-bold text-text-primary">
             {t('login.changePassword')}
           </h2>
-          <p className='body-md-regular mt-2 text-text-secondary'>
+          <p className="body-md-regular mt-2 text-text-secondary">
             {t('login.changePasswordTip')}
           </p>
         </div>
@@ -93,31 +94,31 @@ const ChangePasswordForm = () => {
         <div className="mx-auto mt-6 w-full">
           <div>
             {/* Password */}
-            <div className='mb-5'>
+            <div className="mb-5">
               <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
                 {t('common.account.newPassword')}
               </label>
-              <div className='relative mt-1'>
+              <div className="relative mt-1">
                 <Input
                   id="password"
-                  type='password'
+                  type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
                   placeholder={t('login.passwordPlaceholder') || ''}
                 />
 
               </div>
-              <div className='body-xs-regular mt-1 text-text-secondary'>{t('login.error.passwordInvalid')}</div>
+              <div className="body-xs-regular mt-1 text-text-secondary">{t('login.error.passwordInvalid')}</div>
             </div>
             {/* Confirm Password */}
-            <div className='mb-5'>
+            <div className="mb-5">
               <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
                 {t('common.account.confirmPassword')}
               </label>
-              <div className='relative mt-1'>
+              <div className="relative mt-1">
                 <Input
                   id="confirmPassword"
-                  type='password'
+                  type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
                   placeholder={t('login.confirmPasswordPlaceholder') || ''}
@@ -126,8 +127,8 @@ const ChangePasswordForm = () => {
             </div>
             <div>
               <Button
-                variant='primary'
-                className='w-full'
+                variant="primary"
+                className="w-full"
                 onClick={handleSubmit}
                 disabled={isPending || !password || !confirmPassword}
               >

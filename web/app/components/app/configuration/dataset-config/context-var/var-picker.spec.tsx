@@ -1,11 +1,12 @@
-import * as React from 'react'
+import type { Props } from './var-picker'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import VarPicker, { type Props } from './var-picker'
+import * as React from 'react'
+import VarPicker from './var-picker'
 
 // Mock external dependencies only
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))
 
@@ -14,10 +15,10 @@ type PortalToFollowElemProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode; asChild?: boolean }
+type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
 type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
-jest.mock('@/app/components/base/portal-to-follow-elem', () => {
+vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   const PortalContext = React.createContext({ open: false })
 
   const PortalToFollowElem = ({ children, open }: PortalToFollowElemProps) => {
@@ -30,7 +31,8 @@ jest.mock('@/app/components/base/portal-to-follow-elem', () => {
 
   const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
     const { open } = React.useContext(PortalContext)
-    if (!open) return null
+    if (!open)
+      return null
     return (
       <div data-testid="portal-content" {...props}>
         {children}
@@ -69,11 +71,11 @@ describe('VarPicker', () => {
   const defaultProps: Props = {
     value: 'var1',
     options: mockOptions,
-    onChange: jest.fn(),
+    onChange: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering tests (REQUIRED)
@@ -201,7 +203,7 @@ describe('VarPicker', () => {
   describe('User Interactions', () => {
     it('should open dropdown when clicking the trigger button', async () => {
       // Arrange
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = { ...defaultProps, onChange }
       const user = userEvent.setup()
 
@@ -215,7 +217,7 @@ describe('VarPicker', () => {
 
     it('should call onChange and close dropdown when selecting an option', async () => {
       // Arrange
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = { ...defaultProps, onChange }
       const user = userEvent.setup()
 

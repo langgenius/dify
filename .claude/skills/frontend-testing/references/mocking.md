@@ -19,8 +19,8 @@
 
 ```typescript
 // ❌ WRONG: Don't mock base components
-jest.mock('@/app/components/base/loading', () => () => <div>Loading</div>)
-jest.mock('@/app/components/base/button', () => ({ children }: any) => <button>{children}</button>)
+vi.mock('@/app/components/base/loading', () => () => <div>Loading</div>)
+vi.mock('@/app/components/base/button', () => ({ children }: any) => <button>{children}</button>)
 
 // ✅ CORRECT: Import and use real base components
 import Loading from '@/app/components/base/loading'
@@ -41,20 +41,23 @@ Only mock these categories:
 
 | Location | Purpose |
 |----------|---------|
-| `web/__mocks__/` | Reusable mocks shared across multiple test files |
-| Test file | Test-specific mocks, inline with `jest.mock()` |
+| `web/vitest.setup.ts` | Global mocks shared by all tests (for example `react-i18next`, `next/image`) |
+| `web/__mocks__/` | Reusable mock factories shared across multiple test files |
+| Test file | Test-specific mocks, inline with `vi.mock()` |
+
+Modules are not mocked automatically. Use `vi.mock` in test files, or add global mocks in `web/vitest.setup.ts`.
 
 ## Essential Mocks
 
-### 1. i18n (Auto-loaded via Shared Mock)
+### 1. i18n (Auto-loaded via Global Mock)
 
-A shared mock is available at `web/__mocks__/react-i18next.ts` and is auto-loaded by Jest.
+A global mock is defined in `web/vitest.setup.ts` and is auto-loaded by Vitest setup.
 **No explicit mock needed** for most tests - it returns translation keys as-is.
 
 For tests requiring custom translations, override the mock:
 
 ```typescript
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
@@ -69,15 +72,15 @@ jest.mock('react-i18next', () => ({
 ### 2. Next.js Router
 
 ```typescript
-const mockPush = jest.fn()
-const mockReplace = jest.fn()
+const mockPush = vi.fn()
+const mockReplace = vi.fn()
 
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
-    back: jest.fn(),
-    prefetch: jest.fn(),
+    back: vi.fn(),
+    prefetch: vi.fn(),
   }),
   usePathname: () => '/current-path',
   useSearchParams: () => new URLSearchParams('?key=value'),
@@ -85,7 +88,7 @@ jest.mock('next/navigation', () => ({
 
 describe('Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should navigate on click', () => {
@@ -102,7 +105,7 @@ describe('Component', () => {
 // ⚠️ Important: Use shared state for components that depend on each other
 let mockPortalOpenState = false
 
-jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
+vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open, ...props }: any) => {
     mockPortalOpenState = open || false  // Update shared state
     return <div data-testid="portal" data-open={open}>{children}</div>
@@ -119,7 +122,7 @@ jest.mock('@/app/components/base/portal-to-follow-elem', () => ({
 
 describe('Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockPortalOpenState = false  // ✅ Reset shared state
   })
 })
@@ -130,13 +133,13 @@ describe('Component', () => {
 ```typescript
 import * as api from '@/service/api'
 
-jest.mock('@/service/api')
+vi.mock('@/service/api')
 
-const mockedApi = api as jest.Mocked<typeof api>
+const mockedApi = vi.mocked(api)
 
 describe('Component', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     
     // Setup default mock implementation
     mockedApi.fetchData.mockResolvedValue({ data: [] })
@@ -243,13 +246,13 @@ describe('Component with Context', () => {
 
 ```typescript
 // SWR
-jest.mock('swr', () => ({
+vi.mock('swr', () => ({
   __esModule: true,
-  default: jest.fn(),
+  default: vi.fn(),
 }))
 
 import useSWR from 'swr'
-const mockedUseSWR = useSWR as jest.Mock
+const mockedUseSWR = vi.mocked(useSWR)
 
 describe('Component with SWR', () => {
   it('should show loading state', () => {

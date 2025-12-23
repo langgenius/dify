@@ -1,11 +1,11 @@
+import type { createDocumentResponse, FullDocumentDetail, IconInfo } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
 import StepThree from './index'
-import type { FullDocumentDetail, IconInfo, createDocumentResponse } from '@/models/datasets'
 
 // Mock the EmbeddingProcess component since it has complex async logic
-jest.mock('../embedding-process', () => ({
+vi.mock('../embedding-process', () => ({
   __esModule: true,
-  default: jest.fn(({ datasetId, batchId, documents, indexingType, retrievalMethod }) => (
+  default: vi.fn(({ datasetId, batchId, documents, indexingType, retrievalMethod }) => (
     <div data-testid="embedding-process">
       <span data-testid="ep-dataset-id">{datasetId}</span>
       <span data-testid="ep-batch-id">{batchId}</span>
@@ -18,18 +18,18 @@ jest.mock('../embedding-process', () => ({
 
 // Mock useBreakpoints hook
 let mockMediaType = 'pc'
-jest.mock('@/hooks/use-breakpoints', () => ({
+vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   MediaType: {
     mobile: 'mobile',
     tablet: 'tablet',
     pc: 'pc',
   },
-  default: jest.fn(() => mockMediaType),
+  default: vi.fn(() => mockMediaType),
 }))
 
 // Mock useDocLink hook
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en-US${path || ''}`,
 }))
 
@@ -104,7 +104,7 @@ const renderStepThree = (props: Partial<Parameters<typeof StepThree>[0]> = {}) =
 // ============================================================================
 describe('StepThree', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockMediaType = 'pc'
   })
 

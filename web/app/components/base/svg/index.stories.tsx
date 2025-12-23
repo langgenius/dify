@@ -10,7 +10,9 @@ const SvgToggleDemo = () => {
       <p className="text-xs uppercase tracking-[0.18em] text-text-tertiary">SVG toggle</p>
       <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />
       <span className="text-xs text-text-secondary">
-        Mode: <code className="rounded bg-background-default px-2 py-1 text-[11px]">{isSVG ? 'SVG' : 'PNG'}</code>
+        Mode:
+        {' '}
+        <code className="rounded bg-background-default px-2 py-1 text-[11px]">{isSVG ? 'SVG' : 'PNG'}</code>
       </span>
     </div>
   )

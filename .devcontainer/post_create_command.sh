@@ -1,6 +1,7 @@
 #!/bin/bash
 WORKSPACE_ROOT=$(pwd)
 
+export COREPACK_ENABLE_DOWNLOAD_PROMPT=0
 corepack enable
 cd web && pnpm install
 pipx install uv

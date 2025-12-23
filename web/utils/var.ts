@@ -1,12 +1,12 @@
-import { MARKETPLACE_URL_PREFIX, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW, getMaxVarNameLength } from '@/config'
+import type { InputVar } from '@/app/components/workflow/types'
 import {
   CONTEXT_PLACEHOLDER_TEXT,
   HISTORY_PLACEHOLDER_TEXT,
   PRE_PROMPT_PLACEHOLDER_TEXT,
   QUERY_PLACEHOLDER_TEXT,
 } from '@/app/components/base/prompt-editor/constants'
-import type { InputVar } from '@/app/components/workflow/types'
 import { InputVarType } from '@/app/components/workflow/types'
+import { getMaxVarNameLength, MARKETPLACE_URL_PREFIX, MAX_VAR_KEY_LENGTH, VAR_ITEM_TEMPLATE, VAR_ITEM_TEMPLATE_IN_WORKFLOW } from '@/config'
 
 const otherAllowedRegex = /^\w+$/
 
@@ -97,7 +97,7 @@ export const hasDuplicateStr = (strArr: string[]) => {
   return !!Object.keys(strObj).find(key => strObj[key] > 1)
 }
 
-const varRegex = /\{\{([a-zA-Z_]\w*)\}\}/g
+const varRegex = /\{\{([a-z_]\w*)\}\}/gi
 export const getVars = (value: string) => {
   if (!value)
     return []

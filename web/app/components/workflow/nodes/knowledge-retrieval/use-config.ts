@@ -1,20 +1,4 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { produce } from 'immer'
-import { isEqual } from 'lodash-es'
-import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
-import { BlockEnum, VarType } from '../../types'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-  useWorkflow,
-} from '../../hooks'
 import type {
   HandleAddCondition,
   HandleRemoveCondition,
@@ -24,6 +8,31 @@ import type {
   MetadataFilteringModeEnum,
   MultipleRetrievalConfig,
 } from './types'
+import type { DataSet } from '@/models/datasets'
+import { produce } from 'immer'
+import { isEqual } from 'lodash-es'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { v4 as uuid4 } from 'uuid'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { DATASET_DEFAULT } from '@/config'
+import { fetchDatasets } from '@/service/datasets'
+import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
+import {
+  useIsChatMode,
+  useNodesReadOnly,
+  useWorkflow,
+} from '../../hooks'
+import { BlockEnum, VarType } from '../../types'
 import {
   ComparisonOperator,
   LogicalOperator,
@@ -33,15 +42,6 @@ import {
   getMultipleRetrievalConfig,
   getSelectedDatasetsMode,
 } from './utils'
-import { AppModeEnum, RETRIEVE_TYPE } from '@/types/app'
-import { DATASET_DEFAULT } from '@/config'
-import type { DataSet } from '@/models/datasets'
-import { fetchDatasets } from '@/service/datasets'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 
 const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
@@ -97,13 +97,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     rerankModelList,
     rerankDefaultModel
       ? {
-        ...rerankDefaultModel,
-        provider: rerankDefaultModel.provider.provider,
-      }
+          ...rerankDefaultModel,
+          provider: rerankDefaultModel.provider.provider,
+        }
       : undefined,
   )
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       if (!draft.single_retrieval_config) {
         draft.single_retrieval_config = {
@@ -282,8 +282,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
-    )
+    ) {
       setRerankModelOpen(true)
+    }
   }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
   const filterStringVar = useCallback((varPayload: Var) => {
@@ -359,7 +360,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleMetadataModelChange = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.metadata_model_config = {
         provider: model.provider,

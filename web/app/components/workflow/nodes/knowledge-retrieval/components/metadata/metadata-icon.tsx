@@ -1,9 +1,9 @@
-import { memo } from 'react'
 import {
   RiHashtag,
   RiTextSnippet,
   RiTimeLine,
 } from '@remixicon/react'
+import { memo } from 'react'
 import { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { cn } from '@/utils/classnames'
 

@@ -1,8 +1,8 @@
-import { pinyin } from 'pinyin-pro'
 import type { FC, RefObject } from 'react'
 import type { ToolWithProvider } from '../types'
-import { CollectionType } from '../../tools/types'
+import { pinyin } from 'pinyin-pro'
 import { cn } from '@/utils/classnames'
+import { CollectionType } from '../../tools/types'
 
 export const CUSTOM_GROUP_NAME = '@@@custom@@@'
 export const WORKFLOW_GROUP_NAME = '@@@workflow@@@'

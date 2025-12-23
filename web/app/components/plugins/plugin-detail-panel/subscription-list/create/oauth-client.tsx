@@ -1,25 +1,26 @@
 'use client'
+import type { FormRefObject } from '@/app/components/base/form/types'
+import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
+import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
+import {
+  RiClipboardLine,
+  RiInformation2Fill,
+} from '@remixicon/react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { BaseForm } from '@/app/components/base/form/components/base'
-import type { FormRefObject } from '@/app/components/base/form/types'
 import Modal from '@/app/components/base/modal/modal'
 import Toast from '@/app/components/base/toast'
-import type { TriggerOAuthClientParams, TriggerOAuthConfig, TriggerSubscriptionBuilder } from '@/app/components/workflow/block-selector/types'
 import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
 import { openOAuthPopup } from '@/hooks/use-oauth'
-import type { ConfigureTriggerOAuthPayload } from '@/service/use-triggers'
 import {
   useConfigureTriggerOAuth,
   useDeleteTriggerOAuth,
   useInitiateTriggerOAuth,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
-import {
-  RiClipboardLine,
-  RiInformation2Fill,
-} from '@remixicon/react'
-import React, { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { usePluginStore } from '../../store'
 
 type Props = {
@@ -178,23 +179,24 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
   return (
     <Modal
       title={t('pluginTrigger.modal.oauth.title')}
-      confirmButtonText={authorizationStatus === AuthorizationStatusEnum.Pending ? t('pluginTrigger.modal.common.authorizing')
+      confirmButtonText={authorizationStatus === AuthorizationStatusEnum.Pending
+        ? t('pluginTrigger.modal.common.authorizing')
         : authorizationStatus === AuthorizationStatusEnum.Success ? t('pluginTrigger.modal.oauth.authorization.waitingJump') : t('plugin.auth.saveAndAuth')}
       cancelButtonText={t('plugin.auth.saveOnly')}
       extraButtonText={t('common.operation.cancel')}
       showExtraButton
       clickOutsideNotClose
-      extraButtonVariant='secondary'
+      extraButtonVariant="secondary"
       onExtraButtonClick={onClose}
       onClose={onClose}
       onCancel={() => handleSave(false)}
       onConfirm={() => handleSave(true)}
       footerSlot={
         oauthConfig?.custom_enabled && oauthConfig?.params && clientType === ClientTypeEnum.Custom && (
-          <div className='grow'>
+          <div className="grow">
             <Button
-              variant='secondary'
-              className='text-components-button-destructive-secondary-text'
+              variant="secondary"
+              className="text-components-button-destructive-secondary-text"
               // disabled={disabled || doingAction || !editValues}
               onClick={handleRemove}
             >
@@ -204,41 +206,44 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         )
       }
     >
-      <div className='system-sm-medium mb-2 text-text-secondary'>{t('pluginTrigger.subscription.addType.options.oauth.clientTitle')}</div>
-      {oauthConfig?.system_configured && <div className='mb-4 flex w-full items-start justify-between gap-2'>
-        {[ClientTypeEnum.Default, ClientTypeEnum.Custom].map(option => (
-          <OptionCard
-            key={option}
-            title={t(`pluginTrigger.subscription.addType.options.oauth.${option}`)}
-            onSelect={() => setClientType(option)}
-            selected={clientType === option}
-            className="flex-1"
-          />
-        ))}
-      </div>}
+      <div className="system-sm-medium mb-2 text-text-secondary">{t('pluginTrigger.subscription.addType.options.oauth.clientTitle')}</div>
+      {oauthConfig?.system_configured && (
+        <div className="mb-4 flex w-full items-start justify-between gap-2">
+          {[ClientTypeEnum.Default, ClientTypeEnum.Custom].map(option => (
+            <OptionCard
+              key={option}
+              title={t(`pluginTrigger.subscription.addType.options.oauth.${option}`)}
+              onSelect={() => setClientType(option)}
+              selected={clientType === option}
+              className="flex-1"
+            />
+          ))}
+        </div>
+      )}
       {clientType === ClientTypeEnum.Custom && oauthConfig?.redirect_uri && (
-        <div className='mb-4 flex items-start gap-3 rounded-xl bg-background-section-burn p-4'>
-          <div className='rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-2 shadow-xs shadow-shadow-shadow-3'>
-            <RiInformation2Fill className='h-5 w-5 shrink-0 text-text-accent' />
+        <div className="mb-4 flex items-start gap-3 rounded-xl bg-background-section-burn p-4">
+          <div className="rounded-lg border-[0.5px] border-components-card-border bg-components-card-bg p-2 shadow-xs shadow-shadow-shadow-3">
+            <RiInformation2Fill className="h-5 w-5 shrink-0 text-text-accent" />
           </div>
-          <div className='flex-1 text-text-secondary'>
-            <div className='system-sm-regular whitespace-pre-wrap leading-4'>
+          <div className="flex-1 text-text-secondary">
+            <div className="system-sm-regular whitespace-pre-wrap leading-4">
               {t('pluginTrigger.modal.oauthRedirectInfo')}
             </div>
-            <div className='system-sm-medium my-1.5 break-all leading-4'>
+            <div className="system-sm-medium my-1.5 break-all leading-4">
               {oauthConfig.redirect_uri}
             </div>
             <Button
-              variant='secondary'
-              size='small'
+              variant="secondary"
+              size="small"
               onClick={() => {
                 navigator.clipboard.writeText(oauthConfig.redirect_uri)
                 Toast.notify({
                   type: 'success',
                   message: t('common.actionMsg.copySuccessfully'),
                 })
-              }}>
-              <RiClipboardLine className='mr-1 h-[14px] w-[14px]' />
+              }}
+            >
+              <RiClipboardLine className="mr-1 h-[14px] w-[14px]" />
               {t('common.operation.copy')}
             </Button>
           </div>
@@ -248,10 +253,10 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         <BaseForm
           formSchemas={oauthClientSchema}
           ref={clientFormRef}
-          labelClassName='system-sm-medium mb-2 block text-text-secondary'
-          formClassName='space-y-4'
+          labelClassName="system-sm-medium mb-2 block text-text-secondary"
+          formClassName="space-y-4"
         />
       )}
-    </Modal >
+    </Modal>
   )
 }

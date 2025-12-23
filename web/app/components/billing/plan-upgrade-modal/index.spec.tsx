@@ -1,12 +1,12 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import PlanUpgradeModal from './index'
 
-const mockSetShowPricingModal = jest.fn()
+const mockSetShowPricingModal = vi.fn()
 
-jest.mock('@/app/components/base/modal', () => {
-  const MockModal = ({ isShow, children }: { isShow: boolean; children: React.ReactNode }) => (
+vi.mock('@/app/components/base/modal', () => {
+  const MockModal = ({ isShow, children }: { isShow: boolean, children: React.ReactNode }) => (
     isShow ? <div data-testid="plan-upgrade-modal">{children}</div> : null
   )
   return {
@@ -15,7 +15,7 @@ jest.mock('@/app/components/base/modal', () => {
   }
 })
 
-jest.mock('@/context/modal-context', () => ({
+vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
@@ -25,7 +25,7 @@ const baseProps = {
   title: 'Upgrade Required',
   description: 'You need to upgrade your plan.',
   show: true,
-  onClose: jest.fn(),
+  onClose: vi.fn(),
 }
 
 const renderComponent = (props: Partial<React.ComponentProps<typeof PlanUpgradeModal>> = {}) => {
@@ -35,7 +35,7 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof PlanUpgradeM
 
 describe('PlanUpgradeModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering and props-driven content
@@ -68,7 +68,7 @@ describe('PlanUpgradeModal', () => {
   it('should call onClose when dismiss button is clicked', async () => {
     // Arrange
     const user = userEvent.setup()
-    const onClose = jest.fn()
+    const onClose = vi.fn()
     renderComponent({ onClose })
 
     // Act
@@ -82,8 +82,8 @@ describe('PlanUpgradeModal', () => {
   it('should call onUpgrade and onClose when upgrade button is clicked with onUpgrade provided', async () => {
     // Arrange
     const user = userEvent.setup()
-    const onClose = jest.fn()
-    const onUpgrade = jest.fn()
+    const onClose = vi.fn()
+    const onUpgrade = vi.fn()
     renderComponent({ onClose, onUpgrade })
 
     // Act
@@ -99,7 +99,7 @@ describe('PlanUpgradeModal', () => {
   it('should open pricing modal when upgrade button is clicked without onUpgrade', async () => {
     // Arrange
     const user = userEvent.setup()
-    const onClose = jest.fn()
+    const onClose = vi.fn()
     renderComponent({ onClose, onUpgrade: undefined })
 
     // Act

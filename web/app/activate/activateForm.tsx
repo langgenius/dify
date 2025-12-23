@@ -1,13 +1,13 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/utils/classnames'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-
-import { invitationCheck } from '@/service/common'
 import Loading from '@/app/components/base/loading'
+
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useInvitationCheck } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
 
 const ActivateForm = () => {
   useDocumentTitle('')
@@ -26,19 +26,21 @@ const ActivateForm = () => {
       token,
     },
   }
-  const { data: checkRes } = useSWR(checkParams, invitationCheck, {
-    revalidateOnFocus: false,
-    onSuccess(data) {
-      if (data.is_valid) {
-        const params = new URLSearchParams(searchParams)
-        const { email, workspace_id } = data.data
-        params.set('email', encodeURIComponent(email))
-        params.set('workspace_id', encodeURIComponent(workspace_id))
-        params.set('invite_token', encodeURIComponent(token as string))
-        router.replace(`/signin?${params.toString()}`)
-      }
-    },
-  })
+  const { data: checkRes } = useInvitationCheck({
+    ...checkParams.params,
+    token: token || undefined,
+  }, true)
+
+  useEffect(() => {
+    if (checkRes?.is_valid) {
+      const params = new URLSearchParams(searchParams)
+      const { email, workspace_id } = checkRes.data
+      params.set('email', encodeURIComponent(email))
+      params.set('workspace_id', encodeURIComponent(workspace_id))
+      params.set('invite_token', encodeURIComponent(token as string))
+      router.replace(`/signin?${params.toString()}`)
+    }
+  }, [checkRes, router, searchParams, token])
 
   return (
     <div className={
@@ -47,7 +49,8 @@ const ActivateForm = () => {
         'px-6',
         'md:px-[108px]',
       )
-    }>
+    }
+    >
       {!checkRes && <Loading />}
       {checkRes && !checkRes.is_valid && (
         <div className="flex flex-col md:w-[400px]">
@@ -56,7 +59,7 @@ const ActivateForm = () => {
             <h2 className="text-[32px] font-bold text-text-primary">{t('login.invalid')}</h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant='primary' className='w-full !text-sm'>
+            <Button variant="primary" className="w-full !text-sm">
               <a href="https://dify.ai">{t('login.explore')}</a>
             </Button>
           </div>

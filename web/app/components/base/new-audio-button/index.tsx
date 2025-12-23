@@ -1,13 +1,13 @@
 'use client'
-import { useState } from 'react'
-import { useParams, usePathname } from 'next/navigation'
 import {
   RiVolumeUpLine,
 } from '@remixicon/react'
 import { t } from 'i18next'
-import Tooltip from '@/app/components/base/tooltip'
-import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import { useParams, usePathname } from 'next/navigation'
+import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
+import Tooltip from '@/app/components/base/tooltip'
 
 type AudioBtnProps = {
   id?: string
@@ -90,7 +90,7 @@ const AudioBtn = ({
         onClick={handleToggle}
         disabled={audioState === 'loading'}
       >
-        <RiVolumeUpLine className='h-4 w-4' />
+        <RiVolumeUpLine className="h-4 w-4" />
       </ActionButton>
     </Tooltip>
   )

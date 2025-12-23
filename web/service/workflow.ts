@@ -1,16 +1,16 @@
 import type { Fetcher } from 'swr'
-import { get, post } from './base'
+import type { BlockEnum } from '@/app/components/workflow/types'
 import type { CommonResponse } from '@/models/common'
+import type { FlowType } from '@/types/common'
 import type {
   ChatRunHistoryResponse,
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
   NodesDefaultConfigsResponse,
+  VarInInspect,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
-import type { BlockEnum } from '@/app/components/workflow/types'
-import type { VarInInspect } from '@/types/workflow'
-import type { FlowType } from '@/types/common'
+import { get, post } from './base'
 import { getFlowPrefix } from './utils'
 
 export const fetchWorkflowDraft = (url: string) => {
@@ -21,7 +21,7 @@ export const syncWorkflowDraft = ({ url, params }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
 }) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params }, { silent: true })
+  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: params }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs: Fetcher<NodesDefaultConfigsResponse, string> = (url) => {

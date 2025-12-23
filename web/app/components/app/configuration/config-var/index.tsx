@@ -1,29 +1,30 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { ExternalDataTool } from '@/models/common'
+import type { PromptVariable } from '@/models/debug'
 import { useBoolean } from 'ahooks'
-import { useContext } from 'use-context-selector'
 import { produce } from 'immer'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
+import { useContext } from 'use-context-selector'
+import Confirm from '@/app/components/base/confirm'
+import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import { InputVarType } from '@/app/components/workflow/types'
+import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import ConfigContext from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useModalContext } from '@/context/modal-context'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { getNewVar, hasDuplicateStr } from '@/utils/var'
 import Panel from '../base/feature-panel'
 import EditModal from './config-modal'
-import VarItem from './var-item'
 import SelectVarType from './select-var-type'
-import Tooltip from '@/app/components/base/tooltip'
-import type { PromptVariable } from '@/models/debug'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import { getNewVar, hasDuplicateStr } from '@/utils/var'
-import Toast from '@/app/components/base/toast'
-import Confirm from '@/app/components/base/confirm'
-import ConfigContext from '@/context/debug-configuration'
-import { AppModeEnum } from '@/types/app'
-import type { ExternalDataTool } from '@/models/common'
-import { useModalContext } from '@/context/modal-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import type { InputVar } from '@/app/components/workflow/types'
-import { InputVarType } from '@/app/components/workflow/types'
-import { cn } from '@/utils/classnames'
+import VarItem from './var-item'
 
 export const ADD_EXTERNAL_DATA_TOOL = 'ADD_EXTERNAL_DATA_TOOL'
 
@@ -235,36 +236,36 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   return (
     <Panel
       className="mt-2"
-      title={
-        <div className='flex items-center'>
-          <div className='mr-1'>{t('appDebug.variableTitle')}</div>
+      title={(
+        <div className="flex items-center">
+          <div className="mr-1">{t('appDebug.variableTitle')}</div>
           {!readonly && (
             <Tooltip
-              popupContent={
-                <div className='w-[180px]'>
+              popupContent={(
+                <div className="w-[180px]">
                   {t('appDebug.variableTip')}
                 </div>
-              }
+              )}
             />
           )}
         </div>
-      }
+      )}
       headerRight={!readonly ? <SelectVarType onChange={handleAddVar} /> : null}
       noBodySpacing
     >
       {!hasVar && (
-        <div className='mt-1 px-3 pb-3'>
-          <div className='pb-1 pt-2 text-xs text-text-tertiary'>{t('appDebug.notSetVar')}</div>
+        <div className="mt-1 px-3 pb-3">
+          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.notSetVar')}</div>
         </div>
       )}
       {hasVar && (
-        <div className='mt-1 px-3 pb-3'>
+        <div className="mt-1 px-3 pb-3">
           <ReactSortable
-            className='space-y-1'
+            className="space-y-1"
             list={promptVariablesWithIds}
             setList={(list) => { onPromptVariablesChange?.(list.map(item => item.variable)) }}
-            handle='.handle'
-            ghostClass='opacity-50'
+            handle=".handle"
+            ghostClass="opacity-50"
             animation={150}
           >
             {promptVariablesWithIds.map((item, index) => {
@@ -295,7 +296,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           onClose={hideEditModal}
           onConfirm={(item) => {
             const isValid = updatePromptVariableItem(item)
-            if (!isValid) return
+            if (!isValid)
+              return
             hideEditModal()
           }}
           varKeys={promptVariables.map(v => v.key)}

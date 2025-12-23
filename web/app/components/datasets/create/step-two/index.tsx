@@ -1,73 +1,73 @@
 'use client'
 import type { FC, PropsWithChildren } from 'react'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
+import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { NotionPage } from '@/models/common'
+import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, createDocumentResponse, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
 import {
   RiAlertFill,
   RiArrowLeftLine,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import Link from 'next/link'
-import Image from 'next/image'
-import SettingCog from '../assets/setting-gear-mod.svg'
-import BlueEffect from '../assets/option-card-effect-blue.svg'
-import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
-import Note from '../assets/note-mod.svg'
-import FileList from '../assets/file-list-3-fill.svg'
-import { indexMethodIcon } from '../icons'
-import PreviewContainer from '../../preview/container'
-import { ChunkContainer, QAPreview } from '../../chunk'
-import { PreviewHeader } from '../../preview/header'
-import { FormattedText } from '../../formatted-text/formatted'
-import { PreviewSlice } from '../../formatted-text/flavours/preview-slice'
-import PreviewDocumentPicker from '../../common/document-picker/preview-document-picker'
-import s from './index.module.css'
-import unescape from './unescape'
-import escape from './escape'
-import { OptionCard } from './option-card'
-import LanguageSelect from './language-select'
-import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
-import { cn } from '@/utils/classnames'
-import type { CrawlOptions, CrawlResultItem, CreateDocumentReq, CustomFile, DocumentItem, FullDocumentDetail, ParentMode, PreProcessingRule, ProcessRule, Rules, createDocumentResponse } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
-
-import Button from '@/app/components/base/button'
-import FloatRightContainer from '@/app/components/base/float-right-container'
-import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
-import type { RetrievalConfig } from '@/types/app'
-import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import Toast from '@/app/components/base/toast'
-import type { NotionPage } from '@/models/common'
-import { DataSourceProvider } from '@/models/common'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import I18n from '@/context/i18n'
-import { RETRIEVE_METHOD } from '@/types/app'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { LanguagesSupported } from '@/i18n-config/language'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import type { DefaultModel } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import Checkbox from '@/app/components/base/checkbox'
-import RadioCard from '@/app/components/base/radio-card'
-import { FULL_DOC_PREVIEW_LENGTH, IS_CE_EDITION } from '@/config'
-import Divider from '@/app/components/base/divider'
-import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
-import Badge from '@/app/components/base/badge'
-import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
-import Tooltip from '@/app/components/base/tooltip'
-import CustomDialog from '@/app/components/base/dialog'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import { noop } from 'lodash-es'
-import { useDocLink } from '@/context/i18n'
-import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
-import { checkShowMultiModalTip } from '../../settings/utils'
+import Image from 'next/image'
+import Link from 'next/link'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
+import Badge from '@/app/components/base/badge'
+import Button from '@/app/components/base/button'
+import Checkbox from '@/app/components/base/checkbox'
+import CustomDialog from '@/app/components/base/dialog'
+import Divider from '@/app/components/base/divider'
+import FloatRightContainer from '@/app/components/base/float-right-container'
+import { ParentChildChunk } from '@/app/components/base/icons/src/vender/knowledge'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import RadioCard from '@/app/components/base/radio-card'
+import { SkeletonContainer, SkeletonPoint, SkeletonRectangle, SkeletonRow } from '@/app/components/base/skeleton'
+import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
+import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
+import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
+
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { FULL_DOC_PREVIEW_LENGTH, IS_CE_EDITION } from '@/config'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import I18n, { useDocLink } from '@/context/i18n'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { LanguagesSupported } from '@/i18n-config/language'
+import { DataSourceProvider } from '@/models/common'
+import { ChunkingMode, DataSourceType, ProcessMode } from '@/models/datasets'
+import { getNotionInfo, getWebsiteInfo, useCreateDocument, useCreateFirstDocument, useFetchDefaultProcessRule, useFetchFileIndexingEstimateForFile, useFetchFileIndexingEstimateForNotion, useFetchFileIndexingEstimateForWeb } from '@/service/knowledge/use-create-dataset'
+import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { RETRIEVE_METHOD } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { ChunkContainer, QAPreview } from '../../chunk'
+import PreviewDocumentPicker from '../../common/document-picker/preview-document-picker'
+import { PreviewSlice } from '../../formatted-text/flavours/preview-slice'
+import { FormattedText } from '../../formatted-text/formatted'
+import PreviewContainer from '../../preview/container'
+import { PreviewHeader } from '../../preview/header'
+import { checkShowMultiModalTip } from '../../settings/utils'
+import FileList from '../assets/file-list-3-fill.svg'
+import Note from '../assets/note-mod.svg'
+import BlueEffect from '../assets/option-card-effect-blue.svg'
+import SettingCog from '../assets/setting-gear-mod.svg'
+import { indexMethodIcon } from '../icons'
+import escape from './escape'
+import s from './index.module.css'
+import { DelimiterInput, MaxLengthInput, OverlapInput } from './inputs'
+import LanguageSelect from './language-select'
+import { OptionCard } from './option-card'
+import unescape from './unescape'
 
 const TextLabel: FC<PropsWithChildren> = (props) => {
-  return <label className='system-sm-semibold text-text-secondary'>{props.children}</label>
+  return <label className="system-sm-semibold text-text-secondary">{props.children}</label>
 }
 
 type StepTwoProps = {
@@ -376,13 +376,13 @@ const StepTwo = ({
   const [embeddingModel, setEmbeddingModel] = useState<DefaultModel>(
     currentDataset?.embedding_model
       ? {
-        provider: currentDataset.embedding_model_provider,
-        model: currentDataset.embedding_model,
-      }
+          provider: currentDataset.embedding_model_provider,
+          model: currentDataset.embedding_model,
+        }
       : {
-        provider: defaultEmbeddingModel?.provider.provider || '',
-        model: defaultEmbeddingModel?.model || '',
-      },
+          provider: defaultEmbeddingModel?.provider.provider || '',
+          model: defaultEmbeddingModel?.model || '',
+        },
   )
   const [retrievalConfig, setRetrievalConfig] = useState(currentDataset?.retrieval_model_dict || {
     search_method: RETRIEVE_METHOD.semantic,
@@ -614,276 +614,297 @@ const StepTwo = ({
   }, [embeddingModel, retrievalConfig.reranking_enable, retrievalConfig.reranking_model, indexType, embeddingModelList, rerankModelList])
 
   return (
-    <div className='flex h-full w-full'>
+    <div className="flex h-full w-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
-        <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.segmentation')}</div>
+        <div className="system-md-semibold mb-1 text-text-secondary">{t('datasetCreation.stepTwo.segmentation')}</div>
         {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
           || isUploadInEmptyDataset
           || isInInit)
-          && <OptionCard
-            className='mb-2 bg-background-section'
+        && (
+          <OptionCard
+            className="mb-2 bg-background-section"
             title={t('datasetCreation.stepTwo.general')}
             icon={<Image width={20} height={20} src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
-            activeHeaderClassName='bg-dataset-option-card-blue-gradient'
+            activeHeaderClassName="bg-dataset-option-card-blue-gradient"
             description={t('datasetCreation.stepTwo.generalTip')}
             isActive={
               [ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)
             }
             onSwitched={() =>
-              handleChangeDocform(ChunkingMode.text)
-            }
-            actions={
+              handleChangeDocform(ChunkingMode.text)}
+            actions={(
               <>
-                <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='mr-0.5 h-4 w-4' />
+                <Button variant="secondary-accent" onClick={() => updatePreview()}>
+                  <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
                   {t('datasetCreation.stepTwo.previewChunk')}
                 </Button>
-                <Button variant={'ghost'} onClick={resetRules}>
+                <Button variant="ghost" onClick={resetRules}>
                   {t('datasetCreation.stepTwo.reset')}
                 </Button>
               </>
-            }
+            )}
             noHighlight={isInUpload && isNotUploadInEmptyDataset}
           >
-            <div className='flex flex-col gap-y-4'>
-              <div className='flex gap-3'>
+            <div className="flex flex-col gap-y-4">
+              <div className="flex gap-3">
                 <DelimiterInput
                   value={segmentIdentifier}
                   onChange={e => setSegmentIdentifier(e.target.value, true)}
                 />
                 <MaxLengthInput
-                  unit='characters'
+                  unit="characters"
                   value={maxChunkLength}
                   onChange={setMaxChunkLength}
                 />
                 <OverlapInput
-                  unit='characters'
+                  unit="characters"
                   value={overlap}
                   min={1}
                   onChange={setOverlap}
                 />
               </div>
-              <div className='flex w-full flex-col'>
-                <div className='flex items-center gap-x-2'>
-                  <div className='inline-flex shrink-0'>
+              <div className="flex w-full flex-col">
+                <div className="flex items-center gap-x-2">
+                  <div className="inline-flex shrink-0">
                     <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
                   </div>
-                  <Divider className='grow' bgStyle='gradient' />
+                  <Divider className="grow" bgStyle="gradient" />
                 </div>
-                <div className='mt-1'>
+                <div className="mt-1">
                   {rules.map(rule => (
-                    <div key={rule.id} className={s.ruleItem} onClick={() => {
-                      ruleChangeHandle(rule.id)
-                    }}>
+                    <div
+                      key={rule.id}
+                      className={s.ruleItem}
+                      onClick={() => {
+                        ruleChangeHandle(rule.id)
+                      }}
+                    >
                       <Checkbox
                         checked={rule.enabled}
                       />
                       <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
                     </div>
                   ))}
-                  {IS_CE_EDITION && <>
-                    <Divider type='horizontal' className='my-4 bg-divider-subtle' />
-                    <div className='flex items-center py-0.5'>
-                      <div className='flex items-center' onClick={() => {
-                        if (currentDataset?.doc_form)
-                          return
-                        if (docForm === ChunkingMode.qa)
-                          handleChangeDocform(ChunkingMode.text)
-                        else
-                          handleChangeDocform(ChunkingMode.qa)
-                      }}>
-                        <Checkbox
-                          checked={currentDocForm === ChunkingMode.qa}
-                          disabled={!!currentDataset?.doc_form}
+                  {IS_CE_EDITION && (
+                    <>
+                      <Divider type="horizontal" className="my-4 bg-divider-subtle" />
+                      <div className="flex items-center py-0.5">
+                        <div
+                          className="flex items-center"
+                          onClick={() => {
+                            if (currentDataset?.doc_form)
+                              return
+                            if (docForm === ChunkingMode.qa)
+                              handleChangeDocform(ChunkingMode.text)
+                            else
+                              handleChangeDocform(ChunkingMode.qa)
+                          }}
+                        >
+                          <Checkbox
+                            checked={currentDocForm === ChunkingMode.qa}
+                            disabled={!!currentDataset?.doc_form}
+                          />
+                          <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
+                            {t('datasetCreation.stepTwo.useQALanguage')}
+                          </label>
+                        </div>
+                        <LanguageSelect
+                          currentLanguage={docLanguage || locale}
+                          onSelect={setDocLanguage}
+                          disabled={currentDocForm !== ChunkingMode.qa}
                         />
-                        <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
-                          {t('datasetCreation.stepTwo.useQALanguage')}
-                        </label>
+                        <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
                       </div>
-                      <LanguageSelect
-                        currentLanguage={docLanguage || locale}
-                        onSelect={setDocLanguage}
-                        disabled={currentDocForm !== ChunkingMode.qa}
-                      />
-                      <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
-                    </div>
-                    {currentDocForm === ChunkingMode.qa && (
-                      <div
-                        style={{
-                          background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
-                        }}
-                        className='mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]'
-                      >
-                        <RiAlertFill className='size-4 text-text-warning-secondary' />
-                        <span className='system-xs-medium text-text-primary'>
-                          {t('datasetCreation.stepTwo.QATip')}
-                        </span>
-                      </div>
-                    )}
-                  </>}
+                      {currentDocForm === ChunkingMode.qa && (
+                        <div
+                          style={{
+                            background: 'linear-gradient(92deg, rgba(247, 144, 9, 0.1) 0%, rgba(255, 255, 255, 0.00) 100%)',
+                          }}
+                          className="mt-2 flex h-10 items-center gap-2 rounded-xl border border-components-panel-border px-3 text-xs shadow-xs backdrop-blur-[5px]"
+                        >
+                          <RiAlertFill className="size-4 text-text-warning-secondary" />
+                          <span className="system-xs-medium text-text-primary">
+                            {t('datasetCreation.stepTwo.QATip')}
+                          </span>
+                        </div>
+                      )}
+                    </>
+                  )}
                 </div>
               </div>
             </div>
-          </OptionCard>}
+          </OptionCard>
+        )}
         {
           (
             (isInUpload && currentDataset!.doc_form === ChunkingMode.parentChild)
             || isUploadInEmptyDataset
             || isInInit
           )
-          && <OptionCard
-            title={t('datasetCreation.stepTwo.parentChild')}
-            icon={<ParentChildChunk className='h-[20px] w-[20px]' />}
-            effectImg={BlueEffect.src}
-            className='text-util-colors-blue-light-blue-light-500'
-            activeHeaderClassName='bg-dataset-option-card-blue-gradient'
-            description={t('datasetCreation.stepTwo.parentChildTip')}
-            isActive={currentDocForm === ChunkingMode.parentChild}
-            onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
-            actions={
-              <>
-                <Button variant={'secondary-accent'} onClick={() => updatePreview()}>
-                  <RiSearchEyeLine className='mr-0.5 h-4 w-4' />
-                  {t('datasetCreation.stepTwo.previewChunk')}
-                </Button>
-                <Button variant={'ghost'} onClick={resetRules}>
-                  {t('datasetCreation.stepTwo.reset')}
-                </Button>
-              </>
-            }
-            noHighlight={isInUpload && isNotUploadInEmptyDataset}
-          >
-            <div className='flex flex-col gap-4'>
-              <div>
-                <div className='flex items-center gap-x-2'>
-                  <div className='inline-flex shrink-0'>
-                    <TextLabel>{t('datasetCreation.stepTwo.parentChunkForContext')}</TextLabel>
-                  </div>
-                  <Divider className='grow' bgStyle='gradient' />
-                </div>
-                <RadioCard className='mt-1'
-                  icon={<Image src={Note} alt='' />}
-                  title={t('datasetCreation.stepTwo.paragraph')}
-                  description={t('datasetCreation.stepTwo.paragraphTip')}
-                  isChosen={parentChildConfig.chunkForContext === 'paragraph'}
-                  onChosen={() => setParentChildConfig(
-                    {
-                      ...parentChildConfig,
-                      chunkForContext: 'paragraph',
-                    },
-                  )}
-                  chosenConfig={
-                    <div className='flex gap-3'>
-                      <DelimiterInput
-                        value={parentChildConfig.parent.delimiter}
-                        tooltip={t('datasetCreation.stepTwo.parentChildDelimiterTip')!}
-                        onChange={e => setParentChildConfig({
-                          ...parentChildConfig,
-                          parent: {
-                            ...parentChildConfig.parent,
-                            delimiter: e.target.value ? escape(e.target.value) : '',
-                          },
-                        })}
-                      />
-                      <MaxLengthInput
-                        unit='characters'
-                        value={parentChildConfig.parent.maxLength}
-                        onChange={value => setParentChildConfig({
-                          ...parentChildConfig,
-                          parent: {
-                            ...parentChildConfig.parent,
-                            maxLength: value,
-                          },
-                        })}
-                      />
+          && (
+            <OptionCard
+              title={t('datasetCreation.stepTwo.parentChild')}
+              icon={<ParentChildChunk className="h-[20px] w-[20px]" />}
+              effectImg={BlueEffect.src}
+              className="text-util-colors-blue-light-blue-light-500"
+              activeHeaderClassName="bg-dataset-option-card-blue-gradient"
+              description={t('datasetCreation.stepTwo.parentChildTip')}
+              isActive={currentDocForm === ChunkingMode.parentChild}
+              onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
+              actions={(
+                <>
+                  <Button variant="secondary-accent" onClick={() => updatePreview()}>
+                    <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
+                    {t('datasetCreation.stepTwo.previewChunk')}
+                  </Button>
+                  <Button variant="ghost" onClick={resetRules}>
+                    {t('datasetCreation.stepTwo.reset')}
+                  </Button>
+                </>
+              )}
+              noHighlight={isInUpload && isNotUploadInEmptyDataset}
+            >
+              <div className="flex flex-col gap-4">
+                <div>
+                  <div className="flex items-center gap-x-2">
+                    <div className="inline-flex shrink-0">
+                      <TextLabel>{t('datasetCreation.stepTwo.parentChunkForContext')}</TextLabel>
                     </div>
-                  }
-                />
-                <RadioCard className='mt-2'
-                  icon={<Image src={FileList} alt='' />}
-                  title={t('datasetCreation.stepTwo.fullDoc')}
-                  description={t('datasetCreation.stepTwo.fullDocTip')}
-                  onChosen={() => setParentChildConfig(
-                    {
-                      ...parentChildConfig,
-                      chunkForContext: 'full-doc',
-                    },
-                  )}
-                  isChosen={parentChildConfig.chunkForContext === 'full-doc'}
-                />
-              </div>
+                    <Divider className="grow" bgStyle="gradient" />
+                  </div>
+                  <RadioCard
+                    className="mt-1"
+                    icon={<Image src={Note} alt="" />}
+                    title={t('datasetCreation.stepTwo.paragraph')}
+                    description={t('datasetCreation.stepTwo.paragraphTip')}
+                    isChosen={parentChildConfig.chunkForContext === 'paragraph'}
+                    onChosen={() => setParentChildConfig(
+                      {
+                        ...parentChildConfig,
+                        chunkForContext: 'paragraph',
+                      },
+                    )}
+                    chosenConfig={(
+                      <div className="flex gap-3">
+                        <DelimiterInput
+                          value={parentChildConfig.parent.delimiter}
+                          tooltip={t('datasetCreation.stepTwo.parentChildDelimiterTip')!}
+                          onChange={e => setParentChildConfig({
+                            ...parentChildConfig,
+                            parent: {
+                              ...parentChildConfig.parent,
+                              delimiter: e.target.value ? escape(e.target.value) : '',
+                            },
+                          })}
+                        />
+                        <MaxLengthInput
+                          unit="characters"
+                          value={parentChildConfig.parent.maxLength}
+                          onChange={value => setParentChildConfig({
+                            ...parentChildConfig,
+                            parent: {
+                              ...parentChildConfig.parent,
+                              maxLength: value,
+                            },
+                          })}
+                        />
+                      </div>
+                    )}
+                  />
+                  <RadioCard
+                    className="mt-2"
+                    icon={<Image src={FileList} alt="" />}
+                    title={t('datasetCreation.stepTwo.fullDoc')}
+                    description={t('datasetCreation.stepTwo.fullDocTip')}
+                    onChosen={() => setParentChildConfig(
+                      {
+                        ...parentChildConfig,
+                        chunkForContext: 'full-doc',
+                      },
+                    )}
+                    isChosen={parentChildConfig.chunkForContext === 'full-doc'}
+                  />
+                </div>
 
-              <div>
-                <div className='flex items-center gap-x-2'>
-                  <div className='inline-flex shrink-0'>
-                    <TextLabel>{t('datasetCreation.stepTwo.childChunkForRetrieval')}</TextLabel>
-                  </div>
-                  <Divider className='grow' bgStyle='gradient' />
-                </div>
-                <div className='mt-1 flex gap-3'>
-                  <DelimiterInput
-                    value={parentChildConfig.child.delimiter}
-                    tooltip={t('datasetCreation.stepTwo.parentChildChunkDelimiterTip')!}
-                    onChange={e => setParentChildConfig({
-                      ...parentChildConfig,
-                      child: {
-                        ...parentChildConfig.child,
-                        delimiter: e.target.value ? escape(e.target.value) : '',
-                      },
-                    })}
-                  />
-                  <MaxLengthInput
-                    unit='characters'
-                    value={parentChildConfig.child.maxLength}
-                    onChange={value => setParentChildConfig({
-                      ...parentChildConfig,
-                      child: {
-                        ...parentChildConfig.child,
-                        maxLength: value,
-                      },
-                    })}
-                  />
-                </div>
-              </div>
-              <div>
-                <div className='flex items-center gap-x-2'>
-                  <div className='inline-flex shrink-0'>
-                    <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
-                  </div>
-                  <Divider className='grow' bgStyle='gradient' />
-                </div>
-                <div className='mt-1'>
-                  {rules.map(rule => (
-                    <div key={rule.id} className={s.ruleItem} onClick={() => {
-                      ruleChangeHandle(rule.id)
-                    }}>
-                      <Checkbox
-                        checked={rule.enabled}
-                      />
-                      <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
+                <div>
+                  <div className="flex items-center gap-x-2">
+                    <div className="inline-flex shrink-0">
+                      <TextLabel>{t('datasetCreation.stepTwo.childChunkForRetrieval')}</TextLabel>
                     </div>
-                  ))}
+                    <Divider className="grow" bgStyle="gradient" />
+                  </div>
+                  <div className="mt-1 flex gap-3">
+                    <DelimiterInput
+                      value={parentChildConfig.child.delimiter}
+                      tooltip={t('datasetCreation.stepTwo.parentChildChunkDelimiterTip')!}
+                      onChange={e => setParentChildConfig({
+                        ...parentChildConfig,
+                        child: {
+                          ...parentChildConfig.child,
+                          delimiter: e.target.value ? escape(e.target.value) : '',
+                        },
+                      })}
+                    />
+                    <MaxLengthInput
+                      unit="characters"
+                      value={parentChildConfig.child.maxLength}
+                      onChange={value => setParentChildConfig({
+                        ...parentChildConfig,
+                        child: {
+                          ...parentChildConfig.child,
+                          maxLength: value,
+                        },
+                      })}
+                    />
+                  </div>
+                </div>
+                <div>
+                  <div className="flex items-center gap-x-2">
+                    <div className="inline-flex shrink-0">
+                      <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
+                    </div>
+                    <Divider className="grow" bgStyle="gradient" />
+                  </div>
+                  <div className="mt-1">
+                    {rules.map(rule => (
+                      <div
+                        key={rule.id}
+                        className={s.ruleItem}
+                        onClick={() => {
+                          ruleChangeHandle(rule.id)
+                        }}
+                      >
+                        <Checkbox
+                          checked={rule.enabled}
+                        />
+                        <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">{getRuleName(rule.id)}</label>
+                      </div>
+                    ))}
+                  </div>
                 </div>
               </div>
-            </div>
-          </OptionCard>}
-        <Divider className='my-5' />
-        <div className={'system-md-semibold mb-1 text-text-secondary'}>{t('datasetCreation.stepTwo.indexMode')}</div>
-        <div className='flex items-center gap-2'>
+            </OptionCard>
+          )
+        }
+        <Divider className="my-5" />
+        <div className="system-md-semibold mb-1 text-text-secondary">{t('datasetCreation.stepTwo.indexMode')}</div>
+        <div className="flex items-center gap-2">
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
             <OptionCard
-              className='flex-1 self-stretch'
-              title={<div className='flex items-center'>
-                {t('datasetCreation.stepTwo.qualified')}
-                <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
-                  {t('datasetCreation.stepTwo.recommend')}
-                </Badge>
-                <span className='ml-auto'>
-                  {!hasSetIndexType && <span className={cn(s.radio)} />}
-                </span>
-              </div>}
+              className="flex-1 self-stretch"
+              title={(
+                <div className="flex items-center">
+                  {t('datasetCreation.stepTwo.qualified')}
+                  <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
+                    {t('datasetCreation.stepTwo.recommend')}
+                  </Badge>
+                  <span className="ml-auto">
+                    {!hasSetIndexType && <span className={cn(s.radio)} />}
+                  </span>
+                </div>
+              )}
               description={t('datasetCreation.stepTwo.qualifiedTip')}
-              icon={<Image src={indexMethodIcon.high_quality} alt='' />}
+              icon={<Image src={indexMethodIcon.high_quality} alt="" />}
               isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
               disabled={hasSetIndexType}
               onSwitched={() => {
@@ -894,50 +915,56 @@ const StepTwo = ({
 
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.ECONOMICAL)) && (
             <>
-              <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className='w-[432px]'>
-                <header className='mb-4 pt-6'>
-                  <h2 className='text-lg font-semibold text-text-primary'>
+              <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className="w-[432px]">
+                <header className="mb-4 pt-6">
+                  <h2 className="text-lg font-semibold text-text-primary">
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
                   </h2>
-                  <p className='mt-2 text-sm font-normal text-text-secondary'>
+                  <p className="mt-2 text-sm font-normal text-text-secondary">
                     {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
                   </p>
                 </header>
-                <div className='flex gap-2 pb-6'>
-                  <Button className='ml-auto' onClick={() => {
-                    setIsQAConfirmDialogOpen(false)
-                  }}>
+                <div className="flex gap-2 pb-6">
+                  <Button
+                    className="ml-auto"
+                    onClick={() => {
+                      setIsQAConfirmDialogOpen(false)
+                    }}
+                  >
                     {t('datasetCreation.stepTwo.cancel')}
                   </Button>
-                  <Button variant={'primary'} onClick={() => {
-                    setIsQAConfirmDialogOpen(false)
-                    setIndexType(IndexingType.QUALIFIED)
-                    setDocForm(ChunkingMode.qa)
-                  }}>
+                  <Button
+                    variant="primary"
+                    onClick={() => {
+                      setIsQAConfirmDialogOpen(false)
+                      setIndexType(IndexingType.QUALIFIED)
+                      setDocForm(ChunkingMode.qa)
+                    }}
+                  >
                     {t('datasetCreation.stepTwo.switch')}
                   </Button>
                 </div>
               </CustomDialog>
               <Tooltip
-                popupContent={
-                  <div className='rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg'>
+                popupContent={(
+                  <div className="rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg">
                     {
                       docForm === ChunkingMode.qa
                         ? t('datasetCreation.stepTwo.notAvailableForQA')
                         : t('datasetCreation.stepTwo.notAvailableForParentChild')
                     }
                   </div>
-                }
+                )}
                 noDecoration
-                position='top'
+                position="top"
                 asChild={false}
-                triggerClassName='flex-1 self-stretch'
+                triggerClassName="flex-1 self-stretch"
               >
                 <OptionCard
-                  className='h-full'
+                  className="h-full"
                   title={t('datasetCreation.stepTwo.economical')}
                   description={t('datasetCreation.stepTwo.economicalTip')}
-                  icon={<Image src={indexMethodIcon.economical} alt='' />}
+                  icon={<Image src={indexMethodIcon.economical} alt="" />}
                   isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
                   disabled={hasSetIndexType || docForm !== ChunkingMode.text}
                   onSwitched={() => {
@@ -945,26 +972,27 @@ const StepTwo = ({
                   }}
                 />
               </Tooltip>
-            </>)}
+            </>
+          )}
         </div>
         {!hasSetIndexType && indexType === IndexingType.QUALIFIED && (
-          <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
-            <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40'></div>
-            <div className='p-1'>
-              <AlertTriangle className='size-4 text-text-warning-secondary' />
+          <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+            <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40"></div>
+            <div className="p-1">
+              <AlertTriangle className="size-4 text-text-warning-secondary" />
             </div>
-            <span className='system-xs-medium text-text-primary'>{t('datasetCreation.stepTwo.highQualityTip')}</span>
+            <span className="system-xs-medium text-text-primary">{t('datasetCreation.stepTwo.highQualityTip')}</span>
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
-          <div className='system-xs-medium mt-2 text-text-tertiary'>
+          <div className="system-xs-medium mt-2 text-text-tertiary">
             {t('datasetCreation.stepTwo.indexSettingTip')}
-            <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+            <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
           </div>
         )}
         {/* Embedding model */}
         {indexType === IndexingType.QUALIFIED && (
-          <div className='mt-5'>
+          <div className="mt-5">
             <div className={cn('system-md-semibold mb-1 text-text-secondary', datasetId && 'flex items-center justify-between')}>{t('datasetSettings.form.embeddingModel')}</div>
             <ModelSelector
               readonly={isModelAndRetrievalConfigDisabled}
@@ -976,148 +1004,160 @@ const StepTwo = ({
               }}
             />
             {isModelAndRetrievalConfigDisabled && (
-              <div className='system-xs-medium mt-2 text-text-tertiary'>
+              <div className="system-xs-medium mt-2 text-text-tertiary">
                 {t('datasetCreation.stepTwo.indexSettingTip')}
-                <Link className='text-text-accent' href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
               </div>
             )}
           </div>
         )}
-        <Divider className='my-5' />
+        <Divider className="my-5" />
         {/* Retrieval Method Config */}
         <div>
           {!isModelAndRetrievalConfigDisabled
             ? (
-              <div className={'mb-1'}>
-                <div className='system-md-semibold mb-0.5 text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='body-xs-regular text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer'
-                    href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
-                    className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-                  {t('datasetSettings.form.retrievalSetting.longDescription')}
+                <div className="mb-1">
+                  <div className="system-md-semibold mb-0.5 text-text-secondary">{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  <div className="body-xs-regular text-text-tertiary">
+                    <a
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
+                      className="text-text-accent"
+                    >
+                      {t('datasetSettings.form.retrievalSetting.learnMore')}
+                    </a>
+                    {t('datasetSettings.form.retrievalSetting.longDescription')}
+                  </div>
                 </div>
-              </div>
-            )
+              )
             : (
-              <div className={cn('system-md-semibold mb-0.5 text-text-secondary', 'flex items-center justify-between')}>
-                <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
-              </div>
-            )}
+                <div className={cn('system-md-semibold mb-0.5 text-text-secondary', 'flex items-center justify-between')}>
+                  <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                </div>
+              )}
 
-          <div className=''>
+          <div className="">
             {
               getIndexing_technique() === IndexingType.QUALIFIED
                 ? (
-                  <RetrievalMethodConfig
-                    disabled={isModelAndRetrievalConfigDisabled}
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                    showMultiModalTip={showMultiModalTip}
-                  />
-                )
+                    <RetrievalMethodConfig
+                      disabled={isModelAndRetrievalConfigDisabled}
+                      value={retrievalConfig}
+                      onChange={setRetrievalConfig}
+                      showMultiModalTip={showMultiModalTip}
+                    />
+                  )
                 : (
-                  <EconomicalRetrievalMethodConfig
-                    disabled={isModelAndRetrievalConfigDisabled}
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )
+                    <EconomicalRetrievalMethodConfig
+                      disabled={isModelAndRetrievalConfigDisabled}
+                      value={retrievalConfig}
+                      onChange={setRetrievalConfig}
+                    />
+                  )
             }
           </div>
         </div>
 
         {!isSetting
           ? (
-            <div className='mt-8 flex items-center py-2'>
-              <Button onClick={() => onStepChange?.(-1)}>
-                <RiArrowLeftLine className='mr-1 h-4 w-4' />
-                {t('datasetCreation.stepTwo.previousStep')}
-              </Button>
-              <Button className='ml-auto' loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
-            </div>
-          )
+              <div className="mt-8 flex items-center py-2">
+                <Button onClick={() => onStepChange?.(-1)}>
+                  <RiArrowLeftLine className="mr-1 h-4 w-4" />
+                  {t('datasetCreation.stepTwo.previousStep')}
+                </Button>
+                <Button className="ml-auto" loading={isCreating} variant="primary" onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+              </div>
+            )
           : (
-            <div className='mt-8 flex items-center py-2'>
-              <Button loading={isCreating} variant='primary' onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
-              <Button className='ml-2' onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
-            </div>
-          )}
+              <div className="mt-8 flex items-center py-2">
+                <Button loading={isCreating} variant="primary" onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
+                <Button className="ml-2" onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
+              </div>
+            )}
       </div>
       <FloatRightContainer isMobile={isMobile} isOpen={true} onClose={noop} footer={null}>
         <PreviewContainer
-          header={<PreviewHeader
-            title={t('datasetCreation.stepTwo.preview')}
-          >
-            <div className='flex items-center gap-1'>
-              {dataSourceType === DataSourceType.FILE
-                && <PreviewDocumentPicker
-                  files={files as Array<Required<CustomFile>>}
-                  onChange={(selected) => {
-                    currentEstimateMutation.reset()
-                    setPreviewFile(selected)
-                    currentEstimateMutation.mutate()
-                  }}
-                  // when it is from setting, it just has one file
-                  value={isSetting ? (files[0]! as Required<CustomFile>) : previewFile}
-                />
-              }
-              {dataSourceType === DataSourceType.NOTION
-                && <PreviewDocumentPicker
-                  files={
-                    notionPages.map(page => ({
-                      id: page.page_id,
-                      name: page.page_name,
-                      extension: 'md',
-                    }))
-                  }
-                  onChange={(selected) => {
-                    currentEstimateMutation.reset()
-                    const selectedPage = notionPages.find(page => page.page_id === selected.id)
-                    setPreviewNotionPage(selectedPage!)
-                    currentEstimateMutation.mutate()
-                  }}
-                  value={{
-                    id: previewNotionPage?.page_id || '',
-                    name: previewNotionPage?.page_name || '',
-                    extension: 'md',
-                  }}
-                />
-              }
-              {dataSourceType === DataSourceType.WEB
-                && <PreviewDocumentPicker
-                  files={
-                    websitePages.map(page => ({
-                      id: page.source_url,
-                      name: page.title,
-                      extension: 'md',
-                    }))
-                  }
-                  onChange={(selected) => {
-                    currentEstimateMutation.reset()
-                    const selectedPage = websitePages.find(page => page.source_url === selected.id)
-                    setPreviewWebsitePage(selectedPage!)
-                    currentEstimateMutation.mutate()
-                  }}
-                  value={
-                    {
-                      id: previewWebsitePage?.source_url || '',
-                      name: previewWebsitePage?.title || '',
-                      extension: 'md',
-                    }
-                  }
-                />
-              }
-              {
-                currentDocForm !== ChunkingMode.qa
-                && <Badge text={t('datasetCreation.stepTwo.previewChunkCount', {
-                  count: estimate?.total_segments || 0,
-                }) as string}
-                />
-              }
-            </div>
-          </PreviewHeader>}
+          header={(
+            <PreviewHeader
+              title={t('datasetCreation.stepTwo.preview')}
+            >
+              <div className="flex items-center gap-1">
+                {dataSourceType === DataSourceType.FILE
+                  && (
+                    <PreviewDocumentPicker
+                      files={files as Array<Required<CustomFile>>}
+                      onChange={(selected) => {
+                        currentEstimateMutation.reset()
+                        setPreviewFile(selected)
+                        currentEstimateMutation.mutate()
+                      }}
+                      // when it is from setting, it just has one file
+                      value={isSetting ? (files[0]! as Required<CustomFile>) : previewFile}
+                    />
+                  )}
+                {dataSourceType === DataSourceType.NOTION
+                  && (
+                    <PreviewDocumentPicker
+                      files={
+                        notionPages.map(page => ({
+                          id: page.page_id,
+                          name: page.page_name,
+                          extension: 'md',
+                        }))
+                      }
+                      onChange={(selected) => {
+                        currentEstimateMutation.reset()
+                        const selectedPage = notionPages.find(page => page.page_id === selected.id)
+                        setPreviewNotionPage(selectedPage!)
+                        currentEstimateMutation.mutate()
+                      }}
+                      value={{
+                        id: previewNotionPage?.page_id || '',
+                        name: previewNotionPage?.page_name || '',
+                        extension: 'md',
+                      }}
+                    />
+                  )}
+                {dataSourceType === DataSourceType.WEB
+                  && (
+                    <PreviewDocumentPicker
+                      files={
+                        websitePages.map(page => ({
+                          id: page.source_url,
+                          name: page.title,
+                          extension: 'md',
+                        }))
+                      }
+                      onChange={(selected) => {
+                        currentEstimateMutation.reset()
+                        const selectedPage = websitePages.find(page => page.source_url === selected.id)
+                        setPreviewWebsitePage(selectedPage!)
+                        currentEstimateMutation.mutate()
+                      }}
+                      value={
+                        {
+                          id: previewWebsitePage?.source_url || '',
+                          name: previewWebsitePage?.title || '',
+                          extension: 'md',
+                        }
+                      }
+                    />
+                  )}
+                {
+                  currentDocForm !== ChunkingMode.qa
+                  && (
+                    <Badge text={t('datasetCreation.stepTwo.previewChunkCount', {
+                      count: estimate?.total_segments || 0,
+                    }) as string}
+                    />
+                  )
+                }
+              </div>
+            </PreviewHeader>
+          )}
           className={cn('relative flex h-full w-1/2 shrink-0 p-4 pr-0', isMobile && 'w-full max-w-[524px]')}
-          mainClassName='space-y-6'
+          mainClassName="space-y-6"
         >
           {currentDocForm === ChunkingMode.qa && estimate?.qa_preview && (
             estimate?.qa_preview.map((item, index) => (
@@ -1162,8 +1202,8 @@ const StepTwo = ({
                           label={`C-${indexForLabel}`}
                           text={child}
                           tooltip={`Child-chunk-${indexForLabel} · ${child.length} Characters`}
-                          labelInnerClassName='text-[10px] font-semibold align-bottom leading-7'
-                          dividerClassName='leading-7'
+                          labelInnerClassName="text-[10px] font-semibold align-bottom leading-7"
+                          dividerClassName="leading-7"
                         />
                       )
                     })}
@@ -1173,17 +1213,17 @@ const StepTwo = ({
             })
           )}
           {currentEstimateMutation.isIdle && (
-            <div className='flex h-full w-full items-center justify-center'>
-              <div className='flex flex-col items-center justify-center gap-3'>
-                <RiSearchEyeLine className='size-10 text-text-empty-state-icon' />
-                <p className='text-sm text-text-tertiary'>
+            <div className="flex h-full w-full items-center justify-center">
+              <div className="flex flex-col items-center justify-center gap-3">
+                <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
+                <p className="text-sm text-text-tertiary">
                   {t('datasetCreation.stepTwo.previewChunkTip')}
                 </p>
               </div>
             </div>
           )}
           {currentEstimateMutation.isPending && (
-            <div className='space-y-6'>
+            <div className="space-y-6">
               {Array.from({ length: 10 }, (_, i) => (
                 <SkeletonContainer key={i}>
                   <SkeletonRow>
