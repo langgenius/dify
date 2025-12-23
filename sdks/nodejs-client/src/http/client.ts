@@ -1,0 +1,281 @@
+import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
+import { Readable } from "node:stream";
+import {
+  DEFAULT_BASE_URL,
+  DEFAULT_MAX_RETRIES,
+  DEFAULT_RETRY_DELAY_SECONDS,
+  DEFAULT_TIMEOUT_SECONDS,
+  DifyClientConfig,
+  DifyResponse,
+  Headers,
+  QueryParams,
+  RequestMethod,
+} from "../types/common";
+import {
+  APIError,
+  AuthenticationError,
+  NetworkError,
+  RateLimitError,
+  TimeoutError,
+  ValidationError,
+} from "../errors/dify-error";
+import { getFormDataHeaders, isFormData } from "./form-data";
+import { createBinaryStream, createSseStream } from "./sse";
+import { getRetryDelayMs, shouldRetry, sleep } from "./retry";
+
+const DEFAULT_USER_AGENT = "dify-client-node";
+
+export type RequestOptions = {
+  method: RequestMethod;
+  path: string;
+  query?: QueryParams;
+  data?: unknown;
+  headers?: Headers;
+  responseType?: AxiosRequestConfig["responseType"];
+};
+
+export type HttpClientSettings = Required<
+  Omit<DifyClientConfig, "apiKey">
+> & {
+  apiKey: string;
+};
+
+const normalizeSettings = (config: DifyClientConfig): HttpClientSettings => ({
+  apiKey: config.apiKey,
+  baseUrl: config.baseUrl ?? DEFAULT_BASE_URL,
+  timeout: config.timeout ?? DEFAULT_TIMEOUT_SECONDS,
+  maxRetries: config.maxRetries ?? DEFAULT_MAX_RETRIES,
+  retryDelay: config.retryDelay ?? DEFAULT_RETRY_DELAY_SECONDS,
+  enableLogging: config.enableLogging ?? false,
+});
+
+const normalizeHeaders = (headers: AxiosResponse["headers"]): Headers => {
+  const result: Headers = {};
+  if (!headers) {
+    return result;
+  }
+  Object.entries(headers).forEach(([key, value]) => {
+    if (Array.isArray(value)) {
+      result[key.toLowerCase()] = value.join(", ");
+    } else if (typeof value === "string") {
+      result[key.toLowerCase()] = value;
+    } else if (typeof value === "number") {
+      result[key.toLowerCase()] = value.toString();
+    }
+  });
+  return result;
+};
+
+const resolveRequestId = (headers: Headers): string | undefined =>
+  headers["x-request-id"] ?? headers["x-requestid"];
+
+const buildRequestUrl = (baseUrl: string, path: string): string => {
+  const trimmed = baseUrl.replace(/\/+$/, "");
+  return `${trimmed}${path}`;
+};
+
+const parseRetryAfterSeconds = (headerValue?: string): number | undefined => {
+  if (!headerValue) {
+    return undefined;
+  }
+  const asNumber = Number.parseInt(headerValue, 10);
+  if (!Number.isNaN(asNumber)) {
+    return asNumber;
+  }
+  const asDate = Date.parse(headerValue);
+  if (!Number.isNaN(asDate)) {
+    const diff = asDate - Date.now();
+    return diff > 0 ? Math.ceil(diff / 1000) : 0;
+  }
+  return undefined;
+};
+
+const mapAxiosError = (error: unknown): DifyError => {
+  if (axios.isAxiosError(error)) {
+    const axiosError = error as AxiosError;
+    if (axiosError.response) {
+      const status = axiosError.response.status;
+      const headers = normalizeHeaders(axiosError.response.headers);
+      const requestId = resolveRequestId(headers);
+      const responseBody = axiosError.response.data;
+      const message =
+        (responseBody &&
+          typeof responseBody === "object" &&
+          "message" in responseBody &&
+          typeof (responseBody as Record<string, unknown>).message ===
+            "string" &&
+          (responseBody as Record<string, unknown>).message) ||
+        (typeof responseBody === "string" && responseBody) ||
+        `Request failed with status code ${status}`;
+
+      if (status === 401) {
+        return new AuthenticationError(message, {
+          statusCode: status,
+          responseBody,
+          requestId,
+        });
+      }
+      if (status === 429) {
+        const retryAfter = parseRetryAfterSeconds(headers["retry-after"]);
+        return new RateLimitError(message, {
+          statusCode: status,
+          responseBody,
+          requestId,
+          retryAfter,
+        });
+      }
+      if (status === 422) {
+        return new ValidationError(message, {
+          statusCode: status,
+          responseBody,
+          requestId,
+        });
+      }
+      return new APIError(message, {
+        statusCode: status,
+        responseBody,
+        requestId,
+      });
+    }
+    if (axiosError.code === "ECONNABORTED") {
+      return new TimeoutError("Request timed out", { cause: axiosError });
+    }
+    return new NetworkError(axiosError.message, { cause: axiosError });
+  }
+  if (error instanceof Error) {
+    return new NetworkError(error.message, { cause: error });
+  }
+  return new NetworkError("Unexpected network error", { cause: error });
+};
+
+export class HttpClient {
+  private axios: AxiosInstance;
+  private settings: HttpClientSettings;
+
+  constructor(config: DifyClientConfig) {
+    this.settings = normalizeSettings(config);
+    this.axios = axios.create({
+      baseURL: this.settings.baseUrl,
+      timeout: this.settings.timeout * 1000,
+    });
+  }
+
+  updateApiKey(apiKey: string): void {
+    this.settings.apiKey = apiKey;
+  }
+
+  getSettings(): HttpClientSettings {
+    return { ...this.settings };
+  }
+
+  async request<T>(options: RequestOptions): Promise<DifyResponse<T>> {
+    const response = await this.requestRaw(options);
+    const headers = normalizeHeaders(response.headers);
+    return {
+      data: response.data as T,
+      status: response.status,
+      headers,
+      requestId: resolveRequestId(headers),
+    };
+  }
+
+  async requestStream<T>(options: RequestOptions) {
+    const response = await this.requestRaw({
+      ...options,
+      responseType: "stream",
+    });
+    const headers = normalizeHeaders(response.headers);
+    return createSseStream<T>(response.data as Readable, {
+      status: response.status,
+      headers,
+      requestId: resolveRequestId(headers),
+    });
+  }
+
+  async requestBinaryStream(options: RequestOptions) {
+    const response = await this.requestRaw({
+      ...options,
+      responseType: "stream",
+    });
+    const headers = normalizeHeaders(response.headers);
+    return createBinaryStream(response.data as Readable, {
+      status: response.status,
+      headers,
+      requestId: resolveRequestId(headers),
+    });
+  }
+
+  async requestRaw(options: RequestOptions): Promise<AxiosResponse> {
+    const { method, path, query, data, headers, responseType } = options;
+    const { apiKey, enableLogging, maxRetries, retryDelay, timeout } =
+      this.settings;
+    const isBodyFormData = data ? isFormData(data) : false;
+
+    const requestHeaders: Headers = {
+      Authorization: `Bearer ${apiKey}`,
+      ...headers,
+    };
+    if (
+      typeof process !== "undefined" &&
+      !!process.versions?.node &&
+      !requestHeaders["User-Agent"] &&
+      !requestHeaders["user-agent"]
+    ) {
+      requestHeaders["User-Agent"] = DEFAULT_USER_AGENT;
+    }
+
+    if (isBodyFormData) {
+      Object.assign(requestHeaders, getFormDataHeaders(data));
+    } else if (data && method !== "GET") {
+      requestHeaders["Content-Type"] = "application/json";
+    }
+
+    const url = buildRequestUrl(this.settings.baseUrl, path);
+
+    if (enableLogging) {
+      console.info(`dify-client-node request ${method} ${url}`);
+    }
+
+    const axiosConfig: AxiosRequestConfig = {
+      method,
+      url: path,
+      params: query,
+      headers: requestHeaders,
+      responseType: responseType ?? "json",
+      timeout: timeout * 1000,
+    };
+
+    if (method !== "GET" && data !== undefined) {
+      axiosConfig.data = data;
+    }
+
+    let attempt = 0;
+    // Total attempts is maxRetries + 1
+    while (true) {
+      try {
+        const response = await this.axios.request(axiosConfig);
+        if (enableLogging) {
+          console.info(
+            `dify-client-node response ${response.status} ${method} ${url}`
+          );
+        }
+        return response;
+      } catch (error) {
+        const mapped = mapAxiosError(error);
+        if (!shouldRetry(mapped, attempt, maxRetries)) {
+          throw mapped;
+        }
+        const retryAfterSeconds =
+          mapped instanceof RateLimitError ? mapped.retryAfter : undefined;
+        const delay = getRetryDelayMs(attempt + 1, retryDelay, retryAfterSeconds);
+        if (enableLogging) {
+          console.info(
+            `dify-client-node retry ${attempt + 1} in ${delay}ms for ${method} ${url}`
+          );
+        }
+        attempt += 1;
+        await sleep(delay);
+      }
+    }
+  }
+}
