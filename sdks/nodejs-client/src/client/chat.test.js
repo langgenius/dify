@@ -95,22 +95,16 @@ describe("ChatClient", () => {
     });
   });
 
-  it("lists app feedbacks without user", async () => {
+  it("lists app feedbacks", async () => {
     const { client, request } = createHttpClientWithSpies();
     const chat = new ChatClient(client);
 
     await chat.getAppFeedbacks(2, 5);
-    await chat.getAppFeedbacks("user", 3, 10);
 
     expect(request).toHaveBeenCalledWith({
       method: "GET",
       path: "/app/feedbacks",
       query: { page: 2, limit: 5 },
-    });
-    expect(request).toHaveBeenCalledWith({
-      method: "GET",
-      path: "/app/feedbacks",
-      query: { page: 3, limit: 10 },
     });
   });
 
