@@ -15,7 +15,8 @@ import {
   RiPlayCircleLine,
 } from '@remixicon/react'
 import Image from 'next/image'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid4 } from 'uuid'
 import Button from '@/app/components/base/button'

@@ -1,5 +1,5 @@
 import { RiArrowRightSLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import {

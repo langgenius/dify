@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import { RiArrowRightUpLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
 

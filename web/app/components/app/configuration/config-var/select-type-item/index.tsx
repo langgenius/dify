@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVarType } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
 import { cn } from '@/utils/classnames'

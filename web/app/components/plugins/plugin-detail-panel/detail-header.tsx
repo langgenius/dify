@@ -6,7 +6,8 @@ import {
   RiHardDrive3Line,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import { trackEvent } from '@/app/components/base/amplitude'

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { IterationNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Select from '@/app/components/base/select'

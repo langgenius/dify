@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import React from 'react'
+import * as React from 'react'
 import { format } from '@/service/base'
 import Header from './header'
 

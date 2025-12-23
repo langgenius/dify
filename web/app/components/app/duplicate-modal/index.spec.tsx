@@ -1,7 +1,7 @@
 import type { ProviderContextState } from '@/context/provider-context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
+import * as React from 'react'
 import Toast from '@/app/components/base/toast'
 import { Plan } from '@/app/components/billing/type'
 import { baseProviderContextValue } from '@/context/provider-context'

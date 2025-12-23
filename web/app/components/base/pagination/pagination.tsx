@@ -5,7 +5,7 @@ import type {
   PageButtonProps,
 } from './type'
 import { noop } from 'lodash-es'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import usePagination from './hook'
 

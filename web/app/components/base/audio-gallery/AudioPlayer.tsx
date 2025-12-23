@@ -3,7 +3,8 @@ import {
   RiPlayLargeFill,
 } from '@remixicon/react'
 import { t } from 'i18next'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'

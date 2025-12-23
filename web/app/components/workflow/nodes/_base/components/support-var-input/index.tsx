@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import VarHighlight from '@/app/components/app/configuration/base/var-highlight'
 import { cn } from '@/utils/classnames'
 

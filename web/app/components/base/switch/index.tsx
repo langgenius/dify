@@ -1,6 +1,7 @@
 'use client'
 import { Switch as OriginalSwitch } from '@headlessui/react'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/utils/classnames'
 
 type SwitchProps = {

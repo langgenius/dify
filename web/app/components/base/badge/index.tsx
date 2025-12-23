@@ -1,7 +1,7 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactNode } from 'react'
 import { cva } from 'class-variance-authority'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import './index.css'
 

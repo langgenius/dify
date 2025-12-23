@@ -1,5 +1,5 @@
 import { RiCloseLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
 import DifyLogo from '../../base/logo/dify-logo'

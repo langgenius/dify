@@ -1,7 +1,7 @@
 import type { RemixiconComponentType } from '@remixicon/react'
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import Divider from '../divider'
 import './index.css'

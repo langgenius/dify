@@ -1,6 +1,6 @@
 import type { ProcessRuleResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
 import { ProcessMode } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'

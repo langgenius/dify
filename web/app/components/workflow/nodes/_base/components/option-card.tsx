@@ -2,7 +2,8 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { FC } from 'react'
 import { cva } from 'class-variance-authority'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
 

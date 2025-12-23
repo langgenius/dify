@@ -1,6 +1,6 @@
 import type { SlashCommandHandler } from './types'
 import { RiBookOpenLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { defaultDocBaseUrl } from '@/context/i18n'
 import i18n from '@/i18n-config/i18next-config'
 import { getDocLanguage } from '@/i18n-config/language'

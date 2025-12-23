@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { WebhookHeader } from '../types'
 import type { ColumnConfig, GenericTableRow } from './generic-table'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import GenericTable from './generic-table'
 

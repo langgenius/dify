@@ -1,5 +1,5 @@
 import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Divider from '../../base/divider'

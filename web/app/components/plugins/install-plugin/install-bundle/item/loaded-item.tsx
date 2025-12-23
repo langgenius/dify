@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Plugin, VersionProps } from '../../../types'
-import React from 'react'
+import * as React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import { MARKETPLACE_API_PREFIX } from '@/config'
 import Card from '../../../card'

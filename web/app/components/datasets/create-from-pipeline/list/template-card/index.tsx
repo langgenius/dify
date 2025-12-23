@@ -1,6 +1,7 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { useRouter } from 'next/navigation'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Confirm from '@/app/components/base/confirm'

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { DocExtractorNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Field from '@/app/components/workflow/nodes/_base/components/field'

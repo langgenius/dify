@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useDaysOfWeek } from '../hooks'
 
 export const DaysOfWeek = () => {

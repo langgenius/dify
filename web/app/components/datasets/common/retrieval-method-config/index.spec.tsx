@@ -1,6 +1,6 @@
 import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,

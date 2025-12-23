@@ -8,7 +8,8 @@ import {
   MagnifyingGlassIcon,
 } from '@heroicons/react/24/outline'
 import { init } from 'emoji-mart'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'

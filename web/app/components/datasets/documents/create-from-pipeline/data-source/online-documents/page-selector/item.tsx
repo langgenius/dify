@@ -1,7 +1,7 @@
 import type { ListChildComponentProps } from 'react-window'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { areEqual } from 'react-window'
 import Checkbox from '@/app/components/base/checkbox'

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { ParameterExtractorNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'

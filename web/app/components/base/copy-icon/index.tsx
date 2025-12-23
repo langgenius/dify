@@ -1,7 +1,8 @@
 'use client'
 import copy from 'copy-to-clipboard'
 import { debounce } from 'lodash-es'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Copy,

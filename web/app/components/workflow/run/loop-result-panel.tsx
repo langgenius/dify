@@ -5,7 +5,8 @@ import {
   RiArrowRightSLine,
   RiCloseLine,
 } from '@remixicon/react'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { cn } from '@/utils/classnames'

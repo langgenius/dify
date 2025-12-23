@@ -1,5 +1,5 @@
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useStore } from '@/app/components/workflow/store'

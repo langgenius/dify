@@ -1,7 +1,8 @@
 'use client'
 
 import type { Dependency, Plugin, PluginManifestInMarket } from '../../types'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import { cn } from '@/utils/classnames'

@@ -1,7 +1,7 @@
 import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, ReactNode } from 'react'
 import { cva } from 'class-variance-authority'
-import React from 'react'
+import * as React from 'react'
 import { Highlight } from '@/app/components/base/icons/src/public/common'
 import { cn } from '@/utils/classnames'
 import './index.css'

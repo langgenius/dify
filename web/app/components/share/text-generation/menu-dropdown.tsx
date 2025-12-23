@@ -6,7 +6,8 @@ import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { usePathname, useRouter } from 'next/navigation'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import {

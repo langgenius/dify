@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiAlertFill } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 

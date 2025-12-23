@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from './types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import {

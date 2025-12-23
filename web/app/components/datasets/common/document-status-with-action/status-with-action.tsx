@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiAlertFill, RiCheckboxCircleFill, RiErrorWarningFill, RiInformation2Fill } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
 

@@ -1,6 +1,7 @@
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'

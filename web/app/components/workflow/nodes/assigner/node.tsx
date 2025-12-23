@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { AssignerNodeType } from './types'
 import type { Node, NodeProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNodes } from 'reactflow'
 import Badge from '@/app/components/base/badge'

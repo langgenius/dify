@@ -6,7 +6,8 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
-import React, { useCallback, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'

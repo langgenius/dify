@@ -1,5 +1,6 @@
 import { RiAddCircleFill } from '@remixicon/react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useMittContext } from './context'

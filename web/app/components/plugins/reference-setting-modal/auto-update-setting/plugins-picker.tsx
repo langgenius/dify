@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import NoPluginSelected from './no-plugin-selected'

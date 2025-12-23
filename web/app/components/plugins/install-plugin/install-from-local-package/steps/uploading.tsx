@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Dependency, PluginDeclaration } from '../../../types'
 import { RiLoader2Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { uploadFile } from '@/service/plugins'

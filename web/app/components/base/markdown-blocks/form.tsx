@@ -1,4 +1,5 @@
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import Button from '@/app/components/base/button'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import Checkbox from '@/app/components/base/checkbox'

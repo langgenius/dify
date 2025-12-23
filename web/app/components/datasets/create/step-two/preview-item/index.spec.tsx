@@ -1,6 +1,6 @@
 import type { IPreviewItemProps } from './index'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import PreviewItem, { PreviewType } from './index'
 
 // Test data builder for props

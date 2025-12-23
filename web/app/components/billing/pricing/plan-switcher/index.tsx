@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { Category } from '../index'
 import type { PlanRange } from './plan-range-switcher'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { Cloud, SelfHosted } from '../assets'

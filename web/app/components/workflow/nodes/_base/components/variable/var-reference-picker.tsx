@@ -13,7 +13,8 @@ import {
 } from '@remixicon/react'
 import { produce } from 'immer'
 import { noop } from 'lodash-es'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useNodes,

@@ -1,7 +1,7 @@
 import type { CredentialSelectorProps } from './index'
 import type { DataSourceCredential } from '@/types/pipeline'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import CredentialSelector from './index'
 
 // Mock CredentialTypeEnum to avoid deep import chain issues

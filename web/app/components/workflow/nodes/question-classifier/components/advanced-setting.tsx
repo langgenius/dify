@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'

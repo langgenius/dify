@@ -1,6 +1,7 @@
 'use client'
 import { useRouter } from 'next/navigation'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'

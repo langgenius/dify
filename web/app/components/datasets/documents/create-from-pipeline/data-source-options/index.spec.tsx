@@ -3,7 +3,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { Node } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
 import DatasourceIcon from './datasource-icon'
 import { useDatasourceIcon } from './hooks'

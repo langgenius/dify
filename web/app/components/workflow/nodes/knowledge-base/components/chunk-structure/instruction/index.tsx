@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocLink } from '@/context/i18n'

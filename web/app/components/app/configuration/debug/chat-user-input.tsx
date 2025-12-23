@@ -1,5 +1,6 @@
 import type { Inputs } from '@/models/debug'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Input from '@/app/components/base/input'

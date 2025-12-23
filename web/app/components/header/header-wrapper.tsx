@@ -1,6 +1,7 @@
 'use client'
 import { usePathname } from 'next/navigation'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
 import s from './index.module.css'

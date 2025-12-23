@@ -4,7 +4,7 @@ import {
   RiArrowRightUpLine,
   RiBugLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'

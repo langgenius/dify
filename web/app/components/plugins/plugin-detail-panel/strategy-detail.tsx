@@ -8,7 +8,8 @@ import {
   RiArrowLeftLine,
   RiCloseLine,
 } from '@remixicon/react'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'

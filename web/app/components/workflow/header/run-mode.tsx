@@ -1,6 +1,7 @@
 import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
 import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
-import React, { useCallback, useEffect, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'

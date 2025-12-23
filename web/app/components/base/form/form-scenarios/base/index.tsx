@@ -1,5 +1,6 @@
 import type { BaseFormProps } from './types'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useAppForm } from '../..'
 import BaseField from './field'
 import { generateZodSchema } from './utils'

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiRefreshLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import TooltipPlus from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
 

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import {
   VariableLabelInText,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'

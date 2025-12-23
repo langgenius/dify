@@ -6,7 +6,8 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { produce } from 'immer'
-import React, { useCallback, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Line3 } from '@/app/components/base/icons/src/public/common'

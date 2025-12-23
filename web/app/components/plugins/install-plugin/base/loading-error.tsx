@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'

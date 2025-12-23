@@ -1,7 +1,7 @@
 'use client'
 import type { CrawlResultItem } from '@/models/datasets'
 import { RiCloseLine, RiGlobalLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { formatNumberAbbreviated } from '@/utils/format'
 

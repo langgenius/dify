@@ -1,7 +1,7 @@
 import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
+import * as React from 'react'
 import { CollectionType } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
 import SettingBuiltInTool from './setting-built-in-tool'

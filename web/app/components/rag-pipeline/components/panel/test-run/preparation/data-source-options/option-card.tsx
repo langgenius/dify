@@ -1,5 +1,6 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { useToolIcon } from '@/app/components/workflow/hooks'
 import { BlockEnum } from '@/app/components/workflow/types'

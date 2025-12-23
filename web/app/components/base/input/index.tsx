@@ -3,7 +3,7 @@ import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import { noop } from 'lodash-es'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { CopyFeedbackNew } from '../copy-feedback'

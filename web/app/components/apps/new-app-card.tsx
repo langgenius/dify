@@ -5,7 +5,8 @@ import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
-import React, { useMemo, useState } from 'react'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'

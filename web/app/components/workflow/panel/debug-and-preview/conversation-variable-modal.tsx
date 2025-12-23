@@ -6,7 +6,8 @@ import { RiCloseLine } from '@remixicon/react'
 import { useMount } from 'ahooks'
 import copy from 'copy-to-clipboard'
 import { capitalize, noop } from 'lodash-es'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Copy,

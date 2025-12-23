@@ -4,7 +4,8 @@ import type { SimplePluginInfo } from '../markdown/react-markdown-wrapper'
  * Extracted from the main markdown renderer for modularity.
  * Uses the ImageGallery component to display images.
  */
-import React, { useEffect, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import ImageGallery from '@/app/components/base/image-gallery'
 import { usePluginReadmeAsset } from '@/service/use-plugins'
 import { getMarkdownImageURL } from './utils'

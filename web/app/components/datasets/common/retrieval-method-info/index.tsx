@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import Image from 'next/image'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import RadioCard from '@/app/components/base/radio-card'
 import { RETRIEVE_METHOD } from '@/types/app'

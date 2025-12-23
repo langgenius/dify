@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { WorkflowVariableBlockType } from '@/app/components/base/prompt-editor/types'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
 import PromptEditor from '@/app/components/base/prompt-editor'
 
 type Props = {

@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiCloseLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 const i18nPrefix = 'workflow.singleRun'

@@ -1,7 +1,7 @@
 'use client'
 import type { Plugin } from '../types'
 import { RiAlertFill } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'

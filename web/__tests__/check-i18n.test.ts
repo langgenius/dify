@@ -1,9 +1,7 @@
 import fs from 'node:fs'
 import path from 'node:path'
-
-// Mock functions to simulate the check-i18n functionality
-const vm = require('node:vm')
-const transpile = require('typescript').transpile
+import vm from 'node:vm'
+import { transpile } from 'typescript'
 
 describe('check-i18n script functionality', () => {
   const testDir = path.join(__dirname, '../i18n-test')

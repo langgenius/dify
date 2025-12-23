@@ -1,6 +1,7 @@
 import type { InputVar } from '@/models/pipeline'
 import { RiAddLine } from '@remixicon/react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import ActionButton from '@/app/components/base/action-button'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
 import { cn } from '@/utils/classnames'

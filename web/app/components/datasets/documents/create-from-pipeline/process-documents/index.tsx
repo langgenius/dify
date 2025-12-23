@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { generateZodSchema } from '@/app/components/base/form/form-scenarios/base/utils'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
 import Actions from './actions'

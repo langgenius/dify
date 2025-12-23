@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { VersionProps } from '../../types'
-import React from 'react'
+import * as React from 'react'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 
 const Version: FC<VersionProps> = ({

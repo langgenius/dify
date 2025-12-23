@@ -1,6 +1,6 @@
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { z } from 'zod'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import Toast from '@/app/components/base/toast'

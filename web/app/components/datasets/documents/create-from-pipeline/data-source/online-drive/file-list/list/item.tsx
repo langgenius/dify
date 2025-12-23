@@ -1,6 +1,7 @@
 import type { Placement } from '@floating-ui/react'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'

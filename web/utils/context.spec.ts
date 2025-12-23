@@ -9,7 +9,7 @@ import { renderHook } from '@testing-library/react'
  * - createCtx: Standard React context using useContext/createContext
  * - createSelectorCtx: Context with selector support using use-context-selector library
  */
-import React from 'react'
+import * as React from 'react'
 import { createCtx, createSelectorCtx } from './context'
 
 describe('Context Utilities', () => {

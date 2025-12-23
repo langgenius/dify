@@ -1,7 +1,8 @@
 import type { Dayjs } from 'dayjs'
 import type { TimePickerProps } from '../types'
 import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,

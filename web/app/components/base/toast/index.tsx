@@ -8,7 +8,8 @@ import {
   RiInformation2Fill,
 } from '@remixicon/react'
 import { noop } from 'lodash-es'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'
 import { createContext, useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'

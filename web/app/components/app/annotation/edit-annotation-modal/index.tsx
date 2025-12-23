@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import Drawer from '@/app/components/base/drawer-plus'

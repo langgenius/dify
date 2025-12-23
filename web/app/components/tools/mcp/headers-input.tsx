@@ -1,6 +1,6 @@
 'use client'
 import { RiAddLine, RiDeleteBinLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { v4 as uuid } from 'uuid'
 import ActionButton from '@/app/components/base/action-button'

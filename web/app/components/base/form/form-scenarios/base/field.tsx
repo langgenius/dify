@@ -1,6 +1,6 @@
 import type { BaseConfiguration } from './types'
 import { useStore } from '@tanstack/react-form'
-import React from 'react'
+import * as React from 'react'
 import { withForm } from '../..'
 import { BaseFieldType } from './types'
 

@@ -1,5 +1,6 @@
 import type { IPaginationProps, IUsePagination } from './type'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 
 const usePagination = ({
   currentPage,
