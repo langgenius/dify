@@ -377,7 +377,7 @@ class NotionExtractor(BaseExtractor):
         return cast(str, data["last_edited_time"])
 
     @classmethod
-    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str | None:
+    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str:
         # get credential from tenant_id and credential_id
         if not credential_id:
             raise Exception(f"No credential id found for tenant {tenant_id}")
