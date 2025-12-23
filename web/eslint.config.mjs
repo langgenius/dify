@@ -61,6 +61,7 @@ export default antfu(
       'perfectionist/sort-named-exports': 'off',
       'perfectionist/sort-named-imports': 'off',
       'react/no-context-provider': 'off',
+      'react/no-forward-ref': 'off',
       'react/no-use-context': 'off',
       'regexp/no-dupe-characters-character-class': 'off',
       'regexp/no-trivially-nested-quantifier': 'off',
