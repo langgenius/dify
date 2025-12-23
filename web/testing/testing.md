@@ -266,7 +266,7 @@ const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs =
 
 ### Example Structure
 
-```typescript
+```tsx
 import { render, screen, fireEvent, waitFor } from '@testing-library/react'
 import Component from './index'
 
@@ -286,8 +286,8 @@ let mockSharedState = false
 
 describe('ComponentName', () => {
   beforeEach(() => {
-    vi.clearAllMocks()  // ✅ Reset mocks before each test
-    mockSharedState = false  // ✅ Reset shared state if used in mocks
+    vi.clearAllMocks() // ✅ Reset mocks before each test
+    mockSharedState = false // ✅ Reset shared state if used in mocks
   })
 
   describe('Rendering', () => {
@@ -348,13 +348,13 @@ describe('ComponentName', () => {
 
 1. **Example - Correct mock with conditional rendering**:
 
-```typescript
+```tsx
 // ✅ CORRECT: Matches actual component behavior
 let mockPortalOpenState = false
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open, ...props }: any) => {
-    mockPortalOpenState = open || false  // Update shared state
+    mockPortalOpenState = open || false // Update shared state
     return <div data-open={open}>{children}</div>
   },
   PortalToFollowElemContent: ({ children }: any) => {
@@ -366,8 +366,8 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
 
 describe('Component', () => {
   beforeEach(() => {
-    vi.clearAllMocks()  // ✅ Reset mock call history
-    mockPortalOpenState = false  // ✅ Reset shared state
+    vi.clearAllMocks() // ✅ Reset mock call history
+    mockPortalOpenState = false // ✅ Reset shared state
   })
 })
 ```

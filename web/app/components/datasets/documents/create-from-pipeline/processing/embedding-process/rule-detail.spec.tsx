@@ -13,7 +13,7 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 vi.mock('next/image', () => ({
   __esModule: true,
   default: function MockImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-    // eslint-disable-next-line @next/next/no-img-element
+    // eslint-disable-next-line next/no-img-element
     return <img src={src} alt={alt} className={className} data-testid="next-image" />
   },
 }))
