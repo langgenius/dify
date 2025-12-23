@@ -19,8 +19,10 @@ export default antfu(
         'test/prefer-lowercase-title': 'off',
       },
     },
-    rules: {
-      'antfu/top-level-function': 'off',
+    stylistic: {
+      overrides: {
+        'antfu/top-level-function': 'off',
+      },
     },
   },
   // downgrade some rules from error to warn for gradual adoption
