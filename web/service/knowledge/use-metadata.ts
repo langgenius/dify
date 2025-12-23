@@ -64,6 +64,7 @@ export const useRenameMeta = (datasetId: string) => {
       await patch(`/datasets/${datasetId}/metadata/${payload.id}`, {
         body: {
           name: payload.name,
+          description: payload.description,
         },
       })
       await invalidateAllMetaData()

@@ -120,6 +120,9 @@ const translation = {
       back: 'Belakang',
       namePlaceholder: 'Tambahkan nama metadata',
       name: 'Nama',
+      description: 'Deskripsi',
+      descriptionPlaceholder: 'Tambahkan deskripsi metadata (opsional)',
+      descriptionTooltip: 'Membantu model mengekstrak informasi metadata dengan lebih baik dari input pengguna saat menggunakan penyaringan metadata otomatis.',
     },
     checkName: {
       empty: 'Nama metadata tidak boleh kosong',

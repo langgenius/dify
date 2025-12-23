@@ -182,6 +182,9 @@ const translation = {
       name: 'Imię',
       title: 'Nowe metadane',
       type: 'Typ',
+      description: 'Opis',
+      descriptionPlaceholder: 'Dodaj opis metadanych (opcjonalnie)',
+      descriptionTooltip: 'Pomaga modelowi lepiej wyodrębniać informacje o metadanych z danych wejściowych użytkownika podczas korzystania z automatycznego filtrowania metadanych.',
     },
     checkName: {
       empty: 'Nazwa metadanych nie może być pusta',

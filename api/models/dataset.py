@@ -262,6 +262,7 @@ class Dataset(Base):
             {
                 "id": dataset_metadata.id,
                 "name": dataset_metadata.name,
+                "description": dataset_metadata.description,
                 "type": dataset_metadata.type,
             }
             for dataset_metadata in dataset_metadatas
@@ -1375,6 +1376,7 @@ class DatasetMetadata(TypeBase):
     )
     created_by: Mapped[str] = mapped_column(StringUUID, nullable=False)
     updated_by: Mapped[str] = mapped_column(StringUUID, nullable=True, default=None)
+    description: Mapped[str | None] = mapped_column(String(255), nullable=True, default=None)
 
 
 class DatasetMetadataBinding(TypeBase):

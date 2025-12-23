@@ -177,6 +177,9 @@ const translation = {
       type: '유형',
       back: '뒤',
       title: '새 메타데이터',
+      description: '설명',
+      descriptionPlaceholder: '메타데이터 설명 추가 (선택 사항)',
+      descriptionTooltip: '자동 메타데이터 필터링을 사용할 때 모델이 사용자 입력에서 메타데이터 정보를 더 잘 추출할 수 있도록 도와줍니다.',
     },
     checkName: {
       empty: '메타데이터 이름은 비어 있을 수 없습니다.',

@@ -184,6 +184,9 @@ const translation = {
       type: 'タイプ',
       name: '名称',
       namePlaceholder: 'メタデータ名を入力',
+      description: '説明',
+      descriptionPlaceholder: 'メタデータの説明を入力（オプション）',
+      descriptionTooltip: '自動メタデータフィルタリングを使用する際に、モデルがユーザー入力からメタデータ情報をより適切に抽出できるようにします。',
     },
     checkName: {
       empty: 'メタデータ名を入力してください',

@@ -178,6 +178,9 @@ const translation = {
       name: 'İsim',
       type: 'Yaz',
       title: 'Yeni Veriler',
+      description: 'Açıklama',
+      descriptionPlaceholder: 'Meta veri açıklaması ekleyin (isteğe bağlı)',
+      descriptionTooltip: 'Otomatik meta veri filtrelemesi kullanılırken modelin kullanıcı girişinden meta veri bilgilerini daha iyi çıkarmasına yardımcı olur.',
     },
     checkName: {
       empty: 'Meta veri adı boş olamaz',

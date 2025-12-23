@@ -183,6 +183,9 @@ const translation = {
       type: 'Tipo',
       name: 'Nome',
       namePlaceholder: 'Aggiungi nome dei metadati',
+      description: 'Descrizione',
+      descriptionPlaceholder: 'Aggiungi descrizione dei metadati (opzionale)',
+      descriptionTooltip: 'Aiuta il modello a estrarre meglio le informazioni sui metadati dall\'input dell\'utente quando si utilizza il filtraggio automatico dei metadati.',
     },
     checkName: {
       invalid: 'Il nome dei metadati può contenere solo lettere minuscole, numeri e underscore e deve iniziare con una lettera minuscola.',

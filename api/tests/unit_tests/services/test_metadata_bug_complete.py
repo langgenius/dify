@@ -57,7 +57,7 @@ class TestMetadataBugCompleteValidation:
             return_value=(mock_user, mock_user.current_tenant_id),
         ):
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-                MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
+                MetadataService.update_metadata_name_and_description("dataset-123", "metadata-456", None)
 
     def test_3_database_constraints_verification(self):
         """Test Layer 3: Verify database model has nullable=False constraints."""

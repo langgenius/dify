@@ -123,10 +123,12 @@ const DatasetMetadataDrawer: FC<Props> = ({
   const [isShowRenameModal, setIsShowRenameModal] = useState(false)
   const [currPayload, setCurrPayload] = useState<MetadataItemWithValueLength | null>(null)
   const [templeName, setTempleName] = useState('')
+  const [templeDescription, setTempleDescription] = useState('')
   const handleRename = useCallback((payload: MetadataItemWithValueLength) => {
     return () => {
       setCurrPayload(payload)
       setTempleName(payload.name)
+      setTempleDescription(payload.description || '')
       setIsShowRenameModal(true)
     }
   }, [setCurrPayload, setIsShowRenameModal])
@@ -147,6 +149,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       await onRename({
         ...item,
         name: templeName,
+        description: templeDescription,
       })
       Toast.notify({
         type: 'success',
@@ -154,7 +157,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       })
     }
     setIsShowRenameModal(false)
-  }, [userMetadata, currPayload?.id, onRename, templeName, t])
+  }, [userMetadata, currPayload?.id, onRename, templeName, templeDescription, t])
 
   const handleDelete = useCallback((payload: MetadataItemWithValueLength) => {
     return async () => {
@@ -219,13 +222,30 @@ const DatasetMetadataDrawer: FC<Props> = ({
 
         {isShowRenameModal && (
           <Modal isShow title={t(`${i18nPrefix}.rename`)} onClose={() => setIsShowRenameModal(false)}>
-            <Field label={t(`${i18nPrefix}.name`)} className='mt-4'>
+            <Field label={t('dataset.metadata.createMetadata.name')} className='mt-4'>
               <Input
                 value={templeName}
                 onChange={e => setTempleName(e.target.value)}
-                placeholder={t(`${i18nPrefix}.namePlaceholder`)}
+                placeholder={t('dataset.metadata.createMetadata.namePlaceholder')}
               />
             </Field>
+
+            <div>
+              <div className='system-sm-semibold flex items-center py-1 text-text-secondary'>
+                {t('dataset.metadata.createMetadata.description')}
+                <Tooltip
+                  popupContent={t('dataset.metadata.createMetadata.descriptionTooltip')}
+                  triggerClassName='ml-1 h-3 w-3'
+                />
+              </div>
+              <div className='mt-1'>
+                <Input
+                  value={templeDescription}
+                  onChange={e => setTempleDescription(e.target.value)}
+                  placeholder={t('dataset.metadata.createMetadata.descriptionPlaceholder')}
+                />
+              </div>
+            </div>
             <div className='mt-4 flex justify-end'>
               <Button
                 className='mr-2'

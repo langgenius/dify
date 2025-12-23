@@ -164,7 +164,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
         mock_external_service_dependencies["current_user"].id = account.id
 
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type="string", name="test_metadata", description="test_description")
 
         # Act: Execute the method under test
         result = MetadataService.create_metadata(dataset.id, metadata_args)
@@ -172,6 +172,7 @@ class TestMetadataService:
         # Assert: Verify the expected outcomes
         assert result is not None
         assert result.name == "test_metadata"
+        assert result.description == "test_description"
         assert result.type == "string"
         assert result.dataset_id == dataset.id
         assert result.tenant_id == tenant.id
@@ -205,6 +206,30 @@ class TestMetadataService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name cannot exceed 255 characters."):
+            MetadataService.create_metadata(dataset.id, metadata_args)
+
+    def test_create_metadata_description_too_long(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test metadata creation fails when name exceeds 255 characters.
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        dataset = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, account, tenant
+        )
+
+        # Setup mocks
+        mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
+        mock_external_service_dependencies["current_user"].id = account.id
+
+        name = "test"
+        long_description = "a" * 256  # 256 characters, exceeding 255 limit
+        metadata_args = MetadataArgs(type="string", name=name, description=long_description)
+
+        # Act & Assert: Verify proper error handling
+        with pytest.raises(ValueError, match="Metadata description cannot exceed 255 characters."):
             MetadataService.create_metadata(dataset.id, metadata_args)
 
     def test_create_metadata_name_already_exists(self, db_session_with_containers, mock_external_service_dependencies):
@@ -277,16 +302,20 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata first
-        metadata_args = MetadataArgs(type="string", name="old_name")
+        metadata_args = MetadataArgs(type="string", name="old_name", description="old_description")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Act: Execute the method under test
         new_name = "new_name"
-        result = MetadataService.update_metadata_name(dataset.id, metadata.id, new_name)
+        new_description = "new_description"
+        result = MetadataService.update_metadata_name_and_description(
+            dataset.id, metadata.id, new_name, new_description
+        )
 
         # Assert: Verify the expected outcomes
         assert result is not None
         assert result.name == new_name
+        assert result.description == new_description
         assert result.updated_by == account.id
         assert result.updated_at is not None
 
@@ -321,7 +350,35 @@ class TestMetadataService:
 
         # Act & Assert: Verify proper error handling
         with pytest.raises(ValueError, match="Metadata name cannot exceed 255 characters."):
-            MetadataService.update_metadata_name(dataset.id, metadata.id, long_name)
+            MetadataService.update_metadata_name_and_description(dataset.id, metadata.id, long_name)
+
+    def test_update_metadata_description_too_long(self, db_session_with_containers, mock_external_service_dependencies):
+        """
+        Test metadata name update fails when new name exceeds 255 characters.
+        """
+        # Arrange: Create test data
+        account, tenant = self._create_test_account_and_tenant(
+            db_session_with_containers, mock_external_service_dependencies
+        )
+        dataset = self._create_test_dataset(
+            db_session_with_containers, mock_external_service_dependencies, account, tenant
+        )
+
+        # Setup mocks
+        mock_external_service_dependencies["current_user"].current_tenant_id = tenant.id
+        mock_external_service_dependencies["current_user"].id = account.id
+
+        # Create metadata first
+        metadata_args = MetadataArgs(type="string", name="old_name", description="old_description")
+        metadata = MetadataService.create_metadata(dataset.id, metadata_args)
+
+        # Try to update with too long name
+        name = "new_name"
+        long_description = "a" * 256  # 256 characters, exceeding 255 limit
+
+        # Act & Assert: Verify proper error handling
+        with pytest.raises(ValueError, match="Metadata description cannot exceed 255 characters."):
+            MetadataService.update_metadata_name_and_description(dataset.id, metadata.id, name, long_description)
 
     def test_update_metadata_name_already_exists(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -348,7 +405,7 @@ class TestMetadataService:
 
         # Try to update first metadata with second metadata's name
         with pytest.raises(ValueError, match="Metadata name already exists."):
-            MetadataService.update_metadata_name(dataset.id, first_metadata.id, "second_metadata")
+            MetadataService.update_metadata_name_and_description(dataset.id, first_metadata.id, "second_metadata")
 
     def test_update_metadata_name_conflicts_with_built_in_field(
         self, db_session_with_containers, mock_external_service_dependencies
@@ -376,7 +433,7 @@ class TestMetadataService:
         built_in_field_name = BuiltInField.document_name
 
         with pytest.raises(ValueError, match="Metadata name already exists in Built-in fields."):
-            MetadataService.update_metadata_name(dataset.id, metadata.id, built_in_field_name)
+            MetadataService.update_metadata_name_and_description(dataset.id, metadata.id, built_in_field_name)
 
     def test_update_metadata_name_not_found(self, db_session_with_containers, mock_external_service_dependencies):
         """
@@ -401,7 +458,7 @@ class TestMetadataService:
         new_name = "new_name"
 
         # Act: Execute the method under test
-        result = MetadataService.update_metadata_name(dataset.id, fake_metadata_id, new_name)
+        result = MetadataService.update_metadata_name_and_description(dataset.id, fake_metadata_id, new_name)
 
         # Assert: Verify the method returns None when metadata is not found
         assert result is None
@@ -1032,7 +1089,7 @@ class TestMetadataService:
         mock_external_service_dependencies["current_user"].id = account.id
 
         # Create metadata
-        metadata_args = MetadataArgs(type="string", name="test_metadata")
+        metadata_args = MetadataArgs(type="string", name="test_metadata", description="test_description")
         metadata = MetadataService.create_metadata(dataset.id, metadata_args)
 
         # Create document and metadata binding
@@ -1066,6 +1123,7 @@ class TestMetadataService:
         assert len(doc_metadata) == 1
         assert doc_metadata[0]["id"] == metadata.id
         assert doc_metadata[0]["name"] == metadata.name
+        assert doc_metadata[0]["description"] == metadata.description
         assert doc_metadata[0]["type"] == metadata.type
         assert doc_metadata[0]["count"] == 1  # One document bound to this metadata
 

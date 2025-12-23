@@ -9,6 +9,7 @@ import Input from '@/app/components/base/input'
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
 import { noop } from 'lodash-es'
+import Tooltip from '@/app/components/base/tooltip'
 
 const i18nPrefix = 'dataset.metadata.createMetadata'
 
@@ -35,13 +36,18 @@ const CreateContent: FC<Props> = ({
   const handleNameChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
     setName(e.target.value)
   }, [setName])
+  const [description, setDescription] = useState('')
+  const handleDescriptionChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    setDescription(e.target.value)
+  }, [setDescription])
 
   const handleSave = useCallback(() => {
     onSave({
       type,
       name,
+      description,
     })
-  }, [onSave, type, name])
+  }, [onSave, type, name, description])
 
   return (
     <ModalLikeWrap
@@ -83,6 +89,22 @@ const CreateContent: FC<Props> = ({
             placeholder={t(`${i18nPrefix}.namePlaceholder`)}
           />
         </Field>
+        <div>
+          <div className='system-sm-semibold flex items-center py-1 text-text-secondary'>
+            {t(`${i18nPrefix}.description`)}
+            <Tooltip
+              popupContent={t('dataset.metadata.createMetadata.descriptionTooltip')}
+              triggerClassName='ml-1 h-3 w-3'
+            />
+          </div>
+          <div className='mt-1'>
+            <Input
+              value={description}
+              onChange={handleDescriptionChange}
+              placeholder={t(`${i18nPrefix}.descriptionPlaceholder`)}
+            />
+          </div>
+        </div>
       </div>
     </ModalLikeWrap>
   )

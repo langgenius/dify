@@ -48,7 +48,7 @@ class TestMetadataNullableBug:
         ):
             # This should crash with TypeError when calling len(None)
             with pytest.raises(TypeError, match="object of type 'NoneType' has no len"):
-                MetadataService.update_metadata_name("dataset-123", "metadata-456", None)
+                MetadataService.update_metadata_name_and_description("dataset-123", "metadata-456", None)
 
     def test_api_layer_now_uses_pydantic_validation(self):
         """Verify that API layer relies on Pydantic validation instead of reqparse."""

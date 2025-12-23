@@ -11,6 +11,7 @@ export type BuiltInMetadataItem = {
 
 export type MetadataItem = BuiltInMetadataItem & {
   id: string
+  description?: string
 }
 
 export type MetadataItemWithValue = MetadataItem & {
