@@ -1,11 +1,11 @@
-import type { StateCreator } from 'zustand'
-import { debounce } from 'lodash-es'
 import type { Viewport } from 'reactflow'
+import type { StateCreator } from 'zustand'
 import type {
   Edge,
   EnvironmentVariable,
   Node,
 } from '@/app/components/workflow/types'
+import { debounce } from 'lodash-es'
 
 export type WorkflowDraftSliceShape = {
   backupDraft?: {

@@ -1,26 +1,26 @@
+import type {
+  CustomConfigurationModelFixedFields,
+  ModelProvider,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  RiEqualizer2Line,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiEqualizer2Line,
-} from '@remixicon/react'
-import {
   Button,
 } from '@/app/components/base/button'
-import type {
-  CustomConfigurationModelFixedFields,
-  ModelProvider,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import Tooltip from '@/app/components/base/tooltip'
 import { ConfigurationMethodEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import Authorized from './authorized'
 import { useCredentialStatus } from './hooks'
-import Tooltip from '@/app/components/base/tooltip'
 
 type ConfigProviderProps = {
-  provider: ModelProvider,
-  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  provider: ModelProvider
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
 }
 const ConfigProvider = ({
   provider,
@@ -40,13 +40,13 @@ const ConfigProvider = ({
     const text = hasCredential ? t('common.operation.config') : t('common.operation.setup')
     const Item = (
       <Button
-        className='flex grow'
-        size='small'
+        className="flex grow"
+        size="small"
         variant={!authorized ? 'secondary-accent' : 'secondary'}
         title={text}
       >
-        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5 shrink-0' />
-        <span className='w-0 grow truncate text-left'>
+        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5 shrink-0" />
+        <span className="w-0 grow truncate text-left">
           {text}
         </span>
       </Button>

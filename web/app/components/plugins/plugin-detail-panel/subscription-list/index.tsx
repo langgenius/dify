@@ -10,7 +10,7 @@ export enum SubscriptionListMode {
 }
 
 export type SimpleSubscription = {
-  id: string,
+  id: string
   name: string
 }
 
@@ -30,7 +30,7 @@ export const SubscriptionList = withErrorBoundary(({
   const { isLoading, refetch } = useSubscriptionList()
   if (isLoading) {
     return (
-      <div className='flex items-center justify-center py-4'>
+      <div className="flex items-center justify-center py-4">
         <Loading />
       </div>
     )

@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiApps2Line,
 } from '@remixicon/react'
-import UsageInfo from '../usage-info'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
+import UsageInfo from '../usage-info'
 
 type Props = {
   className?: string

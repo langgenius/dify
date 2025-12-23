@@ -1,8 +1,8 @@
 'use client'
-import TabHeader from '@/app/components/base/tab-header'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import TabHeader from '@/app/components/base/tab-header'
 
 export enum TabType {
   settings = 'settings',
@@ -11,7 +11,7 @@ export enum TabType {
 }
 
 type Props = {
-  value: TabType,
+  value: TabType
   onChange: (value: TabType) => void
 }
 
@@ -26,7 +26,7 @@ const Tab: FC<Props> = ({
         { id: TabType.settings, name: t('workflow.debug.settingsTab').toLocaleUpperCase() },
         { id: TabType.lastRun, name: t('workflow.debug.lastRunTab').toLocaleUpperCase() },
       ]}
-      itemClassName='ml-0'
+      itemClassName="ml-0"
       value={value}
       onChange={onChange as any}
     />

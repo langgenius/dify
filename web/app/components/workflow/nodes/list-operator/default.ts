@@ -1,9 +1,11 @@
-import { BlockEnum, VarType } from '../../types'
 import type { NodeDefault } from '../../types'
-import { comparisonOperatorNotRequireValue } from '../if-else/utils'
-import { type ListFilterNodeType, OrderBy } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
+import type { ListFilterNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { BlockEnum, VarType } from '../../types'
+import { comparisonOperatorNotRequireValue } from '../if-else/utils'
+import { OrderBy } from './types'
+
 const i18nPrefix = 'workflow.errorMsg'
 
 const metaData = genNodeMetaData({

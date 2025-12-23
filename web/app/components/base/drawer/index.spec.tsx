@@ -1,13 +1,13 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import Drawer from './index'
 import type { IDrawerProps } from './index'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import Drawer from './index'
 
 // Capture dialog onClose for testing
 let capturedDialogOnClose: (() => void) | null = null
 
 // Mock @headlessui/react
-jest.mock('@headlessui/react', () => ({
+vi.mock('@headlessui/react', () => ({
   Dialog: ({ children, open, onClose, className, unmount }: {
     children: React.ReactNode
     open: boolean
@@ -55,8 +55,8 @@ jest.mock('@headlessui/react', () => ({
 }))
 
 // Mock XMarkIcon
-jest.mock('@heroicons/react/24/outline', () => ({
-  XMarkIcon: ({ className, onClick }: { className: string; onClick?: () => void }) => (
+vi.mock('@heroicons/react/24/outline', () => ({
+  XMarkIcon: ({ className, onClick }: { className: string, onClick?: () => void }) => (
     <svg data-testid="close-icon" className={className} onClick={onClick} />
   ),
 }))
@@ -64,7 +64,7 @@ jest.mock('@heroicons/react/24/outline', () => ({
 // Helper function to render Drawer with default props
 const defaultProps: IDrawerProps = {
   isOpen: true,
-  onClose: jest.fn(),
+  onClose: vi.fn(),
   children: <div data-testid="drawer-content">Content</div>,
 }
 
@@ -75,7 +75,7 @@ const renderDrawer = (props: Partial<IDrawerProps> = {}) => {
 
 describe('Drawer', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     capturedDialogOnClose = null
   })
 
@@ -188,7 +188,7 @@ describe('Drawer', () => {
 
     it('should call onClose when close icon is clicked', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderDrawer({ showClose: true, onClose })
 
       // Act
@@ -237,7 +237,7 @@ describe('Drawer', () => {
 
     it('should call onClose when backdrop is clicked and clickOutsideNotOpen is false', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderDrawer({ onClose, clickOutsideNotOpen: false })
 
       // Act
@@ -249,7 +249,7 @@ describe('Drawer', () => {
 
     it('should not call onClose when backdrop is clicked and clickOutsideNotOpen is true', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderDrawer({ onClose, clickOutsideNotOpen: true })
 
       // Act
@@ -294,7 +294,7 @@ describe('Drawer', () => {
 
     it('should call onCancel when cancel button is clicked', () => {
       // Arrange
-      const onCancel = jest.fn()
+      const onCancel = vi.fn()
       renderDrawer({ onCancel })
 
       // Act
@@ -307,7 +307,7 @@ describe('Drawer', () => {
 
     it('should call onOk when save button is clicked', () => {
       // Arrange
-      const onOk = jest.fn()
+      const onOk = vi.fn()
       renderDrawer({ onOk })
 
       // Act
@@ -496,7 +496,7 @@ describe('Drawer', () => {
 
     it('should handle rapid open/close toggles', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       const { rerender } = render(
         <Drawer {...defaultProps} isOpen={true} onClose={onClose}>
           <div>Content</div>
@@ -556,7 +556,7 @@ describe('Drawer', () => {
       // Arrange
       const minimalProps: IDrawerProps = {
         isOpen: true,
-        onClose: jest.fn(),
+        onClose: vi.fn(),
         children: <div>Minimal Content</div>,
       }
 
@@ -582,7 +582,7 @@ describe('Drawer', () => {
 
     it('should handle noOverlay with clickOutsideNotOpen', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
 
       // Act
       renderDrawer({
@@ -600,7 +600,7 @@ describe('Drawer', () => {
   describe('Dialog onClose Callback', () => {
     it('should call onClose when Dialog triggers close and clickOutsideNotOpen is false', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderDrawer({ onClose, clickOutsideNotOpen: false })
 
       // Act - Simulate Dialog's onClose (e.g., pressing Escape)
@@ -612,7 +612,7 @@ describe('Drawer', () => {
 
     it('should not call onClose when Dialog triggers close and clickOutsideNotOpen is true', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderDrawer({ onClose, clickOutsideNotOpen: true })
 
       // Act - Simulate Dialog's onClose (e.g., pressing Escape)
@@ -624,7 +624,7 @@ describe('Drawer', () => {
 
     it('should call onClose by default when Dialog triggers close', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderDrawer({ onClose })
 
       // Act
@@ -639,7 +639,7 @@ describe('Drawer', () => {
   describe('Event Handler Interactions', () => {
     it('should handle multiple consecutive close icon clicks', () => {
       // Arrange
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderDrawer({ showClose: true, onClose })
 
       // Act
@@ -654,7 +654,7 @@ describe('Drawer', () => {
 
     it('should handle onCancel and onOk being the same function', () => {
       // Arrange
-      const handler = jest.fn()
+      const handler = vi.fn()
       renderDrawer({ onCancel: handler, onOk: handler })
 
       // Act

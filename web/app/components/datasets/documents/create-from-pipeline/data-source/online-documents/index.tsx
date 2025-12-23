@@ -1,22 +1,22 @@
-import { useCallback, useEffect, useMemo } from 'react'
-import SearchInput from '@/app/components/base/notion-page-selector/search-input'
-import PageSelector from './page-selector'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
-import Header from '../base/header'
+import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
+import { useCallback, useEffect, useMemo } from 'react'
+import { useShallow } from 'zustand/react/shallow'
+import Loading from '@/app/components/base/loading'
+import SearchInput from '@/app/components/base/notion-page-selector/search-input'
+import Toast from '@/app/components/base/toast'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDocLink } from '@/context/i18n'
+import { useModalContextSelector } from '@/context/modal-context'
 import { DatasourceType } from '@/models/pipeline'
 import { ssePost } from '@/service/base'
-import Toast from '@/app/components/base/toast'
-import type { DataSourceNodeCompletedResponse, DataSourceNodeErrorResponse } from '@/types/pipeline'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
-import { useShallow } from 'zustand/react/shallow'
-import { useModalContextSelector } from '@/context/modal-context'
-import Title from './title'
 import { useGetDataSourceAuth } from '@/service/use-datasource'
-import Loading from '@/app/components/base/loading'
-import { useDocLink } from '@/context/i18n'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import Header from '../base/header'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import PageSelector from './page-selector'
+import Title from './title'
 
 type OnlineDocumentsProps = {
   nodeId: string
@@ -106,7 +106,8 @@ const OnlineDocuments = ({
   }, [dataSourceStore, datasourceNodeRunURL, nodeData.datasource_parameters])
 
   useEffect(() => {
-    if (!currentCredentialId) return
+    if (!currentCredentialId)
+      return
     getOnlineDocuments()
   }, [currentCredentialId])
 
@@ -134,9 +135,9 @@ const OnlineDocuments = ({
   }, [setShowAccountSettingModal])
 
   return (
-    <div className='flex flex-col gap-y-2'>
+    <div className="flex flex-col gap-y-2">
       <Header
-        docTitle='Docs'
+        docTitle="Docs"
         docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
@@ -144,9 +145,9 @@ const OnlineDocuments = ({
         onCredentialChange={onCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
-      <div className='rounded-xl border border-components-panel-border bg-background-default-subtle'>
-        <div className='flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3'>
-          <div className='flex grow items-center'>
+      <div className="rounded-xl border border-components-panel-border bg-background-default-subtle">
+        <div className="flex items-center gap-x-2 rounded-t-xl border-b border-b-divider-regular bg-components-panel-bg p-1 pl-3">
+          <div className="flex grow items-center">
             <Title name={nodeData.datasource_label} />
           </div>
           <SearchInput
@@ -154,25 +155,27 @@ const OnlineDocuments = ({
             onChange={handleSearchValueChange}
           />
         </div>
-        <div className='overflow-hidden rounded-b-xl'>
-          {documentsData?.length ? (
-            <PageSelector
-              checkedIds={selectedPagesId}
-              disabledValue={new Set()}
-              searchValue={searchValue}
-              list={documentsData[0].pages || []}
-              pagesMap={PagesMapAndSelectedPagesId}
-              onSelect={handleSelectPages}
-              canPreview={!isInPipeline}
-              onPreview={handlePreviewPage}
-              isMultipleChoice={supportBatchUpload}
-              currentCredentialId={currentCredentialId}
-            />
-          ) : (
-            <div className='flex h-[296px] items-center justify-center'>
-              <Loading type='app' />
-            </div>
-          )}
+        <div className="overflow-hidden rounded-b-xl">
+          {documentsData?.length
+            ? (
+                <PageSelector
+                  checkedIds={selectedPagesId}
+                  disabledValue={new Set()}
+                  searchValue={searchValue}
+                  list={documentsData[0].pages || []}
+                  pagesMap={PagesMapAndSelectedPagesId}
+                  onSelect={handleSelectPages}
+                  canPreview={!isInPipeline}
+                  onPreview={handlePreviewPage}
+                  isMultipleChoice={supportBatchUpload}
+                  currentCredentialId={currentCredentialId}
+                />
+              )
+            : (
+                <div className="flex h-[296px] items-center justify-center">
+                  <Loading type="app" />
+                </div>
+              )}
         </div>
       </div>
     </div>

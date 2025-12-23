@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import React, { useCallback } from 'react'
-import { produce } from 'immer'
-import RemoveButton from '../../../_base/components/remove-button'
-import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { produce } from 'immer'
 import { noop } from 'lodash-es'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
+import RemoveButton from '../../../_base/components/remove-button'
 
 type Props = {
   readonly: boolean
@@ -59,14 +60,14 @@ const VarList: FC<Props> = ({
   }
 
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
+        <div className="flex items-center space-x-1" key={index}>
           <VarReferencePicker
             readonly={readonly}
             nodeId={nodeId}
             isShowNodeName
-            className='grow'
+            className="grow"
             value={item}
             onChange={handleVarReferenceChange(index)}
             onOpen={handleOpen(index)}
