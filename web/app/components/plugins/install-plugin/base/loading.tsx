@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Placeholder from '../../card/base/placeholder'
 

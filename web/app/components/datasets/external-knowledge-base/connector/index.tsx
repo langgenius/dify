@@ -2,7 +2,8 @@
 
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import { useRouter } from 'next/navigation'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { trackEvent } from '@/app/components/base/amplitude'
 import { useToastContext } from '@/app/components/base/toast'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'

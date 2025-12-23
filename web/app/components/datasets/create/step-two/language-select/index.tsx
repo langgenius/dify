@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import Popover from '@/app/components/base/popover'
 import { languages } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'

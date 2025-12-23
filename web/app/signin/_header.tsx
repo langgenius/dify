@@ -1,7 +1,7 @@
 'use client'
 import type { Locale } from '@/i18n-config'
 import dynamic from 'next/dynamic'
-import React from 'react'
+import * as React from 'react'
 import { useContext } from 'use-context-selector'
 import Divider from '@/app/components/base/divider'
 import LocaleSigninSelect from '@/app/components/base/select/locale-signin'

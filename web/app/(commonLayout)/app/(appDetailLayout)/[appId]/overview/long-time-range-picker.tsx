@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { Item } from '@/app/components/base/select'
 import dayjs from 'dayjs'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SimpleSelect } from '@/app/components/base/select'
 

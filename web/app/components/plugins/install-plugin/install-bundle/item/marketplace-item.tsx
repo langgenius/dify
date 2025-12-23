@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Plugin } from '../../../types'
 import type { VersionProps } from '@/app/components/plugins/types'
-import React from 'react'
+import * as React from 'react'
 import Loading from '../../base/loading'
 import LoadedItem from './loaded-item'
 

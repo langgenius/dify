@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { FullDocumentDetail } from '@/models/datasets'
 import { RiEditLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'

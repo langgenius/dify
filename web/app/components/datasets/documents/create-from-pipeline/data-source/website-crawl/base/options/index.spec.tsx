@@ -1,7 +1,7 @@
 import type { MockInstance } from 'vitest'
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import Toast from '@/app/components/base/toast'
 import { CrawlStep } from '@/models/datasets'

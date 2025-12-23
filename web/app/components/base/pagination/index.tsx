@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'

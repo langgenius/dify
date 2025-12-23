@@ -1,5 +1,5 @@
 import type { Datasource } from '../../test-run/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStore } from '@/app/components/workflow/store'
 import { useDraftPipelinePreProcessingParams } from '@/service/use-pipeline'

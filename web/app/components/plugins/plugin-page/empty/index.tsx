@@ -1,6 +1,7 @@
 'use client'
 import { noop } from 'lodash-es'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { Group } from '@/app/components/base/icons/src/vender/other'

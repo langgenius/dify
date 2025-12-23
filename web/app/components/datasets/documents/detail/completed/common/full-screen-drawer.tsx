@@ -1,5 +1,5 @@
 import { noop } from 'lodash-es'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import Drawer from './drawer'
 

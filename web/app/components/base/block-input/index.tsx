@@ -1,7 +1,8 @@
 'use client'
 
 import type { ChangeEvent, FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'

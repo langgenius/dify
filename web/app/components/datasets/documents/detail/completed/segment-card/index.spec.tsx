@@ -2,7 +2,7 @@ import type { SegmentListContextValue } from '@/app/components/datasets/document
 import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type { Attachment, ChildChunkDetail, ParentMode, SegmentDetailModel } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { ChunkingMode } from '@/models/datasets'
 import SegmentCard from './index'
 

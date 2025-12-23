@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Plugin } from '@/app/components/plugins/types.ts'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'

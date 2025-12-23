@@ -2,7 +2,7 @@ import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-so
 import type { OnlineDriveFile } from '@/models/pipeline'
 import type { OnlineDriveData } from '@/types/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import Header from './header'

@@ -16,7 +16,8 @@ import {
   RiUser2Line,
 } from '@remixicon/react'
 import { useBoolean, useSessionStorageState } from 'ahooks'
-import React, { useCallback, useEffect, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'

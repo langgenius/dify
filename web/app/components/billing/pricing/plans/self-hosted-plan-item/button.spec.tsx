@@ -1,6 +1,6 @@
 import type { MockedFunction } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { SelfHostedPlan } from '../../../type'

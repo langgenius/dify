@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { Markdown } from '@/app/components/base/markdown'
 import { cn } from '@/utils/classnames'
 import { useSegmentListContext } from '..'

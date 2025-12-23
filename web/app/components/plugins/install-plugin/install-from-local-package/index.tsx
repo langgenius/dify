@@ -1,7 +1,8 @@
 'use client'
 
 import type { Dependency, PluginDeclaration } from '../../types'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'

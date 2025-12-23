@@ -3,7 +3,7 @@ import {
   RiAddLine,
   RiFunctionAddLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import Option from './option'

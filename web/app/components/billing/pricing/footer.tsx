@@ -1,7 +1,7 @@
 import type { Category } from '.'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { CategoryEnum } from '.'

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { StartNodeType } from './types'
 import type { InputVar, NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import AddButton from '@/app/components/base/button/add-button'

@@ -1,6 +1,6 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import FileList from './index'
 

@@ -1,7 +1,8 @@
 'use client'
 import type { ErrorInfo, ReactNode } from 'react'
 import { RiAlertLine, RiBugLine } from '@remixicon/react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 

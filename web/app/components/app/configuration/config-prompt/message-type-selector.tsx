@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { useBoolean, useClickAway } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { ChevronSelectorVertical } from '@/app/components/base/icons/src/vender/line/arrows'
 import { PromptRole } from '@/models/debug'
 import { cn } from '@/utils/classnames'

@@ -8,7 +8,8 @@ import {
   RiFileCopyLine,
 } from '@remixicon/react'
 import dayjs from 'dayjs'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'

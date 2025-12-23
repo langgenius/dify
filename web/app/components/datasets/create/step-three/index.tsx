@@ -1,7 +1,7 @@
 'use client'
 import type { createDocumentResponse, FullDocumentDetail } from '@/models/datasets'
 import { RiBookOpenLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 import AppIcon from '@/app/components/base/app-icon'

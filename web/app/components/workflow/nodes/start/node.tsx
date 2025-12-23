@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { StartNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '../_base/components/input-var-type-icon'

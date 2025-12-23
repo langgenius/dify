@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { DatePickerFooterProps } from '../types'
 import { RiTimeLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Button from '../../button'

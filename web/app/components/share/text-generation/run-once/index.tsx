@@ -6,7 +6,8 @@ import {
   RiLoader2Line,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import React, { useCallback, useEffect, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'

@@ -1,7 +1,7 @@
 import type { DocumentIndexingStatus } from '@/models/datasets'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { DatasourceType } from '@/models/pipeline'
 import Processing from './index'
 

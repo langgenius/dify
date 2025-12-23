@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import RunBatch from './index'
 

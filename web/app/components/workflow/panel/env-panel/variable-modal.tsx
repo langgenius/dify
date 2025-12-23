@@ -1,6 +1,7 @@
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { RiCloseLine } from '@remixicon/react'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { v4 as uuid4 } from 'uuid'

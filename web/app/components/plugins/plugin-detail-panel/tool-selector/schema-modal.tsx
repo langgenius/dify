@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '@/app/components/workflow/nodes/llm/types'
 import { RiCloseLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import VisualEditor from '@/app/components/workflow/nodes/llm/components/json-schema-config-modal/visual-editor'

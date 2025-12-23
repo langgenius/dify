@@ -1,6 +1,6 @@
 import type { Tag } from '../../../hooks'
 import { RiArrowDownSLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import { useMixedTranslation } from '../../hooks'
 

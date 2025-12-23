@@ -1,5 +1,5 @@
 import { RiPriceTag3Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type TriggerProps = {

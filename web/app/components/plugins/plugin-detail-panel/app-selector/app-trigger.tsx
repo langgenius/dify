@@ -3,7 +3,7 @@ import type { App } from '@/types/app'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { cn } from '@/utils/classnames'

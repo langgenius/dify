@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import Form from '@/app/components/datasets/settings/form'
 import { getLocaleOnServer, useTranslation as translate } from '@/i18n-config/server'
 

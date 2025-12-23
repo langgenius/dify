@@ -1,6 +1,6 @@
 import type { Locale } from '@/i18n-config'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import I18nContext from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import CSVDownload from './csv-downloader'

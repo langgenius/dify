@@ -1,6 +1,6 @@
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResult from './crawled-result'
 import CrawledResultItem from './crawled-result-item'

@@ -1,6 +1,7 @@
 import type { VarInInspect } from '@/types/workflow'
 import { useDebounceFn } from 'ahooks'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { getProcessedFiles, getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'

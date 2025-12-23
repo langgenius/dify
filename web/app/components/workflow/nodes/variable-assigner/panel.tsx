@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { VariableAssignerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
 import AddButton from '@/app/components/workflow/nodes/_base/components/add-button'

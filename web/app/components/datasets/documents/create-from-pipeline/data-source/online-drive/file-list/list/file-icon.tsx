@@ -1,4 +1,5 @@
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import FileTypeIcon from '@/app/components/base/file-uploader/file-type-icon'
 import { BucketsBlue, Folder } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 import { OnlineDriveFileType } from '@/models/pipeline'

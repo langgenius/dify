@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiApps2Line,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useProviderContext } from '@/context/provider-context'
 import UsageInfo from '../usage-info'

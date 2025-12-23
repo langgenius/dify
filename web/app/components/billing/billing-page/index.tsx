@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'

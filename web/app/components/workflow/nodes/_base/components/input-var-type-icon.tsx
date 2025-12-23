@@ -10,7 +10,7 @@ import {
   RiHashtag,
   RiTextSnippet,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { InputVarType } from '../../../types'
 
 type Props = {

@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
 import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
 import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'

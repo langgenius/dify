@@ -1,6 +1,7 @@
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 import { FileTypeIcon } from '../file-uploader'
 import { getFileAppearanceType } from '../file-uploader/utils'

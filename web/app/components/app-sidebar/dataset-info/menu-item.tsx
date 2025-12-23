@@ -1,5 +1,5 @@
 import type { RemixiconComponentType } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 
 type MenuItemProps = {
   name: string

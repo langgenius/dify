@@ -6,7 +6,7 @@
  */
 
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 
 // Mock environment variables before importing constants
 const originalEnv = process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT

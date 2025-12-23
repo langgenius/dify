@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
 import List from './index'
 

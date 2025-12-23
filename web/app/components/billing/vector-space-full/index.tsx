@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import GridMask from '@/app/components/base/grid-mask'
 import { cn } from '@/utils/classnames'

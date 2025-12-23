@@ -1,6 +1,6 @@
 import type { DataSourceCredential } from '@/types/pipeline'
 import { RiArrowDownSLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
 import { cn } from '@/utils/classnames'
 

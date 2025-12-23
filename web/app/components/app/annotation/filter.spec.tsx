@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import type { QueryParam } from './filter'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import useSWR from 'swr'
 import Filter from './filter'
 

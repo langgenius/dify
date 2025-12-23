@@ -6,7 +6,8 @@ import {
   RiClipboardLine,
   RiInformation2Fill,
 } from '@remixicon/react'
-import React, { useEffect, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { BaseForm } from '@/app/components/base/form/components/base'

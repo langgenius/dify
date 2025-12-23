@@ -4,7 +4,7 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { noop } from 'lodash-es'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Indicator from '../../../indicator'

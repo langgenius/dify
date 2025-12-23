@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
 import Toast from '../../../../base/toast'
 import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'

@@ -1,6 +1,7 @@
 import { RiBookOpenLine, RiKey2Line } from '@remixicon/react'
 import Link from 'next/link'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import CopyFeedback from '@/app/components/base/copy-feedback'

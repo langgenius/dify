@@ -5,7 +5,8 @@ import type {
 } from '@floating-ui/react'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,

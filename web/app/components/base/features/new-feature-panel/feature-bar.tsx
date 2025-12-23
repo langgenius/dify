@@ -1,5 +1,6 @@
 import { RiApps2AddLine, RiArrowRightLine, RiSparklingFill } from '@remixicon/react'
-import React, { useMemo, useState } from 'react'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useFeatures } from '@/app/components/base/features/hooks'

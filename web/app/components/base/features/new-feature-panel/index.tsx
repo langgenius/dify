@@ -2,7 +2,7 @@ import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { RiCloseLine, RiInformation2Fill } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AnnotationReply from '@/app/components/base/features/new-feature-panel/annotation-reply'
 

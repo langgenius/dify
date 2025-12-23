@@ -1,6 +1,6 @@
 import type { FileTypeSelectOption } from './types'
 import { RiArrowDownSLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { cn } from '@/utils/classnames'

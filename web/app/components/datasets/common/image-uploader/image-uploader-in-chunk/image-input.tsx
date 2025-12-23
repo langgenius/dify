@@ -1,5 +1,5 @@
 import { RiUploadCloud2Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { ACCEPT_TYPES } from '../constants'

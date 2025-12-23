@@ -1,6 +1,6 @@
 import type { ScheduleMode } from '../types'
 import { RiCalendarLine, RiCodeLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SegmentedControl } from '@/app/components/base/segmented-control'
 

@@ -4,7 +4,8 @@ import type { Collection } from '@/app/components/tools/types'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'

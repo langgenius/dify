@@ -1,5 +1,6 @@
 import { RiLoader2Line } from '@remixicon/react'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { RAG_PIPELINE_PREVIEW_CHUNK_NUM } from '@/config'

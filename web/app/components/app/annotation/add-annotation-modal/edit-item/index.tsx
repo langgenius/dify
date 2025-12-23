@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Robot, User } from '@/app/components/base/icons/src/public/avatar'
 import Textarea from '@/app/components/base/textarea'

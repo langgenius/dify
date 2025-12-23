@@ -2,7 +2,8 @@
 
 import type { Plugin, PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
 import { RiLoader2Line } from '@remixicon/react'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import useCheckInstalled from '@/app/components/plugins/install-plugin/hooks/use-check-installed'

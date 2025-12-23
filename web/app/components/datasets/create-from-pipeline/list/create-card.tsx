@@ -1,6 +1,7 @@
 import { RiAddCircleLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Toast from '@/app/components/base/toast'

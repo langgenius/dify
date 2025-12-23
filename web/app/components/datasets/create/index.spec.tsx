@@ -1,7 +1,7 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'

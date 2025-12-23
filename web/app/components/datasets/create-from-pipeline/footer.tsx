@@ -1,6 +1,7 @@
 import { RiFileUploadLine } from '@remixicon/react'
 import { useRouter, useSearchParams } from 'next/navigation'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import Divider from '../../base/divider'

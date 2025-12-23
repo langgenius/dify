@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Modal from '@/app/components/base/modal'

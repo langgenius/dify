@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import type { IBatchModalProps } from './index'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'

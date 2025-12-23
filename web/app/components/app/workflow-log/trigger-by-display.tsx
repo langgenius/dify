@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { TriggerMetadata } from '@/models/log'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Code,

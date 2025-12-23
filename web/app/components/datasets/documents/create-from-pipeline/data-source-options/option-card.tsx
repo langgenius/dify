@@ -1,5 +1,5 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import DatasourceIcon from './datasource-icon'
 import { useDatasourceIcon } from './hooks'

@@ -1,5 +1,6 @@
 import type { ChildChunkDetail, SegmentDetailModel } from '@/models/datasets'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import { ChunkingMode } from '@/models/datasets'

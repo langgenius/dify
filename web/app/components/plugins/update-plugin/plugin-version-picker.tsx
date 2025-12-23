@@ -4,7 +4,8 @@ import type {
   Placement,
 } from '@floating-ui/react'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { lt } from 'semver'
 import Badge from '@/app/components/base/badge'

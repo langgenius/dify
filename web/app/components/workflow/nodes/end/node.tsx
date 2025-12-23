@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { EndNodeType } from './types'
 import type { NodeProps, Variable } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import {
   useIsChatMode,
   useWorkflow,

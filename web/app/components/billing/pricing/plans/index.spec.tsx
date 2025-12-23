@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '../../type'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { Plan } from '../../type'
 import { PlanRange } from '../plan-switcher/plan-range-switcher'
 import cloudPlanItem from './cloud-plan-item'
