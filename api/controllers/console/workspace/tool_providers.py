@@ -1,10 +1,9 @@
 import io
 from typing import Any, Literal
-from urllib.parse import urlparse
 
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, HttpUrl, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden
 
@@ -27,7 +26,7 @@ from core.plugin.entities.plugin_daemon import CredentialType
 from core.plugin.impl.oauth import OAuthHandler
 from core.tools.entities.tool_entities import ApiProviderSchemaType, WorkflowToolParameterConfiguration
 from extensions.ext_database import db
-from libs.helper import alphanumeric, uuid_value
+from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant, login_required
 from models.provider_ids import ToolProviderID
 
@@ -40,17 +39,6 @@ from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
-
-
-def is_valid_url(url: str) -> bool:
-    if not url:
-        return False
-
-    try:
-        parsed = urlparse(url)
-        return all([parsed.scheme, parsed.netloc]) and parsed.scheme in ["http", "https"]
-    except (ValueError, TypeError):
-        return False
 
 
 class ToolProviderListQuery(BaseModel):
@@ -79,7 +67,7 @@ class ApiToolProviderBasePayload(BaseModel):
     schema_: str = Field(alias="schema")
     provider: str
     icon: dict[str, Any]
-    privacy_policy: str | None = None
+    privacy_policy: str = ""
     labels: list[str] | None = None
     custom_disclaimer: str = ""
 
@@ -93,14 +81,7 @@ class ApiToolProviderUpdatePayload(ApiToolProviderBasePayload):
 
 
 class UrlQuery(BaseModel):
-    url: str
-
-    @field_validator("url")
-    @classmethod
-    def validate_url(cls, value: str) -> str:
-        if not is_valid_url(value):
-            raise ValueError("Invalid URL")
-        return value
+    url: HttpUrl
 
 
 class ProviderQuery(BaseModel):
@@ -125,57 +106,30 @@ class ApiToolTestPayload(BaseModel):
 
 
 class WorkflowToolBasePayload(BaseModel):
-    name: str
+    name: str = Field(pattern=r"^[a-zA-Z0-9_]+$")
     label: str
     description: str
     icon: dict[str, Any]
     parameters: list[WorkflowToolParameterConfiguration] = Field(default_factory=list)
-    privacy_policy: str | None = ""
+    privacy_policy: str = ""
     labels: list[str] | None = None
-
-    @field_validator("name")
-    @classmethod
-    def validate_name(cls, value: str) -> str:
-        return alphanumeric(value)
 
 
 class WorkflowToolCreatePayload(WorkflowToolBasePayload):
-    workflow_app_id: str
-
-    @field_validator("workflow_app_id")
-    @classmethod
-    def validate_workflow_app_id(cls, value: str) -> str:
-        return uuid_value(value)
+    workflow_app_id: UUIDStrOrEmpty
 
 
 class WorkflowToolUpdatePayload(WorkflowToolBasePayload):
-    workflow_tool_id: str
-
-    @field_validator("workflow_tool_id")
-    @classmethod
-    def validate_workflow_tool_id(cls, value: str) -> str:
-        return uuid_value(value)
+    workflow_tool_id: UUIDStrOrEmpty
 
 
 class WorkflowToolDeletePayload(BaseModel):
-    workflow_tool_id: str
-
-    @field_validator("workflow_tool_id")
-    @classmethod
-    def validate_workflow_tool_id(cls, value: str) -> str:
-        return uuid_value(value)
+    workflow_tool_id: UUIDStrOrEmpty
 
 
 class WorkflowToolGetQuery(BaseModel):
-    workflow_tool_id: str | None = None
-    workflow_app_id: str | None = None
-
-    @field_validator("workflow_tool_id", "workflow_app_id")
-    @classmethod
-    def validate_ids(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return uuid_value(value)
+    workflow_tool_id: UUIDStrOrEmpty | None = None
+    workflow_app_id: UUIDStrOrEmpty | None = None
 
     @model_validator(mode="after")
     def ensure_one(self) -> "WorkflowToolGetQuery":
@@ -185,12 +139,7 @@ class WorkflowToolGetQuery(BaseModel):
 
 
 class WorkflowToolListQuery(BaseModel):
-    workflow_tool_id: str
-
-    @field_validator("workflow_tool_id")
-    @classmethod
-    def validate_workflow_tool_id(cls, value: str) -> str:
-        return uuid_value(value)
+    workflow_tool_id: UUIDStrOrEmpty
 
 
 class BuiltinProviderDefaultCredentialPayload(BaseModel):
@@ -436,7 +385,7 @@ class ToolApiProviderGetRemoteSchemaApi(Resource):
         return ApiToolManageService.get_api_tool_provider_remote_schema(
             user_id,
             tenant_id,
-            query.url,
+            str(query.url),
         )
 
 
