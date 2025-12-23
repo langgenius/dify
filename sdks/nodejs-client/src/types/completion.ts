@@ -2,10 +2,11 @@ import type { StreamEvent } from "./common";
 
 export type CompletionRequest = {
   inputs?: Record<string, unknown>;
+  query?: string;
   response_mode?: "blocking" | "streaming";
   user: string;
-  files?: unknown;
-  retriever_from?: "app" | "dataset";
+  files?: Array<Record<string, unknown>> | null;
+  retriever_from?: string;
 };
 
 export type CompletionResponse = Record<string, unknown>;

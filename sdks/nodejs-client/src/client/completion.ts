@@ -20,13 +20,13 @@ export class CompletionClient extends DifyClient {
     inputs: Record<string, unknown>,
     user: string,
     stream?: boolean,
-    files?: unknown
+    files?: Array<Record<string, unknown>> | null
   ): Promise<DifyResponse<CompletionResponse> | DifyStream<CompletionResponse>>;
   createCompletionMessage(
     inputOrRequest: CompletionRequest | Record<string, unknown>,
     user?: string,
     stream = false,
-    files?: unknown
+    files?: Array<Record<string, unknown>> | null
   ): Promise<DifyResponse<CompletionResponse> | DifyStream<CompletionResponse>> {
     let payload: CompletionRequest;
     let shouldStream = stream;

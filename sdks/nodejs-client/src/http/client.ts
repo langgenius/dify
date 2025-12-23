@@ -23,6 +23,7 @@ import type { DifyError } from "../errors/dify-error";
 import {
   APIError,
   AuthenticationError,
+  FileUploadError,
   NetworkError,
   RateLimitError,
   TimeoutError,
@@ -168,6 +169,20 @@ const mapAxiosError = (error: unknown): DifyError => {
           responseBody,
           requestId,
         });
+      }
+      if (status === 400) {
+        const requestUrl = axiosError.config?.url ?? "";
+        const isUploadRequest =
+          requestUrl.includes("/files") ||
+          requestUrl.includes("upload") ||
+          requestUrl.includes("/audio-to-text");
+        if (isUploadRequest) {
+          return new FileUploadError(message, {
+            statusCode: status,
+            responseBody,
+            requestId,
+          });
+        }
       }
       return new APIError(message, {
         statusCode: status,

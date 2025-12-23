@@ -2,12 +2,14 @@ import type {
   BinaryStream,
   DifyClientConfig,
   DifyResponse,
+  MessageFeedbackRequest,
   QueryParams,
   RequestMethod,
+  TextToAudioRequest,
 } from "../types/common";
 import { HttpClient } from "../http/client";
 import { ensureNonEmptyString, ensureRating } from "./validation";
-import { FileUploadError } from "../errors/dify-error";
+import { FileUploadError, ValidationError } from "../errors/dify-error";
 import { isFormData } from "../http/form-data";
 
 const toConfig = (
@@ -77,44 +79,75 @@ export class DifyClient {
     });
   }
 
-  getApplicationParameters(user: string): Promise<DifyResponse<unknown>> {
-    ensureNonEmptyString(user, "user");
+  getApplicationParameters(user?: string): Promise<DifyResponse<unknown>> {
+    if (user) {
+      ensureNonEmptyString(user, "user");
+    }
     return this.http.request({
       method: "GET",
       path: "/parameters",
-      query: { user },
+      query: user ? { user } : undefined,
     });
   }
 
-  async getParameters(user: string): Promise<DifyResponse<unknown>> {
+  async getParameters(user?: string): Promise<DifyResponse<unknown>> {
     return this.getApplicationParameters(user);
   }
 
-  getMeta(user: string): Promise<DifyResponse<unknown>> {
-    ensureNonEmptyString(user, "user");
+  getMeta(user?: string): Promise<DifyResponse<unknown>> {
+    if (user) {
+      ensureNonEmptyString(user, "user");
+    }
     return this.http.request({
       method: "GET",
       path: "/meta",
-      query: { user },
+      query: user ? { user } : undefined,
     });
   }
 
   messageFeedback(
+    request: MessageFeedbackRequest
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  messageFeedback(
     messageId: string,
-    rating: "like" | "dislike",
+    rating: "like" | "dislike" | null,
     user: string,
     content?: string
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  messageFeedback(
+    messageIdOrRequest: string | MessageFeedbackRequest,
+    rating?: "like" | "dislike" | null,
+    user?: string,
+    content?: string
   ): Promise<DifyResponse<Record<string, unknown>>> {
-    ensureNonEmptyString(messageId, "messageId");
-    ensureNonEmptyString(user, "user");
-    ensureRating(rating);
+    let messageId: string;
+    const payload: Record<string, unknown> = {};
 
-    const payload: Record<string, unknown> = {
-      rating,
-      user,
-    };
-    if (content) {
-      payload.content = content;
+    if (typeof messageIdOrRequest === "string") {
+      messageId = messageIdOrRequest;
+      ensureNonEmptyString(messageId, "messageId");
+      ensureNonEmptyString(user, "user");
+      payload.user = user;
+      if (rating !== undefined && rating !== null) {
+        ensureRating(rating);
+        payload.rating = rating;
+      }
+      if (content !== undefined) {
+        payload.content = content;
+      }
+    } else {
+      const request = messageIdOrRequest;
+      messageId = request.messageId;
+      ensureNonEmptyString(messageId, "messageId");
+      ensureNonEmptyString(request.user, "user");
+      payload.user = request.user;
+      if (request.rating !== undefined && request.rating !== null) {
+        ensureRating(request.rating);
+        payload.rating = request.rating;
+      }
+      if (request.content !== undefined) {
+        payload.content = request.content;
+      }
     }
 
     return this.http.request({
@@ -146,14 +179,12 @@ export class DifyClient {
     });
   }
 
-  fileUpload(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
+  fileUpload(form: unknown, user: string): Promise<DifyResponse<unknown>> {
     if (!isFormData(form)) {
       throw new FileUploadError("FormData is required for file uploads");
     }
-    if (user) {
-      ensureNonEmptyString(user, "user");
-      appendUserToFormData(form, user);
-    }
+    ensureNonEmptyString(user, "user");
+    appendUserToFormData(form, user);
     return this.http.request({
       method: "POST",
       path: "/files/upload",
@@ -179,14 +210,12 @@ export class DifyClient {
     });
   }
 
-  audioToText(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
+  audioToText(form: unknown, user: string): Promise<DifyResponse<unknown>> {
     if (!isFormData(form)) {
       throw new FileUploadError("FormData is required for audio uploads");
     }
-    if (user) {
-      ensureNonEmptyString(user, "user");
-      appendUserToFormData(form, user);
-    }
+    ensureNonEmptyString(user, "user");
+    appendUserToFormData(form, user);
     return this.http.request({
       method: "POST",
       path: "/audio-to-text",
@@ -195,23 +224,49 @@ export class DifyClient {
   }
 
   textToAudio(
+    request: TextToAudioRequest
+  ): Promise<DifyResponse<Buffer> | BinaryStream>;
+  textToAudio(
     text: string,
     user: string,
+    streaming?: boolean,
+    voice?: string
+  ): Promise<DifyResponse<Buffer> | BinaryStream>;
+  textToAudio(
+    textOrRequest: string | TextToAudioRequest,
+    user?: string,
     streaming = false,
     voice?: string
   ): Promise<DifyResponse<Buffer> | BinaryStream> {
-    ensureNonEmptyString(text, "text");
-    ensureNonEmptyString(user, "user");
-    const payload: Record<string, unknown> = {
-      text,
-      user,
-      streaming,
-    };
-    if (voice) {
-      payload.voice = voice;
+    let payload: TextToAudioRequest;
+
+    if (typeof textOrRequest === "string") {
+      ensureNonEmptyString(textOrRequest, "text");
+      ensureNonEmptyString(user, "user");
+      payload = {
+        text: textOrRequest,
+        user,
+        streaming,
+      };
+      if (voice) {
+        payload.voice = voice;
+      }
+    } else {
+      payload = { ...textOrRequest };
+      ensureNonEmptyString(payload.user, "user");
+      if (payload.text !== undefined && payload.text !== null) {
+        ensureNonEmptyString(payload.text, "text");
+      }
+      if (payload.message_id !== undefined && payload.message_id !== null) {
+        ensureNonEmptyString(payload.message_id, "messageId");
+      }
+      if (!payload.text && !payload.message_id) {
+        throw new ValidationError("text or message_id is required");
+      }
+      payload.streaming = payload.streaming ?? false;
     }
 
-    if (streaming) {
+    if (payload.streaming) {
       return this.http.requestBinaryStream({
         method: "POST",
         path: "/text-to-audio",

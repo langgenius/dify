@@ -95,22 +95,84 @@ export class WorkflowClient extends DifyClient {
   }
 
   getLogs(
+    options?: {
+      keyword?: string;
+      status?: string;
+      createdAtBefore?: string;
+      createdAtAfter?: string;
+      createdByEndUserSessionId?: string;
+      createdByAccount?: string;
+      page?: number;
+      limit?: number;
+      startTime?: string;
+      endTime?: string;
+    }
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  getLogs(
     user: string,
     options?: {
       keyword?: string;
       status?: string;
-      startTime?: string;
-      endTime?: string;
+      createdAtBefore?: string;
+      createdAtAfter?: string;
+      createdByEndUserSessionId?: string;
+      createdByAccount?: string;
       page?: number;
       limit?: number;
+      startTime?: string;
+      endTime?: string;
+    }
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  getLogs(
+    userOrOptions?:
+      | string
+      | {
+          keyword?: string;
+          status?: string;
+          createdAtBefore?: string;
+          createdAtAfter?: string;
+          createdByEndUserSessionId?: string;
+          createdByAccount?: string;
+          page?: number;
+          limit?: number;
+          startTime?: string;
+          endTime?: string;
+        },
+    maybeOptions?: {
+      keyword?: string;
+      status?: string;
+      createdAtBefore?: string;
+      createdAtAfter?: string;
+      createdByEndUserSessionId?: string;
+      createdByAccount?: string;
+      page?: number;
+      limit?: number;
+      startTime?: string;
+      endTime?: string;
     }
   ): Promise<DifyResponse<Record<string, unknown>>> {
-    ensureNonEmptyString(user, "user");
+    const options =
+      typeof userOrOptions === "string" ? maybeOptions : userOrOptions;
     if (options?.keyword) {
       ensureOptionalString(options.keyword, "keyword");
     }
     if (options?.status) {
       ensureOptionalString(options.status, "status");
+    }
+    if (options?.createdAtBefore) {
+      ensureOptionalString(options.createdAtBefore, "createdAtBefore");
+    }
+    if (options?.createdAtAfter) {
+      ensureOptionalString(options.createdAtAfter, "createdAtAfter");
+    }
+    if (options?.createdByEndUserSessionId) {
+      ensureOptionalString(
+        options.createdByEndUserSessionId,
+        "createdByEndUserSessionId"
+      );
+    }
+    if (options?.createdByAccount) {
+      ensureOptionalString(options.createdByAccount, "createdByAccount");
     }
     if (options?.startTime) {
       ensureOptionalString(options.startTime, "startTime");
@@ -121,12 +183,16 @@ export class WorkflowClient extends DifyClient {
     ensureOptionalInt(options?.page, "page");
     ensureOptionalInt(options?.limit, "limit");
 
+    const createdAtAfter = options?.createdAtAfter ?? options?.startTime;
+    const createdAtBefore = options?.createdAtBefore ?? options?.endTime;
+
     const query: QueryParams = {
-      user,
       keyword: options?.keyword,
       status: options?.status,
-      start_time: options?.startTime,
-      end_time: options?.endTime,
+      created_at__before: createdAtBefore,
+      created_at__after: createdAtAfter,
+      created_by_end_user_session_id: options?.createdByEndUserSessionId,
+      created_by_account: options?.createdByAccount,
       page: options?.page,
       limit: options?.limit,
     };

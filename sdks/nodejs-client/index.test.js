@@ -99,7 +99,7 @@ describe("File uploads", () => {
     const form = new globalThis.FormData();
     mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
 
-    await difyClient.fileUpload(form);
+    await difyClient.fileUpload(form, "end-user");
 
     expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
       method: routes.fileUpload.method,
@@ -136,6 +136,38 @@ describe("Workflow client", () => {
       data: { user: "end-user" },
     }));
   });
+
+  it("maps workflow log filters to service api params", async () => {
+    const workflowClient = new WorkflowClient("test");
+    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+
+    await workflowClient.getLogs({
+      createdAtAfter: "2024-01-01T00:00:00Z",
+      createdAtBefore: "2024-01-02T00:00:00Z",
+      createdByEndUserSessionId: "sess-1",
+      createdByAccount: "acc-1",
+      page: 2,
+      limit: 10,
+    });
+
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+      method: "GET",
+      url: "/workflows/logs",
+      params: {
+        created_at__after: "2024-01-01T00:00:00Z",
+        created_at__before: "2024-01-02T00:00:00Z",
+        created_by_end_user_session_id: "sess-1",
+        created_by_account: "acc-1",
+        page: 2,
+        limit: 10,
+      },
+      headers: expect.objectContaining({
+        Authorization: "Bearer test",
+      }),
+      responseType: "json",
+      timeout: 60000,
+    }));
+  });
 });
 
 describe("Chat client", () => {
@@ -167,6 +199,24 @@ describe("Chat client", () => {
       method: routes.getConversations.method,
       url: routes.getConversations.url(),
       params: { user: "end-user", last_id: "last-1", limit: 10 },
+      headers: expect.objectContaining({
+        Authorization: "Bearer test",
+      }),
+      responseType: "json",
+      timeout: 60000,
+    }));
+  });
+
+  it("lists app feedbacks without user params", async () => {
+    const chatClient = new ChatClient("test");
+    mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
+
+    await chatClient.getAppFeedbacks(1, 20);
+
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
+      method: "GET",
+      url: "/app/feedbacks",
+      params: { page: 1, limit: 20 },
       headers: expect.objectContaining({
         Authorization: "Bearer test",
       }),

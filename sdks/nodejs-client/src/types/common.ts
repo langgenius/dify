@@ -32,6 +32,21 @@ export type DifyResponse<T> = {
   requestId?: string;
 };
 
+export type MessageFeedbackRequest = {
+  messageId: string;
+  user: string;
+  rating?: "like" | "dislike" | null;
+  content?: string | null;
+};
+
+export type TextToAudioRequest = {
+  user: string;
+  text?: string;
+  message_id?: string;
+  streaming?: boolean;
+  voice?: string;
+};
+
 export type StreamEvent<T = unknown> = {
   event?: string;
   data: T | string | null;

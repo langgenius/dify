@@ -34,6 +34,8 @@ export default [
       ...typeCheckedRules,
       "no-undef": "off",
       "no-unused-vars": "off",
+      "@typescript-eslint/no-unsafe-call": "error",
+      "@typescript-eslint/no-unsafe-return": "error",
       "@typescript-eslint/consistent-type-imports": [
         "error",
         {

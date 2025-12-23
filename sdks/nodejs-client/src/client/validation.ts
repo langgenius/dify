@@ -55,6 +55,9 @@ export function ensureOptionalStringArray(value: unknown, name: string): void {
 }
 
 export function ensureRating(value: unknown): void {
+  if (value === undefined || value === null) {
+    return;
+  }
   if (value !== "like" && value !== "dislike") {
     throw new ValidationError("rating must be either 'like' or 'dislike'");
   }

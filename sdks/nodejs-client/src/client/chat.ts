@@ -6,7 +6,12 @@ import type {
   AnnotationReplyActionRequest,
   AnnotationResponse,
 } from "../types/annotation";
-import type { DifyResponse, DifyStream, QueryParams } from "../types/common";
+import type {
+  DifyResponse,
+  DifyStream,
+  MessageFeedbackRequest,
+  QueryParams,
+} from "../types/common";
 import {
   ensureNonEmptyString,
   ensureOptionalInt,
@@ -24,7 +29,7 @@ export class ChatClient extends DifyClient {
     user: string,
     stream?: boolean,
     conversationId?: string | null,
-    files?: unknown
+    files?: Array<Record<string, unknown>> | null
   ): Promise<DifyResponse<ChatMessageResponse> | DifyStream<ChatMessageResponse>>;
   createChatMessage(
     inputOrRequest: ChatMessageRequest | Record<string, unknown>,
@@ -32,7 +37,7 @@ export class ChatClient extends DifyClient {
     user?: string,
     stream = false,
     conversationId?: string | null,
-    files?: unknown
+    files?: Array<Record<string, unknown>> | null
   ): Promise<DifyResponse<ChatMessageResponse> | DifyStream<ChatMessageResponse>> {
     let payload: ChatMessageRequest;
     let shouldStream = stream;
@@ -107,21 +112,48 @@ export class ChatClient extends DifyClient {
   }
 
   messageFeedback(
+    request: MessageFeedbackRequest
+  ): Promise<DifyResponse<ChatMessageResponse>>;
+  messageFeedback(
     messageId: string,
-    rating: "like" | "dislike",
+    rating: "like" | "dislike" | null,
     user: string,
     content?: string
+  ): Promise<DifyResponse<ChatMessageResponse>>;
+  messageFeedback(
+    messageIdOrRequest: string | MessageFeedbackRequest,
+    rating?: "like" | "dislike" | null,
+    user?: string,
+    content?: string
   ): Promise<DifyResponse<ChatMessageResponse>> {
-    ensureNonEmptyString(messageId, "messageId");
-    ensureNonEmptyString(user, "user");
-    ensureRating(rating);
-    if (content) {
-      ensureOptionalString(content, "content");
-    }
+    let messageId: string;
+    const payload: Record<string, unknown> = {};
 
-    const payload: Record<string, unknown> = { rating, user };
-    if (content) {
-      payload.content = content;
+    if (typeof messageIdOrRequest === "string") {
+      messageId = messageIdOrRequest;
+      ensureNonEmptyString(messageId, "messageId");
+      ensureNonEmptyString(user, "user");
+      payload.user = user;
+      if (rating !== undefined && rating !== null) {
+        ensureRating(rating);
+        payload.rating = rating;
+      }
+      if (content !== undefined) {
+        payload.content = content;
+      }
+    } else {
+      const request = messageIdOrRequest;
+      messageId = request.messageId;
+      ensureNonEmptyString(messageId, "messageId");
+      ensureNonEmptyString(request.user, "user");
+      payload.user = request.user;
+      if (request.rating !== undefined && request.rating !== null) {
+        ensureRating(request.rating);
+        payload.rating = request.rating;
+      }
+      if (request.content !== undefined) {
+        payload.content = request.content;
+      }
     }
 
     return this.http.request<ChatMessageResponse>({
@@ -132,20 +164,29 @@ export class ChatClient extends DifyClient {
   }
 
   getAppFeedbacks(
+    page?: number,
+    limit?: number
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  getAppFeedbacks(
     user: string,
     page?: number,
     limit?: number
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  getAppFeedbacks(
+    userOrPage?: string | number,
+    pageOrLimit?: number,
+    limit?: number
   ): Promise<DifyResponse<Record<string, unknown>>> {
-    ensureNonEmptyString(user, "user");
+    const page = typeof userOrPage === "number" ? userOrPage : pageOrLimit;
+    const resolvedLimit = typeof userOrPage === "number" ? pageOrLimit : limit;
     ensureOptionalInt(page, "page");
-    ensureOptionalInt(limit, "limit");
+    ensureOptionalInt(resolvedLimit, "limit");
     return this.http.request({
       method: "GET",
       path: "/app/feedbacks",
       query: {
-        user,
         page,
-        limit,
+        limit: resolvedLimit,
       },
     });
   }
@@ -182,19 +223,17 @@ export class ChatClient extends DifyClient {
 
   getConversationMessages(
     user: string,
-    conversationId?: string,
+    conversationId: string,
     firstId?: string | null,
     limit?: number | null
   ): Promise<DifyResponse<Record<string, unknown>>> {
     ensureNonEmptyString(user, "user");
-    ensureOptionalString(conversationId, "conversationId");
+    ensureNonEmptyString(conversationId, "conversationId");
     ensureOptionalString(firstId, "firstId");
     ensureOptionalInt(limit, "limit");
 
     const params: QueryParams = { user };
-    if (conversationId) {
-      params.conversation_id = conversationId;
-    }
+    params.conversation_id = conversationId;
     if (firstId) {
       params.first_id = firstId;
     }
@@ -214,18 +253,51 @@ export class ChatClient extends DifyClient {
     name: string,
     user: string,
     autoGenerate?: boolean
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  renameConversation(
+    conversationId: string,
+    user: string,
+    options?: { name?: string | null; autoGenerate?: boolean }
+  ): Promise<DifyResponse<Record<string, unknown>>>;
+  renameConversation(
+    conversationId: string,
+    nameOrUser: string,
+    userOrOptions?: string | { name?: string | null; autoGenerate?: boolean },
+    autoGenerate?: boolean
   ): Promise<DifyResponse<Record<string, unknown>>> {
     ensureNonEmptyString(conversationId, "conversationId");
+
+    let name: string | null | undefined;
+    let user: string;
+    let resolvedAutoGenerate: boolean;
+
+    if (typeof userOrOptions === "string" || userOrOptions === undefined) {
+      name = nameOrUser;
+      user = userOrOptions ?? "";
+      resolvedAutoGenerate = autoGenerate ?? false;
+    } else {
+      user = nameOrUser;
+      name = userOrOptions.name;
+      resolvedAutoGenerate = userOrOptions.autoGenerate ?? false;
+    }
+
     ensureNonEmptyString(user, "user");
-    ensureNonEmptyString(name, "name");
+    if (!resolvedAutoGenerate) {
+      ensureNonEmptyString(name, "name");
+    }
+
+    const payload: Record<string, unknown> = {
+      user,
+      auto_generate: resolvedAutoGenerate,
+    };
+    if (typeof name === "string" && name.trim().length > 0) {
+      payload.name = name;
+    }
+
     return this.http.request({
       method: "POST",
       path: `/conversations/${conversationId}/name`,
-      data: {
-        name,
-        user,
-        auto_generate: autoGenerate,
-      },
+      data: payload,
     });
   }
 
@@ -365,7 +437,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  audioToText(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
+  audioToText(form: unknown, user: string): Promise<DifyResponse<unknown>> {
     return super.audioToText(form, user);
   }
 }

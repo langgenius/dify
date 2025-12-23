@@ -5,11 +5,11 @@ export type ChatMessageRequest = {
   query: string;
   user: string;
   response_mode?: "blocking" | "streaming";
-  files?: unknown;
+  files?: Array<Record<string, unknown>> | null;
   conversation_id?: string;
   auto_generate_name?: boolean;
   workflow_id?: string;
-  retriever_from?: "app" | "dataset";
+  retriever_from?: string;
 };
 
 export type ChatMessageResponse = Record<string, unknown>;
