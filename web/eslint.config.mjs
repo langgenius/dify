@@ -9,6 +9,11 @@ export default antfu(
     react: true,
     nextjs: true,
     ignores: ['public'],
+    typescript: {
+      overrides: {
+        'ts/consistent-type-definitions': ['error', 'type'],
+      }
+    }
   },
   // downgrade some rules from error to warn for gradual adoption
   {
@@ -97,7 +102,6 @@ export default antfu(
       'style/semi': 'off',
       'test/consistent-test-it': 'off',
       'test/prefer-lowercase-title': 'off',
-      'ts/consistent-type-definitions': 'off',
       'unicorn/prefer-node-protocol': 'off',
     },
   },
