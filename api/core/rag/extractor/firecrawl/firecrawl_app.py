@@ -25,7 +25,7 @@ class FirecrawlApp:
         }
         if params:
             json_data.update(params)
-        response = self._post_request(f"{self.base_url}/v2/scrape", json_data, headers)
+        response = self._post_request(self._build_url("v2/scrape"), json_data, headers)
         if response.status_code == 200:
             response_data = response.json()
             data = response_data["data"]
@@ -42,7 +42,7 @@ class FirecrawlApp:
         json_data = {"url": url}
         if params:
             json_data.update(params)
-        response = self._post_request(f"{self.base_url}/v2/crawl", json_data, headers)
+        response = self._post_request(self._build_url("v2/crawl"), json_data, headers)
         if response.status_code == 200:
             # There's also another two fields in the response: "success" (bool) and "url" (str)
             job_id = response.json().get("id")
@@ -58,7 +58,7 @@ class FirecrawlApp:
         if params:
             # Pass through provided params, including optional "sitemap": "only" | "include" | "skip"
             json_data.update(params)
-        response = self._post_request(f"{self.base_url}/v2/map", json_data, headers)
+        response = self._post_request(self._build_url("v2/map"), json_data, headers)
         if response.status_code == 200:
             return cast(dict[str, Any], response.json())
         elif response.status_code in {402, 409, 500, 429, 408}:
@@ -69,7 +69,7 @@ class FirecrawlApp:
 
     def check_crawl_status(self, job_id) -> dict[str, Any]:
         headers = self._prepare_headers()
-        response = self._get_request(f"{self.base_url}/v2/crawl/{job_id}", headers)
+        response = self._get_request(self._build_url(f"v2/crawl/{job_id}"), headers)
         if response.status_code == 200:
             crawl_status_response = response.json()
             if crawl_status_response.get("status") == "completed":
@@ -120,6 +120,10 @@ class FirecrawlApp:
     def _prepare_headers(self) -> dict[str, Any]:
         return {"Content-Type": "application/json", "Authorization": f"Bearer {self.api_key}"}
 
+    def _build_url(self, path: str) -> str:
+        # ensure exactly one slash between base and path, regardless of user-provided base_url
+        return f"{self.base_url.rstrip('/')}/{path.lstrip('/')}"
+
     def _post_request(self, url, data, headers, retries=3, backoff_factor=0.5) -> httpx.Response:
         for attempt in range(retries):
             response = httpx.post(url, headers=headers, json=data)
@@ -139,7 +143,11 @@ class FirecrawlApp:
         return response
 
     def _handle_error(self, response, action):
-        error_message = response.json().get("error", "Unknown error occurred")
+        try:
+            payload = response.json()
+            error_message = payload.get("error") or payload.get("message") or response.text or "Unknown error occurred"
+        except json.JSONDecodeError:
+            error_message = response.text or "Unknown error occurred"
         raise Exception(f"Failed to {action}. Status code: {response.status_code}. Error: {error_message}")  # type: ignore[return]
 
     def search(self, query: str, params: dict[str, Any] | None = None) -> dict[str, Any]:
@@ -160,7 +168,7 @@ class FirecrawlApp:
         }
         if params:
             json_data.update(params)
-        response = self._post_request(f"{self.base_url}/v2/search", json_data, headers)
+        response = self._post_request(self._build_url("v2/search"), json_data, headers)
         if response.status_code == 200:
             response_data = response.json()
             if not response_data.get("success"):
