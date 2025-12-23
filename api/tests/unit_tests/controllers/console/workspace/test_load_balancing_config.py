@@ -33,7 +33,7 @@ def app() -> Flask:
 def load_balancing_module(monkeypatch: pytest.MonkeyPatch):
     """Reload controller module with lightweight decorators for testing."""
 
-    from controllers.console import wraps
+    from controllers.console import console_ns, wraps
     from libs import login
 
     def _noop(func):
@@ -42,6 +42,14 @@ def load_balancing_module(monkeypatch: pytest.MonkeyPatch):
     monkeypatch.setattr(login, "login_required", _noop)
     monkeypatch.setattr(wraps, "setup_required", _noop)
     monkeypatch.setattr(wraps, "account_initialization_required", _noop)
+
+    def _noop_route(*args, **kwargs):  # type: ignore[override]
+        def _decorator(cls):
+            return cls
+
+        return _decorator
+
+    monkeypatch.setattr(console_ns, "route", _noop_route)
 
     module_name = "controllers.console.workspace.load_balancing_config"
     sys.modules.pop(module_name, None)
