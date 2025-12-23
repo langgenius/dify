@@ -2,28 +2,47 @@
   "name": "dify-client",
   "version": "2.3.2",
   "description": "This is the Node.js SDK for the Dify.AI API, which allows you to easily integrate Dify.AI into your Node.js applications.",
-  "main": "dist/index.js",
   "type": "module",
-  "types": "dist/index.d.ts",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
   "exports": {
     ".": {
       "types": "./dist/index.d.ts",
       "import": "./dist/index.js"
     }
   },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "files": [
+    "dist",
+    "README.md"
+  ],
   "keywords": [
     "Dify",
     "Dify.AI",
-    "LLM"
+    "LLM",
+    "AI",
+    "SDK",
+    "API"
   ],
   "author": "Joel",
   "contributors": [
     "<crazywoola> <<427733928@qq.com>> (https://github.com/crazywoola)"
   ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/langgenius/dify.git",
+    "directory": "sdks/nodejs-client"
+  },
+  "bugs": {
+    "url": "https://github.com/langgenius/dify/issues"
+  },
+  "homepage": "https://dify.ai",
   "license": "MIT",
   "scripts": {
     "build": "tsc -p tsconfig.json && node scripts/ensure-js-extensions.mjs",
-    "lint": "eslint \"src/**/*.ts\" \"index.js\" \"index.test.js\"",
+    "lint": "eslint \"src/**/*.ts\" \"index.test.js\"",
     "lint:fix": "npm run lint -- --fix",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",

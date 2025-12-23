@@ -18,6 +18,13 @@ export function ensureNonEmptyString(
   }
 }
 
+/**
+ * Validates optional string fields that must be non-empty when provided.
+ * Use this for fields like `name` that are optional but should not be empty strings.
+ *
+ * For filter parameters that accept empty strings (e.g., `keyword: ""`),
+ * use `validateParams` which allows empty strings for optional params.
+ */
 export function ensureOptionalString(value: unknown, name: string): void {
   if (value === undefined || value === null) {
     return;

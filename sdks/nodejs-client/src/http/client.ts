@@ -335,7 +335,9 @@ export class HttpClient {
     }
 
     let attempt = 0;
-    // Total attempts is maxRetries + 1
+    // `attempt` is a zero-based retry counter
+    // Total attempts = 1 (initial) + maxRetries
+    // e.g., maxRetries=3 means: attempt 0 (initial), then retries at 1, 2, 3
     while (true) {
       try {
         const response = await this.axios.request(axiosConfig);
