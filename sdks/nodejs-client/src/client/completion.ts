@@ -1,7 +1,7 @@
-import { DifyClient } from "./base";
-import { CompletionRequest, CompletionResponse } from "../types/completion";
-import { DifyResponse, DifyStream } from "../types/common";
-import { ensureNonEmptyString } from "./validation";
+import { DifyClient } from "./base.js";
+import type { CompletionRequest, CompletionResponse } from "../types/completion.js";
+import type { DifyResponse, DifyStream } from "../types/common.js";
+import { ensureNonEmptyString } from "./validation.js";
 
 const warned = new Set<string>();
 const warnOnce = (message: string): void => {
@@ -13,16 +13,16 @@ const warnOnce = (message: string): void => {
 };
 
 export class CompletionClient extends DifyClient {
-  async createCompletionMessage(
+  createCompletionMessage(
     request: CompletionRequest
-  ): Promise<DifyResponse<CompletionResponse>>;
-  async createCompletionMessage(
+  ): Promise<DifyResponse<CompletionResponse> | DifyStream<CompletionResponse>>;
+  createCompletionMessage(
     inputs: Record<string, unknown>,
     user: string,
     stream?: boolean,
     files?: unknown
   ): Promise<DifyResponse<CompletionResponse> | DifyStream<CompletionResponse>>;
-  async createCompletionMessage(
+  createCompletionMessage(
     inputOrRequest: CompletionRequest | Record<string, unknown>,
     user?: string,
     stream = false,
@@ -61,7 +61,7 @@ export class CompletionClient extends DifyClient {
     });
   }
 
-  async stopCompletionMessage(
+  stopCompletionMessage(
     taskId: string,
     user: string
   ): Promise<DifyResponse<CompletionResponse>> {
@@ -74,14 +74,14 @@ export class CompletionClient extends DifyClient {
     });
   }
 
-  async stop(
+  stop(
     taskId: string,
     user: string
   ): Promise<DifyResponse<CompletionResponse>> {
     return this.stopCompletionMessage(taskId, user);
   }
 
-  async runWorkflow(
+  runWorkflow(
     inputs: Record<string, unknown>,
     user: string,
     stream = false

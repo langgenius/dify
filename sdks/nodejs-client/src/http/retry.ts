@@ -1,4 +1,4 @@
-import { RateLimitError, NetworkError, TimeoutError } from "../errors/dify-error";
+import { RateLimitError, NetworkError, TimeoutError } from "../errors/dify-error.js";
 
 export const sleep = (ms: number): Promise<void> =>
   new Promise((resolve) => {

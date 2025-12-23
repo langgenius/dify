@@ -1,21 +1,21 @@
+import { afterAll, beforeAll, beforeEach, describe, expect, it, vi } from "vitest";
 import { ChatClient, DifyClient, WorkflowClient, BASE_URL, routes } from ".";
 import axios from "axios";
 
-jest.mock("axios");
-
-const mockRequest = jest.fn();
+const mockRequest = vi.fn();
 
 const setupAxiosMock = () => {
-  axios.create = jest.fn().mockReturnValue({ request: mockRequest });
+  vi.spyOn(axios, "create").mockReturnValue({ request: mockRequest });
 };
 
 beforeEach(() => {
+  vi.restoreAllMocks();
   mockRequest.mockReset();
   setupAxiosMock();
 });
 
 describe("Client", () => {
-  test("should create a client", () => {
+  it("should create a client", () => {
     new DifyClient("test");
 
     expect(axios.create).toHaveBeenCalledWith({
@@ -24,7 +24,7 @@ describe("Client", () => {
     });
   });
 
-  test("should update the api key", () => {
+  it("should update the api key", () => {
     const difyClient = new DifyClient("test");
     difyClient.updateApiKey("test2");
 
@@ -76,10 +76,10 @@ describe("Send Requests", () => {
 });
 
 describe("File uploads", () => {
-  const OriginalFormData = global.FormData;
+  const OriginalFormData = globalThis.FormData;
 
   beforeAll(() => {
-    global.FormData = class FormDataMock {
+    globalThis.FormData = class FormDataMock {
       append() {}
 
       getHeaders() {
@@ -91,12 +91,12 @@ describe("File uploads", () => {
   });
 
   afterAll(() => {
-    global.FormData = OriginalFormData;
+    globalThis.FormData = OriginalFormData;
   });
 
   it("does not override multipart boundary headers for FormData", async () => {
     const difyClient = new DifyClient("test");
-    const form = new FormData();
+    const form = new globalThis.FormData();
     mockRequest.mockResolvedValue({ status: 200, data: "ok", headers: {} });
 
     await difyClient.fileUpload(form);

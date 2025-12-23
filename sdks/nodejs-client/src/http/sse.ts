@@ -1,6 +1,6 @@
-import { Readable } from "node:stream";
+import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import { DifyStream, StreamEvent, Headers, BinaryStream } from "../types/common";
+import type { BinaryStream, DifyStream, Headers, StreamEvent } from "../types/common.js";
 
 const readLines = async function* (stream: Readable): AsyncIterable<string> {
   const decoder = new StringDecoder("utf8");
@@ -41,7 +41,7 @@ export const parseSseStream = async function* <T>(
   let eventName: string | undefined;
   const dataLines: string[] = [];
 
-  const emitEvent = async function* (): AsyncIterable<StreamEvent<T>> {
+  const emitEvent = function* (): Iterable<StreamEvent<T>> {
     if (!eventName && dataLines.length === 0) {
       return;
     }
@@ -101,7 +101,7 @@ export const createSseStream = <T>(
   stream: Readable,
   meta: { status: number; headers: Headers; requestId?: string }
 ): DifyStream<T> => {
-  const iterator = parseSseStream<T>(stream);
+  const iterator = parseSseStream<T>(stream)[Symbol.asyncIterator]();
   const iterable = {
     [Symbol.asyncIterator]: () => iterator,
     data: stream,

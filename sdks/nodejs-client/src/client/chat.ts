@@ -1,18 +1,18 @@
-import { DifyClient } from "./base";
-import { ChatMessageRequest, ChatMessageResponse } from "../types/chat";
-import { DifyResponse, DifyStream, QueryParams } from "../types/common";
+import { DifyClient } from "./base.js";
+import type { ChatMessageRequest, ChatMessageResponse } from "../types/chat.js";
+import type { DifyResponse, DifyStream, QueryParams } from "../types/common.js";
 import {
   ensureNonEmptyString,
   ensureOptionalInt,
   ensureOptionalString,
   ensureRating,
-} from "./validation";
+} from "./validation.js";
 
 export class ChatClient extends DifyClient {
-  async createChatMessage(
+  createChatMessage(
     request: ChatMessageRequest
-  ): Promise<DifyResponse<ChatMessageResponse>>;
-  async createChatMessage(
+  ): Promise<DifyResponse<ChatMessageResponse> | DifyStream<ChatMessageResponse>>;
+  createChatMessage(
     inputs: Record<string, unknown>,
     query: string,
     user: string,
@@ -20,7 +20,7 @@ export class ChatClient extends DifyClient {
     conversationId?: string | null,
     files?: unknown
   ): Promise<DifyResponse<ChatMessageResponse> | DifyStream<ChatMessageResponse>>;
-  async createChatMessage(
+  createChatMessage(
     inputOrRequest: ChatMessageRequest | Record<string, unknown>,
     query?: string,
     user?: string,
@@ -67,7 +67,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async stopChatMessage(
+  stopChatMessage(
     taskId: string,
     user: string
   ): Promise<DifyResponse<ChatMessageResponse>> {
@@ -80,14 +80,14 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async stopMessage(
+  stopMessage(
     taskId: string,
     user: string
   ): Promise<DifyResponse<ChatMessageResponse>> {
     return this.stopChatMessage(taskId, user);
   }
 
-  async getSuggested(
+  getSuggested(
     messageId: string,
     user: string
   ): Promise<DifyResponse<ChatMessageResponse>> {
@@ -100,7 +100,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async messageFeedback(
+  messageFeedback(
     messageId: string,
     rating: "like" | "dislike",
     user: string,
@@ -125,7 +125,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async getAppFeedbacks(
+  getAppFeedbacks(
     user: string,
     page?: number,
     limit?: number
@@ -144,7 +144,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async getConversations(
+  getConversations(
     user: string,
     lastId?: string | null,
     limit?: number | null,
@@ -174,7 +174,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async getConversationMessages(
+  getConversationMessages(
     user: string,
     conversationId?: string,
     firstId?: string | null,
@@ -203,7 +203,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async renameConversation(
+  renameConversation(
     conversationId: string,
     name: string,
     user: string,
@@ -223,7 +223,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async deleteConversation(
+  deleteConversation(
     conversationId: string,
     user: string
   ): Promise<DifyResponse<Record<string, unknown>>> {
@@ -236,7 +236,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async getConversationVariables(
+  getConversationVariables(
     conversationId: string,
     user: string,
     lastId?: string | null,
@@ -261,7 +261,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async updateConversationVariable(
+  updateConversationVariable(
     conversationId: string,
     variableId: string,
     user: string,
@@ -280,7 +280,7 @@ export class ChatClient extends DifyClient {
     });
   }
 
-  async audioToText(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
+  audioToText(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
     return super.audioToText(form, user);
   }
 }

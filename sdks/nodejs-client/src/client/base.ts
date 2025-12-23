@@ -1,14 +1,14 @@
-import {
+import type {
+  BinaryStream,
   DifyClientConfig,
   DifyResponse,
   QueryParams,
   RequestMethod,
-  BinaryStream,
-} from "../types/common";
-import { HttpClient } from "../http/client";
-import { ensureNonEmptyString, ensureRating } from "./validation";
-import { FileUploadError, ValidationError } from "../errors/dify-error";
-import { isFormData } from "../http/form-data";
+} from "../types/common.js";
+import { HttpClient } from "../http/client.js";
+import { ensureNonEmptyString, ensureRating } from "./validation.js";
+import { FileUploadError, ValidationError } from "../errors/dify-error.js";
+import { isFormData } from "../http/form-data.js";
 
 const toConfig = (
   init: string | DifyClientConfig,
@@ -52,14 +52,14 @@ export class DifyClient {
     return this.http;
   }
 
-  async sendRequest(
+  sendRequest(
     method: RequestMethod,
     endpoint: string,
     data: unknown = null,
     params: QueryParams | null = null,
     stream = false,
     headerParams: Record<string, string> = {}
-  ) {
+  ): ReturnType<HttpClient["requestRaw"]> {
     return this.http.requestRaw({
       method,
       path: endpoint,
@@ -70,7 +70,7 @@ export class DifyClient {
     });
   }
 
-  async getApplicationParameters(user: string): Promise<DifyResponse<unknown>> {
+  getApplicationParameters(user: string): Promise<DifyResponse<unknown>> {
     ensureNonEmptyString(user, "user");
     return this.http.request({
       method: "GET",
@@ -83,7 +83,7 @@ export class DifyClient {
     return this.getApplicationParameters(user);
   }
 
-  async getMeta(user: string): Promise<DifyResponse<unknown>> {
+  getMeta(user: string): Promise<DifyResponse<unknown>> {
     ensureNonEmptyString(user, "user");
     return this.http.request({
       method: "GET",
@@ -92,7 +92,7 @@ export class DifyClient {
     });
   }
 
-  async messageFeedback(
+  messageFeedback(
     messageId: string,
     rating: "like" | "dislike" | number,
     user: string,
@@ -129,7 +129,7 @@ export class DifyClient {
     });
   }
 
-  async getInfo(user?: string): Promise<DifyResponse<unknown>> {
+  getInfo(user?: string): Promise<DifyResponse<unknown>> {
     if (user) {
       ensureNonEmptyString(user, "user");
     }
@@ -140,7 +140,7 @@ export class DifyClient {
     });
   }
 
-  async getSite(user?: string): Promise<DifyResponse<unknown>> {
+  getSite(user?: string): Promise<DifyResponse<unknown>> {
     if (user) {
       ensureNonEmptyString(user, "user");
     }
@@ -151,7 +151,7 @@ export class DifyClient {
     });
   }
 
-  async fileUpload(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
+  fileUpload(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
     if (!isFormData(form)) {
       throw new FileUploadError("FormData is required for file uploads");
     }
@@ -166,14 +166,14 @@ export class DifyClient {
     });
   }
 
-  async filePreview(
+  filePreview(
     fileId: string,
     user: string,
     asAttachment?: boolean
   ): Promise<DifyResponse<Buffer>> {
     ensureNonEmptyString(fileId, "fileId");
     ensureNonEmptyString(user, "user");
-    return this.http.request({
+    return this.http.request<Buffer>({
       method: "GET",
       path: `/files/${fileId}/preview`,
       query: {
@@ -184,7 +184,7 @@ export class DifyClient {
     });
   }
 
-  async audioToText(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
+  audioToText(form: unknown, user?: string): Promise<DifyResponse<unknown>> {
     if (!isFormData(form)) {
       throw new FileUploadError("FormData is required for audio uploads");
     }
@@ -199,7 +199,7 @@ export class DifyClient {
     });
   }
 
-  async textToAudio(
+  textToAudio(
     text: string,
     user: string,
     streaming = false,
@@ -224,7 +224,7 @@ export class DifyClient {
       });
     }
 
-    return this.http.request({
+    return this.http.request<Buffer>({
       method: "POST",
       path: "/text-to-audio",
       data: payload,

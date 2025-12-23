@@ -1,22 +1,22 @@
-import { DifyClient } from "./base";
-import { WorkflowRunRequest, WorkflowRunResponse } from "../types/workflow";
-import { DifyResponse, DifyStream, QueryParams } from "../types/common";
+import { DifyClient } from "./base.js";
+import type { WorkflowRunRequest, WorkflowRunResponse } from "../types/workflow.js";
+import type { DifyResponse, DifyStream, QueryParams } from "../types/common.js";
 import {
   ensureNonEmptyString,
   ensureOptionalInt,
   ensureOptionalString,
-} from "./validation";
+} from "./validation.js";
 
 export class WorkflowClient extends DifyClient {
-  async run(
+  run(
     request: WorkflowRunRequest
-  ): Promise<DifyResponse<WorkflowRunResponse>>;
-  async run(
+  ): Promise<DifyResponse<WorkflowRunResponse> | DifyStream<WorkflowRunResponse>>;
+  run(
     inputs: Record<string, unknown>,
     user: string,
     stream?: boolean
   ): Promise<DifyResponse<WorkflowRunResponse> | DifyStream<WorkflowRunResponse>>;
-  async run(
+  run(
     inputOrRequest: WorkflowRunRequest | Record<string, unknown>,
     user?: string,
     stream = false
@@ -53,7 +53,7 @@ export class WorkflowClient extends DifyClient {
     });
   }
 
-  async runById(
+  runById(
     workflowId: string,
     request: WorkflowRunRequest
   ): Promise<DifyResponse<WorkflowRunResponse> | DifyStream<WorkflowRunResponse>> {
@@ -73,7 +73,7 @@ export class WorkflowClient extends DifyClient {
     });
   }
 
-  async getRun(workflowRunId: string): Promise<DifyResponse<WorkflowRunResponse>> {
+  getRun(workflowRunId: string): Promise<DifyResponse<WorkflowRunResponse>> {
     ensureNonEmptyString(workflowRunId, "workflowRunId");
     return this.http.request({
       method: "GET",
@@ -81,7 +81,7 @@ export class WorkflowClient extends DifyClient {
     });
   }
 
-  async stop(
+  stop(
     taskId: string,
     user: string
   ): Promise<DifyResponse<WorkflowRunResponse>> {
@@ -94,7 +94,7 @@ export class WorkflowClient extends DifyClient {
     });
   }
 
-  async getLogs(
+  getLogs(
     user: string,
     options?: {
       keyword?: string;

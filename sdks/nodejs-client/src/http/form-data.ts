@@ -1,4 +1,4 @@
-import { Headers } from "../types/common";
+import type { Headers } from "../types/common.js";
 
 export type FormDataLike = {
   append: (...args: unknown[]) => void;

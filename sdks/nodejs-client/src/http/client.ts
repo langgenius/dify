@@ -1,16 +1,25 @@
-import axios, { AxiosError, AxiosInstance, AxiosRequestConfig, AxiosResponse } from "axios";
-import { Readable } from "node:stream";
+import axios from "axios";
+import type {
+  AxiosError,
+  AxiosInstance,
+  AxiosRequestConfig,
+  AxiosResponse,
+} from "axios";
+import type { Readable } from "node:stream";
 import {
   DEFAULT_BASE_URL,
   DEFAULT_MAX_RETRIES,
   DEFAULT_RETRY_DELAY_SECONDS,
   DEFAULT_TIMEOUT_SECONDS,
+} from "../types/common.js";
+import type {
   DifyClientConfig,
   DifyResponse,
   Headers,
   QueryParams,
   RequestMethod,
-} from "../types/common";
+} from "../types/common.js";
+import type { DifyError } from "../errors/dify-error.js";
 import {
   APIError,
   AuthenticationError,
@@ -18,10 +27,10 @@ import {
   RateLimitError,
   TimeoutError,
   ValidationError,
-} from "../errors/dify-error";
-import { getFormDataHeaders, isFormData } from "./form-data";
-import { createBinaryStream, createSseStream } from "./sse";
-import { getRetryDelayMs, shouldRetry, sleep } from "./retry";
+} from "../errors/dify-error.js";
+import { getFormDataHeaders, isFormData } from "./form-data.js";
+import { createBinaryStream, createSseStream } from "./sse.js";
+import { getRetryDelayMs, shouldRetry, sleep } from "./retry.js";
 
 const DEFAULT_USER_AGENT = "dify-client-node";
 
@@ -90,6 +99,23 @@ const parseRetryAfterSeconds = (headerValue?: string): number | undefined => {
   return undefined;
 };
 
+const resolveErrorMessage = (status: number, responseBody: unknown): string => {
+  if (typeof responseBody === "string" && responseBody.trim().length > 0) {
+    return responseBody;
+  }
+  if (
+    responseBody &&
+    typeof responseBody === "object" &&
+    "message" in responseBody
+  ) {
+    const message = (responseBody as Record<string, unknown>).message;
+    if (typeof message === "string" && message.trim().length > 0) {
+      return message;
+    }
+  }
+  return `Request failed with status code ${status}`;
+};
+
 const mapAxiosError = (error: unknown): DifyError => {
   if (axios.isAxiosError(error)) {
     const axiosError = error as AxiosError;
@@ -98,15 +124,7 @@ const mapAxiosError = (error: unknown): DifyError => {
       const headers = normalizeHeaders(axiosError.response.headers);
       const requestId = resolveRequestId(headers);
       const responseBody = axiosError.response.data;
-      const message =
-        (responseBody &&
-          typeof responseBody === "object" &&
-          "message" in responseBody &&
-          typeof (responseBody as Record<string, unknown>).message ===
-            "string" &&
-          (responseBody as Record<string, unknown>).message) ||
-        (typeof responseBody === "string" && responseBody) ||
-        `Request failed with status code ${status}`;
+      const message = resolveErrorMessage(status, responseBody);
 
       if (status === 401) {
         return new AuthenticationError(message, {
@@ -209,7 +227,6 @@ export class HttpClient {
     const { method, path, query, data, headers, responseType } = options;
     const { apiKey, enableLogging, maxRetries, retryDelay, timeout } =
       this.settings;
-    const isBodyFormData = data ? isFormData(data) : false;
 
     const requestHeaders: Headers = {
       Authorization: `Bearer ${apiKey}`,
@@ -224,7 +241,7 @@ export class HttpClient {
       requestHeaders["User-Agent"] = DEFAULT_USER_AGENT;
     }
 
-    if (isBodyFormData) {
+    if (isFormData(data)) {
       Object.assign(requestHeaders, getFormDataHeaders(data));
     } else if (data && method !== "GET") {
       requestHeaders["Content-Type"] = "application/json";
