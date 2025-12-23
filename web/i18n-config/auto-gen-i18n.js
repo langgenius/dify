@@ -310,7 +310,7 @@ export default translation
     }
 
     const { code } = generateCode(mod)
-    let res = `const translation =${code.replace('export default', '')}
+    const res = `const translation =${code.replace('export default', '')}
 
 export default translation
 `.replace(/,\n\n/g, ',\n').replace('};', '}')

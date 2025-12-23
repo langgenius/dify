@@ -60,8 +60,6 @@ export default antfu(
       'perfectionist/sort-imports': 'off',
       'perfectionist/sort-named-exports': 'off',
       'perfectionist/sort-named-imports': 'off',
-      'prefer-const': 'off',
-      'prefer-template': 'off',
       'react/no-context-provider': 'off',
       'react/no-use-context': 'off',
       'regexp/no-dupe-characters-character-class': 'off',

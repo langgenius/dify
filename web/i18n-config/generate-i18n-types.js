@@ -51,7 +51,7 @@ import 'react-i18next'
 
   // Generate individual type definitions
   const typeDefinitions = namespaces.map(namespace => {
-    const typeName = camelCase(namespace).replace(/^\w/, c => c.toUpperCase()) + 'Messages'
+    const typeName = `${camelCase(namespace).replace(/^\w/, c => c.toUpperCase())}Messages`
     return `type ${typeName} = typeof import('../i18n/en-US/${namespace}').default`
   }).join('\n')
 
@@ -61,7 +61,7 @@ import 'react-i18next'
 export type Messages = {
 ${namespaces.map(namespace => {
     const camelCased = camelCase(namespace)
-    const typeName = camelCase(namespace).replace(/^\w/, c => c.toUpperCase()) + 'Messages'
+    const typeName = `${camelCase(namespace).replace(/^\w/, c => c.toUpperCase())}Messages`
     return `  ${camelCased}: ${typeName};`
   }).join('\n')}
 }`
