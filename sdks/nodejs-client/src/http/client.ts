@@ -32,6 +32,7 @@ import {
 import { getFormDataHeaders, isFormData } from "./form-data";
 import { createBinaryStream, createSseStream } from "./sse";
 import { getRetryDelayMs, shouldRetry, sleep } from "./retry";
+import { validateParams } from "../client/validation";
 
 const DEFAULT_USER_AGENT = "dify-client-node";
 
@@ -120,6 +121,27 @@ const parseRetryAfterSeconds = (headerValue?: string): number | undefined => {
   return undefined;
 };
 
+const isReadableStream = (value: unknown): value is Readable => {
+  if (!value || typeof value !== "object") {
+    return false;
+  }
+  return typeof (value as { pipe?: unknown }).pipe === "function";
+};
+
+const isUploadLikeRequest = (config?: AxiosRequestConfig): boolean => {
+  const url = (config?.url ?? "").toLowerCase();
+  if (!url) {
+    return false;
+  }
+  return (
+    url.includes("upload") ||
+    url.includes("/files/") ||
+    url.includes("audio-to-text") ||
+    url.includes("create_by_file") ||
+    url.includes("update_by_file")
+  );
+};
+
 const resolveErrorMessage = (status: number, responseBody: unknown): string => {
   if (typeof responseBody === "string" && responseBody.trim().length > 0) {
     return responseBody;
@@ -171,12 +193,7 @@ const mapAxiosError = (error: unknown): DifyError => {
         });
       }
       if (status === 400) {
-        const requestUrl = axiosError.config?.url ?? "";
-        const isUploadRequest =
-          requestUrl.includes("/files") ||
-          requestUrl.includes("upload") ||
-          requestUrl.includes("/audio-to-text");
-        if (isUploadRequest) {
+        if (isUploadLikeRequest(axiosError.config)) {
           return new FileUploadError(message, {
             statusCode: status,
             responseBody,
@@ -262,6 +279,19 @@ export class HttpClient {
     const { method, path, query, data, headers, responseType } = options;
     const { apiKey, enableLogging, maxRetries, retryDelay, timeout } =
       this.settings;
+
+    if (query) {
+      validateParams(query as Record<string, unknown>);
+    }
+    if (
+      data &&
+      typeof data === "object" &&
+      !Array.isArray(data) &&
+      !isFormData(data) &&
+      !isReadableStream(data)
+    ) {
+      validateParams(data as Record<string, unknown>);
+    }
 
     const requestHeaders: Headers = {
       Authorization: `Bearer ${apiKey}`,

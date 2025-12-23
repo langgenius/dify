@@ -9,7 +9,7 @@ export type ChatMessageRequest = {
   conversation_id?: string;
   auto_generate_name?: boolean;
   workflow_id?: string;
-  retriever_from?: string;
+  retriever_from?: "app" | "dataset";
 };
 
 export type ChatMessageResponse = Record<string, unknown>;
