@@ -1,6 +1,6 @@
-import React from 'react'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 
 type DriveProps = {
   breadcrumbs: string[]
@@ -16,7 +16,7 @@ const Drive = ({
   return (
     <>
       <button
-        type='button'
+        type="button"
         className={cn(
           'max-w-full shrink truncate rounded-md px-[5px] py-1',
           breadcrumbs.length > 0 && 'system-sm-regular text-text-tertiary hover:bg-state-base-hover',
@@ -27,7 +27,7 @@ const Drive = ({
       >
         {t('datasetPipeline.onlineDrive.breadcrumbs.allFiles')}
       </button>
-      {breadcrumbs.length > 0 && <span className='system-xs-regular text-divider-deep'>/</span>}
+      {breadcrumbs.length > 0 && <span className="system-xs-regular text-divider-deep">/</span>}
     </>
   )
 }

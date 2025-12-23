@@ -1,5 +1,5 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
 
 describe('PromptEditorHeightResizeWrap', () => {

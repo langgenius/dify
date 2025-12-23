@@ -21,7 +21,7 @@ describe('SegmentedControl', () => {
   })
 
   it('renders all options correctly', () => {
-    render(<SegmentedControl options={options} value='option1' onChange={onSelectMock} />)
+    render(<SegmentedControl options={options} value="option1" onChange={onSelectMock} />)
 
     options.forEach((option) => {
       expect(screen.getByText(option.text)).toBeInTheDocument()
@@ -35,9 +35,9 @@ describe('SegmentedControl', () => {
     render(
       <SegmentedControl
         options={options}
-        value='option1'
+        value="option1"
         onChange={onSelectMock}
-        activeClassName='custom-active-class'
+        activeClassName="custom-active-class"
       />,
     )
 
@@ -46,28 +46,28 @@ describe('SegmentedControl', () => {
   })
 
   it('highlights the selected option', () => {
-    render(<SegmentedControl options={options} value='option2' onChange={onSelectMock} />)
+    render(<SegmentedControl options={options} value="option2" onChange={onSelectMock} />)
 
     const selectedOption = screen.getByText('Option 2').closest('button')
     expect(selectedOption).toHaveClass('active')
   })
 
   it('calls onChange when an option is clicked', () => {
-    render(<SegmentedControl options={options} value='option1' onChange={onSelectMock} />)
+    render(<SegmentedControl options={options} value="option1" onChange={onSelectMock} />)
 
     fireEvent.click(screen.getByText('Option 3'))
     expect(onSelectMock).toHaveBeenCalledWith('option3')
   })
 
   it('does not call onChange when clicking the already selected option', () => {
-    render(<SegmentedControl options={options} value='option1' onChange={onSelectMock} />)
+    render(<SegmentedControl options={options} value="option1" onChange={onSelectMock} />)
 
     fireEvent.click(screen.getByText('Option 1'))
     expect(onSelectMock).not.toHaveBeenCalled()
   })
 
   it('handles disabled state correctly', () => {
-    render(<SegmentedControl options={optionsWithDisabled} value='option1' onChange={onSelectMock} />)
+    render(<SegmentedControl options={optionsWithDisabled} value="option1" onChange={onSelectMock} />)
 
     fireEvent.click(screen.getByText('Option 2'))
     expect(onSelectMock).not.toHaveBeenCalled()
@@ -85,7 +85,7 @@ describe('SegmentedControl', () => {
     render(
       <SegmentedControl
         options={options}
-        value='option1'
+        value="option1"
         onChange={onSelectMock}
         className={customClass}
       />,

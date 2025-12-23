@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 // Type for mocked store
 type MockWorkflowStore = {
@@ -103,9 +103,9 @@ describe('Workflow Onboarding Integration Logic', () => {
 
       // Simulate the validation logic from use-nodes-sync-draft.ts
       const isValidStartNode = mockNode.data.type === BlockEnum.Start
-                              || mockNode.data.type === BlockEnum.TriggerSchedule
-                              || mockNode.data.type === BlockEnum.TriggerWebhook
-                              || mockNode.data.type === BlockEnum.TriggerPlugin
+        || mockNode.data.type === BlockEnum.TriggerSchedule
+        || mockNode.data.type === BlockEnum.TriggerWebhook
+        || mockNode.data.type === BlockEnum.TriggerPlugin
 
       expect(isValidStartNode).toBe(true)
     })
@@ -117,9 +117,9 @@ describe('Workflow Onboarding Integration Logic', () => {
       }
 
       const isValidStartNode = mockNode.data.type === BlockEnum.Start
-                              || mockNode.data.type === BlockEnum.TriggerSchedule
-                              || mockNode.data.type === BlockEnum.TriggerWebhook
-                              || mockNode.data.type === BlockEnum.TriggerPlugin
+        || mockNode.data.type === BlockEnum.TriggerSchedule
+        || mockNode.data.type === BlockEnum.TriggerWebhook
+        || mockNode.data.type === BlockEnum.TriggerPlugin
 
       expect(isValidStartNode).toBe(true)
     })
@@ -131,9 +131,9 @@ describe('Workflow Onboarding Integration Logic', () => {
       }
 
       const isValidStartNode = mockNode.data.type === BlockEnum.Start
-                              || mockNode.data.type === BlockEnum.TriggerSchedule
-                              || mockNode.data.type === BlockEnum.TriggerWebhook
-                              || mockNode.data.type === BlockEnum.TriggerPlugin
+        || mockNode.data.type === BlockEnum.TriggerSchedule
+        || mockNode.data.type === BlockEnum.TriggerWebhook
+        || mockNode.data.type === BlockEnum.TriggerPlugin
 
       expect(isValidStartNode).toBe(true)
     })
@@ -145,9 +145,9 @@ describe('Workflow Onboarding Integration Logic', () => {
       }
 
       const isValidStartNode = mockNode.data.type === BlockEnum.Start
-                              || mockNode.data.type === BlockEnum.TriggerSchedule
-                              || mockNode.data.type === BlockEnum.TriggerWebhook
-                              || mockNode.data.type === BlockEnum.TriggerPlugin
+        || mockNode.data.type === BlockEnum.TriggerSchedule
+        || mockNode.data.type === BlockEnum.TriggerWebhook
+        || mockNode.data.type === BlockEnum.TriggerPlugin
 
       expect(isValidStartNode).toBe(true)
     })
@@ -159,9 +159,9 @@ describe('Workflow Onboarding Integration Logic', () => {
       }
 
       const isValidStartNode = mockNode.data.type === BlockEnum.Start
-                              || mockNode.data.type === BlockEnum.TriggerSchedule
-                              || mockNode.data.type === BlockEnum.TriggerWebhook
-                              || mockNode.data.type === BlockEnum.TriggerPlugin
+        || mockNode.data.type === BlockEnum.TriggerSchedule
+        || mockNode.data.type === BlockEnum.TriggerWebhook
+        || mockNode.data.type === BlockEnum.TriggerPlugin
 
       expect(isValidStartNode).toBe(false)
     })

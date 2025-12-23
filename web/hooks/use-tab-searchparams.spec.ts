@@ -12,6 +12,9 @@ import type { Mock } from 'vitest'
  * navigation persistent and shareable across sessions.
  */
 import { act, renderHook } from '@testing-library/react'
+// Import after mocks
+import { usePathname } from 'next/navigation'
+
 import { useTabSearchParams } from './use-tab-searchparams'
 
 // Mock Next.js navigation hooks
@@ -28,9 +31,6 @@ vi.mock('next/navigation', () => ({
   })),
   useSearchParams: vi.fn(() => mockSearchParams),
 }))
-
-// Import after mocks
-import { usePathname } from 'next/navigation'
 
 describe('useTabSearchParams', () => {
   beforeEach(() => {

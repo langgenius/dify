@@ -1,13 +1,7 @@
-import { useReactFlow } from 'reactflow'
 import { useKeyPress } from 'ahooks'
 import { useCallback, useEffect } from 'react'
+import { useReactFlow } from 'reactflow'
 import { ZEN_TOGGLE_EVENT } from '@/app/components/goto-anything/actions/commands/zen'
-import {
-  getKeyboardKeyCodeBySystem,
-  isEventTargetInputArea,
-} from '../utils'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
-import { useWorkflowStore } from '../store'
 import {
   useEdgesInteractions,
   useNodesInteractions,
@@ -16,6 +10,12 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '.'
+import { useWorkflowStore } from '../store'
+import {
+  getKeyboardKeyCodeBySystem,
+  isEventTargetInputArea,
+} from '../utils'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 export const useShortcuts = (): void => {
   const {

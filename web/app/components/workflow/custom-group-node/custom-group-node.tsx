@@ -1,10 +1,10 @@
 'use client'
 
 import type { FC } from 'react'
+import type { CustomGroupNodeData } from './types'
 import { memo } from 'react'
 import { Handle, Position } from 'reactflow'
 import { Plus02 } from '@/app/components/base/icons/src/vender/line/general'
-import type { CustomGroupNodeData } from './types'
 import { cn } from '@/utils/classnames'
 
 type CustomGroupNodeProps = {

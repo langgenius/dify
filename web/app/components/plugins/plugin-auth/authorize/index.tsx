@@ -1,15 +1,15 @@
+import type { PluginPayload } from '../types'
+import type { AddApiKeyButtonProps } from './add-api-key-button'
+import type { AddOAuthButtonProps } from './add-oauth-button'
 import {
   memo,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import AddOAuthButton from './add-oauth-button'
-import type { AddOAuthButtonProps } from './add-oauth-button'
-import AddApiKeyButton from './add-api-key-button'
-import type { AddApiKeyButtonProps } from './add-api-key-button'
-import type { PluginPayload } from '../types'
-import { cn } from '@/utils/classnames'
 import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import AddApiKeyButton from './add-api-key-button'
+import AddOAuthButton from './add-oauth-button'
 
 type AuthorizeProps = {
   pluginPayload: PluginPayload
@@ -110,7 +110,7 @@ const Authorize = ({
 
   return (
     <>
-      <div className='flex items-center space-x-1.5'>
+      <div className="flex items-center space-x-1.5">
         {
           canOAuth && (
             OAuthButton
@@ -118,10 +118,10 @@ const Authorize = ({
         }
         {
           showDivider && canOAuth && canApiKey && (
-            <div className='system-2xs-medium-uppercase flex shrink-0 flex-col items-center justify-between text-text-tertiary'>
-              <div className='h-2 w-[1px] bg-divider-subtle'></div>
+            <div className="system-2xs-medium-uppercase flex shrink-0 flex-col items-center justify-between text-text-tertiary">
+              <div className="h-2 w-[1px] bg-divider-subtle"></div>
               or
-              <div className='h-2 w-[1px] bg-divider-subtle'></div>
+              <div className="h-2 w-[1px] bg-divider-subtle"></div>
             </div>
           )
         }

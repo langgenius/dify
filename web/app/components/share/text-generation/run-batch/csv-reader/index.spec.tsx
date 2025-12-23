@@ -1,5 +1,5 @@
-import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import CSVReader from './index'
 
 let mockAcceptedFile: { name: string } | null = null
@@ -28,7 +28,7 @@ describe('CSVReader', () => {
     vi.clearAllMocks()
   })
 
-  test('should display upload instructions when no file selected', async () => {
+  it('should display upload instructions when no file selected', async () => {
     const onParsed = vi.fn()
     render(<CSVReader onParsed={onParsed} />)
 
@@ -41,7 +41,7 @@ describe('CSVReader', () => {
     expect(onParsed).toHaveBeenCalledWith([['row1']])
   })
 
-  test('should show accepted file name without extension', () => {
+  it('should show accepted file name without extension', () => {
     mockAcceptedFile = { name: 'batch.csv' }
     render(<CSVReader onParsed={vi.fn()} />)
 
@@ -49,7 +49,7 @@ describe('CSVReader', () => {
     expect(screen.getByText('.csv')).toBeInTheDocument()
   })
 
-  test('should toggle hover styling on drag events', async () => {
+  it('should toggle hover styling on drag events', async () => {
     render(<CSVReader onParsed={vi.fn()} />)
     const dragEvent = { preventDefault: vi.fn() } as unknown as DragEvent
 

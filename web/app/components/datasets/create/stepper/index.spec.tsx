@@ -1,6 +1,8 @@
+import type { StepperProps } from './index'
+import type { Step, StepperStepProps } from './step'
 import { render, screen } from '@testing-library/react'
-import { Stepper, type StepperProps } from './index'
-import { type Step, StepperStep, type StepperStepProps } from './step'
+import { Stepper } from './index'
+import { StepperStep } from './step'
 
 // Test data factory for creating steps
 const createStep = (overrides: Partial<Step> = {}): Step => ({

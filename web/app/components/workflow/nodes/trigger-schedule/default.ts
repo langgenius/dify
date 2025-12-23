@@ -1,14 +1,15 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
 import type { ScheduleTriggerNodeType } from './types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
+import { getDefaultScheduleConfig } from './constants'
 import { isValidCronExpression } from './utils/cron-parser'
 import { getNextExecutionTimes } from './utils/execution-time-calculator'
-import { getDefaultScheduleConfig } from './constants'
-import { genNodeMetaData } from '../../utils'
 
 const isValidTimeFormat = (time: string): boolean => {
   const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
-  if (!timeRegex.test(time)) return false
+  if (!timeRegex.test(time))
+    return false
 
   const [timePart, period] = time.split(' ')
   const [hour, minute] = timePart.split(':')
@@ -16,8 +17,8 @@ const isValidTimeFormat = (time: string): boolean => {
   const minuteNum = Number.parseInt(minute, 10)
 
   return hourNum >= 1 && hourNum <= 12
-         && minuteNum >= 0 && minuteNum <= 59
-         && ['AM', 'PM'].includes(period)
+    && minuteNum >= 0 && minuteNum <= 59
+    && ['AM', 'PM'].includes(period)
 }
 
 const validateHourlyConfig = (config: any, t: any): string => {
@@ -41,7 +42,8 @@ const validateDailyConfig = (config: any, t: any): string => {
 
 const validateWeeklyConfig = (config: any, t: any): string => {
   const dailyError = validateDailyConfig(config, t)
-  if (dailyError) return dailyError
+  if (dailyError)
+    return dailyError
 
   const i18nPrefix = 'workflow.errorMsg'
 
@@ -59,7 +61,8 @@ const validateWeeklyConfig = (config: any, t: any): string => {
 
 const validateMonthlyConfig = (config: any, t: any): string => {
   const dailyError = validateDailyConfig(config, t)
-  if (dailyError) return dailyError
+  if (dailyError)
+    return dailyError
 
   const i18nPrefix = 'workflow.errorMsg'
 

@@ -1,10 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import ProcessDocuments from './index'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
-import { useInputVariables } from './hooks'
 import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import { useInputVariables } from './hooks'
+import ProcessDocuments from './index'
 
 // ==========================================
 // Mock External Dependencies

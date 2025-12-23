@@ -1,9 +1,9 @@
-import { render, screen } from '@testing-library/react'
-import React from 'react'
-import Processing from './index'
-import type { InitialDocumentDetail } from '@/models/pipeline'
-import { DatasourceType } from '@/models/pipeline'
 import type { DocumentIndexingStatus } from '@/models/datasets'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { DatasourceType } from '@/models/pipeline'
+import Processing from './index'
 
 // ==========================================
 // Mock External Dependencies
@@ -86,8 +86,7 @@ const createMockDocuments = (count: number): InitialDocumentDetail[] =>
       id: `doc-${index + 1}`,
       name: `document-${index + 1}.txt`,
       position: index,
-    }),
-  )
+    }))
 
 // ==========================================
 // Test Suite

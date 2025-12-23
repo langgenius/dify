@@ -1,5 +1,5 @@
-import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import InputWithCopy from './index'
 
 // Create a mock function that we can track using vi.hoisted

@@ -1,6 +1,6 @@
 import type { AbstractNode } from './utils'
-import { generate, normalizeAttrs } from './utils'
 import { render } from '@testing-library/react'
+import { generate, normalizeAttrs } from './utils'
 
 describe('generate icon base utils', () => {
   describe('normalizeAttrs', () => {

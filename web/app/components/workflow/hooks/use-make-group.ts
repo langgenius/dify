@@ -1,8 +1,8 @@
+import type { PredecessorHandle } from '../utils'
 import { useMemo } from 'react'
 import { useStore as useReactFlowStore } from 'reactflow'
-import { getCommonPredecessorHandles } from '../utils'
-import type { PredecessorHandle } from '../utils'
 import { shallow } from 'zustand/shallow'
+import { getCommonPredecessorHandles } from '../utils'
 
 export type MakeGroupAvailability = {
   canMakeGroup: boolean

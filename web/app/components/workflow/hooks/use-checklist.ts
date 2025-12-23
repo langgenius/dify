@@ -1,10 +1,9 @@
-import {
-  useCallback,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useEdges, useStoreApi } from 'reactflow'
+import type { AgentNodeType } from '../nodes/agent/types'
+import type { DataSourceNodeType } from '../nodes/data-source/types'
+import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
+import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
+import type { ToolNodeType } from '../nodes/tool/types'
+import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
 import type {
   CommonEdgeType,
   CommonNodeType,
@@ -12,51 +11,52 @@ import type {
   Node,
   ValueSelector,
 } from '../types'
-import { BlockEnum } from '../types'
+import type { Emoji } from '@/app/components/tools/types'
+import type { DataSet } from '@/models/datasets'
+import {
+  useCallback,
+  useMemo,
+  useRef,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useEdges, useStoreApi } from 'reactflow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import { useToastContext } from '@/app/components/base/toast'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import { MAX_TREE_DEPTH } from '@/config'
+import { useGetLanguage } from '@/context/i18n'
+import { fetchDatasets } from '@/service/datasets'
+import { useStrategyProviders } from '@/service/use-strategy'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+import { useAllTriggerPlugins } from '@/service/use-triggers'
+import { AppModeEnum } from '@/types/app'
+import {
+  CUSTOM_NODE,
+} from '../constants'
+import { useDatasetsDetailStore } from '../datasets-detail-store/store'
+import {
+  useGetToolIcon,
+  useNodesMetaData,
+} from '../hooks'
+import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
 import {
   useStore,
   useWorkflowStore,
 } from '../store'
+import { BlockEnum } from '../types'
 import {
   getDataSourceCheckParams,
   getToolCheckParams,
   getValidTreeNodes,
 } from '../utils'
 import { getTriggerCheckParams } from '../utils/trigger'
-import {
-  CUSTOM_NODE,
-} from '../constants'
-import {
-  useGetToolIcon,
-  useNodesMetaData,
-} from '../hooks'
-import type { ToolNodeType } from '../nodes/tool/types'
-import type { DataSourceNodeType } from '../nodes/data-source/types'
-import type { PluginTriggerNodeType } from '../nodes/trigger-plugin/types'
-import { useToastContext } from '@/app/components/base/toast'
-import { useGetLanguage } from '@/context/i18n'
-import type { AgentNodeType } from '../nodes/agent/types'
-import { useStrategyProviders } from '@/service/use-strategy'
-import { useAllTriggerPlugins } from '@/service/use-triggers'
-import { useDatasetsDetailStore } from '../datasets-detail-store/store'
-import type { KnowledgeRetrievalNodeType } from '../nodes/knowledge-retrieval/types'
-import type { DataSet } from '@/models/datasets'
-import { fetchDatasets } from '@/service/datasets'
-import { MAX_TREE_DEPTH } from '@/config'
 import useNodesAvailableVarList, { useGetNodesAvailableVarList } from './use-nodes-available-var-list'
-import { getNodeUsedVars, isSpecialVar } from '../nodes/_base/components/variable/utils'
-import type { Emoji } from '@/app/components/tools/types'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { KnowledgeBaseNodeType } from '../nodes/knowledge-base/types'
-import {
-  useAllBuiltInTools,
-  useAllCustomTools,
-  useAllWorkflowTools,
-} from '@/service/use-tools'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { AppModeEnum } from '@/types/app'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 
 export type ChecklistItem = {
   id: string

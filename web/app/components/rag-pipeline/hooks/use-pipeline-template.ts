@@ -1,10 +1,10 @@
+import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
 import { useTranslation } from 'react-i18next'
-import { generateNewNode } from '@/app/components/workflow/utils'
 import {
   START_INITIAL_POSITION,
 } from '@/app/components/workflow/constants'
-import type { KnowledgeBaseNodeType } from '@/app/components/workflow/nodes/knowledge-base/types'
 import knowledgeBaseDefault from '@/app/components/workflow/nodes/knowledge-base/default'
+import { generateNewNode } from '@/app/components/workflow/utils'
 
 export const usePipelineTemplate = () => {
   const { t } = useTranslation()

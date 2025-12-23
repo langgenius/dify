@@ -1,11 +1,11 @@
 import fs from 'node:fs'
-import path from 'node:path'
-import vm from 'node:vm'
-import { fileURLToPath } from 'node:url'
 import { createRequire } from 'node:module'
-import { transpile } from 'typescript'
-import { parseModule, generateCode, loadFile } from 'magicast'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import vm from 'node:vm'
 import { translate } from 'bing-translate-api'
+import { generateCode, loadFile, parseModule } from 'magicast'
+import { transpile } from 'typescript'
 
 const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)
@@ -42,7 +42,8 @@ function parseArgs(argv) {
     let cursor = startIndex + 1
     while (cursor < argv.length && !argv[cursor].startsWith('--')) {
       const value = argv[cursor].trim()
-      if (value) values.push(value)
+      if (value)
+        values.push(value)
       cursor++
     }
     return { values, nextIndex: cursor - 1 }
@@ -127,7 +128,7 @@ function protectPlaceholders(text) {
   const patterns = [
     /\{\{[^{}]+\}\}/g, // mustache
     /\$\{[^{}]+\}/g, // template expressions
-    /<[^>]+?>/g, // html-like tags
+    /<[^>]+>/g, // html-like tags
   ]
 
   patterns.forEach((pattern) => {
@@ -160,7 +161,7 @@ async function translateText(source, toLanguage) {
     const { translation } = await translate(safeText, null, languageKeyMap[toLanguage])
     return { value: restore(translation), skipped: false }
   }
- catch (error) {
+  catch (error) {
     console.error(`❌ Error translating to ${toLanguage}:`, error.message)
     return { value: source, skipped: true, error: error.message }
   }
@@ -310,7 +311,7 @@ export default translation
     }
 
     const { code } = generateCode(mod)
-    let res = `const translation =${code.replace('export default', '')}
+    const res = `const translation =${code.replace('export default', '')}
 
 export default translation
 `.replace(/,\n\n/g, ',\n').replace('};', '}')
@@ -319,13 +320,13 @@ export default translation
       fs.writeFileSync(toGenLanguageFilePath, res)
       console.log(`💾 Saved translations to ${toGenLanguageFilePath}`)
     }
- else {
+    else {
       console.log(`🔍 [DRY RUN] Would save translations to ${toGenLanguageFilePath}`)
     }
 
     return result
   }
- catch (error) {
+  catch (error) {
     console.error(`Error processing file ${fullKeyFilePath}:`, error.message)
     throw error
   }

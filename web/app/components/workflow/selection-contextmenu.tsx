@@ -1,14 +1,3 @@
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
-import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
-import { shallow } from 'zustand/shallow'
 import type { FC, ReactElement } from 'react'
 import {
   RiAlignBottom,
@@ -18,15 +7,25 @@ import {
   RiAlignRight,
   RiAlignTop,
 } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
-import ShortcutsName from './shortcuts-name'
-import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
+import { useClickAway } from 'ahooks'
 import { produce } from 'immer'
-import { WorkflowHistoryEvent, useWorkflowHistory } from './hooks/use-workflow-history'
-import { useStore } from './store'
-import { useSelectionInteractions } from '@/app/components/workflow/hooks'
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStore as useReactFlowStore, useStoreApi } from 'reactflow'
+import { shallow } from 'zustand/shallow'
+import Tooltip from '@/app/components/base/tooltip'
+import { useNodesInteractions, useNodesReadOnly, useNodesSyncDraft } from './hooks'
 import { useMakeGroupAvailability } from './hooks/use-make-group'
-import { useWorkflowStore } from './store'
+import { useSelectionInteractions } from './hooks/use-selection-interactions'
+import { useWorkflowHistory, WorkflowHistoryEvent } from './hooks/use-workflow-history'
+import ShortcutsName from './shortcuts-name'
+import { useStore, useWorkflowStore } from './store'
 
 enum AlignType {
   Left = 'left',
@@ -55,7 +54,7 @@ const AlignButton: FC<AlignButtonProps> = ({ config, onClick, position = 'bottom
   return (
     <Tooltip position={position} popupContent={config.labelKey}>
       <div
-        className='flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-state-base-hover'
+        className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-state-base-hover"
         onClick={() => onClick(config.type)}
       >
         {config.icon}
@@ -65,14 +64,14 @@ const AlignButton: FC<AlignButtonProps> = ({ config, onClick, position = 'bottom
 }
 
 const ALIGN_BUTTONS: AlignButtonConfig[] = [
-  { type: AlignType.Left, icon: <RiAlignLeft className='h-4 w-4' />, labelKey: 'workflow.operator.alignLeft' },
-  { type: AlignType.Center, icon: <RiAlignCenter className='h-4 w-4' />, labelKey: 'workflow.operator.alignCenter' },
-  { type: AlignType.Right, icon: <RiAlignRight className='h-4 w-4' />, labelKey: 'workflow.operator.alignRight' },
-  { type: AlignType.DistributeHorizontal, icon: <RiAlignJustify className='h-4 w-4' />, labelKey: 'workflow.operator.distributeHorizontal' },
-  { type: AlignType.Top, icon: <RiAlignTop className='h-4 w-4' />, labelKey: 'workflow.operator.alignTop' },
-  { type: AlignType.Middle, icon: <RiAlignCenter className='h-4 w-4 rotate-90' />, labelKey: 'workflow.operator.alignMiddle' },
-  { type: AlignType.Bottom, icon: <RiAlignBottom className='h-4 w-4' />, labelKey: 'workflow.operator.alignBottom' },
-  { type: AlignType.DistributeVertical, icon: <RiAlignJustify className='h-4 w-4 rotate-90' />, labelKey: 'workflow.operator.distributeVertical' },
+  { type: AlignType.Left, icon: <RiAlignLeft className="h-4 w-4" />, labelKey: 'workflow.operator.alignLeft' },
+  { type: AlignType.Center, icon: <RiAlignCenter className="h-4 w-4" />, labelKey: 'workflow.operator.alignCenter' },
+  { type: AlignType.Right, icon: <RiAlignRight className="h-4 w-4" />, labelKey: 'workflow.operator.alignRight' },
+  { type: AlignType.DistributeHorizontal, icon: <RiAlignJustify className="h-4 w-4" />, labelKey: 'workflow.operator.distributeHorizontal' },
+  { type: AlignType.Top, icon: <RiAlignTop className="h-4 w-4" />, labelKey: 'workflow.operator.alignTop' },
+  { type: AlignType.Middle, icon: <RiAlignCenter className="h-4 w-4 rotate-90" />, labelKey: 'workflow.operator.alignMiddle' },
+  { type: AlignType.Bottom, icon: <RiAlignBottom className="h-4 w-4" />, labelKey: 'workflow.operator.alignBottom' },
+  { type: AlignType.DistributeVertical, icon: <RiAlignJustify className="h-4 w-4 rotate-90" />, labelKey: 'workflow.operator.distributeVertical' },
 ]
 
 const SelectionContextmenu = () => {
@@ -106,7 +105,8 @@ const SelectionContextmenu = () => {
   const menuRef = useRef<HTMLDivElement>(null)
 
   const menuPosition = useMemo(() => {
-    if (!selectionMenu) return { left: 0, top: 0 }
+    if (!selectionMenu)
+      return { left: 0, top: 0 }
 
     let left = selectionMenu.left
     let top = selectionMenu.top
@@ -270,7 +270,8 @@ const SelectionContextmenu = () => {
       for (let i = 1; i < sortedNodes.length - 1; i++) {
         const nodeToAlign = sortedNodes[i]
         const currentNode = draft.find(n => n.id === nodeToAlign.id)
-        if (!currentNode) continue
+        if (!currentNode)
+          continue
 
         if (alignType === AlignType.DistributeHorizontal) {
           // Position = previous right edge + spacing
@@ -319,7 +320,7 @@ const SelectionContextmenu = () => {
         // If container node is selected, add its children to the exclusion set
         if (selectedNodeIds.includes(node.id)) {
           // Add all its children to the childNodeIds set
-          node.data._children.forEach((child: { nodeId: string; nodeType: string }) => {
+          node.data._children.forEach((child: { nodeId: string, nodeType: string }) => {
             childNodeIds.add(child.nodeId)
           })
         }
@@ -420,17 +421,17 @@ const SelectionContextmenu = () => {
 
   return (
     <div
-      className='absolute z-[9]'
+      className="absolute z-[9]"
       style={{
         left: menuPosition.left,
         top: menuPosition.top,
       }}
       ref={ref}
     >
-      <div ref={menuRef} className='w-[244px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
+      <div ref={menuRef} className="w-[244px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
         {!nodesReadOnly && (
           <>
-            <div className='p-1'>
+            <div className="p-1">
               <div
                 className={`flex h-8 items-center justify-between rounded-lg px-3 text-sm ${
                   canMakeGroup
@@ -448,10 +449,10 @@ const SelectionContextmenu = () => {
                 <ShortcutsName keys={['ctrl', 'g']} className={!canMakeGroup ? 'opacity-50' : ''} />
               </div>
             </div>
-            <div className='h-px bg-divider-regular' />
-            <div className='p-1'>
+            <div className="h-px bg-divider-regular" />
+            <div className="p-1">
               <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                 onClick={() => {
                   handleNodesCopy()
                   handleSelectionContextmenuCancel()
@@ -461,7 +462,7 @@ const SelectionContextmenu = () => {
                 <ShortcutsName keys={['ctrl', 'c']} />
               </div>
               <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                 onClick={() => {
                   handleNodesDuplicate()
                   handleSelectionContextmenuCancel()
@@ -471,10 +472,10 @@ const SelectionContextmenu = () => {
                 <ShortcutsName keys={['ctrl', 'd']} />
               </div>
             </div>
-            <div className='h-px bg-divider-regular' />
-            <div className='p-1'>
+            <div className="h-px bg-divider-regular" />
+            <div className="p-1">
               <div
-                className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive'
+                className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive"
                 onClick={() => {
                   handleNodesDelete()
                   handleSelectionContextmenuCancel()
@@ -484,10 +485,10 @@ const SelectionContextmenu = () => {
                 <ShortcutsName keys={['del']} />
               </div>
             </div>
-            <div className='h-px bg-divider-regular' />
+            <div className="h-px bg-divider-regular" />
           </>
         )}
-        <div className='flex items-center justify-between p-1'>
+        <div className="flex items-center justify-between p-1">
           {ALIGN_BUTTONS.map(config => (
             <AlignButton
               key={config.type}

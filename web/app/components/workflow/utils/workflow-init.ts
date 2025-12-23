@@ -1,17 +1,21 @@
-import {
-  getConnectedEdges,
-} from 'reactflow'
-import {
-  cloneDeep,
-} from 'lodash-es'
+import type { CustomGroupNodeData } from '../custom-group-node'
+import type { IfElseNodeType } from '../nodes/if-else/types'
+import type { IterationNodeType } from '../nodes/iteration/types'
+import type { LoopNodeType } from '../nodes/loop/types'
+import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
+import type { ToolNodeType } from '../nodes/tool/types'
 import type {
   Edge,
   Node,
 } from '../types'
 import {
-  BlockEnum,
-  ErrorHandleMode,
-} from '../types'
+  cloneDeep,
+} from 'lodash-es'
+import {
+  getConnectedEdges,
+} from 'reactflow'
+import { getIterationStartNode, getLoopStartNode } from '@/app/components/workflow/utils/node'
+import { correctModelProvider } from '@/utils'
 import {
   CUSTOM_NODE,
   DEFAULT_RETRY_INTERVAL,
@@ -21,24 +25,17 @@ import {
   NODE_WIDTH_X_OFFSET,
   START_INITIAL_POSITION,
 } from '../constants'
-import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
-import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
-import type { QuestionClassifierNodeType } from '../nodes/question-classifier/types'
-import type { IfElseNodeType } from '../nodes/if-else/types'
-import { branchNameCorrect } from '../nodes/if-else/utils'
-import type { IterationNodeType } from '../nodes/iteration/types'
-import type { LoopNodeType } from '../nodes/loop/types'
-import type { ToolNodeType } from '../nodes/tool/types'
-import {
-  getIterationStartNode,
-  getLoopStartNode,
-} from '.'
-import { correctModelProvider } from '@/utils'
 import {
   CUSTOM_GROUP_NODE,
   GROUP_CHILDREN_Z_INDEX,
 } from '../custom-group-node'
-import type { CustomGroupNodeData } from '../custom-group-node'
+import { branchNameCorrect } from '../nodes/if-else/utils'
+import { CUSTOM_ITERATION_START_NODE } from '../nodes/iteration-start/constants'
+import { CUSTOM_LOOP_START_NODE } from '../nodes/loop-start/constants'
+import {
+  BlockEnum,
+  ErrorHandleMode,
+} from '../types'
 
 const WHITE = 'WHITE'
 const GRAY = 'GRAY'
@@ -280,7 +277,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         acc[node.parentId] = [{ nodeId: node.id, nodeType: node.data.type }]
     }
     return acc
-  }, {} as Record<string, { nodeId: string; nodeType: BlockEnum }[]>)
+  }, {} as Record<string, { nodeId: string, nodeType: BlockEnum }[]>)
 
   return nodes.map((node) => {
     if (!node.type)

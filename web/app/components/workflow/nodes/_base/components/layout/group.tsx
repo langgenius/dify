@@ -18,7 +18,8 @@ export const Group = memo(({
         'px-4 py-2',
         withBorderBottom && 'border-b border-divider-subtle',
         className,
-      )}>
+      )}
+    >
       {children}
     </div>
   )

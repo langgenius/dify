@@ -1,18 +1,18 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import ConfigVision from '../_base/components/config-vision'
-import useConfig from './use-config'
-import ClassList from './components/class-list'
-import AdvancedSetting from './components/advanced-setting'
 import type { QuestionClassifierNodeType } from './types'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import ConfigVision from '../_base/components/config-vision'
+import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import AdvancedSetting from './components/advanced-setting'
+import ClassList from './components/class-list'
+import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
@@ -46,14 +46,14 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4">
         <Field
           title={t(`${i18nPrefix}.model`)}
           required
         >
           <ModelParameterModal
-            popupClassName='!w-[387px]'
+            popupClassName="!w-[387px]"
             isInWorkflow
             isAdvancedMode={true}
             provider={model?.provider}
@@ -121,13 +121,13 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='class_name'
-              type='string'
+              name="class_name"
+              type="string"
               description={t(`${i18nPrefix}.outputVars.className`)}
             />
             <VarItem
-              name='usage'
-              type='object'
+              name="usage"
+              type="object"
               description={t(`${i18nPrefix}.outputVars.usage`)}
             />
           </>

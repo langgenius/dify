@@ -1,9 +1,9 @@
 'use client'
 
 import type { FC } from 'react'
+import type { CustomGroupInputNodeData } from './types'
 import { memo } from 'react'
 import { Handle, Position } from 'reactflow'
-import type { CustomGroupInputNodeData } from './types'
 import { cn } from '@/utils/classnames'
 
 type CustomGroupInputNodeProps = {

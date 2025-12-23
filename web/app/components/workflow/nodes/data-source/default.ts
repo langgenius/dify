@@ -1,14 +1,14 @@
 import type { NodeDefault } from '../../types'
 import type { DataSourceNodeType } from './types'
-import { DataSourceClassification } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
 import {
   COMMON_OUTPUT,
   LOCAL_FILE_OUTPUT,
 } from './constants'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import { DataSourceClassification } from './types'
 
 const i18nPrefix = 'workflow.errorMsg'
 
@@ -86,12 +86,14 @@ const nodeDefault: NodeDefault<DataSourceNodeType> = {
           type,
           description: output.description,
           schemaType,
-          children: output.type === 'object' ? {
-            schema: {
-              type: 'object',
-              properties: output.properties,
-            },
-          } : undefined,
+          children: output.type === 'object'
+            ? {
+                schema: {
+                  type: 'object',
+                  properties: output.properties,
+                },
+              }
+            : undefined,
         })
       })
     }

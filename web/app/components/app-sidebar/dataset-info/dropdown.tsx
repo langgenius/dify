@@ -1,21 +1,22 @@
-import React, { useCallback, useState } from 'react'
-import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
-import ActionButton from '../../base/action-button'
+import type { DataSet } from '@/models/datasets'
 import { RiMoreFill } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import Menu from './menu'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import type { DataSet } from '@/models/datasets'
+import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
 import { datasetDetailQueryKeyPrefix, useInvalidDatasetList } from '@/service/knowledge/use-dataset'
 import { useInvalid } from '@/service/use-base'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
-import Toast from '../../base/toast'
-import { useTranslation } from 'react-i18next'
-import RenameDatasetModal from '../../datasets/rename-modal'
-import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
+import { cn } from '@/utils/classnames'
+import ActionButton from '../../base/action-button'
 import Confirm from '../../base/confirm'
-import { useRouter } from 'next/navigation'
+import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '../../base/portal-to-follow-elem'
+import Toast from '../../base/toast'
+import RenameDatasetModal from '../../datasets/rename-modal'
+import Menu from './menu'
 
 type DropDownProps = {
   expand: boolean
@@ -108,19 +109,21 @@ const DropDown = ({
       open={open}
       onOpenChange={setOpen}
       placement={expand ? 'bottom-end' : 'right'}
-      offset={expand ? {
-        mainAxis: 4,
-        crossAxis: 10,
-      } : {
-        mainAxis: 4,
-      }}
+      offset={expand
+        ? {
+            mainAxis: 4,
+            crossAxis: 10,
+          }
+        : {
+            mainAxis: 4,
+          }}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md')}>
-          <RiMoreFill className='size-4' />
+          <RiMoreFill className="size-4" />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[60]'>
+      <PortalToFollowElemContent className="z-[60]">
         <Menu
           showDelete={!isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}

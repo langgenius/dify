@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
+import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import useTheme from '@/hooks/use-theme'
 
 type Props = {
   status: string
@@ -43,7 +43,9 @@ const StatusContainer: FC<Props> = ({
         'absolute left-0 top-0 h-[50px] w-[65%] bg-no-repeat',
         theme === Theme.light && 'bg-[url(~@/app/components/workflow/run/assets/highlight.svg)]',
         theme === Theme.dark && 'bg-[url(~@/app/components/workflow/run/assets/highlight-dark.svg)]',
-      )}></div>
+      )}
+      >
+      </div>
       {children}
     </div>
   )

@@ -1,11 +1,11 @@
 import type { RefObject } from 'react'
+import type { CaseItem, Condition, IfElseNodeType } from './types'
 import type { InputVar, ValueSelector, Variable } from '@/app/components/workflow/types'
 import { useCallback } from 'react'
-import type { CaseItem, Condition, IfElseNodeType } from './types'
 
 type Params = {
-  id: string,
-  payload: IfElseNodeType,
+  id: string
+  payload: IfElseNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -94,7 +94,7 @@ const useSingleRunFormParams = ({
     const existVarsKey: Record<string, boolean> = {}
     const uniqueVarInputs: InputVar[] = []
     varInputs.forEach((input) => {
-      if(!input)
+      if (!input)
         return
       if (!existVarsKey[input.variable]) {
         existVarsKey[input.variable] = true
@@ -126,7 +126,7 @@ const useSingleRunFormParams = ({
     if (condition.variable_selector)
       vars.push(condition.variable_selector)
 
-    if(condition.sub_variable_condition && condition.sub_variable_condition.conditions?.length)
+    if (condition.sub_variable_condition && condition.sub_variable_condition.conditions?.length)
       vars.push(...getVarFromCaseItem(condition.sub_variable_condition))
     return vars
   }
