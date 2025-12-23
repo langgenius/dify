@@ -2063,13 +2063,42 @@ export const useNodesInteractions = () => {
         label: node.data.title,
       }
     })
-    const handlers: GroupHandler[] = leafNodeIds.map((nodeId) => {
+    // Build handlers from all leaf nodes
+    // For multi-branch nodes (if-else, classifier), create one handler per branch
+    // For regular nodes, create one handler with 'source' handle
+    const handlerMap = new Map<string, GroupHandler>()
+
+    leafNodeIds.forEach((nodeId) => {
       const node = bundledNodes.find(n => n.id === nodeId)
-      return {
-        id: nodeId,
-        label: node?.data.title || nodeId,
+      if (!node)
+        return
+
+      const targetBranches = node.data._targetBranches
+      if (targetBranches && targetBranches.length > 0) {
+        // Multi-branch node: create handler for each branch
+        targetBranches.forEach((branch: { id: string; name?: string }) => {
+          const handlerId = `${nodeId}-${branch.id}`
+          handlerMap.set(handlerId, {
+            id: handlerId,
+            label: branch.name || node.data.title || nodeId,
+            nodeId,
+            sourceHandle: branch.id,
+          })
+        })
+      }
+      else {
+        // Regular node: single 'source' handler
+        const handlerId = `${nodeId}-source`
+        handlerMap.set(handlerId, {
+          id: handlerId,
+          label: node.data.title || nodeId,
+          nodeId,
+          sourceHandle: 'source',
+        })
       }
     })
+
+    const handlers: GroupHandler[] = Array.from(handlerMap.values())
 
     // put the group node at the top-left corner of the selection, slightly offset
     const { x: minX, y: minY } = getTopLeftNodePosition(bundledNodes)
@@ -2123,7 +2152,7 @@ export const useNodesInteractions = () => {
         }
       })
 
-      // re-add the external inbound edges to the group node (previous order is not lost)
+      // re-add the external inbound edges to the group node as UI-only edges (not persisted to backend)
       inboundEdges.forEach((edge) => {
         draft.push({
           id: `${edge.id}__to-${groupNode.id}`,
@@ -2138,22 +2167,27 @@ export const useNodesInteractions = () => {
             targetType: BlockEnum.Group,
             _hiddenInGroupId: undefined,
             _isBundled: false,
+            _isTemp: true, // UI-only edge, not persisted to backend
           },
           zIndex: edge.zIndex,
         })
       })
 
-      // outbound edges of the group node: only map the outbound edges of the leaf nodes to the corresponding handlers
+      // outbound edges of the group node as UI-only edges (not persisted to backend)
       outboundEdges.forEach((edge) => {
         if (!bundledNodeIdIsLeaf.has(edge.source))
           return
 
+        // Use the same handler id format: nodeId-sourceHandle
+        const originalSourceHandle = edge.sourceHandle || 'source'
+        const handlerId = `${edge.source}-${originalSourceHandle}`
+
         draft.push({
-          id: `${groupNode.id}-${edge.target}-${edge.targetHandle || 'target'}-${edge.source}`,
+          id: `${groupNode.id}-${edge.target}-${edge.targetHandle || 'target'}-${handlerId}`,
           type: edge.type || CUSTOM_EDGE,
           source: groupNode.id,
           target: edge.target,
-          sourceHandle: edge.source, // handler id corresponds to the leaf node id
+          sourceHandle: handlerId, // handler id: nodeId-sourceHandle
           targetHandle: edge.targetHandle,
           data: {
             ...edge.data,
@@ -2161,6 +2195,7 @@ export const useNodesInteractions = () => {
             targetType: nodeTypeMap.get(edge.target)!,
             _hiddenInGroupId: undefined,
             _isBundled: false,
+            _isTemp: true, // UI-only edge, not persisted to backend
           },
           zIndex: edge.zIndex,
         })

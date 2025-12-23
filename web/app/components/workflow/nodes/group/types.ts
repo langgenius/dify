@@ -9,6 +9,8 @@ export type GroupMember = {
 export type GroupHandler = {
   id: string
   label?: string
+  nodeId?: string // leaf node id for multi-branch nodes
+  sourceHandle?: string // original sourceHandle (e.g., case_id for if-else)
 }
 
 export type GroupNodeData = CommonNodeType<{

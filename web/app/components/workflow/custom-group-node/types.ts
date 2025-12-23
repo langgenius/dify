@@ -19,6 +19,8 @@ export type CustomGroupNodeData = {
   type: '' // Empty string bypasses backend NodeType validation
   title: string
   desc?: string
+  _connectedSourceHandleIds?: string[]
+  _connectedTargetHandleIds?: string[]
   group: {
     groupId: string
     title: string

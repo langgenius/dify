@@ -1,6 +1,7 @@
 import { memo, useMemo } from 'react'
 import { RiArrowRightSLine } from '@remixicon/react'
 import BlockIcon from '@/app/components/workflow/block-icon'
+import { NodeSourceHandle } from '../_base/components/node-handle'
 import type { NodeProps } from '@/app/components/workflow/types'
 import type { GroupHandler, GroupMember, GroupNodeData } from './types'
 import type { BlockEnum } from '@/app/components/workflow/types'
@@ -68,11 +69,17 @@ const GroupNode = (props: NodeProps<GroupNodeData>) => {
             <div
               key={handler.id}
               className={cn(
+                'relative',
                 'system-sm-semibold uppercase',
                 'flex h-9 items-center rounded-md bg-components-panel-on-panel-item-bg px-3 text-text-primary shadow-xs',
               )}
             >
               {handler.label || handler.id}
+              <NodeSourceHandle
+                {...props}
+                handleId={handler.id}
+                handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
+              />
             </div>
           ))}
         </div>
