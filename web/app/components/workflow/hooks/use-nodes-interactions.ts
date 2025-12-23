@@ -75,6 +75,79 @@ const ENTRY_NODE_WRAPPER_OFFSET = {
   y: 21, // Adjusted based on visual testing feedback
 } as const
 
+/**
+ * Parse group handler id to get original node id and sourceHandle
+ * Handler id format: `${nodeId}-${sourceHandle}`
+ */
+function parseGroupHandlerId(handlerId: string): { originalNodeId: string, originalSourceHandle: string } {
+  const lastDashIndex = handlerId.lastIndexOf('-')
+  return {
+    originalNodeId: handlerId.substring(0, lastDashIndex),
+    originalSourceHandle: handlerId.substring(lastDashIndex + 1),
+  }
+}
+
+/**
+ * Create a pair of edges for group node connections:
+ * - realEdge: hidden edge from original node to target (persisted to backend)
+ * - uiEdge: visible temp edge from group to target (UI-only, not persisted)
+ */
+function createGroupEdgePair(params: {
+  groupNodeId: string
+  handlerId: string
+  targetNodeId: string
+  targetHandle: string
+  nodes: Node[]
+  baseEdgeData?: Partial<Edge['data']>
+  zIndex?: number
+}): { realEdge: Edge, uiEdge: Edge } | null {
+  const { groupNodeId, handlerId, targetNodeId, targetHandle, nodes, baseEdgeData = {}, zIndex = 0 } = params
+
+  const { originalNodeId, originalSourceHandle } = parseGroupHandlerId(handlerId)
+  const originalNode = nodes.find(node => node.id === originalNodeId)
+  const targetNode = nodes.find(node => node.id === targetNodeId)
+
+  if (!originalNode || !targetNode)
+    return null
+
+  // Create the real edge (from original node to target) - hidden because original node is in group
+  const realEdge: Edge = {
+    id: `${originalNodeId}-${originalSourceHandle}-${targetNodeId}-${targetHandle}`,
+    type: CUSTOM_EDGE,
+    source: originalNodeId,
+    sourceHandle: originalSourceHandle,
+    target: targetNodeId,
+    targetHandle,
+    hidden: true,
+    data: {
+      ...baseEdgeData,
+      sourceType: originalNode.data.type,
+      targetType: targetNode.data.type,
+      _hiddenInGroupId: groupNodeId,
+    },
+    zIndex,
+  }
+
+  // Create the UI edge (from group to target) - temporary, not persisted to backend
+  const uiEdge: Edge = {
+    id: `${groupNodeId}-${handlerId}-${targetNodeId}-${targetHandle}`,
+    type: CUSTOM_EDGE,
+    source: groupNodeId,
+    sourceHandle: handlerId,
+    target: targetNodeId,
+    targetHandle,
+    data: {
+      ...baseEdgeData,
+      sourceType: originalNode.data.type, // Use original node type, not group
+      targetType: targetNode.data.type,
+      _isTemp: true,
+    },
+    zIndex,
+  }
+
+  return { realEdge, uiEdge }
+}
+
 export const useNodesInteractions = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -427,73 +500,40 @@ export const useNodesInteractions = () => {
       // Check if source is a group node - need special handling
       const isSourceGroup = sourceNode?.data.type === BlockEnum.Group
 
-      if (isSourceGroup && sourceHandle) {
-        // Parse handler id to get original node id and sourceHandle
-        // Handler id format: `${nodeId}-${sourceHandle}`
-        const lastDashIndex = sourceHandle.lastIndexOf('-')
-        const originalNodeId = sourceHandle.substring(0, lastDashIndex)
-        const originalSourceHandle = sourceHandle.substring(lastDashIndex + 1)
-        const originalNode = nodes.find(node => node.id === originalNodeId)
-
-        if (!originalNode)
-          return
+      if (isSourceGroup && sourceHandle && target && targetHandle) {
+        const { originalNodeId, originalSourceHandle } = parseGroupHandlerId(sourceHandle)
 
         // Check if real edge already exists
-        if (
-          edges.find(
-            edge =>
-              edge.source === originalNodeId
-              && edge.sourceHandle === originalSourceHandle
-              && edge.target === target
-              && edge.targetHandle === targetHandle,
-          )
-        )
+        if (edges.find(edge =>
+          edge.source === originalNodeId
+          && edge.sourceHandle === originalSourceHandle
+          && edge.target === target
+          && edge.targetHandle === targetHandle,
+        ))
           return
 
-        const parendNode = nodes.find(node => node.id === targetNode?.parentId)
-        const isInIteration = parendNode && parendNode.data.type === BlockEnum.Iteration
-        const isInLoop = !!parendNode && parendNode.data.type === BlockEnum.Loop
+        const parentNode = nodes.find(node => node.id === targetNode?.parentId)
+        const isInIteration = parentNode && parentNode.data.type === BlockEnum.Iteration
+        const isInLoop = !!parentNode && parentNode.data.type === BlockEnum.Loop
 
-        // Create the real edge (from original node to target) - hidden because it's inside group
-        const realEdge = {
-          id: `${originalNodeId}-${originalSourceHandle}-${target}-${targetHandle}`,
-          type: CUSTOM_EDGE,
-          source: originalNodeId,
-          target: target!,
-          sourceHandle: originalSourceHandle,
+        const edgePair = createGroupEdgePair({
+          groupNodeId: source!,
+          handlerId: sourceHandle,
+          targetNodeId: target,
           targetHandle,
-          hidden: true, // Hide the real edge since original node is in group
-          data: {
-            sourceType: originalNode.data.type,
-            targetType: targetNode!.data.type,
+          nodes,
+          baseEdgeData: {
             isInIteration,
             iteration_id: isInIteration ? targetNode?.parentId : undefined,
             isInLoop,
             loop_id: isInLoop ? targetNode?.parentId : undefined,
-            _hiddenInGroupId: source ?? undefined, // Mark which group hides this edge
           },
-          zIndex: 0,
-        }
+        })
 
-        // Create the UI edge (from group to target) - temporary, not persisted
-        const uiEdge = {
-          id: `${source}-${sourceHandle}-${target}-${targetHandle}`,
-          type: CUSTOM_EDGE,
-          source: source!,
-          target: target!,
-          sourceHandle,
-          targetHandle,
-          data: {
-            sourceType: originalNode.data.type, // Use original node type, not group
-            targetType: targetNode!.data.type,
-            isInIteration,
-            iteration_id: isInIteration ? targetNode?.parentId : undefined,
-            isInLoop,
-            loop_id: isInLoop ? targetNode?.parentId : undefined,
-            _isTemp: true, // UI-only edge, not persisted to backend
-          },
-          zIndex: 0,
-        }
+        if (!edgePair)
+          return
+
+        const { realEdge, uiEdge } = edgePair
 
         // Update connected handle ids for the original node
         const nodesConnectedSourceOrTargetHandleIdsMap
@@ -978,62 +1018,28 @@ export const useNodesInteractions = () => {
 
         // Check if prevNode is a group node - need special handling
         const isPrevNodeGroup = prevNode.data.type === BlockEnum.Group
-        let newEdge: any = null
-        let newUiEdge: any = null
+        let newEdge: Edge | null = null
+        let newUiEdge: Edge | null = null
 
-        if (isPrevNodeGroup && prevNodeSourceHandle) {
-          // Parse handler id to get original node id and sourceHandle
-          // Handler id format: `${nodeId}-${sourceHandle}`
-          const lastDashIndex = prevNodeSourceHandle.lastIndexOf('-')
-          const originalNodeId = prevNodeSourceHandle.substring(0, lastDashIndex)
-          const originalSourceHandle = prevNodeSourceHandle.substring(lastDashIndex + 1)
-          const originalNode = nodes.find(node => node.id === originalNodeId)
+        if (isPrevNodeGroup && prevNodeSourceHandle && nodeType !== BlockEnum.DataSource) {
+          const edgePair = createGroupEdgePair({
+            groupNodeId: prevNodeId,
+            handlerId: prevNodeSourceHandle,
+            targetNodeId: newNode.id,
+            targetHandle,
+            nodes: [...nodes, newNode],
+            baseEdgeData: {
+              isInIteration,
+              isInLoop,
+              iteration_id: isInIteration ? prevNode.parentId : undefined,
+              loop_id: isInLoop ? prevNode.parentId : undefined,
+              _connectedNodeIsSelected: true,
+            },
+          })
 
-          if (originalNode) {
-            if (nodeType !== BlockEnum.DataSource) {
-              // Create the real edge (from original node to new node) - hidden
-              newEdge = {
-                id: `${originalNodeId}-${originalSourceHandle}-${newNode.id}-${targetHandle}`,
-                type: CUSTOM_EDGE,
-                source: originalNodeId,
-                sourceHandle: originalSourceHandle,
-                target: newNode.id,
-                targetHandle,
-                hidden: true, // Hide the real edge since original node is in group
-                data: {
-                  sourceType: originalNode.data.type,
-                  targetType: newNode.data.type,
-                  isInIteration,
-                  isInLoop,
-                  iteration_id: isInIteration ? prevNode.parentId : undefined,
-                  loop_id: isInLoop ? prevNode.parentId : undefined,
-                  _connectedNodeIsSelected: true,
-                  _hiddenInGroupId: prevNodeId,
-                },
-                zIndex: 0,
-              }
-
-              // Create the UI edge (from group to new node) - temporary
-              newUiEdge = {
-                id: `${prevNodeId}-${prevNodeSourceHandle}-${newNode.id}-${targetHandle}`,
-                type: CUSTOM_EDGE,
-                source: prevNodeId,
-                sourceHandle: prevNodeSourceHandle,
-                target: newNode.id,
-                targetHandle,
-                data: {
-                  sourceType: originalNode.data.type, // Use original node type, not group
-                  targetType: newNode.data.type,
-                  isInIteration,
-                  isInLoop,
-                  iteration_id: isInIteration ? prevNode.parentId : undefined,
-                  loop_id: isInLoop ? prevNode.parentId : undefined,
-                  _connectedNodeIsSelected: true,
-                  _isTemp: true, // UI-only edge, not persisted to backend
-                },
-                zIndex: 0,
-              }
-            }
+          if (edgePair) {
+            newEdge = edgePair.realEdge
+            newUiEdge = edgePair.uiEdge
           }
         }
         else if (nodeType !== BlockEnum.DataSource) {
@@ -1062,7 +1068,7 @@ export const useNodesInteractions = () => {
           }
         }
 
-        const edgesToAdd = [newEdge, newUiEdge].filter(Boolean).map(edge => ({ type: 'add' as const, edge }))
+        const edgesToAdd = [newEdge, newUiEdge].filter(Boolean).map(edge => ({ type: 'add' as const, edge: edge! }))
         const nodesConnectedSourceOrTargetHandleIdsMap
           = getNodesConnectedSourceOrTargetHandleIdsMap(
             edgesToAdd,
