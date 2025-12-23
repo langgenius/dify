@@ -7,7 +7,7 @@ import type {
 } from "../types/common";
 import { HttpClient } from "../http/client";
 import { ensureNonEmptyString, ensureRating } from "./validation";
-import { FileUploadError, ValidationError } from "../errors/dify-error";
+import { FileUploadError } from "../errors/dify-error";
 import { isFormData } from "../http/form-data";
 
 const toConfig = (
@@ -70,6 +70,13 @@ export class DifyClient {
     });
   }
 
+  getRoot(): Promise<DifyResponse<unknown>> {
+    return this.http.request({
+      method: "GET",
+      path: "/",
+    });
+  }
+
   getApplicationParameters(user: string): Promise<DifyResponse<unknown>> {
     ensureNonEmptyString(user, "user");
     return this.http.request({
@@ -94,28 +101,16 @@ export class DifyClient {
 
   messageFeedback(
     messageId: string,
-    rating: "like" | "dislike" | number,
+    rating: "like" | "dislike",
     user: string,
     content?: string
   ): Promise<DifyResponse<Record<string, unknown>>> {
     ensureNonEmptyString(messageId, "messageId");
     ensureNonEmptyString(user, "user");
-    let normalizedRating: "like" | "dislike";
-    if (typeof rating === "number") {
-      if (rating === 1) {
-        normalizedRating = "like";
-      } else if (rating === 0) {
-        normalizedRating = "dislike";
-      } else {
-        throw new ValidationError("rating must be 'like' or 'dislike'");
-      }
-    } else {
-      ensureRating(rating);
-      normalizedRating = rating;
-    }
+    ensureRating(rating);
 
     const payload: Record<string, unknown> = {
-      rating: normalizedRating,
+      rating,
       user,
     };
     if (content) {

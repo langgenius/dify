@@ -62,7 +62,7 @@ describe("Send Requests", () => {
 
     await difyClient.getMeta("end-user");
 
-    expect(mockRequest).toHaveBeenCalledWith({
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
       method: routes.getMeta.method,
       url: routes.getMeta.url(),
       params: { user: "end-user" },
@@ -71,7 +71,7 @@ describe("Send Requests", () => {
       }),
       responseType: "json",
       timeout: 60000,
-    });
+    }));
   });
 });
 
@@ -101,7 +101,7 @@ describe("File uploads", () => {
 
     await difyClient.fileUpload(form);
 
-    expect(mockRequest).toHaveBeenCalledWith({
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
       method: routes.fileUpload.method,
       url: routes.fileUpload.url(),
       params: undefined,
@@ -112,7 +112,7 @@ describe("File uploads", () => {
       responseType: "json",
       timeout: 60000,
       data: form,
-    });
+    }));
   });
 });
 
@@ -123,7 +123,7 @@ describe("Workflow client", () => {
 
     await workflowClient.stop("task-1", "end-user");
 
-    expect(mockRequest).toHaveBeenCalledWith({
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
       method: routes.stopWorkflow.method,
       url: routes.stopWorkflow.url("task-1"),
       params: undefined,
@@ -134,7 +134,7 @@ describe("Workflow client", () => {
       responseType: "json",
       timeout: 60000,
       data: { user: "end-user" },
-    });
+    }));
   });
 });
 
@@ -145,7 +145,7 @@ describe("Chat client", () => {
 
     await chatClient.getSuggested("msg-1", "end-user");
 
-    expect(mockRequest).toHaveBeenCalledWith({
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
       method: routes.getSuggested.method,
       url: routes.getSuggested.url("msg-1"),
       params: { user: "end-user" },
@@ -154,7 +154,7 @@ describe("Chat client", () => {
       }),
       responseType: "json",
       timeout: 60000,
-    });
+    }));
   });
 
   it("uses last_id when listing conversations", async () => {
@@ -163,7 +163,7 @@ describe("Chat client", () => {
 
     await chatClient.getConversations("end-user", "last-1", 10);
 
-    expect(mockRequest).toHaveBeenCalledWith({
+    expect(mockRequest).toHaveBeenCalledWith(expect.objectContaining({
       method: routes.getConversations.method,
       url: routes.getConversations.url(),
       params: { user: "end-user", last_id: "last-1", limit: 10 },
@@ -172,6 +172,6 @@ describe("Chat client", () => {
       }),
       responseType: "json",
       timeout: 60000,
-    });
+    }));
   });
 });

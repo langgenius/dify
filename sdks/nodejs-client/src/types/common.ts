@@ -5,7 +5,14 @@ export const DEFAULT_RETRY_DELAY_SECONDS = 1;
 
 export type RequestMethod = "GET" | "POST" | "PATCH" | "PUT" | "DELETE";
 
-export type QueryParams = Record<string, string | number | boolean | undefined>;
+export type QueryParamValue =
+  | string
+  | number
+  | boolean
+  | Array<string | number | boolean>
+  | undefined;
+
+export type QueryParams = Record<string, QueryParamValue>;
 
 export type Headers = Record<string, string>;
 

@@ -89,10 +89,15 @@ export { DifyClient } from "./client/base";
 export { ChatClient } from "./client/chat";
 export { CompletionClient } from "./client/completion";
 export { WorkflowClient } from "./client/workflow";
+export { KnowledgeBaseClient } from "./client/knowledge-base";
+export { WorkspaceClient } from "./client/workspace";
 
 export * from "./errors/dify-error";
 export * from "./types/common";
+export * from "./types/annotation";
 export * from "./types/chat";
 export * from "./types/completion";
+export * from "./types/knowledge-base";
 export * from "./types/workflow";
+export * from "./types/workspace";
 export { HttpClient } from "./http/client";

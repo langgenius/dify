@@ -1,5 +1,11 @@
 import { DifyClient } from "./base";
 import type { ChatMessageRequest, ChatMessageResponse } from "../types/chat";
+import type {
+  AnnotationCreateRequest,
+  AnnotationListOptions,
+  AnnotationReplyActionRequest,
+  AnnotationResponse,
+} from "../types/annotation";
 import type { DifyResponse, DifyStream, QueryParams } from "../types/common";
 import {
   ensureNonEmptyString,
@@ -277,6 +283,85 @@ export class ChatClient extends DifyClient {
         user,
         value,
       },
+    });
+  }
+
+  annotationReplyAction(
+    action: "enable" | "disable",
+    request: AnnotationReplyActionRequest
+  ): Promise<DifyResponse<AnnotationResponse>> {
+    ensureNonEmptyString(action, "action");
+    ensureNonEmptyString(request.embedding_provider_name, "embedding_provider_name");
+    ensureNonEmptyString(request.embedding_model_name, "embedding_model_name");
+    return this.http.request({
+      method: "POST",
+      path: `/apps/annotation-reply/${action}`,
+      data: request,
+    });
+  }
+
+  getAnnotationReplyStatus(
+    action: "enable" | "disable",
+    jobId: string
+  ): Promise<DifyResponse<AnnotationResponse>> {
+    ensureNonEmptyString(action, "action");
+    ensureNonEmptyString(jobId, "jobId");
+    return this.http.request({
+      method: "GET",
+      path: `/apps/annotation-reply/${action}/status/${jobId}`,
+    });
+  }
+
+  listAnnotations(
+    options?: AnnotationListOptions
+  ): Promise<DifyResponse<AnnotationResponse>> {
+    ensureOptionalInt(options?.page, "page");
+    ensureOptionalInt(options?.limit, "limit");
+    ensureOptionalString(options?.keyword, "keyword");
+    return this.http.request({
+      method: "GET",
+      path: "/apps/annotations",
+      query: {
+        page: options?.page,
+        limit: options?.limit,
+        keyword: options?.keyword ?? undefined,
+      },
+    });
+  }
+
+  createAnnotation(
+    request: AnnotationCreateRequest
+  ): Promise<DifyResponse<AnnotationResponse>> {
+    ensureNonEmptyString(request.question, "question");
+    ensureNonEmptyString(request.answer, "answer");
+    return this.http.request({
+      method: "POST",
+      path: "/apps/annotations",
+      data: request,
+    });
+  }
+
+  updateAnnotation(
+    annotationId: string,
+    request: AnnotationCreateRequest
+  ): Promise<DifyResponse<AnnotationResponse>> {
+    ensureNonEmptyString(annotationId, "annotationId");
+    ensureNonEmptyString(request.question, "question");
+    ensureNonEmptyString(request.answer, "answer");
+    return this.http.request({
+      method: "PUT",
+      path: `/apps/annotations/${annotationId}`,
+      data: request,
+    });
+  }
+
+  deleteAnnotation(
+    annotationId: string
+  ): Promise<DifyResponse<AnnotationResponse>> {
+    ensureNonEmptyString(annotationId, "annotationId");
+    return this.http.request({
+      method: "DELETE",
+      path: `/apps/annotations/${annotationId}`,
     });
   }
 

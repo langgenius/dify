@@ -83,6 +83,26 @@ const buildRequestUrl = (baseUrl: string, path: string): string => {
   return `${trimmed}${path}`;
 };
 
+const buildQueryString = (params?: QueryParams): string => {
+  if (!params) {
+    return "";
+  }
+  const searchParams = new URLSearchParams();
+  Object.entries(params).forEach(([key, value]) => {
+    if (value === undefined || value === null) {
+      return;
+    }
+    if (Array.isArray(value)) {
+      value.forEach((item) => {
+        searchParams.append(key, String(item));
+      });
+      return;
+    }
+    searchParams.append(key, String(value));
+  });
+  return searchParams.toString();
+};
+
 const parseRetryAfterSeconds = (headerValue?: string): number | undefined => {
   if (!headerValue) {
     return undefined;
@@ -257,6 +277,9 @@ export class HttpClient {
       method,
       url: path,
       params: query,
+      paramsSerializer: {
+        serialize: (params) => buildQueryString(params as QueryParams),
+      },
       headers: requestHeaders,
       responseType: responseType ?? "json",
       timeout: timeout * 1000,
