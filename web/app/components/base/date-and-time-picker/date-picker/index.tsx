@@ -212,86 +212,97 @@ const DatePicker = ({
     <PortalToFollowElem
       open={isOpen}
       onOpenChange={setIsOpen}
-      placement='bottom-end'
+      placement="bottom-end"
     >
       <PortalToFollowElemTrigger className={triggerWrapClassName}>
-        {renderTrigger ? (renderTrigger({
-          value: normalizedValue,
-          selectedDate,
-          isOpen,
-          handleClear,
-          handleClickTrigger,
-        })) : (
-          <div
-            className='group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt'
-            onClick={handleClickTrigger}
-          >
-            <input
-              className='system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
-            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder'
-              readOnly
-              value={isOpen ? '' : displayValue}
-              placeholder={placeholderDate}
-            />
-            <RiCalendarLine className={cn(
-              'h-4 w-4 shrink-0 text-text-quaternary',
-              isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-              (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
-            )} />
-            <RiCloseCircleFill
-              className={cn(
-                'hidden h-4 w-4 shrink-0 text-text-quaternary',
-                (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
-              )}
-              onClick={handleClear}
-            />
-          </div>
-        )}
+        {renderTrigger
+          ? (renderTrigger({
+              value: normalizedValue,
+              selectedDate,
+              isOpen,
+              handleClear,
+              handleClickTrigger,
+            }))
+          : (
+              <div
+                className="group flex w-[252px] cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt"
+                onClick={handleClickTrigger}
+              >
+                <input
+                  className="system-xs-regular flex-1 cursor-pointer appearance-none truncate bg-transparent p-1
+            text-components-input-text-filled outline-none placeholder:text-components-input-text-placeholder"
+                  readOnly
+                  value={isOpen ? '' : displayValue}
+                  placeholder={placeholderDate}
+                />
+                <RiCalendarLine className={cn(
+                  'h-4 w-4 shrink-0 text-text-quaternary',
+                  isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
+                  (displayValue || (isOpen && selectedDate)) && 'group-hover:hidden',
+                )}
+                />
+                <RiCloseCircleFill
+                  className={cn(
+                    'hidden h-4 w-4 shrink-0 text-text-quaternary',
+                    (displayValue || (isOpen && selectedDate)) && 'hover:text-text-secondary group-hover:inline-block',
+                  )}
+                  onClick={handleClear}
+                />
+              </div>
+            )}
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={popupZIndexClassname}>
-        <div className='mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5'>
+        <div className="mt-1 w-[252px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg shadow-shadow-shadow-5">
           {/* Header */}
-          {view === ViewType.date ? (
-            <DatePickerHeader
-              handleOpenYearMonthPicker={handleOpenYearMonthPicker}
-              currentDate={currentDate}
-              onClickNextMonth={handleClickNextMonth}
-              onClickPrevMonth={handleClickPrevMonth}
-            />
-          ) : view === ViewType.yearMonth ? (
-            <YearAndMonthPickerHeader
-              selectedYear={selectedYear}
-              selectedMonth={selectedMonth}
-              onClick={handleCloseYearMonthPicker}
-            />
-          ) : (
-            <TimePickerHeader />
-          )}
+          {view === ViewType.date
+            ? (
+                <DatePickerHeader
+                  handleOpenYearMonthPicker={handleOpenYearMonthPicker}
+                  currentDate={currentDate}
+                  onClickNextMonth={handleClickNextMonth}
+                  onClickPrevMonth={handleClickPrevMonth}
+                />
+              )
+            : view === ViewType.yearMonth
+              ? (
+                  <YearAndMonthPickerHeader
+                    selectedYear={selectedYear}
+                    selectedMonth={selectedMonth}
+                    onClick={handleCloseYearMonthPicker}
+                  />
+                )
+              : (
+                  <TimePickerHeader />
+                )}
 
           {/* Content */}
           {
-            view === ViewType.date ? (
-              <Calendar
-                days={days}
-                selectedDate={selectedDate}
-                onDateClick={handleDateSelect}
-                getIsDateDisabled={getIsDateDisabled}
-              />
-            ) : view === ViewType.yearMonth ? (
-              <YearAndMonthPickerOptions
-                selectedMonth={selectedMonth}
-                selectedYear={selectedYear}
-                handleMonthSelect={handleMonthSelect}
-                handleYearSelect={handleYearSelect}
-              />
-            ) : (
-              <TimePickerOptions
-                selectedTime={selectedDate}
-                handleSelectHour={handleSelectHour}
-                handleSelectMinute={handleSelectMinute}
-                handleSelectPeriod={handleSelectPeriod}
-              />
-            )
+            view === ViewType.date
+              ? (
+                  <Calendar
+                    days={days}
+                    selectedDate={selectedDate}
+                    onDateClick={handleDateSelect}
+                    getIsDateDisabled={getIsDateDisabled}
+                  />
+                )
+              : view === ViewType.yearMonth
+                ? (
+                    <YearAndMonthPickerOptions
+                      selectedMonth={selectedMonth}
+                      selectedYear={selectedYear}
+                      handleMonthSelect={handleMonthSelect}
+                      handleYearSelect={handleYearSelect}
+                    />
+                  )
+                : (
+                    <TimePickerOptions
+                      selectedTime={selectedDate}
+                      handleSelectHour={handleSelectHour}
+                      handleSelectMinute={handleSelectMinute}
+                      handleSelectPeriod={handleSelectPeriod}
+                    />
+                  )
           }
 
           {/* Footer */}

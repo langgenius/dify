@@ -19,13 +19,13 @@ const PluginAuthInDataSourceNode = ({
     <>
       {
         !isAuthorized && (
-          <div className='px-4 pb-2'>
+          <div className="px-4 pb-2">
             <Button
-              className='w-full'
-              variant='primary'
+              className="w-full"
+              variant="primary"
               onClick={onJumpToDataSourcePage}
             >
-              <RiAddLine className='mr-1 h-4 w-4' />
+              <RiAddLine className="mr-1 h-4 w-4" />
               {t('common.integrations.connect')}
             </Button>
           </div>

@@ -20,9 +20,14 @@ const PluginsSelected: FC<Props> = ({
   return (
     <div className={cn('flex items-center space-x-1', className)}>
       {displayPlugins.map(plugin => (
-        <Icon key={plugin} size='tiny' src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin}/icon`} />
+        <Icon key={plugin} size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin}/icon`} />
       ))}
-      {!isShowAll && <div className='system-xs-medium text-text-tertiary'>+{plugins.length - MAX_DISPLAY_COUNT}</div>}
+      {!isShowAll && (
+        <div className="system-xs-medium text-text-tertiary">
+          +
+          {plugins.length - MAX_DISPLAY_COUNT}
+        </div>
+      )}
     </div>
   )
 }

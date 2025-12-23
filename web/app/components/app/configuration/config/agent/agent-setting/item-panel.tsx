@@ -20,15 +20,15 @@ const ItemPanel: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className, 'flex h-12 items-center justify-between rounded-lg bg-background-section-burn px-3')}>
-      <div className='flex items-center'>
+      <div className="flex items-center">
         {icon}
-        <div className='ml-3 mr-1 text-sm font-semibold leading-6 text-text-secondary'>{name}</div>
+        <div className="ml-3 mr-1 text-sm font-semibold leading-6 text-text-secondary">{name}</div>
         <Tooltip
-          popupContent={
-            <div className='w-[180px]'>
+          popupContent={(
+            <div className="w-[180px]">
               {description}
             </div>
-          }
+          )}
         >
         </Tooltip>
       </div>

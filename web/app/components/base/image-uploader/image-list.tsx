@@ -68,7 +68,8 @@ const ImageList: FC<ImageListProps> = ({
               </div>
               {item.progress > -1 && (
                 <span className="absolute left-[50%] top-[50%] z-[1] translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
-                  {item.progress}%
+                  {item.progress}
+                  %
                 </span>
               )}
             </>
@@ -111,8 +112,7 @@ const ImageList: FC<ImageListProps> = ({
                 (item.type === TransferMethod.remote_url
                   ? item.url
                   : item.base64Url) as string,
-              )
-            }
+              )}
           />
           {!readonly && (
             <button
@@ -133,7 +133,7 @@ const ImageList: FC<ImageListProps> = ({
         <ImagePreview
           url={imagePreviewUrl}
           onCancel={() => setImagePreviewUrl('')}
-          title=''
+          title=""
         />
       )}
     </div>

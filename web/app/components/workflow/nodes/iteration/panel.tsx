@@ -50,13 +50,13 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='pb-2 pt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="pb-2 pt-2">
+      <div className="space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.input`)}
           required
           operations={(
-            <div className='system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary'>Array</div>
+            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
           )}
         >
           <VarReferencePicker
@@ -70,12 +70,12 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
         </Field>
       </div>
       <Split />
-      <div className='mt-2 space-y-4 px-4 pb-4'>
+      <div className="mt-2 space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.output`)}
           required
           operations={(
-            <div className='system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary'>Array</div>
+            <div className="system-2xs-medium-uppercase flex h-[18px] items-center rounded-[5px] border border-divider-deep px-1 capitalize text-text-tertiary">Array</div>
           )}
         >
           <VarReferencePicker
@@ -89,42 +89,44 @@ const Panel: FC<NodePanelProps<IterationNodeType>> = ({
           />
         </Field>
       </div>
-      <div className='px-4 pb-2'>
-        <Field title={t(`${i18nPrefix}.parallelMode`)} tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.parallelPanelDesc`)}</div>} inline>
+      <div className="px-4 pb-2">
+        <Field title={t(`${i18nPrefix}.parallelMode`)} tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.parallelPanelDesc`)}</div>} inline>
           <Switch defaultValue={inputs.is_parallel} onChange={changeParallel} />
         </Field>
       </div>
       {
-        inputs.is_parallel && (<div className='px-4 pb-2'>
-          <Field title={t(`${i18nPrefix}.MaxParallelismTitle`)} isSubTitle tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.MaxParallelismDesc`)}</div>}>
-            <div className='row flex'>
-              <Input type='number' wrapperClassName='w-18 mr-4 ' max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
-              <Slider
-                value={inputs.parallel_nums}
-                onChange={changeParallelNums}
-                max={MAX_PARALLEL_LIMIT}
-                min={MIN_ITERATION_PARALLEL_NUM}
-                className=' mt-4 flex-1 shrink-0'
-              />
-            </div>
+        inputs.is_parallel && (
+          <div className="px-4 pb-2">
+            <Field title={t(`${i18nPrefix}.MaxParallelismTitle`)} isSubTitle tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.MaxParallelismDesc`)}</div>}>
+              <div className="row flex">
+                <Input type="number" wrapperClassName="w-18 mr-4 " max={MAX_PARALLEL_LIMIT} min={MIN_ITERATION_PARALLEL_NUM} value={inputs.parallel_nums} onChange={(e) => { changeParallelNums(Number(e.target.value)) }} />
+                <Slider
+                  value={inputs.parallel_nums}
+                  onChange={changeParallelNums}
+                  max={MAX_PARALLEL_LIMIT}
+                  min={MIN_ITERATION_PARALLEL_NUM}
+                  className=" mt-4 flex-1 shrink-0"
+                />
+              </div>
 
-          </Field>
-        </div>)
+            </Field>
+          </div>
+        )
       }
       <Split />
 
-      <div className='px-4 py-2'>
-        <Field title={t(`${i18nPrefix}.errorResponseMethod`)} >
+      <div className="px-4 py-2">
+        <Field title={t(`${i18nPrefix}.errorResponseMethod`)}>
           <Select items={responseMethod} defaultValue={inputs.error_handle_mode} onSelect={changeErrorResponseMode} allowSearch={false} />
         </Field>
       </div>
 
       <Split />
 
-      <div className='px-4 py-2'>
+      <div className="px-4 py-2">
         <Field
           title={t(`${i18nPrefix}.flattenOutput`)}
-          tooltip={<div className='w-[230px]'>{t(`${i18nPrefix}.flattenOutputDesc`)}</div>}
+          tooltip={<div className="w-[230px]">{t(`${i18nPrefix}.flattenOutputDesc`)}</div>}
           inline
         >
           <Switch defaultValue={inputs.flatten_output} onChange={changeFlattenOutput} />

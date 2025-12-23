@@ -43,14 +43,14 @@ const EditWorkspaceModal = ({
   return (
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
-        <div className='mb-2 flex justify-between'>
-          <div className='text-xl font-semibold text-text-primary'>{t('common.account.editWorkspaceInfo')}</div>
-          <RiCloseLine className='h-4 w-4 cursor-pointer text-text-tertiary' onClick={onCancel} />
+        <div className="mb-2 flex justify-between">
+          <div className="text-xl font-semibold text-text-primary">{t('common.account.editWorkspaceInfo')}</div>
+          <RiCloseLine className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
         </div>
         <div>
-          <div className='mb-2 text-sm font-medium text-text-primary'>{t('common.account.workspaceName')}</div>
+          <div className="mb-2 text-sm font-medium text-text-primary">{t('common.account.workspaceName')}</div>
           <Input
-            className='mb-2'
+            className="mb-2"
             value={name}
             placeholder={t('common.account.workspaceNamePlaceholder')}
             onChange={(e) => {
@@ -61,16 +61,16 @@ const EditWorkspaceModal = ({
             }}
           />
 
-          <div className='sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4'>
+          <div className="sticky bottom-0 -mx-2 mt-2 flex flex-wrap items-center justify-end gap-x-2 bg-components-panel-bg px-2 pt-4">
             <Button
-              size='large'
+              size="large"
               onClick={onCancel}
             >
               {t('common.operation.cancel')}
             </Button>
             <Button
-              size='large'
-              variant='primary'
+              size="large"
+              variant="primary"
               onClick={() => {
                 changeWorkspaceInfo(name)
                 onCancel()

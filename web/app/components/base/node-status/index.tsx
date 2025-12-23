@@ -26,7 +26,7 @@ const nodeStatusVariants = cva(
   },
 )
 
-const StatusIconMap: Record<NodeStatusEnum, { IconComponent: React.ElementType; message: string }> = {
+const StatusIconMap: Record<NodeStatusEnum, { IconComponent: React.ElementType, message: string }> = {
   [NodeStatusEnum.warning]: { IconComponent: AlertTriangle, message: 'Warning' },
   [NodeStatusEnum.error]: { IconComponent: RiErrorWarningFill, message: 'Error' },
 }

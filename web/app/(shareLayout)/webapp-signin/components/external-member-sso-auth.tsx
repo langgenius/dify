@@ -68,9 +68,11 @@ const ExternalMemberSSOAuth = () => {
   }, [handleSSOLogin])
 
   if (!systemFeatures.webapp_auth.sso_config.protocol) {
-    return <div className="flex h-full items-center justify-center">
-      <AppUnavailable code={403} unknownReason='sso protocol is invalid.' />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable code={403} unknownReason="sso protocol is invalid." />
+      </div>
+    )
   }
 
   return (

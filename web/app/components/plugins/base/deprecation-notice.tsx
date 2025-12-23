@@ -56,10 +56,11 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
       <div className={cn(
         'relative flex items-start gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]',
         innerWrapperClassName,
-      )}>
-        <div className='absolute left-0 top-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40' />
+      )}
+      >
+        <div className="absolute left-0 top-0 -z-10 h-full w-full bg-toast-warning-bg opacity-40" />
         <div className={cn('flex size-6 shrink-0 items-center justify-center', iconWrapperClassName)}>
-          <RiAlertFill className='size-4 text-text-warning-secondary' />
+          <RiAlertFill className="size-4 text-text-warning-secondary" />
         </div>
         <div className={cn('system-xs-regular grow py-1 text-text-primary', textClassName)}>
           {
@@ -71,9 +72,9 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   CustomLink: (
                     <Link
                       href={alternativePluginURL}
-                      target='_blank'
-                      rel='noopener noreferrer'
-                      className='underline'
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="underline"
                     />
                   ),
                 }}

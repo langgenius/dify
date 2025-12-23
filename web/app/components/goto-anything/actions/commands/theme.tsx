@@ -11,24 +11,24 @@ type ThemeDeps = {
   setTheme?: (value: 'light' | 'dark' | 'system') => void
 }
 
-const THEME_ITEMS: { id: 'light' | 'dark' | 'system'; titleKey: string; descKey: string; icon: ReactNode }[] = [
+const THEME_ITEMS: { id: 'light' | 'dark' | 'system', titleKey: string, descKey: string, icon: ReactNode }[] = [
   {
     id: 'system',
     titleKey: 'app.gotoAnything.actions.themeSystem',
     descKey: 'app.gotoAnything.actions.themeSystemDesc',
-    icon: <RiComputerLine className='h-4 w-4 text-text-tertiary' />,
+    icon: <RiComputerLine className="h-4 w-4 text-text-tertiary" />,
   },
   {
     id: 'light',
     titleKey: 'app.gotoAnything.actions.themeLight',
     descKey: 'app.gotoAnything.actions.themeLightDesc',
-    icon: <RiSunLine className='h-4 w-4 text-text-tertiary' />,
+    icon: <RiSunLine className="h-4 w-4 text-text-tertiary" />,
   },
   {
     id: 'dark',
     titleKey: 'app.gotoAnything.actions.themeDark',
     descKey: 'app.gotoAnything.actions.themeDarkDesc',
-    icon: <RiMoonLine className='h-4 w-4 text-text-tertiary' />,
+    icon: <RiMoonLine className="h-4 w-4 text-text-tertiary" />,
   },
 ]
 
@@ -45,7 +45,7 @@ const buildThemeCommands = (query: string, locale?: string): CommandSearchResult
     description: i18n.t(item.descKey, { lng: locale }),
     type: 'command' as const,
     icon: (
-      <div className='flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg'>
+      <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
         {item.icon}
       </div>
     ),

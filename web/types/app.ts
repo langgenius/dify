@@ -274,9 +274,10 @@ export type SiteConfig = {
   title: string
   /** Application Description will be shown in the Client  */
   description: string
-  /** Define the color in hex for different elements of the chatbot, such as:
+  /**
+   * Define the color in hex for different elements of the chatbot, such as:
    * The header, the button , etc.
-    */
+   */
   chat_color_theme: string
   /** Invert the color of the theme set in chat_color_theme */
   chat_color_theme_inverted: boolean
@@ -328,12 +329,12 @@ export type App = {
   /** Description */
   description: string
   /** Author Name */
-  author_name: string;
+  author_name: string
 
   /**
    * Icon Type
    * @default 'emoji'
-  */
+   */
   icon_type: AppIconType | null
   /** Icon, stores file ID if icon_type is 'image' */
   icon: string
@@ -375,7 +376,7 @@ export type App = {
     updated_at: number
     updated_by?: string
   }
-  deleted_tools?: Array<{ id: string; tool_name: string }>
+  deleted_tools?: Array<{ id: string, tool_name: string }>
   /** access control */
   access_mode: AccessMode
   max_active_requests?: number | null

@@ -39,7 +39,8 @@ const FullScreenDrawer = ({
       modal={modal}
     >
       {children}
-    </Drawer>)
+    </Drawer>
+  )
 }
 
 export default FullScreenDrawer

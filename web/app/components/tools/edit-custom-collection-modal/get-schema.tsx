@@ -56,30 +56,30 @@ const GetSchema: FC<Props> = ({
   }, showExamplesRef)
 
   return (
-    <div className='relative flex w-[224px] justify-end space-x-1'>
+    <div className="relative flex w-[224px] justify-end space-x-1">
       <div ref={importURLRef}>
         <Button
-          size='small'
-          className='space-x-1 '
+          size="small"
+          className="space-x-1 "
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
-          <RiAddLine className='h-3 w-3' />
-          <div className='system-xs-medium text-text-secondary'>{t('tools.createTool.importFromUrl')}</div>
+          <RiAddLine className="h-3 w-3" />
+          <div className="system-xs-medium text-text-secondary">{t('tools.createTool.importFromUrl')}</div>
         </Button>
         {showImportFromUrl && (
-          <div className=' absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg'>
-            <div className='relative'>
+          <div className=" absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
+            <div className="relative">
               <Input
-                type='text'
-                className='w-[244px]'
+                type="text"
+                className="w-[244px]"
                 placeholder={t('tools.createTool.importFromUrlPlaceHolder')!}
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
               />
               <Button
-                className='absolute right-1 top-1'
-                size='small'
-                variant='primary'
+                className="absolute right-1 top-1"
+                size="small"
+                variant="primary"
                 disabled={!importUrl}
                 onClick={handleImportFromUrl}
                 loading={isParsing}
@@ -90,17 +90,17 @@ const GetSchema: FC<Props> = ({
           </div>
         )}
       </div>
-      <div className='relative -mt-0.5' ref={showExamplesRef}>
+      <div className="relative -mt-0.5" ref={showExamplesRef}>
         <Button
-          size='small'
-          className='space-x-1'
+          size="small"
+          className="space-x-1"
           onClick={() => { setShowExamples(!showExamples) }}
         >
-          <div className='system-xs-medium text-text-secondary'>{t('tools.createTool.examples')}</div>
-          <RiArrowDownSLine className='h-3 w-3' />
+          <div className="system-xs-medium text-text-secondary">{t('tools.createTool.examples')}</div>
+          <RiArrowDownSLine className="h-3 w-3" />
         </Button>
         {showExamples && (
-          <div className='absolute right-0 top-7 rounded-lg bg-components-panel-bg p-1 shadow-sm'>
+          <div className="absolute right-0 top-7 rounded-lg bg-components-panel-bg p-1 shadow-sm">
             {examples.map(item => (
               <div
                 key={item.key}
@@ -108,7 +108,7 @@ const GetSchema: FC<Props> = ({
                   onChange(item.content)
                   setShowExamples(false)
                 }}
-                className='system-sm-regular cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover'
+                className="system-sm-regular cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
               >
                 {t(`tools.createTool.exampleOptions.${item.key}`)}
               </div>

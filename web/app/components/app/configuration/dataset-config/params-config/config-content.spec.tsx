@@ -16,8 +16,8 @@ import {
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string; model: string }
-    onSelect?: (model: { provider: string; model: string }) => void
+    defaultModel?: { provider: string, model: string }
+    onSelect?: (model: { provider: string, model: string }) => void
   }
 
   const MockModelSelector = ({ defaultModel, onSelect }: Props) => (

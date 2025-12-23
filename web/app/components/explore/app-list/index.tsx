@@ -142,16 +142,18 @@ const Apps = ({
   return (
     <div className={cn(
       'flex h-full flex-col border-l-[0.5px] border-divider-regular',
-    )}>
+    )}
+    >
 
-      <div className='shrink-0 px-12 pt-6'>
+      <div className="shrink-0 px-12 pt-6">
         <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-sm text-text-tertiary'>{t('explore.apps.description')}</div>
+        <div className="text-sm text-text-tertiary">{t('explore.apps.description')}</div>
       </div>
 
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
-      )}>
+      )}
+      >
         <Category
           list={categories}
           value={currCategory}
@@ -161,7 +163,7 @@ const Apps = ({
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px] self-start'
+          wrapperClassName="w-[200px] self-start"
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
@@ -170,12 +172,14 @@ const Apps = ({
 
       <div className={cn(
         'relative mt-4 flex flex-1 shrink-0 grow flex-col overflow-auto pb-6',
-      )}>
+      )}
+      >
         <nav
           className={cn(
             s.appList,
             'grid shrink-0 content-start gap-4 px-6 sm:px-12',
-          )}>
+          )}
+        >
           {searchFilteredList.map(app => (
             <AppCard
               key={app.app_id}

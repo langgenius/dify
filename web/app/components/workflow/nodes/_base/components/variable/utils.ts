@@ -415,11 +415,11 @@ const formatItem = (
       const { outputs } = data as CodeNodeType
       res.vars = outputs
         ? Object.keys(outputs).map((key) => {
-          return {
-            variable: key,
-            type: outputs[key].type,
-          }
-        })
+            return {
+              variable: key,
+              type: outputs[key].type,
+            }
+          })
         : []
       break
     }
@@ -872,8 +872,8 @@ const getIterationItemType = ({
   valueSelector,
   beforeNodesOutputVars,
 }: {
-  valueSelector: ValueSelector;
-  beforeNodesOutputVars: NodeOutPutVar[];
+  valueSelector: ValueSelector
+  beforeNodesOutputVars: NodeOutPutVar[]
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
@@ -927,8 +927,8 @@ const getLoopItemType = ({
   valueSelector,
   beforeNodesOutputVars,
 }: {
-  valueSelector: ValueSelector;
-  beforeNodesOutputVars: NodeOutPutVar[];
+  valueSelector: ValueSelector
+  beforeNodesOutputVars: NodeOutPutVar[]
 }): VarType => {
   const outputVarNodeId = valueSelector[0]
   const isSystem = isSystemVar(valueSelector)
@@ -993,19 +993,19 @@ export const getVarType = ({
   schemaTypeDefinitions,
   preferSchemaType,
 }: {
-  valueSelector: ValueSelector;
-  parentNode?: Node | null;
-  isIterationItem?: boolean;
-  isLoopItem?: boolean;
-  availableNodes: any[];
-  isChatMode: boolean;
-  isConstant?: boolean;
-  environmentVariables?: EnvironmentVariable[];
-  conversationVariables?: ConversationVariable[];
-  ragVariables?: RAGPipelineVariable[];
-  allPluginInfoList: Record<string, ToolWithProvider[]>;
-  schemaTypeDefinitions?: SchemaTypeDefinition[];
-  preferSchemaType?: boolean;
+  valueSelector: ValueSelector
+  parentNode?: Node | null
+  isIterationItem?: boolean
+  isLoopItem?: boolean
+  availableNodes: any[]
+  isChatMode: boolean
+  isConstant?: boolean
+  environmentVariables?: EnvironmentVariable[]
+  conversationVariables?: ConversationVariable[]
+  ragVariables?: RAGPipelineVariable[]
+  allPluginInfoList: Record<string, ToolWithProvider[]>
+  schemaTypeDefinitions?: SchemaTypeDefinition[]
+  preferSchemaType?: boolean
 }): VarType => {
   if (isConstant) return VarType.string
 
@@ -1148,20 +1148,20 @@ export const toNodeAvailableVars = ({
   allPluginInfoList,
   schemaTypeDefinitions,
 }: {
-  parentNode?: Node | null;
-  t?: any;
+  parentNode?: Node | null
+  t?: any
   // to get those nodes output vars
-  beforeNodes: Node[];
-  isChatMode: boolean;
+  beforeNodes: Node[]
+  isChatMode: boolean
   // env
-  environmentVariables?: EnvironmentVariable[];
+  environmentVariables?: EnvironmentVariable[]
   // chat var
-  conversationVariables?: ConversationVariable[];
+  conversationVariables?: ConversationVariable[]
   // rag variables
-  ragVariables?: RAGPipelineVariable[];
-  filterVar: (payload: Var, selector: ValueSelector) => boolean;
-  allPluginInfoList: Record<string, ToolWithProvider[]>;
-  schemaTypeDefinitions?: SchemaTypeDefinition[];
+  ragVariables?: RAGPipelineVariable[]
+  filterVar: (payload: Var, selector: ValueSelector) => boolean
+  allPluginInfoList: Record<string, ToolWithProvider[]>
+  schemaTypeDefinitions?: SchemaTypeDefinition[]
 }): NodeOutPutVar[] => {
   const beforeNodesOutputVars = toNodeOutputVars(
     beforeNodes,
@@ -1190,13 +1190,13 @@ export const toNodeAvailableVars = ({
     const itemChildren
       = itemType === VarType.file
         ? {
-          children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
-            return {
-              variable: key,
-              type: key === 'size' ? VarType.number : VarType.string,
-            }
-          }),
-        }
+            children: OUTPUT_FILE_SUB_VARIABLES.map((key) => {
+              return {
+                variable: key,
+                type: key === 'size' ? VarType.number : VarType.string,
+              }
+            }),
+          }
         : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
@@ -1391,7 +1391,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
               payload.datasource_parameters[key].type === ToolVarType.variable,
           )
           .map(key => payload.datasource_parameters[key].value as string)
-        || []
+          || []
       res = [...(mixVars as ValueSelector[]), ...(vars as any)]
       break
     }

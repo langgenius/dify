@@ -19,11 +19,14 @@ const ChildChunks: FC<Props> = ({
     <div
       className={!isShowAll ? 'line-clamp-2 break-all' : ''}
     >
-      <div className='relative top-[-2px] inline-flex items-center'>
-        <div className='system-2xs-semibold-uppercase flex h-[20.5px] items-center  bg-state-accent-solid px-1 text-text-primary-on-surface'>C-{position}</div>
+      <div className="relative top-[-2px] inline-flex items-center">
+        <div className="system-2xs-semibold-uppercase flex h-[20.5px] items-center  bg-state-accent-solid px-1 text-text-primary-on-surface">
+          C-
+          {position}
+        </div>
         <Score value={score} besideChunkName />
       </div>
-      <SliceContent className='bg-state-accent-hover py-0.5 text-sm font-normal text-text-secondary group-hover:bg-state-accent-hover'>{content}</SliceContent>
+      <SliceContent className="bg-state-accent-hover py-0.5 text-sm font-normal text-text-secondary group-hover:bg-state-accent-hover">{content}</SliceContent>
     </div>
   )
 }

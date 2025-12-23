@@ -19,18 +19,18 @@ const ModelList = ({
     return null
 
   return (
-    <div className='px-4 py-2'>
-      <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.modelNum', { num: res.data.length })}</div>
-      <div className='flex flex-col'>
+    <div className="px-4 py-2">
+      <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center text-text-secondary">{t('plugin.detailPanel.modelNum', { num: res.data.length })}</div>
+      <div className="flex flex-col">
         {res.data.map(model => (
-          <div key={model.model} className='flex h-6 items-center py-1'>
+          <div key={model.model} className="flex h-6 items-center py-1">
             <ModelIcon
-              className='mr-2 shrink-0'
+              className="mr-2 shrink-0"
               provider={(model as any).provider}
               modelName={model.model}
             />
             <ModelName
-              className='system-md-regular grow text-text-secondary'
+              className="system-md-regular grow text-text-secondary"
               modelItem={model}
               showModelType
               showMode

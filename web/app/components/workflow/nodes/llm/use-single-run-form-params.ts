@@ -16,8 +16,8 @@ import { AppModeEnum } from '@/types/app'
 
 const i18nPrefix = 'workflow.nodes.llm'
 type Params = {
-  id: string,
-  payload: LLMNodeType,
+  id: string
+  payload: LLMNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -186,10 +186,10 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVar = (variable: string) => {
-    if(variable === '#context#')
+    if (variable === '#context#')
       return payload.context.variable_selector
 
-    if(variable === '#files#')
+    if (variable === '#files#')
       return payload.vision.configs?.variable_selector
 
     return false

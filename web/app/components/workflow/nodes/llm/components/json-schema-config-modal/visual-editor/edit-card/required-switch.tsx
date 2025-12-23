@@ -15,9 +15,9 @@ const RequiredSwitch: FC<RequiredSwitchProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center gap-x-1 rounded-[5px] border border-divider-subtle bg-background-default-lighter px-1.5 py-1'>
-      <span className='system-2xs-medium-uppercase text-text-secondary'>{t('workflow.nodes.llm.jsonSchema.required')}</span>
-      <Switch size='xs' defaultValue={defaultValue} onChange={toggleRequired} />
+    <div className="flex items-center gap-x-1 rounded-[5px] border border-divider-subtle bg-background-default-lighter px-1.5 py-1">
+      <span className="system-2xs-medium-uppercase text-text-secondary">{t('workflow.nodes.llm.jsonSchema.required')}</span>
+      <Switch size="xs" defaultValue={defaultValue} onChange={toggleRequired} />
     </div>
   )
 }

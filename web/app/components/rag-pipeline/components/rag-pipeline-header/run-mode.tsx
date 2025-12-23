@@ -44,9 +44,9 @@ const RunMode = ({
   })
 
   return (
-    <div className='flex items-center gap-x-px'>
+    <div className="flex items-center gap-x-px">
       <button
-        type='button'
+        type="button"
         className={cn(
           'system-xs-medium flex h-7 items-center gap-x-1 px-1.5 text-text-accent hover:bg-state-accent-hover',
           isDisabled && 'cursor-not-allowed bg-state-accent-hover',
@@ -59,29 +59,29 @@ const RunMode = ({
       >
         {!isDisabled && (
           <>
-            <RiPlayLargeLine className='mr-1 size-4' />
+            <RiPlayLargeLine className="mr-1 size-4" />
             {workflowRunningData ? t('pipeline.common.reRun') : (text ?? t('pipeline.common.testRun'))}
           </>
         )}
         {isRunning && (
           <>
-            <RiLoader2Line className='mr-1 size-4 animate-spin' />
+            <RiLoader2Line className="mr-1 size-4 animate-spin" />
             {t('pipeline.common.processing')}
           </>
         )}
         {isPreparingDataSource && (
           <>
-            <RiDatabase2Line className='mr-1 size-4' />
+            <RiDatabase2Line className="mr-1 size-4" />
             {t('pipeline.common.preparingDataSource')}
           </>
         )}
         {
           !isDisabled && (
-            <div className='system-kbd flex items-center gap-x-0.5 text-text-tertiary'>
-              <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
+            <div className="system-kbd flex items-center gap-x-0.5 text-text-tertiary">
+              <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
                 {getKeyboardKeyNameBySystem('alt')}
               </div>
-              <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
+              <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
                 R
               </div>
             </div>
@@ -90,24 +90,24 @@ const RunMode = ({
       </button>
       {isRunning && (
         <button
-          type='button'
+          type="button"
           className={cn(
             'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
           )}
           onClick={handleStop}
         >
-          <StopCircle className='size-4 text-text-accent' />
+          <StopCircle className="size-4 text-text-accent" />
         </button>
       )}
       {isPreparingDataSource && (
         <button
-          type='button'
+          type="button"
           className={cn(
             'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
           )}
           onClick={handleCancelPreparingDataSource}
         >
-          <RiCloseLine className='size-4 text-text-accent' />
+          <RiCloseLine className="size-4 text-text-accent" />
         </button>
       )}
     </div>

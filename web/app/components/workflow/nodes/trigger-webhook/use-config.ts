@@ -88,7 +88,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       return false
     }
 
-    if(hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
+    if (hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
       Toast.notify({
         type: 'error',
         message: t('appDebug.varKeyError.keyAlreadyExists', {

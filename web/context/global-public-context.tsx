@@ -40,7 +40,7 @@ const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
   }, [isPending, setIsPending])
 
   if (isPending)
-    return <div className='flex h-screen w-screen items-center justify-center'><Loading /></div>
+    return <div className="flex h-screen w-screen items-center justify-center"><Loading /></div>
   return <>{children}</>
 }
 export default GlobalPublicStoreProvider

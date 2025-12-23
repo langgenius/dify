@@ -454,25 +454,25 @@ const CreateFormPipeline = () => {
 
   if (isFetchingPipelineInfo) {
     return (
-      <Loading type='app' />
+      <Loading type="app" />
     )
   }
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className="relative flex h-[calc(100vh-56px)] w-full min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle"
     >
-      <div className='h-full min-w-0 flex-1'>
-        <div className='flex h-full flex-col px-14'>
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col px-14">
           <LeftHeader
             steps={steps}
             title={t('datasetPipeline.addDocuments.title')}
             currentStep={currentStep}
           />
-          <div className='grow overflow-y-auto'>
+          <div className="grow overflow-y-auto">
             {
               currentStep === 1 && (
-                <div className='flex flex-col gap-y-5 pt-4'>
+                <div className="flex flex-col gap-y-5 pt-4">
                   <DataSourceOptions
                     datasourceNodeId={datasource?.nodeId || ''}
                     onSelect={handleSwitchDataSource}
@@ -520,7 +520,7 @@ const CreateFormPipeline = () => {
                   {
                     !supportBatchUpload && datasourceType === DatasourceType.localFile && localFileList.length > 0 && (
                       <>
-                        <Divider type='horizontal' className='my-4 h-px bg-divider-subtle' />
+                        <Divider type="horizontal" className="my-4 h-px bg-divider-subtle" />
                         <UpgradeCard />
                       </>
                     )
@@ -555,8 +555,8 @@ const CreateFormPipeline = () => {
       {/* Preview */}
       {
         currentStep === 1 && (
-          <div className='h-full min-w-0 flex-1'>
-            <div className='flex h-full flex-col pl-2 pt-2'>
+          <div className="h-full min-w-0 flex-1">
+            <div className="flex h-full flex-col pl-2 pt-2">
               {currentLocalFile && (
                 <FilePreview
                   file={currentLocalFile}
@@ -582,8 +582,8 @@ const CreateFormPipeline = () => {
       }
       {
         currentStep === 2 && (
-          <div className='h-full min-w-0 flex-1'>
-            <div className='flex h-full flex-col pl-2 pt-2'>
+          <div className="h-full min-w-0 flex-1">
+            <div className="flex h-full flex-col pl-2 pt-2">
               <ChunkPreview
                 dataSourceType={datasourceType as DatasourceType}
                 localFiles={localFileList.map(file => file.file)}

@@ -17,8 +17,8 @@ export const useWorkflowNodeIterationStarted = () => {
   const handleWorkflowNodeIterationStarted = useCallback((
     params: IterationStartedResponse,
     containerParams: {
-      clientWidth: number,
-      clientHeight: number,
+      clientWidth: number
+      clientHeight: number
     },
   ) => {
     const { data } = params

@@ -57,7 +57,7 @@ describe('PortalToFollowElem', () => {
     it('should handle asChild prop correctly', () => {
       const { getByRole } = render(
         <PortalToFollowElem>
-          <PortalToFollowElemTrigger asChild >
+          <PortalToFollowElemTrigger asChild>
             <button>Button Trigger</button>
           </PortalToFollowElemTrigger>
         </PortalToFollowElem>,
@@ -70,7 +70,7 @@ describe('PortalToFollowElem', () => {
   describe('PortalToFollowElemContent', () => {
     it('should not render content when closed', () => {
       const { queryByText } = render(
-        <PortalToFollowElem open={false} >
+        <PortalToFollowElem open={false}>
           <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
           <PortalToFollowElemContent>Popup Content</PortalToFollowElemContent>
         </PortalToFollowElem>,
@@ -81,7 +81,7 @@ describe('PortalToFollowElem', () => {
 
     it('should render content when open', () => {
       const { getByText } = render(
-        <PortalToFollowElem open={true} >
+        <PortalToFollowElem open={true}>
           <PortalToFollowElemTrigger>Trigger </PortalToFollowElemTrigger>
           <PortalToFollowElemContent>Popup Content</PortalToFollowElemContent>
         </PortalToFollowElem>,
@@ -96,7 +96,7 @@ describe('PortalToFollowElem', () => {
       const handleOpenChange = vi.fn()
 
       const { getByText } = render(
-        <PortalToFollowElem onOpenChange={handleOpenChange} >
+        <PortalToFollowElem onOpenChange={handleOpenChange}>
           <PortalToFollowElemTrigger>Hover Me</PortalToFollowElemTrigger>
           <PortalToFollowElemContent>Content</PortalToFollowElemContent>
         </PortalToFollowElem>,
@@ -113,7 +113,7 @@ describe('PortalToFollowElem', () => {
   describe('Configuration options', () => {
     it('should accept placement prop', () => {
       render(
-        <PortalToFollowElem placement='top-start' >
+        <PortalToFollowElem placement="top-start">
           <PortalToFollowElemTrigger>Trigger</PortalToFollowElemTrigger>
         </PortalToFollowElem>,
       )

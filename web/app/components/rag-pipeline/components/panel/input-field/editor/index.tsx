@@ -44,15 +44,15 @@ const InputFieldEditorPanel = ({
         width: `${floatingRightWidth}px`,
       }}
     >
-      <div className='system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary'>
+      <div className="system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary">
         {initialData ? t('datasetPipeline.inputFieldPanel.editInputField') : t('datasetPipeline.inputFieldPanel.addInputField')}
       </div>
       <button
-        type='button'
-        className='absolute right-2.5 top-2.5 flex size-8 items-center justify-center'
+        type="button"
+        className="absolute right-2.5 top-2.5 flex size-8 items-center justify-center"
         onClick={onClose}
       >
-        <RiCloseLine className='size-4 text-text-tertiary' />
+        <RiCloseLine className="size-4 text-text-tertiary" />
       </button>
       <InputFieldForm
         initialData={formData}

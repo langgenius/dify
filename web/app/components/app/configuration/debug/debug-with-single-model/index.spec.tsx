@@ -308,7 +308,7 @@ vi.mock('@/context/app-context', () => ({
 
 type FeatureState = {
   moreLikeThis: { enabled: boolean }
-  opening: { enabled: boolean; opening_statement: string; suggested_questions: string[] }
+  opening: { enabled: boolean, opening_statement: string, suggested_questions: string[] }
   moderation: { enabled: boolean }
   speech2text: { enabled: boolean }
   text2speech: { enabled: boolean }
@@ -421,7 +421,7 @@ type MockChatProps = {
   chatList?: ChatItem[]
   isResponding?: boolean
   onSend?: (message: string, files?: FileEntity[]) => void
-  onRegenerate?: (chatItem: ChatItem, editedQuestion?: { message: string; files?: FileEntity[] }) => void
+  onRegenerate?: (chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => void
   onStopResponding?: () => void
   suggestedQuestions?: string[]
   questionIcon?: ReactNode

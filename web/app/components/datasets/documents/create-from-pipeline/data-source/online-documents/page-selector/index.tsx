@@ -153,7 +153,7 @@ const PageSelector = ({
 
   if (!currentDataList.length) {
     return (
-      <div className='flex h-[296px] items-center justify-center text-[13px] text-text-tertiary'>
+      <div className="flex h-[296px] items-center justify-center text-[13px] text-text-tertiary">
         {t('common.dataSource.notion.selector.noSearchResult')}
       </div>
     )
@@ -161,11 +161,11 @@ const PageSelector = ({
 
   return (
     <List
-      className='py-2'
+      className="py-2"
       height={296}
       itemCount={currentDataList.length}
       itemSize={28}
-      width='100%'
+      width="100%"
       itemKey={(index, data) => data.dataList[index].page_id}
       itemData={{
         dataList: currentDataList,

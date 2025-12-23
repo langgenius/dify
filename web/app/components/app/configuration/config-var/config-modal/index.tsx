@@ -156,20 +156,24 @@ const ConfigModal: FC<IConfigModalProps> = ({
       name: t('appDebug.variableConfig.checkbox'),
       value: InputVarType.checkbox,
     },
-    ...(supportFile ? [
-      {
-        name: t('appDebug.variableConfig.single-file'),
-        value: InputVarType.singleFile,
-      },
-      {
-        name: t('appDebug.variableConfig.multi-files'),
-        value: InputVarType.multiFiles,
-      },
-    ] : []),
-    ...((!isBasicApp && isSupportJSON) ? [{
-      name: t('appDebug.variableConfig.json'),
-      value: InputVarType.jsonObject,
-    }] : []),
+    ...(supportFile
+      ? [
+          {
+            name: t('appDebug.variableConfig.single-file'),
+            value: InputVarType.singleFile,
+          },
+          {
+            name: t('appDebug.variableConfig.multi-files'),
+            value: InputVarType.multiFiles,
+          },
+        ]
+      : []),
+    ...((!isBasicApp && isSupportJSON)
+      ? [{
+          name: t('appDebug.variableConfig.json'),
+          value: InputVarType.jsonObject,
+        }]
+      : []),
   ]
 
   const handleTypeChange = useCallback((item: SelectItem) => {
@@ -224,9 +228,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
       : {
-        type: ChangeType.changeVarName,
-        payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
-      }
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
+        }
 
     const isVariableNameValid = checkVariableName(tempPayload.variable)
     if (!isVariableNameValid)
@@ -283,8 +287,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
       isShow={isShow}
       onClose={onClose}
     >
-      <div className='mb-8' ref={modalRef} tabIndex={-1}>
-        <div className='space-y-2'>
+      <div className="mb-8" ref={modalRef} tabIndex={-1}>
+        <div className="space-y-2">
           <Field title={t('appDebug.variableConfig.fieldType')}>
             <TypeSelector value={type} items={selectOptions} onSelect={handleTypeChange} />
           </Field>
@@ -425,22 +429,22 @@ const ConfigModal: FC<IConfigModalProps> = ({
                 value={jsonSchemaStr}
                 onChange={handleJSONSchemaChange}
                 noWrapper
-                className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
+                className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                 placeholder={
-                  <div className='whitespace-pre'>{jsonConfigPlaceHolder}</div>
+                  <div className="whitespace-pre">{jsonConfigPlaceHolder}</div>
                 }
               />
             </Field>
           )}
 
-          <div className='!mt-5 flex h-6 items-center space-x-2'>
+          <div className="!mt-5 flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
-            <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.required')}</span>
+            <span className="system-sm-semibold text-text-secondary">{t('appDebug.variableConfig.required')}</span>
           </div>
 
-          <div className='!mt-5 flex h-6 items-center space-x-2'>
+          <div className="!mt-5 flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => handlePayloadChange('hide')(!tempPayload.hide)} />
-            <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.hide')}</span>
+            <span className="system-sm-semibold text-text-secondary">{t('appDebug.variableConfig.hide')}</span>
           </div>
         </div>
       </div>

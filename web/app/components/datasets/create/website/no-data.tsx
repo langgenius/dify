@@ -26,21 +26,27 @@ const NoData: FC<Props> = ({
     title: string
     description: string
   } | null> = {
-    [DataSourceProvider.jinaReader]: ENABLE_WEBSITE_JINAREADER ? {
-      emoji: <span className={s.jinaLogo} />,
-      title: t(`${I18N_PREFIX}.jinaReaderNotConfigured`),
-      description: t(`${I18N_PREFIX}.jinaReaderNotConfiguredDescription`),
-    } : null,
-    [DataSourceProvider.fireCrawl]: ENABLE_WEBSITE_FIRECRAWL ? {
-      emoji: '🔥',
-      title: t(`${I18N_PREFIX}.fireCrawlNotConfigured`),
-      description: t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`),
-    } : null,
-    [DataSourceProvider.waterCrawl]: ENABLE_WEBSITE_WATERCRAWL ? {
-      emoji: '💧',
-      title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`),
-      description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`),
-    } : null,
+    [DataSourceProvider.jinaReader]: ENABLE_WEBSITE_JINAREADER
+      ? {
+          emoji: <span className={s.jinaLogo} />,
+          title: t(`${I18N_PREFIX}.jinaReaderNotConfigured`),
+          description: t(`${I18N_PREFIX}.jinaReaderNotConfiguredDescription`),
+        }
+      : null,
+    [DataSourceProvider.fireCrawl]: ENABLE_WEBSITE_FIRECRAWL
+      ? {
+          emoji: '🔥',
+          title: t(`${I18N_PREFIX}.fireCrawlNotConfigured`),
+          description: t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`),
+        }
+      : null,
+    [DataSourceProvider.waterCrawl]: ENABLE_WEBSITE_WATERCRAWL
+      ? {
+          emoji: '💧',
+          title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`),
+          description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`),
+        }
+      : null,
   }
 
   const currentProvider = providerConfig[provider] || providerConfig.jinareader
@@ -49,21 +55,22 @@ const NoData: FC<Props> = ({
 
   return (
     <>
-      <div className='mt-4 max-w-[640px] rounded-2xl bg-workflow-process-bg p-6'>
-        <div className='flex h-12 w-12 items-center justify-center rounded-[10px] border-[0.5px]
-          border-components-card-border bg-components-card-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
+      <div className="mt-4 max-w-[640px] rounded-2xl bg-workflow-process-bg p-6">
+        <div className="flex h-12 w-12 items-center justify-center rounded-[10px] border-[0.5px]
+          border-components-card-border bg-components-card-bg shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]"
+        >
           {currentProvider.emoji}
         </div>
-        <div className='mb-1 mt-2 flex flex-col gap-y-1 pb-3 pt-1'>
-          <span className='system-md-semibold text-text-secondary'>
+        <div className="mb-1 mt-2 flex flex-col gap-y-1 pb-3 pt-1">
+          <span className="system-md-semibold text-text-secondary">
             {currentProvider.title}
-            <Icon3Dots className='relative -left-1.5 -top-2.5 inline' />
+            <Icon3Dots className="relative -left-1.5 -top-2.5 inline" />
           </span>
-          <div className='system-sm-regular text-text-tertiary'>
+          <div className="system-sm-regular text-text-tertiary">
             {currentProvider.description}
           </div>
         </div>
-        <Button variant='primary' onClick={onConfig}>
+        <Button variant="primary" onClick={onConfig}>
           {t(`${I18N_PREFIX}.configure`)}
         </Button>
       </div>

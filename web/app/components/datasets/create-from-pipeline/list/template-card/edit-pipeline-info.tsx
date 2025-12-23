@@ -92,24 +92,25 @@ const EditPipelineInfo = ({
   }, [name, appIcon, description, pipeline.id, updatePipeline, invalidCustomizedTemplateList, onClose])
 
   return (
-    <div className='relative flex flex-col'>
+    <div className="relative flex flex-col">
       {/* Header */}
-      <div className='pb-3 pl-6 pr-14 pt-6'>
-        <span className='title-2xl-semi-bold text-text-primary'>
+      <div className="pb-3 pl-6 pr-14 pt-6">
+        <span className="title-2xl-semi-bold text-text-primary">
           {t('datasetPipeline.editPipelineInfo')}
         </span>
       </div>
-      <button type="button"
-        className='absolute right-5 top-5 flex size-8 items-center justify-center'
+      <button
+        type="button"
+        className="absolute right-5 top-5 flex size-8 items-center justify-center"
         onClick={onClose}
       >
-        <RiCloseLine className='size-5 text-text-tertiary' />
+        <RiCloseLine className="size-5 text-text-tertiary" />
       </button>
       {/* Form */}
-      <div className='flex flex-col gap-y-5 px-6 py-3'>
-        <div className='flex items-end gap-x-3 self-stretch'>
-          <div className='flex grow flex-col gap-y-1 pb-1'>
-            <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
+      <div className="flex flex-col gap-y-5 px-6 py-3">
+        <div className="flex items-end gap-x-3 self-stretch">
+          <div className="flex grow flex-col gap-y-1 pb-1">
+            <label className="system-sm-medium flex h-6 items-center text-text-secondary">
               {t('datasetPipeline.pipelineNameAndIcon')}
             </label>
             <Input
@@ -119,9 +120,9 @@ const EditPipelineInfo = ({
             />
           </div>
           <AppIcon
-            size='xxl'
+            size="xxl"
             onClick={handleOpenAppIconPicker}
-            className='cursor-pointer'
+            className="cursor-pointer"
             iconType={appIcon.type}
             icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
             background={appIcon.type === 'image' ? undefined : appIcon.background}
@@ -129,8 +130,8 @@ const EditPipelineInfo = ({
             showEditIcon
           />
         </div>
-        <div className='flex flex-col gap-y-1'>
-          <label className='system-sm-medium flex h-6 items-center text-text-secondary'>
+        <div className="flex flex-col gap-y-1">
+          <label className="system-sm-medium flex h-6 items-center text-text-secondary">
             {t('datasetPipeline.knowledgeDescription')}
           </label>
           <Textarea
@@ -141,15 +142,15 @@ const EditPipelineInfo = ({
         </div>
       </div>
       {/* Actions */}
-      <div className='flex items-center justify-end gap-x-2 p-6 pt-5'>
+      <div className="flex items-center justify-end gap-x-2 p-6 pt-5">
         <Button
-          variant='secondary'
+          variant="secondary"
           onClick={onClose}
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           onClick={handleSave}
         >
           {t('common.operation.save')}

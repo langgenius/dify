@@ -44,7 +44,7 @@ const ErrorHandle = ({
 
   return (
     <>
-      <div className='py-4'>
+      <div className="py-4">
         <Collapse
           disabled={!error_strategy}
           collapsed={collapsed}
@@ -52,9 +52,9 @@ const ErrorHandle = ({
           hideCollapseIcon
           trigger={
             collapseIcon => (
-              <div className='flex grow items-center justify-between pr-4'>
-                <div className='flex items-center'>
-                  <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>
+              <div className="flex grow items-center justify-between pr-4">
+                <div className="flex items-center">
+                  <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
                     {t('workflow.nodes.common.errorHandle.title')}
                   </div>
                   <Tooltip popupContent={t('workflow.nodes.common.errorHandle.tip')} />
@@ -65,7 +65,8 @@ const ErrorHandle = ({
                   onSelected={getHandleErrorHandleTypeChange(data)}
                 />
               </div>
-            )}
+            )
+          }
         >
           <>
             {

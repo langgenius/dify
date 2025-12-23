@@ -12,8 +12,8 @@ const useEditDatasetMetadata = ({
   // dataset,
   onUpdateDocList,
 }: {
-  datasetId: string,
-  dataset?: DataSet,
+  datasetId: string
+  dataset?: DataSet
   onUpdateDocList: () => void
 }) => {
   const { t } = useTranslation()

@@ -35,14 +35,16 @@ const PluginDetailPanel: FC<Props> = ({
   const { setDetail } = usePluginStore()
 
   useEffect(() => {
-    setDetail(!detail ? undefined : {
-      plugin_id: detail.plugin_id,
-      provider: `${detail.plugin_id}/${detail.declaration.name}`,
-      plugin_unique_identifier: detail.plugin_unique_identifier || '',
-      declaration: detail.declaration,
-      name: detail.name,
-      id: detail.id,
-    })
+    setDetail(!detail
+      ? undefined
+      : {
+          plugin_id: detail.plugin_id,
+          provider: `${detail.plugin_id}/${detail.declaration.name}`,
+          plugin_unique_identifier: detail.plugin_unique_identifier || '',
+          declaration: detail.declaration,
+          name: detail.name,
+          id: detail.id,
+        })
   }, [detail])
 
   if (!detail)
@@ -61,9 +63,9 @@ const PluginDetailPanel: FC<Props> = ({
       {detail && (
         <>
           <DetailHeader detail={detail} onUpdate={handleUpdate} onHide={onHide} />
-          <div className='grow overflow-y-auto'>
-            <div className='flex min-h-full flex-col'>
-              <div className='flex-1'>
+          <div className="grow overflow-y-auto">
+            <div className="flex min-h-full flex-col">
+              <div className="flex-1">
                 {detail.declaration.category === PluginCategoryEnum.trigger && (
                   <>
                     <SubscriptionList />
@@ -76,7 +78,7 @@ const PluginDetailPanel: FC<Props> = ({
                 {!!detail.declaration.model && <ModelList detail={detail} />}
                 {!!detail.declaration.datasource && <DatasourceActionList detail={detail} />}
               </div>
-              <ReadmeEntrance pluginDetail={detail} className='mt-auto' />
+              <ReadmeEntrance pluginDetail={detail} className="mt-auto" />
             </div>
           </div>
         </>

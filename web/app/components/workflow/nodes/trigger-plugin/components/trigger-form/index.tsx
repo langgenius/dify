@@ -33,7 +33,7 @@ const TriggerForm: FC<Props> = ({
   disableVariableInsertion = false,
 }) => {
   return (
-    <div className='space-y-1'>
+    <div className="space-y-1">
       {
         schema.map((schema, index) => (
           <TriggerFormItem

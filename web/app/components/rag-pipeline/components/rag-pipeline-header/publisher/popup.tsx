@@ -116,13 +116,13 @@ const Popup = () => {
             type: 'success',
             message: t('datasetPipeline.publishPipeline.success.message'),
             children: (
-              <div className='system-xs-regular text-text-secondary'>
+              <div className="system-xs-regular text-text-secondary">
                 <Trans
-                  i18nKey='datasetPipeline.publishPipeline.success.tip'
+                  i18nKey="datasetPipeline.publishPipeline.success.tip"
                   components={{
                     CustomLink: (
                       <Link
-                        className='system-xs-medium text-text-accent'
+                        className="system-xs-medium text-text-accent"
                         href={`/datasets/${datasetId}/documents`}
                       >
                       </Link>
@@ -180,14 +180,14 @@ const Popup = () => {
         type: 'success',
         message: t('datasetPipeline.publishTemplate.success.message'),
         children: (
-          <div className='flex flex-col gap-y-1'>
-            <span className='system-xs-regular text-text-secondary'>
+          <div className="flex flex-col gap-y-1">
+            <span className="system-xs-regular text-text-secondary">
               {t('datasetPipeline.publishTemplate.success.tip')}
             </span>
             <Link
-              href='https://docs.dify.ai'
-              target='_blank'
-              className='system-xs-medium-uppercase inline-block text-text-accent'
+              href="https://docs.dify.ai"
+              target="_blank"
+              className="system-xs-medium-uppercase inline-block text-text-accent"
             >
               {t('datasetPipeline.publishTemplate.success.learnMore')}
             </Link>
@@ -222,29 +222,35 @@ const Popup = () => {
 
   return (
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5',
-      isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
-      <div className='p-4 pt-3'>
-        <div className='system-xs-medium-uppercase flex h-6 items-center text-text-tertiary'>
+      isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}
+    >
+      <div className="p-4 pt-3">
+        <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
           {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
         </div>
         {
           publishedAt
             ? (
-              <div className='flex items-center justify-between'>
-                <div className='system-sm-medium flex items-center text-text-secondary'>
-                  {t('workflow.common.publishedAt')} {formatTimeFromNow(publishedAt)}
+                <div className="flex items-center justify-between">
+                  <div className="system-sm-medium flex items-center text-text-secondary">
+                    {t('workflow.common.publishedAt')}
+                    {' '}
+                    {formatTimeFromNow(publishedAt)}
+                  </div>
                 </div>
-              </div>
-            )
+              )
             : (
-              <div className='system-sm-medium flex items-center text-text-secondary'>
-                {t('workflow.common.autoSaved')} · {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
-              </div>
-            )
+                <div className="system-sm-medium flex items-center text-text-secondary">
+                  {t('workflow.common.autoSaved')}
+                  {' '}
+                  ·
+                  {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
+                </div>
+              )
         }
         <Button
-          variant='primary'
-          className='mt-3 w-full'
+          variant="primary"
+          className="mt-3 w-full"
           onClick={() => handlePublish()}
           disabled={published || publishing}
         >
@@ -252,66 +258,66 @@ const Popup = () => {
             published
               ? t('workflow.common.published')
               : (
-                <div className='flex gap-1'>
-                  <span>{t('workflow.common.publishUpdate')}</span>
-                  <div className='flex gap-0.5'>
-                    {PUBLISH_SHORTCUT.map(key => (
-                      <span key={key} className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>
-                        {getKeyboardKeyNameBySystem(key)}
-                      </span>
-                    ))}
+                  <div className="flex gap-1">
+                    <span>{t('workflow.common.publishUpdate')}</span>
+                    <div className="flex gap-0.5">
+                      {PUBLISH_SHORTCUT.map(key => (
+                        <span key={key} className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">
+                          {getKeyboardKeyNameBySystem(key)}
+                        </span>
+                      ))}
+                    </div>
                   </div>
-                </div>
-              )
+                )
           }
         </Button>
       </div>
-      <div className='border-t-[0.5px] border-t-divider-regular p-4 pt-3'>
+      <div className="border-t-[0.5px] border-t-divider-regular p-4 pt-3">
         <Button
-          className='mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent'
-          variant='tertiary'
+          className="mb-1 w-full hover:bg-state-accent-hover hover:text-text-accent"
+          variant="tertiary"
           onClick={goToAddDocuments}
           disabled={!publishedAt}
         >
-          <div className='flex grow items-center'>
-            <RiPlayCircleLine className='mr-2 h-4 w-4' />
+          <div className="flex grow items-center">
+            <RiPlayCircleLine className="mr-2 h-4 w-4" />
             {t('pipeline.common.goToAddDocuments')}
           </div>
-          <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
+          <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
         </Button>
         <Link
           href={apiReferenceUrl}
-          target='_blank'
-          rel='noopener noreferrer'
+          target="_blank"
+          rel="noopener noreferrer"
         >
           <Button
-            className='w-full hover:bg-state-accent-hover hover:text-text-accent'
-            variant='tertiary'
+            className="w-full hover:bg-state-accent-hover hover:text-text-accent"
+            variant="tertiary"
             disabled={!publishedAt}
           >
-            <div className='flex grow items-center'>
-              <RiTerminalBoxLine className='mr-2 h-4 w-4' />
+            <div className="flex grow items-center">
+              <RiTerminalBoxLine className="mr-2 h-4 w-4" />
               {t('workflow.common.accessAPIReference')}
             </div>
-            <RiArrowRightUpLine className='ml-2 h-4 w-4 shrink-0' />
+            <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
           </Button>
         </Link>
-        <Divider className='my-2' />
+        <Divider className="my-2" />
         <Button
-          className='w-full hover:bg-state-accent-hover hover:text-text-accent'
-          variant='tertiary'
+          className="w-full hover:bg-state-accent-hover hover:text-text-accent"
+          variant="tertiary"
           onClick={handleClickPublishAsKnowledgePipeline}
           disabled={!publishedAt || isPublishingAsCustomizedPipeline}
         >
-          <div className='flex grow items-center gap-x-2 overflow-hidden'>
-            <RiHammerLine className='h-4 w-4 shrink-0' />
-            <span className='grow truncate text-left' title={t('pipeline.common.publishAs')}>
+          <div className="flex grow items-center gap-x-2 overflow-hidden">
+            <RiHammerLine className="h-4 w-4 shrink-0" />
+            <span className="grow truncate text-left" title={t('pipeline.common.publishAs')}>
               {t('pipeline.common.publishAs')}
             </span>
             {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
-              <PremiumBadge className='shrink-0 cursor-pointer select-none' size='s' color='indigo'>
-                <SparklesSoft className='flex size-3 items-center text-components-premium-badge-indigo-text-stop-0' />
-                <span className='system-2xs-medium p-0.5'>
+              <PremiumBadge className="shrink-0 cursor-pointer select-none" size="s" color="indigo">
+                <SparklesSoft className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
+                <span className="system-2xs-medium p-0.5">
                   {t('billing.upgradeBtn.encourageShort')}
                 </span>
               </PremiumBadge>

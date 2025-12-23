@@ -46,14 +46,14 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4">
         <Field
           title={t(`${i18nPrefix}.model`)}
           required
         >
           <ModelParameterModal
-            popupClassName='!w-[387px]'
+            popupClassName="!w-[387px]"
             isInWorkflow
             isAdvancedMode={true}
             provider={model?.provider}
@@ -121,13 +121,13 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='class_name'
-              type='string'
+              name="class_name"
+              type="string"
               description={t(`${i18nPrefix}.outputVars.className`)}
             />
             <VarItem
-              name='usage'
-              type='object'
+              name="usage"
+              type="object"
               description={t(`${i18nPrefix}.outputVars.usage`)}
             />
           </>

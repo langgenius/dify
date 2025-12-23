@@ -229,15 +229,17 @@ const InstallByDSLList = ({
         }
         const plugin = plugins[index]
         if (d.type === 'github') {
-          return (<GithubItem
-            key={index}
-            checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
-            onCheckedChange={handleSelect(index)}
-            dependency={d as GitHubItemAndMarketPlaceDependency}
-            onFetchedPayload={handleGitHubPluginFetched(index)}
-            onFetchError={handleGitHubPluginFetchError(index)}
-            versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
-          />)
+          return (
+            <GithubItem
+              key={index}
+              checked={!!selectedPlugins.find(p => p.plugin_id === plugins[index]?.plugin_id)}
+              onCheckedChange={handleSelect(index)}
+              dependency={d as GitHubItemAndMarketPlaceDependency}
+              onFetchedPayload={handleGitHubPluginFetched(index)}
+              onFetchError={handleGitHubPluginFetchError(index)}
+              versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
+            />
+          )
         }
 
         if (d.type === 'marketplace') {
@@ -264,8 +266,7 @@ const InstallByDSLList = ({
             versionInfo={getVersionInfo(`${plugin?.org || plugin?.author}/${plugin?.name}`)}
           />
         )
-      })
-      }
+      })}
     </>
   )
 }

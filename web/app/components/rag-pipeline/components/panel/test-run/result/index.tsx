@@ -21,9 +21,9 @@ const Result = () => {
   }
 
   return (
-    <div className='flex grow flex-col'>
+    <div className="flex grow flex-col">
       <Tabs currentTab={currentTab} workflowRunningData={workflowRunningData} switchTab={switchTab} />
-      <div className='flex h-0 grow flex-col overflow-y-auto'>
+      <div className="flex h-0 grow flex-col overflow-y-auto">
         {currentTab === 'RESULT' && (
           <ResultPreview
             isRunning={!workflowRunningData?.result || workflowRunningData?.result.status === WorkflowRunningStatus.Running}
@@ -47,18 +47,18 @@ const Result = () => {
           />
         )}
         {currentTab === 'DETAIL' && !workflowRunningData?.result && (
-          <div className='flex grow items-center justify-center'>
+          <div className="flex grow items-center justify-center">
             <Loading />
           </div>
         )}
         {currentTab === 'TRACING' && (
           <TracingPanel
-            className='bg-background-section-burn'
+            className="bg-background-section-burn"
             list={workflowRunningData?.tracing || []}
           />
         )}
         {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-          <div className='flex grow items-center justify-center'>
+          <div className="flex grow items-center justify-center">
             <Loading />
           </div>
         )}

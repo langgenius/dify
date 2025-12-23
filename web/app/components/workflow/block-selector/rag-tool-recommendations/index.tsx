@@ -75,33 +75,33 @@ const RAGToolRecommendations = ({
   }, [onTagsChange])
 
   return (
-    <div className='flex flex-col p-1'>
+    <div className="flex flex-col p-1">
       <button
-        type='button'
-        className='flex w-full items-center rounded-md px-3 pb-0.5 pt-1 text-left text-text-tertiary'
+        type="button"
+        className="flex w-full items-center rounded-md px-3 pb-0.5 pt-1 text-left text-text-tertiary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className='system-xs-medium text-text-tertiary'>{t('pipeline.ragToolSuggestions.title')}</span>
+        <span className="system-xs-medium text-text-tertiary">{t('pipeline.ragToolSuggestions.title')}</span>
         <ArrowDownRoundFill className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
       {!isCollapsed && (
         <>
           {/* For first time loading, show loading */}
           {isLoadingRAGRecommendedPlugins && (
-            <div className='py-2'>
-              <Loading type='app' />
+            <div className="py-2">
+              <Loading type="app" />
             </div>
           )}
           {!isFetchingRAGRecommendedPlugins && recommendedPlugins.length === 0 && unInstalledPlugins.length === 0 && (
-            <p className='system-xs-regular px-3 py-1 text-text-tertiary'>
+            <p className="system-xs-regular px-3 py-1 text-text-tertiary">
               <Trans
-                i18nKey='pipeline.ragToolSuggestions.noRecommendationPlugins'
+                i18nKey="pipeline.ragToolSuggestions.noRecommendationPlugins"
                 components={{
                   CustomLink: (
                     <Link
-                      className='text-text-accent'
-                      target='_blank'
-                      rel='noopener noreferrer'
+                      className="text-text-accent"
+                      target="_blank"
+                      rel="noopener noreferrer"
                       href={getMarketplaceUrl('', { tags: 'rag' })}
                     />
                   ),
@@ -118,13 +118,13 @@ const RAGToolRecommendations = ({
                 viewType={viewType}
               />
               <div
-                className='flex cursor-pointer items-center gap-x-2 py-1 pl-3 pr-2'
+                className="flex cursor-pointer items-center gap-x-2 py-1 pl-3 pr-2"
                 onClick={loadMore}
               >
-                <div className='px-1'>
-                  <RiMoreLine className='size-4 text-text-tertiary' />
+                <div className="px-1">
+                  <RiMoreLine className="size-4 text-text-tertiary" />
                 </div>
-                <div className='system-xs-regular text-text-tertiary'>
+                <div className="system-xs-regular text-text-tertiary">
                   {t('common.operation.more')}
                 </div>
               </div>

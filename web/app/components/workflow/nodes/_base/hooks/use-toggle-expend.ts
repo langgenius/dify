@@ -26,8 +26,8 @@ const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   })()
   const wrapStyle = isExpand
     ? {
-      boxShadow: '0px 0px 12px -4px rgba(16, 24, 40, 0.05), 0px -3px 6px -2px rgba(16, 24, 40, 0.03)',
-    }
+        boxShadow: '0px 0px 12px -4px rgba(16, 24, 40, 0.05), 0px -3px 6px -2px rgba(16, 24, 40, 0.03)',
+      }
     : {}
   return {
     wrapClassName,

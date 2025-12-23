@@ -21,38 +21,42 @@ export default function SocialAuth(props: SocialAuthProps) {
 
     return url
   }
-  return <>
-    <div className='w-full'>
-      <a href={getOAuthLink('/oauth/login/github')}>
-        <Button
-          disabled={props.disabled}
-          className='w-full'
-        >
-          <>
-            <span className={
-              cn(style.githubIcon,
-                'mr-2 h-5 w-5')
-            } />
-            <span className="truncate leading-normal">{t('login.withGitHub')}</span>
-          </>
-        </Button>
-      </a>
-    </div>
-    <div className='w-full'>
-      <a href={getOAuthLink('/oauth/login/google')}>
-        <Button
-          disabled={props.disabled}
-          className='w-full'
-        >
-          <>
-            <span className={
-              cn(style.googleIcon,
-                'mr-2 h-5 w-5')
-            } />
-            <span className="truncate leading-normal">{t('login.withGoogle')}</span>
-          </>
-        </Button>
-      </a>
-    </div>
-  </>
+  return (
+    <>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/github')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.githubIcon,
+                  'mr-2 h-5 w-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('login.withGitHub')}</span>
+            </>
+          </Button>
+        </a>
+      </div>
+      <div className="w-full">
+        <a href={getOAuthLink('/oauth/login/google')}>
+          <Button
+            disabled={props.disabled}
+            className="w-full"
+          >
+            <>
+              <span className={
+                cn(style.googleIcon,
+                  'mr-2 h-5 w-5')
+              }
+              />
+              <span className="truncate leading-normal">{t('login.withGoogle')}</span>
+            </>
+          </Button>
+        </a>
+      </div>
+    </>
+  )
 }

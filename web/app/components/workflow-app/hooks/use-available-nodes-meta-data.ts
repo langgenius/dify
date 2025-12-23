@@ -32,11 +32,11 @@ export const useAvailableNodesMetaData = () => {
       isChatMode
         ? [AnswerDefault]
         : [
-          EndDefault,
-          TriggerWebhookDefault,
-          TriggerScheduleDefault,
-          TriggerPluginDefault,
-        ]
+            EndDefault,
+            TriggerWebhookDefault,
+            TriggerScheduleDefault,
+            TriggerPluginDefault,
+          ]
     ),
   ], [isChatMode, startNodeMetaData])
 

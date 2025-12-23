@@ -39,11 +39,11 @@ const ApiBasedExtensionPage = () => {
         )
       }
       <Button
-        variant='secondary'
-        className='w-full'
+        variant="secondary"
+        className="w-full"
         onClick={handleOpenApiBasedExtensionModal}
       >
-        <RiAddLine className='mr-1 h-4 w-4' />
+        <RiAddLine className="mr-1 h-4 w-4" />
         {t('common.apiBasedExtension.add')}
       </Button>
     </div>

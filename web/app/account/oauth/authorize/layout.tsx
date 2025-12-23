@@ -14,29 +14,40 @@ export default function SignInLayout({ children }: any) {
   const { isLoading, data: loginData } = useIsLogin()
   const isLoggedIn = loginData?.logged_in
 
-  if(isLoading) {
+  if (isLoading) {
     return (
-      <div className='flex min-h-screen w-full justify-center bg-background-default-burn'>
+      <div className="flex min-h-screen w-full justify-center bg-background-default-burn">
         <Loading />
       </div>
     )
   }
-  return <>
-    <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
-      <div className={cn('flex w-full shrink-0 flex-col items-center rounded-2xl border border-effects-highlight bg-background-default-subtle')}>
-        <Header />
-        <div className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-[108px]')}>
-          <div className='flex flex-col md:w-[400px]'>
-            {isLoggedIn ? <AppContextProvider>
-              {children}
-            </AppContextProvider>
-              : children}
+  return (
+    <>
+      <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>
+        <div className={cn('flex w-full shrink-0 flex-col items-center rounded-2xl border border-effects-highlight bg-background-default-subtle')}>
+          <Header />
+          <div className={cn('flex w-full grow flex-col items-center justify-center px-6 md:px-[108px]')}>
+            <div className="flex flex-col md:w-[400px]">
+              {isLoggedIn
+                ? (
+                    <AppContextProvider>
+                      {children}
+                    </AppContextProvider>
+                  )
+                : children}
+            </div>
           </div>
+          {systemFeatures.branding.enabled === false && (
+            <div className="system-xs-regular px-8 py-6 text-text-tertiary">
+              ©
+              {' '}
+              {new Date().getFullYear()}
+              {' '}
+              LangGenius, Inc. All rights reserved.
+            </div>
+          )}
         </div>
-        {systemFeatures.branding.enabled === false && <div className='system-xs-regular px-8 py-6 text-text-tertiary'>
-          © {new Date().getFullYear()} LangGenius, Inc. All rights reserved.
-        </div>}
       </div>
-    </div>
-  </>
+    </>
+  )
 }

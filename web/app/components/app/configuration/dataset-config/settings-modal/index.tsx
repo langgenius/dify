@@ -74,7 +74,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [isHideChangedTip, setIsHideChangedTip] = useState(false)
   const isRetrievalChanged = !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) || indexMethod !== localeCurrentDataset?.indexing_technique
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+  const handleSettingsChange = (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
@@ -186,56 +186,56 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className='flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+      className="flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5'>
-        <div className='flex flex-col text-base font-semibold text-text-primary'>
-          <div className='leading-6'>{t('datasetSettings.title')}</div>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+        <div className="flex flex-col text-base font-semibold text-text-primary">
+          <div className="leading-6">{t('datasetSettings.title')}</div>
         </div>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           <div
             onClick={onCancel}
-            className='flex h-6 w-6 cursor-pointer items-center justify-center'
+            className="flex h-6 w-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>
       {/* Body */}
-      <div className='overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5'>
+      <div className="overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.name')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.name')}</div>
           </div>
           <Input
             value={localeCurrentDataset.name}
             onChange={e => handleValueChange('name', e.target.value)}
-            className='block h-9'
+            className="block h-9"
             placeholder={t('datasetSettings.form.namePlaceholder') || ''}
           />
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.desc')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.desc')}</div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <Textarea
               value={localeCurrentDataset.description || ''}
               onChange={e => handleValueChange('description', e.target.value)}
-              className='resize-none'
+              className="resize-none"
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
           </div>
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.permissions')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.permissions')}</div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <PermissionSelector
               disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
               permission={localeCurrentDataset.permission}
@@ -249,9 +249,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {currentDataset && currentDataset.indexing_technique && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.indexMethod')}</div>
             </div>
-            <div className='grow'>
+            <div className="grow">
               <IndexMethod
                 disabled={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
@@ -266,10 +266,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.embeddingModel')}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.embeddingModel')}</div>
             </div>
-            <div className='w-full'>
-              <div className='h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60'>
+            <div className="w-full">
+              <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
                 <ModelSelector
                   readonly
                   defaultModel={{
@@ -279,40 +279,42 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingModelList}
                 />
               </div>
-              <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
+              <div className="mt-2 w-full text-xs leading-6 text-text-tertiary">
                 {t('datasetSettings.form.embeddingModelTip')}
-                <span className='cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+                <span className="cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Retrieval Method Config */}
-        {isExternal ? (
-          <RetrievalSection
-            isExternal
-            rowClass={rowClass}
-            labelClass={labelClass}
-            t={t}
-            topK={topK}
-            scoreThreshold={scoreThreshold}
-            scoreThresholdEnabled={scoreThresholdEnabled}
-            onExternalSettingChange={handleSettingsChange}
-            currentDataset={currentDataset}
-          />
-        ) : (
-          <RetrievalSection
-            isExternal={false}
-            rowClass={rowClass}
-            labelClass={labelClass}
-            t={t}
-            indexMethod={indexMethod}
-            retrievalConfig={retrievalConfig}
-            showMultiModalTip={showMultiModalTip}
-            onRetrievalConfigChange={setRetrievalConfig}
-            docLink={docLink}
-          />
-        )}
+        {isExternal
+          ? (
+              <RetrievalSection
+                isExternal
+                rowClass={rowClass}
+                labelClass={labelClass}
+                t={t}
+                topK={topK}
+                scoreThreshold={scoreThreshold}
+                scoreThresholdEnabled={scoreThresholdEnabled}
+                onExternalSettingChange={handleSettingsChange}
+                currentDataset={currentDataset}
+              />
+            )
+          : (
+              <RetrievalSection
+                isExternal={false}
+                rowClass={rowClass}
+                labelClass={labelClass}
+                t={t}
+                indexMethod={indexMethod}
+                retrievalConfig={retrievalConfig}
+                showMultiModalTip={showMultiModalTip}
+                onRetrievalConfigChange={setRetrievalConfig}
+                docLink={docLink}
+              />
+            )}
       </div>
       <RetrievalChangeTip
         visible={isRetrievalChanged && !isHideChangedTip}
@@ -321,16 +323,16 @@ const SettingsModal: FC<SettingsModalProps> = ({
       />
 
       <div
-        className='sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4'
+        className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
       >
         <Button
           onClick={onCancel}
-          className='mr-2'
+          className="mr-2"
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           disabled={loading}
           onClick={handleSave}
         >

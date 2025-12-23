@@ -92,7 +92,7 @@ const Action: FC<Props> = ({
 
   const handleDelete = useCallback(async () => {
     showDeleting()
-    try{
+    try {
       const res = await uninstallPlugin(installationId)
       if (res.success) {
         hideDeleteConfirm()
@@ -107,23 +107,22 @@ const Action: FC<Props> = ({
     }
   }, [installationId, onDelete])
   return (
-    <div className='flex space-x-1'>
+    <div className="flex space-x-1">
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`)}>
             <ActionButton onClick={handleFetchNewVersion}>
-              <RiLoopLeftLine className='h-4 w-4 text-text-tertiary' />
+              <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </Tooltip>
-        )
-      }
+        )}
       {
         isShowInfo
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`)}>
             <ActionButton onClick={showPluginInfo}>
-              <RiInformation2Line className='h-4 w-4 text-text-tertiary' />
+              <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
           </Tooltip>
         )
@@ -133,10 +132,10 @@ const Action: FC<Props> = ({
         && (
           <Tooltip popupContent={t(`${i18nPrefix}.delete`)}>
             <ActionButton
-              className='text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+              className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
               onClick={showDeleteConfirm}
             >
-              <RiDeleteBinLine className='h-4 w-4' />
+              <RiDeleteBinLine className="h-4 w-4" />
             </ActionButton>
           </Tooltip>
         )
@@ -153,13 +152,16 @@ const Action: FC<Props> = ({
       <Confirm
         isShow={isShowDeleteConfirm}
         title={t(`${i18nPrefix}.delete`)}
-        content={
+        content={(
           <div>
-            {t(`${i18nPrefix}.deleteContentLeft`)}<span className='system-md-semibold'>{pluginName}</span>{t(`${i18nPrefix}.deleteContentRight`)}<br />
+            {t(`${i18nPrefix}.deleteContentLeft`)}
+            <span className="system-md-semibold">{pluginName}</span>
+            {t(`${i18nPrefix}.deleteContentRight`)}
+            <br />
             {/* // todo: add usedInApps */}
             {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}
           </div>
-        }
+        )}
         onCancel={hideDeleteConfirm}
         onConfirm={handleDelete}
         isLoading={deleting}

@@ -50,9 +50,9 @@ const DatePicker: FC<Props> = ({
   }, [availableEndDate, start])
 
   return (
-    <div className='flex h-8 items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2'>
-      <div className='p-px'>
-        <RiCalendarLine className='size-3.5 text-text-tertiary' />
+    <div className="flex h-8 items-center space-x-0.5 rounded-lg bg-components-input-bg-normal px-2">
+      <div className="p-px">
+        <RiCalendarLine className="size-3.5 text-text-tertiary" />
       </div>
       <Picker
         value={start}
@@ -63,7 +63,7 @@ const DatePicker: FC<Props> = ({
         noConfirm
         getIsDateDisabled={startDateDisabled}
       />
-      <span className='system-sm-regular text-text-tertiary'>-</span>
+      <span className="system-sm-regular text-text-tertiary">-</span>
       <Picker
         value={end}
         onChange={onEndChange}

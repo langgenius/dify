@@ -16,11 +16,11 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
   return Object.keys(attrs).reduce((acc: Attrs, key) => {
     // Filter out editor metadata attributes before processing
     if (key.startsWith('inkscape:')
-        || key.startsWith('sodipodi:')
-        || key.startsWith('xmlns:inkscape')
-        || key.startsWith('xmlns:sodipodi')
-        || key.startsWith('xmlns:svg')
-        || key === 'data-name')
+      || key.startsWith('sodipodi:')
+      || key.startsWith('xmlns:inkscape')
+      || key.startsWith('xmlns:sodipodi')
+      || key.startsWith('xmlns:svg')
+      || key === 'data-name')
       return acc
 
     const val = attrs[key]
@@ -32,9 +32,9 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
 
     // Additional filter after camelCase conversion
     if (key === 'xmlnsInkscape'
-        || key === 'xmlnsSodipodi'
-        || key === 'xmlnsSvg'
-        || key === 'dataName')
+      || key === 'xmlnsSodipodi'
+      || key === 'xmlnsSvg'
+      || key === 'dataName')
       return acc
 
     switch (key) {

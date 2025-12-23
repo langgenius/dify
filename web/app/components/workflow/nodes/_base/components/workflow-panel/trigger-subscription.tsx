@@ -15,12 +15,16 @@ export const TriggerSubscription: FC<TriggerSubscriptionProps> = ({ subscription
   const { subscriptions } = useSubscriptionList()
   const subscriptionCount = subscriptions?.length || 0
 
-  return <div className={cn('px-4', subscriptionCount > 0 && 'flex items-center justify-between pr-3')}>
-    {!subscriptionCount && <CreateSubscriptionButton buttonType={CreateButtonType.FULL_BUTTON} />}
-    {children}
-    {subscriptionCount > 0 && <SubscriptionSelectorEntry
-      selectedId={subscriptionIdSelected}
-      onSelect={onSubscriptionChange}
-    />}
-  </div>
+  return (
+    <div className={cn('px-4', subscriptionCount > 0 && 'flex items-center justify-between pr-3')}>
+      {!subscriptionCount && <CreateSubscriptionButton buttonType={CreateButtonType.FULL_BUTTON} />}
+      {children}
+      {subscriptionCount > 0 && (
+        <SubscriptionSelectorEntry
+          selectedId={subscriptionIdSelected}
+          onSelect={onSubscriptionChange}
+        />
+      )}
+    </div>
+  )
 }

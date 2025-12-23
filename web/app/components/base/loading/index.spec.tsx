@@ -15,7 +15,7 @@ describe('Loading Component', () => {
   })
 
   it('renders correctly with app type', () => {
-    const { container } = render(<Loading type='app' />)
+    const { container } = render(<Loading type="app" />)
     expect(container.firstChild).toHaveClass('h-full')
   })
 

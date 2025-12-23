@@ -129,9 +129,9 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
     return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
-    <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className='grow'>
-        {!documentDetail && <Loading type='app' />}
+    <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
+      <div className="grow">
+        {!documentDetail && <Loading type="app" />}
         {dataset && documentDetail && (
           <StepTwo
             isAPIKeySet={!!embeddingsDefaultModel}
@@ -153,9 +153,14 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
           />
         )}
       </div>
-      {isShowSetAPIKey && <AccountSetting activeTab='provider' onCancel={async () => {
-        hideSetAPIkey()
-      }} />}
+      {isShowSetAPIKey && (
+        <AccountSetting
+          activeTab="provider"
+          onCancel={async () => {
+            hideSetAPIkey()
+          }}
+        />
+      )}
     </div>
   )
 }

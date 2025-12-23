@@ -13,8 +13,8 @@ import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 const i18nPrefix = 'workflow.nodes.iteration'
 
 type Params = {
-  id: string,
-  payload: IterationNodeType,
+  id: string
+  payload: IterationNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -138,7 +138,7 @@ const useSingleRunFormParams = ({
     return [payload.iterator_selector]
   }
   const getDependentVar = (variable: string) => {
-    if(variable === iteratorInputKey)
+    if (variable === iteratorInputKey)
       return payload.iterator_selector
   }
 

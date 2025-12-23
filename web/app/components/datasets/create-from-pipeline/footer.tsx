@@ -38,14 +38,14 @@ const Footer = () => {
   }, [invalidDatasetList])
 
   return (
-    <div className='absolute bottom-0 left-0 right-0 z-10 flex flex-col gap-y-4 bg-knowledge-pipeline-creation-footer-bg px-16 pb-6 backdrop-blur-[6px]'>
-      <Divider type='horizontal' className='my-0 w-8' />
+    <div className="absolute bottom-0 left-0 right-0 z-10 flex flex-col gap-y-4 bg-knowledge-pipeline-creation-footer-bg px-16 pb-6 backdrop-blur-[6px]">
+      <Divider type="horizontal" className="my-0 w-8" />
       <button
-        type='button'
-        className='system-md-medium flex items-center gap-x-3 text-text-accent'
+        type="button"
+        className="system-md-medium flex items-center gap-x-3 text-text-accent"
         onClick={openImportFromDSL}
       >
-        <RiFileUploadLine className='size-5' />
+        <RiFileUploadLine className="size-5" />
         <span>{t('datasetPipeline.creation.importDSL')}</span>
       </button>
       <CreateFromDSLModal

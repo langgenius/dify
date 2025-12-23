@@ -109,7 +109,8 @@ const TracingPanel: FC<TracingPanelProps> = ({
           onMouseLeave={handleParallelMouseLeave}
         >
           <div className="mb-1 flex items-center">
-            <button type="button"
+            <button
+              type="button"
               onClick={() => toggleCollapse(node.id)}
               className={cn(
                 'mr-2 transition-colors',
@@ -124,13 +125,16 @@ const TracingPanel: FC<TracingPanelProps> = ({
             <div
               className="mx-2 h-px grow bg-divider-subtle"
               style={{ background: 'linear-gradient(to right, rgba(16, 24, 40, 0.08), rgba(255, 255, 255, 0)' }}
-            ></div>
+            >
+            </div>
           </div>
           <div className={`relative pl-2 ${isCollapsed ? 'hidden' : ''}`}>
             <div className={cn(
               'absolute bottom-0 left-[5px] top-0 w-[2px]',
               isHovered ? 'bg-text-accent-secondary' : 'bg-divider-subtle',
-            )}></div>
+            )}
+            >
+            </div>
             {parallelDetail.children!.map(renderNode)}
           </div>
         </div>

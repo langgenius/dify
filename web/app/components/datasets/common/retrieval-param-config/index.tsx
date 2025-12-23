@@ -117,16 +117,16 @@ const RetrievalParamConfig: FC<Props> = ({
     <div>
       {!isEconomical && !isHybridSearch && (
         <div>
-          <div className='mb-2 flex items-center space-x-2'>
+          <div className="mb-2 flex items-center space-x-2">
             {canToggleRerankModalEnable && (
               <Switch
-                size='md'
+                size="md"
                 defaultValue={value.reranking_enable}
                 onChange={handleToggleRerankEnable}
               />
             )}
-            <div className='flex items-center'>
-              <span className='system-sm-semibold mr-0.5 text-text-secondary'>{t('common.modelProvider.rerankModel.key')}</span>
+            <div className="flex items-center">
+              <span className="system-sm-semibold mr-0.5 text-text-secondary">{t('common.modelProvider.rerankModel.key')}</span>
               <Tooltip
                 popupContent={
                   <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
@@ -151,12 +151,12 @@ const RetrievalParamConfig: FC<Props> = ({
                   }}
                 />
                 {showMultiModalTip && (
-                  <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
-                    <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40' />
-                    <div className='p-1'>
-                      <AlertTriangle className='size-4 text-text-warning-secondary' />
+                  <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+                    <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                    <div className="p-1">
+                      <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
-                    <span className='system-xs-medium text-text-primary'>
+                    <span className="system-xs-medium text-text-primary">
                       {t('datasetSettings.form.retrievalSetting.multiModalTip')}
                     </span>
                   </div>
@@ -170,7 +170,7 @@ const RetrievalParamConfig: FC<Props> = ({
         !isHybridSearch && (
           <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-4')}>
             <TopKItem
-              className='grow'
+              className="grow"
               value={value.top_k}
               onChange={(_key, v) => {
                 onChange({
@@ -182,7 +182,7 @@ const RetrievalParamConfig: FC<Props> = ({
             />
             {(!isEconomical && !(value.search_method === RETRIEVE_METHOD.fullText && !value.reranking_enable)) && (
               <ScoreThresholdItem
-                className='grow'
+                className="grow"
                 value={value.score_threshold}
                 onChange={(_key, v) => {
                   onChange({
@@ -206,21 +206,26 @@ const RetrievalParamConfig: FC<Props> = ({
       {
         isHybridSearch && (
           <>
-            <div className='mb-4 flex gap-2'>
+            <div className="mb-4 flex gap-2">
               {
                 rerankingModeOptions.map(option => (
                   <RadioCard
                     key={option.value}
                     isChosen={value.reranking_mode === option.value}
                     onChosen={() => handleChangeRerankMode(option.value)}
-                    icon={<Image src={
-                      option.value === RerankingModeEnum.WeightedScore
-                        ? ProgressIndicator
-                        : Reranking
-                    } alt='' />}
+                    icon={(
+                      <Image
+                        src={
+                          option.value === RerankingModeEnum.WeightedScore
+                            ? ProgressIndicator
+                            : Reranking
+                        }
+                        alt=""
+                      />
+                    )}
                     title={option.label}
                     description={option.tips}
-                    className='flex-1'
+                    className="flex-1"
                   />
                 ))
               }
@@ -270,12 +275,12 @@ const RetrievalParamConfig: FC<Props> = ({
                     }}
                   />
                   {showMultiModalTip && (
-                    <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
-                      <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40' />
-                      <div className='p-1'>
-                        <AlertTriangle className='size-4 text-text-warning-secondary' />
+                    <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+                      <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                      <div className="p-1">
+                        <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>
-                      <span className='system-xs-medium text-text-primary'>
+                      <span className="system-xs-medium text-text-primary">
                         {t('datasetSettings.form.retrievalSetting.multiModalTip')}
                       </span>
                     </div>
@@ -285,7 +290,7 @@ const RetrievalParamConfig: FC<Props> = ({
             }
             <div className={cn(!isEconomical && 'mt-4', 'space-between flex space-x-6')}>
               <TopKItem
-                className='grow'
+                className="grow"
                 value={value.top_k}
                 onChange={(_key, v) => {
                   onChange({
@@ -296,7 +301,7 @@ const RetrievalParamConfig: FC<Props> = ({
                 enable={true}
               />
               <ScoreThresholdItem
-                className='grow'
+                className="grow"
                 value={value.score_threshold}
                 onChange={(_key, v) => {
                   onChange({

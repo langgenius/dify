@@ -21,9 +21,9 @@ type IState = {
 
 type IAction
   = | { type: 'failed', payload: null }
-  | { type: 'invitation_code', value: string }
-  | { type: 'interface_language', value: string }
-  | { type: 'timezone', value: string }
+    | { type: 'invitation_code', value: string }
+    | { type: 'interface_language', value: string }
+    | { type: 'timezone', value: string }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -79,7 +79,7 @@ const OneMoreStep = () => {
     <>
       <div className="mx-auto w-full">
         <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='body-md-regular mt-1 text-text-tertiary'>{t('login.createSample')}</p>
+        <p className="body-md-regular mt-1 text-text-tertiary">{t('login.createSample')}</p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
@@ -88,16 +88,16 @@ const OneMoreStep = () => {
             <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
               {t('login.invitationCode')}
               <Tooltip
-                popupContent={
-                  <div className='w-[256px] text-xs font-medium'>
-                    <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='cursor-pointer text-xs font-medium text-text-accent-secondary'>
+                popupContent={(
+                  <div className="w-[256px] text-xs font-medium">
+                    <div className="font-medium">{t('login.sendUsMail')}</div>
+                    <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
-                }
+                )}
               >
-                <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
+                <span className="cursor-pointer text-text-accent-secondary">{t('login.dontHave')}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
@@ -112,7 +112,7 @@ const OneMoreStep = () => {
               />
             </div>
           </div>
-          <div className='mb-5'>
+          <div className="mb-5">
             <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
               {t('login.interfaceLanguage')}
             </label>
@@ -126,7 +126,7 @@ const OneMoreStep = () => {
               />
             </div>
           </div>
-          <div className='mb-4'>
+          <div className="mb-4">
             <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
               {t('login.timezone')}
             </label>
@@ -142,8 +142,8 @@ const OneMoreStep = () => {
           </div>
           <div>
             <Button
-              variant='primary'
-              className='w-full'
+              variant="primary"
+              className="w-full"
               disabled={isPending}
               onClick={handleSubmit}
             >
@@ -154,10 +154,13 @@ const OneMoreStep = () => {
             {t('login.license.tip')}
             &nbsp;
             <Link
-              className='system-xs-medium text-text-accent-secondary'
-              target='_blank' rel='noopener noreferrer'
+              className="system-xs-medium text-text-accent-secondary"
+              target="_blank"
+              rel="noopener noreferrer"
               href={docLink('/policies/agreement/README')}
-            >{t('login.license.link')}</Link>
+            >
+              {t('login.license.link')}
+            </Link>
           </div>
         </div>
       </div>

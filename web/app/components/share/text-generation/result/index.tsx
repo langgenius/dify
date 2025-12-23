@@ -52,7 +52,7 @@ export type IResultProps = {
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
   onRunStart: () => void
-  onRunControlChange?: (control: { onStop: () => Promise<void> | void; isStopping: boolean } | null) => void
+  onRunControlChange?: (control: { onStop: () => Promise<void> | void, isStopping: boolean } | null) => void
   hideInlineStopButton?: boolean
 }
 
@@ -189,7 +189,7 @@ const Result: FC<IResultProps> = ({
 
     let hasEmptyInput = ''
     const requiredVars = prompt_variables?.filter(({ key, name, required, type }) => {
-      if(type === 'boolean' || type === 'checkbox')
+      if (type === 'boolean' || type === 'checkbox')
         return false // boolean/checkbox input is not required
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
@@ -534,16 +534,16 @@ const Result: FC<IResultProps> = ({
       {!hideInlineStopButton && isResponding && currentTaskId && (
         <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
           <Button
-            variant='secondary'
+            variant="secondary"
             disabled={isStopping}
             onClick={handleStop}
           >
             {
               isStopping
-                ? <RiLoader2Line className='mr-[5px] h-3.5 w-3.5 animate-spin' />
-                : <StopCircle className='mr-[5px] h-3.5 w-3.5' />
+                ? <RiLoader2Line className="mr-[5px] h-3.5 w-3.5 animate-spin" />
+                : <StopCircle className="mr-[5px] h-3.5 w-3.5" />
             }
-            <span className='text-xs font-normal'>{t('appDebug.operation.stopResponding')}</span>
+            <span className="text-xs font-normal">{t('appDebug.operation.stopResponding')}</span>
           </Button>
         </div>
       )}
@@ -577,28 +577,28 @@ const Result: FC<IResultProps> = ({
       {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>)
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : (
-            <>
-              {(isNoData)
-                ? <NoData />
-                : renderTextGenerationRes()
-              }
-            </>
-          )
+              <>
+                {(isNoData)
+                  ? <NoData />
+                  : renderTextGenerationRes()}
+              </>
+            )
       )}
       {!isCallBatchAPI && isWorkflow && (
         (isResponding && !workflowProcessData)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>
-          )
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : !workflowProcessData
-            ? <NoData />
-            : renderTextGenerationRes()
+              ? <NoData />
+              : renderTextGenerationRes()
       )}
       {isCallBatchAPI && renderTextGenerationRes()}
     </>

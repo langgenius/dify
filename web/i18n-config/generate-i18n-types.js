@@ -50,7 +50,7 @@ import 'react-i18next'
 // Extract types from translation files using typeof import pattern`
 
   // Generate individual type definitions
-  const typeDefinitions = namespaces.map(namespace => {
+  const typeDefinitions = namespaces.map((namespace) => {
     const typeName = `${camelCase(namespace).replace(/^\w/, c => c.toUpperCase())}Messages`
     return `type ${typeName} = typeof import('../i18n/en-US/${namespace}').default`
   }).join('\n')
@@ -59,11 +59,11 @@ import 'react-i18next'
   const messagesInterface = `
 // Complete type structure that matches i18next-config.ts camelCase conversion
 export type Messages = {
-${namespaces.map(namespace => {
-    const camelCased = camelCase(namespace)
-    const typeName = `${camelCase(namespace).replace(/^\w/, c => c.toUpperCase())}Messages`
-    return `  ${camelCased}: ${typeName};`
-  }).join('\n')}
+${namespaces.map((namespace) => {
+  const camelCased = camelCase(namespace)
+  const typeName = `${camelCase(namespace).replace(/^\w/, c => c.toUpperCase())}Messages`
+  return `  ${camelCased}: ${typeName};`
+}).join('\n')}
 }`
 
   const utilityTypes = `
@@ -133,13 +133,14 @@ function main() {
       }
 
       console.log('✅ Type definitions are in sync')
-    } else {
+    }
+    else {
       // Generate mode: write file
       fs.writeFileSync(outputPath, typeDefinitions)
       console.log(`✅ Generated type definitions: ${outputPath}`)
     }
-
-  } catch (error) {
+  }
+  catch (error) {
     console.error('❌ Error:', error.message)
     process.exit(1)
   }

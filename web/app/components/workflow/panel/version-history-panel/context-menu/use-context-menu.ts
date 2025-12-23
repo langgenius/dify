@@ -24,18 +24,20 @@ const useContextMenu = (props: ContextMenuProps) => {
       },
       isNamedVersion
         ? {
-          key: VersionHistoryContextMenuOptions.edit,
-          name: t('workflow.versionHistory.editVersionInfo'),
-        }
+            key: VersionHistoryContextMenuOptions.edit,
+            name: t('workflow.versionHistory.editVersionInfo'),
+          }
         : {
-          key: VersionHistoryContextMenuOptions.edit,
-          name: t('workflow.versionHistory.nameThisVersion'),
-        },
+            key: VersionHistoryContextMenuOptions.edit,
+            name: t('workflow.versionHistory.nameThisVersion'),
+          },
       // todo: pipeline support export specific version DSL
-      ...(!pipelineId ? [{
-        key: VersionHistoryContextMenuOptions.exportDSL,
-        name: t('app.export'),
-      }] : []),
+      ...(!pipelineId
+        ? [{
+            key: VersionHistoryContextMenuOptions.exportDSL,
+            name: t('app.export'),
+          }]
+        : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,
         name: t('workflow.versionHistory.copyId'),

@@ -158,10 +158,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       provider,
       model,
       model_type,
-      ...(model_type === ModelTypeEnum.textGeneration ? {
-        mode: targetModelItem?.model_properties.mode as string,
-        completion_params: nextCompletionParams,
-      } : {}),
+      ...(model_type === ModelTypeEnum.textGeneration
+        ? {
+            mode: targetModelItem?.model_properties.mode as string,
+            completion_params: nextCompletionParams,
+          }
+        : {}),
     })
   }
 
@@ -191,54 +193,58 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       placement={isInWorkflow ? 'left' : 'bottom-end'}
       offset={4}
     >
-      <div className='relative'>
+      <div className="relative">
         <PortalToFollowElemTrigger
           onClick={() => {
             if (readonly)
               return
             setOpen(v => !v)
           }}
-          className='block'
+          className="block"
         >
           {
             renderTrigger
               ? renderTrigger({
-                open,
-                disabled,
-                modelDisabled,
-                hasDeprecated,
-                currentProvider,
-                currentModel,
-                providerName: value?.provider,
-                modelId: value?.model,
-              })
+                  open,
+                  disabled,
+                  modelDisabled,
+                  hasDeprecated,
+                  currentProvider,
+                  currentModel,
+                  providerName: value?.provider,
+                  modelId: value?.model,
+                })
               : (isAgentStrategy
-                ? <AgentModelTrigger
-                  disabled={disabled}
-                  hasDeprecated={hasDeprecated}
-                  currentProvider={currentProvider}
-                  currentModel={currentModel}
-                  providerName={value?.provider}
-                  modelId={value?.model}
-                  scope={scope}
-                />
-                : <Trigger
-                  disabled={disabled}
-                  isInWorkflow={isInWorkflow}
-                  modelDisabled={modelDisabled}
-                  hasDeprecated={hasDeprecated}
-                  currentProvider={currentProvider}
-                  currentModel={currentModel}
-                  providerName={value?.provider}
-                  modelId={value?.model}
-                />
-              )
+                  ? (
+                      <AgentModelTrigger
+                        disabled={disabled}
+                        hasDeprecated={hasDeprecated}
+                        currentProvider={currentProvider}
+                        currentModel={currentModel}
+                        providerName={value?.provider}
+                        modelId={value?.model}
+                        scope={scope}
+                      />
+                    )
+                  : (
+                      <Trigger
+                        disabled={disabled}
+                        isInWorkflow={isInWorkflow}
+                        modelDisabled={modelDisabled}
+                        hasDeprecated={hasDeprecated}
+                        currentProvider={currentProvider}
+                        currentModel={currentModel}
+                        providerName={value?.provider}
+                        modelId={value?.model}
+                      />
+                    )
+                )
           }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className={cn('z-50', portalToFollowElemContentClassName)}>
           <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
             <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
-              <div className='relative'>
+              <div className="relative">
                 <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
                   {t('common.modelProvider.model').toLocaleUpperCase()}
                 </div>
@@ -250,7 +256,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 />
               </div>
               {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
-                <div className='my-3 h-px bg-divider-subtle' />
+                <div className="my-3 h-px bg-divider-subtle" />
               )}
               {currentModel?.model_type === ModelTypeEnum.textGeneration && (
                 <LLMParamsPanel

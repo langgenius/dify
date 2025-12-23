@@ -45,14 +45,14 @@ const Options = ({
 
   return (
     <form
-      className='w-full'
+      className="w-full"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
         form.handleSubmit()
       }}
     >
-      <div className='flex flex-col gap-3 px-4 pb-6 pt-3'>
+      <div className="flex flex-col gap-3 px-4 pb-6 pt-3">
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

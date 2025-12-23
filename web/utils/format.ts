@@ -95,7 +95,7 @@ export const formatTime = (seconds: number) => {
   return `${seconds.toFixed(2)} ${units[index]}`
 }
 
-export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string }) => {
+export const downloadFile = ({ data, fileName }: { data: Blob, fileName: string }) => {
   const url = window.URL.createObjectURL(data)
   const a = document.createElement('a')
   a.href = url

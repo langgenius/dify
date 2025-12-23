@@ -358,7 +358,7 @@ describe('AgentTools', () => {
     await userEvent.click(switchButton)
 
     await waitFor(() => {
-      const tools = getModelConfig().agentConfig.tools as Array<{ tool_name?: string; enabled?: boolean }>
+      const tools = getModelConfig().agentConfig.tools as Array<{ tool_name?: string, enabled?: boolean }>
       const toggledTool = tools.find(tool => tool.tool_name === 'search')
       expect(toggledTool?.enabled).toBe(false)
     })

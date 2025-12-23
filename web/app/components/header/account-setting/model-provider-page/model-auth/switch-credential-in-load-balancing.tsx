@@ -55,7 +55,7 @@ const SwitchCredentialInLoadBalancing = ({
 
     const Item = (
       <Button
-        variant='secondary'
+        variant="secondary"
         className={cn(
           'shrink-0 space-x-1',
           (authRemoved || unavailable) && 'text-components-button-destructive-secondary-text',
@@ -65,7 +65,7 @@ const SwitchCredentialInLoadBalancing = ({
         {
           !empty && (
             <Indicator
-              className='mr-2'
+              className="mr-2"
               color={color as any}
             />
           )
@@ -81,10 +81,10 @@ const SwitchCredentialInLoadBalancing = ({
         }
         {
           currentCredential?.from_enterprise && (
-            <Badge className='ml-2'>Enterprise</Badge>
+            <Badge className="ml-2">Enterprise</Badge>
           )
         }
-        <RiArrowDownSLine className='h-4 w-4' />
+        <RiArrowDownSLine className="h-4 w-4" />
       </Button>
     )
     if (empty && notAllowCustomCredential) {
@@ -104,10 +104,12 @@ const SwitchCredentialInLoadBalancing = ({
     <Authorized
       provider={provider}
       configurationMethod={ConfigurationMethodEnum.customizableModel}
-      currentCustomConfigurationModelFixedFields={model ? {
-        __model_name: model.model,
-        __model_type: model.model_type,
-      } : undefined}
+      currentCustomConfigurationModelFixedFields={model
+        ? {
+            __model_name: model.model,
+            __model_type: model.model_type,
+          }
+        : undefined}
       authParams={{
         isModelCredential: true,
         mode: ModelModalModeEnum.configModelCredential,
@@ -118,10 +120,12 @@ const SwitchCredentialInLoadBalancing = ({
         {
           model,
           credentials: credentials || [],
-          selectedCredential: customModelCredential ? {
-            credential_id: customModelCredential?.credential_id || '',
-            credential_name: customModelCredential?.credential_name || '',
-          } : undefined,
+          selectedCredential: customModelCredential
+            ? {
+                credential_id: customModelCredential?.credential_id || '',
+                credential_name: customModelCredential?.credential_name || '',
+              }
+            : undefined,
         },
       ]}
       renderTrigger={renderTrigger}

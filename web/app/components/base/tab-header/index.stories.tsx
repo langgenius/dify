@@ -23,7 +23,9 @@ const TabHeaderDemo = ({
       <div className="flex items-center justify-between text-xs uppercase tracking-[0.18em] text-text-tertiary">
         <span>Tabs</span>
         <code className="rounded-md bg-background-default px-2 py-1 text-[11px] text-text-tertiary">
-          active="{activeTab}"
+          active="
+          {activeTab}
+          "
         </code>
       </div>
       <TabHeader

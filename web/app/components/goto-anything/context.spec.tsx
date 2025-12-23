@@ -16,7 +16,9 @@ const ContextConsumer = () => {
   const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
   return (
     <div data-testid="status">
-      {String(isWorkflowPage)}|{String(isRagPipelinePage)}
+      {String(isWorkflowPage)}
+      |
+      {String(isRagPipelinePage)}
     </div>
   )
 }

@@ -56,7 +56,7 @@ const FileList = ({
   }
 
   return (
-    <div className='flex h-[400px] flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3'>
+    <div className="flex h-[400px] flex-col overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg shadow-xs shadow-shadow-shadow-3">
       <Header
         breadcrumbs={breadcrumbs}
         inputValue={inputValue}

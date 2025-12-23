@@ -145,7 +145,7 @@ const TemplateCard = ({
   }, [pipeline.id, deletePipeline, invalidCustomizedTemplateList])
 
   return (
-    <div className='group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3'>
+    <div className="group relative flex h-[132px] cursor-pointer flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-on-panel-item-bg pb-3 shadow-xs shadow-shadow-shadow-3">
       <Content
         name={pipeline.name}
         description={pipeline.description}
@@ -164,7 +164,7 @@ const TemplateCard = ({
         <Modal
           isShow={showEditModal}
           onClose={closeEditModal}
-          className='max-w-[520px] p-0'
+          className="max-w-[520px] p-0"
         >
           <EditPipelineInfo
             pipeline={pipeline}
@@ -185,7 +185,7 @@ const TemplateCard = ({
         <Modal
           isShow={showDetailModal}
           onClose={closeDetailsModal}
-          className='h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0'
+          className="h-[calc(100vh-64px)] max-w-[1680px] rounded-3xl p-0"
         >
           <Details
             id={pipeline.id}

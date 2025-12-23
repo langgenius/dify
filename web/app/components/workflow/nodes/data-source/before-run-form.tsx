@@ -56,7 +56,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
       nodeName={payload.title}
       onHide={onCancel}
     >
-      <div className='flex flex-col gap-y-5 px-4 pt-4'>
+      <div className="flex flex-col gap-y-5 px-4 pt-4">
         {datasourceType === DatasourceType.localFile && (
           <LocalFile
             allowedExtensions={datasourceNodeData.fileExtensions || []}
@@ -90,13 +90,13 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             supportBatchUpload={false}
           />
         )}
-        <div className='flex justify-end gap-x-2'>
+        <div className="flex justify-end gap-x-2">
           <Button onClick={onCancel}>
             {t('common.operation.cancel')}
           </Button>
           <Button
             onClick={handleRunWithSyncDraft}
-            variant='primary'
+            variant="primary"
             loading={isPending}
             disabled={isPending || startRunBtnDisabled}
           >

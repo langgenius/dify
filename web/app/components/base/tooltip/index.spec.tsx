@@ -100,11 +100,13 @@ describe('Tooltip', () => {
 
     it('should apply noDecoration when specified', async () => {
       const triggerClassName = 'custom-trigger'
-      const { container } = render(<Tooltip
-        popupContent="Tooltip content"
-        triggerClassName={triggerClassName}
-        noDecoration
-      />)
+      const { container } = render(
+        <Tooltip
+          popupContent="Tooltip content"
+          triggerClassName={triggerClassName}
+          noDecoration
+        />,
+      )
       const trigger = container.querySelector(`.${triggerClassName}`)
       act(() => {
         fireEvent.mouseEnter(trigger!)

@@ -61,7 +61,9 @@ const SliderDemo = (args: any) => {
         }}
       />
       <div className="mt-4 text-center text-sm text-gray-600">
-        Value: <span className="text-lg font-semibold">{value}</span>
+        Value:
+        {' '}
+        <span className="text-lg font-semibold">{value}</span>
       </div>
     </div>
   )
@@ -153,7 +155,10 @@ const VolumeControlDemo = () => {
       />
       <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
         <span>Mute</span>
-        <span className="text-lg font-semibold">{volume}%</span>
+        <span className="text-lg font-semibold">
+          {volume}
+          %
+        </span>
         <span>Max</span>
       </div>
     </div>
@@ -184,7 +189,10 @@ const BrightnessControlDemo = () => {
       />
       <div className="mt-4 rounded-lg bg-gray-50 p-4" style={{ opacity: brightness / 100 }}>
         <div className="text-sm text-gray-700">
-          Preview at {brightness}% brightness
+          Preview at
+          {' '}
+          {brightness}
+          % brightness
         </div>
       </div>
     </div>
@@ -217,7 +225,10 @@ const PriceRangeFilterDemo = () => {
       <div className="mb-2">
         <div className="mb-2 flex items-center justify-between text-sm text-gray-600">
           <span>Maximum Price</span>
-          <span className="font-semibold text-gray-900">${maxPrice}</span>
+          <span className="font-semibold text-gray-900">
+            $
+            {maxPrice}
+          </span>
         </div>
         <Slider
           value={maxPrice}
@@ -229,13 +240,24 @@ const PriceRangeFilterDemo = () => {
       </div>
       <div className="mt-6">
         <div className="mb-3 text-sm font-medium text-gray-700">
-          Showing {filteredProducts.length} of {products.length} products
+          Showing
+          {' '}
+          {filteredProducts.length}
+          {' '}
+          of
+          {' '}
+          {products.length}
+          {' '}
+          products
         </div>
         <div className="space-y-2">
           {filteredProducts.map(product => (
             <div key={product.name} className="flex items-center justify-between rounded-lg bg-gray-50 p-3">
               <span className="text-sm">{product.name}</span>
-              <span className="font-semibold text-gray-900">${product.price}</span>
+              <span className="font-semibold text-gray-900">
+                $
+                {product.price}
+              </span>
             </div>
           ))}
         </div>
@@ -269,11 +291,17 @@ const TemperatureSelectorDemo = () => {
       <div className="grid grid-cols-2 gap-4">
         <div className="rounded-lg bg-blue-50 p-4 text-center">
           <div className="mb-1 text-xs text-gray-600">Celsius</div>
-          <div className="text-3xl font-bold text-blue-600">{temperature}°C</div>
+          <div className="text-3xl font-bold text-blue-600">
+            {temperature}
+            °C
+          </div>
         </div>
         <div className="rounded-lg bg-orange-50 p-4 text-center">
           <div className="mb-1 text-xs text-gray-600">Fahrenheit</div>
-          <div className="text-3xl font-bold text-orange-600">{fahrenheit}°F</div>
+          <div className="text-3xl font-bold text-orange-600">
+            {fahrenheit}
+            °F
+          </div>
         </div>
       </div>
       <div className="mt-4 text-center text-xs text-gray-500">
@@ -307,7 +335,10 @@ const ProgressSliderDemo = () => {
       <div className="mt-4">
         <div className="mb-2 flex items-center justify-between">
           <span className="text-sm text-gray-600">Progress</span>
-          <span className="text-lg font-bold text-blue-600">{progress}%</span>
+          <span className="text-lg font-bold text-blue-600">
+            {progress}
+            %
+          </span>
         </div>
         <div className="space-y-2 text-sm">
           <div className="flex items-center gap-2">
@@ -369,7 +400,10 @@ const ZoomControlDemo = () => {
       </div>
       <div className="mt-4 flex items-center justify-between text-sm text-gray-600">
         <span>50%</span>
-        <span className="text-lg font-semibold">{zoom}%</span>
+        <span className="text-lg font-semibold">
+          {zoom}
+          %
+        </span>
         <span>200%</span>
       </div>
       <div className="mt-4 rounded-lg bg-gray-50 p-4 text-center" style={{ transform: `scale(${zoom / 100})`, transformOrigin: 'center' }}>
@@ -446,9 +480,21 @@ const AIModelParametersDemo = () => {
         </div>
       </div>
       <div className="mt-6 rounded-lg bg-blue-50 p-4 text-xs text-gray-700">
-        <div><strong>Temperature:</strong> {temperature}</div>
-        <div><strong>Max Tokens:</strong> {maxTokens}</div>
-        <div><strong>Top P:</strong> {topP}</div>
+        <div>
+          <strong>Temperature:</strong>
+          {' '}
+          {temperature}
+        </div>
+        <div>
+          <strong>Max Tokens:</strong>
+          {' '}
+          {maxTokens}
+        </div>
+        <div>
+          <strong>Top P:</strong>
+          {' '}
+          {topP}
+        </div>
       </div>
     </div>
   )
@@ -486,11 +532,19 @@ const ImageQualitySelectorDemo = () => {
         <div className="rounded-lg bg-gray-50 p-3">
           <div className="text-xs text-gray-600">Quality</div>
           <div className="text-lg font-semibold">{getQualityLabel(quality)}</div>
-          <div className="text-xs text-gray-500">{quality}%</div>
+          <div className="text-xs text-gray-500">
+            {quality}
+            %
+          </div>
         </div>
         <div className="rounded-lg bg-gray-50 p-3">
           <div className="text-xs text-gray-600">File Size</div>
-          <div className="text-lg font-semibold">~{estimatedSize} MB</div>
+          <div className="text-lg font-semibold">
+            ~
+            {estimatedSize}
+            {' '}
+            MB
+          </div>
           <div className="text-xs text-gray-500">Estimated</div>
         </div>
       </div>
@@ -546,7 +600,8 @@ const MultipleSlidersDemo = () => {
           <div className="mb-1 text-xs text-gray-600">Color Value</div>
           <div className="font-mono text-sm font-semibold">{rgbColor}</div>
           <div className="mt-1 font-mono text-xs text-gray-500">
-            #{red.toString(16).padStart(2, '0')}
+            #
+            {red.toString(16).padStart(2, '0')}
             {green.toString(16).padStart(2, '0')}
             {blue.toString(16).padStart(2, '0')}
           </div>

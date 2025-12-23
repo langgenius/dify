@@ -18,8 +18,8 @@ const ContentDialog = ({
   return (
     <Transition
       show={show}
-      as='div'
-      className='absolute left-0 top-0 z-30 box-border h-full w-full p-2'
+      as="div"
+      className="absolute left-0 top-0 z-30 box-border h-full w-full p-2"
     >
       <TransitionChild>
         <div
@@ -36,7 +36,8 @@ const ContentDialog = ({
           'duration-100 ease-in data-[closed]:-translate-x-full',
           'data-[enter]:translate-x-0 data-[enter]:duration-300 data-[enter]:ease-out',
           'data-[leave]:-translate-x-full data-[leave]:duration-200 data-[leave]:ease-in',
-          className)}>
+          className)}
+        >
           {children}
         </div>
       </TransitionChild>

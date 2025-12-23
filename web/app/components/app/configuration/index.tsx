@@ -306,10 +306,12 @@ const Configuration: FC = () => {
     const oldRetrievalConfig = {
       top_k,
       score_threshold,
-      reranking_model: (reranking_model?.reranking_provider_name && reranking_model?.reranking_model_name) ? {
-        provider: reranking_model.reranking_provider_name,
-        model: reranking_model.reranking_model_name,
-      } : undefined,
+      reranking_model: (reranking_model?.reranking_provider_name && reranking_model?.reranking_model_name)
+        ? {
+            provider: reranking_model.reranking_provider_name,
+            model: reranking_model.reranking_model_name,
+          }
+        : undefined,
       reranking_mode,
       weights,
       reranking_enable,
@@ -446,7 +448,7 @@ const Configuration: FC = () => {
     provider,
     mode: modeMode,
     features,
-  }: { modelId: string; provider: string; mode: string; features: string[] }) => {
+  }: { modelId: string, provider: string, mode: string, features: string[] }) => {
     if (isAdvancedMode) {
       const appMode = mode
 
@@ -570,7 +572,7 @@ const Configuration: FC = () => {
       const model = modelConfig.model
 
       let datasets: any = null
-        // old dataset struct
+      // old dataset struct
       if (modelConfig.agent_mode?.tools?.find(({ dataset }: any) => dataset?.enabled))
         datasets = modelConfig.agent_mode?.tools.filter(({ dataset }: any) => dataset?.enabled)
         // new dataset struct
@@ -633,19 +635,19 @@ const Configuration: FC = () => {
                 ...(
                   modelConfig.external_data_tools?.length
                     ? modelConfig.external_data_tools.map((item: any) => {
-                      return {
-                        external_data_tool: {
-                          variable: item.variable as string,
-                          label: item.label as string,
-                          enabled: item.enabled,
-                          type: item.type as string,
-                          config: item.config,
-                          required: true,
-                          icon: item.icon,
-                          icon_background: item.icon_background,
-                        },
-                      }
-                    })
+                        return {
+                          external_data_tool: {
+                            variable: item.variable as string,
+                            label: item.label as string,
+                            enabled: item.enabled,
+                            type: item.type as string,
+                            config: item.config,
+                            required: true,
+                            icon: item.icon,
+                            icon_background: item.icon_background,
+                          },
+                        }
+                      })
                     : []
                 ),
               ]) as unknown as UserInputFormItem[],
@@ -678,10 +680,12 @@ const Configuration: FC = () => {
                 ...tool,
                 isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name) ?? false,
                 notAuthor: toolInCollectionList?.is_team_authorization === false,
-                ...(tool.provider_type === 'builtin' ? {
-                  provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                  provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
-                } : {}),
+                ...(tool.provider_type === 'builtin'
+                  ? {
+                      provider_id: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                      provider_name: correctToolProvider(tool.provider_name, !!toolInCollectionList),
+                    }
+                  : {}),
               }
             }),
             strategy: modelConfig.agent_mode?.strategy ?? AgentStrategy.react,
@@ -708,12 +712,14 @@ const Configuration: FC = () => {
       const datasetConfigsToSet = {
         ...modelConfig.dataset_configs,
         ...retrievalConfig,
-        ...(retrievalConfig.reranking_model ? {
-          reranking_model: {
-            reranking_model_name: retrievalConfig.reranking_model.model,
-            reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
-          },
-        } : {}),
+        ...(retrievalConfig.reranking_model
+          ? {
+              reranking_model: {
+                reranking_model_name: retrievalConfig.reranking_model.model,
+                reranking_provider_name: correctModelProvider(retrievalConfig.reranking_model.provider),
+              },
+            }
+          : {}),
       } as DatasetConfigs
       datasetConfigsToSet.retrieval_model = datasetConfigsToSet.retrieval_model ?? RETRIEVE_TYPE.multiWay
       setDatasetConfigs(datasetConfigsToSet)
@@ -866,9 +872,11 @@ const Configuration: FC = () => {
   }
 
   if (isLoading || isLoadingCurrentWorkspace || !currentWorkspace.id) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading type='area' />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading type="area" />
+      </div>
+    )
   }
   const value = {
     appId,
@@ -950,19 +958,19 @@ const Configuration: FC = () => {
       <FeaturesProvider features={featuresData}>
         <MittProvider>
           <div className="flex h-full flex-col">
-            <div className='relative flex h-[200px] grow pt-14'>
+            <div className="relative flex h-[200px] grow pt-14">
               {/* Header */}
-              <div className='bg-default-subtle absolute left-0 top-0 h-14 w-full'>
-                <div className='flex h-14 items-center justify-between px-6'>
-                  <div className='flex items-center'>
-                    <div className='system-xl-semibold text-text-primary'>{t('appDebug.orchestrate')}</div>
-                    <div className='flex h-[14px] items-center space-x-1 text-xs'>
+              <div className="bg-default-subtle absolute left-0 top-0 h-14 w-full">
+                <div className="flex h-14 items-center justify-between px-6">
+                  <div className="flex items-center">
+                    <div className="system-xl-semibold text-text-primary">{t('appDebug.orchestrate')}</div>
+                    <div className="flex h-[14px] items-center space-x-1 text-xs">
                       {isAdvancedMode && (
-                        <div className='system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary'>{t('appDebug.promptMode.advanced')}</div>
+                        <div className="system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary">{t('appDebug.promptMode.advanced')}</div>
                       )}
                     </div>
                   </div>
-                  <div className='flex items-center'>
+                  <div className="flex items-center">
                     {/* Agent Setting */}
                     {isAgent && (
                       <AgentSettingButton
@@ -993,12 +1001,12 @@ const Configuration: FC = () => {
                           debugWithMultipleModel={debugWithMultipleModel}
                           onDebugWithMultipleModelChange={handleDebugWithMultipleModelChange}
                         />
-                        <Divider type='vertical' className='mx-2 h-[14px]' />
+                        <Divider type="vertical" className="mx-2 h-[14px]" />
                       </>
                     )}
                     {isMobile && (
-                      <Button className='mr-2 !h-8 !text-[13px] font-medium' onClick={showDebugPanel}>
-                        <span className='mr-1'>{t('appDebug.operation.debugConfig')}</span>
+                      <Button className="mr-2 !h-8 !text-[13px] font-medium" onClick={showDebugPanel}>
+                        <span className="mr-1">{t('appDebug.operation.debugConfig')}</span>
                         <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
                       </Button>
                     )}
@@ -1010,29 +1018,32 @@ const Configuration: FC = () => {
                       onPublish,
                       publishedConfig: publishedConfig!,
                       resetAppConfig: () => syncToPublishedConfig(publishedConfig!),
-                    }} />
+                    }}
+                    />
                   </div>
                 </div>
               </div>
               <div className={`flex h-full w-full shrink-0 flex-col sm:w-1/2 ${debugWithMultipleModel && 'max-w-[560px]'}`}>
                 <Config />
               </div>
-              {!isMobile && <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
-                <div className='flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg '>
-                  <Debug
-                    isAPIKeySet={isAPIKeySet}
-                    onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
-                    inputs={inputs}
-                    modelParameterParams={{
-                      setModel: setModel as any,
-                      onCompletionParamsChange: setCompletionParams,
-                    }}
-                    debugWithMultipleModel={debugWithMultipleModel}
-                    multipleModelConfigs={multipleModelConfigs}
-                    onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
-                  />
+              {!isMobile && (
+                <div className="relative flex h-full w-1/2 grow flex-col overflow-y-auto " style={{ borderColor: 'rgba(0, 0, 0, 0.02)' }}>
+                  <div className="flex grow flex-col rounded-tl-2xl border-l-[0.5px] border-t-[0.5px] border-components-panel-border bg-chatbot-bg ">
+                    <Debug
+                      isAPIKeySet={isAPIKeySet}
+                      onSetting={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}
+                      inputs={inputs}
+                      modelParameterParams={{
+                        setModel: setModel as any,
+                        onCompletionParamsChange: setCompletionParams,
+                      }}
+                      debugWithMultipleModel={debugWithMultipleModel}
+                      multipleModelConfigs={multipleModelConfigs}
+                      onMultipleModelConfigsChange={handleMultipleModelConfigsChange}
+                    />
+                  </div>
                 </div>
-              </div>}
+              )}
             </div>
           </div>
           {showUseGPT4Confirm && (

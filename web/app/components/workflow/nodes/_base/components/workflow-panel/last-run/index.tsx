@@ -49,10 +49,10 @@ const LastRun: FC<Props> = ({
   const canRunLastRun = !isRunAfterSingleRun || isOneStepRunSucceed || isOneStepRunFailed || (pageHasHide && hidePageOneStepRunFinished)
   const { data: lastRunResult, isFetching, error } = useLastRun(configsMap?.flowType || FlowType.appFlow, configsMap?.flowId || '', nodeId, canRunLastRun)
   const isRunning = useMemo(() => {
-    if(isPaused)
+    if (isPaused)
       return false
 
-    if(!isRunAfterSingleRun)
+    if (!isRunAfterSingleRun)
       return isFetching
     return [NodeRunningStatus.Running, NodeRunningStatus.NotStart].includes(oneStepRunRunningStatus!)
   }, [isFetching, isPaused, isRunAfterSingleRun, oneStepRunRunningStatus])
@@ -86,7 +86,7 @@ const LastRun: FC<Props> = ({
   }, [isOneStepRunSucceed, isOneStepRunFailed, oneStepRunRunningStatus])
 
   useEffect(() => {
-    if([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(oneStepRunRunningStatus!))
+    if ([NodeRunningStatus.Succeeded, NodeRunningStatus.Failed].includes(oneStepRunRunningStatus!))
       setHidePageOneStepFinishedStatus(oneStepRunRunningStatus!)
   }, [oneStepRunRunningStatus])
 
@@ -110,13 +110,14 @@ const LastRun: FC<Props> = ({
 
   if (isFetching && !isRunAfterSingleRun) {
     return (
-      <div className='flex h-0 grow flex-col items-center justify-center'>
-        <RiLoader2Line className='size-4 animate-spin text-text-tertiary' />
-      </div>)
+      <div className="flex h-0 grow flex-col items-center justify-center">
+        <RiLoader2Line className="size-4 animate-spin text-text-tertiary" />
+      </div>
+    )
   }
 
   if (isRunning)
-    return <ResultPanel status='running' showSteps={false} />
+    return <ResultPanel status="running" showSteps={false} />
   if (!isPaused && (noLastRun || !runResult)) {
     return (
       <NoData canSingleRun={canSingleRun} onSingleRun={onSingleRunClicked} />

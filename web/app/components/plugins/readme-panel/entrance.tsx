@@ -29,9 +29,11 @@ export const ReadmeEntrance = ({
 
   return (
     <div className={cn('flex flex-col items-start justify-center gap-2 pb-4 pt-0', showType === ReadmeShowType.drawer && 'px-4', className)}>
-      {!showShortTip && <div className="relative h-1 w-8 shrink-0">
-        <div className="h-px w-full bg-divider-regular"></div>
-      </div>}
+      {!showShortTip && (
+        <div className="relative h-1 w-8 shrink-0">
+          <div className="h-px w-full bg-divider-regular"></div>
+        </div>
+      )}
 
       <button
         onClick={handleReadmeClick}

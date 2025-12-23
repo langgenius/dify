@@ -11,19 +11,19 @@ describe('ActionButton', () => {
   })
 
   it('renders button with xs size', () => {
-    render(<ActionButton size='xs'>Small Button</ActionButton>)
+    render(<ActionButton size="xs">Small Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Small Button' })
     expect(button.classList.contains('action-btn-xs')).toBe(true)
   })
 
   it('renders button with l size', () => {
-    render(<ActionButton size='l'>Large Button</ActionButton>)
+    render(<ActionButton size="l">Large Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Large Button' })
     expect(button.classList.contains('action-btn-l')).toBe(true)
   })
 
   it('renders button with xl size', () => {
-    render(<ActionButton size='xl'>Extra Large Button</ActionButton>)
+    render(<ActionButton size="xl">Extra Large Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Extra Large Button' })
     expect(button.classList.contains('action-btn-xl')).toBe(true)
   })
@@ -49,7 +49,7 @@ describe('ActionButton', () => {
   })
 
   it('applies custom className', () => {
-    render(<ActionButton className='custom-class'>Custom Class</ActionButton>)
+    render(<ActionButton className="custom-class">Custom Class</ActionButton>)
     const button = screen.getByRole('button', { name: 'Custom Class' })
     expect(button.classList.contains('custom-class')).toBe(true)
   })
@@ -68,7 +68,7 @@ describe('ActionButton', () => {
   })
 
   it('forwards additional button props', () => {
-    render(<ActionButton disabled data-testid='test-button'>Disabled Button</ActionButton>)
+    render(<ActionButton disabled data-testid="test-button">Disabled Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Disabled Button' })
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('data-testid', 'test-button')

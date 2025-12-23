@@ -12,9 +12,9 @@ const StatusItem: FC<IStatusItemProps> = ({
   selected,
 }) => {
   return (
-    <div className='flex items-center justify-between px-2 py-1.5'>
-      <span className='system-md-regular'>{item.name}</span>
-      {selected && <RiCheckLine className='h-4 w-4 text-text-accent' />}
+    <div className="flex items-center justify-between px-2 py-1.5">
+      <span className="system-md-regular">{item.name}</span>
+      {selected && <RiCheckLine className="h-4 w-4 text-text-accent" />}
     </div>
   )
 }

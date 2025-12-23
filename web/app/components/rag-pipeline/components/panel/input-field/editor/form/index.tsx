@@ -81,16 +81,16 @@ const InputFieldForm = ({
 
   return (
     <form
-      className='w-full'
+      className="w-full"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
         inputFieldForm.handleSubmit()
       }}
     >
-      <div className='flex flex-col gap-4 px-4 py-2'>
+      <div className="flex flex-col gap-4 px-4 py-2">
         <InitialFieldsComp form={inputFieldForm} />
-        <Divider type='horizontal' />
+        <Divider type="horizontal" />
         {!showAllSettings && (
           <ShowAllSettingComp form={inputFieldForm} />
         )}
@@ -98,8 +98,8 @@ const InputFieldForm = ({
           <HiddenFieldsComp form={inputFieldForm} />
         )}
       </div>
-      <div className='flex items-center justify-end gap-x-2 p-4 pt-2'>
-        <Button variant='secondary' onClick={onCancel}>
+      <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
+        <Button variant="secondary" onClick={onCancel}>
           {t('common.operation.cancel')}
         </Button>
         <inputFieldForm.AppForm>

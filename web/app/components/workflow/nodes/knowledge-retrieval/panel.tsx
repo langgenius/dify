@@ -64,8 +64,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   }, [selectedDatasets])
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4 pb-2'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4 pb-2">
         <Field title={t(`${i18nPrefix}.queryText`)}>
           <VarReferencePicker
             nodeId={id}
@@ -93,8 +93,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.knowledge`)}
           required
-          operations={
-            <div className='flex items-center space-x-1'>
+          operations={(
+            <div className="flex items-center space-x-1">
               <RetrievalConfig
                 payload={{
                   retrieval_mode: inputs.retrieval_mode,
@@ -111,7 +111,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onRerankModelOpenChange={setRerankModelOpen}
                 selectedDatasets={selectedDatasets}
               />
-              {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
+              {!readOnly && (<div className="h-3 w-px bg-divider-regular"></div>)}
               {!readOnly && (
                 <AddKnowledge
                   selectedIds={inputs.dataset_ids}
@@ -119,7 +119,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 />
               )}
             </div>
-          }
+          )}
         >
           <DatasetList
             list={selectedDatasets}
@@ -128,7 +128,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
           />
         </Field>
       </div>
-      <div className='mb-2 py-2'>
+      <div className="mb-2 py-2">
         <MetadataFilter
           metadataList={metadataList}
           selectedDatasetsLoaded={selectedDatasetsLoaded}
@@ -153,8 +153,8 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='result'
-              type='Array[Object]'
+              name="result"
+              type="Array[Object]"
               description={t(`${i18nPrefix}.outputVars.output`)}
               subItems={[
                 {

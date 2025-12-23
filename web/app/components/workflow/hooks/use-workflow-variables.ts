@@ -137,8 +137,8 @@ export const useWorkflowVariableType = () => {
     nodeId,
     valueSelector,
   }: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => {
     const node = getNodes().find(n => n.id === nodeId)
     const isInIteration = !!node?.data.isInIteration

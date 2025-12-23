@@ -1,7 +1,7 @@
-type IterationInfo = { iterationId: string; iterationIndex: number }
-type LoopInfo = { loopId: string; loopIndex: number }
-type NodePlain = { nodeType: 'plain'; nodeId: string; } & (Partial<IterationInfo> & Partial<LoopInfo>)
-type NodeComplex = { nodeType: string; nodeId: string; params: (NodePlain | (NodeComplex & (Partial<IterationInfo> & Partial<LoopInfo>)) | Node[] | number)[] } & (Partial<IterationInfo> & Partial<LoopInfo>)
+type IterationInfo = { iterationId: string, iterationIndex: number }
+type LoopInfo = { loopId: string, loopIndex: number }
+type NodePlain = { nodeType: 'plain', nodeId: string } & (Partial<IterationInfo> & Partial<LoopInfo>)
+type NodeComplex = { nodeType: string, nodeId: string, params: (NodePlain | (NodeComplex & (Partial<IterationInfo> & Partial<LoopInfo>)) | Node[] | number)[] } & (Partial<IterationInfo> & Partial<LoopInfo>)
 type Node = NodePlain | NodeComplex
 
 /**
@@ -137,12 +137,12 @@ function parseParams(paramParts: string[], parentIteration?: string, parentLoopI
 }
 
 type NodeData = {
-  id: string;
-  node_id: string;
-  title: string;
-  node_type?: string;
-  execution_metadata: Record<string, any>;
-  status: string;
+  id: string
+  node_id: string
+  title: string
+  node_type?: string
+  execution_metadata: Record<string, any>
+  status: string
 }
 
 /**
@@ -181,13 +181,17 @@ function convertRetryNode(node: Node): NodeData[] {
       id: nodeId,
       node_id: nodeId,
       title: nodeId,
-      execution_metadata: iterationId ? {
-        iteration_id: iterationId,
-        iteration_index: iterationIndex || 0,
-      } : loopId ? {
-        loop_id: loopId,
-        loop_index: loopIndex || 0,
-      } : {},
+      execution_metadata: iterationId
+        ? {
+            iteration_id: iterationId,
+            iteration_index: iterationIndex || 0,
+          }
+        : loopId
+          ? {
+              loop_id: loopId,
+              loop_index: loopIndex || 0,
+            }
+          : {},
       status: 'retry',
     })
   }

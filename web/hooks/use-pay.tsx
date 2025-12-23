@@ -102,7 +102,7 @@ export const CheckModal = () => {
       onCancel={handleCancelShowPayStatusModal}
       onConfirm={handleCancelShowPayStatusModal}
       showCancel={false}
-      type={confirmInfo.type === 'info' ? 'info' : 'warning' }
+      type={confirmInfo.type === 'info' ? 'info' : 'warning'}
       title={confirmInfo.title}
       content={(confirmInfo as unknown as { desc: string }).desc || ''}
       confirmText={(confirmInfo.type === 'info' && t('common.operation.ok')) || ''}

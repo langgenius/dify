@@ -8,8 +8,8 @@ type IPluginListProps = {
 
 const PluginList: FC<IPluginListProps> = ({ pluginList }) => {
   return (
-    <div className='pb-3'>
-      <div className='grid grid-cols-2 gap-3'>
+    <div className="pb-3">
+      <div className="grid grid-cols-2 gap-3">
         {pluginList.map(plugin => (
           <PluginItem
             key={plugin.plugin_id}

@@ -36,7 +36,7 @@ const Filter: FC<FilterProps> = ({
 
   return (
     <PortalToFollowElem
-      placement={'bottom-end'}
+      placement="bottom-end"
       offset={{
         mainAxis: 4,
         crossAxis: 55,
@@ -54,9 +54,9 @@ const Filter: FC<FilterProps> = ({
           <RiFilter3Line className={cn('h-4 w-4', isFiltering ? 'text-text-accent' : ' text-text-tertiary')} />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[12]'>
-        <div className='flex w-[248px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]'>
-          <div className='flex flex-col p-1'>
+      <PortalToFollowElemContent className="z-[12]">
+        <div className="flex w-[248px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5 backdrop-blur-[5px]">
+          <div className="flex flex-col p-1">
             {
               options.map((option) => {
                 return (
@@ -70,7 +70,7 @@ const Filter: FC<FilterProps> = ({
               })
             }
           </div>
-          <Divider type='horizontal' className='my-0 h-px bg-divider-subtle' />
+          <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
           <FilterSwitch enabled={isOnlyShowNamedVersions} handleSwitch={handleSwitch} />
         </div>
       </PortalToFollowElemContent>

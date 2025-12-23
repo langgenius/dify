@@ -35,14 +35,14 @@ const InputCombined: FC<Props> = ({
 
   if (type === DataType.number) {
     return (
-      <div className='grow text-[0]'>
+      <div className="grow text-[0]">
         <InputNumber
           className={cn(className, 'rounded-l-md')}
           value={value}
           onChange={onChange}
-          size='regular'
-          controlWrapClassName='overflow-hidden'
-          controlClassName='pt-0 pb-0'
+          size="regular"
+          controlWrapClassName="overflow-hidden"
+          controlClassName="pt-0 pb-0"
           readOnly={readOnly}
         />
       </div>

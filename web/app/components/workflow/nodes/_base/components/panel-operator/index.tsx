@@ -44,7 +44,7 @@ const PanelOperator = ({
 
   return (
     <PortalToFollowElem
-      placement='bottom-end'
+      placement="bottom-end"
       offset={offset}
       open={open}
       onOpenChange={handleOpenChange}
@@ -58,10 +58,10 @@ const PanelOperator = ({
             ${triggerClassName}
           `}
         >
-          <RiMoreFill className={'h-4 w-4 text-text-tertiary'} />
+          <RiMoreFill className="h-4 w-4 text-text-tertiary" />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <PanelOperatorPopup
           id={id}
           data={data}

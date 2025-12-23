@@ -41,24 +41,24 @@ const ParamConfigContent: FC = () => {
 
   return (
     <div>
-      <div className='text-base font-semibold leading-6 text-text-primary'>{t('appDebug.vision.visionSettings.title')}</div>
-      <div className='space-y-6 pt-3'>
+      <div className="text-base font-semibold leading-6 text-text-primary">{t('appDebug.vision.visionSettings.title')}</div>
+      <div className="space-y-6 pt-3">
         <div>
-          <div className='mb-2 flex items-center  space-x-1'>
-            <div className='text-[13px] font-semibold leading-[18px] text-text-secondary'>{t('appDebug.vision.visionSettings.resolution')}</div>
+          <div className="mb-2 flex items-center  space-x-1">
+            <div className="text-[13px] font-semibold leading-[18px] text-text-secondary">{t('appDebug.vision.visionSettings.resolution')}</div>
             <Tooltip
-              popupContent={
-                <div className='w-[180px]' >
+              popupContent={(
+                <div className="w-[180px]">
                   {t('appDebug.vision.visionSettings.resolutionTooltip').split('\n').map(item => (
                     <div key={item}>{item}</div>
                   ))}
                 </div>
-              }
+              )}
             />
           </div>
-          <div className='flex items-center gap-1'>
+          <div className="flex items-center gap-1">
             <OptionCard
-              className='grow'
+              className="grow"
               title={t('appDebug.vision.visionSettings.high')}
               selected={file?.image?.detail === Resolution.high}
               onSelect={() => handleChange({
@@ -67,7 +67,7 @@ const ParamConfigContent: FC = () => {
               })}
             />
             <OptionCard
-              className='grow'
+              className="grow"
               title={t('appDebug.vision.visionSettings.low')}
               selected={file?.image?.detail === Resolution.low}
               onSelect={() => handleChange({
@@ -78,10 +78,10 @@ const ParamConfigContent: FC = () => {
           </div>
         </div>
         <div>
-          <div className='mb-2 text-[13px] font-semibold leading-[18px] text-text-secondary'>{t('appDebug.vision.visionSettings.uploadMethod')}</div>
-          <div className='flex items-center gap-1'>
+          <div className="mb-2 text-[13px] font-semibold leading-[18px] text-text-secondary">{t('appDebug.vision.visionSettings.uploadMethod')}</div>
+          <div className="flex items-center gap-1">
             <OptionCard
-              className='grow'
+              className="grow"
               title={t('appDebug.vision.visionSettings.both')}
               selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) && !!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)}
               onSelect={() => handleChange({
@@ -90,7 +90,7 @@ const ParamConfigContent: FC = () => {
               })}
             />
             <OptionCard
-              className='grow'
+              className="grow"
               title={t('appDebug.vision.visionSettings.localUpload')}
               selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) && file?.allowed_file_upload_methods?.length === 1}
               onSelect={() => handleChange({
@@ -99,7 +99,7 @@ const ParamConfigContent: FC = () => {
               })}
             />
             <OptionCard
-              className='grow'
+              className="grow"
               title={t('appDebug.vision.visionSettings.url')}
               selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url) && file?.allowed_file_upload_methods?.length === 1}
               onSelect={() => handleChange({
@@ -111,8 +111,8 @@ const ParamConfigContent: FC = () => {
         </div>
         <div>
           <ParamItem
-            id='upload_limit'
-            className=''
+            id="upload_limit"
+            className=""
             name={t('appDebug.vision.visionSettings.uploadLimit')}
             noTooltip
             {...{

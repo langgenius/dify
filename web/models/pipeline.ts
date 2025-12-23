@@ -190,7 +190,7 @@ export type PublishedPipelineInfoResponse = {
     id: string
     name: string
     email: string
-  },
+  }
   environment_variables?: EnvironmentVariable[]
   rag_pipeline_variables?: RAGPipelineVariables
   version: string

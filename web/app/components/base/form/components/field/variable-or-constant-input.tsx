@@ -48,13 +48,13 @@ const VariableOrConstantInputField = ({
   return (
     <div className={cn('flex flex-col gap-y-0.5', className)}>
       <Label
-        htmlFor={'variable-or-constant'}
+        htmlFor="variable-or-constant"
         label={label}
         {...(labelOptions ?? {})}
       />
-      <div className='flex items-center'>
+      <div className="flex items-center">
         <SegmentedControl
-          className='mr-1 shrink-0'
+          className="mr-1 shrink-0"
           value={variableType}
           onChange={handleVariableOrConstantChange as any}
           options={options as any}
@@ -62,8 +62,8 @@ const VariableOrConstantInputField = ({
         {
           variableType === 'variable' && (
             <VarReferencePicker
-              className='grow'
-              nodeId=''
+              className="grow"
+              nodeId=""
               readonly={false}
               value={[]}
               onChange={handleVariableValueChange}
@@ -73,7 +73,7 @@ const VariableOrConstantInputField = ({
         {
           variableType === 'constant' && (
             <Input
-              className='ml-1'
+              className="ml-1"
               onChange={handleConstantValueChange}
             />
           )

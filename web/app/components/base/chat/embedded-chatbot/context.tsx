@@ -45,9 +45,9 @@ export type EmbeddedChatbotContextValue = {
   clearChatList?: boolean
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
-  setIsResponding: (state: boolean) => void,
-  currentConversationInputs: Record<string, any> | null,
-  setCurrentConversationInputs: (v: Record<string, any>) => void,
+  setIsResponding: (state: boolean) => void
+  currentConversationInputs: Record<string, any> | null
+  setCurrentConversationInputs: (v: Record<string, any>) => void
   allInputsHidden: boolean
   initUserVariables?: {
     name?: string

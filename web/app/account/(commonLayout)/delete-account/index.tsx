@@ -29,16 +29,23 @@ export default function DeleteAccount(props: DeleteAccountProps) {
   if (showFeedbackDialog)
     return <FeedBack onCancel={props.onCancel} onConfirm={props.onConfirm} />
 
-  return <CustomDialog
-    show={true}
-    onClose={props.onCancel}
-    title={t('common.account.delete')}
-    className="max-w-[480px]"
-    footer={false}
-  >
-    {!showVerifyEmail && <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />}
-    {showVerifyEmail && <VerifyEmail onCancel={props.onCancel} onConfirm={() => {
-      setShowFeedbackDialog(true)
-    }} />}
-  </CustomDialog>
+  return (
+    <CustomDialog
+      show={true}
+      onClose={props.onCancel}
+      title={t('common.account.delete')}
+      className="max-w-[480px]"
+      footer={false}
+    >
+      {!showVerifyEmail && <CheckEmail onCancel={props.onCancel} onConfirm={handleEmailCheckSuccess} />}
+      {showVerifyEmail && (
+        <VerifyEmail
+          onCancel={props.onCancel}
+          onConfirm={() => {
+            setShowFeedbackDialog(true)
+          }}
+        />
+      )}
+    </CustomDialog>
+  )
 }

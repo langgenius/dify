@@ -255,7 +255,7 @@ export const fetchAppMeta = async (isInstalledApp: boolean, installedAppId = '')
   return (getAction('get', isInstalledApp))(getUrl('meta', isInstalledApp, installedAppId)) as Promise<AppMeta>
 }
 
-export const updateFeedback = async ({ url, body }: { url: string; body: FeedbackType }, isInstalledApp: boolean, installedAppId = '') => {
+export const updateFeedback = async ({ url, body }: { url: string, body: FeedbackType }, isInstalledApp: boolean, installedAppId = '') => {
   return (getAction('post', isInstalledApp))(getUrl(url, isInstalledApp, installedAppId), { body })
 }
 
@@ -291,7 +291,7 @@ export const textToAudio = (url: string, isPublicAPI: boolean, body: FormData) =
   return (getAction('post', !isPublicAPI))(url, { body }, { bodyStringify: false, deleteContentType: true }) as Promise<{ data: string }>
 }
 
-export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { content_type: string }, body: { streaming: boolean; voice?: string; message_id?: string; text?: string | null | undefined }) => {
+export const textToAudioStream = (url: string, isPublicAPI: boolean, header: { content_type: string }, body: { streaming: boolean, voice?: string, message_id?: string, text?: string | null | undefined }) => {
   return (getAction('post', !isPublicAPI))(url, { body, header }, { needAllResponseContent: true })
 }
 

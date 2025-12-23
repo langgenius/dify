@@ -51,31 +51,33 @@ const SelectMetadataModal: FC<Props> = ({
     >
       <PortalToFollowElemTrigger
         onClick={() => setOpen(!open)}
-        className='block'
+        className="block"
       >
         {trigger}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        {step === Step.select ? (
-          <SelectMetadata
-            onSelect={(data) => {
-              onSelect(data)
-              setOpen(false)
-            }}
-            list={datasetMetaData?.doc_metadata || []}
-            onNew={() => setStep(Step.create)}
-            onManage={onManage}
-          />
-        ) : (
-          <CreateContent
-            onSave={handleSave}
-            hasBack
-            onBack={() => setStep(Step.select)}
-            onClose={() => setStep(Step.select)}
-          />
-        )}
+      <PortalToFollowElemContent className="z-[1000]">
+        {step === Step.select
+          ? (
+              <SelectMetadata
+                onSelect={(data) => {
+                  onSelect(data)
+                  setOpen(false)
+                }}
+                list={datasetMetaData?.doc_metadata || []}
+                onNew={() => setStep(Step.create)}
+                onManage={onManage}
+              />
+            )
+          : (
+              <CreateContent
+                onSave={handleSave}
+                hasBack
+                onBack={() => setStep(Step.select)}
+                onClose={() => setStep(Step.select)}
+              />
+            )}
       </PortalToFollowElemContent>
-    </PortalToFollowElem >
+    </PortalToFollowElem>
 
   )
 }

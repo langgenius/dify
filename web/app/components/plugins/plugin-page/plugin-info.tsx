@@ -25,13 +25,13 @@ const PlugInfo: FC<Props> = ({
   return (
     <Modal
       title={t(`${i18nPrefix}.title`)}
-      className='w-[480px]'
+      className="w-[480px]"
       isShow
       onClose={onHide}
       closable
     >
-      <div className='mt-5 space-y-3'>
-        {repository && <KeyValueItem label={t(`${i18nPrefix}.repository`)} labelWidthClassName={labelWidthClassName} value={`${convertRepoToUrl(repository)}`} valueMaxWidthClassName='max-w-[190px]' />}
+      <div className="mt-5 space-y-3">
+        {repository && <KeyValueItem label={t(`${i18nPrefix}.repository`)} labelWidthClassName={labelWidthClassName} value={`${convertRepoToUrl(repository)}`} valueMaxWidthClassName="max-w-[190px]" />}
         {release && <KeyValueItem label={t(`${i18nPrefix}.release`)} labelWidthClassName={labelWidthClassName} value={release} />}
         {packageName && <KeyValueItem label={t(`${i18nPrefix}.packageName`)} labelWidthClassName={labelWidthClassName} value={packageName} />}
       </div>

@@ -6,9 +6,9 @@ import type { Options } from '@/app/components/app/configuration/config-var/conf
 import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
 
 type OptionsFieldProps = {
-  label: string;
+  label: string
   labelOptions?: Omit<LabelProps, 'htmlFor' | 'label'>
-  className?: string;
+  className?: string
 }
 
 const OptionsField = ({

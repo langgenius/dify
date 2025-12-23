@@ -45,7 +45,7 @@ const Thought: FC<IThoughtProps> = ({
   })
 
   return (
-    <div className='my-2 space-y-2'>
+    <div className="my-2 space-y-2">
       {toolThoughtList.map((item: ToolInfoInThought, index) => (
         <ToolDetail
           key={index}

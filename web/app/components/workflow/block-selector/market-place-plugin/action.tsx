@@ -76,7 +76,7 @@ const OperationDropdown: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 0,
         crossAxis: 0,
@@ -84,13 +84,13 @@ const OperationDropdown: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <ActionButton className={cn(open && 'bg-state-base-hover')}>
-          <RiMoreFill className='h-4 w-4 text-components-button-secondary-accent-text' />
+          <RiMoreFill className="h-4 w-4 text-components-button-secondary-accent-text" />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[9999]'>
-        <div className='min-w-[176px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
-          <div onClick={handleDownload} className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('common.operation.download')}</div>
-          <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target='_blank' className='system-md-regular block cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>{t('common.operation.viewDetails')}</a>
+      <PortalToFollowElemContent className="z-[9999]">
+        <div className="min-w-[176px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
+          <div onClick={handleDownload} className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">{t('common.operation.download')}</div>
+          <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="system-md-regular block cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">{t('common.operation.viewDetails')}</a>
         </div>
       </PortalToFollowElemContent>
     </PortalToFollowElem>

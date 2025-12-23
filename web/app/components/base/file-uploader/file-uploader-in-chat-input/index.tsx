@@ -20,10 +20,10 @@ const FileUploaderInChatInput = ({
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <ActionButton
-        size='l'
+        size="l"
         className={cn(open && 'bg-state-base-hover')}
       >
-        <RiAttachmentLine className='h-5 w-5' />
+        <RiAttachmentLine className="h-5 w-5" />
       </ActionButton>
     )
   }, [])

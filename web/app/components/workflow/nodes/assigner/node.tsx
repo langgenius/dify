@@ -25,17 +25,17 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
 
     if (validOperationItems.length === 0) {
       return (
-        <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
-          <div className='flex flex-col items-start gap-1 self-stretch'>
-            <div className='flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-[5px] py-1'>
-              <div className='system-xs-medium flex-1 text-text-tertiary'>{t(`${i18nPrefix}.varNotSet`)}</div>
+        <div className="relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1">
+          <div className="flex flex-col items-start gap-1 self-stretch">
+            <div className="flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-[5px] py-1">
+              <div className="system-xs-medium flex-1 text-text-tertiary">{t(`${i18nPrefix}.varNotSet`)}</div>
             </div>
           </div>
         </div>
       )
     }
     return (
-      <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
+      <div className="relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1">
         {operationItems.map((value, index) => {
           const variable = value.variable_selector
           if (!variable || variable.length === 0)
@@ -49,7 +49,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
               nodeType={node?.data.type}
               nodeTitle={node?.data.title}
               rightSlot={
-                value.operation && <Badge className='!ml-auto shrink-0' text={t(`${i18nPrefix}.operations.${value.operation}`)} />
+                value.operation && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${value.operation}`)} />
               }
             />
           )
@@ -66,13 +66,13 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
 
   return (
-    <div className='relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1'>
+    <div className="relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1">
       <VariableLabelInNode
         variables={variable}
         nodeType={node?.data.type}
         nodeTitle={node?.data.title}
         rightSlot={
-          writeMode && <Badge className='!ml-auto shrink-0' text={t(`${i18nPrefix}.operations.${writeMode}`)} />
+          writeMode && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}`)} />
         }
       />
     </div>

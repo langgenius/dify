@@ -64,21 +64,21 @@ const CredentialItem = ({
         onItemClick?.(credential)
       }}
     >
-      <div className='flex w-0 grow items-center space-x-1.5'>
+      <div className="flex w-0 grow items-center space-x-1.5">
         {
           showSelectedIcon && (
-            <div className='h-4 w-4'>
+            <div className="h-4 w-4">
               {
                 selectedCredentialId === credential.credential_id && (
-                  <RiCheckLine className='h-4 w-4 text-text-accent' />
+                  <RiCheckLine className="h-4 w-4 text-text-accent" />
                 )
               }
             </div>
           )
         }
-        <Indicator className='ml-2 mr-1.5 shrink-0' />
+        <Indicator className="ml-2 mr-1.5 shrink-0" />
         <div
-          className='system-md-regular truncate text-text-secondary'
+          className="system-md-regular truncate text-text-secondary"
           title={credential.credential_name}
         >
           {credential.credential_name}
@@ -86,14 +86,14 @@ const CredentialItem = ({
       </div>
       {
         credential.from_enterprise && (
-          <Badge className='shrink-0'>
+          <Badge className="shrink-0">
             Enterprise
           </Badge>
         )
       }
       {
         showAction && !credential.from_enterprise && (
-          <div className='ml-2 hidden shrink-0 items-center group-hover:flex'>
+          <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
               !disableEdit && !credential.not_allowed_to_use && (
                 <Tooltip popupContent={t('common.operation.edit')}>
@@ -104,7 +104,7 @@ const CredentialItem = ({
                       onEdit?.(credential)
                     }}
                   >
-                    <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                    <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                   </ActionButton>
                 </Tooltip>
               )
@@ -113,7 +113,7 @@ const CredentialItem = ({
               !disableDelete && (
                 <Tooltip popupContent={disableDeleteWhenSelected ? disableDeleteTip : t('common.operation.delete')}>
                   <ActionButton
-                    className='hover:bg-transparent'
+                    className="hover:bg-transparent"
                     onClick={(e) => {
                       if (disabled || disableDeleteWhenSelected)
                         return
@@ -125,7 +125,8 @@ const CredentialItem = ({
                       'h-4 w-4 text-text-tertiary',
                       !disableDeleteWhenSelected && 'hover:text-text-destructive',
                       disableDeleteWhenSelected && 'opacity-50',
-                    )} />
+                    )}
+                    />
                   </ActionButton>
                 </Tooltip>
               )

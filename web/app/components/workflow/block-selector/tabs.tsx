@@ -129,7 +129,7 @@ const Tabs: FC<TabsProps> = ({
     <div onClick={e => e.stopPropagation()}>
       {
         !noBlocks && (
-          <div className='relative flex bg-background-section-burn pl-1 pt-1'>
+          <div className="relative flex bg-background-section-burn pl-1 pt-1">
             {
               tabs.map((tab) => {
                 const commonProps = {
@@ -152,8 +152,8 @@ const Tabs: FC<TabsProps> = ({
                   return (
                     <Tooltip
                       key={tab.key}
-                      position='top'
-                      popupClassName='max-w-[200px]'
+                      position="top"
+                      popupClassName="max-w-[200px]"
                       popupContent={t('workflow.tabs.startDisabledTip')}
                     >
                       <div {...commonProps}>
@@ -178,7 +178,7 @@ const Tabs: FC<TabsProps> = ({
       {filterElem}
       {
         activeTab === TabsEnum.Start && (!noBlocks || forceShowStartContent) && (
-          <div className='border-t border-divider-subtle'>
+          <div className="border-t border-divider-subtle">
             <AllStartBlocks
               allowUserInputSelection={allowStartNodeSelection}
               searchText={searchText}
@@ -191,7 +191,7 @@ const Tabs: FC<TabsProps> = ({
       }
       {
         activeTab === TabsEnum.Blocks && !noBlocks && (
-          <div className='border-t border-divider-subtle'>
+          <div className="border-t border-divider-subtle">
             <Blocks
               searchText={searchText}
               onSelect={onSelect}
@@ -203,7 +203,7 @@ const Tabs: FC<TabsProps> = ({
       }
       {
         activeTab === TabsEnum.Sources && !!dataSources.length && (
-          <div className='border-t border-divider-subtle'>
+          <div className="border-t border-divider-subtle">
             <DataSources
               searchText={searchText}
               onSelect={onSelect}

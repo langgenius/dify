@@ -60,7 +60,7 @@ const ChangeBlock = ({
 
   const renderTrigger = useCallback(() => {
     return (
-      <div className='flex h-8 w-[232px] cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'>
+      <div className="flex h-8 w-[232px] cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover">
         {t('workflow.panel.changeBlock')}
       </div>
     )
@@ -68,14 +68,14 @@ const ChangeBlock = ({
 
   return (
     <BlockSelector
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: -36,
         crossAxis: 4,
       }}
       onSelect={handleSelect}
       trigger={renderTrigger}
-      popupClassName='min-w-[240px]'
+      popupClassName="min-w-[240px]"
       availableBlocksTypes={availableNodes}
       showStartTab={showStartTab}
       ignoreNodeIds={ignoreNodeIds}

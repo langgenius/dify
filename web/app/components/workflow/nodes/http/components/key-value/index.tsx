@@ -44,15 +44,17 @@ const KeyValueList: FC<Props> = ({
   //   }).join('\n')
   //   return res
   // })()
-  return <KeyValueEdit
-    readonly={readonly}
-    nodeId={nodeId}
-    list={list}
-    onChange={onChange}
-    onAdd={onAdd}
-    isSupportFile={isSupportFile}
-  // onSwitchToBulkEdit={toggleKeyValueEdit}
-  />
+  return (
+    <KeyValueEdit
+      readonly={readonly}
+      nodeId={nodeId}
+      list={list}
+      onChange={onChange}
+      onAdd={onAdd}
+      isSupportFile={isSupportFile}
+      // onSwitchToBulkEdit={toggleKeyValueEdit}
+    />
+  )
   // : <BulkEdit
   //   value={bulkList}
   //   onChange={handleBulkValueChange}

@@ -42,16 +42,17 @@ const NodeResizer = ({
     <div className={cn(
       'hidden group-hover:block',
       nodeData.selected && '!block',
-    )}>
+    )}
+    >
       <NodeResizeControl
-        position='bottom-right'
-        className='!border-none !bg-transparent'
+        position="bottom-right"
+        className="!border-none !bg-transparent"
         onResize={handleResize}
         minWidth={minWidth}
         minHeight={minHeight}
         maxWidth={maxWidth}
       >
-        <div className='absolute bottom-[1px] right-[1px]'>{icon}</div>
+        <div className="absolute bottom-[1px] right-[1px]">{icon}</div>
       </NodeResizeControl>
     </div>
   )

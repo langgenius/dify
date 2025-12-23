@@ -99,8 +99,8 @@ export const useWorkflowOrganize = () => {
 
     const loopAndIterationNodes = nodes.filter(
       node => (node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
-              && !node.parentId
-              && node.type === CUSTOM_NODE,
+        && !node.parentId
+        && node.type === CUSTOM_NODE,
     )
 
     const childLayoutEntries = await Promise.all(
@@ -141,7 +141,7 @@ export const useWorkflowOrganize = () => {
     const nodesWithUpdatedSizes = produce(nodes, (draft) => {
       draft.forEach((node) => {
         if ((node.data.type === BlockEnum.Loop || node.data.type === BlockEnum.Iteration)
-            && containerSizeChanges[node.id]) {
+          && containerSizeChanges[node.id]) {
           node.width = containerSizeChanges[node.id].width
           node.height = containerSizeChanges[node.id].height
 
@@ -160,7 +160,7 @@ export const useWorkflowOrganize = () => {
     const layout = await getLayoutByDagre(nodesWithUpdatedSizes, edges)
 
     // Build layer map for vertical alignment - nodes in the same layer should align
-    const layerMap = new Map<number, { minY: number; maxHeight: number }>()
+    const layerMap = new Map<number, { minY: number, maxHeight: number }>()
     layout.nodes.forEach((layoutInfo) => {
       if (layoutInfo.layer !== undefined) {
         const existing = layerMap.get(layoutInfo.layer)

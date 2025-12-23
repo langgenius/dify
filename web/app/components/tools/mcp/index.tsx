@@ -26,7 +26,8 @@ function renderDefaultCard() {
         index >= 16 && index < 20 && 'opacity-25',
         index >= 20 && index < 24 && 'opacity-20',
       )}
-    ></div>
+    >
+    </div>
   ))
   return defaultCards
 }

@@ -199,7 +199,7 @@ const ModelModal: FC<ModelModalProps> = ({
     }
 
     return (
-      <div className='title-2xl-semi-bold text-text-primary'>
+      <div className="title-2xl-semi-bold text-text-primary">
         {label}
       </div>
     )
@@ -208,7 +208,7 @@ const ModelModal: FC<ModelModalProps> = ({
   const modalDesc = useMemo(() => {
     if (providerFormSchemaPredefined) {
       return (
-        <div className='system-xs-regular mt-1 text-text-tertiary'>
+        <div className="system-xs-regular mt-1 text-text-tertiary">
           {t('common.modelProvider.auth.apiKeyModal.desc')}
         </div>
       )
@@ -220,24 +220,24 @@ const ModelModal: FC<ModelModalProps> = ({
   const modalModel = useMemo(() => {
     if (mode === ModelModalModeEnum.configCustomModel) {
       return (
-        <div className='mt-2 flex items-center'>
+        <div className="mt-2 flex items-center">
           <ModelIcon
-            className='mr-2 h-4 w-4 shrink-0'
+            className="mr-2 h-4 w-4 shrink-0"
             provider={provider}
           />
-          <div className='system-md-regular mr-1 text-text-secondary'>{renderI18nObject(provider.label)}</div>
+          <div className="system-md-regular mr-1 text-text-secondary">{renderI18nObject(provider.label)}</div>
         </div>
       )
     }
     if (model && (mode === ModelModalModeEnum.configModelCredential || mode === ModelModalModeEnum.addCustomModelToModelList)) {
       return (
-        <div className='mt-2 flex items-center'>
+        <div className="mt-2 flex items-center">
           <ModelIcon
-            className='mr-2 h-4 w-4 shrink-0'
+            className="mr-2 h-4 w-4 shrink-0"
             provider={provider}
             modelName={model.model}
           />
-          <div className='system-md-regular mr-1 text-text-secondary'>{model.model}</div>
+          <div className="system-md-regular mr-1 text-text-secondary">{model.model}</div>
           <Badge>{model.model_type}</Badge>
         </div>
       )
@@ -293,21 +293,21 @@ const ModelModal: FC<ModelModalProps> = ({
 
   return (
     <PortalToFollowElem open>
-      <PortalToFollowElemContent className='z-[60] h-full w-full'>
-        <div className='fixed inset-0 flex items-center justify-center bg-black/[.25]'>
-          <div className='relative w-[640px] rounded-2xl bg-components-panel-bg shadow-xl'>
+      <PortalToFollowElemContent className="z-[60] h-full w-full">
+        <div className="fixed inset-0 flex items-center justify-center bg-black/[.25]">
+          <div className="relative w-[640px] rounded-2xl bg-components-panel-bg shadow-xl">
             <div
-              className='absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center'
+              className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center"
               onClick={onCancel}
             >
-              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
-            <div className='p-6 pb-3'>
+            <div className="p-6 pb-3">
               {modalTitle}
               {modalDesc}
               {modalModel}
             </div>
-            <div className='max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-3'>
+            <div className="max-h-[calc(100vh-320px)] overflow-y-auto px-6 py-3">
               {
                 mode === ModelModalModeEnum.configCustomModel && (
                   <AuthForm
@@ -318,7 +318,7 @@ const ModelModal: FC<ModelModalProps> = ({
                       }
                     }) as FormSchema[]}
                     defaultValues={modelNameAndTypeFormValues}
-                    inputClassName='justify-start'
+                    inputClassName="justify-start"
                     ref={formRef1}
                     onChange={handleModelNameAndTypeChange}
                   />
@@ -337,15 +337,15 @@ const ModelModal: FC<ModelModalProps> = ({
               }
               {
                 showCredentialLabel && (
-                  <div className='system-xs-medium-uppercase mb-3 mt-6 flex items-center text-text-tertiary'>
+                  <div className="system-xs-medium-uppercase mb-3 mt-6 flex items-center text-text-tertiary">
                     {t('common.modelProvider.auth.modelCredential')}
-                    <div className='ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent' />
+                    <div className="ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent" />
                   </div>
                 )
               }
               {
                 isLoading && (
-                  <div className='mt-3 flex items-center justify-center'>
+                  <div className="mt-3 flex items-center justify-center">
                     <Loading />
                   </div>
                 )
@@ -363,33 +363,34 @@ const ModelModal: FC<ModelModalProps> = ({
                       }
                     }) as FormSchema[]}
                     defaultValues={formValues}
-                    inputClassName='justify-start'
+                    inputClassName="justify-start"
                     ref={formRef2}
                   />
                 )
               }
             </div>
-            <div className='flex justify-between p-6 pt-5'>
+            <div className="flex justify-between p-6 pt-5">
               {
                 (provider.help && (provider.help.title || provider.help.url))
                   ? (
-                    <a
-                      href={provider.help?.url[language] || provider.help?.url.en_US}
-                      target='_blank' rel='noopener noreferrer'
-                      className='system-xs-regular mt-2 inline-block  align-middle text-text-accent'
-                      onClick={e => !provider.help.url && e.preventDefault()}
-                    >
-                      {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
-                      <LinkExternal02 className='ml-1 mt-[-2px] inline-block h-3 w-3' />
-                    </a>
-                  )
+                      <a
+                        href={provider.help?.url[language] || provider.help?.url.en_US}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="system-xs-regular mt-2 inline-block  align-middle text-text-accent"
+                        onClick={e => !provider.help.url && e.preventDefault()}
+                      >
+                        {provider.help.title?.[language] || provider.help.url[language] || provider.help.title?.en_US || provider.help.url.en_US}
+                        <LinkExternal02 className="ml-1 mt-[-2px] inline-block h-3 w-3" />
+                      </a>
+                    )
                   : <div />
               }
-              <div className='ml-2 flex items-center justify-end space-x-2'>
+              <div className="ml-2 flex items-center justify-end space-x-2">
                 {
                   isEditMode && (
                     <Button
-                      variant='warning'
+                      variant="warning"
                       onClick={() => openConfirmDelete(credential, model)}
                     >
                       {t('common.operation.remove')}
@@ -402,7 +403,7 @@ const ModelModal: FC<ModelModalProps> = ({
                   {t('common.operation.cancel')}
                 </Button>
                 <Button
-                  variant='primary'
+                  variant="primary"
                   onClick={handleSave}
                   disabled={isLoading || doingAction}
                 >
@@ -412,14 +413,15 @@ const ModelModal: FC<ModelModalProps> = ({
             </div>
             {
               (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.configProviderCredential) && (
-                <div className='border-t-[0.5px] border-t-divider-regular'>
-                  <div className='flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary'>
-                    <Lock01 className='mr-1 h-3 w-3 text-text-tertiary' />
+                <div className="border-t-[0.5px] border-t-divider-regular">
+                  <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
+                    <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
                     {t('common.modelProvider.encrypted.front')}
                     <a
-                      className='mx-1 text-text-accent'
-                      target='_blank' rel='noopener noreferrer'
-                      href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
+                      className="mx-1 text-text-accent"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
                     >
                       PKCS1_OAEP
                     </a>

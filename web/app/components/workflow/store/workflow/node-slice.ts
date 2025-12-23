@@ -35,7 +35,7 @@ export type NodeSliceShape = {
   setShowAssignVariablePopup: (showAssignVariablePopup: NodeSliceShape['showAssignVariablePopup']) => void
   hoveringAssignVariableGroupId?: string
   setHoveringAssignVariableGroupId: (hoveringAssignVariableGroupId?: string) => void
-  connectingNodePayload?: { nodeId: string; nodeType: string; handleType: string; handleId: string | null }
+  connectingNodePayload?: { nodeId: string, nodeType: string, handleType: string, handleId: string | null }
   setConnectingNodePayload: (startConnectingPayload?: NodeSliceShape['connectingNodePayload']) => void
   enteringNodePayload?: {
     nodeId: string

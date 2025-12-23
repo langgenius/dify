@@ -42,19 +42,21 @@ export default function Radio({
   `
 
   return (
-    <div className={cn(
-      s.label,
-      disabled ? s.disabled : '',
-      isChecked ? 'bg-components-option-card-option-bg-hover shadow-xs' : '',
-      divClassName,
-      className)}
-    onClick={() => handleChange(value)}
+    <div
+      className={cn(
+        s.label,
+        disabled ? s.disabled : '',
+        isChecked ? 'bg-components-option-card-option-bg-hover shadow-xs' : '',
+        divClassName,
+        className)}
+      onClick={() => handleChange(value)}
     >
       {children && (
-        <label className={
-          cn(labelClassName, 'cursor-pointer text-sm')
-        }
-        id={labelId}
+        <label
+          className={
+            cn(labelClassName, 'cursor-pointer text-sm')
+          }
+          id={labelId}
         >
           {children}
         </label>

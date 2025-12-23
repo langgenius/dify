@@ -35,20 +35,20 @@ const VarFullPathPanel: FC<Props> = ({
         type: isLast ? varType : Type.object,
         properties: {},
       } as Field
-      current = current.properties[name] as { type: Type.object; properties: { [key: string]: Field; }; required: never[]; additionalProperties: false; }
+      current = current.properties[name] as { type: Type.object, properties: { [key: string]: Field }, required: never[], additionalProperties: false }
     }
     return {
       schema,
     }
   })()
   return (
-    <div className='w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-0 shadow-lg backdrop-blur-[5px]'>
-      <div className='flex space-x-1 border-b-[0.5px] border-divider-subtle p-3 pb-2 '>
-        <BlockIcon size='xs' type={nodeType} />
-        <div className='system-xs-medium w-0 grow truncate text-text-secondary'>{nodeName}</div>
+    <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-0 shadow-lg backdrop-blur-[5px]">
+      <div className="flex space-x-1 border-b-[0.5px] border-divider-subtle p-3 pb-2 ">
+        <BlockIcon size="xs" type={nodeType} />
+        <div className="system-xs-medium w-0 grow truncate text-text-secondary">{nodeName}</div>
       </div>
       <Panel
-        className='px-1 pb-3 pt-2'
+        className="px-1 pb-3 pt-2"
         root={{ attrName: path[0] }}
         payload={schema}
         readonly

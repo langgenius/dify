@@ -66,13 +66,13 @@ const getCorrectCapitalizationLanguageName = (language: string) => {
 
 // Define ECharts event parameter types
 type EChartsEventParams = {
-  type: string;
-  seriesIndex?: number;
-  dataIndex?: number;
-  name?: string;
-  value?: any;
-  currentIndex?: number; // Added for timeline events
-  [key: string]: any;
+  type: string
+  seriesIndex?: number
+  dataIndex?: number
+  name?: string
+  value?: any
+  currentIndex?: number // Added for timeline events
+  [key: string]: any
 }
 
 const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any) => {
@@ -224,14 +224,14 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     // Check more conditions for streaming data
     const isIncomplete
       = trimmedContent.length < 5
-      || (trimmedContent.startsWith('{')
-        && (!trimmedContent.endsWith('}')
-          || trimmedContent.split('{').length !== trimmedContent.split('}').length))
-      || (trimmedContent.startsWith('[')
-        && (!trimmedContent.endsWith(']')
-          || trimmedContent.split('[').length !== trimmedContent.split('}').length))
-      || (trimmedContent.split('"').length % 2 !== 1)
-      || (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
+        || (trimmedContent.startsWith('{')
+          && (!trimmedContent.endsWith('}')
+            || trimmedContent.split('{').length !== trimmedContent.split('}').length))
+          || (trimmedContent.startsWith('[')
+            && (!trimmedContent.endsWith(']')
+              || trimmedContent.split('[').length !== trimmedContent.split('}').length))
+            || (trimmedContent.split('"').length % 2 !== 1)
+            || (trimmedContent.includes('{"') && !trimmedContent.includes('"}'))
 
     // Only try to parse streaming data if it looks complete and hasn't been processed
     if (!isIncomplete && !processedRef.current) {
@@ -288,12 +288,14 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               borderBottomRightRadius: '10px',
               backgroundColor: isDarkMode ? 'var(--color-components-input-bg-normal)' : 'transparent',
               color: 'var(--color-text-secondary)',
-            }}>
+            }}
+            >
               <div style={{
                 marginBottom: '12px',
                 width: '24px',
                 height: '24px',
-              }}>
+              }}
+              >
                 {/* Rotating spinner that works in both light and dark modes */}
                 <svg width="24" height="24" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" style={{ animation: 'spin 1.5s linear infinite' }}>
                   <style>
@@ -311,7 +313,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               <div style={{
                 fontFamily: 'var(--font-family)',
                 fontSize: '14px',
-              }}>Chart loading...</div>
+              }}
+              >
+                Chart loading...
+              </div>
             </div>
           )
         }
@@ -330,7 +335,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
               borderBottomLeftRadius: '10px',
               borderBottomRightRadius: '10px',
               transition: 'background-color 0.3s ease',
-            }}>
+            }}
+            >
               <ErrorBoundary>
                 <ReactEcharts
                   ref={(e) => {
@@ -369,7 +375,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
             borderBottomLeftRadius: '10px',
             borderBottomRightRadius: '10px',
             transition: 'background-color 0.3s ease',
-          }}>
+          }}
+          >
             <ErrorBoundary>
               <ReactEcharts
                 ref={echartsRef}
@@ -423,10 +430,10 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     return <code {...props} className={className}>{children}</code>
 
   return (
-    <div className='relative'>
-      <div className='flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3'>
-        <div className='system-xs-semibold-uppercase text-text-secondary'>{languageShowName}</div>
-        <div className='flex items-center gap-1'>
+    <div className="relative">
+      <div className="flex h-8 items-center justify-between rounded-t-[10px] border-b border-divider-subtle bg-components-input-bg-normal p-1 pl-3">
+        <div className="system-xs-semibold-uppercase text-text-secondary">{languageShowName}</div>
+        <div className="flex items-center gap-1">
           {language === 'svg' && <SVGBtn isSVG={isSVG} setIsSVG={setIsSVG} />}
           <ActionButton>
             <CopyIcon content={String(children).replace(/\n$/, '')} />

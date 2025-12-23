@@ -41,11 +41,14 @@ const NoteNode = ({
             className={cn(
               'h-2 shrink-0 rounded-t-md opacity-50',
               THEME_MAP[theme].title,
-            )}></div>
-          <div className='grow overflow-y-auto px-3 py-2.5'>
+            )}
+          >
+          </div>
+          <div className="grow overflow-y-auto px-3 py-2.5">
             <div className={cn(
               data.selected && 'nodrag nopan nowheel cursor-text',
-            )}>
+            )}
+            >
               <NoteEditor
                 containerElement={ref.current}
                 placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
@@ -54,7 +57,7 @@ const NoteNode = ({
           </div>
           {
             data.showAuthor && (
-              <div className='p-3 pt-0 text-xs text-text-tertiary'>
+              <div className="p-3 pt-0 text-xs text-text-tertiary">
                 {data.author}
               </div>
             )

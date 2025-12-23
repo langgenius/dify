@@ -9,13 +9,13 @@ const McpToolNotSupportTooltip: FC = () => {
   const { t } = useTranslation()
   return (
     <Tooltip
-      popupContent={
-        <div className='w-[256px]'>
+      popupContent={(
+        <div className="w-[256px]">
           {t('plugin.detailPanel.toolSelector.unsupportedMCPTool')}
         </div>
-      }
+      )}
     >
-      <RiAlertFill className='size-4 text-text-warning-secondary' />
+      <RiAlertFill className="size-4 text-text-warning-secondary" />
     </Tooltip>
   )
 }

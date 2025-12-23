@@ -89,8 +89,8 @@ export const useNodesInteractions = () => {
   const { handleNodeLoopChildDrag, handleNodeLoopChildrenCopy }
     = useNodeLoopInteractions()
   const dragNodeStartPosition = useRef({ x: 0, y: 0 } as {
-    x: number;
-    y: number;
+    x: number
+    y: number
   })
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
 
@@ -1192,10 +1192,10 @@ export const useNodesInteractions = () => {
           = nodes.find(node => node.id === nextNode.parentId) || null
         const isNextNodeInIteration
           = !!nextNodeParentNode
-          && nextNodeParentNode.data.type === BlockEnum.Iteration
+            && nextNodeParentNode.data.type === BlockEnum.Iteration
         const isNextNodeInLoop
           = !!nextNodeParentNode
-          && nextNodeParentNode.data.type === BlockEnum.Loop
+            && nextNodeParentNode.data.type === BlockEnum.Loop
 
         if (
           nodeType !== BlockEnum.IfElse

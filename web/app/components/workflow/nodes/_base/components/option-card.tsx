@@ -59,14 +59,15 @@ const OptionCard: FC<Props> = ({
     >
       <span>{title}</span>
       {tooltip
-        && <Tooltip
-          popupContent={
-            <div className='w-[240px]'>
-              {tooltip}
-            </div>
-          }
-        />
-      }
+        && (
+          <Tooltip
+            popupContent={(
+              <div className="w-[240px]">
+                {tooltip}
+              </div>
+            )}
+          />
+        )}
     </div>
   )
 }

@@ -87,12 +87,12 @@ const PluginVersionPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <div className="relative w-[209px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
-          <div className='system-xs-medium-uppercase px-3 pb-0.5 pt-1 text-text-tertiary'>
+          <div className="system-xs-medium-uppercase px-3 pb-0.5 pt-1 text-text-tertiary">
             {t('plugin.detailPanel.switchVersion')}
           </div>
-          <div className='relative'>
+          <div className="relative">
             {res?.data.versions.map(version => (
               <div
                 key={version.unique_identifier}
@@ -106,11 +106,11 @@ const PluginVersionPicker: FC<Props> = ({
                   isDowngrade: lt(version.version, currentVersion),
                 })}
               >
-                <div className='flex grow items-center'>
-                  <div className='system-sm-medium text-text-secondary'>{version.version}</div>
-                  {currentVersion === version.version && <Badge className='ml-1' text='CURRENT'/>}
+                <div className="flex grow items-center">
+                  <div className="system-sm-medium text-text-secondary">{version.version}</div>
+                  {currentVersion === version.version && <Badge className="ml-1" text="CURRENT" />}
                 </div>
-                <div className='system-xs-regular shrink-0 text-text-tertiary'>{formatDate(version.created_at, format)}</div>
+                <div className="system-xs-regular shrink-0 text-text-tertiary">{formatDate(version.created_at, format)}</div>
               </div>
             ))}
           </div>

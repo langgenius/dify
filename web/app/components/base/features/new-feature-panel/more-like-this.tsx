@@ -39,11 +39,11 @@ const MoreLikeThis = ({
 
   return (
     <FeatureCard
-      icon={
-        <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs'>
-          <RiSparklingFill className='h-4 w-4 text-text-primary-on-surface' />
+      icon={(
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
+          <RiSparklingFill className="h-4 w-4 text-text-primary-on-surface" />
         </div>
-      }
+      )}
       title={t('appDebug.feature.moreLikeThis.title')}
       tooltip={t('appDebug.feature.moreLikeThis.tip')}
       value={!!features.moreLikeThis?.enabled}

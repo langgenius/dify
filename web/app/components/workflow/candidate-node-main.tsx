@@ -94,7 +94,7 @@ const CandidateNodeMain: FC<Props> = ({
 
   return (
     <div
-      className='absolute z-10'
+      className="absolute z-10"
       style={{
         left: mousePosition.elementX,
         top: mousePosition.elementY,

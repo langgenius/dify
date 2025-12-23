@@ -27,9 +27,9 @@ const usePSInfo = () => {
   const domain = globalThis.location.hostname.replace('cloud', '')
 
   const saveOrUpdate = useCallback(() => {
-    if(!psPartnerKey || !psClickId)
+    if (!psPartnerKey || !psClickId)
       return
-    if(!isPSChanged)
+    if (!isPSChanged)
       return
     Cookies.set(PARTNER_STACK_CONFIG.cookieName, JSON.stringify({
       partnerKey: psPartnerKey,
@@ -52,7 +52,7 @@ const usePSInfo = () => {
         shouldRemoveCookie = true
       }
       catch (error: unknown) {
-        if((error as { status: number })?.status === 400)
+        if ((error as { status: number })?.status === 400)
           shouldRemoveCookie = true
       }
       if (shouldRemoveCookie)

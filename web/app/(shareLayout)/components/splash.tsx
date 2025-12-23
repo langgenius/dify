@@ -42,7 +42,7 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
       return
     }
 
-    if(tokenFromUrl)
+    if (tokenFromUrl)
       setWebAppAccessToken(tokenFromUrl)
 
     const redirectOrFinish = () => {
@@ -93,16 +93,20 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     embeddedUserId])
 
   if (message) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
-      <AppUnavailable className='h-auto w-auto' code={code || t('share.common.appUnavailable')} unknownReason={message} />
-      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{code === '403' ? t('common.userProfile.logout') : t('share.login.backToHome')}</span>
-    </div>
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-y-4">
+        <AppUnavailable className="h-auto w-auto" code={code || t('share.common.appUnavailable')} unknownReason={message} />
+        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{code === '403' ? t('common.userProfile.logout') : t('share.login.backToHome')}</span>
+      </div>
+    )
   }
 
   if (isLoading) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return <>{children}</>
 }

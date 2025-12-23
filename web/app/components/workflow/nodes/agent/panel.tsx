@@ -43,89 +43,94 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
   const { t } = useTranslation()
 
   const resetEditor = useStore(s => s.setControlPromptEditorRerenderKey)
-  return <div className='my-2'>
-    <Field
-      required
-      title={t('workflow.nodes.agent.strategy.label')}
-      className='px-4 py-2'
-      tooltip={t('workflow.nodes.agent.strategy.tooltip')} >
-      <AgentStrategy
-        strategy={inputs.agent_strategy_name ? {
-          agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
-          agent_strategy_name: inputs.agent_strategy_name!,
-          agent_strategy_label: inputs.agent_strategy_label!,
-          agent_output_schema: inputs.output_schema,
-          plugin_unique_identifier: inputs.plugin_unique_identifier!,
-          meta: inputs.meta,
-        } : undefined}
-        onStrategyChange={(strategy) => {
-          setInputs({
-            ...inputs,
-            agent_strategy_provider_name: strategy?.agent_strategy_provider_name,
-            agent_strategy_name: strategy?.agent_strategy_name,
-            agent_strategy_label: strategy?.agent_strategy_label,
-            output_schema: strategy!.agent_output_schema,
-            plugin_unique_identifier: strategy!.plugin_unique_identifier,
-            meta: strategy?.meta,
-          })
-          resetEditor(Date.now())
-        }}
-        formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
-        formValue={formData}
-        onFormValueChange={onFormChange}
-        nodeOutputVars={availableVars}
-        availableNodes={availableNodesWithParent}
-        nodeId={props.id}
-        canChooseMCPTool={canChooseMCPTool}
-      />
-    </Field>
-    <div className='px-4 py-2'>
-      {isChatMode && currentStrategy?.features?.includes(AgentFeature.HISTORY_MESSAGES) && (
-        <>
-          <Split />
-          <MemoryConfig
-            className='mt-4'
-            readonly={readOnly}
-            config={{ data: inputs.memory }}
-            onChange={handleMemoryChange}
-            canSetRoleName={false}
-          />
-        </>
-      )}
-    </div>
-    <div>
-      <OutputVars>
-        <VarItem
-          name='text'
-          type='String'
-          description={t(`${i18nPrefix}.outputVars.text`)}
+  return (
+    <div className="my-2">
+      <Field
+        required
+        title={t('workflow.nodes.agent.strategy.label')}
+        className="px-4 py-2"
+        tooltip={t('workflow.nodes.agent.strategy.tooltip')}
+      >
+        <AgentStrategy
+          strategy={inputs.agent_strategy_name
+            ? {
+                agent_strategy_provider_name: inputs.agent_strategy_provider_name!,
+                agent_strategy_name: inputs.agent_strategy_name!,
+                agent_strategy_label: inputs.agent_strategy_label!,
+                agent_output_schema: inputs.output_schema,
+                plugin_unique_identifier: inputs.plugin_unique_identifier!,
+                meta: inputs.meta,
+              }
+            : undefined}
+          onStrategyChange={(strategy) => {
+            setInputs({
+              ...inputs,
+              agent_strategy_provider_name: strategy?.agent_strategy_provider_name,
+              agent_strategy_name: strategy?.agent_strategy_name,
+              agent_strategy_label: strategy?.agent_strategy_label,
+              output_schema: strategy!.agent_output_schema,
+              plugin_unique_identifier: strategy!.plugin_unique_identifier,
+              meta: strategy?.meta,
+            })
+            resetEditor(Date.now())
+          }}
+          formSchema={currentStrategy?.parameters?.map(strategyParamToCredientialForm) || []}
+          formValue={formData}
+          onFormValueChange={onFormChange}
+          nodeOutputVars={availableVars}
+          availableNodes={availableNodesWithParent}
+          nodeId={props.id}
+          canChooseMCPTool={canChooseMCPTool}
         />
-        <VarItem
-          name='usage'
-          type='object'
-          description={t(`${i18nPrefix}.outputVars.usage`)}
-        />
-        <VarItem
-          name='files'
-          type='Array[File]'
-          description={t(`${i18nPrefix}.outputVars.files.title`)}
-        />
-        <VarItem
-          name='json'
-          type='Array[Object]'
-          description={t(`${i18nPrefix}.outputVars.json`)}
-        />
-        {outputSchema.map(({ name, type, description }) => (
+      </Field>
+      <div className="px-4 py-2">
+        {isChatMode && currentStrategy?.features?.includes(AgentFeature.HISTORY_MESSAGES) && (
+          <>
+            <Split />
+            <MemoryConfig
+              className="mt-4"
+              readonly={readOnly}
+              config={{ data: inputs.memory }}
+              onChange={handleMemoryChange}
+              canSetRoleName={false}
+            />
+          </>
+        )}
+      </div>
+      <div>
+        <OutputVars>
           <VarItem
-            key={name}
-            name={name}
-            type={type}
-            description={description}
+            name="text"
+            type="String"
+            description={t(`${i18nPrefix}.outputVars.text`)}
           />
-        ))}
-      </OutputVars>
+          <VarItem
+            name="usage"
+            type="object"
+            description={t(`${i18nPrefix}.outputVars.usage`)}
+          />
+          <VarItem
+            name="files"
+            type="Array[File]"
+            description={t(`${i18nPrefix}.outputVars.files.title`)}
+          />
+          <VarItem
+            name="json"
+            type="Array[Object]"
+            description={t(`${i18nPrefix}.outputVars.json`)}
+          />
+          {outputSchema.map(({ name, type, description }) => (
+            <VarItem
+              key={name}
+              name={name}
+              type={type}
+              description={description}
+            />
+          ))}
+        </OutputVars>
+      </div>
     </div>
-  </div>
+  )
 }
 
 AgentPanel.displayName = 'AgentPanel'

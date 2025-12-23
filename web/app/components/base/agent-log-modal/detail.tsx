@@ -79,28 +79,32 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
   }, [appDetail, conversationID, messageID])
 
   return (
-    <div className='relative flex grow flex-col'>
+    <div className="relative flex grow flex-col">
       {/* tab */}
-      <div className='flex shrink-0 items-center border-b-[0.5px] border-divider-regular px-4'>
+      <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-regular px-4">
         <div
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
             currentTab === 'DETAIL' && '!border-[rgb(21,94,239)] text-text-secondary',
           )}
           onClick={() => switchTab('DETAIL')}
-        >{t('runLog.detail')}</div>
+        >
+          {t('runLog.detail')}
+        </div>
         <div
           className={cn(
             'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
             currentTab === 'TRACING' && '!border-[rgb(21,94,239)] text-text-secondary',
           )}
           onClick={() => switchTab('TRACING')}
-        >{t('runLog.tracing')}</div>
+        >
+          {t('runLog.tracing')}
+        </div>
       </div>
       {/* panel detail */}
       <div className={cn('h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg', currentTab !== 'DETAIL' && '!bg-background-section')}>
         {loading && (
-          <div className='flex h-full items-center justify-center bg-components-panel-bg'>
+          <div className="flex h-full items-center justify-center bg-components-panel-bg">
             <Loading />
           </div>
         )}

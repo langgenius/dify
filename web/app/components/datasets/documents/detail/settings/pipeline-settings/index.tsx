@@ -156,7 +156,7 @@ const PipelineSettings = ({
 
   if (isFetchingLastRunData) {
     return (
-      <Loading type='app' />
+      <Loading type="app" />
     )
   }
 
@@ -165,12 +165,12 @@ const PipelineSettings = ({
 
   return (
     <div
-      className='relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle'
+      className="relative flex h-[calc(100vh-56px)] min-w-[1024px] overflow-x-auto rounded-t-2xl border-t border-effects-highlight bg-background-default-subtle"
     >
-      <div className='h-full min-w-0 flex-1'>
-        <div className='flex h-full flex-col px-14'>
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col px-14">
           <LeftHeader title={t('datasetPipeline.documentSettings.title')} />
-          <div className='grow overflow-y-auto'>
+          <div className="grow overflow-y-auto">
             <ProcessDocuments
               ref={formRef}
               lastRunInputData={lastRunData!.input_data}
@@ -184,8 +184,8 @@ const PipelineSettings = ({
         </div>
       </div>
       {/* Preview */}
-      <div className='h-full min-w-0 flex-1'>
-        <div className='flex h-full flex-col pl-2 pt-2'>
+      <div className="h-full min-w-0 flex-1">
+        <div className="flex h-full flex-col pl-2 pt-2">
           <ChunkPreview
             dataSourceType={lastRunData!.datasource_type}
             localFiles={files}

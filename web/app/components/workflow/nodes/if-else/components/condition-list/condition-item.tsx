@@ -249,10 +249,10 @@ const ConditionItem = ({
   }, [condition, doUpdateCondition, availableNodes, isChatMode, schemaTypeDefinitions, buildInTools, customTools, mcpTools, workflowTools])
 
   const showBooleanInput = useMemo(() => {
-    if(condition.varType === VarType.boolean)
+    if (condition.varType === VarType.boolean)
       return true
 
-    if(condition.varType === VarType.arrayBoolean && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!))
+    if (condition.varType === VarType.arrayBoolean && [ComparisonOperator.contains, ComparisonOperator.notContains].includes(condition.comparison_operator!))
       return true
     return false
   }, [condition])
@@ -261,45 +261,48 @@ const ConditionItem = ({
       <div className={cn(
         'grow rounded-lg bg-components-input-bg-normal',
         isHovered && 'bg-state-destructive-hover',
-      )}>
-        <div className='flex items-center p-1'>
-          <div className='w-0 grow'>
+      )}
+      >
+        <div className="flex items-center p-1">
+          <div className="w-0 grow">
             {isSubVarSelect
               ? (
-                <Select
-                  wrapperClassName='h-6'
-                  className='pl-0 text-xs'
-                  optionWrapClassName='w-[165px] max-h-none'
-                  defaultValue={condition.key}
-                  items={subVarOptions}
-                  onSelect={item => handleSubVarKeyChange(item.value as string)}
-                  renderTrigger={item => (
-                    item
-                      ? <div className='flex cursor-pointer justify-start'>
-                        <div className='inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs'>
-                          <Variable02 className='h-3.5 w-3.5 shrink-0 text-text-accent' />
-                          <div className='system-xs-medium ml-0.5 truncate'>{item?.name}</div>
-                        </div>
-                      </div>
-                      : <div className='system-sm-regular text-left text-components-input-text-placeholder'>{t('common.placeholder.select')}</div>
-                  )}
-                  hideChecked
-                />
-              )
+                  <Select
+                    wrapperClassName="h-6"
+                    className="pl-0 text-xs"
+                    optionWrapClassName="w-[165px] max-h-none"
+                    defaultValue={condition.key}
+                    items={subVarOptions}
+                    onSelect={item => handleSubVarKeyChange(item.value as string)}
+                    renderTrigger={item => (
+                      item
+                        ? (
+                            <div className="flex cursor-pointer justify-start">
+                              <div className="inline-flex h-6 max-w-full items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1.5 text-text-accent shadow-xs">
+                                <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
+                                <div className="system-xs-medium ml-0.5 truncate">{item?.name}</div>
+                              </div>
+                            </div>
+                          )
+                        : <div className="system-sm-regular text-left text-components-input-text-placeholder">{t('common.placeholder.select')}</div>
+                    )}
+                    hideChecked
+                  />
+                )
               : (
-                <ConditionVarSelector
-                  open={open}
-                  onOpenChange={setOpen}
-                  valueSelector={condition.variable_selector || []}
-                  varType={condition.varType}
-                  availableNodes={availableNodes}
-                  nodesOutputVars={nodesOutputVars}
-                  onChange={handleVarChange}
-                />
-              )}
+                  <ConditionVarSelector
+                    open={open}
+                    onOpenChange={setOpen}
+                    valueSelector={condition.variable_selector || []}
+                    varType={condition.varType}
+                    availableNodes={availableNodes}
+                    nodesOutputVars={nodesOutputVars}
+                    onChange={handleVarChange}
+                  />
+                )}
 
           </div>
-          <div className='mx-1 h-3 w-[1px] bg-divider-regular'></div>
+          <div className="mx-1 h-3 w-[1px] bg-divider-regular"></div>
           <ConditionOperator
             disabled={!canChooseOperator}
             varType={condition.varType}
@@ -310,7 +313,7 @@ const ConditionItem = ({
         </div>
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType !== VarType.number && !showBooleanInput && (
-            <div className='max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1'>
+            <div className="max-h-[100px] overflow-y-auto border-t border-t-divider-subtle px-2 py-1">
               <ConditionInput
                 disabled={disabled}
                 value={condition.value as string}
@@ -323,7 +326,7 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && showBooleanInput && (
-            <div className='p-1'>
+            <div className="p-1">
               <BoolValue
                 value={condition.value as boolean}
                 onChange={handleUpdateConditionValue}
@@ -333,7 +336,7 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && !isNotInput && condition.varType === VarType.number && (
-            <div className='border-t border-t-divider-subtle px-2 py-1 pt-[3px]'>
+            <div className="border-t border-t-divider-subtle px-2 py-1 pt-[3px]">
               <ConditionNumberInput
                 numberVarType={condition.numberVarType}
                 onNumberVarTypeChange={handleUpdateConditionNumberVarType}
@@ -348,10 +351,10 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && isSelect && (
-            <div className='border-t border-t-divider-subtle'>
+            <div className="border-t border-t-divider-subtle">
               <Select
-                wrapperClassName='h-8'
-                className='rounded-t-none px-2 text-xs'
+                wrapperClassName="h-8"
+                className="rounded-t-none px-2 text-xs"
                 defaultValue={isArrayValue ? (condition.value as string[])?.[0] : (condition.value as string)}
                 items={selectOptions}
                 onSelect={item => handleUpdateConditionValue(item.value as string)}
@@ -363,7 +366,7 @@ const ConditionItem = ({
         }
         {
           !comparisonOperatorNotRequireValue(condition.comparison_operator) && isSubVariable && (
-            <div className='p-1'>
+            <div className="p-1">
               <ConditionWrap
                 isSubVariable
                 caseId={caseId}
@@ -384,12 +387,12 @@ const ConditionItem = ({
         }
       </div>
       <div
-        className='ml-1 mt-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+        className="ml-1 mt-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className='h-4 w-4' />
+        <RiDeleteBinLine className="h-4 w-4" />
       </div>
     </div>
   )

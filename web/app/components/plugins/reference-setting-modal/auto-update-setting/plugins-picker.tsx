@@ -34,30 +34,32 @@ const PluginsPicker: FC<Props> = ({
     set: setToolPicker,
   }] = useBoolean(false)
   return (
-    <div className='mt-2 rounded-[10px] bg-background-section-burn p-2.5'>
-      {hasSelected ? (
-        <div className='flex justify-between text-text-tertiary'>
-          <div className='system-xs-medium'>{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { num: value.length })}</div>
-          <div className='system-xs-medium cursor-pointer' onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`)}</div>
-        </div>
-      ) : (
-        <NoPluginSelected updateMode={updateMode} />
-      )}
+    <div className="mt-2 rounded-[10px] bg-background-section-burn p-2.5">
+      {hasSelected
+        ? (
+            <div className="flex justify-between text-text-tertiary">
+              <div className="system-xs-medium">{t(`${i18nPrefix}.${isExcludeMode ? 'excludeUpdate' : 'partialUPdate'}`, { num: value.length })}</div>
+              <div className="system-xs-medium cursor-pointer" onClick={handleClear}>{t(`${i18nPrefix}.operation.clearAll`)}</div>
+            </div>
+          )
+        : (
+            <NoPluginSelected updateMode={updateMode} />
+          )}
 
       {hasSelected && (
         <PluginsSelected
-          className='mt-2'
+          className="mt-2"
           plugins={value}
         />
       )}
 
       <ToolPicker
-        trigger={
-          <Button className='mt-2 w-full' size='small' variant='secondary-accent'>
-            <RiAddLine className='size-3.5' />
+        trigger={(
+          <Button className="mt-2 w-full" size="small" variant="secondary-accent">
+            <RiAddLine className="size-3.5" />
             {t(`${i18nPrefix}.operation.select`)}
           </Button>
-        }
+        )}
         value={value}
         onChange={onChange}
         isShow={isShowToolPicker}

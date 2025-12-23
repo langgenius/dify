@@ -78,30 +78,30 @@ const ProviderPanel: FC<Props> = ({
       )}
       onClick={handleChosen}
     >
-      <div className={'flex items-center justify-between space-x-1'}>
-        <div className='flex items-center'>
-          <Icon className='h-6' />
-          {isChosen && <div className='system-2xs-medium-uppercase ml-1 flex h-4 items-center rounded-[4px] border border-text-accent-secondary px-1 text-text-accent-secondary'>{t(`${I18N_PREFIX}.inUse`)}</div>}
+      <div className="flex items-center justify-between space-x-1">
+        <div className="flex items-center">
+          <Icon className="h-6" />
+          {isChosen && <div className="system-2xs-medium-uppercase ml-1 flex h-4 items-center rounded-[4px] border border-text-accent-secondary px-1 text-text-accent-secondary">{t(`${I18N_PREFIX}.inUse`)}</div>}
         </div>
         {!readOnly && (
-          <div className={'flex items-center justify-between space-x-1'}>
+          <div className="flex items-center justify-between space-x-1">
             {hasConfigured && (
-              <div className='flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs' onClick={viewBtnClick} >
-                <View className='h-3 w-3' />
-                <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.view`)}</div>
+              <div className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs" onClick={viewBtnClick}>
+                <View className="h-3 w-3" />
+                <div className="text-xs font-medium">{t(`${I18N_PREFIX}.view`)}</div>
               </div>
             )}
             <div
-              className='flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs'
+              className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
               onClick={handleConfigBtnClick}
             >
-              <RiEqualizer2Line className='h-3 w-3' />
-              <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.config`)}</div>
+              <RiEqualizer2Line className="h-3 w-3" />
+              <div className="text-xs font-medium">{t(`${I18N_PREFIX}.config`)}</div>
             </div>
           </div>
         )}
       </div>
-      <div className='system-xs-regular mt-2 text-text-tertiary'>
+      <div className="system-xs-regular mt-2 text-text-tertiary">
         {t(`${I18N_PREFIX}.${type}.description`)}
       </div>
     </div>

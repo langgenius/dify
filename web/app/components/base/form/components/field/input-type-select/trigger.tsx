@@ -18,17 +18,19 @@ const Trigger = ({
 
   return (
     <>
-      {option ? (
-        <>
-          <option.Icon className='h-4 w-4 shrink-0 text-text-tertiary' />
-          <span className='grow p-1'>{option.label}</span>
-          <div className='pr-0.5'>
-            <Badge text={option.type} uppercase={false} />
-          </div>
-        </>
-      ) : (
-        <span className='grow p-1'>{t('common.placeholder.select')}</span>
-      )}
+      {option
+        ? (
+            <>
+              <option.Icon className="h-4 w-4 shrink-0 text-text-tertiary" />
+              <span className="grow p-1">{option.label}</span>
+              <div className="pr-0.5">
+                <Badge text={option.type} uppercase={false} />
+              </div>
+            </>
+          )
+        : (
+            <span className="grow p-1">{t('common.placeholder.select')}</span>
+          )}
       <RiArrowDownSLine
         className={cn(
           'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',

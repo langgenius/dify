@@ -144,78 +144,85 @@ const AdvancedPromptInput: FC<Props> = ({
   const [editorHeight, setEditorHeight] = React.useState(isChatMode ? 200 : 508)
   const contextMissing = (
     <div
-      className='flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl pb-1 pl-4 pr-3 pt-2'
+      className="flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl pb-1 pl-4 pr-3 pt-2"
       style={{
         background: 'linear-gradient(180deg, #FEF0C7 0%, rgba(254, 240, 199, 0) 100%)',
       }}
     >
-      <div className='flex items-center pr-2' >
-        <RiErrorWarningFill className='mr-1 h-4 w-4 text-[#F79009]' />
-        <div className='text-[13px] font-medium leading-[18px] text-[#DC6803]'>{t('appDebug.promptMode.contextMissing')}</div>
+      <div className="flex items-center pr-2">
+        <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
+        <div className="text-[13px] font-medium leading-[18px] text-[#DC6803]">{t('appDebug.promptMode.contextMissing')}</div>
       </div>
       <Button
-        size='small'
-        variant='secondary-accent'
+        size="small"
+        variant="secondary-accent"
         onClick={onHideContextMissingTip}
-      >{t('common.operation.ok')}</Button>
+      >
+        {t('common.operation.ok')}
+      </Button>
     </div>
   )
   return (
     <div className={`rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs ${!isContextMissing ? '' : s.warningBorder}`}>
-      <div className='rounded-xl bg-background-default'>
+      <div className="rounded-xl bg-background-default">
         {isContextMissing
           ? contextMissing
           : (
-            <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl bg-background-default pb-1 pl-4 pr-3 pt-2 hover:shadow-xs')}>
-              {isChatMode
-                ? (
-                  <MessageTypeSelector value={type} onChange={onTypeChange} />
-                )
-                : (
-                  <div className='flex items-center space-x-1'>
-
-                    <div className='text-sm font-semibold uppercase text-indigo-800'>{t('appDebug.pageTitle.line1')}
-                    </div>
-                    <Tooltip
-                      popupContent={
-                        <div className='w-[180px]'>
-                          {t('appDebug.promptTip')}
-                        </div>
-                      }
-                    />
-                  </div>)}
-              <div className={cn(s.optionWrap, 'items-center space-x-1')}>
-                {canDelete && (
-                  <RiDeleteBinLine onClick={onDelete} className='h-6 w-6 cursor-pointer p-1 text-text-tertiary' />
-                )}
-                {!isCopied
+              <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl bg-background-default pb-1 pl-4 pr-3 pt-2 hover:shadow-xs')}>
+                {isChatMode
                   ? (
-                    <Copy className='h-6 w-6 cursor-pointer p-1 text-text-tertiary' onClick={() => {
-                      copy(value)
-                      setIsCopied(true)
-                    }} />
-                  )
+                      <MessageTypeSelector value={type} onChange={onTypeChange} />
+                    )
                   : (
-                    <CopyCheck className='h-6 w-6 p-1 text-text-tertiary' />
+                      <div className="flex items-center space-x-1">
+
+                        <div className="text-sm font-semibold uppercase text-indigo-800">
+                          {t('appDebug.pageTitle.line1')}
+                        </div>
+                        <Tooltip
+                          popupContent={(
+                            <div className="w-[180px]">
+                              {t('appDebug.promptTip')}
+                            </div>
+                          )}
+                        />
+                      </div>
+                    )}
+                <div className={cn(s.optionWrap, 'items-center space-x-1')}>
+                  {canDelete && (
+                    <RiDeleteBinLine onClick={onDelete} className="h-6 w-6 cursor-pointer p-1 text-text-tertiary" />
                   )}
+                  {!isCopied
+                    ? (
+                        <Copy
+                          className="h-6 w-6 cursor-pointer p-1 text-text-tertiary"
+                          onClick={() => {
+                            copy(value)
+                            setIsCopied(true)
+                          }}
+                        />
+                      )
+                    : (
+                        <CopyCheck className="h-6 w-6 p-1 text-text-tertiary" />
+                      )}
+                </div>
               </div>
-            </div>
-          )}
+            )}
 
         <PromptEditorHeightResizeWrap
-          className='min-h-[102px] overflow-y-auto px-4 text-sm text-text-secondary'
+          className="min-h-[102px] overflow-y-auto px-4 text-sm text-text-secondary"
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           footer={(
-            <div className='flex pb-2 pl-4'>
+            <div className="flex pb-2 pl-4">
               <div className="h-[18px] rounded-md bg-divider-regular px-1 text-xs leading-[18px] text-text-tertiary">{value.length}</div>
             </div>
           )}
           hideResize={noResize}
         >
           <PromptEditor
-            className='min-h-[84px]'
+            className="min-h-[84px]"
             value={value}
             contextBlock={{
               show: true,

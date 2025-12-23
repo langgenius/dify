@@ -35,18 +35,18 @@ const Editor = ({
   }, [onChange])
 
   return (
-    <div className='relative'>
+    <div className="relative">
       <RichTextPlugin
-        contentEditable={
+        contentEditable={(
           <div>
             <ContentEditable
               onFocus={() => setShortcutsEnabled?.(false)}
               onBlur={() => setShortcutsEnabled?.(true)}
               spellCheck={false}
-              className='h-full w-full text-text-secondary caret-primary-600 outline-none'
+              className="h-full w-full text-text-secondary caret-primary-600 outline-none"
             />
           </div>
-        }
+        )}
         placeholder={<Placeholder value={placeholder} compact />}
         ErrorBoundary={LexicalErrorBoundary}
       />

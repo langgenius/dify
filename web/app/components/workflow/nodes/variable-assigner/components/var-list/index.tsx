@@ -59,14 +59,14 @@ const VarList: FC<Props> = ({
   }
 
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
+        <div className="flex items-center space-x-1" key={index}>
           <VarReferencePicker
             readonly={readonly}
             nodeId={nodeId}
             isShowNodeName
-            className='grow'
+            className="grow"
             value={item}
             onChange={handleVarReferenceChange(index)}
             onOpen={handleOpen(index)}

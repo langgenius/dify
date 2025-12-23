@@ -7,8 +7,8 @@ import type { StartNodeType } from './types'
 import { useIsChatMode } from '../../hooks'
 
 type Params = {
-  id: string,
-  payload: StartNodeType,
+  id: string
+  payload: StartNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]

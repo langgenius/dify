@@ -63,8 +63,8 @@ const SerpapiPlugin = ({
 
   return (
     <KeyValidator
-      type='serpapi'
-      title={<Image alt='serpapi logo' src={SerpapiLogo} width={64} />}
+      type="serpapi"
+      title={<Image alt="serpapi logo" src={SerpapiLogo} width={64} />}
       status={plugin.credentials?.api_key ? 'success' : 'add'}
       forms={forms}
       keyFrom={{

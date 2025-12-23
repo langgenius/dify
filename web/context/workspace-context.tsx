@@ -24,7 +24,8 @@ export const WorkspaceProvider = ({
   return (
     <WorkspacesContext.Provider value={{
       workspaces: data?.workspaces || [],
-    }}>
+    }}
+    >
       {children}
     </WorkspacesContext.Provider>
   )

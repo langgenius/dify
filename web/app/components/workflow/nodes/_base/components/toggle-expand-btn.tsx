@@ -23,7 +23,7 @@ const ExpandBtn: FC<Props> = ({
   const Icon = isExpand ? RiCollapseDiagonalLine : RiExpandDiagonalLine
   return (
     <ActionButton onClick={handleToggle}>
-      <Icon className='h-4 w-4' />
+      <Icon className="h-4 w-4" />
     </ActionButton>
   )
 }

@@ -17,10 +17,10 @@ import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 const VARIABLE_PREFIX = 'rag'
 
 type useFieldListProps = {
-  initialInputFields: InputVar[],
-  onInputFieldsChange: (value: InputVar[]) => void,
-  nodeId: string,
-  allVariableNames: string[],
+  initialInputFields: InputVar[]
+  onInputFieldsChange: (value: InputVar[]) => void
+  nodeId: string
+  allVariableNames: string[]
 }
 
 export const useFieldList = ({

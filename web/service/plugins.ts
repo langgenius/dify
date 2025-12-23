@@ -83,7 +83,7 @@ export const fetchPluginInfoFromMarketPlace = async ({
   return getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${org}/${name}`)
 }
 
-export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
+export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string }> = ({ url }) => {
   return get<MarketplaceCollectionsResponse>(url)
 }
 

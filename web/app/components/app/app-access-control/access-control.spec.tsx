@@ -22,7 +22,7 @@ const mockUseUpdateAccessMode = vi.fn(() => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (value: { userProfile: { email: string; id?: string; name?: string; avatar?: string; avatar_url?: string; is_password_set?: boolean } }) => T) => selector({
+  useSelector: <T,>(selector: (value: { userProfile: { email: string, id?: string, name?: string, avatar?: string, avatar_url?: string, is_password_set?: boolean } }) => T) => selector({
     userProfile: {
       id: 'current-user',
       name: 'Current User',

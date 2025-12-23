@@ -190,20 +190,20 @@ const NodeSelector: FC<NodeSelectorProps> = ({
           trigger
             ? trigger(open)
             : (
-              <div
-                className={`
+                <div
+                  className={`
                   z-10 flex h-4
                   w-4 cursor-pointer items-center justify-center rounded-full bg-components-button-primary-bg text-text-primary-on-surface hover:bg-components-button-primary-bg-hover
                   ${triggerClassName?.(open)}
                 `}
-                style={triggerStyle}
-              >
-                <Plus02 className='h-2.5 w-2.5' />
-              </div>
-            )
+                  style={triggerStyle}
+                >
+                  <Plus02 className="h-2.5 w-2.5" />
+                </div>
+              )
         }
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <div className={`rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg ${popupClassName}`}>
           <Tabs
             tabs={tabs}
@@ -211,8 +211,8 @@ const NodeSelector: FC<NodeSelectorProps> = ({
             blocks={blocks}
             allowStartNodeSelection={canSelectUserInput}
             onActiveTabChange={handleActiveTabChange}
-            filterElem={
-              <div className='relative m-2' onClick={e => e.stopPropagation()}>
+            filterElem={(
+              <div className="relative m-2" onClick={e => e.stopPropagation()}>
                 {activeTab === TabsEnum.Start && (
                   <SearchBox
                     autoFocus
@@ -221,7 +221,7 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     tags={tags}
                     onTagsChange={setTags}
                     placeholder={searchPlaceholder}
-                    inputClassName='grow'
+                    inputClassName="grow"
                   />
                 )}
                 {activeTab === TabsEnum.Blocks && (
@@ -254,11 +254,11 @@ const NodeSelector: FC<NodeSelectorProps> = ({
                     tags={tags}
                     onTagsChange={setTags}
                     placeholder={t('plugin.searchTools')!}
-                    inputClassName='grow'
+                    inputClassName="grow"
                   />
                 )}
               </div>
-            }
+            )}
             onSelect={handleSelect}
             searchText={searchText}
             tags={tags}

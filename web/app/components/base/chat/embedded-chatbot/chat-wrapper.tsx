@@ -171,7 +171,7 @@ const ChatWrapper = () => {
     if (isMobile) {
       if (!currentConversationId)
         return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
-      return <div className='mb-4'></div>
+      return <div className="mb-4"></div>
     }
     else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
@@ -191,15 +191,15 @@ const ChatWrapper = () => {
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
         <div className={cn('flex items-center justify-center px-4 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
-          <div className='flex max-w-[720px] grow gap-4'>
+          <div className="flex max-w-[720px] grow gap-4">
             <AppIcon
-              size='xl'
+              size="xl"
               iconType={appData?.site.icon_type}
               icon={appData?.site.icon}
               background={appData?.site.icon_background}
               imageUrl={appData?.site.icon_url}
             />
-            <div className='body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary'>
+            <div className="body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary">
               <Markdown content={welcomeMessage.content} />
               <SuggestedQuestions item={welcomeMessage} />
             </div>
@@ -210,29 +210,31 @@ const ChatWrapper = () => {
     return (
       <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12', isMobile ? 'min-h-[30vh] py-0' : 'h-[50vh]')}>
         <AppIcon
-          size='xl'
+          size="xl"
           iconType={appData?.site.icon_type}
           icon={appData?.site.icon}
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className='max-w-[768px] px-4'>
-          <Markdown className='!body-2xl-regular !text-text-tertiary' content={welcomeMessage.content} />
+        <div className="max-w-[768px] px-4">
+          <Markdown className="!body-2xl-regular !text-text-tertiary" content={welcomeMessage.content} />
         </div>
       </div>
     )
   }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
 
   const answerIcon = isDify()
-    ? <LogoAvatar className='relative shrink-0' />
+    ? <LogoAvatar className="relative shrink-0" />
     : (appData?.site && appData.site.use_icon_as_answer_icon)
-      ? <AnswerIcon
-        iconType={appData.site.icon_type}
-        icon={appData.site.icon}
-        background={appData.site.icon_background}
-        imageUrl={appData.site.icon_url}
-      />
-      : null
+        ? (
+            <AnswerIcon
+              iconType={appData.site.icon_type}
+              icon={appData.site.icon}
+              background={appData.site.icon_background}
+              imageUrl={appData.site.icon_url}
+            />
+          )
+        : null
 
   return (
     <Chat
@@ -248,12 +250,12 @@ const ChatWrapper = () => {
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
-      chatNode={
+      chatNode={(
         <>
           {chatNode}
           {welcome}
         </>
-      }
+      )}
       allToolIcons={appMeta?.tool_icons || {}}
       onFeedback={handleFeedback}
       suggestedQuestions={suggestedQuestions}
@@ -264,11 +266,14 @@ const ChatWrapper = () => {
       inputDisabled={inputDisabled}
       questionIcon={
         initUserVariables?.avatar_url
-          ? <Avatar
-            avatar={initUserVariables.avatar_url}
-            name={initUserVariables.name || 'user'}
-            size={40}
-          /> : undefined
+          ? (
+              <Avatar
+                avatar={initUserVariables.avatar_url}
+                name={initUserVariables.name || 'user'}
+                size={40}
+              />
+            )
+          : undefined
       }
     />
   )

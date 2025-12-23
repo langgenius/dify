@@ -79,38 +79,39 @@ const Header: FC<IHeaderProps> = ({
 
   if (!isMobile) {
     return (
-      <div className='flex h-14 shrink-0 items-center justify-end p-3'>
-        <div className='flex items-center gap-1'>
+      <div className="flex h-14 shrink-0 items-center justify-end p-3">
+        <div className="flex items-center gap-1">
           {/* powered by */}
-          <div className='shrink-0'>
+          <div className="shrink-0">
             {!appData?.custom_config?.remove_webapp_brand && (
               <div className={cn(
                 'flex shrink-0 items-center gap-1.5 px-2',
-              )}>
-                <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
+              )}
+              >
+                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('share.chat.poweredBy')}</div>
                 {
                   systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                    ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                    ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
                     : appData?.custom_config?.replace_webapp_logo
-                      ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
-                      : <DifyLogo size='small' />
+                      ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
+                      : <DifyLogo size="small" />
                 }
               </div>
             )}
           </div>
           {currentConversationId && (
-            <Divider type='vertical' className='h-3.5' />
+            <Divider type="vertical" className="h-3.5" />
           )}
           {
             showToggleExpandButton && (
               <Tooltip
                 popupContent={expanded ? t('share.chat.collapse') : t('share.chat.expand')}
               >
-                <ActionButton size='l' onClick={handleToggleExpand}>
+                <ActionButton size="l" onClick={handleToggleExpand}>
                   {
                     expanded
-                      ? <RiCollapseDiagonal2Line className='h-[18px] w-[18px]' />
-                      : <RiExpandDiagonal2Line className='h-[18px] w-[18px]' />
+                      ? <RiCollapseDiagonal2Line className="h-[18px] w-[18px]" />
+                      : <RiExpandDiagonal2Line className="h-[18px] w-[18px]" />
                   }
                 </ActionButton>
               </Tooltip>
@@ -120,8 +121,8 @@ const Header: FC<IHeaderProps> = ({
             <Tooltip
               popupContent={t('share.chat.resetChat')}
             >
-              <ActionButton size='l' onClick={onCreateNewChat}>
-                <RiResetLeftLine className='h-[18px] w-[18px]' />
+              <ActionButton size="l" onClick={onCreateNewChat}>
+                <RiResetLeftLine className="h-[18px] w-[18px]" />
               </ActionButton>
             </Tooltip>
           )}
@@ -141,19 +142,19 @@ const Header: FC<IHeaderProps> = ({
       <div className="flex grow items-center space-x-3">
         {customerIcon}
         <div
-          className='system-md-semibold truncate'
+          className="system-md-semibold truncate"
           style={CssTransform(theme?.colorFontOnHeaderStyle ?? '')}
         >
           {title}
         </div>
       </div>
-      <div className='flex items-center gap-1'>
+      <div className="flex items-center gap-1">
         {
           showToggleExpandButton && (
             <Tooltip
               popupContent={expanded ? t('share.chat.collapse') : t('share.chat.expand')}
             >
-              <ActionButton size='l' onClick={handleToggleExpand}>
+              <ActionButton size="l" onClick={handleToggleExpand}>
                 {
                   expanded
                     ? <RiCollapseDiagonal2Line className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
@@ -167,7 +168,7 @@ const Header: FC<IHeaderProps> = ({
           <Tooltip
             popupContent={t('share.chat.resetChat')}
           >
-            <ActionButton size='l' onClick={onCreateNewChat}>
+            <ActionButton size="l" onClick={onCreateNewChat}>
               <RiResetLeftLine className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />
             </ActionButton>
           </Tooltip>

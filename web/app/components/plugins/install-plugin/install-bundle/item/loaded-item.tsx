@@ -32,15 +32,15 @@ const LoadedItem: FC<Props> = ({
   }
   const { canInstall } = usePluginInstallLimit(payload)
   return (
-    <div className='flex items-center space-x-2'>
+    <div className="flex items-center space-x-2">
       <Checkbox
         disabled={!canInstall}
-        className='shrink-0'
+        className="shrink-0"
         checked={checked}
         onCheck={() => onCheckedChange(payload)}
       />
       <Card
-        className='grow'
+        className="grow"
         payload={{
           ...payload,
           icon: isFromMarketPlace ? `${MARKETPLACE_API_PREFIX}/plugins/${payload.org}/${payload.name}/icon` : getIconUrl(payload.icon),

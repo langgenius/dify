@@ -37,30 +37,30 @@ describe('Button', () => {
     })
 
     it('Button should have primary variant', async () => {
-      const { getByRole } = render(<Button variant='primary'>Click me</Button>)
+      const { getByRole } = render(<Button variant="primary">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-primary')
     })
 
     it('Button should have warning variant', async () => {
-      const { getByRole } = render(<Button variant='warning'>Click me</Button>)
+      const { getByRole } = render(<Button variant="warning">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-warning')
     })
 
     it('Button should have secondary variant', async () => {
-      const { getByRole } = render(<Button variant='secondary'>Click me</Button>)
+      const { getByRole } = render(<Button variant="secondary">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-secondary')
     })
 
     it('Button should have secondary-accent variant', async () => {
-      const { getByRole } = render(<Button variant='secondary-accent'>Click me</Button>)
+      const { getByRole } = render(<Button variant="secondary-accent">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-secondary-accent')
     })
     it('Button should have ghost variant', async () => {
-      const { getByRole } = render(<Button variant='ghost'>Click me</Button>)
+      const { getByRole } = render(<Button variant="ghost">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-ghost')
     })
     it('Button should have ghost-accent variant', async () => {
-      const { getByRole } = render(<Button variant='ghost-accent'>Click me</Button>)
+      const { getByRole } = render(<Button variant="ghost-accent">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-ghost-accent')
     })
 
@@ -77,17 +77,17 @@ describe('Button', () => {
     })
 
     it('Button should have small size', async () => {
-      const { getByRole } = render(<Button size='small'>Click me</Button>)
+      const { getByRole } = render(<Button size="small">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-small')
     })
 
     it('Button should have medium size', async () => {
-      const { getByRole } = render(<Button size='medium'>Click me</Button>)
+      const { getByRole } = render(<Button size="medium">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-medium')
     })
 
     it('Button should have large size', async () => {
-      const { getByRole } = render(<Button size='large'>Click me</Button>)
+      const { getByRole } = render(<Button size="large">Click me</Button>)
       expect(getByRole('button').className).toContain('btn-large')
     })
   })

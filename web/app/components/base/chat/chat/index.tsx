@@ -255,7 +255,7 @@ const Chat: FC<ChatProps> = ({
       onAnnotationRemoved={onAnnotationRemoved}
       onFeedback={onFeedback}
     >
-      <div className='relative h-full'>
+      <div className="relative h-full">
         <div
           ref={chatContainerRef}
           className={cn('relative h-full overflow-y-auto overflow-x-hidden', chatContainerClassName)}
@@ -311,10 +311,10 @@ const Chat: FC<ChatProps> = ({
           >
             {
               !noStopResponding && isResponding && (
-                <div className='mb-2 flex justify-center'>
-                  <Button className='border-components-panel-border bg-components-panel-bg text-components-button-secondary-text' onClick={onStopResponding}>
-                    <StopCircle className='mr-[5px] h-3.5 w-3.5' />
-                    <span className='text-xs font-normal'>{t('appDebug.operation.stopResponding')}</span>
+                <div className="mb-2 flex justify-center">
+                  <Button className="border-components-panel-border bg-components-panel-bg text-components-button-secondary-text" onClick={onStopResponding}>
+                    <StopCircle className="mr-[5px] h-3.5 w-3.5" />
+                    <span className="text-xs font-normal">{t('appDebug.operation.stopResponding')}</span>
                   </Button>
                 </div>
               )

@@ -164,7 +164,7 @@ const PluginPage = ({
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
   return (
     <div
-      id='marketplace-container'
+      id="marketplace-container"
       ref={containerRef}
       style={{ scrollbarGutter: 'stable' }}
       className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
@@ -177,42 +177,42 @@ const PluginPage = ({
           'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4', isExploringMarketplace && 'bg-background-body',
         )}
       >
-        <div className='flex w-full items-center justify-between'>
-          <div className='flex-1'>
+        <div className="flex w-full items-center justify-between">
+          <div className="flex-1">
             <TabSlider
               value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
               onChange={setActiveTab}
               options={options}
             />
           </div>
-          <div className='flex shrink-0 items-center gap-1'>
+          <div className="flex shrink-0 items-center gap-1">
             {
               isExploringMarketplace && (
                 <>
                   <Link
-                    href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
-                    target='_blank'
+                    href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                    target="_blank"
                   >
                     <Button
-                      variant='ghost'
-                      className='text-text-tertiary'
+                      variant="ghost"
+                      className="text-text-tertiary"
                     >
                       {t('plugin.requestAPlugin')}
                     </Button>
                   </Link>
                   <Link
                     href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
-                    target='_blank'
+                    target="_blank"
                   >
                     <Button
-                      className='px-3'
-                      variant='secondary-accent'
+                      className="px-3"
+                      variant="secondary-accent"
                     >
-                      <RiBookOpenLine className='mr-1 h-4 w-4' />
+                      <RiBookOpenLine className="mr-1 h-4 w-4" />
                       {t('plugin.publishPlugins')}
                     </Button>
                   </Link>
-                  <div className='mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular'></div>
+                  <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
                 </>
               )
             }
@@ -233,10 +233,10 @@ const PluginPage = ({
                   popupContent={t('plugin.privilege.title')}
                 >
                   <Button
-                    className='group h-full w-full p-2 text-components-button-secondary-text'
+                    className="group h-full w-full p-2 text-components-button-secondary-text"
                     onClick={setShowPluginSettingModal}
                   >
-                    <RiEqualizer2Line className='h-4 w-4' />
+                    <RiEqualizer2Line className="h-4 w-4" />
                   </Button>
                 </Tooltip>
               )
@@ -250,7 +250,8 @@ const PluginPage = ({
           {dragging && (
             <div
               className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
-                  bg-[rgba(21,90,239,0.14)] p-2">
+                  bg-[rgba(21,90,239,0.14)] p-2"
+            >
             </div>
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>

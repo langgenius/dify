@@ -52,7 +52,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
   const { schemaTypeDefinitions } = useMatchSchemaType()
   return (
-    <div >
+    <div>
       {
         currentDataSource?.is_authorized && !isLocalFile && !!formSchemas?.length && (
           <BoxGroupField
@@ -94,12 +94,12 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               },
             }}
           >
-            <div className='rounded-lg bg-components-input-bg-normal p-1 pt-0'>
+            <div className="rounded-lg bg-components-input-bg-normal p-1 pt-0">
               <TagInput
                 items={fileExtensions}
                 onChange={handleFileExtensionsChange}
                 placeholder={t('workflow.nodes.dataSource.supportedFileFormatsPlaceholder')}
-                inputClassName='bg-transparent'
+                inputClassName="bg-transparent"
                 disableAdd={nodesReadOnly}
                 disableRemove={nodesReadOnly}
               />
@@ -141,7 +141,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             <div key={outputItem.name}>
               {outputItem.value?.type === 'object' ? (
                 <StructureOutputItem
-                  rootClassName='code-sm-semibold text-text-secondary'
+                  rootClassName="code-sm-semibold text-text-secondary"
                   payload={wrapStructuredVarItem(outputItem, schemaType)}
                 />
               ) : (

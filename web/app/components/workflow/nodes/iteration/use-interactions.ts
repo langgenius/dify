@@ -78,7 +78,7 @@ export const useNodeIterationInteractions = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-    const restrictPosition: { x?: number; y?: number } = { x: undefined, y: undefined }
+    const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
 
     if (node.data.isInIteration) {
       const parentNode = nodes.find(n => n.id === node.parentId)
@@ -121,7 +121,7 @@ export const useNodeIterationInteractions = () => {
       const childNodeType = child.data.type as BlockEnum
       const nodesWithSameType = nodes.filter(node => node.data.type === childNodeType)
 
-      if(!childNodeTypeCount[childNodeType])
+      if (!childNodeTypeCount[childNodeType])
         childNodeTypeCount[childNodeType] = nodesWithSameType.length + 1
       else
         childNodeTypeCount[childNodeType] = childNodeTypeCount[childNodeType] + 1

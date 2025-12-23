@@ -36,9 +36,9 @@ const Item: FC<ItemProps> = ({
       )}
       onClick={() => onChangeConversation(item.id)}
     >
-      <div className='grow truncate p-1 pl-0' title={item.name}>{item.name}</div>
+      <div className="grow truncate p-1 pl-0" title={item.name}>{item.name}</div>
       {item.id !== '' && (
-        <div className='shrink-0' onClick={e => e.stopPropagation()}>
+        <div className="shrink-0" onClick={e => e.stopPropagation()}>
           <Operation
             isActive={isSelected}
             isPinned={!!isPin}

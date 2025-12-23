@@ -198,7 +198,7 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',

@@ -15,7 +15,7 @@ dayjs.extend(quarterOfYear)
 
 const today = dayjs()
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: string } } = {
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: string } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
@@ -40,11 +40,11 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
   if (!data)
     return null
   return (
-    <div className='mb-2 flex flex-row flex-wrap items-center gap-2'>
+    <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
       <Chip
-        className='min-w-[150px]'
-        panelClassName='w-[270px]'
-        leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}
+        className="min-w-[150px]"
+        panelClassName="w-[270px]"
+        leftIcon={<RiCalendarLine className="h-4 w-4 text-text-secondary" />}
         value={queryParams.period}
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
@@ -53,8 +53,8 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
       />
       <Chip
-        className='min-w-[150px]'
-        panelClassName='w-[270px]'
+        className="min-w-[150px]"
+        panelClassName="w-[270px]"
         showLeftIcon={false}
         value={queryParams.annotation_status || 'all'}
         onSelect={(item) => {
@@ -68,7 +68,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         ]}
       />
       <Input
-        wrapperClassName='w-[200px]'
+        wrapperClassName="w-[200px]"
         showLeftIcon
         showClearIcon
         value={queryParams.keyword}
@@ -80,7 +80,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
       />
       {isChatMode && (
         <>
-          <div className='h-3.5 w-px bg-divider-regular'></div>
+          <div className="h-3.5 w-px bg-divider-regular"></div>
           <Sort
             order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
             value={queryParams.sort_by?.replace('-', '') || 'created_at'}

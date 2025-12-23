@@ -51,33 +51,33 @@ const ConditionValue = ({
       const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === (Array.isArray(value) ? value[0] : value))[0]
       return name
         ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/{{#([^#]*)#}}/g, (a, b) => {
-          const arr: string[] = b.split('.')
-          if (isSystemVar(arr))
-            return `{{${b}}}`
+            const arr: string[] = b.split('.')
+            if (isSystemVar(arr))
+              return `{{${b}}}`
 
-          return `{{${arr.slice(1).join('.')}}}`
-        })
+            return `{{${arr.slice(1).join('.')}}}`
+          })
         : ''
     }
     return ''
   }, [isSelect, t, value])
 
   return (
-    <div className='flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1'>
+    <div className="flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1">
       <VariableLabelInNode
-        className='w-0 grow'
+        className="w-0 grow"
         variables={variableSelector}
         notShowFullPath
       />
       <div
-        className='mx-1 shrink-0 text-xs font-medium text-text-primary'
+        className="mx-1 shrink-0 text-xs font-medium text-text-primary"
         title={operatorName}
       >
         {operatorName}
       </div>
       {
         !notHasValue && (
-          <div className='truncate text-xs text-text-secondary' title={formatValue}>{isSelect ? selectName : formatValue}</div>
+          <div className="truncate text-xs text-text-secondary" title={formatValue}>{isSelect ? selectName : formatValue}</div>
         )
       }
     </div>

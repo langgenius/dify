@@ -6,8 +6,8 @@ import { type AssignerNodeType, WriteMode } from './types'
 import { writeModeTypesNum } from './types'
 
 type Params = {
-  id: string,
-  payload: AssignerNodeType,
+  id: string
+  payload: AssignerNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -26,8 +26,8 @@ const useSingleRunFormParams = ({
 
   const vars = (inputs.items ?? []).filter((item) => {
     return item.operation !== WriteMode.clear && item.operation !== WriteMode.set
-                    && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
-                    && !writeModeTypesNum.includes(item.operation)
+      && item.operation !== WriteMode.removeFirst && item.operation !== WriteMode.removeLast
+      && !writeModeTypesNum.includes(item.operation)
   }).map(item => item.value as ValueSelector)
 
   const forms = useMemo(() => {

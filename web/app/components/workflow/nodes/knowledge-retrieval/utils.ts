@@ -94,7 +94,7 @@ export const getMultipleRetrievalConfig = (
   multipleRetrievalConfig: MultipleRetrievalConfig,
   selectedDatasets: DataSet[],
   originalDatasets: DataSet[],
-  fallbackRerankModel?: { provider?: string; model?: string }, // fallback rerank model
+  fallbackRerankModel?: { provider?: string, model?: string }, // fallback rerank model
 ) => {
   // Check if the selected datasets are different from the original datasets
   const isDatasetsChanged = xorBy(selectedDatasets, originalDatasets, 'id').length > 0

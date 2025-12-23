@@ -23,9 +23,9 @@ const meta = {
   args: {
     items: ITEMS,
     value: 'all',
-    // eslint-disable-next-line no-empty-function
+
     onSelect: () => {},
-    // eslint-disable-next-line no-empty-function
+
     onClear: () => {},
   },
 } satisfies Meta<typeof Chip>
@@ -45,7 +45,9 @@ const ChipDemo = (props: React.ComponentProps<typeof Chip>) => {
         onClear={() => setSelection('all')}
       />
       <div className="rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs text-text-secondary">
-        Current value: <span className="font-mono text-text-primary">{selection}</span>
+        Current value:
+        {' '}
+        <span className="font-mono text-text-primary">{selection}</span>
       </div>
     </div>
   )
@@ -75,9 +77,9 @@ const [selection, setSelection] = useState('all')
 export const WithoutLeftIcon: Story = {
   args: {
     showLeftIcon: false,
-    // eslint-disable-next-line no-empty-function
+
     onSelect: () => {},
-    // eslint-disable-next-line no-empty-function
+
     onClear: () => {},
   },
   render: args => (

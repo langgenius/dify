@@ -38,62 +38,64 @@ const Panel: FC<NodePanelProps<VariableAssignerNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-4">
         {!isEnableGroup
           ? (
-            <VarGroupItem
-              readOnly={readOnly}
-              nodeId={id}
-              payload={{
-                output_type: inputs.output_type,
-                variables: inputs.variables,
-              }}
-              onChange={handleListOrTypeChange}
-              groupEnabled={false}
-              availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type), true)}
-            />
-          )
-          : (<div>
-            <div className='space-y-2'>
-              {inputs.advanced_settings?.groups.map((item, index) => (
-                <div key={item.groupId}>
-                  <VarGroupItem
-                    readOnly={readOnly}
-                    nodeId={id}
-                    payload={item}
-                    onChange={handleListOrTypeChangeInGroup(item.groupId)}
-                    groupEnabled
-                    canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
-                    onRemove={handleGroupRemoved(item.groupId)}
-                    onGroupNameChange={handleVarGroupNameChange(item.groupId)}
-                    availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type), true)}
-                  />
-                  {index !== inputs.advanced_settings?.groups.length - 1 && <Split className='my-4' />}
-                </div>
+              <VarGroupItem
+                readOnly={readOnly}
+                nodeId={id}
+                payload={{
+                  output_type: inputs.output_type,
+                  variables: inputs.variables,
+                }}
+                onChange={handleListOrTypeChange}
+                groupEnabled={false}
+                availableVars={getAvailableVars(id, 'target', filterVar(inputs.output_type), true)}
+              />
+            )
+          : (
+              <div>
+                <div className="space-y-2">
+                  {inputs.advanced_settings?.groups.map((item, index) => (
+                    <div key={item.groupId}>
+                      <VarGroupItem
+                        readOnly={readOnly}
+                        nodeId={id}
+                        payload={item}
+                        onChange={handleListOrTypeChangeInGroup(item.groupId)}
+                        groupEnabled
+                        canRemove={!readOnly && inputs.advanced_settings?.groups.length > 1}
+                        onRemove={handleGroupRemoved(item.groupId)}
+                        onGroupNameChange={handleVarGroupNameChange(item.groupId)}
+                        availableVars={getAvailableVars(id, item.groupId, filterVar(item.output_type), true)}
+                      />
+                      {index !== inputs.advanced_settings?.groups.length - 1 && <Split className="my-4" />}
+                    </div>
 
-              ))}
-            </div>
-            <AddButton
-              className='mt-2'
-              text={t(`${i18nPrefix}.addGroup`)}
-              onClick={handleAddGroup}
-            />
-          </div>)}
+                  ))}
+                </div>
+                <AddButton
+                  className="mt-2"
+                  text={t(`${i18nPrefix}.addGroup`)}
+                  onClick={handleAddGroup}
+                />
+              </div>
+            )}
       </div>
       <Split />
       <div className={cn('px-4 pt-4', isEnableGroup ? 'pb-4' : 'pb-2')}>
         <Field
           title={t(`${i18nPrefix}.aggregationGroup`)}
           tooltip={t(`${i18nPrefix}.aggregationGroupTip`)!}
-          operations={
+          operations={(
             <Switch
               defaultValue={isEnableGroup}
               onChange={handleGroupEnabledChange}
-              size='md'
+              size="md"
               disabled={readOnly}
             />
-          }
+          )}
         />
       </div>
       {isEnableGroup && (

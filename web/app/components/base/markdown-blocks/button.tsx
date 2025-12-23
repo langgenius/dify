@@ -9,22 +9,24 @@ const MarkdownButton = ({ node }: any) => {
   const link = node.properties.dataLink
   const size = node.properties.dataSize
 
-  return <Button
-    variant={variant}
-    size={size}
-    className={cn('!h-auto min-h-8 select-none whitespace-normal !px-3')}
-    onClick={() => {
-      if (link && isValidUrl(link)) {
-        window.open(link, '_blank')
-        return
-      }
-      if(!message)
-        return
-      onSend?.(message)
-    }}
-  >
-    <span className='text-[13px]'>{node.children[0]?.value || ''}</span>
-  </Button>
+  return (
+    <Button
+      variant={variant}
+      size={size}
+      className={cn('!h-auto min-h-8 select-none whitespace-normal !px-3')}
+      onClick={() => {
+        if (link && isValidUrl(link)) {
+          window.open(link, '_blank')
+          return
+        }
+        if (!message)
+          return
+        onSend?.(message)
+      }}
+    >
+      <span className="text-[13px]">{node.children[0]?.value || ''}</span>
+    </Button>
+  )
 }
 MarkdownButton.displayName = 'MarkdownButton'
 

@@ -35,17 +35,17 @@ const LogAnnotation: FC<Props> = ({
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-background-body'>
+      <div className="flex h-full items-center justify-center bg-background-body">
         <Loading />
       </div>
     )
   }
 
   return (
-    <div className='flex h-full flex-col px-6 pt-3'>
+    <div className="flex h-full flex-col px-6 pt-3">
       {appDetail.mode !== AppModeEnum.WORKFLOW && (
         <TabSlider
-          className='shrink-0'
+          className="shrink-0"
           value={pageType}
           onChange={(value) => {
             router.push(`/app/${appDetail.id}/${value === PageType.log ? 'logs' : 'annotations'}`)

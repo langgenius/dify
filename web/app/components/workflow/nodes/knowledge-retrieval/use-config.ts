@@ -97,13 +97,13 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     rerankModelList,
     rerankDefaultModel
       ? {
-        ...rerankDefaultModel,
-        provider: rerankDefaultModel.provider.provider,
-      }
+          ...rerankDefaultModel,
+          provider: rerankDefaultModel.provider.provider,
+        }
       : undefined,
   )
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       if (!draft.single_retrieval_config) {
         draft.single_retrieval_config = {
@@ -359,7 +359,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleMetadataModelChange = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.metadata_model_config = {
         provider: model.provider,

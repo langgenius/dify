@@ -108,22 +108,24 @@ const FilterCondition: FC<Props> = ({
           items={selectOptions}
           defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
           onSelect={item => handleChange('value')(item.value)}
-          className='!text-[13px]'
-          wrapperClassName='grow h-8'
-          placeholder='Select value'
+          className="!text-[13px]"
+          wrapperClassName="grow h-8"
+          placeholder="Select value"
         />
       )
     }
     else if (isBoolean) {
-      inputElement = (<BoolValue
-        value={condition.value as boolean}
-        onChange={handleChange('value')}
-      />)
+      inputElement = (
+        <BoolValue
+          value={condition.value as boolean}
+          onChange={handleChange('value')}
+        />
+      )
     }
     else if (supportVariableInput) {
       inputElement = (
         <Input
-          instanceId='filter-condition-input'
+          instanceId="filter-condition-input"
           className={cn(
             isFocus
               ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
@@ -139,7 +141,7 @@ const FilterCondition: FC<Props> = ({
           availableNodes={availableNodesWithParent}
           onFocusChange={setIsFocus}
           placeholder={!readOnly ? t('workflow.nodes.http.insertVarPlaceholder')! : ''}
-          placeholderClassName='!leading-[21px]'
+          placeholderClassName="!leading-[21px]"
         />
       )
     }
@@ -147,7 +149,7 @@ const FilterCondition: FC<Props> = ({
       inputElement = (
         <input
           type={((hasSubVariable && condition.key === 'size') || (!hasSubVariable && varType === VarType.number)) ? 'number' : 'text'}
-          className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
+          className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]"
           value={
             getConditionValueAsString(condition)
           }
@@ -167,9 +169,9 @@ const FilterCondition: FC<Props> = ({
           onChange={handleSubVariableChange}
         />
       )}
-      <div className='flex space-x-1'>
+      <div className="flex space-x-1">
         <ConditionOperator
-          className='h-8 bg-components-input-bg-normal'
+          className="h-8 bg-components-input-bg-normal"
           varType={expectedVarType ?? varType ?? VarType.string}
           value={condition.comparison_operator}
           onSelect={handleChange('comparison_operator')}

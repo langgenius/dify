@@ -42,7 +42,7 @@ describe('Item', () => {
       const label = 'Vector storage'
 
       // Act
-      const { container } = render(<Item label={label} tooltip='' />)
+      const { container } = render(<Item label={label} tooltip="" />)
 
       // Assert
       expect(screen.getByText(label)).toBeInTheDocument()

@@ -60,10 +60,10 @@ type Props = {
   onControlledStateChange?: (state: boolean) => void
   panelShowState?: boolean
   onPanelShowStateChange?: (state: boolean) => void
-  nodeOutputVars: NodeOutPutVar[],
-  availableNodes: Node[],
-  nodeId?: string,
-  canChooseMCPTool?: boolean,
+  nodeOutputVars: NodeOutPutVar[]
+  availableNodes: Node[]
+  nodeId?: string
+  canChooseMCPTool?: boolean
 }
 const ToolSelector: FC<Props> = ({
   value,
@@ -220,7 +220,7 @@ const ToolSelector: FC<Props> = ({
         onOpenChange={trigger ? onControlledStateChange : onShowChange}
       >
         <PortalToFollowElemTrigger
-          className='w-full'
+          className="w-full"
           onClick={() => {
             if (!currentProvider || !currentTool) return
             handleTriggerClick()
@@ -253,40 +253,40 @@ const ToolSelector: FC<Props> = ({
               installInfo={manifest?.latest_package_identifier}
               onInstall={() => handleInstall()}
               isError={(!currentProvider || !currentTool) && !inMarketPlace}
-              errorTip={
-                <div className='max-w-[240px] space-y-1 text-xs'>
-                  <h3 className='font-semibold text-text-primary'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledTitle') : t('plugin.detailPanel.toolSelector.unsupportedTitle')}</h3>
-                  <p className='tracking-tight text-text-secondary'>{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledContent') : t('plugin.detailPanel.toolSelector.unsupportedContent')}</p>
+              errorTip={(
+                <div className="max-w-[240px] space-y-1 text-xs">
+                  <h3 className="font-semibold text-text-primary">{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledTitle') : t('plugin.detailPanel.toolSelector.unsupportedTitle')}</h3>
+                  <p className="tracking-tight text-text-secondary">{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledContent') : t('plugin.detailPanel.toolSelector.unsupportedContent')}</p>
                   <p>
-                    <Link href={'/plugins'} className='tracking-tight text-text-accent'>{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
+                    <Link href="/plugins" className="tracking-tight text-text-accent">{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
                   </p>
                 </div>
-              }
+              )}
               canChooseMCPTool={canChooseMCPTool}
             />
           )}
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-10'>
+        <PortalToFollowElemContent className="z-10">
           <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
             <>
-              <div className='system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary'>{t(`plugin.detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`)}</div>
+              <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t(`plugin.detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`)}</div>
               {/* base form */}
-              <div className='flex flex-col gap-3 px-4 py-2'>
-                <div className='flex flex-col gap-1'>
-                  <div className='system-sm-semibold flex h-6 items-center justify-between text-text-secondary'>
+              <div className="flex flex-col gap-3 px-4 py-2">
+                <div className="flex flex-col gap-1">
+                  <div className="system-sm-semibold flex h-6 items-center justify-between text-text-secondary">
                     {t('plugin.detailPanel.toolSelector.toolLabel')}
-                    <ReadmeEntrance pluginDetail={currentProvider as any} showShortTip className='pb-0' />
+                    <ReadmeEntrance pluginDetail={currentProvider as any} showShortTip className="pb-0" />
                   </div>
                   <ToolPicker
-                    placement='bottom'
+                    placement="bottom"
                     offset={offset}
-                    trigger={
+                    trigger={(
                       <ToolTrigger
                         open={panelShowState || isShowChooseTool}
                         value={value}
                         provider={currentProvider}
                       />
-                    }
+                    )}
                     isShow={panelShowState || isShowChooseTool}
                     onShowChange={trigger ? onPanelShowStateChange as any : setIsShowChooseTool}
                     disabled={false}
@@ -298,10 +298,10 @@ const ToolSelector: FC<Props> = ({
                     canChooseMCPTool={canChooseMCPTool}
                   />
                 </div>
-                <div className='flex flex-col gap-1'>
-                  <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('plugin.detailPanel.toolSelector.descriptionLabel')}</div>
+                <div className="flex flex-col gap-1">
+                  <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('plugin.detailPanel.toolSelector.descriptionLabel')}</div>
                   <Textarea
-                    className='resize-none'
+                    className="resize-none"
                     placeholder={t('plugin.detailPanel.toolSelector.descriptionPlaceholder')}
                     value={value?.extra?.description || ''}
                     onChange={handleDescriptionChange}
@@ -312,8 +312,8 @@ const ToolSelector: FC<Props> = ({
               {/* authorization */}
               {currentProvider && currentProvider.type === CollectionType.builtIn && currentProvider.allow_delete && (
                 <>
-                  <Divider className='my-1 w-full' />
-                  <div className='px-4 py-2'>
+                  <Divider className="my-1 w-full" />
+                  <div className="px-4 py-2">
                     <PluginAuthInAgent
                       pluginPayload={{
                         provider: currentProvider.name,
@@ -330,12 +330,12 @@ const ToolSelector: FC<Props> = ({
               {/* tool settings */}
               {(currentToolSettings.length > 0 || currentToolParams.length > 0) && currentProvider?.is_team_authorization && (
                 <>
-                  <Divider className='my-1 w-full' />
+                  <Divider className="my-1 w-full" />
                   {/* tabs */}
                   {nodeId && showTabSlider && (
                     <TabSlider
-                      className='mt-1 shrink-0 px-4'
-                      itemClassName='py-3'
+                      className="mt-1 shrink-0 px-4"
+                      itemClassName="py-3"
                       noBorderBottom
                       smallItem
                       value={currType}
@@ -349,30 +349,30 @@ const ToolSelector: FC<Props> = ({
                     />
                   )}
                   {nodeId && showTabSlider && currType === 'params' && (
-                    <div className='px-4 py-2'>
-                      <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
-                      <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
+                    <div className="px-4 py-2">
+                      <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
+                      <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
                     </div>
                   )}
                   {/* user settings only */}
                   {userSettingsOnly && (
-                    <div className='p-4 pb-1'>
-                      <div className='system-sm-semibold-uppercase text-text-primary'>{t('plugin.detailPanel.toolSelector.settings')}</div>
+                    <div className="p-4 pb-1">
+                      <div className="system-sm-semibold-uppercase text-text-primary">{t('plugin.detailPanel.toolSelector.settings')}</div>
                     </div>
                   )}
                   {/* reasoning config only */}
                   {nodeId && reasoningConfigOnly && (
-                    <div className='mb-1 p-4 pb-1'>
-                      <div className='system-sm-semibold-uppercase text-text-primary'>{t('plugin.detailPanel.toolSelector.params')}</div>
-                      <div className='pb-1'>
-                        <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
-                        <div className='system-xs-regular text-text-tertiary'>{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
+                    <div className="mb-1 p-4 pb-1">
+                      <div className="system-sm-semibold-uppercase text-text-primary">{t('plugin.detailPanel.toolSelector.params')}</div>
+                      <div className="pb-1">
+                        <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
+                        <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
                       </div>
                     </div>
                   )}
                   {/* user settings form */}
                   {(currType === 'settings' || userSettingsOnly) && (
-                    <div className='px-4 py-2'>
+                    <div className="px-4 py-2">
                       <ToolForm
                         inPanel
                         readOnly={false}

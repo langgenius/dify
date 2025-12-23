@@ -39,7 +39,7 @@ const RuleDetail = ({
   }, [sourceData, t])
 
   return (
-    <div className='flex flex-col gap-1' data-testid='rule-detail'>
+    <div className="flex flex-col gap-1" data-testid="rule-detail">
       <FieldInfo
         label={t('datasetDocuments.embedding.mode')}
         displayedValue={getValue('mode')}
@@ -47,24 +47,24 @@ const RuleDetail = ({
       <FieldInfo
         label={t('datasetCreation.stepTwo.indexMode')}
         displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
-        valueIcon={
+        valueIcon={(
           <Image
-            className='size-4'
+            className="size-4"
             src={
               indexingType === IndexingType.ECONOMICAL
                 ? indexMethodIcon.economical
                 : indexMethodIcon.high_quality
             }
-            alt=''
+            alt=""
           />
-        }
+        )}
       />
       <FieldInfo
         label={t('datasetSettings.form.retrievalSetting.title')}
         displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
-        valueIcon={
+        valueIcon={(
           <Image
-            className='size-4'
+            className="size-4"
             src={
               retrievalMethod === RETRIEVE_METHOD.fullText
                 ? retrievalIcon.fullText
@@ -73,9 +73,9 @@ const RuleDetail = ({
                   ? retrievalIcon.hybrid
                   : retrievalIcon.vector
             }
-            alt=''
+            alt=""
           />
-        }
+        )}
       />
     </div>
   )

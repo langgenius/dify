@@ -42,7 +42,7 @@ const ConfigBtn: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={12}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
@@ -50,7 +50,7 @@ const ConfigBtn: FC<Props> = ({
           {children}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <ConfigPopup {...popupProps} />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

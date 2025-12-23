@@ -11,7 +11,7 @@ const Splash: FC<PropsWithChildren> = () => {
 
   if (isLoading || !isLoggedIn) {
     return (
-      <div className='fixed inset-0 z-[9999999] flex h-full items-center justify-center bg-background-body'>
+      <div className="fixed inset-0 z-[9999999] flex h-full items-center justify-center bg-background-body">
         <Loading />
       </div>
     )

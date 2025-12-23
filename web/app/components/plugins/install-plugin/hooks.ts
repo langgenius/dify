@@ -83,7 +83,7 @@ export const useGitHubUpload = () => {
     repoUrl: string,
     selectedVersion: string,
     selectedPackage: string,
-    onSuccess?: (GitHubPackage: { manifest: any; unique_identifier: string }) => void,
+    onSuccess?: (GitHubPackage: { manifest: any, unique_identifier: string }) => void,
   ) => {
     try {
       const response = await uploadGitHub(repoUrl, selectedVersion, selectedPackage)

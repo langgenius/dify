@@ -168,17 +168,17 @@ const AppInputsPanel = ({
 
   return (
     <div className={cn('flex max-h-[240px] flex-col rounded-b-2xl border-t border-divider-subtle pb-4')}>
-      {isLoading && <div className='pt-3'><Loading type='app' /></div>}
+      {isLoading && <div className="pt-3"><Loading type="app" /></div>}
       {!isLoading && (
-        <div className='system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary'>{t('app.appSelector.params')}</div>
+        <div className="system-sm-semibold mb-2 mt-3 flex h-6 shrink-0 items-center px-4 text-text-secondary">{t('app.appSelector.params')}</div>
       )}
       {!isLoading && !inputFormSchema.length && (
-        <div className='flex h-16 flex-col items-center justify-center'>
-          <div className='system-sm-regular text-text-tertiary'>{t('app.appSelector.noParams')}</div>
+        <div className="flex h-16 flex-col items-center justify-center">
+          <div className="system-sm-regular text-text-tertiary">{t('app.appSelector.noParams')}</div>
         </div>
       )}
       {!isLoading && !!inputFormSchema.length && (
-        <div className='grow overflow-y-auto'>
+        <div className="grow overflow-y-auto">
           <AppInputsForm
             inputs={value?.inputs || {}}
             inputsRef={inputsRef}

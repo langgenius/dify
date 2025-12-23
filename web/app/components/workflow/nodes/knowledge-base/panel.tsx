@@ -107,7 +107,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   return (
     <div>
       <Group
-        className='py-3'
+        className="py-3"
         withBorderBottom={!!data.chunk_structure}
       >
         <ChunkStructure
@@ -144,7 +144,7 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
               />
             </BoxGroupField>
             <BoxGroup>
-              <div className='space-y-3'>
+              <div className="space-y-3">
                 <IndexMethod
                   chunkStructure={data.chunk_structure}
                   indexMethod={data.indexing_technique}
@@ -163,8 +163,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
                     />
                   )
                 }
-                <div className='pt-1'>
-                  <Split className='h-[1px]' />
+                <div className="pt-1">
+                  <Split className="h-[1px]" />
                 </div>
                 <RetrievalSetting
                   indexMethod={data.indexing_technique}

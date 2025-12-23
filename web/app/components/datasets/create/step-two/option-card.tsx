@@ -20,25 +20,28 @@ type OptionCardHeaderProps = {
 
 export const OptionCardHeader: FC<OptionCardHeaderProps> = (props) => {
   const { icon, title, description, isActive, activeClassName, effectImg, disabled } = props
-  return <div className={cn('relative flex h-full overflow-hidden rounded-t-xl',
-    isActive && activeClassName,
-    !disabled && 'cursor-pointer')}>
-    <div className='relative flex size-14 items-center justify-center overflow-hidden'>
-      {isActive && effectImg && <Image src={effectImg} className='absolute left-0 top-0 h-full w-full' alt='' width={56} height={56} />}
-      <div className='p-1'>
-        <div className='flex size-8 justify-center rounded-lg border border-components-panel-border-subtle bg-background-default-dodge p-1.5 shadow-md'>
-          {icon}
+  return (
+    <div className={cn('relative flex h-full overflow-hidden rounded-t-xl',
+      isActive && activeClassName,
+      !disabled && 'cursor-pointer')}
+    >
+      <div className="relative flex size-14 items-center justify-center overflow-hidden">
+        {isActive && effectImg && <Image src={effectImg} className="absolute left-0 top-0 h-full w-full" alt="" width={56} height={56} />}
+        <div className="p-1">
+          <div className="flex size-8 justify-center rounded-lg border border-components-panel-border-subtle bg-background-default-dodge p-1.5 shadow-md">
+            {icon}
+          </div>
         </div>
       </div>
+      <TriangleArrow
+        className={cn('absolute -bottom-1.5 left-4 text-transparent', isActive && 'text-components-panel-bg')}
+      />
+      <div className="flex-1 space-y-0.5 py-3 pr-4">
+        <div className="system-md-semibold text-text-secondary">{title}</div>
+        <div className="system-xs-regular text-text-tertiary">{description}</div>
+      </div>
     </div>
-    <TriangleArrow
-      className={cn('absolute -bottom-1.5 left-4 text-transparent', isActive && 'text-components-panel-bg')}
-    />
-    <div className='flex-1 space-y-0.5 py-3 pr-4'>
-      <div className='system-md-semibold text-text-secondary'>{title}</div>
-      <div className='system-xs-regular text-text-tertiary'>{description}</div>
-    </div>
-  </div>
+  )
 }
 
 type OptionCardProps = {
@@ -90,13 +93,16 @@ export const OptionCard: FC<OptionCardProps> = (
         disabled={disabled}
       />
       {/** Body */}
-      {isActive && (children || actions) && <div className='rounded-b-xl bg-components-panel-bg px-4 py-3'>
-        {children}
-        {actions && <div className='mt-4 flex gap-2'>
-          {actions}
+      {isActive && (children || actions) && (
+        <div className="rounded-b-xl bg-components-panel-bg px-4 py-3">
+          {children}
+          {actions && (
+            <div className="mt-4 flex gap-2">
+              {actions}
+            </div>
+          )}
         </div>
-        }
-      </div>}
+      )}
     </div>
   )
 }

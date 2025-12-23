@@ -48,8 +48,8 @@ const FieldListContainer = ({
       className={cn(className)}
       list={list}
       setList={handleListSortChange}
-      handle='.handle'
-      ghostClass='opacity-50'
+      handle=".handle"
+      ghostClass="opacity-50"
       animation={150}
       disabled={readonly}
     >

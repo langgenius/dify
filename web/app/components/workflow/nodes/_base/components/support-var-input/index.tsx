@@ -46,20 +46,21 @@ const SupportVarInput: FC<Props> = ({
     <div
       className={
         cn(wrapClassName, 'flex h-full w-full')
-      } onClick={onFocus}
+      }
+      onClick={onFocus}
     >
       {(isFocus && !readonly && children)
         ? (
-          children
-        )
+            children
+          )
         : (
-          <div
-            className={cn(textClassName, 'h-full w-0 grow truncate whitespace-nowrap')}
-            title={value}
-          >
-            {renderSafeContent(value || '')}
-          </div>
-        )}
+            <div
+              className={cn(textClassName, 'h-full w-0 grow truncate whitespace-nowrap')}
+              title={value}
+            >
+              {renderSafeContent(value || '')}
+            </div>
+          )}
     </div>
   )
 }

@@ -21,16 +21,16 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
     <Field
       title={t('workflow.nodes.llm.reasoningFormat.title')}
       tooltip={t('workflow.nodes.llm.reasoningFormat.tooltip')}
-      operations={
+      operations={(
         // ON = separated, OFF = tagged
         <Switch
           defaultValue={value === 'separated'}
           onChange={enabled => onChange(enabled ? 'separated' : 'tagged')}
-          size='md'
+          size="md"
           disabled={readonly}
           key={value}
         />
-      }
+      )}
     >
       <div />
     </Field>

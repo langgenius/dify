@@ -19,19 +19,19 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         className,
       )}
     >
-      <div className='flex grow items-center'>
-        <div className='mr-1.5 flex h-4 w-4 items-center justify-center rounded-[5px] border border-dashed border-divider-regular'>
-          <CubeOutline className='h-3 w-3 text-text-quaternary' />
+      <div className="flex grow items-center">
+        <div className="mr-1.5 flex h-4 w-4 items-center justify-center rounded-[5px] border border-dashed border-divider-regular">
+          <CubeOutline className="h-3 w-3 text-text-quaternary" />
         </div>
         <div
-          className='truncate text-[13px] text-text-tertiary'
-          title='Configure model'
+          className="truncate text-[13px] text-text-tertiary"
+          title="Configure model"
         >
           {t('plugin.detailPanel.configureModel')}
         </div>
       </div>
-      <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
-        <RiEqualizer2Line className='h-3.5 w-3.5 text-text-tertiary' />
+      <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+        <RiEqualizer2Line className="h-3.5 w-3.5 text-text-tertiary" />
       </div>
     </div>
   )

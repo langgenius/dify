@@ -30,7 +30,7 @@ export const useUpdateAppPinStatus = () => {
   const client = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'updateAppPinStatus'],
-    mutationFn: ({ appId, isPinned }: { appId: string; isPinned: boolean }) => updatePinStatus(appId, isPinned),
+    mutationFn: ({ appId, isPinned }: { appId: string, isPinned: boolean }) => updatePinStatus(appId, isPinned),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: [NAME_SPACE, 'installedApps'] })
     },

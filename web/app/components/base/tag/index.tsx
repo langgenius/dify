@@ -35,7 +35,9 @@ export default function Tag({ children, color = 'green', className = '', bordere
         COLOR_MAP[color] ? `${COLOR_MAP[color].text} ${COLOR_MAP[color].bg}` : '',
         bordered ? 'border-[1px]' : '',
         hideBg ? 'bg-transparent' : '',
-        className)} >
+        className)
+    }
+    >
       {children}
     </div>
   )

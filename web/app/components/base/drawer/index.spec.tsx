@@ -56,7 +56,7 @@ vi.mock('@headlessui/react', () => ({
 
 // Mock XMarkIcon
 vi.mock('@heroicons/react/24/outline', () => ({
-  XMarkIcon: ({ className, onClick }: { className: string; onClick?: () => void }) => (
+  XMarkIcon: ({ className, onClick }: { className: string, onClick?: () => void }) => (
     <svg data-testid="close-icon" className={className} onClick={onClick} />
   ),
 }))

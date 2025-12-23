@@ -63,16 +63,16 @@ const ImageUploaderInRetrievalTesting = ({
     >
       {dragging && (
         <div
-          className='absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent'
+          className="absolute inset-0.5 z-10 flex items-center justify-center rounded-lg border-[1.5px] border-dashed border-components-dropzone-border-accent bg-components-dropzone-bg-accent"
         >
           <div>{t('datasetHitTesting.imageUploader.dropZoneTip')}</div>
-          <div ref={dragRef} className='absolute inset-0' />
+          <div ref={dragRef} className="absolute inset-0" />
         </div>
       )}
       {textArea}
       {
         showUploader && !!files.length && (
-          <div className='flex flex-wrap gap-1 bg-background-default px-4 py-2'>
+          <div className="flex flex-wrap gap-1 bg-background-default px-4 py-2">
             {
               files.map(file => (
                 <ImageItem
@@ -93,7 +93,8 @@ const ImageUploaderInRetrievalTesting = ({
           'flex',
           showUploader ? 'justify-between' : 'justify-end',
           actionAreaClassName,
-        )}>
+        )}
+      >
         {showUploader && <ImageInput />}
         {actionButton}
       </div>

@@ -36,7 +36,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
   const language = useLanguage()
   const index = multipleModelConfigs.findIndex(v => v.id === modelAndParameter.id)
 
-  const handleSelectModel = ({ modelId, provider }: { modelId: string; provider: string }) => {
+  const handleSelectModel = ({ modelId, provider }: { modelId: string, provider: string }) => {
     const newModelConfigs = [...multipleModelConfigs]
     newModelConfigs[index] = {
       ...newModelConfigs[index],
@@ -79,7 +79,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           {
             currentProvider && (
               <ModelIcon
-                className='mr-1 !h-4 !w-4'
+                className="mr-1 !h-4 !w-4"
                 provider={currentProvider}
                 modelName={currentModel?.model}
               />
@@ -87,22 +87,22 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           }
           {
             !currentProvider && (
-              <div className='mr-1 flex h-4 w-4 items-center justify-center rounded'>
-                <CubeOutline className='h-4 w-4 text-text-accent' />
+              <div className="mr-1 flex h-4 w-4 items-center justify-center rounded">
+                <CubeOutline className="h-4 w-4 text-text-accent" />
               </div>
             )
           }
           {
             currentModel && (
               <ModelName
-                className='mr-0.5 text-text-secondary'
+                className="mr-0.5 text-text-secondary"
                 modelItem={currentModel}
               />
             )
           }
           {
             !currentModel && (
-              <div className='mr-0.5 truncate text-[13px] font-medium text-text-accent'>
+              <div className="mr-0.5 truncate text-[13px] font-medium text-text-accent">
                 {t('common.modelProvider.selectModel')}
               </div>
             )
@@ -111,7 +111,7 @@ const ModelParameterTrigger: FC<ModelParameterTriggerProps> = ({
           {
             currentModel && currentModel.status !== ModelStatusEnum.active && (
               <Tooltip popupContent={MODEL_STATUS_TEXT[currentModel.status][language]}>
-                <AlertTriangle className='h-4 w-4 text-[#F79009]' />
+                <AlertTriangle className="h-4 w-4 text-[#F79009]" />
               </Tooltip>
             )
           }

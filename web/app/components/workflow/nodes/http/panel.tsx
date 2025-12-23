@@ -55,34 +55,34 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     return null
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.api`)}
           required
-          operations={
-            <div className='flex'>
+          operations={(
+            <div className="flex">
               <div
                 onClick={showAuthorization}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <Settings01 className='h-3 w-3 text-text-tertiary' />}
-                <div className='text-xs font-medium text-text-tertiary'>
+                {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
+                <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.authorization.authorization`)}
-                  <span className='ml-1 text-text-secondary'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
+                  <span className="ml-1 text-text-secondary">{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
                 </div>
               </div>
               <div
                 onClick={showCurlPanel}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <FileArrow01 className='h-3 w-3 text-text-tertiary' />}
-                <div className='text-xs font-medium text-text-tertiary'>
+                {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
+                <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.curl.title`)}
                 </div>
               </div>
             </div>
-          }
+          )}
         >
           <ApiInput
             nodeId={id}
@@ -129,14 +129,15 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.verifySSL.title`)}
           tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`)}
-          operations={
+          operations={(
             <Switch
               defaultValue={!!inputs.ssl_verify}
               onChange={handleSSLVerifyChange}
-              size='md'
+              size="md"
               disabled={readOnly}
             />
-          }>
+          )}
+        >
         </Field>
       </div>
       <Split />
@@ -156,27 +157,27 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         />
       )}
       <Split />
-      <div className=''>
+      <div className="">
         <OutputVars>
           <>
             <VarItem
-              name='body'
-              type='string'
+              name="body"
+              type="string"
               description={t(`${i18nPrefix}.outputVars.body`)}
             />
             <VarItem
-              name='status_code'
-              type='number'
+              name="status_code"
+              type="number"
               description={t(`${i18nPrefix}.outputVars.statusCode`)}
             />
             <VarItem
-              name='headers'
-              type='object'
+              name="headers"
+              type="object"
               description={t(`${i18nPrefix}.outputVars.headers`)}
             />
             <VarItem
-              name='files'
-              type='Array[File]'
+              name="files"
+              type="Array[File]"
               description={t(`${i18nPrefix}.outputVars.files`)}
             />
           </>

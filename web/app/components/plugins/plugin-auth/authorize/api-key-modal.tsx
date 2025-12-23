@@ -128,7 +128,7 @@ const ApiKeyModal = ({
 
   return (
     <Modal
-      size='md'
+      size="md"
       title={t('plugin.auth.useApiAuth')}
       subTitle={t('plugin.auth.useApiAuthDesc')}
       onClose={onClose}
@@ -142,14 +142,14 @@ const ApiKeyModal = ({
       onExtraButtonClick={onRemove}
       disabled={disabled || isLoading || doingAction}
       clickOutsideNotClose={true}
-      wrapperClassName='!z-[101]'
+      wrapperClassName="!z-[101]"
     >
       {pluginPayload.detail && (
         <ReadmeEntrance pluginDetail={pluginPayload.detail} showType={ReadmeShowType.modal} />
       )}
       {
         isLoading && (
-          <div className='flex h-40 items-center justify-center'>
+          <div className="flex h-40 items-center justify-center">
             <Loading />
           </div>
         )

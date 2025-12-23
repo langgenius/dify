@@ -6,7 +6,7 @@ import PlanUpgradeModal from './index'
 const mockSetShowPricingModal = vi.fn()
 
 vi.mock('@/app/components/base/modal', () => {
-  const MockModal = ({ isShow, children }: { isShow: boolean; children: React.ReactNode }) => (
+  const MockModal = ({ isShow, children }: { isShow: boolean, children: React.ReactNode }) => (
     isShow ? <div data-testid="plan-upgrade-modal">{children}</div> : null
   )
   return {

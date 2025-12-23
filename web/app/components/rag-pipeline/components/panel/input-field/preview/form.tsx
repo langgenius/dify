@@ -19,13 +19,13 @@ const Form = ({
 
   return (
     <form
-      className='w-full'
+      className="w-full"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
       }}
     >
-      <div className='flex flex-col gap-y-3 px-4 py-3'>
+      <div className="flex flex-col gap-y-3 px-4 py-3">
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

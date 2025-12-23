@@ -127,8 +127,8 @@ const AppOperations = ({
           <Button
             key={operation.id}
             data-targetid={operation.id}
-            size={'small'}
-            variant={'secondary'}
+            size="small"
+            variant="secondary"
             className="gap-[1px]"
             tabIndex={-1}
           >
@@ -140,8 +140,8 @@ const AppOperations = ({
         ))}
         <Button
           id="more-measure"
-          size={'small'}
-          variant={'secondary'}
+          size="small"
+          variant="secondary"
           className="gap-[1px]"
           tabIndex={-1}
         >
@@ -156,8 +156,8 @@ const AppOperations = ({
           <Button
             key={operation.id}
             data-targetid={operation.id}
-            size={'small'}
-            variant={'secondary'}
+            size="small"
+            variant="secondary"
             className="gap-[1px]"
             onClick={operation.onClick}
           >
@@ -176,8 +176,8 @@ const AppOperations = ({
           >
             <PortalToFollowElemTrigger onClick={handleTriggerMore}>
               <Button
-                size={'small'}
-                variant={'secondary'}
+                size="small"
+                variant="secondary"
                 className="gap-[1px]"
               >
                 <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
@@ -190,18 +190,18 @@ const AppOperations = ({
               <div className="flex min-w-[264px] flex-col rounded-[12px] border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
                 {moreOperations.map(item => item.type === 'divider'
                   ? (
-                    <div key={item.id} className="my-1 h-px bg-divider-subtle" />
-                  )
+                      <div key={item.id} className="my-1 h-px bg-divider-subtle" />
+                    )
                   : (
-                    <div
-                      key={item.id}
-                      className="flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover"
-                      onClick={item.onClick}
-                    >
-                      {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
-                      <span className="system-md-regular text-text-secondary">{item.title}</span>
-                    </div>
-                  ))}
+                      <div
+                        key={item.id}
+                        className="flex h-8 cursor-pointer items-center gap-x-1 rounded-lg p-1.5 hover:bg-state-base-hover"
+                        onClick={item.onClick}
+                      >
+                        {cloneElement(item.icon, { className: 'h-4 w-4 text-text-tertiary' })}
+                        <span className="system-md-regular text-text-secondary">{item.title}</span>
+                      </div>
+                    ))}
               </div>
             </PortalToFollowElemContent>
           </PortalToFollowElem>

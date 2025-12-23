@@ -56,26 +56,26 @@ const ChunkDetailModal = ({
       onClose={onHide}
       className={cn(isParentChildRetrieval ? '!min-w-[1200px]' : '!min-w-[800px]')}
     >
-      <div className='mt-4 flex'>
+      <div className="mt-4 flex">
         <div className={cn('flex-1', isParentChildRetrieval && 'pr-6')}>
           {/* Meta info */}
-          <div className='flex items-center justify-between'>
-            <div className='flex grow items-center space-x-2'>
+          <div className="flex items-center justify-between">
+            <div className="flex grow items-center space-x-2">
               <SegmentIndexTag
                 labelPrefix={labelPrefix}
                 positionId={position}
                 className={cn('w-fit group-hover:opacity-100')}
               />
               <Dot />
-              <div className='flex grow items-center space-x-1'>
-                <FileIcon type={extension} size='sm' />
-                <span className='w-0 grow truncate text-[13px] font-normal text-text-secondary'>{document.name}</span>
+              <div className="flex grow items-center space-x-1">
+                <FileIcon type={extension} size="sm" />
+                <span className="w-0 grow truncate text-[13px] font-normal text-text-secondary">{document.name}</span>
               </div>
             </div>
             <Score value={score} />
           </div>
           {/* Content */}
-          <div className='relative'>
+          <div className="relative">
             {!answer && (
               <Markdown
                 className={cn('!mt-2 !text-text-secondary', heighClassName)}
@@ -84,15 +84,15 @@ const ChunkDetailModal = ({
               />
             )}
             {answer && (
-              <div className='break-all'>
-                <div className='flex gap-x-1'>
-                  <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
+              <div className="break-all">
+                <div className="flex gap-x-1">
+                  <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">Q</div>
                   <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
                     {content}
                   </div>
                 </div>
-                <div className='flex gap-x-1'>
-                  <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
+                <div className="flex gap-x-1">
+                  <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">A</div>
                   <div className={cn('body-md-regular line-clamp-20 text-text-secondary')}>
                     {answer}
                   </div>
@@ -100,17 +100,17 @@ const ChunkDetailModal = ({
               </div>
             )}
             {/* Mask */}
-            <Mask className='absolute inset-x-0 bottom-0' />
+            <Mask className="absolute inset-x-0 bottom-0" />
           </div>
           {(showImages || showKeywords) && (
-            <div className='flex flex-col gap-y-3 pt-3'>
+            <div className="flex flex-col gap-y-3 pt-3">
               {showImages && (
-                <ImageList images={images} size='md' className='py-1' />
+                <ImageList images={images} size="md" className="py-1" />
               )}
               {showKeywords && (
-                <div className='flex flex-col gap-y-1'>
-                  <div className='text-xs font-medium uppercase text-text-tertiary'>{t(`${i18nPrefix}.keyword`)}</div>
-                  <div className='flex flex-wrap gap-x-2'>
+                <div className="flex flex-col gap-y-1">
+                  <div className="text-xs font-medium uppercase text-text-tertiary">{t(`${i18nPrefix}.keyword`)}</div>
+                  <div className="flex flex-wrap gap-x-2">
                     {keywords.map(keyword => (
                       <Tag key={keyword} text={keyword} />
                     ))}
@@ -122,8 +122,8 @@ const ChunkDetailModal = ({
         </div>
 
         {isParentChildRetrieval && (
-          <div className='flex-1 pb-6 pl-6'>
-            <div className='system-xs-semibold-uppercase text-text-secondary'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
+          <div className="flex-1 pb-6 pl-6">
+            <div className="system-xs-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             <div className={cn('mt-1 space-y-2', heighClassName)}>
               {child_chunks.map(item => (
                 <ChildChunksItem key={item.id} payload={item} isShowAll />

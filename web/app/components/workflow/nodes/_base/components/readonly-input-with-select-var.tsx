@@ -36,22 +36,24 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
     const html: React.JSX.Element[] = strWithVarPlaceholder.split(VAR_PLACEHOLDER).map((str, index) => {
       if (!vars[index])
-        return <span className='relative top-[-3px] leading-[16px]' key={index}>{str}</span>
+        return <span className="relative top-[-3px] leading-[16px]" key={index}>{str}</span>
 
       const value = vars[index].split('.')
       const isSystem = isSystemVar(value)
       const node = (isSystem ? startNode : getNodeInfoById(availableNodes, value[0]))?.data
       const isShowAPart = value.length > 2
 
-      return (<span key={index}>
-        <span className='relative top-[-3px] leading-[16px]'>{str}</span>
-        <VariableLabelInText
-          nodeTitle={node?.title}
-          nodeType={node?.type}
-          notShowFullPath={isShowAPart}
-          variables={value}
-        />
-      </span>)
+      return (
+        <span key={index}>
+          <span className="relative top-[-3px] leading-[16px]">{str}</span>
+          <VariableLabelInText
+            nodeTitle={node?.title}
+            nodeType={node?.type}
+            notShowFullPath={isShowAPart}
+            variables={value}
+          />
+        </span>
+      )
     })
     return html
   })()

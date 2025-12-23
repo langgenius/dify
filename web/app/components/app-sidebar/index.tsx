@@ -75,7 +75,7 @@ const AppDetailNav = ({
 
   if (inWorkflowCanvas && hideHeader) {
     return (
-      <div className='flex w-0 shrink-0'>
+      <div className="flex w-0 shrink-0">
         <AppSidebarDropdown navigation={navigation} />
       </div>
     )
@@ -83,7 +83,7 @@ const AppDetailNav = ({
 
   if (isPipelineCanvas && hideHeader) {
     return (
-      <div className='flex w-0 shrink-0'>
+      <div className="flex w-0 shrink-0">
         <DatasetSidebarDropdown navigation={navigation} />
       </div>
     )
@@ -110,9 +110,9 @@ const AppDetailNav = ({
           <DatasetInfo expand={expand} />
         )}
       </div>
-      <div className='relative px-4 py-2'>
+      <div className="relative px-4 py-2">
         <Divider
-          type='horizontal'
+          type="horizontal"
           bgStyle={expand ? 'gradient' : 'solid'}
           className={cn(
             'my-0 h-px',
@@ -123,7 +123,7 @@ const AppDetailNav = ({
         />
         {!isMobile && isHoveringSidebar && (
           <ToggleButton
-            className='absolute -right-3 top-[-3.5px] z-20'
+            className="absolute -right-3 top-[-3.5px] z-20"
             expand={expand}
             handleToggle={handleToggle}
           />

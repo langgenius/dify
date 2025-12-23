@@ -40,7 +40,7 @@ const TopKItem: FC<Props> = ({
   return (
     <ParamItem
       className={className}
-      id='top_k'
+      id="top_k"
       name={t('appDebug.datasetConfig.top_k')}
       tip={t('appDebug.datasetConfig.top_kTip') as string}
       {...VALUE_LIMIT}

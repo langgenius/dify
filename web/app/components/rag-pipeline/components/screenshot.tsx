@@ -13,8 +13,10 @@ const PipelineScreenShot = () => {
       <source media="(resolution: 3x)" srcSet={`${basePath}/screenshots/${theme}/Pipeline@3x.png`} />
       <Image
         src={`${basePath}/screenshots/${theme}/Pipeline.png`}
-        alt='Pipeline Screenshot'
-        width={692} height={456} />
+        alt="Pipeline Screenshot"
+        width={692}
+        height={456}
+      />
     </picture>
   )
 }

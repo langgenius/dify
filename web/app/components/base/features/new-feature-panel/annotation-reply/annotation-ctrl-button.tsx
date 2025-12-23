@@ -60,7 +60,7 @@ const AnnotationCtrlButton: FC<Props> = ({
           popupContent={t('appDebug.feature.annotation.edit')}
         >
           <ActionButton onClick={onEdit}>
-            <RiEditLine className='h-4 w-4' />
+            <RiEditLine className="h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}
@@ -69,7 +69,7 @@ const AnnotationCtrlButton: FC<Props> = ({
           popupContent={t('appDebug.feature.annotation.add')}
         >
           <ActionButton onClick={handleAdd}>
-            <RiFileEditLine className='h-4 w-4' />
+            <RiFileEditLine className="h-4 w-4" />
           </ActionButton>
         </Tooltip>
       )}

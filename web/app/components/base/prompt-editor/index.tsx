@@ -179,7 +179,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className={cn('relative', wrapperClassName)}>
         <RichTextPlugin
-          contentEditable={
+          contentEditable={(
             <ContentEditable
               className={cn(
                 'text-text-secondary outline-none',
@@ -188,18 +188,18 @@ const PromptEditor: FC<PromptEditorProps> = ({
               )}
               style={style || {}}
             />
-          }
-          placeholder={
+          )}
+          placeholder={(
             <Placeholder
               value={placeholder}
               className={cn('truncate', placeholderClassName)}
               compact={compact}
             />
-          }
+          )}
           ErrorBoundary={LexicalErrorBoundary}
         />
         <ComponentPickerBlock
-          triggerString='/'
+          triggerString="/"
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}
@@ -212,7 +212,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
-          triggerString='{'
+          triggerString="{"
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}

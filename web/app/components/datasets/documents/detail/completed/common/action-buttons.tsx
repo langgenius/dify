@@ -47,36 +47,37 @@ const ActionButtons: FC<IActionButtonsProps> = ({
   }, [docForm, parentMode])
 
   return (
-    <div className='flex items-center gap-x-2'>
+    <div className="flex items-center gap-x-2">
       <Button
         onClick={handleCancel}
       >
-        <div className='flex items-center gap-x-1'>
-          <span className='system-sm-medium text-components-button-secondary-text'>{t('common.operation.cancel')}</span>
-          <span className='system-kbd rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-tertiary'>ESC</span>
+        <div className="flex items-center gap-x-1">
+          <span className="system-sm-medium text-components-button-secondary-text">{t('common.operation.cancel')}</span>
+          <span className="system-kbd rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-tertiary">ESC</span>
         </div>
       </Button>
       {(isParentChildParagraphMode && actionType === 'edit' && !isChildChunk && showRegenerationButton)
-        ? <Button
-          onClick={handleRegeneration}
-          disabled={loading}
-        >
-          <span className='system-sm-medium text-components-button-secondary-text'>
-            {t('common.operation.saveAndRegenerate')}
-          </span>
-        </Button>
-        : null
-      }
+        ? (
+            <Button
+              onClick={handleRegeneration}
+              disabled={loading}
+            >
+              <span className="system-sm-medium text-components-button-secondary-text">
+                {t('common.operation.saveAndRegenerate')}
+              </span>
+            </Button>
+          )
+        : null}
       <Button
-        variant='primary'
+        variant="primary"
         onClick={handleSave}
         disabled={loading}
       >
-        <div className='flex items-center gap-x-1'>
-          <span className='text-components-button-primary-text'>{t('common.operation.save')}</span>
-          <div className='flex items-center gap-x-0.5'>
-            <span className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white capitalize text-text-primary-on-surface'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-            <span className='system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface'>S</span>
+        <div className="flex items-center gap-x-1">
+          <span className="text-components-button-primary-text">{t('common.operation.save')}</span>
+          <div className="flex items-center gap-x-0.5">
+            <span className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white capitalize text-text-primary-on-surface">{getKeyboardKeyNameBySystem('ctrl')}</span>
+            <span className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">S</span>
           </div>
         </div>
       </Button>

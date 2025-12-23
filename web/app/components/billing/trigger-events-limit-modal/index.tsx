@@ -35,7 +35,7 @@ const TriggerEventsLimitModal: FC<Props> = ({
       description={t('billing.triggerLimitModal.description')}
       extraInfo={(
         <UsageInfo
-          className='mt-4 w-full rounded-[12px] bg-components-panel-on-panel-item-bg'
+          className="mt-4 w-full rounded-[12px] bg-components-panel-on-panel-item-bg"
           Icon={TriggerAll}
           name={t('billing.triggerLimitModal.usageTitle')}
           usage={usage}

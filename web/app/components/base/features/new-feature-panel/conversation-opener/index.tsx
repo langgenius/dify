@@ -80,11 +80,11 @@ const ConversationOpener = ({
 
   return (
     <FeatureCard
-      icon={
-        <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs'>
-          <LoveMessage className='h-4 w-4 text-text-primary-on-surface' />
+      icon={(
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-light-blue-light-500 p-1 shadow-xs">
+          <LoveMessage className="h-4 w-4 text-text-primary-on-surface" />
         </div>
-      }
+      )}
       title={t('appDebug.feature.conversationOpener.title')}
       value={!!opening?.enabled}
       onChange={state => handleChange(FeatureEnum.opening, state)}
@@ -94,18 +94,18 @@ const ConversationOpener = ({
     >
       <>
         {!opening?.enabled && (
-          <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>{t('appDebug.feature.conversationOpener.description')}</div>
+          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('appDebug.feature.conversationOpener.description')}</div>
         )}
         {!!opening?.enabled && (
           <>
             {!isHovering && (
-              <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>
+              <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">
                 {opening.opening_statement || t('appDebug.openingStatement.placeholder')}
               </div>
             )}
             {isHovering && (
-              <Button className='w-full' onClick={handleOpenOpeningModal} disabled={disabled}>
-                <RiEditLine className='mr-1 h-4 w-4' />
+              <Button className="w-full" onClick={handleOpenOpeningModal} disabled={disabled}>
+                <RiEditLine className="mr-1 h-4 w-4" />
                 {t('appDebug.openingStatement.writeOpener')}
               </Button>
             )}

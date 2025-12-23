@@ -81,18 +81,18 @@ const EndpointModal: FC<Props> = ({
       panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
       <>
-        <div className='p-4 pb-2'>
-          <div className='flex items-center justify-between'>
-            <div className='system-xl-semibold text-text-primary'>{t('plugin.detailPanel.endpointModalTitle')}</div>
+        <div className="p-4 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="system-xl-semibold text-text-primary">{t('plugin.detailPanel.endpointModalTitle')}</div>
             <ActionButton onClick={onCancel}>
-              <RiCloseLine className='h-4 w-4' />
+              <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
-          <div className='system-xs-regular mt-0.5 text-text-tertiary'>{t('plugin.detailPanel.endpointModalDesc')}</div>
-          <ReadmeEntrance pluginDetail={pluginDetail} className='px-0 pt-3' />
+          <div className="system-xs-regular mt-0.5 text-text-tertiary">{t('plugin.detailPanel.endpointModalDesc')}</div>
+          <ReadmeEntrance pluginDetail={pluginDetail} className="px-0 pt-3" />
         </div>
-        <div className='grow overflow-y-auto'>
-          <div className='px-4 py-2'>
+        <div className="grow overflow-y-auto">
+          <div className="px-4 py-2">
             <Form
               value={tempCredential}
               onChange={(v) => {
@@ -102,23 +102,26 @@ const EndpointModal: FC<Props> = ({
               isEditMode={true}
               showOnVariableMap={{}}
               validating={false}
-              inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
+              inputClassName="bg-components-input-bg-normal hover:bg-components-input-bg-hover"
               fieldMoreInfo={item => item.url
-                ? (<a
-                  href={item.url}
-                  target='_blank' rel='noopener noreferrer'
-                  className='body-xs-regular inline-flex items-center text-text-accent-secondary'
-                >
-                  {t('tools.howToGet')}
-                  <RiArrowRightUpLine className='ml-1 h-3 w-3' />
-                </a>)
+                ? (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="body-xs-regular inline-flex items-center text-text-accent-secondary"
+                    >
+                      {t('tools.howToGet')}
+                      <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+                    </a>
+                  )
                 : null}
             />
           </div>
-          <div className={cn('flex justify-end p-4 pt-0')} >
-            <div className='flex gap-2'>
+          <div className={cn('flex justify-end p-4 pt-0')}>
+            <div className="flex gap-2">
               <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+              <Button variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
             </div>
           </div>
         </div>

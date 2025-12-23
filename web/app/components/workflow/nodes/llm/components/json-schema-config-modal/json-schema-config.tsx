@@ -199,31 +199,31 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [currentTab, jsonSchema, json, onSave, onClose, advancedEditing, isAddingNewField, t])
 
   return (
-    <div className='flex h-full flex-col'>
+    <div className="flex h-full flex-col">
       {/* Header */}
-      <div className='relative flex p-6 pb-3 pr-14'>
-        <div className='title-2xl-semi-bold grow truncate text-text-primary'>
+      <div className="relative flex p-6 pb-3 pr-14">
+        <div className="title-2xl-semi-bold grow truncate text-text-primary">
           {t('workflow.nodes.llm.jsonSchema.title')}
         </div>
-        <div className='absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5' onClick={onClose}>
-          <RiCloseLine className='h-[18px] w-[18px] text-text-tertiary' />
+        <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
+          <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
         </div>
       </div>
       {/* Content */}
-      <div className='flex items-center justify-between px-6 py-2'>
+      <div className="flex items-center justify-between px-6 py-2">
         {/* Tab */}
         <SegmentedControl<SchemaView>
           options={VIEW_TABS}
           value={currentTab}
           onChange={handleTabChange}
         />
-        <div className='flex items-center gap-x-0.5'>
+        <div className="flex items-center gap-x-0.5">
           {/* JSON Schema Generator */}
           <JsonSchemaGenerator
             crossAxisOffset={btnWidth}
             onApply={handleApplySchema}
           />
-          <Divider type='vertical' className='h-3' />
+          <Divider type="vertical" className="h-3" />
           {/* JSON Schema Importer */}
           <JsonImporter
             updateBtnWidth={updateBtnWidth}
@@ -231,7 +231,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           />
         </div>
       </div>
-      <div className='flex grow flex-col gap-y-1 overflow-hidden px-6'>
+      <div className="flex grow flex-col gap-y-1 overflow-hidden px-6">
         {currentTab === SchemaView.VisualEditor && (
           <VisualEditor
             schema={jsonSchema}
@@ -248,28 +248,28 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
         {validationError && <ErrorMessage message={validationError} />}
       </div>
       {/* Footer */}
-      <div className='flex items-center gap-x-2 p-6 pt-5'>
+      <div className="flex items-center gap-x-2 p-6 pt-5">
         <a
-          className='flex grow items-center gap-x-1 text-text-accent'
+          className="flex grow items-center gap-x-1 text-text-accent"
           href={docLink('/guides/workflow/structured-outputs')}
-          target='_blank'
-          rel='noopener noreferrer'
+          target="_blank"
+          rel="noopener noreferrer"
         >
-          <span className='system-xs-regular'>{t('workflow.nodes.llm.jsonSchema.doc')}</span>
-          <RiExternalLinkLine className='h-3 w-3' />
+          <span className="system-xs-regular">{t('workflow.nodes.llm.jsonSchema.doc')}</span>
+          <RiExternalLinkLine className="h-3 w-3" />
         </a>
-        <div className='flex items-center gap-x-3'>
-          <div className='flex items-center gap-x-2'>
-            <Button variant='secondary' onClick={handleResetDefaults}>
+        <div className="flex items-center gap-x-3">
+          <div className="flex items-center gap-x-2">
+            <Button variant="secondary" onClick={handleResetDefaults}>
               {t('workflow.nodes.llm.jsonSchema.resetDefaults')}
             </Button>
-            <Divider type='vertical' className='ml-1 mr-0 h-4' />
+            <Divider type="vertical" className="ml-1 mr-0 h-4" />
           </div>
-          <div className='flex items-center gap-x-2'>
-            <Button variant='secondary' onClick={handleCancel}>
+          <div className="flex items-center gap-x-2">
+            <Button variant="secondary" onClick={handleCancel}>
               {t('common.operation.cancel')}
             </Button>
-            <Button variant='primary' onClick={handleSave}>
+            <Button variant="primary" onClick={handleSave}>
               {t('common.operation.save')}
             </Button>
           </div>

@@ -10,8 +10,8 @@ import type { NodeTracing } from '@/types/workflow'
 import formatTracing from '@/app/components/workflow/run/utils/format-log'
 
 type Params = {
-  id: string,
-  payload: AgentNodeType,
+  id: string
+  payload: AgentNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]

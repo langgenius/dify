@@ -32,9 +32,9 @@ export type BeforeRunFormProps = {
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
-  if(type === InputVarType.checkbox)
+  if (type === InputVarType.checkbox)
     return !!value
-  if(value === undefined || value === null)
+  if (value === undefined || value === null)
     return value
   if (type === InputVarType.number)
     return Number.parseFloat(value)
@@ -138,14 +138,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   const hasRun = useRef(false)
   useEffect(() => {
     // React 18 run twice in dev mode
-    if(hasRun.current)
+    if (hasRun.current)
       return
     hasRun.current = true
-    if(filteredExistVarForms.length === 0)
+    if (filteredExistVarForms.length === 0)
       onRun({})
   }, [filteredExistVarForms, onRun])
 
-  if(filteredExistVarForms.length === 0)
+  if (filteredExistVarForms.length === 0)
     return null
 
   return (
@@ -153,8 +153,8 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       nodeName={nodeName}
       onHide={onHide}
     >
-      <div className='h-0 grow overflow-y-auto pb-4'>
-        <div className='mt-3 space-y-4 px-4'>
+      <div className="h-0 grow overflow-y-auto pb-4">
+        <div className="mt-3 space-y-4 px-4">
           {filteredExistVarForms.map((form, index) => (
             <div key={index}>
               <Form
@@ -166,8 +166,8 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
             </div>
           ))}
         </div>
-        <div className='mt-4 flex justify-between space-x-2 px-4' >
-          <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRun}>
+        <div className="mt-4 flex justify-between space-x-2 px-4">
+          <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRun}>
             <div>{t(`${i18nPrefix}.startRun`)}</div>
           </Button>
         </div>

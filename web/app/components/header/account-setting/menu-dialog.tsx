@@ -45,15 +45,16 @@ const MenuDialog = ({
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',
                 className,
-              )}>
-                <div className='absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg' />
+              )}
+              >
+                <div className="absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg" />
                 {children}
               </DialogPanel>
             </TransitionChild>
           </div>
         </div>
       </Dialog>
-    </Transition >
+    </Transition>
   )
 }
 

@@ -184,36 +184,38 @@ const ValueContent = ({
   return (
     <div
       ref={contentContainerRef}
-      className='flex h-full flex-col'
+      className="flex h-full flex-col"
     >
       <div className={cn('relative grow')} style={{ height: `${editorHeight}px` }}>
         {showTextEditor && (
           <>
-            {isTruncated && <LargeDataAlert className='absolute left-3 right-3 top-1' />}
+            {isTruncated && <LargeDataAlert className="absolute left-3 right-3 top-1" />}
             {
-              currentVar.value_type === 'string' ? (
-                <DisplayContent
-                  previewType={PreviewType.Markdown}
-                  varType={currentVar.value_type}
-                  mdString={value as any}
-                  readonly={textEditorDisabled}
-                  handleTextChange={handleTextChange}
-                  className={cn(isTruncated && 'pt-[36px]')}
-                />
-              ) : (
-                <Textarea
-                  readOnly={textEditorDisabled}
-                  disabled={textEditorDisabled || isTruncated}
-                  className={cn('h-full', isTruncated && 'pt-[48px]')}
-                  value={value as any}
-                  onChange={e => handleTextChange(e.target.value)}
-                />
-              )
+              currentVar.value_type === 'string'
+                ? (
+                    <DisplayContent
+                      previewType={PreviewType.Markdown}
+                      varType={currentVar.value_type}
+                      mdString={value as any}
+                      readonly={textEditorDisabled}
+                      handleTextChange={handleTextChange}
+                      className={cn(isTruncated && 'pt-[36px]')}
+                    />
+                  )
+                : (
+                    <Textarea
+                      readOnly={textEditorDisabled}
+                      disabled={textEditorDisabled || isTruncated}
+                      className={cn('h-full', isTruncated && 'pt-[48px]')}
+                      value={value as any}
+                      onChange={e => handleTextChange(e.target.value)}
+                    />
+                  )
             }
           </>
         )}
         {showBoolEditor && (
-          <div className='w-[295px]'>
+          <div className="w-[295px]">
             <BoolValue
               value={currentVar.value as boolean}
               onChange={(newValue) => {
@@ -225,7 +227,7 @@ const ValueContent = ({
         )}
         {
           showBoolArrayEditor && (
-            <div className='w-[295px] space-y-1'>
+            <div className="w-[295px] space-y-1">
               {currentVar.value.map((v: boolean, i: number) => (
                 <BoolValue
                   key={i}
@@ -244,28 +246,28 @@ const ValueContent = ({
         {showJSONEditor && (
           hasChunks
             ? (
-              <DisplayContent
-                previewType={PreviewType.Chunks}
-                varType={currentVar.value_type}
-                schemaType={currentVar.schemaType ?? ''}
-                jsonString={json ?? '{}'}
-                readonly={JSONEditorDisabled}
-                handleEditorChange={handleEditorChange}
-              />
-            )
+                <DisplayContent
+                  previewType={PreviewType.Chunks}
+                  varType={currentVar.value_type}
+                  schemaType={currentVar.schemaType ?? ''}
+                  jsonString={json ?? '{}'}
+                  readonly={JSONEditorDisabled}
+                  handleEditorChange={handleEditorChange}
+                />
+              )
             : (
-              <SchemaEditor
-                readonly={JSONEditorDisabled || isTruncated}
-                className='overflow-y-auto'
-                hideTopMenu
-                schema={json}
-                onUpdate={handleEditorChange}
-                isTruncated={isTruncated}
-              />
-            )
+                <SchemaEditor
+                  readonly={JSONEditorDisabled || isTruncated}
+                  className="overflow-y-auto"
+                  hideTopMenu
+                  schema={json}
+                  onUpdate={handleEditorChange}
+                  isTruncated={isTruncated}
+                />
+              )
         )}
         {showFileEditor && (
-          <div className='max-w-[460px]'>
+          <div className="max-w-[460px]">
             <FileUploaderInAttachmentWrapper
               value={fileValue}
               onChange={files => handleFileChange(getProcessedFiles(files))}
@@ -295,11 +297,11 @@ const ValueContent = ({
           </div>
         )}
       </div>
-      <div ref={errorMessageRef} className='shrink-0'>
-        {parseError && <ErrorMessage className='mt-1' message={parseError.message} />}
-        {validationError && <ErrorMessage className='mt-1' message={validationError} />}
+      <div ref={errorMessageRef} className="shrink-0">
+        {parseError && <ErrorMessage className="mt-1" message={parseError.message} />}
+        {validationError && <ErrorMessage className="mt-1" message={validationError} />}
       </div>
-    </div >
+    </div>
   )
 }
 

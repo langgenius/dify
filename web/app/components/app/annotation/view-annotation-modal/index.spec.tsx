@@ -25,10 +25,13 @@ vi.mock('../edit-annotation-modal/edit-item', () => {
   }
   return {
     __esModule: true,
-    default: ({ type, content, onSave }: { type: string; content: string; onSave: (value: string) => void }) => (
+    default: ({ type, content, onSave }: { type: string, content: string, onSave: (value: string) => void }) => (
       <div>
         <div data-testid={`content-${type}`}>{content}</div>
-        <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>edit-{type}</button>
+        <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>
+          edit-
+          {type}
+        </button>
       </div>
     ),
     EditItemType,

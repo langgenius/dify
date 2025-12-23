@@ -51,49 +51,49 @@ const MemberSelector: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom'
+      placement="bottom"
       offset={4}
     >
       <PortalToFollowElemTrigger
-        className='w-full'
+        className="w-full"
         onClick={() => setOpen(v => !v)}
       >
         <div className={cn('group flex cursor-pointer items-center gap-1.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt')}>
           {!currentValue && (
-            <div className='system-sm-regular grow p-1 text-components-input-text-placeholder'>{t('common.members.transferModal.transferPlaceholder')}</div>
+            <div className="system-sm-regular grow p-1 text-components-input-text-placeholder">{t('common.members.transferModal.transferPlaceholder')}</div>
           )}
           {currentValue && (
             <>
               <Avatar avatar={currentValue.avatar_url} size={24} name={currentValue.name} />
-              <div className='system-sm-medium grow truncate text-text-secondary'>{currentValue.name}</div>
-              <div className='system-xs-regular text-text-quaternary'>{currentValue.email}</div>
+              <div className="system-sm-medium grow truncate text-text-secondary">{currentValue.name}</div>
+              <div className="system-xs-regular text-text-quaternary">{currentValue.email}</div>
             </>
           )}
           <RiArrowDownSLine className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className='min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
-          <div className='p-2 pb-1'>
+      <PortalToFollowElemContent className="z-[1000]">
+        <div className="min-w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+          <div className="p-2 pb-1">
             <Input
               showLeftIcon
               value={searchValue}
               onChange={e => setSearchValue(e.target.value)}
             />
           </div>
-          <div className='p-1'>
+          <div className="p-1">
             {filteredList.map(account => (
               <div
                 key={account.id}
-                className='flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover'
+                className="flex cursor-pointer items-center gap-2 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover"
                 onClick={() => {
                   onSelect(account.id)
                   setOpen(false)
                 }}
               >
                 <Avatar avatar={account.avatar_url} size={24} name={account.name} />
-                <div className='system-sm-medium grow truncate text-text-secondary'>{account.name}</div>
-                <div className='system-xs-regular text-text-quaternary'>{account.email}</div>
+                <div className="system-sm-medium grow truncate text-text-secondary">{account.name}</div>
+                <div className="system-xs-regular text-text-quaternary">{account.email}</div>
               </div>
             ))}
           </div>

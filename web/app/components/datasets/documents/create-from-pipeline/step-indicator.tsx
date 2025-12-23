@@ -16,7 +16,7 @@ const StepIndicator = ({
   steps,
 }: StepIndicatorProps) => {
   return (
-    <div className='flex gap-x-1'>
+    <div className="flex gap-x-1">
       {steps.map((step, index) => {
         const isActive = index === currentStep - 1
         return (

@@ -187,9 +187,9 @@ export function isMermaidCodeComplete(code: string): boolean {
 
     // Check for common syntax errors
     const hasNoSyntaxErrors = !trimmedCode.includes('undefined')
-                           && !trimmedCode.includes('[object Object]')
-                           && trimmedCode.split('\n').every(line =>
-                             !(line.includes('-->') && !line.match(/\S+\s*-->\s*\S+/)))
+      && !trimmedCode.includes('[object Object]')
+      && trimmedCode.split('\n').every(line =>
+        !(line.includes('-->') && !line.match(/\S+\s*-->\s*\S+/)))
 
     return hasValidStart && isBalanced && hasNoSyntaxErrors
   }

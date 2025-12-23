@@ -113,15 +113,15 @@ const ParamsConfig = ({
   return (
     <div>
       <Button
-        variant='ghost'
-        size='small'
+        variant="ghost"
+        size="small"
         className={cn('h-7', rerankSettingModalOpen && 'bg-components-button-ghost-bg-hover')}
         onClick={() => {
           setRerankSettingModalOpen(true)
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
+        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
         {t('dataset.retrievalSettings')}
       </Button>
       {
@@ -131,7 +131,7 @@ const ParamsConfig = ({
             onClose={() => {
               setRerankSettingModalOpen(false)
             }}
-            className='sm:min-w-[528px]'
+            className="sm:min-w-[528px]"
           >
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
@@ -139,12 +139,17 @@ const ParamsConfig = ({
               selectedDatasets={selectedDatasets}
             />
 
-            <div className='mt-6 flex justify-end'>
-              <Button className='mr-2 shrink-0' onClick={() => {
-                setTempDataSetConfigs(datasetConfigs)
-                setRerankSettingModalOpen(false)
-              }}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+            <div className="mt-6 flex justify-end">
+              <Button
+                className="mr-2 shrink-0"
+                onClick={() => {
+                  setTempDataSetConfigs(datasetConfigs)
+                  setRerankSettingModalOpen(false)
+                }}
+              >
+                {t('common.operation.cancel')}
+              </Button>
+              <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('common.operation.save')}</Button>
             </div>
           </Modal>
         )

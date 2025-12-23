@@ -54,7 +54,7 @@ const AgentLogItem = ({
   }, [status])
 
   return (
-    <div className='rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default'>
+    <div className="rounded-[10px] border-[0.5px] border-components-panel-border bg-background-default">
       <div
         className={cn(
           'flex cursor-pointer items-center pb-2 pl-1.5 pr-3 pt-2',
@@ -64,43 +64,46 @@ const AgentLogItem = ({
       >
         {
           expanded
-            ? <RiArrowRightSLine className='h-4 w-4 shrink-0 rotate-90 text-text-quaternary' />
-            : <RiArrowRightSLine className='h-4 w-4 shrink-0 text-text-quaternary' />
+            ? <RiArrowRightSLine className="h-4 w-4 shrink-0 rotate-90 text-text-quaternary" />
+            : <RiArrowRightSLine className="h-4 w-4 shrink-0 text-text-quaternary" />
         }
         <BlockIcon
-          className='mr-1.5 shrink-0'
+          className="mr-1.5 shrink-0"
           type={toolIcon ? BlockEnum.Tool : BlockEnum.Agent}
           toolIcon={toolIcon}
         />
         <div
-          className='system-sm-semibold-uppercase grow truncate text-text-secondary'
+          className="system-sm-semibold-uppercase grow truncate text-text-secondary"
           title={label}
         >
           {label}
         </div>
         {
           metadata?.elapsed_time && (
-            <div className='system-xs-regular mr-2 shrink-0 text-text-tertiary'>{metadata?.elapsed_time?.toFixed(3)}s</div>
+            <div className="system-xs-regular mr-2 shrink-0 text-text-tertiary">
+              {metadata?.elapsed_time?.toFixed(3)}
+              s
+            </div>
           )
         }
         <NodeStatusIcon status={mergeStatus} />
       </div>
       {
         expanded && (
-          <div className='p-1 pt-0'>
+          <div className="p-1 pt-0">
             {
               !!children?.length && (
                 <Button
-                  className='mb-1 flex w-full items-center justify-between'
-                  variant='tertiary'
+                  className="mb-1 flex w-full items-center justify-between"
+                  variant="tertiary"
                   onClick={() => onShowAgentOrToolLog(item)}
                 >
-                  <div className='flex items-center'>
-                    <RiListView className='mr-1 h-4 w-4 shrink-0 text-components-button-tertiary-text' />
+                  <div className="flex items-center">
+                    <RiListView className="mr-1 h-4 w-4 shrink-0 text-components-button-tertiary-text" />
                     {`${children.length} Action Logs`}
                   </div>
-                  <div className='flex'>
-                    <RiArrowRightSLine className='h-4 w-4 shrink-0 text-components-button-tertiary-text' />
+                  <div className="flex">
+                    <RiArrowRightSLine className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
                   </div>
                 </Button>
               )

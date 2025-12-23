@@ -24,47 +24,47 @@ type Props = {
 const ParamItem: FC<Props> = ({ className, id, name, noTooltip, tip, step = 0.1, min = 0, max, value, enable, onChange, hasSwitch, onSwitchChange }) => {
   return (
     <div className={className}>
-      <div className='flex items-center justify-between'>
-        <div className='flex h-6 items-center'>
+      <div className="flex items-center justify-between">
+        <div className="flex h-6 items-center">
           {hasSwitch && (
             <Switch
-              size='md'
-              className='mr-2'
+              size="md"
+              className="mr-2"
               defaultValue={enable}
               onChange={async (val) => {
                 onSwitchChange?.(id, val)
               }}
             />
           )}
-          <span className='system-sm-semibold mr-1 text-text-secondary'>{name}</span>
+          <span className="system-sm-semibold mr-1 text-text-secondary">{name}</span>
           {!noTooltip && (
             <Tooltip
-              triggerClassName='w-4 h-4 shrink-0'
-              popupContent={<div className='w-[200px]'>{tip}</div>}
+              triggerClassName="w-4 h-4 shrink-0"
+              popupContent={<div className="w-[200px]">{tip}</div>}
             />
           )}
         </div>
       </div>
-      <div className='mt-1 flex items-center'>
-        <div className='mr-3 flex shrink-0 items-center'>
+      <div className="mt-1 flex items-center">
+        <div className="mr-3 flex shrink-0 items-center">
           <InputNumber
             disabled={!enable}
-            type='number'
+            type="number"
             min={min}
             max={max}
             step={step}
             amount={step}
-            size='regular'
+            size="regular"
             value={value}
             onChange={(value) => {
               onChange(id, value)
             }}
-            className='w-[72px]'
+            className="w-[72px]"
           />
         </div>
-        <div className='flex grow items-center'>
+        <div className="flex grow items-center">
           <Slider
-            className='w-full'
+            className="w-full"
             disabled={!enable}
             value={max < 5 ? value * 100 : value}
             min={min < 1 ? min * 100 : min}

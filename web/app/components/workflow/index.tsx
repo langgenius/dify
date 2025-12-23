@@ -362,7 +362,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
 
   return (
     <div
-      id='workflow-container'
+      id="workflow-container"
       className={cn(
         'relative h-full w-full min-w-[960px]',
         workflowReadOnly && 'workflow-panel-animation',
@@ -373,7 +373,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
       <SyncingDataModal />
       <CandidateNode />
       <div
-        className='pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2'
+        className="pointer-events-none absolute left-0 top-0 z-10 flex w-12 items-center justify-center p-1 pl-2"
         style={{ height: controlHeight }}
       >
         <Control />
@@ -443,7 +443,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
           gap={[14, 14]}
           size={2}
           className="bg-workflow-canvas-workflow-bg"
-          color='var(--color-workflow-canvas-workflow-dot-color)'
+          color="var(--color-workflow-canvas-workflow-dot-color)"
         />
       </ReactFlow>
     </div>
@@ -466,9 +466,9 @@ export const WorkflowWithInnerContext = memo(({
 
 type WorkflowWithDefaultContextProps
   = Pick<WorkflowProps, 'edges' | 'nodes'>
-  & {
-    children: React.ReactNode
-  }
+    & {
+      children: React.ReactNode
+    }
 
 const WorkflowWithDefaultContext = ({
   nodes,
@@ -479,7 +479,8 @@ const WorkflowWithDefaultContext = ({
     <ReactFlowProvider>
       <WorkflowHistoryProvider
         nodes={nodes}
-        edges={edges} >
+        edges={edges}
+      >
         <DatasetsDetailProvider nodes={nodes}>
           {children}
         </DatasetsDetailProvider>

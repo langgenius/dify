@@ -112,9 +112,11 @@ const WebAppStoreProvider: FC<PropsWithChildren> = ({ children }) => {
   }, [accessModeResult, updateWebAppAccessMode, shareCode])
 
   if (isGlobalPending || isLoading) {
-    return <div className='flex h-full w-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full w-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return (
     <>

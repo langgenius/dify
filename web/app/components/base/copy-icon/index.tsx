@@ -39,12 +39,11 @@ const CopyIcon = ({ content }: Props) => {
       <div onMouseLeave={onMouseLeave}>
         {!isCopied
           ? (
-            <Copy className='mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary' onClick={onClickCopy} />
-          )
+              <Copy className="mx-1 h-3.5 w-3.5 cursor-pointer text-text-tertiary" onClick={onClickCopy} />
+            )
           : (
-            <CopyCheck className='mx-1 h-3.5 w-3.5 text-text-tertiary' />
-          )
-        }
+              <CopyCheck className="mx-1 h-3.5 w-3.5 text-text-tertiary" />
+            )}
       </div>
     </Tooltip>
   )

@@ -11,11 +11,11 @@ const Footer: FC<YearAndMonthPickerFooterProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='grid grid-cols-2 gap-x-1 p-2'>
-      <Button size='small' onClick={handleYearMonthCancel}>
+    <div className="grid grid-cols-2 gap-x-1 p-2">
+      <Button size="small" onClick={handleYearMonthCancel}>
         {t('time.operation.cancel')}
       </Button>
-      <Button variant='primary' size='small' onClick={handleYearMonthConfirm}>
+      <Button variant="primary" size="small" onClick={handleYearMonthConfirm}>
         {t('time.operation.ok')}
       </Button>
     </div>

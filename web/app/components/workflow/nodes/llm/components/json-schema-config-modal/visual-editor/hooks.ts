@@ -9,10 +9,10 @@ import { findPropertyWithPath } from '../../../utils'
 import { noop } from 'lodash-es'
 
 type ChangeEventParams = {
-  path: string[],
-  parentPath: string[],
-  oldFields: EditData,
-  fields: EditData,
+  path: string[]
+  parentPath: string[]
+  oldFields: EditData
+  fields: EditData
 }
 
 type AddEventParams = {

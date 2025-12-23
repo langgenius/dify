@@ -108,19 +108,21 @@ const DropDown = ({
       open={open}
       onOpenChange={setOpen}
       placement={expand ? 'bottom-end' : 'right'}
-      offset={expand ? {
-        mainAxis: 4,
-        crossAxis: 10,
-      } : {
-        mainAxis: 4,
-      }}
+      offset={expand
+        ? {
+            mainAxis: 4,
+            crossAxis: 10,
+          }
+        : {
+            mainAxis: 4,
+          }}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <ActionButton className={cn(expand ? 'size-8 rounded-lg' : 'size-6 rounded-md')}>
-          <RiMoreFill className='size-4' />
+          <RiMoreFill className="size-4" />
         </ActionButton>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[60]'>
+      <PortalToFollowElemContent className="z-[60]">
         <Menu
           showDelete={!isCurrentWorkspaceDatasetOperator}
           openRenameModal={openRenameModal}

@@ -46,22 +46,22 @@ const InstallFromMarketplace = ({
   }, [])
 
   return (
-    <div className='mb-2'>
-      <Divider className='!mt-4 h-px' />
-      <div className='flex items-center justify-between'>
-        <div className='system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary' onClick={() => setCollapse(!collapse)}>
+    <div className="mb-2">
+      <Divider className="!mt-4 h-px" />
+      <div className="flex items-center justify-between">
+        <div className="system-md-semibold flex cursor-pointer items-center gap-1 text-text-primary" onClick={() => setCollapse(!collapse)}>
           <RiArrowDownSLine className={cn('h-4 w-4', collapse && '-rotate-90')} />
           {t('common.modelProvider.installProvider')}
         </div>
-        <div className='mb-2 flex items-center pt-2'>
-          <span className='system-sm-regular pr-1 text-text-tertiary'>{t('common.modelProvider.discoverMore')}</span>
-          <Link target="_blank" href={getMarketplaceUrl('', { theme })} className='system-sm-medium inline-flex items-center text-text-accent'>
+        <div className="mb-2 flex items-center pt-2">
+          <span className="system-sm-regular pr-1 text-text-tertiary">{t('common.modelProvider.discoverMore')}</span>
+          <Link target="_blank" href={getMarketplaceUrl('', { theme })} className="system-sm-medium inline-flex items-center text-text-accent">
             {t('plugin.marketplace.difyMarketplace')}
-            <RiArrowRightUpLine className='h-4 w-4' />
+            <RiArrowRightUpLine className="h-4 w-4" />
           </Link>
         </div>
       </div>
-      {!collapse && isAllPluginsLoading && <Loading type='area' />}
+      {!collapse && isAllPluginsLoading && <Loading type="area" />}
       {
         !isAllPluginsLoading && !collapse && (
           <List
@@ -70,9 +70,9 @@ const InstallFromMarketplace = ({
             plugins={allPlugins}
             showInstallButton
             locale={locale}
-            cardContainerClassName='grid grid-cols-2 gap-2'
+            cardContainerClassName="grid grid-cols-2 gap-2"
             cardRender={cardRender}
-            emptyClassName='h-auto'
+            emptyClassName="h-auto"
           />
         )
       }

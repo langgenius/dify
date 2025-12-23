@@ -86,11 +86,13 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
               onClick={onClickCopy}
               className="hover:bg-components-button-ghost-bg-hover"
             >
-              {isCopied ? (
-                <RiClipboardFill className='h-3.5 w-3.5 text-text-tertiary' />
-              ) : (
-                <RiClipboardLine className='h-3.5 w-3.5 text-text-tertiary' />
-              )}
+              {isCopied
+                ? (
+                    <RiClipboardFill className="h-3.5 w-3.5 text-text-tertiary" />
+                  )
+                : (
+                    <RiClipboardLine className="h-3.5 w-3.5 text-text-tertiary" />
+                  )}
             </ActionButton>
           </Tooltip>
         </div>

@@ -16,7 +16,7 @@ type Props = {
   handleCurlImport: (node: HttpNodeType) => void
 }
 
-const parseCurl = (curlCommand: string): { node: HttpNodeType | null; error: string | null } => {
+const parseCurl = (curlCommand: string): { node: HttpNodeType | null, error: string | null } => {
   if (!curlCommand.trim().toLowerCase().startsWith('curl'))
     return { node: null, error: 'Invalid cURL command. Command must start with "curl".' }
 
@@ -145,19 +145,22 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
       title={t('workflow.nodes.http.curl.title')}
       isShow={isShow}
       onClose={onHide}
-      className='!w-[400px] !max-w-[400px] !p-4'
+      className="!w-[400px] !max-w-[400px] !p-4"
     >
       <div>
         <Textarea
           value={inputString}
-          className='my-3 h-40 w-full grow'
+          className="my-3 h-40 w-full grow"
           onChange={e => setInputString(e.target.value)}
           placeholder={t('workflow.nodes.http.curl.placeholder')!}
         />
       </div>
-      <div className='mt-4 flex justify-end space-x-2'>
-        <Button className='!w-[95px]' onClick={onHide} >{t('common.operation.cancel')}</Button>
-        <Button className='!w-[95px]' variant='primary' onClick={handleSave} > {t('common.operation.save')}</Button>
+      <div className="mt-4 flex justify-end space-x-2">
+        <Button className="!w-[95px]" onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button className="!w-[95px]" variant="primary" onClick={handleSave}>
+          {' '}
+          {t('common.operation.save')}
+        </Button>
       </div>
     </Modal>
   )

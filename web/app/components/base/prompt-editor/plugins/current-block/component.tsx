@@ -35,8 +35,8 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
       }}
       ref={ref}
     >
-      <Icon className='mr-0.5 h-[14px] w-[14px]' />
-      <div className='text-xs font-medium'>{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
+      <Icon className="mr-0.5 h-[14px] w-[14px]" />
+      <div className="text-xs font-medium">{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
     </div>
   )
 }

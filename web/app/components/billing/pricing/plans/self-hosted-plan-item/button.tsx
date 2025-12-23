@@ -31,7 +31,8 @@ const Button = ({
   }, [theme])
 
   return (
-    <button type="button"
+    <button
+      type="button"
       className={cn(
         'system-xl-semibold flex items-center gap-x-2 py-3 pl-5 pr-4',
         BUTTON_CLASSNAME[plan],
@@ -39,15 +40,15 @@ const Button = ({
       )}
       onClick={handleGetPayUrl}
     >
-      <div className='flex grow items-center gap-x-2'>
+      <div className="flex grow items-center gap-x-2">
         <span>{t(`${i18nPrefix}.btnText`)}</span>
         {isPremiumPlan && (
-          <span className='pb-px pt-[7px]'>
-            <AwsMarketplace className='h-6' />
+          <span className="pb-px pt-[7px]">
+            <AwsMarketplace className="h-6" />
           </span>
         )}
       </div>
-      <RiArrowRightLine className='size-5 shrink-0' />
+      <RiArrowRightLine className="size-5 shrink-0" />
     </button>
   )
 }

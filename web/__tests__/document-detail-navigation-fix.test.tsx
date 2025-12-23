@@ -40,7 +40,7 @@ vi.mock('@/service/knowledge/use-segment', () => ({
 }))
 
 // Create a minimal version of the DocumentDetail component that includes our fix
-const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string; documentId: string }) => {
+const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string, documentId: string }) => {
   const router = useRouter()
 
   // This is the FIXED implementation from detail/index.tsx
@@ -59,7 +59,12 @@ const DocumentDetailWithFix = ({ datasetId, documentId }: { datasetId: string; d
         Back to Documents
       </button>
       <div data-testid="document-info">
-        Dataset: {datasetId}, Document: {documentId}
+        Dataset:
+        {' '}
+        {datasetId}
+        , Document:
+        {' '}
+        {documentId}
       </div>
     </div>
   )

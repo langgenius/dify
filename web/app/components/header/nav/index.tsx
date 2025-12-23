@@ -49,7 +49,8 @@ const Nav = ({
       flex h-8 max-w-[670px] shrink-0 items-center rounded-xl px-0.5 text-sm font-medium max-[1024px]:max-w-[400px]
       ${isActivated && 'bg-components-main-nav-nav-button-bg-active font-semibold shadow-md'}
       ${!curNav && !isActivated && 'hover:bg-components-main-nav-nav-button-bg-hover'}
-    `}>
+    `}
+    >
       <Link href={link + (linkLastSearchParams && `?${linkLastSearchParams}`)}>
         <div
           onClick={(e) => {
@@ -67,13 +68,13 @@ const Nav = ({
           <div>
             {
               (hovered && curNav)
-                ? <ArrowNarrowLeft className='h-4 w-4' />
+                ? <ArrowNarrowLeft className="h-4 w-4" />
                 : isActivated
                   ? activeIcon
                   : icon
             }
           </div>
-          <div className='ml-2 max-[1024px]:hidden'>
+          <div className="ml-2 max-[1024px]:hidden">
             {text}
           </div>
         </div>
@@ -81,7 +82,7 @@ const Nav = ({
       {
         curNav && isActivated && (
           <>
-            <div className='font-light text-divider-deep'>/</div>
+            <div className="font-light text-divider-deep">/</div>
             <NavSelector
               isApp={isApp}
               curNav={curNav}

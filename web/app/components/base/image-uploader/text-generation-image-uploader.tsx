@@ -46,19 +46,20 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='top-start'
+      placement="top-start"
     >
       <PortalToFollowElemTrigger onClick={handleToggle}>
         <div className={`
           relative flex h-8 items-center justify-center rounded-lg bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary hover:bg-components-button-tertiary-bg-hover
           ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}
-        `}>
-          <Link03 className='mr-2 h-4 w-4' />
+        `}
+        >
+          <Link03 className="mr-2 h-4 w-4" />
           {t('common.imageUploader.pasteImageLink')}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
-        <div className='w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg'>
+      <PortalToFollowElemContent className="z-10">
+        <div className="w-[320px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
           <ImageLinkInput onUpload={handleUpload} />
         </div>
       </PortalToFollowElemContent>
@@ -101,8 +102,9 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
             flex h-8 cursor-pointer items-center justify-center rounded-lg
             bg-components-button-tertiary-bg px-3 text-xs text-text-tertiary
             ${hovering && 'hover:bg-components-button-tertiary-bg-hover'}
-          `}>
-            <ImagePlus className='mr-2 h-4 w-4' />
+          `}
+          >
+            <ImagePlus className="mr-2 h-4 w-4" />
             {t('common.imageUploader.uploadFromComputer')}
           </div>
         )
@@ -119,7 +121,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
 
   return (
     <div>
-      <div className='mb-1'>
+      <div className="mb-1">
         <ImageList
           list={files}
           onRemove={onRemove}

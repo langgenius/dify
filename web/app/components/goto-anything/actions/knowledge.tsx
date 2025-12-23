@@ -20,8 +20,9 @@ const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
         <div className={cn(
           'flex shrink-0 items-center justify-center rounded-md border-[0.5px] border-[#E0EAFF] bg-[#F5F8FF] p-2.5',
           !dataset.embedding_available && 'opacity-50 hover:opacity-100',
-        )}>
-          <Folder className='h-5 w-5 text-[#444CE7]' />
+        )}
+        >
+          <Folder className="h-5 w-5 text-[#444CE7]" />
         </div>
       ),
       data: dataset,

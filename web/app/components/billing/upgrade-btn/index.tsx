@@ -64,15 +64,15 @@ const UpgradeBtn: FC<Props> = ({
   return (
     <PremiumBadge
       size={size}
-      color='blue'
+      color="blue"
       allowHover={true}
       onClick={onClick}
       className={className}
       style={style}
     >
-      <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
-      <div className='system-xs-medium'>
-        <span className='p-1'>
+      <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+      <div className="system-xs-medium">
+        <span className="p-1">
           {label}
         </span>
       </div>

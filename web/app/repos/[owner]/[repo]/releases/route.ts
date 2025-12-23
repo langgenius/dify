@@ -4,8 +4,8 @@ import { RequestError } from '@octokit/request-error'
 import { GITHUB_ACCESS_TOKEN } from '@/config'
 
 type Params = {
-  owner: string,
-  repo: string,
+  owner: string
+  repo: string
 }
 
 const octokit = new Octokit({

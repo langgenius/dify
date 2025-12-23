@@ -30,7 +30,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
 
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<ParameterExtractorNodeType>(id, payload)
   const inputRef = useRef(inputs)
 
@@ -127,7 +127,7 @@ const useConfig = (id: string, payload: ParameterExtractorNodeType) => {
     currentModel,
   } = useModelListAndDefaultModelAndCurrentProviderAndModel(ModelTypeEnum.textGeneration)
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId

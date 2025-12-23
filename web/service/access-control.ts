@@ -10,7 +10,7 @@ const NAME_SPACE = 'access-control'
 export const useAppWhiteListSubjects = (appId: string | undefined, enabled: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-subjects', appId],
-    queryFn: () => get<{ groups: AccessControlGroup[]; members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
+    queryFn: () => get<{ groups: AccessControlGroup[], members: AccessControlAccount[] }>(`/enterprise/webapp/app/subjects?appId=${appId}`),
     enabled: !!appId && enabled,
     staleTime: 0,
     gcTime: 0,
@@ -24,7 +24,7 @@ type SearchResults = {
   hasMore: boolean
 }
 
-export const useSearchForWhiteListCandidates = (query: { keyword?: string; groupId?: AccessControlGroup['id']; resultsPerPage?: number }, enabled: boolean) => {
+export const useSearchForWhiteListCandidates = (query: { keyword?: string, groupId?: AccessControlGroup['id'], resultsPerPage?: number }, enabled: boolean) => {
   return useInfiniteQuery({
     queryKey: [NAME_SPACE, 'app-whitelist-candidates', query],
     queryFn: ({ pageParam }) => {
@@ -70,7 +70,7 @@ export const useUpdateAccessMode = () => {
   })
 }
 
-export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string; isInstalledApp?: boolean; enabled?: boolean }) => {
+export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string, isInstalledApp?: boolean, enabled?: boolean }) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
     queryKey: [NAME_SPACE, 'user-can-access-app', appId],

@@ -61,7 +61,7 @@ export type ProviderContextState = {
       size: number
       limit: number
     }
-  },
+  }
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
@@ -251,7 +251,8 @@ export const ProviderContextProvider = ({
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
       isAllowPublishAsCustomKnowledgePipelineTemplate,
-    }}>
+    }}
+    >
       {children}
     </ProviderContext.Provider>
   )

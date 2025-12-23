@@ -35,7 +35,7 @@ const ToolForm: FC<Props> = ({
   extraParams,
 }) => {
   return (
-    <div className='space-y-1'>
+    <div className="space-y-1">
       {
         schema.map((schema, index) => (
           <ToolFormItem
@@ -51,7 +51,7 @@ const ToolForm: FC<Props> = ({
             showManageInputField={showManageInputField}
             onManageInputField={onManageInputField}
             extraParams={extraParams}
-            providerType='tool'
+            providerType="tool"
           />
         ))
       }

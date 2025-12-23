@@ -236,25 +236,25 @@ const ProviderDetail = ({
       positionCenter={false}
       panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
-      <div className='flex h-full flex-col p-4'>
+      <div className="flex h-full flex-col p-4">
         <div className="shrink-0">
-          <div className='mb-3 flex'>
+          <div className="mb-3 flex">
             <Icon src={collection.icon} />
             <div className="ml-3 w-0 grow">
               <div className="flex h-5 items-center">
                 <Title title={collection.label[language]} />
               </div>
-              <div className='mb-1 mt-0.5 flex h-4 items-center justify-between'>
+              <div className="mb-1 mt-0.5 flex h-4 items-center justify-between">
                 <OrgInfo
-                  packageNameClassName='w-auto'
+                  packageNameClassName="w-auto"
                   orgName={collection.author}
                   packageName={collection.name}
                 />
               </div>
             </div>
-            <div className='flex gap-1'>
+            <div className="flex gap-1">
               <ActionButton onClick={onHide}>
-                <RiCloseLine className='h-4 w-4' />
+                <RiCloseLine className="h-4 w-4" />
               </ActionButton>
             </div>
           </div>
@@ -262,25 +262,25 @@ const ProviderDetail = ({
         {!!collection.description[language] && (
           <Description text={collection.description[language]} descriptionLineRows={2}></Description>
         )}
-        <div className='flex gap-1 border-b-[0.5px] border-divider-subtle'>
+        <div className="flex gap-1 border-b-[0.5px] border-divider-subtle">
           {collection.type === CollectionType.custom && !isDetailLoading && (
             <Button
               className={cn('my-3 w-full shrink-0')}
               onClick={() => setIsShowEditCustomCollectionModal(true)}
             >
-              <Settings01 className='mr-1 h-4 w-4 text-text-tertiary' />
-              <div className='system-sm-medium text-text-secondary'>{t('tools.createTool.editAction')}</div>
+              <Settings01 className="mr-1 h-4 w-4 text-text-tertiary" />
+              <div className="system-sm-medium text-text-secondary">{t('tools.createTool.editAction')}</div>
             </Button>
           )}
           {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
             <>
               <Button
-                variant='primary'
+                variant="primary"
                 className={cn('my-3 w-[183px] shrink-0')}
               >
-                <a className='flex items-center' href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel='noreferrer' target='_blank'>
-                  <div className='system-sm-medium'>{t('tools.openInStudio')}</div>
-                  <LinkExternal02 className='ml-1 h-4 w-4' />
+                <a className="flex items-center" href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank">
+                  <div className="system-sm-medium">{t('tools.openInStudio')}</div>
+                  <LinkExternal02 className="ml-1 h-4 w-4" />
                 </a>
               </Button>
               <Button
@@ -288,30 +288,30 @@ const ProviderDetail = ({
                 onClick={() => setIsShowEditWorkflowToolModal(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
-                <div className='system-sm-medium text-text-secondary'>{t('tools.createTool.editAction')}</div>
+                <div className="system-sm-medium text-text-secondary">{t('tools.createTool.editAction')}</div>
               </Button>
             </>
           )}
         </div>
-        <div className='flex min-h-0 flex-1 flex-col pt-3'>
-          {isDetailLoading && <div className='flex h-[200px]'><Loading type='app' /></div>}
+        <div className="flex min-h-0 flex-1 flex-col pt-3">
+          {isDetailLoading && <div className="flex h-[200px]"><Loading type="app" /></div>}
           {!isDetailLoading && (
             <>
               <div className="shrink-0">
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
-                  <div className='system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary'>
+                  <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
                     {t('plugin.detailPanel.actionNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
                     {needAuth && (
                       <Button
-                        variant='secondary'
-                        size='small'
+                        variant="secondary"
+                        size="small"
                         onClick={() => {
                           if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
                             showSettingAuthModal()
                         }}
                         disabled={!isCurrentWorkspaceManager}
                       >
-                        <Indicator className='mr-2' color={'green'} />
+                        <Indicator className="mr-2" color="green" />
                         {t('tools.auth.authorized')}
                       </Button>
                     )}
@@ -319,13 +319,13 @@ const ProviderDetail = ({
                 )}
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && !isAuthed && (
                   <>
-                    <div className='system-sm-semibold-uppercase text-text-secondary'>
-                      <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
-                      <span className='px-1'>·</span>
-                      <span className='text-util-colors-orange-orange-600'>{t('tools.auth.setup').toLocaleUpperCase()}</span>
+                    <div className="system-sm-semibold-uppercase text-text-secondary">
+                      <span className="">{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                      <span className="px-1">·</span>
+                      <span className="text-util-colors-orange-orange-600">{t('tools.auth.setup').toLocaleUpperCase()}</span>
                     </div>
                     <Button
-                      variant='primary'
+                      variant="primary"
                       className={cn('my-3 w-full shrink-0')}
                       onClick={() => {
                         if (collection.type === CollectionType.builtIn || collection.type === CollectionType.model)
@@ -338,17 +338,17 @@ const ProviderDetail = ({
                   </>
                 )}
                 {(collection.type === CollectionType.custom) && (
-                  <div className='system-sm-semibold-uppercase text-text-secondary'>
-                    <span className=''>{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                  <div className="system-sm-semibold-uppercase text-text-secondary">
+                    <span className="">{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                   </div>
                 )}
                 {(collection.type === CollectionType.workflow) && (
-                  <div className='system-sm-semibold-uppercase text-text-secondary'>
-                    <span className=''>{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>
+                  <div className="system-sm-semibold-uppercase text-text-secondary">
+                    <span className="">{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>
                   </div>
                 )}
               </div>
-              <div className='mt-1 flex-1 overflow-y-auto py-2'>
+              <div className="mt-1 flex-1 overflow-y-auto py-2">
                 {collection.type !== CollectionType.workflow && toolList.map(tool => (
                   <ToolItem
                     key={tool.name}
@@ -360,13 +360,13 @@ const ProviderDetail = ({
                   />
                 ))}
                 {collection.type === CollectionType.workflow && (customCollection as WorkflowToolProviderResponse)?.tool?.parameters.map(item => (
-                  <div key={item.name} className='mb-1 py-1'>
-                    <div className='mb-1 flex items-center gap-2'>
-                      <span className='code-sm-semibold text-text-secondary'>{item.name}</span>
-                      <span className='system-xs-regular text-text-tertiary'>{item.type}</span>
-                      <span className='system-xs-medium text-text-warning-secondary'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                  <div key={item.name} className="mb-1 py-1">
+                    <div className="mb-1 flex items-center gap-2">
+                      <span className="code-sm-semibold text-text-secondary">{item.name}</span>
+                      <span className="system-xs-regular text-text-tertiary">{item.type}</span>
+                      <span className="system-xs-medium text-text-warning-secondary">{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
                     </div>
-                    <div className='system-xs-regular text-text-tertiary'>{item.llm_description}</div>
+                    <div className="system-xs-regular text-text-tertiary">{item.llm_description}</div>
                   </div>
                 ))}
               </div>

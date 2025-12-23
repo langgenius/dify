@@ -14,7 +14,7 @@ type PortalToFollowElemProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode; asChild?: boolean }
+type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
 type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => {

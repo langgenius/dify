@@ -188,9 +188,9 @@ const OnlineDrive = ({
   }, [setShowAccountSettingModal])
 
   return (
-    <div className='flex flex-col gap-y-2'>
+    <div className="flex flex-col gap-y-2">
       <Header
-        docTitle='Docs'
+        docTitle="Docs"
         docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}

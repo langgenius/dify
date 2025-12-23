@@ -173,22 +173,22 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   return (
     <div className={cn('relative rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
-      <div className='rounded-xl bg-background-section-burn'>
+      <div className="rounded-xl bg-background-section-burn">
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
             <div className="flex items-center space-x-1">
-              <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppModeEnum.COMPLETION ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+              <div className="h2 system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
               {!readonly && (
                 <Tooltip
-                  popupContent={
-                    <div className='w-[180px]'>
+                  popupContent={(
+                    <div className="w-[180px]">
                       {t('appDebug.promptTip')}
                     </div>
-                  }
+                  )}
                 />
               )}
             </div>
-            <div className='flex items-center'>
+            <div className="flex items-center">
               {!readonly && !isMobile && (
                 <AutomaticBtn onClick={showAutomaticTrue} />
               )}
@@ -197,19 +197,19 @@ const Prompt: FC<ISimplePromptInput> = ({
         )}
 
         <PromptEditorHeightResizeWrap
-          className='min-h-[228px] rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary'
+          className="min-h-[228px] rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary"
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           hideResize={noResize}
           footer={(
-            <div className='flex rounded-b-xl bg-background-default pb-2 pl-4'>
+            <div className="flex rounded-b-xl bg-background-default pb-2 pl-4">
               <div className="h-[18px] rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-[18px] text-text-tertiary">{promptTemplate.length}</div>
             </div>
           )}
         >
           <PromptEditor
-            className='min-h-[210px]'
+            className="min-h-[210px]"
             compact
             value={promptTemplate}
             contextBlock={{

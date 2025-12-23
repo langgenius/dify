@@ -12,8 +12,8 @@ export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[]
 }
 
 export const convertOnlineDriveData = (data: OnlineDriveData[], prefix: string[], bucket: string): {
-  fileList: OnlineDriveFile[],
-  isTruncated: boolean,
+  fileList: OnlineDriveFile[]
+  isTruncated: boolean
   nextPageParameters: Record<string, any>
   hasBucket: boolean
 } => {

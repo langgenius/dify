@@ -79,7 +79,7 @@ function CopyButton({ code }: { code: string }) {
   )
 }
 
-function CodePanelHeader({ tag, label }: { tag?: string; label?: string }) {
+function CodePanelHeader({ tag, label }: { tag?: string, label?: string }) {
   if (!tag && !label)
     return null
 
@@ -129,11 +129,13 @@ function CodePanel({ tag, label, children, targetCode }: ICodePanelProps) {
         {/* <CopyButton code={child.props.code ?? code} /> */}
         {/* <CopyButton code={child.props.children.props.children} /> */}
         <pre className="overflow-x-auto p-4 text-xs text-white">
-          {targetCode?.code ? (
-            <code>{targetCode?.code}</code>
-          ) : (
-            child
-          )}
+          {targetCode?.code
+            ? (
+                <code>{targetCode?.code}</code>
+              )
+            : (
+                child
+              )}
         </pre>
         <CopyButton code={targetCode?.code ?? child.props.children.props.children} />
       </div>

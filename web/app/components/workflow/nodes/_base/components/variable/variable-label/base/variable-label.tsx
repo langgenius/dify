@@ -46,8 +46,8 @@ const VariableLabel = ({
       {
         notShowFullPath && (
           <>
-            <RiMoreLine className='h-3 w-3 shrink-0 text-text-secondary' />
-            <div className='system-xs-regular shrink-0 text-divider-deep'>/</div>
+            <RiMoreLine className="h-3 w-3 shrink-0 text-text-secondary" />
+            <div className="system-xs-regular shrink-0 text-divider-deep">/</div>
           </>
         )
       }
@@ -62,7 +62,7 @@ const VariableLabel = ({
       />
       {
         variableType && (
-          <div className='system-xs-regular shrink-0 text-text-tertiary'>
+          <div className="system-xs-regular shrink-0 text-text-tertiary">
             {capitalize(variableType)}
           </div>
         )
@@ -73,7 +73,7 @@ const VariableLabel = ({
             popupContent={errorMsg}
             asChild
           >
-            <RiErrorWarningFill className='h-3 w-3 shrink-0 text-text-destructive' />
+            <RiErrorWarningFill className="h-3 w-3 shrink-0 text-text-destructive" />
           </Tooltip>
         )
       }

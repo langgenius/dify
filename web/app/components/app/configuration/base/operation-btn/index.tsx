@@ -17,8 +17,8 @@ export type IOperationBtnProps = {
 }
 
 const iconMap = {
-  add: <RiAddLine className='h-3.5 w-3.5' />,
-  edit: <RiEditLine className='h-3.5 w-3.5' />,
+  add: <RiAddLine className="h-3.5 w-3.5" />,
+  edit: <RiEditLine className="h-3.5 w-3.5" />,
 }
 
 const OperationBtn: FC<IOperationBtnProps> = ({
@@ -31,11 +31,12 @@ const OperationBtn: FC<IOperationBtnProps> = ({
   return (
     <div
       className={cn('flex h-7 cursor-pointer select-none items-center space-x-1 rounded-md px-3 text-text-secondary hover:bg-state-base-hover', className)}
-      onClick={onClick}>
+      onClick={onClick}
+    >
       <div>
         {iconMap[type]}
       </div>
-      <div className='text-xs font-medium'>
+      <div className="text-xs font-medium">
         {actionName || t(`common.operation.${type}`)}
       </div>
     </div>

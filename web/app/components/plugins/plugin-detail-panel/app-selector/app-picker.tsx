@@ -149,9 +149,9 @@ const AppPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <div className="relative flex max-h-[400px] min-h-20 w-[356px] flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
-          <div className='p-2 pb-1'>
+          <div className="p-2 pb-1">
             <Input
               showLeftIcon
               showClearIcon
@@ -160,29 +160,29 @@ const AppPicker: FC<Props> = ({
               onClear={() => onSearchChange('')}
             />
           </div>
-          <div className='min-h-0 flex-1 overflow-y-auto p-1'>
+          <div className="min-h-0 flex-1 overflow-y-auto p-1">
             {apps.map(app => (
               <div
                 key={app.id}
-                className='flex cursor-pointer items-center gap-3 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover'
+                className="flex cursor-pointer items-center gap-3 rounded-lg py-1 pl-2 pr-3 hover:bg-state-base-hover"
                 onClick={() => onSelect(app)}
               >
                 <AppIcon
-                  className='shrink-0'
-                  size='xs'
+                  className="shrink-0"
+                  size="xs"
                   iconType={app.icon_type}
                   icon={app.icon}
                   background={app.icon_background}
                   imageUrl={app.icon_url}
                 />
-                <div title={app.name} className='system-sm-medium grow text-components-input-text-filled'>{app.name}</div>
-                <div className='system-2xs-medium-uppercase shrink-0 text-text-tertiary'>{getAppType(app)}</div>
+                <div title={app.name} className="system-sm-medium grow text-components-input-text-filled">{app.name}</div>
+                <div className="system-2xs-medium-uppercase shrink-0 text-text-tertiary">{getAppType(app)}</div>
               </div>
             ))}
-            <div ref={observerTarget} className='h-4 w-full'>
+            <div ref={observerTarget} className="h-4 w-full">
               {isLoading && (
-                <div className='flex justify-center py-2'>
-                  <div className='text-sm text-gray-500'>{t('common.loading')}</div>
+                <div className="flex justify-center py-2">
+                  <div className="text-sm text-gray-500">{t('common.loading')}</div>
                 </div>
               )}
             </div>

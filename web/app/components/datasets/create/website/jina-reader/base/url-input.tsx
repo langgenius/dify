@@ -30,18 +30,18 @@ const UrlInput: FC<Props> = ({
   }, [isRunning, onRun, url])
 
   return (
-    <div className='flex items-center justify-between'>
+    <div className="flex items-center justify-between">
       <Input
         value={url}
         onChange={handleUrlChange}
         placeholder={docLink()}
       />
       <Button
-        variant='primary'
+        variant="primary"
         onClick={handleOnRun}
-        className='ml-2'
+        className="ml-2"
         loading={isRunning}
-        data-testid='url-input-run-button'
+        data-testid="url-input-run-button"
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
       </Button>

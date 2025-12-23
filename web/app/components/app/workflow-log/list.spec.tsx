@@ -50,7 +50,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 // Mock the Run component
 vi.mock('@/app/components/workflow/run', () => ({
   __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>

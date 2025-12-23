@@ -17,7 +17,7 @@ import type { ImageFile } from '@/types/app'
 import getCroppedImg from '@/app/components/base/app-icon-picker/utils'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
 
-type InputImageInfo = { file: File } | { tempUrl: string; croppedAreaPixels: Area; fileName: string }
+type InputImageInfo = { file: File } | { tempUrl: string, croppedAreaPixels: Area, fileName: string }
 type AvatarWithEditProps = AvatarProps & { onSave?: () => void }
 
 const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
@@ -116,15 +116,17 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
               setHoverArea(isRight ? 'right' : 'left')
             }}
           >
-            {hoverArea === 'right' && !onAvatarError ? (
-              <span className="text-xs text-white">
-                <RiDeleteBin5Line />
-              </span>
-            ) : (
-              <span className="text-xs text-white">
-                <RiPencilLine />
-              </span>
-            )}
+            {hoverArea === 'right' && !onAvatarError
+              ? (
+                  <span className="text-xs text-white">
+                    <RiDeleteBin5Line />
+                  </span>
+                )
+              : (
+                  <span className="text-xs text-white">
+                    <RiPencilLine />
+                  </span>
+                )}
           </div>
         </div>
       </div>
@@ -135,15 +137,15 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         isShow={isShowAvatarPicker}
         onClose={() => setIsShowAvatarPicker(false)}
       >
-        <ImageInput onImageInput={handleImageInput} cropShape='round' />
-        <Divider className='m-0' />
+        <ImageInput onImageInput={handleImageInput} cropShape="round" />
+        <Divider className="m-0" />
 
-        <div className='flex w-full items-center justify-center gap-2 p-3'>
-          <Button className='w-full' onClick={() => setIsShowAvatarPicker(false)}>
+        <div className="flex w-full items-center justify-center gap-2 p-3">
+          <Button className="w-full" onClick={() => setIsShowAvatarPicker(false)}>
             {t('app.iconPicker.cancel')}
           </Button>
 
-          <Button variant="primary" className='w-full' disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
+          <Button variant="primary" className="w-full" disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
             {t('app.iconPicker.ok')}
           </Button>
         </div>

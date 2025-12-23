@@ -18,7 +18,7 @@ const IconBase = (
     ref,
     ...props
   }: IconBaseProps & {
-    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>;
+    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>
   },
 ) => {
   const { data, className, onClick, style, ...restProps } = props

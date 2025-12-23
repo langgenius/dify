@@ -48,9 +48,10 @@ const AddVariable = ({
     <div className={cn(
       open && '!flex',
       variableAssignerNodeData.selected && '!flex',
-    )}>
+    )}
+    >
       <PortalToFollowElem
-        placement={'right'}
+        placement="right"
         offset={4}
         open={open}
         onOpenChange={setOpen}
@@ -75,7 +76,7 @@ const AddVariable = ({
             />
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1000]'>
+        <PortalToFollowElemContent className="z-[1000]">
           <AddVariablePopup
             onSelect={handleSelectVariable}
             availableVars={availableVars}

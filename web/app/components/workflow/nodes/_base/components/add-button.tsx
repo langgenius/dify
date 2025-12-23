@@ -21,11 +21,11 @@ const AddButton: FC<Props> = ({
   return (
     <Button
       className={cn('w-full', className)}
-      variant='tertiary'
-      size='medium'
+      variant="tertiary"
+      size="medium"
       onClick={onClick}
     >
-      <RiAddLine className='mr-1 h-3.5 w-3.5' />
+      <RiAddLine className="mr-1 h-3.5 w-3.5" />
       <div>{text}</div>
     </Button>
   )

@@ -30,7 +30,7 @@ const NodeContextmenu = () => {
 
   return (
     <div
-      className='absolute z-[9]'
+      className="absolute z-[9]"
       style={{
         left: nodeMenu.left,
         top: nodeMenu.top,

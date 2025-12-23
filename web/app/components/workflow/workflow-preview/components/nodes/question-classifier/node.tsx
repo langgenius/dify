@@ -14,23 +14,23 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const topics = data.classes
 
   return (
-    <div className='mb-1 px-3 py-1'>
+    <div className="mb-1 px-3 py-1">
       {
         !!topics.length && (
-          <div className='mt-2 space-y-0.5'>
+          <div className="mt-2 space-y-0.5">
             {topics.map((topic, index) => (
               <div
                 key={index}
-                className='relative'
+                className="relative"
               >
                 <InfoPanel
                   title={`${t(`${i18nPrefix}.class`)} ${index + 1}`}
-                  content={''}
+                  content=""
                 />
                 <NodeSourceHandle
                   {...props}
                   handleId={topic.id}
-                  handleClassName='!top-1/2 !-translate-y-1/2 !-right-[21px]'
+                  handleClassName="!top-1/2 !-translate-y-1/2 !-right-[21px]"
                 />
               </div>
             ))}

@@ -16,8 +16,8 @@ const isValidTimeFormat = (time: string): boolean => {
   const minuteNum = Number.parseInt(minute, 10)
 
   return hourNum >= 1 && hourNum <= 12
-         && minuteNum >= 0 && minuteNum <= 59
-         && ['AM', 'PM'].includes(period)
+    && minuteNum >= 0 && minuteNum <= 59
+    && ['AM', 'PM'].includes(period)
 }
 
 const validateHourlyConfig = (config: any, t: any): string => {

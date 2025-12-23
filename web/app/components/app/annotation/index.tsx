@@ -137,20 +137,20 @@ const Annotation: FC<Props> = (props) => {
   }, [isShowEdit])
 
   return (
-    <div className='flex h-full flex-col'>
-      <p className='system-sm-regular text-text-tertiary'>{t('appLog.description')}</p>
-      <div className='relative flex h-full flex-1 flex-col py-4'>
+    <div className="flex h-full flex-col">
+      <p className="system-sm-regular text-text-tertiary">{t('appLog.description')}</p>
+      <div className="relative flex h-full flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
-          <div className='flex items-center space-x-2'>
+          <div className="flex items-center space-x-2">
             {isChatApp && (
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
-                  <MessageFast className='h-4 w-4 text-util-colors-indigo-indigo-600' />
-                  <div className='system-sm-medium text-text-primary'>{t('appAnnotation.name')}</div>
+                  <MessageFast className="h-4 w-4 text-util-colors-indigo-indigo-600" />
+                  <div className="system-sm-medium text-text-primary">{t('appAnnotation.name')}</div>
                   <Switch
                     key={controlRefreshSwitch}
                     defaultValue={annotationConfig?.enabled}
-                    size='md'
+                    size="md"
                     onChange={async (value) => {
                       if (value) {
                         if (isAnnotationFull) {
@@ -170,17 +170,18 @@ const Annotation: FC<Props> = (props) => {
                         })
                       }
                     }}
-                  ></Switch>
+                  >
+                  </Switch>
                   {annotationConfig?.enabled && (
-                    <div className='flex items-center pl-1.5'>
-                      <div className='mr-1 h-3.5 w-[1px] shrink-0 bg-divider-subtle'></div>
+                    <div className="flex items-center pl-1.5">
+                      <div className="mr-1 h-3.5 w-[1px] shrink-0 bg-divider-subtle"></div>
                       <ActionButton onClick={() => setIsShowEdit(true)}>
-                        <RiEqualizer2Line className='h-4 w-4 text-text-tertiary' />
+                        <RiEqualizer2Line className="h-4 w-4 text-text-tertiary" />
                       </ActionButton>
                     </div>
                   )}
                 </div>
-                <div className='mx-3 h-3.5 w-[1px] shrink-0 bg-divider-regular'></div>
+                <div className="mx-3 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
               </>
             )}
 
@@ -195,29 +196,32 @@ const Annotation: FC<Props> = (props) => {
           </div>
         </Filter>
         {isLoading
-          ? <Loading type='app' />
+          ? <Loading type="app" />
           // eslint-disable-next-line sonarjs/no-nested-conditional
           : total > 0
-            ? <List
-              list={list}
-              onRemove={handleRemove}
-              onView={handleView}
-              selectedIds={selectedIds}
-              onSelectedIdsChange={setSelectedIds}
-              onBatchDelete={handleBatchDelete}
-              onCancel={() => setSelectedIds([])}
-            />
-            : <div className='flex h-full grow items-center justify-center'><EmptyElement /></div>
-        }
+            ? (
+                <List
+                  list={list}
+                  onRemove={handleRemove}
+                  onView={handleView}
+                  selectedIds={selectedIds}
+                  onSelectedIdsChange={setSelectedIds}
+                  onBatchDelete={handleBatchDelete}
+                  onCancel={() => setSelectedIds([])}
+                />
+              )
+            : <div className="flex h-full grow items-center justify-center"><EmptyElement /></div>}
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
-          ? <Pagination
-            current={currPage}
-            onChange={setCurrPage}
-            total={total}
-            limit={limit}
-            onLimitChange={setLimit}
-          />
+          ? (
+              <Pagination
+                current={currPage}
+                onChange={setCurrPage}
+                total={total}
+                limit={limit}
+                onLimitChange={setLimit}
+              />
+            )
           : null}
 
         {isShowViewModal && (

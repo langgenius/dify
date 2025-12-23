@@ -62,14 +62,15 @@ const RetrievalSetting = ({
       fieldTitleProps={{
         title: t('datasetSettings.form.retrievalSetting.title'),
         subTitle: (
-          <div className='body-xs-regular flex items-center text-text-tertiary'>
-            <a target='_blank' rel='noopener noreferrer' href='https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings' className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-            &nbsp;{t('workflow.nodes.knowledgeBase.aboutRetrieval')}
+          <div className="body-xs-regular flex items-center text-text-tertiary">
+            <a target="_blank" rel="noopener noreferrer" href="https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings" className="text-text-accent">{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
+            &nbsp;
+            {t('workflow.nodes.knowledgeBase.aboutRetrieval')}
           </div>
         ),
       }}
     >
-      <div className='space-y-1'>
+      <div className="space-y-1">
         {
           options.map(option => (
             <SearchMethodOption

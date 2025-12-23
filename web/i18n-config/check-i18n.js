@@ -147,7 +147,7 @@ async function getKeysFromLanguage(language) {
           // Extract the translation object
           const translationObj = moduleExports.default || moduleExports
 
-          if(!translationObj || typeof translationObj !== 'object') {
+          if (!translationObj || typeof translationObj !== 'object') {
             console.error(`Error parsing file: ${filePath}`)
             reject(new Error(`Error parsing file: ${filePath}`))
             return
@@ -161,7 +161,7 @@ async function getKeysFromLanguage(language) {
                 // This is an object (but not array), recurse into it but don't add it as a key
                 iterateKeys(obj[key], nestedKey)
               }
- else {
+              else {
                 // This is a leaf node (string, number, boolean, array, etc.), add it as a key
                 nestedKeys.push(nestedKey)
               }
@@ -173,7 +173,7 @@ async function getKeysFromLanguage(language) {
           const fileKeys = nestedKeys.map(key => `${camelCaseFileName}.${key}`)
           allKeys.push(...fileKeys)
         }
- catch (error) {
+        catch (error) {
           console.error(`Error processing file ${filePath}:`, error.message)
           reject(error)
         }
@@ -193,7 +193,7 @@ function removeKeysFromObject(obj, keysToRemove, prefix = '') {
       modified = true
       console.log(`🗑️  Removed key: ${fullKey}`)
     }
- else if (typeof obj[key] === 'object' && obj[key] !== null) {
+    else if (typeof obj[key] === 'object' && obj[key] !== null) {
       const subModified = removeKeysFromObject(obj[key], keysToRemove, fullKey)
       modified = modified || subModified
     }
@@ -246,7 +246,7 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
           }
         }
       }
- else {
+      else {
         // Nested key - need to find the exact path
         const currentPath = []
         let braceDepth = 0
@@ -261,7 +261,7 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
             currentPath.push(keyMatch[1])
             braceDepth++
           }
- else if (trimmedLine === '},' || trimmedLine === '}') {
+          else if (trimmedLine === '},' || trimmedLine === '}') {
             if (braceDepth > 0) {
               braceDepth--
               currentPath.pop()
@@ -316,11 +316,11 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
 
               // Check if this line ends the value (ends with quote and comma/no comma)
               if ((trimmed.endsWith('\',') || trimmed.endsWith('",') || trimmed.endsWith('`,')
-                   || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
-                  && !trimmed.startsWith('//'))
+                || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
+              && !trimmed.startsWith('//'))
                 break
             }
- else {
+            else {
               break
             }
 
@@ -332,7 +332,7 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
         console.log(`🗑️  Found key to remove: ${keyToRemove} at line ${targetLineIndex + 1}${linesToRemoveForKey.length > 1 ? ` (multiline, ${linesToRemoveForKey.length} lines)` : ''}`)
         modified = true
       }
- else {
+      else {
         console.log(`⚠️  Could not find key: ${keyToRemove}`)
       }
     }
@@ -365,7 +365,7 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
 
     return false
   }
- catch (error) {
+  catch (error) {
     console.error(`Error processing file ${filePath}:`, error.message)
     return false
   }

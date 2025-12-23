@@ -35,9 +35,9 @@ const FileInput = ({
 
   return (
     <input
-      className='absolute inset-0 block w-full cursor-pointer text-[0] opacity-0 disabled:cursor-not-allowed'
+      className="absolute inset-0 block w-full cursor-pointer text-[0] opacity-0 disabled:cursor-not-allowed"
       onClick={e => ((e.target as HTMLInputElement).value = '')}
-      type='file'
+      type="file"
       onChange={handleChange}
       accept={accept}
       disabled={!!(fileConfig.number_limits && files.length >= fileConfig?.number_limits)}

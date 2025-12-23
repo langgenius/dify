@@ -617,8 +617,8 @@ export default translation
 
                 // Check if this line ends the value (ends with quote and comma/no comma)
                 if ((trimmed.endsWith('\',') || trimmed.endsWith('",') || trimmed.endsWith('`,')
-                     || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
-                    && !trimmed.startsWith('//'))
+                  || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
+                && !trimmed.startsWith('//'))
                   break
               }
               else {

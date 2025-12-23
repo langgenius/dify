@@ -68,9 +68,10 @@ const DebugItem: FC<DebugItemProps> = ({
       className={`flex min-w-[320px] flex-col rounded-xl bg-background-section-burn ${className}`}
       style={style}
     >
-      <div className='flex h-10 shrink-0 items-center justify-between border-b-[0.5px] border-divider-regular px-3'>
-        <div className='flex h-5 w-6 items-center justify-center font-medium italic text-text-tertiary'>
-          #{index + 1}
+      <div className="flex h-10 shrink-0 items-center justify-between border-b-[0.5px] border-divider-regular px-3">
+        <div className="flex h-5 w-6 items-center justify-center font-medium italic text-text-tertiary">
+          #
+          {index + 1}
         </div>
         <ModelParameterTrigger
           modelAndParameter={modelAndParameter}
@@ -81,32 +82,32 @@ const DebugItem: FC<DebugItemProps> = ({
             ...(
               multipleModelConfigs.length <= 3
                 ? [
-                  {
-                    value: 'duplicate',
-                    text: t('appDebug.duplicateModel'),
-                  },
-                ]
+                    {
+                      value: 'duplicate',
+                      text: t('appDebug.duplicateModel'),
+                    },
+                  ]
                 : []
             ),
             ...(
               (modelAndParameter.provider && modelAndParameter.model)
                 ? [
-                  {
-                    value: 'debug-as-single-model',
-                    text: t('appDebug.debugAsSingleModel'),
-                  },
-                ]
+                    {
+                      value: 'debug-as-single-model',
+                      text: t('appDebug.debugAsSingleModel'),
+                    },
+                  ]
                 : []
             ),
           ]}
           secondItems={
             multipleModelConfigs.length > 2
               ? [
-                {
-                  value: 'remove',
-                  text: t('common.operation.remove') as string,
-                },
-              ]
+                  {
+                    value: 'remove',
+                    text: t('common.operation.remove') as string,
+                  },
+                ]
               : undefined
           }
         />

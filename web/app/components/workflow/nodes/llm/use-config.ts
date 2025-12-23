@@ -25,7 +25,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const isChatMode = useIsChatMode()
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
   useEffect(() => {
@@ -128,7 +128,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId

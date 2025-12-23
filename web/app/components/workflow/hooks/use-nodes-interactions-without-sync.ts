@@ -31,7 +31,7 @@ export const useNodesInteractionsWithoutSync = () => {
     const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {
       draft.forEach((node) => {
-        if(node.data._runningStatus === NodeRunningStatus.Succeeded)
+        if (node.data._runningStatus === NodeRunningStatus.Succeeded)
           node.data._runningStatus = undefined
       })
     })

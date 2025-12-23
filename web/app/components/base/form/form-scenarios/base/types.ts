@@ -50,8 +50,8 @@ export type BaseConfiguration = {
   type: BaseFieldType
   tooltip?: string // Tooltip for this field
 } & NumberConfiguration
-  & Partial<SelectConfiguration>
-  & Partial<FileConfiguration>
+& Partial<SelectConfiguration>
+& Partial<FileConfiguration>
 
 export type BaseFormProps = {
   initialData?: Record<string, any>

@@ -41,7 +41,7 @@ export type ButtonProps = {
 const Button = ({ className, variant, size, destructive, loading, styleCss, children, spinnerClassName, ref, ...props }: ButtonProps) => {
   return (
     <button
-      type='button'
+      type="button"
       className={cn(buttonVariants({ variant, size, className }),
         destructive && 'btn-destructive')}
       ref={ref}

@@ -36,7 +36,7 @@ const AddRow: FC<Props> = ({
         }
         onClick={onRemove}
       >
-        <RiIndeterminateCircleLine className='size-4' />
+        <RiIndeterminateCircleLine className="size-4" />
       </div>
     </div>
   )

@@ -19,7 +19,7 @@ export default function DatasetsLayout({ children }: { children: React.ReactNode
   }, [isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator, isLoadingCurrentWorkspace, currentWorkspace, router])
 
   if (isLoadingCurrentWorkspace || !(isCurrentWorkspaceEditor || isCurrentWorkspaceDatasetOperator))
-    return <Loading type='app' />
+    return <Loading type="app" />
   return (
     <ExternalKnowledgeApiProvider>
       <ExternalApiPanelProvider>

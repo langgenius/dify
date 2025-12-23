@@ -35,7 +35,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
           icon: (
             <BlockIcon
               type={BlockEnum.Start}
-              size='md'
+              size="md"
             />
           ),
           nodeId: node.id,
@@ -50,7 +50,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
           icon: (
             <BlockIcon
               type={BlockEnum.TriggerSchedule}
-              size='md'
+              size="md"
             />
           ),
           nodeId: node.id,
@@ -65,7 +65,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
           icon: (
             <BlockIcon
               type={BlockEnum.TriggerWebhook}
-              size='md'
+              size="md"
             />
           ),
           nodeId: node.id,
@@ -83,7 +83,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
         const icon = (
           <BlockIcon
             type={BlockEnum.TriggerPlugin}
-            size='md'
+            size="md"
             toolIcon={triggerIcon}
           />
         )
@@ -109,7 +109,7 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
           icon: (
             <BlockIcon
               type={BlockEnum.Start}
-              size='md'
+              size="md"
             />
           ),
           nodeId: startNode.id,
@@ -122,18 +122,20 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
       .map(trigger => trigger.nodeId)
       .filter((nodeId): nodeId is string => Boolean(nodeId))
 
-    const runAll: TriggerOption | undefined = triggerNodeIds.length > 1 ? {
-      id: 'run-all',
-      type: TriggerType.All,
-      name: t('workflow.common.runAllTriggers'),
-      icon: (
-        <div className="flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 bg-util-colors-purple-purple-500 text-white shadow-md">
-          <TriggerAll className="h-4.5 w-4.5" />
-        </div>
-      ),
-      relatedNodeIds: triggerNodeIds,
-      enabled: true,
-    } : undefined
+    const runAll: TriggerOption | undefined = triggerNodeIds.length > 1
+      ? {
+          id: 'run-all',
+          type: TriggerType.All,
+          name: t('workflow.common.runAllTriggers'),
+          icon: (
+            <div className="flex h-6 w-6 items-center justify-center rounded-lg border-[0.5px] border-white/2 bg-util-colors-purple-purple-500 text-white shadow-md">
+              <TriggerAll className="h-4.5 w-4.5" />
+            </div>
+          ),
+          relatedNodeIds: triggerNodeIds,
+          enabled: true,
+        }
+      : undefined
 
     return {
       userInput,

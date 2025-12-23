@@ -59,12 +59,12 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
   const triggerDocUrl = docLink('/guides/workflow/node/start')
   const buildTriggerModeMessage = useCallback((featureName: string) => (
-    <div className='flex flex-col gap-1'>
-      <div className='text-xs text-text-secondary'>
+    <div className="flex flex-col gap-1">
+      <div className="text-xs text-text-secondary">
         {t('appOverview.overview.disableTooltip.triggerMode', { feature: featureName })}
       </div>
       <div
-        className='cursor-pointer text-xs font-medium text-text-accent hover:underline'
+        className="cursor-pointer text-xs font-medium text-text-accent hover:underline"
         onClick={(event) => {
           event.stopPropagation()
           window.open(triggerDocUrl, '_blank')
@@ -185,12 +185,14 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     </>
   )
 
-  const triggerCardNode = showTriggerCard ? (
-    <TriggerCard
-      appInfo={appDetail}
-      onToggleResult={handleCallbackResult}
-    />
-  ) : null
+  const triggerCardNode = showTriggerCard
+    ? (
+        <TriggerCard
+          appInfo={appDetail}
+          onToggleResult={handleCallbackResult}
+        />
+      )
+    : null
 
   return (
     <div className={className || 'mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'}>

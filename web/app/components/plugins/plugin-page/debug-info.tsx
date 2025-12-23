@@ -28,37 +28,37 @@ const DebugInfo: FC = () => {
 
   return (
     <Tooltip
-      triggerMethod='click'
+      triggerMethod="click"
       disabled={!info}
-      popupContent={
+      popupContent={(
         <>
-          <div className='flex items-center gap-1 self-stretch'>
-            <span className='system-sm-semibold flex shrink-0 grow basis-0 flex-col items-start justify-center text-text-secondary'>{t(`${i18nPrefix}.title`)}</span>
-            <a href={getDocsUrl(locale, '/plugins/quick-start/debug-plugin')} target='_blank' className='flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only'>
-              <span className='system-xs-medium'>{t(`${i18nPrefix}.viewDocs`)}</span>
-              <RiArrowRightUpLine className='h-3 w-3' />
+          <div className="flex items-center gap-1 self-stretch">
+            <span className="system-sm-semibold flex shrink-0 grow basis-0 flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.title`)}</span>
+            <a href={getDocsUrl(locale, '/plugins/quick-start/debug-plugin')} target="_blank" className="flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only">
+              <span className="system-xs-medium">{t(`${i18nPrefix}.viewDocs`)}</span>
+              <RiArrowRightUpLine className="h-3 w-3" />
             </a>
           </div>
-          <div className='space-y-0.5'>
+          <div className="space-y-0.5">
             <KeyValueItem
-              label={'URL'}
+              label="URL"
               value={`${info?.host}:${info?.port}`}
             />
             <KeyValueItem
-              label={'Key'}
+              label="Key"
               value={info?.key || ''}
               maskedValue={maskedKey}
             />
           </div>
         </>
-      }
-      popupClassName='flex flex-col items-start w-[256px] px-4 py-3.5 gap-1 border border-components-panel-border
-        rounded-xl bg-components-tooltip-bg shadows-shadow-lg z-50'
+      )}
+      popupClassName="flex flex-col items-start w-[256px] px-4 py-3.5 gap-1 border border-components-panel-border
+        rounded-xl bg-components-tooltip-bg shadows-shadow-lg z-50"
       asChild={false}
-      position='bottom'
+      position="bottom"
     >
-      <Button className='h-full w-full p-2 text-components-button-secondary-text'>
-        <RiBugLine className='h-4 w-4' />
+      <Button className="h-full w-full p-2 text-components-button-secondary-text">
+        <RiBugLine className="h-4 w-4" />
       </Button>
     </Tooltip>
   )

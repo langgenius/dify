@@ -71,16 +71,17 @@ const SwrInitializer = ({
 
   return init
     ? (
-      <SWRConfig value={{
-        shouldRetryOnError: false,
-        revalidateOnFocus: false,
-        dedupingInterval: 60000,
-        focusThrottleInterval: 5000,
-        provider: () => new Map(),
-      }}>
-        {children}
-      </SWRConfig>
-    )
+        <SWRConfig value={{
+          shouldRetryOnError: false,
+          revalidateOnFocus: false,
+          dedupingInterval: 60000,
+          focusThrottleInterval: 5000,
+          provider: () => new Map(),
+        }}
+        >
+          {children}
+        </SWRConfig>
+      )
     : null
 }
 

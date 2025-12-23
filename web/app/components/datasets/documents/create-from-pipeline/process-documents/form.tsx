@@ -62,7 +62,7 @@ const Form = ({
 
   return (
     <form
-      className='flex w-full flex-col rounded-lg border border-components-panel-border bg-components-panel-bg'
+      className="flex w-full flex-col rounded-lg border border-components-panel-border bg-components-panel-bg"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
@@ -80,7 +80,7 @@ const Form = ({
           />
         )}
       />
-      <div className='flex flex-col gap-3 border-t border-divider-subtle px-4 py-3'>
+      <div className="flex flex-col gap-3 border-t border-divider-subtle px-4 py-3">
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

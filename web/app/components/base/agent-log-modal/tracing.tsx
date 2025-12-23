@@ -9,7 +9,7 @@ type TracingPanelProps = {
 
 const TracingPanel: FC<TracingPanelProps> = ({ list }) => {
   return (
-    <div className='bg-background-section'>
+    <div className="bg-background-section">
       {list.map((iteration, index) => (
         <Iteration
           key={index}

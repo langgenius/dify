@@ -19,11 +19,11 @@ const SecretKeyButton = ({ className, appId, textCls }: ISecretKeyButtonProps) =
       <Button
         className={`px-3 ${className}`}
         onClick={() => setVisible(true)}
-        size='small'
-        variant='ghost'
+        size="small"
+        variant="ghost"
       >
-        <div className={'flex h-3.5 w-3.5 items-center justify-center'}>
-          <RiKey2Line className='h-3.5 w-3.5 text-text-tertiary' />
+        <div className="flex h-3.5 w-3.5 items-center justify-center">
+          <RiKey2Line className="h-3.5 w-3.5 text-text-tertiary" />
         </div>
         <div className={`system-xs-medium px-[3px] text-text-tertiary ${textCls}`}>{t('appApi.apiKey')}</div>
       </Button>

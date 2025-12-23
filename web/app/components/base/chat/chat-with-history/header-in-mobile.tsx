@@ -65,22 +65,22 @@ const HeaderInMobile = () => {
 
   return (
     <>
-      <div className='flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3'>
-        <ActionButton size='l' className='shrink-0' onClick={() => setShowSidebar(true)}>
-          <RiMenuLine className='h-[18px] w-[18px]' />
+      <div className="flex shrink-0 items-center gap-1 bg-mask-top2bottom-gray-50-to-transparent px-2 py-3">
+        <ActionButton size="l" className="shrink-0" onClick={() => setShowSidebar(true)}>
+          <RiMenuLine className="h-[18px] w-[18px]" />
         </ActionButton>
-        <div className='flex grow items-center justify-center'>
+        <div className="flex grow items-center justify-center">
           {!currentConversationId && (
             <>
               <AppIcon
-                className='mr-2'
-                size='tiny'
+                className="mr-2"
+                size="tiny"
                 icon={appData?.site.icon}
                 iconType={appData?.site.icon_type}
                 imageUrl={appData?.site.icon_url}
                 background={appData?.site.icon_background}
               />
-              <div className='system-md-semibold truncate text-text-secondary'>
+              <div className="system-md-semibold truncate text-text-secondary">
                 {appData?.site.title}
               </div>
             </>
@@ -104,24 +104,26 @@ const HeaderInMobile = () => {
         />
       </div>
       {showSidebar && (
-        <div className='fixed inset-0 z-50 flex bg-background-overlay p-1'
+        <div
+          className="fixed inset-0 z-50 flex bg-background-overlay p-1"
           onClick={() => setShowSidebar(false)}
         >
-          <div className='flex h-full w-[calc(100vw_-_40px)] rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm' onClick={e => e.stopPropagation()}>
+          <div className="flex h-full w-[calc(100vw_-_40px)] rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm" onClick={e => e.stopPropagation()}>
             <Sidebar />
           </div>
         </div>
       )}
       {showChatSettings && (
-        <div className='fixed inset-0 z-50 flex justify-end bg-background-overlay p-1'
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-background-overlay p-1"
           onClick={() => setShowChatSettings(false)}
         >
-          <div className='flex h-full w-[calc(100vw_-_40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm' onClick={e => e.stopPropagation()}>
-            <div className='flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3'>
-              <Message3Fill className='h-6 w-6 shrink-0' />
-              <div className='system-xl-semibold grow text-text-secondary'>{t('share.chat.chatSettingsTitle')}</div>
+          <div className="flex h-full w-[calc(100vw_-_40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
+              <Message3Fill className="h-6 w-6 shrink-0" />
+              <div className="system-xl-semibold grow text-text-secondary">{t('share.chat.chatSettingsTitle')}</div>
             </div>
-            <div className='p-4'>
+            <div className="p-4">
               <InputsFormContent />
             </div>
           </div>

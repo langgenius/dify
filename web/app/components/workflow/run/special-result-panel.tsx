@@ -54,7 +54,8 @@ const SpecialResultPanel = ({
     <div onClick={(e) => {
       e.stopPropagation()
       e.nativeEvent.stopImmediatePropagation()
-    }}>
+    }}
+    >
       {
         !!showRetryDetail && !!retryResultList?.length && setShowRetryDetailFalse && (
           <RetryResultPanel

@@ -27,9 +27,9 @@ type License = {
 
 export type SystemFeatures = {
   plugin_installation_permission: {
-    plugin_installation_scope: InstallationScope,
+    plugin_installation_scope: InstallationScope
     restrict_to_marketplace_only: boolean
-  },
+  }
   sso_enforced_for_signin: boolean
   sso_enforced_for_signin_protocol: SSOProtocol | ''
   sso_enforced_for_web: boolean

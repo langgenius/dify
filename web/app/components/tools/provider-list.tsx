@@ -125,15 +125,16 @@ const ProviderList = () => {
 
   return (
     <>
-      <div className='relative flex h-0 shrink-0 grow overflow-hidden'>
+      <div className="relative flex h-0 shrink-0 grow overflow-hidden">
         <div
           ref={containerRef}
-          className='relative flex grow flex-col overflow-y-auto bg-background-body'
+          className="relative flex grow flex-col overflow-y-auto bg-background-body"
         >
           <div className={cn(
             'sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-2 pt-4 leading-[56px]',
             currentProviderId && 'pr-6',
-          )}>
+          )}
+          >
             <TabSliderNew
               value={activeTab}
               onChange={(state) => {
@@ -143,14 +144,14 @@ const ProviderList = () => {
               }}
               options={options}
             />
-            <div className='flex items-center gap-2'>
+            <div className="flex items-center gap-2">
               {activeTab !== 'mcp' && (
                 <LabelFilter value={tagFilterValue} onChange={handleTagsChange} />
               )}
               <Input
                 showLeftIcon
                 showClearIcon
-                wrapperClassName='w-[200px]'
+                wrapperClassName="w-[200px]"
                 value={keywords}
                 onChange={e => handleKeywordsChange(e.target.value)}
                 onClear={() => handleKeywordsChange('')}
@@ -161,7 +162,8 @@ const ProviderList = () => {
             <div className={cn(
               'relative grid shrink-0 grid-cols-1 content-start gap-4 px-12 pb-4 pt-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4',
               !filteredCollectionList.length && activeTab === 'workflow' && 'grow',
-            )}>
+            )}
+            >
               {activeTab === 'api' && <CustomCreateCard onRefreshData={refetch} />}
               {filteredCollectionList.map(collection => (
                 <div
@@ -180,19 +182,19 @@ const ProviderList = () => {
                       org: collection.plugin_id ? collection.plugin_id.split('/')[0] : '',
                       name: collection.plugin_id ? collection.plugin_id.split('/')[1] : collection.name,
                     } as any}
-                    footer={
+                    footer={(
                       <CardMoreInfo
                         tags={collection.labels?.map(label => getTagLabel(label)) || []}
                       />
-                    }
+                    )}
                   />
                 </div>
               ))}
-              {!filteredCollectionList.length && activeTab === 'workflow' && <div className='absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2'><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
+              {!filteredCollectionList.length && activeTab === 'workflow' && <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2"><WorkflowToolEmpty type={getToolType(activeTab)} /></div>}
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('tools.noTools')} className='h-[224px] shrink-0 px-12' />
+            <Empty lightCard text={t('tools.noTools')} className="h-[224px] shrink-0 px-12" />
           )}
           <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (

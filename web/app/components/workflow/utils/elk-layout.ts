@@ -284,7 +284,7 @@ const collectLayout = (graph: ElkNode, predicate: (id: string) => boolean): Layo
 const buildIfElseWithPorts = (
   ifElseNode: Node,
   edges: Edge[],
-): { node: ElkNodeShape; portMap: Map<string, string> } | null => {
+): { node: ElkNodeShape, portMap: Map<string, string> } | null => {
   const childEdges = edges.filter(edge => edge.source === ifElseNode.id)
 
   if (childEdges.length <= 1)

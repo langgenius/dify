@@ -160,7 +160,7 @@ async function translateText(source, toLanguage) {
     const { translation } = await translate(safeText, null, languageKeyMap[toLanguage])
     return { value: restore(translation), skipped: false }
   }
- catch (error) {
+  catch (error) {
     console.error(`❌ Error translating to ${toLanguage}:`, error.message)
     return { value: source, skipped: true, error: error.message }
   }
@@ -319,13 +319,13 @@ export default translation
       fs.writeFileSync(toGenLanguageFilePath, res)
       console.log(`💾 Saved translations to ${toGenLanguageFilePath}`)
     }
- else {
+    else {
       console.log(`🔍 [DRY RUN] Would save translations to ${toGenLanguageFilePath}`)
     }
 
     return result
   }
- catch (error) {
+  catch (error) {
     console.error(`Error processing file ${fullKeyFilePath}:`, error.message)
     throw error
   }

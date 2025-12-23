@@ -22,7 +22,7 @@ import { useCreateMetaData } from '@/service/knowledge/use-metadata'
 const i18nPrefix = 'dataset.metadata.batchEditMetadata'
 
 type Props = {
-  datasetId: string,
+  datasetId: string
   documentNum: number
   list: MetadataItemInBatchEdit[]
   onSave: (editedList: MetadataItemInBatchEdit[], addedList: MetadataItemInBatchEdit[], isApplyToAllSelectDocument: boolean) => void
@@ -116,11 +116,11 @@ const EditMetadataBatchModal: FC<Props> = ({
       isShow
       closable
       onClose={onHide}
-      className='!max-w-[640px]'
+      className="!max-w-[640px]"
     >
-      <div className='system-xs-medium mt-1 text-text-accent'>{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
-      <div className='max-h-[305px] overflow-y-auto overflow-x-hidden'>
-        <div className='mt-4 space-y-2'>
+      <div className="system-xs-medium mt-1 text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
+      <div className="max-h-[305px] overflow-y-auto overflow-x-hidden">
+        <div className="mt-4 space-y-2">
           {templeList.map(item => (
             <EditMetadataBatchItem
               key={item.id}
@@ -131,12 +131,12 @@ const EditMetadataBatchModal: FC<Props> = ({
             />
           ))}
         </div>
-        <div className='mt-4 pl-[18px]'>
-          <div className='flex items-center'>
-            <div className='system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary'>{t('dataset.metadata.createMetadata.title')}</div>
-            <Divider bgStyle='gradient' />
+        <div className="mt-4 pl-[18px]">
+          <div className="flex items-center">
+            <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">{t('dataset.metadata.createMetadata.title')}</div>
+            <Divider bgStyle="gradient" />
           </div>
-          <div className='mt-2 space-y-2'>
+          <div className="mt-2 space-y-2">
             {addedList.map((item, i) => (
               <AddedMetadataItem
                 key={i}
@@ -146,10 +146,10 @@ const EditMetadataBatchModal: FC<Props> = ({
               />
             ))}
           </div>
-          <div className='mt-3'>
+          <div className="mt-3">
             <SelectMetadataModal
               datasetId={datasetId}
-              popupPlacement='top-start'
+              popupPlacement="top-start"
               popupOffset={{ mainAxis: 4, crossAxis: 0 }}
               trigger={
                 <AddMetadataButton />
@@ -162,25 +162,31 @@ const EditMetadataBatchModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className='mt-4 flex items-center justify-between'>
-        <div className='flex select-none items-center'>
+      <div className="mt-4 flex items-center justify-between">
+        <div className="flex select-none items-center">
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} />
-          <div className='system-xs-medium ml-2 mr-1 text-text-secondary'>{t(`${i18nPrefix}.applyToAllSelectDocument`)}</div>
+          <div className="system-xs-medium ml-2 mr-1 text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`)}</div>
           <Tooltip popupContent={
-            <div className='max-w-[240px]'>{t(`${i18nPrefix}.applyToAllSelectDocumentTip`)}</div>
-          } >
-            <div className='cursor-pointer p-px'>
-              <RiQuestionLine className='size-3.5 text-text-tertiary' />
+            <div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`)}</div>
+          }
+          >
+            <div className="cursor-pointer p-px">
+              <RiQuestionLine className="size-3.5 text-text-tertiary" />
             </div>
           </Tooltip>
         </div>
-        <div className='flex items-center space-x-2'>
+        <div className="flex items-center space-x-2">
           <Button
-            onClick={onHide}>{t('common.operation.cancel')}</Button>
+            onClick={onHide}
+          >
+            {t('common.operation.cancel')}
+          </Button>
           <Button
             onClick={handleSave}
-            variant='primary'
-          >{t('common.operation.save')}</Button>
+            variant="primary"
+          >
+            {t('common.operation.save')}
+          </Button>
         </div>
       </div>
     </Modal>

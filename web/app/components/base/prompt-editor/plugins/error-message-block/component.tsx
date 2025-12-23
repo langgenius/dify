@@ -31,8 +31,8 @@ const ErrorMessageBlockComponent: FC<Props> = ({
       }}
       ref={ref}
     >
-      <Variable02 className='mr-0.5 h-[14px] w-[14px]' />
-      <div className='text-xs font-medium'>error_message</div>
+      <Variable02 className="mr-0.5 h-[14px] w-[14px]" />
+      <div className="text-xs font-medium">error_message</div>
     </div>
   )
 }

@@ -50,8 +50,8 @@ const Blocks = ({
       const list = (grouped[classification] || []).filter((block) => {
         // Filter out trigger types from Blocks tab
         if (block.metaData.type === BlockEnum.TriggerWebhook
-            || block.metaData.type === BlockEnum.TriggerSchedule
-            || block.metaData.type === BlockEnum.TriggerPlugin)
+          || block.metaData.type === BlockEnum.TriggerSchedule
+          || block.metaData.type === BlockEnum.TriggerPlugin)
           return false
 
         return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
@@ -79,11 +79,11 @@ const Blocks = ({
     return (
       <div
         key={classification}
-        className='mb-1 last-of-type:mb-0'
+        className="mb-1 last-of-type:mb-0"
       >
         {
           classification !== '-' && !!filteredList.length && (
-            <div className='flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary'>
+            <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
               {t(`workflow.tabs.${classification}`)}
             </div>
           )
@@ -92,36 +92,36 @@ const Blocks = ({
           filteredList.map(block => (
             <Tooltip
               key={block.metaData.type}
-              position='right'
-              popupClassName='w-[200px] rounded-xl'
+              position="right"
+              popupClassName="w-[200px] rounded-xl"
               needsDelay={false}
               popupContent={(
                 <div>
                   <BlockIcon
-                    size='md'
-                    className='mb-2'
+                    size="md"
+                    className="mb-2"
                     type={block.metaData.type}
                   />
-                  <div className='system-md-medium mb-1 text-text-primary'>{block.metaData.title}</div>
-                  <div className='system-xs-regular text-text-tertiary'>{block.metaData.description}</div>
+                  <div className="system-md-medium mb-1 text-text-primary">{block.metaData.title}</div>
+                  <div className="system-xs-regular text-text-tertiary">{block.metaData.description}</div>
                 </div>
               )}
             >
               <div
                 key={block.metaData.type}
-                className='flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover'
+                className="flex h-8 w-full cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
                 onClick={() => onSelect(block.metaData.type)}
               >
                 <BlockIcon
-                  className='mr-2 shrink-0'
+                  className="mr-2 shrink-0"
                   type={block.metaData.type}
                 />
-                <div className='grow text-sm text-text-secondary'>{block.metaData.title}</div>
+                <div className="grow text-sm text-text-secondary">{block.metaData.title}</div>
                 {
                   block.metaData.type === BlockEnum.LoopEnd && (
                     <Badge
                       text={t('workflow.nodes.loop.loopNode')}
-                      className='ml-2 shrink-0'
+                      className="ml-2 shrink-0"
                     />
                   )
                 }
@@ -134,10 +134,10 @@ const Blocks = ({
   }, [groups, onSelect, t, store])
 
   return (
-    <div className='max-h-[480px] max-w-[500px] overflow-y-auto p-1'>
+    <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
       {
         isEmpty && (
-          <div className='flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary'>{t('workflow.tabs.noResult')}</div>
+          <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">{t('workflow.tabs.noResult')}</div>
         )
       }
       {

@@ -31,14 +31,15 @@ const I18n: FC<II18nProps> = ({
   }, [locale])
 
   if (loading)
-    return <div className='flex h-screen w-screen items-center justify-center'><Loading type='app' /></div>
+    return <div className="flex h-screen w-screen items-center justify-center"><Loading type="app" /></div>
 
   return (
     <I18NContext.Provider value={{
       locale,
       i18n: {},
       setLocaleOnClient,
-    }}>
+    }}
+    >
       {children}
     </I18NContext.Provider>
   )

@@ -28,13 +28,13 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
     <CodeEditor
       readOnly={readonly}
       className={cn('grow rounded-xl', className)}
-      editorWrapperClassName='grow'
+      editorWrapperClassName="grow"
       value={schema}
       onUpdate={onUpdate}
       hideTopMenu={hideTopMenu}
       onFocus={onFocus}
       onBlur={onBlur}
-      topContent={isTruncated && <LargeDataAlert className='mx-1 mb-3 mt-[-4px]' />}
+      topContent={isTruncated && <LargeDataAlert className="mx-1 mb-3 mt-[-4px]" />}
     />
   )
 }

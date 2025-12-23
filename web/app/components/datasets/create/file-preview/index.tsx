@@ -49,16 +49,20 @@ const FilePreview = ({
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title, 'title-md-semi-bold')}>
           <span>{t('datasetCreation.stepOne.filePreview')}</span>
-          <div className='flex h-6 w-6 cursor-pointer items-center justify-center' onClick={hidePreview}>
-            <XMarkIcon className='h-4 w-4'></XMarkIcon>
+          <div className="flex h-6 w-6 cursor-pointer items-center justify-center" onClick={hidePreview}>
+            <XMarkIcon className="h-4 w-4"></XMarkIcon>
           </div>
         </div>
         <div className={cn(s.fileName, 'system-xs-medium')}>
-          <span>{getFileName(file)}</span><span className={cn(s.filetype)}>.{file?.extension}</span>
+          <span>{getFileName(file)}</span>
+          <span className={cn(s.filetype)}>
+            .
+            {file?.extension}
+          </span>
         </div>
       </div>
       <div className={cn(s.previewContent)}>
-        {loading && <Loading type='area' />}
+        {loading && <Loading type="area" />}
         {!loading && (
           <div className={cn(s.fileContent, 'body-md-regular')}>{previewContent}</div>
         )}

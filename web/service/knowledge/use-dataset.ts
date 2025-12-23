@@ -199,7 +199,7 @@ export const useInvalidateExternalKnowledgeApiList = () => {
 
 export const useDatasetTestingRecords = (
   datasetId?: string,
-  params?: { page: number; limit: number },
+  params?: { page: number, limit: number },
 ) => {
   return useQuery<HitTestingRecordsResponse>({
     queryKey: [NAME_SPACE, 'testing-records', datasetId, params],

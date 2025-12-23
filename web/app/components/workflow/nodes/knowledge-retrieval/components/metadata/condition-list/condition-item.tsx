@@ -78,8 +78,8 @@ const ConditionItem = ({
   const valueAndValueMethod = useMemo(() => {
     if (
       (currentMetadata?.type === MetadataFilteringVariableType.string
-       || currentMetadata?.type === MetadataFilteringVariableType.number
-       || currentMetadata?.type === MetadataFilteringVariableType.select)
+        || currentMetadata?.type === MetadataFilteringVariableType.number
+        || currentMetadata?.type === MetadataFilteringVariableType.select)
       && typeof condition.value === 'string'
     ) {
       const regex = isCommonVariable ? COMMON_VARIABLE_REGEX : VARIABLE_REGEX
@@ -121,18 +121,19 @@ const ConditionItem = ({
       <div className={cn(
         'grow rounded-lg bg-components-input-bg-normal',
         isHovered && 'bg-state-destructive-hover',
-      )}>
-        <div className='flex items-center p-1'>
-          <div className='w-0 grow'>
-            <div className='flex h-6 min-w-0 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-1 pr-1.5 shadow-xs'>
-              <div className='mr-0.5 p-[1px]'>
-                <MetadataIcon type={currentMetadata?.type} className='h-3 w-3' />
+      )}
+      >
+        <div className="flex items-center p-1">
+          <div className="w-0 grow">
+            <div className="flex h-6 min-w-0 items-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark pl-1 pr-1.5 shadow-xs">
+              <div className="mr-0.5 p-[1px]">
+                <MetadataIcon type={currentMetadata?.type} className="h-3 w-3" />
               </div>
-              <div className='system-xs-medium mr-0.5 min-w-0 flex-1 truncate text-text-secondary'>{currentMetadata?.name}</div>
-              <div className='system-xs-regular text-text-tertiary'>{currentMetadata?.type}</div>
+              <div className="system-xs-medium mr-0.5 min-w-0 flex-1 truncate text-text-secondary">{currentMetadata?.name}</div>
+              <div className="system-xs-regular text-text-tertiary">{currentMetadata?.type}</div>
             </div>
           </div>
-          <div className='mx-1 h-3 w-[1px] bg-divider-regular'></div>
+          <div className="mx-1 h-3 w-[1px] bg-divider-regular"></div>
           <ConditionOperator
             disabled={!canChooseOperator}
             variableType={currentMetadata?.type || MetadataFilteringVariableType.string}
@@ -140,11 +141,11 @@ const ConditionItem = ({
             onSelect={handleConditionOperatorChange}
           />
         </div>
-        <div className='border-t border-t-divider-subtle'>
+        <div className="border-t border-t-divider-subtle">
           {
             !comparisonOperatorNotRequireValue(condition.comparison_operator)
             && (currentMetadata?.type === MetadataFilteringVariableType.string
-             || currentMetadata?.type === MetadataFilteringVariableType.select) && (
+              || currentMetadata?.type === MetadataFilteringVariableType.select) && (
               <ConditionString
                 valueMethod={localValueMethod}
                 onValueMethodChange={handleValueMethodChange}
@@ -182,12 +183,12 @@ const ConditionItem = ({
         </div>
       </div>
       <div
-        className='ml-1 mt-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+        className="ml-1 mt-1 flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center rounded-lg text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
         onMouseEnter={() => setIsHovered(true)}
         onMouseLeave={() => setIsHovered(false)}
         onClick={doRemoveCondition}
       >
-        <RiDeleteBinLine className='h-4 w-4' />
+        <RiDeleteBinLine className="h-4 w-4" />
       </div>
     </div>
   )

@@ -43,14 +43,14 @@ export const Heading = function H2({
   }
   return (
     <>
-      <span id={name?.replace(/^#/, '')} className='relative -top-28' />
-      <div className="flex items-center gap-x-3" >
+      <span id={name?.replace(/^#/, '')} className="relative -top-28" />
+      <div className="flex items-center gap-x-3">
         <span className={`rounded-lg px-1.5 font-mono text-[0.625rem] font-semibold leading-6 ring-1 ring-inset ${style}`}>{method}</span>
         {/* <span className="h-0.5 w-0.5 rounded-full bg-zinc-300 dark:bg-zinc-600"></span> */}
         <span className="font-mono text-xs text-zinc-400">{url}</span>
       </div>
-      <h2 className='mt-2 scroll-mt-32'>
-        <a href={name} className='group text-inherit no-underline hover:text-inherit'>{title}</a>
+      <h2 className="mt-2 scroll-mt-32">
+        <a href={name} className="group text-inherit no-underline hover:text-inherit">{title}</a>
       </h2>
     </>
 

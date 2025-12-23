@@ -528,10 +528,13 @@ describe('Dropdown', () => {
       fireEvent.click(screen.getByText('folder'))
 
       // Rerender with different callback
-      rerender(<Dropdown {...createDefaultProps({
-        breadcrumbs: ['folder'],
-        onBreadcrumbClick: mockOnBreadcrumbClick2,
-      })} />)
+      rerender(
+        <Dropdown {...createDefaultProps({
+          breadcrumbs: ['folder'],
+          onBreadcrumbClick: mockOnBreadcrumbClick2,
+        })}
+        />,
+      )
 
       // Open and click with second callback
       fireEvent.click(screen.getByRole('button'))

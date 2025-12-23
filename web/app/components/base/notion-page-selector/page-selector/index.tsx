@@ -107,14 +107,14 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
     if (hasChild) {
       return (
         <div
-          className='mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover'
+          className="mr-1 flex h-5 w-5 shrink-0 items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
           style={{ marginLeft: current.depth * 8 }}
           onClick={() => handleToggle(index)}
         >
           {
             current.expand
-              ? <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
-              : <RiArrowRightSLine className='h-4 w-4 text-text-tertiary' />
+              ? <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+              : <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
           }
         </div>
       )
@@ -125,7 +125,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       )
     }
     return (
-      <div className='mr-1 h-5 w-5 shrink-0' style={{ marginLeft: current.depth * 8 }} />
+      <div className="mr-1 h-5 w-5 shrink-0" style={{ marginLeft: current.depth * 8 }} />
     )
   }
 
@@ -136,7 +136,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       style={{ ...style, top: style.top as number + 8, left: 8, right: 8, width: 'calc(100% - 16px)' }}
     >
       <Checkbox
-        className='mr-2 shrink-0'
+        className="mr-2 shrink-0"
         checked={checkedIds.has(current.page_id)}
         disabled={disabled}
         onCheck={() => {
@@ -145,12 +145,12 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       />
       {!searchValue && renderArrow()}
       <NotionIcon
-        className='mr-1 shrink-0'
-        type='page'
+        className="mr-1 shrink-0"
+        type="page"
         src={current.page_icon}
       />
       <div
-        className='grow truncate text-[13px] font-medium leading-4 text-text-secondary'
+        className="grow truncate text-[13px] font-medium leading-4 text-text-secondary"
         title={current.page_name}
       >
         {current.page_name}
@@ -158,10 +158,11 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       {
         canPreview && (
           <div
-            className='ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
+            className="ml-1 hidden h-6 shrink-0 cursor-pointer items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-xs
             font-medium leading-4 text-components-button-secondary-text shadow-xs shadow-shadow-shadow-3 backdrop-blur-[10px]
-            hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex'
-            onClick={() => handlePreview(index)}>
+            hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
+            onClick={() => handlePreview(index)}
+          >
             {t('common.dataSource.notion.selector.preview')}
           </div>
         )
@@ -169,7 +170,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
       {
         searchValue && (
           <div
-            className='ml-1 max-w-[120px] shrink-0 truncate text-xs text-text-quaternary'
+            className="ml-1 max-w-[120px] shrink-0 truncate text-xs text-text-quaternary"
             title={breadCrumbs.join(' / ')}
           >
             {breadCrumbs.join(' / ')}
@@ -295,7 +296,7 @@ const PageSelector = ({
 
   if (!currentDataList.length) {
     return (
-      <div className='flex h-[296px] items-center justify-center text-[13px] text-text-tertiary'>
+      <div className="flex h-[296px] items-center justify-center text-[13px] text-text-tertiary">
         {t('common.dataSource.notion.selector.noSearchResult')}
       </div>
     )
@@ -303,11 +304,11 @@ const PageSelector = ({
 
   return (
     <List
-      className='py-2'
+      className="py-2"
       height={296}
       itemCount={currentDataList.length}
       itemSize={28}
-      width='100%'
+      width="100%"
       itemKey={(index, data) => data.dataList[index].page_id}
       itemData={{
         dataList: currentDataList,

@@ -23,7 +23,7 @@ const PromptRes: FC<Props> = ({
       key={editorKey}
       value={value}
       editable={false}
-      className='h-full bg-transparent pt-0'
+      className="h-full bg-transparent pt-0"
       workflowVariableBlock={workflowVariableBlock}
     />
   )

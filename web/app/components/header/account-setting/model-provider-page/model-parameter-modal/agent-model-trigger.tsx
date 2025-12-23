@@ -79,74 +79,76 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
         'group relative flex grow cursor-pointer items-center gap-[2px] rounded-lg bg-components-input-bg-normal p-1 hover:bg-state-base-hover-alt',
       )}
     >
-      {modelId ? (
-        <>
-          <ModelIcon
-            className='p-0.5'
-            provider={currentProvider || modelProvider}
-            modelName={currentModel?.model || modelId}
-            isDeprecated={hasDeprecated}
-          />
-          <ModelDisplay
-            currentModel={currentModel}
-            modelId={modelId}
-          />
-          {needsConfiguration && (
-            <ConfigurationButton
-              modelProvider={modelProvider}
-              handleOpenModal={handleOpenModal}
-            />
+      {modelId
+        ? (
+            <>
+              <ModelIcon
+                className="p-0.5"
+                provider={currentProvider || modelProvider}
+                modelName={currentModel?.model || modelId}
+                isDeprecated={hasDeprecated}
+              />
+              <ModelDisplay
+                currentModel={currentModel}
+                modelId={modelId}
+              />
+              {needsConfiguration && (
+                <ConfigurationButton
+                  modelProvider={modelProvider}
+                  handleOpenModal={handleOpenModal}
+                />
+              )}
+              <StatusIndicators
+                needsConfiguration={needsConfiguration}
+                modelProvider={!!modelProvider}
+                inModelList={inModelList}
+                disabled={!!disabled}
+                pluginInfo={pluginInfo}
+                t={t}
+              />
+              {!installed && !modelProvider && pluginInfo && (
+                <InstallPluginButton
+                  onClick={e => e.stopPropagation()}
+                  size="small"
+                  uniqueIdentifier={pluginInfo.latest_package_identifier}
+                  onSuccess={() => {
+                    [
+                      ModelTypeEnum.textGeneration,
+                      ModelTypeEnum.textEmbedding,
+                      ModelTypeEnum.rerank,
+                      ModelTypeEnum.moderation,
+                      ModelTypeEnum.speech2text,
+                      ModelTypeEnum.tts,
+                    ].forEach((type: ModelTypeEnum) => {
+                      if (scope?.includes(type))
+                        updateModelList(type)
+                    },
+                    )
+                    updateModelProviders()
+                    invalidateInstalledPluginList()
+                    setInstalled(true)
+                  }}
+                />
+              )}
+              {modelProvider && !disabled && !needsConfiguration && (
+                <div className="flex items-center pr-1">
+                  <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
+                </div>
+              )}
+            </>
+          )
+        : (
+            <>
+              <div className="flex grow items-center gap-1 p-1 pl-2">
+                <span className="system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap text-components-input-text-placeholder">
+                  {t('workflow.nodes.agent.configureModel')}
+                </span>
+              </div>
+              <div className="flex items-center pr-1">
+                <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
+              </div>
+            </>
           )}
-          <StatusIndicators
-            needsConfiguration={needsConfiguration}
-            modelProvider={!!modelProvider}
-            inModelList={inModelList}
-            disabled={!!disabled}
-            pluginInfo={pluginInfo}
-            t={t}
-          />
-          {!installed && !modelProvider && pluginInfo && (
-            <InstallPluginButton
-              onClick={e => e.stopPropagation()}
-              size={'small'}
-              uniqueIdentifier={pluginInfo.latest_package_identifier}
-              onSuccess={() => {
-                [
-                  ModelTypeEnum.textGeneration,
-                  ModelTypeEnum.textEmbedding,
-                  ModelTypeEnum.rerank,
-                  ModelTypeEnum.moderation,
-                  ModelTypeEnum.speech2text,
-                  ModelTypeEnum.tts,
-                ].forEach((type: ModelTypeEnum) => {
-                  if (scope?.includes(type))
-                    updateModelList(type)
-                },
-                )
-                updateModelProviders()
-                invalidateInstalledPluginList()
-                setInstalled(true)
-              }}
-            />
-          )}
-          {modelProvider && !disabled && !needsConfiguration && (
-            <div className="flex items-center pr-1">
-              <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
-            </div>
-          )}
-        </>
-      ) : (
-        <>
-          <div className="flex grow items-center gap-1 p-1 pl-2">
-            <span className="system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap text-components-input-text-placeholder">
-              {t('workflow.nodes.agent.configureModel')}
-            </span>
-          </div>
-          <div className="flex items-center pr-1">
-            <RiEqualizer2Line className="h-4 w-4 text-text-tertiary group-hover:text-text-secondary" />
-          </div>
-        </>
-      )}
     </div>
   )
 }

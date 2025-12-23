@@ -43,8 +43,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div data-testid='model-selector'>
+  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+    <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
     </div>
   ),

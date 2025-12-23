@@ -50,27 +50,27 @@ const CreateContent: FC<Props> = ({
       onConfirm={handleSave}
       hideCloseBtn={hasBack}
       beforeHeader={hasBack && (
-        <div className='relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent' onClick={onBack}>
-          <RiArrowLeftLine className='size-4' />
-          <div className='system-xs-semibold-uppercase'>{t(`${i18nPrefix}.back`)}</div>
+        <div className="relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent" onClick={onBack}>
+          <RiArrowLeftLine className="size-4" />
+          <div className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`)}</div>
         </div>
       )}
     >
-      <div className='space-y-3'>
+      <div className="space-y-3">
         <Field label={t(`${i18nPrefix}.type`)}>
-          <div className='grid grid-cols-3 gap-2'>
+          <div className="grid grid-cols-3 gap-2">
             <OptionCard
-              title='String'
+              title="String"
               selected={type === DataType.string}
               onSelect={handleTypeChange(DataType.string)}
             />
             <OptionCard
-              title='Number'
+              title="Number"
               selected={type === DataType.number}
               onSelect={handleTypeChange(DataType.number)}
             />
             <OptionCard
-              title='Time'
+              title="Time"
               selected={type === DataType.time}
               onSelect={handleTypeChange(DataType.time)}
             />

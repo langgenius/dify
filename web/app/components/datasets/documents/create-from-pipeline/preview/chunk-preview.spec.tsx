@@ -21,9 +21,9 @@ vi.mock('@/context/dataset-detail', () => ({
 vi.mock('../../../common/document-picker/preview-document-picker', () => ({
   __esModule: true,
   default: ({ files, onChange, value }: {
-    files: Array<{ id: string; name: string; extension: string }>
-    onChange: (selected: { id: string; name: string; extension: string }) => void
-    value: { id: string; name: string; extension: string }
+    files: Array<{ id: string, name: string, extension: string }>
+    onChange: (selected: { id: string, name: string, extension: string }) => void
+    value: { id: string, name: string, extension: string }
   }) => (
     <div data-testid="document-picker">
       <span data-testid="picker-value">{value?.name || 'No selection'}</span>

@@ -96,15 +96,15 @@ const Operation = ({
                   {
                     roleList.map(role => (
                       <MenuItem key={role}>
-                        <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={() => handleUpdateMemberRole(role)}>
+                        <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={() => handleUpdateMemberRole(role)}>
                           {
                             role === member.role
-                              ? <CheckIcon className='mr-1 mt-[2px] h-4 w-4 text-text-accent' />
-                              : <div className='mr-1 mt-[2px] h-4 w-4 text-text-accent' />
+                              ? <CheckIcon className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
+                              : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                           }
                           <div>
-                            <div className='system-sm-semibold whitespace-nowrap text-text-secondary'>{t(`common.members.${toHump(role)}`)}</div>
-                            <div className='system-xs-regular whitespace-nowrap text-text-tertiary'>{t(`common.members.${toHump(role)}Tip`)}</div>
+                            <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`common.members.${toHump(role)}`)}</div>
+                            <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`common.members.${toHump(role)}Tip`)}</div>
                           </div>
                         </div>
                       </MenuItem>
@@ -112,12 +112,12 @@ const Operation = ({
                   }
                 </div>
                 <MenuItem>
-                  <div className='border-t border-divider-subtle p-1'>
-                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={handleDeleteMemberOrCancelInvitation}>
-                      <div className='mr-1 mt-[2px] h-4 w-4 text-text-accent' />
+                  <div className="border-t border-divider-subtle p-1">
+                    <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
+                      <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                       <div>
-                        <div className='system-sm-semibold whitespace-nowrap text-text-secondary'>{t('common.members.removeFromTeam')}</div>
-                        <div className='system-xs-regular whitespace-nowrap text-text-tertiary'>{t('common.members.removeFromTeamTip')}</div>
+                        <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('common.members.removeFromTeam')}</div>
+                        <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('common.members.removeFromTeamTip')}</div>
                       </div>
                     </div>
                   </div>

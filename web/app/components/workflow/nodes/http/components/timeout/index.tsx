@@ -34,7 +34,7 @@ const InputField: FC<{
         <span className="text-xs font-normal text-text-tertiary">{description}</span>
       </div>
       <Input
-        type='number'
+        type="number"
         value={value}
         onChange={(e) => {
           const inputValue = e.target.value
@@ -70,7 +70,7 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
 
   return (
     <FieldCollapse title={t(`${i18nPrefix}.timeout.title`)}>
-      <div className='mt-2 space-y-1'>
+      <div className="mt-2 space-y-1">
         <div className="space-y-3">
           <InputField
             title={t('workflow.nodes.http.timeout.connectLabel')!}

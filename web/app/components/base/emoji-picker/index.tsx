@@ -32,34 +32,41 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
   }, [setSelectedEmoji, setSelectedBackground])
 
   return isModal
-    ? <Modal
-      onClose={noop}
-      isShow
-      closable={false}
-      wrapperClassName={className}
-      className={cn('flex max-h-[552px] flex-col rounded-xl border-[0.5px] border-divider-subtle p-0 shadow-xl')}
-    >
-      <EmojiPickerInner
-        className="pt-3"
-        onSelect={handleSelectEmoji} />
-      <Divider className='mb-0 mt-3' />
-      <div className='flex w-full items-center justify-center gap-2 p-3'>
-        <Button className='w-full' onClick={() => {
-          onClose?.()
-        }}>
-          {t('app.iconPicker.cancel')}
-        </Button>
-        <Button
-          disabled={selectedEmoji === '' || !selectedBackground}
-          variant="primary"
-          className='w-full'
-          onClick={() => {
-            onSelect?.(selectedEmoji, selectedBackground!)
-          }}>
-          {t('app.iconPicker.ok')}
-        </Button>
-      </div>
-    </Modal>
+    ? (
+        <Modal
+          onClose={noop}
+          isShow
+          closable={false}
+          wrapperClassName={className}
+          className={cn('flex max-h-[552px] flex-col rounded-xl border-[0.5px] border-divider-subtle p-0 shadow-xl')}
+        >
+          <EmojiPickerInner
+            className="pt-3"
+            onSelect={handleSelectEmoji}
+          />
+          <Divider className="mb-0 mt-3" />
+          <div className="flex w-full items-center justify-center gap-2 p-3">
+            <Button
+              className="w-full"
+              onClick={() => {
+                onClose?.()
+              }}
+            >
+              {t('app.iconPicker.cancel')}
+            </Button>
+            <Button
+              disabled={selectedEmoji === '' || !selectedBackground}
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                onSelect?.(selectedEmoji, selectedBackground!)
+              }}
+            >
+              {t('app.iconPicker.ok')}
+            </Button>
+          </div>
+        </Modal>
+      )
     : <></>
 }
 export default EmojiPicker

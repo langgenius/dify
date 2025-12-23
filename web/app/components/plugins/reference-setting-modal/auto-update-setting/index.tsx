@@ -31,7 +31,7 @@ const SettingTimeZone: FC<{
 }) => {
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   return (
-    <span className='body-xs-regular cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })} >{children}</span>
+    <span className="body-xs-regular cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.LANGUAGE })}>{children}</span>
   )
 }
 const AutoUpdateSetting: FC<Props> = ({
@@ -103,50 +103,51 @@ const AutoUpdateSetting: FC<Props> = ({
   const renderTimePickerTrigger = useCallback(({ inputElem, onClick, isOpen }: TriggerParams) => {
     return (
       <div
-        className='group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt'
+        className="group float-right flex h-8 w-[160px] cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2 hover:bg-state-base-hover-alt"
         onClick={onClick}
       >
-        <div className='flex w-0 grow items-center gap-x-1'>
+        <div className="flex w-0 grow items-center gap-x-1">
           <RiTimeLine className={cn(
             'h-4 w-4 shrink-0 text-text-tertiary',
             isOpen ? 'text-text-secondary' : 'group-hover:text-text-secondary',
-          )} />
+          )}
+          />
           {inputElem}
         </div>
-        <div className='system-sm-regular text-text-tertiary'>{convertTimezoneToOffsetStr(timezone)}</div>
+        <div className="system-sm-regular text-text-tertiary">{convertTimezoneToOffsetStr(timezone)}</div>
       </div>
     )
   }, [timezone])
 
   return (
-    <div className='self-stretch px-6'>
-      <div className='my-3 flex items-center'>
-        <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.updateSettings`)}</div>
-        <div className='ml-2 h-px grow bg-divider-subtle'></div>
+    <div className="self-stretch px-6">
+      <div className="my-3 flex items-center">
+        <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.updateSettings`)}</div>
+        <div className="ml-2 h-px grow bg-divider-subtle"></div>
       </div>
 
-      <div className='space-y-4'>
-        <div className='flex items-center justify-between'>
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
           <Label label={t(`${i18nPrefix}.automaticUpdates`)} description={strategyDescription} />
           <StrategyPicker value={strategy_setting} onChange={handleChange('strategy_setting')} />
         </div>
         {strategy_setting !== AUTO_UPDATE_STRATEGY.disabled && (
           <>
-            <div className='flex items-center justify-between'>
+            <div className="flex items-center justify-between">
               <Label label={t(`${i18nPrefix}.updateTime`)} />
-              <div className='flex flex-col justify-start'>
+              <div className="flex flex-col justify-start">
                 <TimePicker
                   value={timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(upgrade_time_of_day, timezone!))}
                   timezone={timezone}
                   onChange={v => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(dayjsToTimeOfDay(v), timezone!))}
                   onClear={() => handleChange('upgrade_time_of_day')(convertLocalSecondsToUTCDaySeconds(0, timezone!))}
-                  popupClassName='z-[99]'
+                  popupClassName="z-[99]"
                   title={t(`${i18nPrefix}.updateTime`)}
                   minuteFilter={minuteFilter}
                   renderTrigger={renderTimePickerTrigger}
-                  placement='bottom-end'
+                  placement="bottom-end"
                 />
-                <div className='body-xs-regular mt-1 text-right text-text-tertiary'>
+                <div className="body-xs-regular mt-1 text-right text-text-tertiary">
                   <Trans
                     i18nKey={`${i18nPrefix}.changeTimezone`}
                     components={{
@@ -158,7 +159,7 @@ const AutoUpdateSetting: FC<Props> = ({
             </div>
             <div>
               <Label label={t(`${i18nPrefix}.specifyPluginsToUpdate`)} />
-              <div className='mt-1 flex w-full items-start justify-between gap-2'>
+              <div className="mt-1 flex w-full items-start justify-between gap-2">
                 {[AUTO_UPDATE_MODE.update_all, AUTO_UPDATE_MODE.exclude, AUTO_UPDATE_MODE.partial].map(option => (
                   <OptionCard
                     key={option}

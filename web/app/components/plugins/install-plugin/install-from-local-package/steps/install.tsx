@@ -113,47 +113,49 @@ const Installed: FC<Props> = ({
 
   return (
     <>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <div className='system-md-regular text-text-secondary'>
+      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+        <div className="system-md-regular text-text-secondary">
           <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
           <p>
             <Trans
               i18nKey={`${i18nPrefix}.fromTrustSource`}
-              components={{ trustSource: <span className='system-md-semibold' /> }}
+              components={{ trustSource: <span className="system-md-semibold" /> }}
             />
           </p>
           {!isDifyVersionCompatible && (
-            <p className='system-md-regular flex items-center gap-1 text-text-warning'>
+            <p className="system-md-regular flex items-center gap-1 text-text-warning">
               {t('plugin.difyVersionNotCompatible', { minimalDifyVersion: payload.meta.minimum_dify_version })}
             </p>
           )}
         </div>
-        <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
+        <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           <Card
-            className='w-full'
+            className="w-full"
             payload={pluginManifestToCardPluginProps(payload)}
-            titleLeft={!isLoading && <Version
-              hasInstalled={hasInstalled}
-              installedVersion={installedVersion}
-              toInstallVersion={toInstallVersion}
-            />}
+            titleLeft={!isLoading && (
+              <Version
+                hasInstalled={hasInstalled}
+                installedVersion={installedVersion}
+                toInstallVersion={toInstallVersion}
+              />
+            )}
           />
         </div>
       </div>
       {/* Action Buttons */}
-      <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
+      <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         {!isInstalling && (
-          <Button variant='secondary' className='min-w-[72px]' onClick={handleCancel}>
+          <Button variant="secondary" className="min-w-[72px]" onClick={handleCancel}>
             {t('common.operation.cancel')}
           </Button>
         )}
         <Button
-          variant='primary'
-          className='flex min-w-[72px] space-x-0.5'
+          variant="primary"
+          className="flex min-w-[72px] space-x-0.5"
           disabled={isInstalling || isLoading}
           onClick={handleInstall}
         >
-          {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
+          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>

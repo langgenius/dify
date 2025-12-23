@@ -91,14 +91,16 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
     || (plugin.plugin_id && identifierSet.has(plugin.plugin_id))
   ))
   if (isInstalled) return null
-  return <Button
-    variant={'secondary'}
-    disabled={isLoading}
-    {...rest}
-    onClick={handleInstall}
-    className={cn('flex items-center', className)}
-  >
-    {!isLoading ? t('workflow.nodes.agent.pluginInstaller.install') : t('workflow.nodes.agent.pluginInstaller.installing')}
-    {!isLoading ? <RiInstallLine className='ml-1 size-3.5' /> : <RiLoader2Line className='ml-1 size-3.5 animate-spin' />}
-  </Button>
+  return (
+    <Button
+      variant="secondary"
+      disabled={isLoading}
+      {...rest}
+      onClick={handleInstall}
+      className={cn('flex items-center', className)}
+    >
+      {!isLoading ? t('workflow.nodes.agent.pluginInstaller.install') : t('workflow.nodes.agent.pluginInstaller.installing')}
+      {!isLoading ? <RiInstallLine className="ml-1 size-3.5" /> : <RiLoader2Line className="ml-1 size-3.5 animate-spin" />}
+    </Button>
+  )
 }

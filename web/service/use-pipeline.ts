@@ -248,7 +248,7 @@ export const useUpdateDataSourceCredentials = (
       pluginId,
       credentials,
       name,
-    }: { provider: string; pluginId: string; credentials: Record<string, any>; name: string; }) => {
+    }: { provider: string, pluginId: string, credentials: Record<string, any>, name: string }) => {
       return post('/auth/plugin/datasource', {
         body: {
           provider,
@@ -303,7 +303,7 @@ export const useExportPipelineDSL = () => {
     mutationFn: ({
       pipelineId,
       include = false,
-    }: { pipelineId: string; include?: boolean }) => {
+    }: { pipelineId: string, include?: boolean }) => {
       return get<ExportTemplateDSLResponse>(`/rag/pipelines/${pipelineId}/exports?include_secret=${include}`)
     },
   })
@@ -318,10 +318,10 @@ export const usePublishAsCustomizedPipeline = () => {
       icon_info,
       description,
     }: {
-      pipelineId: string,
-      name: string,
-      icon_info: IconInfo,
-      description?: string,
+      pipelineId: string
+      name: string
+      icon_info: IconInfo
+      description?: string
     }) => {
       return post(`/rag/pipelines/${pipelineId}/customized/publish`, {
         body: {

@@ -84,15 +84,18 @@ const Base: FC<Props> = ({
   return (
     <Wrap className={cn(wrapClassName)} style={wrapStyle} isInNode={isInNode} isExpand={isExpand}>
       <div ref={ref} className={cn(className, isExpand && 'h-full', 'rounded-lg border', !isFocus ? 'border-transparent bg-components-input-bg-normal' : 'overflow-hidden border-components-input-border-hover bg-components-input-bg-hover')}>
-        <div className='flex h-7 items-center justify-between pl-3 pr-2 pt-1'>
-          <div className='system-xs-semibold-uppercase text-text-secondary'>{title}</div>
-          <div className='flex items-center' onClick={(e) => {
-            e.nativeEvent.stopImmediatePropagation()
-            e.stopPropagation()
-          }}>
+        <div className="flex h-7 items-center justify-between pl-3 pr-2 pt-1">
+          <div className="system-xs-semibold-uppercase text-text-secondary">{title}</div>
+          <div
+            className="flex items-center"
+            onClick={(e) => {
+              e.nativeEvent.stopImmediatePropagation()
+              e.stopPropagation()
+            }}
+          >
             {headerRight}
             {showCodeGenerator && codeLanguages && (
-              <div className='ml-1'>
+              <div className="ml-1">
                 <CodeGeneratorButton
                   onGenerated={onGenerated}
                   codeLanguages={codeLanguages}
@@ -101,29 +104,28 @@ const Base: FC<Props> = ({
                 />
               </div>
             )}
-            <ActionButton className='ml-1' onClick={handleCopy}>
+            <ActionButton className="ml-1" onClick={handleCopy}>
               {!isCopied
                 ? (
-                  <Copy className='h-4 w-4 cursor-pointer' />
-                )
+                    <Copy className="h-4 w-4 cursor-pointer" />
+                  )
                 : (
-                  <CopyCheck className='h-4 w-4' />
-                )
-              }
+                    <CopyCheck className="h-4 w-4" />
+                  )}
             </ActionButton>
-            <div className='ml-1'>
+            <div className="ml-1">
               <ToggleExpandBtn isExpand={isExpand} onExpandChange={setIsExpand} />
             </div>
           </div>
         </div>
-        {tip && <div className='px-1 py-0.5'>{tip}</div>}
+        {tip && <div className="px-1 py-0.5">{tip}</div>}
         <PromptEditorHeightResizeWrap
           height={isExpand ? editorExpandHeight : editorContentHeight}
           minHeight={editorContentMinHeight}
           onHeightChange={setEditorContentHeight}
           hideResize={isExpand}
         >
-          <div className='h-full pb-2 pl-2'>
+          <div className="h-full pb-2 pl-2">
             {children}
           </div>
         </PromptEditorHeightResizeWrap>

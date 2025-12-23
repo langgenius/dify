@@ -115,20 +115,20 @@ const Editor: FC<Props> = ({
           onFocus={setFocus}
         />
         {/* to patch Editor not support dynamic change editable status */}
-        {readOnly && <div className='absolute inset-0 z-10'></div>}
+        {readOnly && <div className="absolute inset-0 z-10"></div>}
         {isFocus && (
           <div className={cn('absolute z-10', insertVarTipToLeft ? 'left-[-12px] top-1.5' : ' right-1 top-[-9px]')}>
             <Tooltip
               popupContent={`${t('workflow.common.insertVarTip')}`}
             >
-              <div className='cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg'>
-                <Variable02 className='h-3.5 w-3.5 text-components-button-secondary-accent-text' />
+              <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
+                <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />
               </div>
             </Tooltip>
           </div>
         )}
       </>
-    </div >
+    </div>
   )
 }
 export default React.memo(Editor)

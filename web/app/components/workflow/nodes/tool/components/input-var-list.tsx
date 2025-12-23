@@ -158,7 +158,7 @@ const InputVarList: FC<Props> = ({
   }, [onOpen])
 
   return (
-    <div className='space-y-3'>
+    <div className="space-y-3">
       {
         schema.map((schema, index) => {
           const {
@@ -180,11 +180,11 @@ const InputVarList: FC<Props> = ({
           const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector
 
           return (
-            <div key={variable} className='space-y-1'>
-              <div className='flex items-center space-x-2 leading-[18px]'>
-                <span className='code-sm-semibold text-text-secondary'>{label[language] || label.en_US}</span>
-                <span className='system-xs-regular text-text-tertiary'>{paramType(type)}</span>
-                {required && <span className='system-xs-regular text-util-colors-orange-dark-orange-dark-600'>Required</span>}
+            <div key={variable} className="space-y-1">
+              <div className="flex items-center space-x-2 leading-[18px]">
+                <span className="code-sm-semibold text-text-secondary">{label[language] || label.en_US}</span>
+                <span className="system-xs-regular text-text-tertiary">{paramType(type)}</span>
+                {required && <span className="system-xs-regular text-util-colors-orange-dark-orange-dark-600">Required</span>}
               </div>
               {isString && (
                 <Input
@@ -196,7 +196,7 @@ const InputVarList: FC<Props> = ({
                   availableNodes={availableNodesWithParent}
                   onFocusChange={handleInputFocus(variable)}
                   placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
-                  placeholderClassName='!leading-[21px]'
+                  placeholderClassName="!leading-[21px]"
                 />
               )}
               {(isNumber || isSelect) && (
@@ -238,7 +238,7 @@ const InputVarList: FC<Props> = ({
               )}
               {isModelSelector && (
                 <ModelParameterModal
-                  popupClassName='!w-[387px]'
+                  popupClassName="!w-[387px]"
                   isAdvancedMode
                   isInWorkflow
                   value={varInput as any}
@@ -247,7 +247,7 @@ const InputVarList: FC<Props> = ({
                   scope={scope}
                 />
               )}
-              {tooltip && <div className='body-xs-regular text-text-tertiary'>{tooltip[language] || tooltip.en_US}</div>}
+              {tooltip && <div className="body-xs-regular text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )
         })

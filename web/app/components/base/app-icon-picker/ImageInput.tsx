@@ -28,7 +28,7 @@ const ImageInput: FC<UploaderProps> = ({
   onImageInput,
 }) => {
   const { t } = useTranslation()
-  const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
+  const [inputImage, setInputImage] = useState<{ file: File, url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {
     return () => {
@@ -71,7 +71,7 @@ const ImageInput: FC<UploaderProps> = ({
   const handleShowImage = () => {
     if (isAnimatedImage) {
       return (
-        <img src={inputImage?.url} alt='' />
+        <img src={inputImage?.url} alt="" />
       )
     }
 
@@ -101,20 +101,27 @@ const ImageInput: FC<UploaderProps> = ({
       >
         {
           !inputImage
-            ? <>
-              <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
-              <div className="mb-[2px] text-sm font-medium">
-                <span className="pointer-events-none">{t('common.imageInput.dropImageHere')}&nbsp;</span>
-                <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
-                <input
-                  ref={inputRef} type="file" className="hidden"
-                  onClick={e => ((e.target as HTMLInputElement).value = '')}
-                  accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
-                  onChange={handleLocalFileInput}
-                />
-              </div>
-              <div className="pointer-events-none">{t('common.imageInput.supportedFormats')}</div>
-            </>
+            ? (
+                <>
+                  <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
+                  <div className="mb-[2px] text-sm font-medium">
+                    <span className="pointer-events-none">
+                      {t('common.imageInput.dropImageHere')}
+&nbsp;
+                    </span>
+                    <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      className="hidden"
+                      onClick={e => ((e.target as HTMLInputElement).value = '')}
+                      accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
+                      onChange={handleLocalFileInput}
+                    />
+                  </div>
+                  <div className="pointer-events-none">{t('common.imageInput.supportedFormats')}</div>
+                </>
+              )
             : handleShowImage()
         }
       </div>

@@ -46,9 +46,9 @@ const FieldList = ({
   })
 
   return (
-    <div className='flex flex-col'>
+    <div className="flex flex-col">
       <div className={cn('flex items-center gap-x-2 px-4', labelClassName)}>
-        <div className='grow'>
+        <div className="grow">
           {LabelRightContent}
         </div>
         <ActionButton
@@ -56,11 +56,11 @@ const FieldList = ({
           disabled={readonly}
           className={cn(readonly && 'cursor-not-allowed')}
         >
-          <RiAddLine className='h-4 w-4 text-text-tertiary' />
+          <RiAddLine className="h-4 w-4 text-text-tertiary" />
         </ActionButton>
       </div>
       <FieldListContainer
-        className='flex flex-col gap-y-1 px-4 pb-1'
+        className="flex flex-col gap-y-1 px-4 pb-1"
         inputFields={inputFields}
         onEditField={handleOpenInputFieldEditor}
         onRemoveField={handleRemoveField}

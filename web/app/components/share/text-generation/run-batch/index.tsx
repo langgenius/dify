@@ -39,10 +39,10 @@ const RunBatch: FC<IRunBatchProps> = ({
   }
   const Icon = isAllFinished ? RiPlayLargeLine : RiLoader2Line
   return (
-    <div className='pt-4'>
+    <div className="pt-4">
       <CSVReader onParsed={handleParsed} />
       <CSVDownload vars={vars} />
-      <div className='flex justify-end'>
+      <div className="flex justify-end">
         <Button
           variant="primary"
           className={cn('mt-4 pl-3 pr-4', !isPC && 'grow')}
@@ -50,7 +50,7 @@ const RunBatch: FC<IRunBatchProps> = ({
           disabled={!isParsed || !isAllFinished}
         >
           <Icon className={cn(!isAllFinished && 'animate-spin', 'mr-1 h-4 w-4 shrink-0')} aria-hidden="true" />
-          <span className='text-[13px] uppercase'>{t('share.generation.run')}</span>
+          <span className="text-[13px] uppercase">{t('share.generation.run')}</span>
         </Button>
       </div>
     </div>

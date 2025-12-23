@@ -68,11 +68,11 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const navConfig = [
       ...(isCurrentWorkspaceEditor
         ? [{
-          name: t('common.appMenus.promptEng'),
-          href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
-          icon: RiTerminalWindowLine,
-          selectedIcon: RiTerminalWindowFill,
-        }]
+            name: t('common.appMenus.promptEng'),
+            href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
+            icon: RiTerminalWindowLine,
+            selectedIcon: RiTerminalWindowFill,
+          }]
         : []
       ),
       {
@@ -83,13 +83,13 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       },
       ...(isCurrentWorkspaceEditor
         ? [{
-          name: mode !== AppModeEnum.WORKFLOW
-            ? t('common.appMenus.logAndAnn')
-            : t('common.appMenus.logs'),
-          href: `/app/${appId}/logs`,
-          icon: RiFileList3Line,
-          selectedIcon: RiFileList3Fill,
-        }]
+            name: mode !== AppModeEnum.WORKFLOW
+              ? t('common.appMenus.logAndAnn')
+              : t('common.appMenus.logs'),
+            href: `/app/${appId}/logs`,
+            icon: RiFileList3Line,
+            selectedIcon: RiFileList3Fill,
+          }]
         : []
       ),
       {
@@ -156,7 +156,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-background-body'>
+      <div className="flex h-full items-center justify-center bg-background-body">
         <Loading />
       </div>
     )
@@ -173,7 +173,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         {children}
       </div>
       {showTagManagementModal && (
-        <TagManagementModal type='app' show={showTagManagementModal} />
+        <TagManagementModal type="app" show={showTagManagementModal} />
       )}
     </div>
   )

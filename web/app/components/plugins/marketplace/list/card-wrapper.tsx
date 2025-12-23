@@ -47,38 +47,36 @@ const CardWrapperComponent = ({
   if (showInstallButton) {
     return (
       <div
-        className='group relative cursor-pointer rounded-xl  hover:bg-components-panel-on-panel-item-bg-hover'
+        className="group relative cursor-pointer rounded-xl  hover:bg-components-panel-on-panel-item-bg-hover"
       >
         <Card
           key={plugin.name}
           payload={plugin}
           locale={locale}
-          footer={
+          footer={(
             <CardMoreInfo
               downloadCount={plugin.install_count}
               tags={tagLabels}
             />
-          }
+          )}
         />
-        {
-          <div className='absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent px-4 pb-4 pt-4 group-hover:flex'>
+        <div className="absolute bottom-0 hidden w-full items-center space-x-2 rounded-b-xl bg-gradient-to-tr from-components-panel-on-panel-item-bg to-background-gradient-mask-transparent px-4 pb-4 pt-4 group-hover:flex">
+          <Button
+            variant="primary"
+            className="w-[calc(50%-4px)]"
+            onClick={showInstallFromMarketplace}
+          >
+            {t('plugin.detailPanel.operation.install')}
+          </Button>
+          <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block w-[calc(50%-4px)] flex-1 shrink-0">
             <Button
-              variant='primary'
-              className='w-[calc(50%-4px)]'
-              onClick={showInstallFromMarketplace}
+              className="w-full gap-0.5"
             >
-              {t('plugin.detailPanel.operation.install')}
+              {t('plugin.detailPanel.operation.detail')}
+              <RiArrowRightUpLine className="ml-1 h-4 w-4" />
             </Button>
-            <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target='_blank' className='block w-[calc(50%-4px)] flex-1 shrink-0'>
-              <Button
-                className='w-full gap-0.5'
-              >
-                {t('plugin.detailPanel.operation.detail')}
-                <RiArrowRightUpLine className='ml-1 h-4 w-4' />
-              </Button>
-            </a>
-          </div>
-        }
+          </a>
+        </div>
         {
           isShowInstallFromMarketplace && (
             <InstallFromMarketplace
@@ -95,19 +93,19 @@ const CardWrapperComponent = ({
 
   return (
     <a
-      className='group relative inline-block cursor-pointer rounded-xl'
+      className="group relative inline-block cursor-pointer rounded-xl"
       href={getPluginDetailLinkInMarketplace(plugin)}
     >
       <Card
         key={plugin.name}
         payload={plugin}
         locale={locale}
-        footer={
+        footer={(
           <CardMoreInfo
             downloadCount={plugin.install_count}
             tags={tagLabels}
           />
-        }
+        )}
       />
     </a>
   )

@@ -26,7 +26,7 @@ const ResDownload: FC<IResDownloadProps> = ({
     <CSVDownloader
       className="block cursor-pointer"
       type={Type.Link}
-      filename={'result'}
+      filename="result"
       bom={true}
       config={{
         // delimiter: ';',
@@ -35,12 +35,12 @@ const ResDownload: FC<IResDownloadProps> = ({
     >
       {isMobile && (
         <ActionButton>
-          <RiDownloadLine className='h-4 w-4' />
+          <RiDownloadLine className="h-4 w-4" />
         </ActionButton>
       )}
       {!isMobile && (
         <Button className={cn('space-x-1')}>
-          <RiDownloadLine className='h-4 w-4' />
+          <RiDownloadLine className="h-4 w-4" />
           <span>{t('common.operation.download')}</span>
         </Button>
       )}

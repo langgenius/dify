@@ -149,7 +149,7 @@ const ToolPicker: FC<Props> = ({
   if (isShowEditCollectionToolModal) {
     return (
       <EditCustomToolModal
-        dialogClassName='bg-background-overlay'
+        dialogClassName="bg-background-overlay"
         payload={null}
         onHide={hideEditCustomCollectionModal}
         onAdd={doCreateCustomToolCollection}
@@ -170,9 +170,9 @@ const ToolPicker: FC<Props> = ({
         {trigger}
       </PortalToFollowElemTrigger>
 
-      <PortalToFollowElemContent className='z-[1000]'>
+      <PortalToFollowElemContent className="z-[1000]">
         <div className={cn('relative min-h-20 rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm', panelClassName)}>
-          <div className='p-2 pb-1'>
+          <div className="p-2 pb-1">
             <SearchBox
               search={searchText}
               onSearchChange={setSearchText}
@@ -182,12 +182,12 @@ const ToolPicker: FC<Props> = ({
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
               onShowAddCustomCollectionModal={showEditCustomCollectionModal}
-              inputClassName='grow'
+              inputClassName="grow"
             />
           </div>
           <AllTools
-            className='mt-1'
-            toolContentClassName='max-w-[100%]'
+            className="mt-1"
+            toolContentClassName="max-w-[100%]"
             tags={tags}
             searchText={searchText}
             onSelect={handleSelect as OnSelectBlock}

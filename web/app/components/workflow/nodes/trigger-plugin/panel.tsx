@@ -35,11 +35,11 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
   }))
 
   return (
-    <div className='mt-2'>
+    <div className="mt-2">
       {/* Dynamic Parameters Form - Only show when authenticated */}
       {triggerParameterSchema.length > 0 && subscriptionSelected && (
         <>
-          <div className='px-4 pb-4'>
+          <div className="px-4 pb-4">
             <TriggerForm
               readOnly={readOnly}
               nodeId={id}
@@ -69,20 +69,22 @@ const Panel: FC<NodePanelProps<PluginTriggerNodeType>> = ({
           ))}
           {Object.entries(outputSchema.properties || {}).map(([name, schema]: [string, any]) => (
             <div key={name}>
-              {schema.type === 'object' ? (
-                <StructureOutputItem
-                  rootClassName='code-sm-semibold text-text-secondary'
-                  payload={{
-                    schema: {
-                      type: Type.object,
-                      properties: {
-                        [name]: schema,
-                      },
-                      additionalProperties: false,
-                    },
-                  }}
-                />
-              ) : null}
+              {schema.type === 'object'
+                ? (
+                    <StructureOutputItem
+                      rootClassName="code-sm-semibold text-text-secondary"
+                      payload={{
+                        schema: {
+                          type: Type.object,
+                          properties: {
+                            [name]: schema,
+                          },
+                          additionalProperties: false,
+                        },
+                      }}
+                    />
+                  )
+                : null}
             </div>
           ))}
         </>

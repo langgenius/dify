@@ -37,11 +37,11 @@ const meta = {
 export default meta
 type Story = StoryObj<typeof meta>
 
-const ThemePreview = ({ theme, children }: { theme: 'light' | 'dark'; children: ReactNode }) => {
+const ThemePreview = ({ theme, children }: { theme: 'light' | 'dark', children: ReactNode }) => {
   return (
     <ThemeProvider attribute="data-theme" forcedTheme={theme} enableSystem={false}>
       <div
-        className={'min-w-[320px] rounded-2xl border border-divider-subtle bg-background-default-subtle p-6 shadow-sm'}
+        className="min-w-[320px] rounded-2xl border border-divider-subtle bg-background-default-subtle p-6 shadow-sm"
       >
         {children}
       </div>

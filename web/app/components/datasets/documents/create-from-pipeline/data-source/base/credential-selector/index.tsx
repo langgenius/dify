@@ -40,18 +40,18 @@ const CredentialSelector = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={toggle}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{
         mainAxis: 4,
       }}
     >
-      <PortalToFollowElemTrigger onClick={toggle} className='grow overflow-hidden'>
+      <PortalToFollowElemTrigger onClick={toggle} className="grow overflow-hidden">
         <Trigger
           currentCredential={currentCredential}
           isOpen={open}
         />
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-10'>
+      <PortalToFollowElemContent className="z-10">
         <List
           currentCredentialId={currentCredentialId}
           credentials={credentials}

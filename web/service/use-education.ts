@@ -46,7 +46,7 @@ export const useEducationAutocomplete = () => {
         page = 0,
         limit = 40,
       } = searchParams
-      return get<{ data: string[]; has_next: boolean; curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
+      return get<{ data: string[], has_next: boolean, curr_page: number }>(`/account/education/autocomplete?keywords=${keywords}&page=${page}&limit=${limit}`)
     },
   })
 }

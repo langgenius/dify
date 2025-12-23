@@ -22,26 +22,26 @@ const KeyWordNumber = ({
   }, [onKeywordNumberChange])
 
   return (
-    <div className='flex items-center gap-x-1'>
-      <div className='flex grow items-center gap-x-0.5'>
-        <div className='system-xs-medium truncate text-text-secondary'>
+    <div className="flex items-center gap-x-1">
+      <div className="flex grow items-center gap-x-0.5">
+        <div className="system-xs-medium truncate text-text-secondary">
           {t('datasetSettings.form.numberOfKeywords')}
         </div>
         <Tooltip
-          popupContent='number of keywords'
+          popupContent="number of keywords"
         >
-          <RiQuestionLine className='h-3.5 w-3.5 text-text-quaternary' />
+          <RiQuestionLine className="h-3.5 w-3.5 text-text-quaternary" />
         </Tooltip>
       </div>
       <Slider
-        className='mr-3 w-[206px] shrink-0'
+        className="mr-3 w-[206px] shrink-0"
         value={keywordNumber}
         max={50}
         onChange={onKeywordNumberChange}
       />
       <InputNumber
-        wrapperClassName='shrink-0 w-12'
-        type='number'
+        wrapperClassName="shrink-0 w-12"
+        type="number"
         value={keywordNumber}
         onChange={handleInputChange}
       />

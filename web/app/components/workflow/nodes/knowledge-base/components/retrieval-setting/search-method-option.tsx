@@ -128,10 +128,10 @@ const SearchMethodOption = ({
       onClick={onRetrievalSearchMethodChange}
       readonly={readonly}
     >
-      <div className='space-y-3'>
+      <div className="space-y-3">
         {
           isHybridSearch && (
-            <div className='space-y-1'>
+            <div className="space-y-1">
               {
                 hybridSearchModeOptions.map(hybridOption => (
                   <OptionCard
@@ -141,7 +141,7 @@ const SearchMethodOption = ({
                     enableHighlightBorder={false}
                     enableRadio
                     wrapperClassName={hybridSearchModeWrapperClassName}
-                    className='p-3'
+                    className="p-3"
                     title={hybridOption.title}
                     description={hybridOption.description}
                     onClick={onHybridSearchModeChange}
@@ -166,16 +166,16 @@ const SearchMethodOption = ({
             <div>
               {
                 showRerankModelSelectorSwitch && (
-                  <div className='system-sm-semibold mb-1 flex items-center text-text-secondary'>
+                  <div className="system-sm-semibold mb-1 flex items-center text-text-secondary">
                     <Switch
-                      className='mr-1'
+                      className="mr-1"
                       defaultValue={rerankingModelEnabled}
                       onChange={onRerankingModelEnabledChange}
                       disabled={readonly}
                     />
                     {t('common.modelProvider.rerankModel.key')}
                     <Tooltip
-                      triggerClassName='ml-0.5 shrink-0 w-3.5 h-3.5'
+                      triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
                       popupContent={t('common.modelProvider.rerankModel.tip')}
                     />
                   </div>
@@ -187,12 +187,12 @@ const SearchMethodOption = ({
                 readonly={readonly}
               />
               {showMultiModalTip && (
-                <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
-                  <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40' />
-                  <div className='p-1'>
-                    <AlertTriangle className='size-4 text-text-warning-secondary' />
+                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+                  <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                  <div className="p-1">
+                    <AlertTriangle className="size-4 text-text-warning-secondary" />
                   </div>
-                  <span className='system-xs-medium text-text-primary'>
+                  <span className="system-xs-medium text-text-primary">
                     {t('datasetSettings.form.retrievalSetting.multiModalTip')}
                   </span>
                 </div>

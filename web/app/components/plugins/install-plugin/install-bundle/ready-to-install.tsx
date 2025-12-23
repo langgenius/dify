@@ -8,7 +8,7 @@ import type { Dependency, InstallStatus, Plugin } from '../../types'
 
 type Props = {
   step: InstallStep
-  onStepChange: (step: InstallStep) => void,
+  onStepChange: (step: InstallStep) => void
   onStartToInstall: () => void
   setIsInstalling: (isInstalling: boolean) => void
   allPlugins: Dependency[]

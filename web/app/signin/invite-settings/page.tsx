@@ -70,95 +70,104 @@ export default function InviteSettingsPage() {
   if (!checkRes)
     return <Loading />
   if (!checkRes.is_valid) {
-    return <div className="flex flex-col md:w-[400px]">
-      <div className="mx-auto w-full">
-        <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.invalid')}</h2>
+    return (
+      <div className="flex flex-col md:w-[400px]">
+        <div className="mx-auto w-full">
+          <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
+          <h2 className="title-4xl-semi-bold text-text-primary">{t('login.invalid')}</h2>
+        </div>
+        <div className="mx-auto mt-6 w-full">
+          <Button variant="primary" className="w-full !text-sm">
+            <a href="https://dify.ai">{t('login.explore')}</a>
+          </Button>
+        </div>
       </div>
-      <div className="mx-auto mt-6 w-full">
-        <Button variant='primary' className='w-full !text-sm'>
-          <a href="https://dify.ai">{t('login.explore')}</a>
-        </Button>
-      </div>
-    </div>
+    )
   }
 
-  return <div className='flex flex-col gap-3'>
-    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg'>
-      <RiAccountCircleLine className='h-6 w-6 text-2xl text-text-accent-light-mode-only' />
-    </div>
-    <div className='pb-4 pt-2'>
-      <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.setYourAccount')}</h2>
-    </div>
-    <form onSubmit={noop}>
-      <div className='mb-5'>
-        <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-          {t('login.name')}
-        </label>
-        <div className="mt-1">
-          <Input
-            id="name"
-            type="text"
-            value={name}
-            onChange={e => setName(e.target.value)}
-            placeholder={t('login.namePlaceholder') || ''}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                e.stopPropagation()
-                handleActivate()
-              }
-            }}
-          />
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <RiAccountCircleLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
+      </div>
+      <div className="pb-4 pt-2">
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.setYourAccount')}</h2>
+      </div>
+      <form onSubmit={noop}>
+        <div className="mb-5">
+          <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
+            {t('login.name')}
+          </label>
+          <div className="mt-1">
+            <Input
+              id="name"
+              type="text"
+              value={name}
+              onChange={e => setName(e.target.value)}
+              placeholder={t('login.namePlaceholder') || ''}
+              onKeyDown={(e) => {
+                if (e.key === 'Enter') {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  handleActivate()
+                }
+              }}
+            />
+          </div>
         </div>
-      </div>
-      <div className='mb-5'>
-        <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-          {t('login.interfaceLanguage')}
-        </label>
-        <div className="mt-1">
-          <SimpleSelect
-            defaultValue={LanguagesSupported[0]}
-            items={languages.filter(item => item.supported)}
-            onSelect={(item) => {
-              setLanguage(item.value as string)
-            }}
-          />
+        <div className="mb-5">
+          <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
+            {t('login.interfaceLanguage')}
+          </label>
+          <div className="mt-1">
+            <SimpleSelect
+              defaultValue={LanguagesSupported[0]}
+              items={languages.filter(item => item.supported)}
+              onSelect={(item) => {
+                setLanguage(item.value as string)
+              }}
+            />
+          </div>
         </div>
-      </div>
-      {/* timezone */}
-      <div className='mb-5'>
-        <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
-          {t('login.timezone')}
-        </label>
-        <div className="mt-1">
-          <SimpleSelect
-            defaultValue={timezone}
-            items={timezones}
-            onSelect={(item) => {
-              setTimezone(item.value as string)
-            }}
-          />
+        {/* timezone */}
+        <div className="mb-5">
+          <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
+            {t('login.timezone')}
+          </label>
+          <div className="mt-1">
+            <SimpleSelect
+              defaultValue={timezone}
+              items={timezones}
+              onSelect={(item) => {
+                setTimezone(item.value as string)
+              }}
+            />
+          </div>
         </div>
-      </div>
-      <div>
-        <Button
-          variant='primary'
-          className='w-full'
-          onClick={handleActivate}
-        >
-          {`${t('login.join')} ${checkRes?.data?.workspace_name}`}
-        </Button>
-      </div>
-    </form>
-    {!systemFeatures.branding.enabled && <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
-      {t('login.license.tip')}
+        <div>
+          <Button
+            variant="primary"
+            className="w-full"
+            onClick={handleActivate}
+          >
+            {`${t('login.join')} ${checkRes?.data?.workspace_name}`}
+          </Button>
+        </div>
+      </form>
+      {!systemFeatures.branding.enabled && (
+        <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
+          {t('login.license.tip')}
       &nbsp;
-      <Link
-        className='system-xs-medium text-text-accent-secondary'
-        target='_blank' rel='noopener noreferrer'
-        href={docLink('/policies/open-source')}
-      >{t('login.license.link')}</Link>
-    </div>}
-  </div>
+          <Link
+            className="system-xs-medium text-text-accent-secondary"
+            target="_blank"
+            rel="noopener noreferrer"
+            href={docLink('/policies/open-source')}
+          >
+            {t('login.license.link')}
+          </Link>
+        </div>
+      )}
+    </div>
+  )
 }

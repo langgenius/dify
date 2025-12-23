@@ -60,29 +60,9 @@ const InputItem: FC<Props> = ({
     <div className={cn(className, 'hover:cursor-text hover:bg-state-base-hover', 'relative flex h-full')}>
       {(!readOnly)
         ? (
-          <Input
-            instanceId={instanceId}
-            className={cn(isFocus ? 'bg-components-input-bg-active' : 'bg-width', 'w-0 grow px-3 py-1')}
-            value={value}
-            onChange={onChange}
-            readOnly={readOnly}
-            nodesOutputVars={availableVars}
-            availableNodes={availableNodesWithParent}
-            onFocusChange={setIsFocus}
-            placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
-            placeholderClassName='!leading-[21px]'
-            promptMinHeightClassName='h-full'
-            insertVarTipToLeft={insertVarTipToLeft}
-          />
-        )
-        : <div
-          className="h-[18px] w-full pl-0.5 leading-[18px]"
-        >
-          {!hasValue && <div className='text-xs font-normal text-text-quaternary'>{placeholder}</div>}
-          {hasValue && (
             <Input
               instanceId={instanceId}
-              className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+              className={cn(isFocus ? 'bg-components-input-bg-active' : 'bg-width', 'w-0 grow px-3 py-1')}
               value={value}
               onChange={onChange}
               readOnly={readOnly}
@@ -90,16 +70,38 @@ const InputItem: FC<Props> = ({
               availableNodes={availableNodesWithParent}
               onFocusChange={setIsFocus}
               placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
-              placeholderClassName='!leading-[21px]'
-              promptMinHeightClassName='h-full'
+              placeholderClassName="!leading-[21px]"
+              promptMinHeightClassName="h-full"
               insertVarTipToLeft={insertVarTipToLeft}
             />
-          )}
+          )
+        : (
+            <div
+              className="h-[18px] w-full pl-0.5 leading-[18px]"
+            >
+              {!hasValue && <div className="text-xs font-normal text-text-quaternary">{placeholder}</div>}
+              {hasValue && (
+                <Input
+                  instanceId={instanceId}
+                  className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
+                  value={value}
+                  onChange={onChange}
+                  readOnly={readOnly}
+                  nodesOutputVars={availableVars}
+                  availableNodes={availableNodesWithParent}
+                  onFocusChange={setIsFocus}
+                  placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
+                  placeholderClassName="!leading-[21px]"
+                  promptMinHeightClassName="h-full"
+                  insertVarTipToLeft={insertVarTipToLeft}
+                />
+              )}
 
-        </div>}
+            </div>
+          )}
       {hasRemove && !isFocus && (
         <RemoveButton
-          className='absolute right-1 top-0.5 hidden group-hover:block'
+          className="absolute right-1 top-0.5 hidden group-hover:block"
           onClick={handleRemove}
         />
       )}

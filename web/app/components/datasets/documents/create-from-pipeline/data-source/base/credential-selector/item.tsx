@@ -22,7 +22,7 @@ const Item = ({
 
   return (
     <div
-      className='flex cursor-pointer items-center gap-x-2 rounded-lg p-2 hover:bg-state-base-hover'
+      className="flex cursor-pointer items-center gap-x-2 rounded-lg p-2 hover:bg-state-base-hover"
       onClick={handleCredentialChange}
     >
       <CredentialIcon
@@ -30,12 +30,12 @@ const Item = ({
         name={name}
         size={20}
       />
-      <span className='system-sm-medium grow truncate text-text-secondary'>
+      <span className="system-sm-medium grow truncate text-text-secondary">
         {name}
       </span>
       {
         isSelected && (
-          <RiCheckLine className='size-4 shrink-0 text-text-accent' />
+          <RiCheckLine className="size-4 shrink-0 text-text-accent" />
         )
       }
     </div>

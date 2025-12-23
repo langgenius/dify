@@ -100,7 +100,7 @@ const AppIcon: FC<AppIconProps> = ({
   showEditIcon = false,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
-  const Icon = (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />
+  const Icon = (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id="🤖" />
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
 
@@ -113,7 +113,7 @@ const AppIcon: FC<AppIconProps> = ({
     >
       {
         isValidImageIcon
-          ? <img src={imageUrl} className='h-full w-full' alt='app icon' />
+          ? <img src={imageUrl} className="h-full w-full" alt="app icon" />
           : (innerIcon || Icon)
       }
       {

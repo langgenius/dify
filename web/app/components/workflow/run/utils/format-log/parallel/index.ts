@@ -14,9 +14,9 @@ function printNodeStructure(node: NodeTracing, depth: number) {
 function addTitle({
   list, depth, belongParallelIndexInfo,
 }: {
-  list: NodeTracing[],
-  depth: number,
-  belongParallelIndexInfo?: string,
+  list: NodeTracing[]
+  depth: number
+  belongParallelIndexInfo?: string
 }, t: any) {
   let branchIndex = 0
   const hasMoreThanOneParallel = list.filter(node => node.parallelDetail?.isParallelStartNode).length > 1

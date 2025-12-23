@@ -274,7 +274,7 @@ export const useInitiateTriggerOAuth = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'initiate-oauth'],
     mutationFn: (provider: string) => {
-      return get<{ authorization_url: string; subscription_builder: TriggerSubscriptionBuilder }>(
+      return get<{ authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
         {},
         { silent: true },
@@ -292,9 +292,9 @@ export const useTriggerPluginDynamicOptions = (payload: {
   credential_id: string
   extra?: Record<string, any>
 }, enabled = true) => {
-  return useQuery<{ options: Array<{ value: string; label: any }> }>({
+  return useQuery<{ options: Array<{ value: string, label: any }> }>({
     queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.extra],
-    queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
+    queryFn: () => get<{ options: Array<{ value: string, label: any }> }>(
       '/workspaces/current/plugin/parameters/dynamic-options',
       {
         params: {

@@ -27,33 +27,35 @@ import { useGlobalPublicStore } from '@/context/global-public-context'
 const DEFAULT_TAGS: ListProps['tags'] = []
 
 const NotFoundWarn = (props: {
-  title: ReactNode,
+  title: ReactNode
   description: ReactNode
 }) => {
   const { title, description } = props
 
   const { t } = useTranslation()
-  return <Tooltip
-    popupContent={
-      <div className='space-y-1 text-xs'>
-        <h3 className='font-semibold text-text-primary'>
-          {title}
-        </h3>
-        <p className='tracking-tight text-text-secondary'>
-          {description}
-        </p>
-        <p>
-          <Link href={'/plugins'} className='tracking-tight text-text-accent'>
-            {t('workflow.nodes.agent.linkToPlugin')}
-          </Link>
-        </p>
+  return (
+    <Tooltip
+      popupContent={(
+        <div className="space-y-1 text-xs">
+          <h3 className="font-semibold text-text-primary">
+            {title}
+          </h3>
+          <p className="tracking-tight text-text-secondary">
+            {description}
+          </p>
+          <p>
+            <Link href="/plugins" className="tracking-tight text-text-accent">
+              {t('workflow.nodes.agent.linkToPlugin')}
+            </Link>
+          </p>
+        </div>
+      )}
+    >
+      <div>
+        <RiErrorWarningFill className="size-4 text-text-destructive" />
       </div>
-    }
-  >
-    <div>
-      <RiErrorWarningFill className='size-4 text-text-destructive' />
-    </div>
-  </Tooltip>
+    </Tooltip>
+  )
 }
 
 function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => string): ToolWithProvider[] {
@@ -87,9 +89,9 @@ function formatStrategy(input: StrategyPluginDetail[], getIcon: (i: string) => s
 }
 
 export type AgentStrategySelectorProps = {
-  value?: Strategy,
-  onChange: (value?: Strategy) => void,
-  canChooseMCPTool: boolean,
+  value?: Strategy
+  onChange: (value?: Strategy) => void
+  canChooseMCPTool: boolean
 }
 
 export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) => {
@@ -147,97 +149,115 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
 
   const pluginRef = useRef<ListRef>(null)
 
-  return <PortalToFollowElem open={open} onOpenChange={setOpen} placement='bottom'>
-    <PortalToFollowElemTrigger className='w-full'>
-      <div
-        className='flex h-8 w-full select-none items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 hover:bg-state-base-hover-alt'
-        onClick={() => setOpen(o => !o)}
-      >
-        { }
-        {icon && <div className='flex h-6 w-6 items-center justify-center'><img
-          src={icon}
-          width={20}
-          height={20}
-          className='rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge'
-          alt='icon'
-        /></div>}
-        <p
-          className={cn(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
+  return (
+    <PortalToFollowElem open={open} onOpenChange={setOpen} placement="bottom">
+      <PortalToFollowElemTrigger className="w-full">
+        <div
+          className="flex h-8 w-full select-none items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 hover:bg-state-base-hover-alt"
+          onClick={() => setOpen(o => !o)}
         >
-          {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
-        </p>
-        <div className='ml-auto flex items-center gap-1'>
-          {showInstallButton && value && <InstallPluginButton
-            onClick={e => e.stopPropagation()}
-            size={'small'}
-            uniqueIdentifier={value.plugin_unique_identifier}
-          />}
-          {showPluginNotInstalledWarn
-            ? <NotFoundWarn
-              title={t('workflow.nodes.agent.pluginNotInstalled')}
-              description={t('workflow.nodes.agent.pluginNotInstalledDesc')}
-            />
-            : showUnsupportedStrategy
-              ? <NotFoundWarn
-                title={t('workflow.nodes.agent.unsupportedStrategy')}
-                description={t('workflow.nodes.agent.strategyNotFoundDesc')}
+          { }
+          {icon && (
+            <div className="flex h-6 w-6 items-center justify-center">
+              <img
+                src={icon}
+                width={20}
+                height={20}
+                className="rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge"
+                alt="icon"
               />
-              : <RiArrowDownSLine className='size-4 text-text-tertiary' />
-          }
-          {showSwitchVersion && <SwitchPluginVersion
-            uniqueIdentifier={value.plugin_unique_identifier}
-            tooltip={<ToolTipContent
-              title={t('workflow.nodes.agent.unsupportedStrategy')}>
-              {t('workflow.nodes.agent.strategyNotFoundDescAndSwitchVersion')}
-            </ToolTipContent>}
-            onChange={() => {
-              refetchStrategyInfo()
-            }}
-          />}
+            </div>
+          )}
+          <p
+            className={cn(value ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder', 'px-1 text-xs')}
+          >
+            {value?.agent_strategy_label || t('workflow.nodes.agent.strategy.selectTip')}
+          </p>
+          <div className="ml-auto flex items-center gap-1">
+            {showInstallButton && value && (
+              <InstallPluginButton
+                onClick={e => e.stopPropagation()}
+                size="small"
+                uniqueIdentifier={value.plugin_unique_identifier}
+              />
+            )}
+            {showPluginNotInstalledWarn
+              ? (
+                  <NotFoundWarn
+                    title={t('workflow.nodes.agent.pluginNotInstalled')}
+                    description={t('workflow.nodes.agent.pluginNotInstalledDesc')}
+                  />
+                )
+              : showUnsupportedStrategy
+                ? (
+                    <NotFoundWarn
+                      title={t('workflow.nodes.agent.unsupportedStrategy')}
+                      description={t('workflow.nodes.agent.strategyNotFoundDesc')}
+                    />
+                  )
+                : <RiArrowDownSLine className="size-4 text-text-tertiary" />}
+            {showSwitchVersion && (
+              <SwitchPluginVersion
+                uniqueIdentifier={value.plugin_unique_identifier}
+                tooltip={(
+                  <ToolTipContent
+                    title={t('workflow.nodes.agent.unsupportedStrategy')}
+                  >
+                    {t('workflow.nodes.agent.strategyNotFoundDescAndSwitchVersion')}
+                  </ToolTipContent>
+                )}
+                onChange={() => {
+                  refetchStrategyInfo()
+                }}
+              />
+            )}
+          </div>
         </div>
-      </div>
-    </PortalToFollowElemTrigger>
-    <PortalToFollowElemContent className='z-10'>
-      <div className='w-[388px] overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow'>
-        <header className='flex gap-1 p-2'>
-          <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className={'w-full'} />
-          <ViewTypeSelect viewType={viewType} onChange={setViewType} />
-        </header>
-        <main className="relative flex w-full flex-col overflow-hidden md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px]" ref={wrapElemRef}>
-          <Tools
-            tools={filteredTools}
-            viewType={viewType}
-            onSelect={(_, tool) => {
-              onChange({
-                agent_strategy_name: tool!.tool_name,
-                agent_strategy_provider_name: tool!.provider_name,
-                agent_strategy_label: tool!.tool_label,
-                agent_output_schema: tool!.output_schema || {},
-                plugin_unique_identifier: tool!.provider_id,
-                meta: tool!.meta,
-              })
-              setOpen(false)
-            }}
-            className='h-full max-h-full max-w-none overflow-y-auto'
-            indexBarClassName='top-0 xl:top-36'
-            hasSearchText={false}
-            canNotSelectMultiple
-            canChooseMCPTool={canChooseMCPTool}
-            isAgent
-          />
-          {enable_marketplace && <PluginList
-            ref={pluginRef}
-            wrapElemRef={wrapElemRef}
-            list={notInstalledPlugins}
-            searchText={query}
-            tags={DEFAULT_TAGS}
-            category={PluginCategoryEnum.agent}
-            disableMaxWidth
-          />}
-        </main>
-      </div>
-    </PortalToFollowElemContent>
-  </PortalToFollowElem>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-10">
+        <div className="w-[388px] overflow-hidden rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow">
+          <header className="flex gap-1 p-2">
+            <SearchInput placeholder={t('workflow.nodes.agent.strategy.searchPlaceholder')} value={query} onChange={setQuery} className="w-full" />
+            <ViewTypeSelect viewType={viewType} onChange={setViewType} />
+          </header>
+          <main className="relative flex w-full flex-col overflow-hidden md:max-h-[300px] xl:max-h-[400px] 2xl:max-h-[564px]" ref={wrapElemRef}>
+            <Tools
+              tools={filteredTools}
+              viewType={viewType}
+              onSelect={(_, tool) => {
+                onChange({
+                  agent_strategy_name: tool!.tool_name,
+                  agent_strategy_provider_name: tool!.provider_name,
+                  agent_strategy_label: tool!.tool_label,
+                  agent_output_schema: tool!.output_schema || {},
+                  plugin_unique_identifier: tool!.provider_id,
+                  meta: tool!.meta,
+                })
+                setOpen(false)
+              }}
+              className="h-full max-h-full max-w-none overflow-y-auto"
+              indexBarClassName="top-0 xl:top-36"
+              hasSearchText={false}
+              canNotSelectMultiple
+              canChooseMCPTool={canChooseMCPTool}
+              isAgent
+            />
+            {enable_marketplace && (
+              <PluginList
+                ref={pluginRef}
+                wrapElemRef={wrapElemRef}
+                list={notInstalledPlugins}
+                searchText={query}
+                tags={DEFAULT_TAGS}
+                category={PluginCategoryEnum.agent}
+                disableMaxWidth
+              />
+            )}
+          </main>
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
+  )
 })
 
 AgentStrategySelector.displayName = 'AgentStrategySelector'

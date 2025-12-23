@@ -77,9 +77,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     limit,
     ...((debouncedQueryParams.period !== '9')
       ? {
-        start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
-        end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
-      }
+          start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
+          end: dayjs().endOf('day').format('YYYY-MM-DD HH:mm'),
+        }
       : {}),
     ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
     ...omit(debouncedQueryParams, ['period']),
@@ -88,16 +88,16 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   // When the details are obtained, proceed to the next request
   const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
     ? {
-      url: `/apps/${appDetail.id}/chat-conversations`,
-      params: query,
-    }
+        url: `/apps/${appDetail.id}/chat-conversations`,
+        params: query,
+      }
     : null, fetchChatConversations)
 
   const { data: completionConversations, mutate: mutateCompletionList } = useSWR(() => !isChatMode
     ? {
-      url: `/apps/${appDetail.id}/completion-conversations`,
-      params: query,
-    }
+        url: `/apps/${appDetail.id}/completion-conversations`,
+        params: query,
+      }
     : null, fetchCompletionConversations)
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
@@ -120,25 +120,26 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   }, [pathname, router, searchParams])
 
   return (
-    <div className='flex h-full grow flex-col'>
-      <p className='system-sm-regular shrink-0 text-text-tertiary'>{t('appLog.description')}</p>
-      <div className='flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4'>
+    <div className="flex h-full grow flex-col">
+      <p className="system-sm-regular shrink-0 text-text-tertiary">{t('appLog.description')}</p>
+      <div className="flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4">
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
         {total === undefined
-          ? <Loading type='app' />
+          ? <Loading type="app" />
           : total > 0
             ? <List logs={isChatMode ? chatConversations : completionConversations} appDetail={appDetail} onRefresh={isChatMode ? mutateChatList : mutateCompletionList} />
-            : <EmptyElement appDetail={appDetail} />
-        }
+            : <EmptyElement appDetail={appDetail} />}
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
-          ? <Pagination
-            current={currPage}
-            onChange={handlePageChange}
-            total={total}
-            limit={limit}
-            onLimitChange={setLimit}
-          />
+          ? (
+              <Pagination
+                current={currPage}
+                onChange={handlePageChange}
+                total={total}
+                limit={limit}
+                onLimitChange={setLimit}
+              />
+            )
           : null}
       </div>
     </div>

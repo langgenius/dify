@@ -34,7 +34,7 @@ const DebugWithSingleModel = (
     ref,
     checkCanSend,
   }: DebugWithSingleModelProps & {
-    ref: React.RefObject<DebugWithSingleModelRefType>;
+    ref: React.RefObject<DebugWithSingleModelRefType>
   },
 ) => {
   const { userProfile } = useAppContext()
@@ -157,8 +157,8 @@ const DebugWithSingleModel = (
       config={config}
       chatList={chatList}
       isResponding={isResponding}
-      chatContainerClassName='px-3 pt-6'
-      chatFooterClassName='px-3 pt-10 pb-0'
+      chatContainerClassName="px-3 pt-6"
+      chatFooterClassName="px-3 pt-10 pb-0"
       showFeatureBar
       showFileUpload={false}
       onFeatureBarClick={setShowAppConfigureFeaturesModal}

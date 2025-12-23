@@ -45,7 +45,8 @@ const SearchBox = ({
           !usedInMarketplace && 'radius-md border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover',
           inputClassName,
         )
-      }>
+      }
+      >
         {
           usedInMarketplace && (
             <>
@@ -55,8 +56,8 @@ const SearchBox = ({
                 usedInMarketplace
                 locale={locale}
               />
-              <Divider type='vertical' className='mx-1 h-3.5' />
-              <div className='flex grow items-center gap-x-2 p-1'>
+              <Divider type="vertical" className="mx-1 h-3.5" />
+              <div className="flex grow items-center gap-x-2 p-1">
                 <input
                   className={cn(
                     'body-md-medium inline-block grow appearance-none bg-transparent text-text-secondary outline-none',
@@ -71,9 +72,9 @@ const SearchBox = ({
                   search && (
                     <ActionButton
                       onClick={() => onSearchChange('')}
-                      className='shrink-0'
+                      className="shrink-0"
                     >
-                      <RiCloseLine className='size-4' />
+                      <RiCloseLine className="size-4" />
                     </ActionButton>
                   )
                 }
@@ -84,8 +85,8 @@ const SearchBox = ({
         {
           !usedInMarketplace && (
             <>
-              <div className='flex grow items-center py-[7px] pl-2 pr-3'>
-                <RiSearchLine className='size-4 text-components-input-text-placeholder' />
+              <div className="flex grow items-center py-[7px] pl-2 pr-3">
+                <RiSearchLine className="size-4 text-components-input-text-placeholder" />
                 <input
                   autoFocus={autoFocus}
                   className={cn(
@@ -102,14 +103,14 @@ const SearchBox = ({
                   search && (
                     <ActionButton
                       onClick={() => onSearchChange('')}
-                      className='shrink-0'
+                      className="shrink-0"
                     >
-                      <RiCloseLine className='size-4' />
+                      <RiCloseLine className="size-4" />
                     </ActionButton>
                   )
                 }
               </div>
-              <Divider type='vertical' className='mx-0 mr-0.5 h-3.5' />
+              <Divider type="vertical" className="mx-0 mr-0.5 h-3.5" />
               <TagsFilter
                 tags={tags}
                 onTagsChange={onTagsChange}
@@ -120,12 +121,12 @@ const SearchBox = ({
         }
       </div>
       {supportAddCustomTool && (
-        <div className='flex shrink-0 items-center'>
+        <div className="flex shrink-0 items-center">
           <ActionButton
-            className='ml-2 rounded-full bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text'
+            className="ml-2 rounded-full bg-components-button-primary-bg text-components-button-primary-text hover:bg-components-button-primary-bg hover:text-components-button-primary-text"
             onClick={onShowAddCustomCollectionModal}
           >
-            <RiAddLine className='h-4 w-4' />
+            <RiAddLine className="h-4 w-4" />
           </ActionButton>
         </div>
       )}

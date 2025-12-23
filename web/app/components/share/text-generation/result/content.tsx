@@ -17,17 +17,18 @@ const Result: FC<IResultProps> = ({
   onFeedback,
 }) => {
   return (
-    <div className='h-max basis-3/4'>
+    <div className="h-max basis-3/4">
       <Header result={content} showFeedback={showFeedback} feedback={feedback} onFeedback={onFeedback} />
       <div
-        className='mt-4 flex w-full overflow-scroll text-sm font-normal leading-5 text-gray-900'
+        className="mt-4 flex w-full overflow-scroll text-sm font-normal leading-5 text-gray-900"
         style={{
           maxHeight: '70vh',
         }}
         dangerouslySetInnerHTML={{
           __html: format(content),
         }}
-      ></div>
+      >
+      </div>
     </div>
   )
 }

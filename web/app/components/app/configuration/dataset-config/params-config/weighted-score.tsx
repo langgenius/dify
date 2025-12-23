@@ -32,7 +32,7 @@ const WeightedScore = ({
 
   return (
     <div>
-      <div className='space-x-3 rounded-lg border border-components-panel-border px-3 pb-2 pt-5'>
+      <div className="space-x-3 rounded-lg border border-components-panel-border px-3 pb-2 pt-5">
         <Slider
           className={cn('h-0.5 grow rounded-full !bg-util-colors-teal-teal-500')}
           max={1.0}
@@ -40,19 +40,19 @@ const WeightedScore = ({
           step={0.1}
           value={value.value[0]}
           onChange={v => !readonly && onChange({ value: [v, (10 - v * 10) / 10] })}
-          trackClassName='weightedScoreSliderTrack'
+          trackClassName="weightedScoreSliderTrack"
           disabled={readonly}
         />
-        <div className='mt-3 flex justify-between'>
-          <div className='system-xs-semibold-uppercase flex w-[90px] shrink-0 items-center text-util-colors-blue-light-blue-light-500'>
-            <div className='mr-1 truncate uppercase' title={t('dataset.weightedScore.semantic') || ''}>
+        <div className="mt-3 flex justify-between">
+          <div className="system-xs-semibold-uppercase flex w-[90px] shrink-0 items-center text-util-colors-blue-light-blue-light-500">
+            <div className="mr-1 truncate uppercase" title={t('dataset.weightedScore.semantic') || ''}>
               {t('dataset.weightedScore.semantic')}
             </div>
             {formatNumber(value.value[0])}
           </div>
-          <div className='system-xs-semibold-uppercase flex w-[90px] shrink-0 items-center justify-end text-util-colors-teal-teal-500'>
+          <div className="system-xs-semibold-uppercase flex w-[90px] shrink-0 items-center justify-end text-util-colors-teal-teal-500">
             {formatNumber(value.value[1])}
-            <div className='ml-1 truncate uppercase' title={t('dataset.weightedScore.keyword') || ''}>
+            <div className="ml-1 truncate uppercase" title={t('dataset.weightedScore.keyword') || ''}>
               {t('dataset.weightedScore.keyword')}
             </div>
           </div>

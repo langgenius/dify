@@ -22,7 +22,7 @@ export const useDocumentList = (payload: {
     limit: number
     sort?: SortType
     status?: string
-  },
+  }
   refetchInterval?: number | false
 }) => {
   const { query, datasetId, refetchInterval } = payload

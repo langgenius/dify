@@ -37,8 +37,8 @@ const TransferOwnership = ({ onOperate }: Props) => {
               >
                 <div className="p-1">
                   <MenuItem>
-                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={onOperate}>
-                      <div className='system-md-regular whitespace-nowrap text-text-secondary'>{t('common.members.transferOwnership')}</div>
+                    <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={onOperate}>
+                      <div className="system-md-regular whitespace-nowrap text-text-secondary">{t('common.members.transferOwnership')}</div>
                     </div>
                   </MenuItem>
                 </div>

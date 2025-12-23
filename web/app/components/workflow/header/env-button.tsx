@@ -29,11 +29,11 @@ const EnvButton = ({ disabled }: { disabled: boolean }) => {
         'p-2',
         theme === 'dark' && showEnvPanel && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
       )}
-      variant='ghost'
+      variant="ghost"
       disabled={disabled}
       onClick={handleClick}
     >
-      <Env className='h-4 w-4 text-components-button-secondary-text' />
+      <Env className="h-4 w-4 text-components-button-secondary-text" />
     </Button>
   )
 }

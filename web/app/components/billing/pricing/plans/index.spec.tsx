@@ -11,7 +11,9 @@ vi.mock('./cloud-plan-item', () => ({
   __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`cloud-plan-${props.plan}`} data-current-plan={props.currentPlan}>
-      Cloud {props.plan}
+      Cloud
+      {' '}
+      {props.plan}
     </div>
   )),
 }))
@@ -20,7 +22,9 @@ vi.mock('./self-hosted-plan-item', () => ({
   __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`self-plan-${props.plan}`}>
-      Self {props.plan}
+      Self
+      {' '}
+      {props.plan}
     </div>
   )),
 }))

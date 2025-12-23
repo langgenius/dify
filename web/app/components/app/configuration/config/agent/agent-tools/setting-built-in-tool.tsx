@@ -125,22 +125,22 @@ const SettingBuiltInTool: FC<Props> = ({
   }
 
   const infoUI = (
-    <div className=''>
+    <div className="">
       {infoSchemas.length > 0 && (
-        <div className='space-y-1 py-2'>
+        <div className="space-y-1 py-2">
           {infoSchemas.map((item, index) => (
-            <div key={index} className='py-1'>
-              <div className='flex items-center gap-2'>
-                <div className='code-sm-semibold text-text-secondary'>{item.label[language]}</div>
-                <div className='system-xs-regular text-text-tertiary'>
+            <div key={index} className="py-1">
+              <div className="flex items-center gap-2">
+                <div className="code-sm-semibold text-text-secondary">{item.label[language]}</div>
+                <div className="system-xs-regular text-text-tertiary">
                   {getType(item.type)}
                 </div>
                 {item.required && (
-                  <div className='system-xs-medium text-text-warning-secondary'>{t('tools.setBuiltInTools.required')}</div>
+                  <div className="system-xs-medium text-text-warning-secondary">{t('tools.setBuiltInTools.required')}</div>
                 )}
               </div>
               {item.human_description && (
-                <div className='system-xs-regular mt-0.5 text-text-tertiary'>
+                <div className="system-xs-regular mt-0.5 text-text-tertiary">
                   {item.human_description?.[language]}
                 </div>
               )}
@@ -174,36 +174,36 @@ const SettingBuiltInTool: FC<Props> = ({
       panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
       <>
-        {isLoading && <Loading type='app' />}
+        {isLoading && <Loading type="app" />}
         {!isLoading && (
           <>
             {/* header */}
-            <div className='relative border-b border-divider-subtle p-4 pb-3'>
-              <div className='absolute right-3 top-3'>
+            <div className="relative border-b border-divider-subtle p-4 pb-3">
+              <div className="absolute right-3 top-3">
                 <ActionButton onClick={onHide}>
-                  <RiCloseLine className='h-4 w-4' />
+                  <RiCloseLine className="h-4 w-4" />
                 </ActionButton>
               </div>
               {showBackButton && (
                 <div
-                  className='system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary'
+                  className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
                   onClick={onHide}
                 >
-                  <RiArrowLeftLine className='h-4 w-4' />
+                  <RiArrowLeftLine className="h-4 w-4" />
                   {t('plugin.detailPanel.operation.back')}
                 </div>
               )}
-              <div className='flex items-center gap-1'>
-                <Icon size='tiny' className='h-6 w-6' src={collection.icon} />
+              <div className="flex items-center gap-1">
+                <Icon size="tiny" className="h-6 w-6" src={collection.icon} />
                 <OrgInfo
-                  packageNameClassName='w-auto'
+                  packageNameClassName="w-auto"
                   orgName={collection.author}
                   packageName={collection.name.split('/').pop() || ''}
                 />
               </div>
-              <div className='system-md-semibold mt-1 text-text-primary'>{currTool?.label[language]}</div>
+              <div className="system-md-semibold mt-1 text-text-primary">{currTool?.label[language]}</div>
               {!!currTool?.description[language] && (
-                <Description className='mb-2 mt-3 h-auto' text={currTool.description[language]} descriptionLineRows={2}></Description>
+                <Description className="mb-2 mt-3 h-auto" text={currTool.description[language]} descriptionLineRows={2}></Description>
               )}
               {
                 collection.allow_delete && collection.type === CollectionType.builtIn && (
@@ -221,35 +221,37 @@ const SettingBuiltInTool: FC<Props> = ({
               }
             </div>
             {/* form */}
-            <div className='h-full'>
-              <div className='flex h-full flex-col'>
-                {(hasSetting && !readonly) ? (
-                  <TabSlider
-                    className='mt-1 shrink-0 px-4'
-                    itemClassName='py-3'
-                    noBorderBottom
-                    value={currType}
-                    onChange={(value) => {
-                      setCurrType(value)
-                    }}
-                    options={[
-                      { value: 'info', text: t('tools.setBuiltInTools.parameters')! },
-                      { value: 'setting', text: t('tools.setBuiltInTools.setting')! },
-                    ]}
-                  />
-                ) : (
-                  <div className='system-sm-semibold-uppercase p-4 pb-1 text-text-primary'>{t('tools.setBuiltInTools.parameters')}</div>
-                )}
-                <div className='h-0 grow overflow-y-auto px-4'>
+            <div className="h-full">
+              <div className="flex h-full flex-col">
+                {(hasSetting && !readonly)
+                  ? (
+                      <TabSlider
+                        className="mt-1 shrink-0 px-4"
+                        itemClassName="py-3"
+                        noBorderBottom
+                        value={currType}
+                        onChange={(value) => {
+                          setCurrType(value)
+                        }}
+                        options={[
+                          { value: 'info', text: t('tools.setBuiltInTools.parameters')! },
+                          { value: 'setting', text: t('tools.setBuiltInTools.setting')! },
+                        ]}
+                      />
+                    )
+                  : (
+                      <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('tools.setBuiltInTools.parameters')}</div>
+                    )}
+                <div className="h-0 grow overflow-y-auto px-4">
                   {isInfoActive ? infoUI : settingUI}
                   {!readonly && !isInfoActive && (
-                    <div className='flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2'>
-                      <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium ' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                      <Button className='flex h-8 items-center !px-3 !text-[13px] font-medium' variant='primary' disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('common.operation.save')}</Button>
+                    <div className="flex shrink-0 justify-end space-x-2 rounded-b-[10px] bg-components-panel-bg py-2">
+                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium " onClick={onHide}>{t('common.operation.cancel')}</Button>
+                      <Button className="flex h-8 items-center !px-3 !text-[13px] font-medium" variant="primary" disabled={!isValid} onClick={() => onSave?.(tempSetting)}>{t('common.operation.save')}</Button>
                     </div>
                   )}
                 </div>
-                <ReadmeEntrance pluginDetail={collection as any} className='mt-auto' />
+                <ReadmeEntrance pluginDetail={collection as any} className="mt-auto" />
               </div>
             </div>
           </>

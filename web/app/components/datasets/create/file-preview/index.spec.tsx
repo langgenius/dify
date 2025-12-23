@@ -31,7 +31,7 @@ const createMockFile = (overrides: Partial<File> = {}): File => {
 }
 
 // Helper to render FilePreview with default props
-const renderFilePreview = (props: Partial<{ file?: File; hidePreview: () => void }> = {}) => {
+const renderFilePreview = (props: Partial<{ file?: File, hidePreview: () => void }> = {}) => {
   const defaultProps = {
     file: createMockFile(),
     hidePreview: vi.fn(),

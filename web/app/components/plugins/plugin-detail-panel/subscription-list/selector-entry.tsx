@@ -90,37 +90,39 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
 }
 
 export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
-  selectedId?: string,
+  selectedId?: string
   onSelect: (v: SimpleSubscription, callback?: () => void) => void
 }) => {
   const [isOpen, setIsOpen] = useState(false)
 
-  return <PortalToFollowElem
-    placement='bottom-start'
-    offset={4}
-    open={isOpen}
-    onOpenChange={setIsOpen}
-  >
-    <PortalToFollowElemTrigger asChild>
-      <div>
-        <SubscriptionTriggerButton
-          selectedId={selectedId}
-          onClick={() => setIsOpen(!isOpen)}
-          isOpen={isOpen}
-        />
-      </div>
-    </PortalToFollowElemTrigger>
-    <PortalToFollowElemContent className='z-[11]'>
-      <div className='rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg'>
-        <SubscriptionList
-          mode={SubscriptionListMode.SELECTOR}
-          selectedId={selectedId}
-          onSelect={(...args) => {
-            onSelect(...args)
-            setIsOpen(false)
-          }}
-        />
-      </div>
-    </PortalToFollowElemContent>
-  </PortalToFollowElem>
+  return (
+    <PortalToFollowElem
+      placement="bottom-start"
+      offset={4}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+    >
+      <PortalToFollowElemTrigger asChild>
+        <div>
+          <SubscriptionTriggerButton
+            selectedId={selectedId}
+            onClick={() => setIsOpen(!isOpen)}
+            isOpen={isOpen}
+          />
+        </div>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-[11]">
+        <div className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg">
+          <SubscriptionList
+            mode={SubscriptionListMode.SELECTOR}
+            selectedId={selectedId}
+            onSelect={(...args) => {
+              onSelect(...args)
+              setIsOpen(false)
+            }}
+          />
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
+  )
 }

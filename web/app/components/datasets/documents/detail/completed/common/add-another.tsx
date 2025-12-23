@@ -19,12 +19,12 @@ const AddAnother: FC<AddAnotherProps> = ({
   return (
     <div className={cn('flex items-center gap-x-1 pl-1', className)}>
       <Checkbox
-        key='add-another-checkbox'
-        className='shrink-0'
+        key="add-another-checkbox"
+        className="shrink-0"
         checked={isChecked}
         onCheck={onCheck}
       />
-      <span className='system-xs-medium text-text-tertiary'>{t('datasetDocuments.segment.addAnother')}</span>
+      <span className="system-xs-medium text-text-tertiary">{t('datasetDocuments.segment.addAnother')}</span>
     </div>
   )
 }

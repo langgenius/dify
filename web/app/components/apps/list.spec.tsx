@@ -117,7 +117,7 @@ vi.mock('@/service/use-apps', () => ({
 
 // Mock tag store
 vi.mock('@/app/components/base/tag-management/store', () => ({
-  useStore: (selector: (state: { tagList: any[]; setTagList: any; showTagManagementModal: boolean; setShowTagManagementModal: any }) => any) => {
+  useStore: (selector: (state: { tagList: any[], setTagList: any, showTagManagementModal: boolean, setShowTagManagementModal: any }) => any) => {
     const state = {
       tagList: [{ id: 'tag-1', name: 'Test Tag', type: 'app' }],
       setTagList: vi.fn(),

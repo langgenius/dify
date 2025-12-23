@@ -115,7 +115,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [isMobile, setAppSidebarExpand])
 
   if (!datasetRes && !error)
-    return <Loading type='app' />
+    return <Loading type="app" />
 
   return (
     <div
@@ -128,7 +128,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
         mutateDatasetRes,
-      }}>
+      }}
+      >
         {!hideSideBar && (
           <AppSideBar
             navigation={navigation}
@@ -137,10 +138,10 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
                 ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
                 : undefined
             }
-            iconType='dataset'
+            iconType="dataset"
           />
         )}
-        <div className='grow overflow-hidden bg-background-default-subtle'>{children}</div>
+        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

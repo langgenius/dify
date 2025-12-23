@@ -50,20 +50,20 @@ const ArrayValueList: FC<Props> = ({
   return (
     <div className={cn('w-full space-y-2', className)}>
       {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
+        <div className="flex items-center space-x-1" key={index}>
           <BoolValue
             value={item}
             onChange={handleChange(index)}
           />
 
           <RemoveButton
-            className='!bg-gray-100 !p-2 hover:!bg-gray-200'
+            className="!bg-gray-100 !p-2 hover:!bg-gray-200"
             onClick={handleItemRemove(index)}
           />
         </div>
       ))}
-      <Button variant='tertiary' className='w-full' onClick={handleItemAdd}>
-        <RiAddLine className='mr-1 h-4 w-4' />
+      <Button variant="tertiary" className="w-full" onClick={handleItemAdd}>
+        <RiAddLine className="mr-1 h-4 w-4" />
         <span>{t('workflow.chatVariable.modal.addArrayValue')}</span>
       </Button>
     </div>

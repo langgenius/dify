@@ -52,17 +52,18 @@ export default function MailAndCodeAuth() {
     }
   }
 
-  return (<form onSubmit={noop}>
-    <input type='text' className='hidden' />
-    <div className='mb-2'>
-      <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>
-      <div className='mt-1'>
-        <Input id='email' type="email" value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+  return (
+    <form onSubmit={noop}>
+      <input type="text" className="hidden" />
+      <div className="mb-2">
+        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('login.email')}</label>
+        <div className="mt-1">
+          <Input id="email" type="email" value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div className="mt-3">
+          <Button loading={loading} disabled={loading || !email} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t('login.signup.verifyMail')}</Button>
+        </div>
       </div>
-      <div className='mt-3'>
-        <Button loading={loading} disabled={loading || !email} variant='primary' className='w-full' onClick={handleGetEMailVerificationCode}>{t('login.signup.verifyMail')}</Button>
-      </div>
-    </div>
-  </form>
+    </form>
   )
 }

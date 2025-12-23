@@ -14,7 +14,7 @@ describe('BatchAction', () => {
   })
 
   it('should show the selected count and trigger cancel action', () => {
-    render(<BatchAction {...baseProps} className='custom-class' />)
+    render(<BatchAction {...baseProps} className="custom-class" />)
 
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('appAnnotation.batchAction.selected')).toBeInTheDocument()

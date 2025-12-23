@@ -39,7 +39,7 @@ export type WorkflowNodeSearchResult = {
 
 export type CommandSearchResult = {
   type: 'command'
-} & BaseSearchResult<{ command: string; args?: Record<string, any> }>
+} & BaseSearchResult<{ command: string, args?: Record<string, any> }>
 
 export type SearchResult = AppSearchResult | PluginSearchResult | KnowledgeSearchResult | WorkflowNodeSearchResult | CommandSearchResult
 

@@ -76,7 +76,7 @@ export type CommonNodeType<T = {}> = {
   _singleRunningStatus?: NodeRunningStatus
   _isCandidate?: boolean
   _isBundled?: boolean
-  _children?: { nodeId: string; nodeType: BlockEnum }[]
+  _children?: { nodeId: string, nodeType: BlockEnum }[]
   _isEntering?: boolean
   _showAddVariablePopup?: boolean
   _holdAddVariablePopup?: boolean
@@ -122,13 +122,13 @@ export type CommonEdgeType = {
   isInLoop?: boolean
   loop_id?: string
   sourceType: BlockEnum
-  targetType: BlockEnum,
-  _isTemp?: boolean,
+  targetType: BlockEnum
+  _isTemp?: boolean
 }
 
 export type Node<T = {}> = ReactFlowNode<CommonNodeType<T>>
 export type SelectedNode = Pick<Node, 'id' | 'data'>
-export type NodeProps<T = unknown> = { id: string; data: CommonNodeType<T> }
+export type NodeProps<T = unknown> = { id: string, data: CommonNodeType<T> }
 export type NodePanelProps<T> = {
   id: string
   data: CommonNodeType<T>
@@ -337,7 +337,7 @@ export type NodeDefault<T = {}> = {
   }
   defaultValue: Partial<T>
   defaultRunInputData?: Record<string, any>
-  checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean; errorMessage?: string }
+  checkValid: (payload: T, t: any, moreDataForCheckValid?: any) => { isValid: boolean, errorMessage?: string }
   getOutputVars?: (payload: T, allPluginInfoList: Record<string, ToolWithProvider[]>, ragVariables?: Var[], utils?: {
     schemaTypeDefinitions?: SchemaTypeDefinition[]
   }) => Var[]
@@ -495,7 +495,7 @@ export enum VersionHistoryContextMenuOptions {
 }
 
 export type ChildNodeTypeCount = {
-  [key: string]: number;
+  [key: string]: number
 }
 
 export const TRIGGER_NODE_TYPES = [

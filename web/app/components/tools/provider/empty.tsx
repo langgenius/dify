@@ -35,14 +35,16 @@ const Empty = ({
   const hasTitle = t(`tools.addToolModal.${renderType}.title`) !== `tools.addToolModal.${renderType}.title`
 
   return (
-    <div className='flex flex-col items-center justify-center'>
+    <div className="flex flex-col items-center justify-center">
       <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
-      <div className='mb-1 mt-2 text-[13px] font-medium leading-[18px] text-text-primary'>
+      <div className="mb-1 mt-2 text-[13px] font-medium leading-[18px] text-text-primary">
         {hasTitle ? t(`tools.addToolModal.${renderType}.title`) : 'No tools available'}
       </div>
       {(!isAgent && hasTitle) && (
         <Comp className={cn('flex items-center text-[13px] leading-[18px] text-text-tertiary', hasLink && 'cursor-pointer hover:text-text-accent')} {...linkProps}>
-          {t(`tools.addToolModal.${renderType}.tip`)} {hasLink && <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />}
+          {t(`tools.addToolModal.${renderType}.tip`)}
+          {' '}
+          {hasLink && <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />}
         </Comp>
       )}
     </div>

@@ -59,42 +59,42 @@ const List = () => {
   }, [currentWorkspace, router])
 
   return (
-    <div className='scroll-container relative flex grow flex-col overflow-y-auto bg-background-body'>
-      <div className='sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4'>
-        <div className='flex items-center justify-center gap-2'>
+    <div className="scroll-container relative flex grow flex-col overflow-y-auto bg-background-body">
+      <div className="sticky top-0 z-10 flex items-center justify-end gap-x-1 bg-background-body px-12 pb-2 pt-4">
+        <div className="flex items-center justify-center gap-2">
           {isCurrentWorkspaceOwner && (
             <CheckboxWithLabel
               isChecked={includeAll}
               onChange={toggleIncludeAll}
               label={t('dataset.allKnowledge')}
-              labelClassName='system-md-regular text-text-secondary'
-              className='mr-2'
+              labelClassName="system-md-regular text-text-secondary"
+              className="mr-2"
               tooltip={t('dataset.allKnowledgeDescription') as string}
             />
           )}
-          <TagFilter type='knowledge' value={tagFilterValue} onChange={handleTagsChange} />
+          <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} />
           <Input
             showLeftIcon
             showClearIcon
-            wrapperClassName='w-[200px]'
+            wrapperClassName="w-[200px]"
             value={keywords}
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
-          <div className='h-4 w-[1px] bg-divider-regular' />
+          <div className="h-4 w-[1px] bg-divider-regular" />
           <Button
-            className='shadows-shadow-xs gap-0.5'
+            className="shadows-shadow-xs gap-0.5"
             onClick={() => setShowExternalApiPanel(true)}
           >
-            <ApiConnectionMod className='h-4 w-4 text-components-button-secondary-text' />
-            <div className='system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text'>{t('dataset.externalAPIPanelTitle')}</div>
+            <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
+            <div className="system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text">{t('dataset.externalAPIPanelTitle')}</div>
           </Button>
         </div>
       </div>
       <Datasets tags={tagIDs} keywords={searchKeywords} includeAll={includeAll} />
       {!systemFeatures.branding.enabled && <DatasetFooter />}
       {showTagManagementModal && (
-        <TagManagementModal type='knowledge' show={showTagManagementModal} />
+        <TagManagementModal type="knowledge" show={showTagManagementModal} />
       )}
 
       {showExternalApiPanel && <ExternalAPIPanel onClose={() => setShowExternalApiPanel(false)} />}

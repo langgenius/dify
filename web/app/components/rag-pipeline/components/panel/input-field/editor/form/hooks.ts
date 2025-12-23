@@ -70,8 +70,8 @@ export const useHiddenFieldNames = (type: PipelineInputVarType) => {
 }
 
 export const useConfigurations = (props: {
-  getFieldValue: (fieldName: DeepKeys<FormData>) => any,
-  setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void,
+  getFieldValue: (fieldName: DeepKeys<FormData>) => any
+  setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void
   supportFile: boolean
 }) => {
   const { t } = useTranslation()
@@ -186,7 +186,7 @@ export const useConfigurations = (props: {
 }
 
 export const useHiddenConfigurations = (props: {
-  options: string[] | undefined,
+  options: string[] | undefined
 }) => {
   const { t } = useTranslation()
 

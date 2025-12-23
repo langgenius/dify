@@ -53,7 +53,7 @@ function getActionButtonState(state: ActionButtonState) {
 const ActionButton = ({ className, size, state = ActionButtonState.Default, styleCss, children, ref, ...props }: ActionButtonProps) => {
   return (
     <button
-      type='button'
+      type="button"
       className={cn(actionButtonVariants({ className, size }),
         getActionButtonState(state))}
       ref={ref}

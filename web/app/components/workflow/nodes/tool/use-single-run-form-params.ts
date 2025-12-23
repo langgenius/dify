@@ -12,8 +12,8 @@ import formatToTracingNodeList from '@/app/components/workflow/run/utils/format-
 import { useToolIcon } from '../../hooks'
 
 type Params = {
-  id: string,
-  payload: ToolNodeType,
+  id: string
+  payload: ToolNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -61,7 +61,7 @@ const useSingleRunFormParams = ({
       Object.keys(inputs.tool_parameters).forEach((key: string) => {
         const { type, value } = inputs.tool_parameters[key]
         if (type === VarType.constant && (value === undefined || value === null)) {
-          if(!draft.tool_parameters || !draft.tool_parameters[key])
+          if (!draft.tool_parameters || !draft.tool_parameters[key])
             return
           draft[key] = value
         }

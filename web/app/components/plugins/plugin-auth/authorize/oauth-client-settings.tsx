@@ -136,7 +136,7 @@ const OAuthClientSettings = ({
       cancelButtonText={t('plugin.auth.saveOnly')}
       extraButtonText={t('common.operation.cancel')}
       showExtraButton
-      extraButtonVariant='secondary'
+      extraButtonVariant="secondary"
       onExtraButtonClick={onClose}
       onClose={onClose}
       onCancel={handleConfirm}
@@ -144,10 +144,10 @@ const OAuthClientSettings = ({
       disabled={disabled || doingAction}
       footerSlot={
         __oauth_client__ === 'custom' && hasOriginalClientParams && (
-          <div className='grow'>
+          <div className="grow">
             <Button
-              variant='secondary'
-              className='text-components-button-destructive-secondary-text'
+              variant="secondary"
+              className="text-components-button-destructive-secondary-text"
               disabled={disabled || doingAction || !editValues}
               onClick={handleRemove}
             >
@@ -156,8 +156,8 @@ const OAuthClientSettings = ({
           </div>
         )
       }
-      containerClassName='pt-0'
-      wrapperClassName='!z-[101]'
+      containerClassName="pt-0"
+      wrapperClassName="!z-[101]"
       clickOutsideNotClose={true}
     >
       {pluginPayload.detail && (

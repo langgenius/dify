@@ -195,10 +195,11 @@ export const AppContextProvider: FC<AppContextProviderProps> = ({ children }) =>
       isCurrentWorkspaceDatasetOperator,
       mutateCurrentWorkspace,
       isLoadingCurrentWorkspace,
-    }}>
-      <div className='flex h-full flex-col overflow-y-auto'>
+    }}
+    >
+      <div className="flex h-full flex-col overflow-y-auto">
         {globalThis.document?.body?.getAttribute('data-public-maintenance-notice') && <MaintenanceNotice />}
-        <div className='relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body'>
+        <div className="relative flex grow flex-col overflow-y-auto overflow-x-hidden bg-background-body">
           {children}
         </div>
       </div>

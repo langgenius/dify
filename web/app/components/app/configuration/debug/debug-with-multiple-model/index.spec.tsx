@@ -82,12 +82,13 @@ vi.mock('./debug-item', () => ({
     style?: CSSProperties
   }) => (
     <div
-      data-testid='debug-item'
+      data-testid="debug-item"
       data-model-id={modelAndParameter.id}
       className={className}
       style={style}
     >
-      DebugItem-{modelAndParameter.id}
+      DebugItem-
+      {modelAndParameter.id}
     </div>
   ),
 }))
@@ -97,9 +98,9 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
   default: (props: MockChatInputAreaProps) => {
     capturedChatInputProps = props
     return (
-      <div data-testid='chat-input-area'>
-        <button type='button' onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
-        <button type='button' onClick={() => props.onFeatureBarClick?.(true)}>feature</button>
+      <div data-testid="chat-input-area">
+        <button type="button" onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
+        <button type="button" onClick={() => props.onFeatureBarClick?.(true)}>feature</button>
       </div>
     )
   },
@@ -558,9 +559,12 @@ describe('DebugWithMultipleModel', () => {
       expect(singleItem.style.width).toBe('')
 
       // Change to 2 models
-      rerender(<DebugWithMultipleModel {...createProps({
-        multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
-      })} />)
+      rerender(
+        <DebugWithMultipleModel {...createProps({
+          multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
+        })}
+        />,
+      )
 
       const twoItems = screen.getAllByTestId('debug-item')
       expect(twoItems[0].style.width).toBe('calc(50% - 28px)')

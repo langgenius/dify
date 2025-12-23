@@ -51,7 +51,7 @@ const NavLink = ({
     return (
       <button
         key={name}
-        type='button'
+        type="button"
         disabled
         className={cn('system-sm-medium flex h-8 cursor-not-allowed items-center rounded-lg text-components-menu-item-text opacity-30 hover:bg-components-menu-item-bg-hover',
           'pl-3 pr-1')}

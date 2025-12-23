@@ -27,7 +27,7 @@ const Header = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center gap-x-2 bg-components-panel-bg p-1 pl-3'>
+    <div className="flex items-center gap-x-2 bg-components-panel-bg p-1 pl-3">
       <Breadcrumbs
         breadcrumbs={breadcrumbs}
         keywords={keywords}
@@ -42,7 +42,7 @@ const Header = ({
         placeholder={t('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')}
         showLeftIcon
         showClearIcon
-        wrapperClassName='w-[200px] h-8 shrink-0'
+        wrapperClassName="w-[200px] h-8 shrink-0"
       />
     </div>
   )

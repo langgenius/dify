@@ -20,19 +20,19 @@ const ParamsConfig: FC = () => {
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 4,
       }}
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
-        <Button variant='ghost' size='small' className={cn('')}>
-          <RiSettings2Line className='h-3.5 w-3.5' />
-          <div className='ml-1'>{t('appDebug.voice.settings')}</div>
+        <Button variant="ghost" size="small" className={cn('')}>
+          <RiSettings2Line className="h-3.5 w-3.5" />
+          <div className="ml-1">{t('appDebug.voice.settings')}</div>
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 50 }}>
-        <div className='w-80 space-y-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-lg sm:w-[412px]'>
+        <div className="w-80 space-y-3 rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-4 shadow-lg sm:w-[412px]">
           <ParamConfigContent />
         </div>
       </PortalToFollowElemContent>

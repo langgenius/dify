@@ -9,14 +9,14 @@ import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 
 type Props = {
   step: InstallStep
-  onStepChange: (step: InstallStep) => void,
+  onStepChange: (step: InstallStep) => void
   onStartToInstall: () => void
   setIsInstalling: (isInstalling: boolean) => void
   onClose: () => void
-  uniqueIdentifier: string | null,
-  manifest: PluginDeclaration | null,
-  errorMsg: string | null,
-  onError: (errorMsg: string) => void,
+  uniqueIdentifier: string | null
+  manifest: PluginDeclaration | null
+  errorMsg: string | null
+  onError: (errorMsg: string) => void
 }
 
 const ReadyToInstall: FC<Props> = ({

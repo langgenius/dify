@@ -77,7 +77,7 @@ export type MessageContent = {
   conversation_id: string
   query: string
   inputs: Record<string, any>
-  message: { role: string; text: string; files?: VisionFile[] }[]
+  message: { role: string, text: string, files?: VisionFile[] }[]
   message_tokens: number
   answer_tokens: number
   answer: string

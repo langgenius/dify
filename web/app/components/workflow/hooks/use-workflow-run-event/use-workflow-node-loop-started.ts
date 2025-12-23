@@ -16,8 +16,8 @@ export const useWorkflowNodeLoopStarted = () => {
   const handleWorkflowNodeLoopStarted = useCallback((
     params: LoopStartedResponse,
     containerParams: {
-      clientWidth: number,
-      clientHeight: number,
+      clientWidth: number
+      clientHeight: number
     },
   ) => {
     const { data } = params

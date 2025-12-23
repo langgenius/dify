@@ -39,23 +39,23 @@ import type { RagPipelineSliceShape } from '@/app/components/rag-pipeline/store'
 
 export type SliceFromInjection
   = Partial<WorkflowAppSliceShape>
-  & Partial<RagPipelineSliceShape>
+    & Partial<RagPipelineSliceShape>
 
 export type Shape
   = ChatVariableSliceShape
-  & EnvVariableSliceShape
-  & FormSliceShape
-  & HelpLineSliceShape
-  & HistorySliceShape
-  & NodeSliceShape
-  & PanelSliceShape
-  & ToolSliceShape
-  & VersionSliceShape
-  & WorkflowDraftSliceShape
-  & WorkflowSliceShape
-  & InspectVarsSliceShape
-  & LayoutSliceShape
-  & SliceFromInjection
+    & EnvVariableSliceShape
+    & FormSliceShape
+    & HelpLineSliceShape
+    & HistorySliceShape
+    & NodeSliceShape
+    & PanelSliceShape
+    & ToolSliceShape
+    & VersionSliceShape
+    & WorkflowDraftSliceShape
+    & WorkflowSliceShape
+    & InspectVarsSliceShape
+    & LayoutSliceShape
+    & SliceFromInjection
 
 export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
 

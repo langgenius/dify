@@ -100,14 +100,14 @@ const InputFieldPanel = () => {
   }, [ragPipelineVariables])
 
   return (
-    <div className='mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5'>
-      <div className='flex shrink-0 items-center p-4 pb-0'>
-        <div className='system-xl-semibold grow text-text-primary'>
+    <div className="mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
+      <div className="flex shrink-0 items-center p-4 pb-0">
+        <div className="system-xl-semibold grow text-text-primary">
           {t('datasetPipeline.inputFieldPanel.title')}
         </div>
         <Button
-          variant={'ghost'}
-          size='small'
+          variant="ghost"
+          size="small"
           className={cn(
             'shrink-0 gap-x-px px-1.5',
             isPreviewing && 'bg-state-accent-active text-text-accent',
@@ -115,33 +115,33 @@ const InputFieldPanel = () => {
           onClick={togglePreviewPanel}
           disabled={isEditing}
         >
-          <RiEyeLine className='size-3.5' />
-          <span className='px-[3px]'>{t('datasetPipeline.operations.preview')}</span>
+          <RiEyeLine className="size-3.5" />
+          <span className="px-[3px]">{t('datasetPipeline.operations.preview')}</span>
         </Button>
-        <Divider type='vertical' className='mx-1 h-3' />
+        <Divider type="vertical" className="mx-1 h-3" />
         <button
-          type='button'
-          className='flex size-6 shrink-0 items-center justify-center p-0.5'
+          type="button"
+          className="flex size-6 shrink-0 items-center justify-center p-0.5"
           onClick={closePanel}
         >
-          <RiCloseLine className='size-4 text-text-tertiary' />
+          <RiCloseLine className="size-4 text-text-tertiary" />
         </button>
       </div>
-      <div className='system-sm-regular shrink-0 px-4 pb-2 pt-1 text-text-tertiary'>
+      <div className="system-sm-regular shrink-0 px-4 pb-2 pt-1 text-text-tertiary">
         {t('datasetPipeline.inputFieldPanel.description')}
       </div>
-      <div className='flex grow flex-col overflow-y-auto'>
+      <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
-        <div className='flex h-6 items-center gap-x-0.5 px-4 pt-2'>
-          <span className='system-sm-semibold-uppercase text-text-secondary'>
+        <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
+          <span className="system-sm-semibold-uppercase text-text-secondary">
             {t('datasetPipeline.inputFieldPanel.uniqueInputs.title')}
           </span>
           <Tooltip
             popupContent={t('datasetPipeline.inputFieldPanel.uniqueInputs.tooltip')}
-            popupClassName='max-w-[240px]'
+            popupClassName="max-w-[240px]"
           />
         </div>
-        <div className='flex flex-col gap-y-1 py-1'>
+        <div className="flex flex-col gap-y-1 py-1">
           {
             Object.keys(datasourceNodeDataMap).map((key) => {
               const inputFields = inputFieldsMap.current[key] || []
@@ -152,7 +152,7 @@ const InputFieldPanel = () => {
                   LabelRightContent={<Datasource nodeData={datasourceNodeDataMap[key]} />}
                   inputFields={inputFields}
                   readonly={isPreviewing || isEditing}
-                  labelClassName='pt-1 pb-1'
+                  labelClassName="pt-1 pb-1"
                   handleInputFieldsChange={updateInputFields}
                   allVariableNames={allVariableNames}
                 />
@@ -162,11 +162,11 @@ const InputFieldPanel = () => {
         </div>
         {/* Global Inputs */}
         <FieldList
-          nodeId='shared'
+          nodeId="shared"
           LabelRightContent={<GlobalInputs />}
           inputFields={inputFieldsMap.current.shared || []}
           readonly={isPreviewing || isEditing}
-          labelClassName='pt-2 pb-1'
+          labelClassName="pt-2 pb-1"
           handleInputFieldsChange={updateInputFields}
           allVariableNames={allVariableNames}
         />

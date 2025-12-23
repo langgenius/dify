@@ -25,13 +25,17 @@ const IdeaOutput: FC<Props> = ({
   }] = useBoolean(true)
 
   return (
-    <div className='mt-4 text-[0px]'>
+    <div className="mt-4 text-[0px]">
       <div
-        className='mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary'
+        className="mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary"
         onClick={toggleFoldIdeaOutput}
       >
-        <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.idealOutput`)}</div>
-        <div className='system-xs-regular text-text-tertiary'>({t(`${i18nPrefix}.optional`)})</div>
+        <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.idealOutput`)}</div>
+        <div className="system-xs-regular text-text-tertiary">
+          (
+          {t(`${i18nPrefix}.optional`)}
+          )
+        </div>
         <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
       </div>
       {!isFoldIdeaOutput && (

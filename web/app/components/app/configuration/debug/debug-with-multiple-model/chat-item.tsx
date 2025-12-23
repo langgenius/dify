@@ -144,8 +144,8 @@ const ChatItem: FC<ChatItemProps> = ({
       isResponding={isResponding}
       noChatInput
       noStopResponding
-      chatContainerClassName='p-4'
-      chatFooterClassName='p-4 pb-0'
+      chatContainerClassName="p-4"
+      chatFooterClassName="p-4 pb-0"
       suggestedQuestions={suggestedQuestions}
       onSend={doSend}
       showPromptLog

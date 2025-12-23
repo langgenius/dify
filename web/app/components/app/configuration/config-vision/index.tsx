@@ -57,23 +57,23 @@ const ConfigVision: FC = () => {
     return null
 
   return (
-    <div className='mt-2 flex items-center gap-2 rounded-xl border-l-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-2'>
-      <div className='shrink-0 p-1'>
-        <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs'>
-          <Vision className='h-4 w-4 text-text-primary-on-surface' />
+    <div className="mt-2 flex items-center gap-2 rounded-xl border-l-[0.5px] border-t-[0.5px] border-effects-highlight bg-background-section-burn p-2">
+      <div className="shrink-0 p-1">
+        <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
+          <Vision className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       </div>
-      <div className='flex grow items-center'>
-        <div className='system-sm-semibold mr-1 text-text-secondary'>{t('appDebug.vision.name')}</div>
+      <div className="flex grow items-center">
+        <div className="system-sm-semibold mr-1 text-text-secondary">{t('appDebug.vision.name')}</div>
         <Tooltip
-          popupContent={
-            <div className='w-[180px]' >
+          popupContent={(
+            <div className="w-[180px]">
               {t('appDebug.vision.description')}
             </div>
-          }
+          )}
         />
       </div>
-      <div className='flex shrink-0 items-center'>
+      <div className="flex shrink-0 items-center">
         {/* <div className='mr-2 flex items-center gap-0.5'>
           <div className='text-text-tertiary system-xs-medium-uppercase'>{t('appDebug.vision.visionSettings.resolution')}</div>
           <Tooltip
@@ -99,11 +99,11 @@ const ConfigVision: FC = () => {
           />
         </div> */}
         <ParamConfig />
-        <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-regular'></div>
+        <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-regular"></div>
         <Switch
           defaultValue={isImageEnabled}
           onChange={handleChange}
-          size='md'
+          size="md"
         />
       </div>
     </div>

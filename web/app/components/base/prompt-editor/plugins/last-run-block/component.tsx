@@ -31,8 +31,8 @@ const LastRunBlockComponent: FC<Props> = ({
       }}
       ref={ref}
     >
-      <Variable02 className='mr-0.5 h-[14px] w-[14px]' />
-      <div className='text-xs font-medium'>last_run</div>
+      <Variable02 className="mr-0.5 h-[14px] w-[14px]" />
+      <div className="text-xs font-medium">last_run</div>
     </div>
   )
 }

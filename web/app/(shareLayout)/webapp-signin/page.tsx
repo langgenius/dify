@@ -34,29 +34,37 @@ const WebSSOForm: FC = () => {
   }, [getSigninUrl, router, webAppLogout, shareCode])
 
   if (!redirectUrl) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable code={t('share.common.appUnavailable')} unknownReason='redirect url is invalid.' />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable code={t('share.common.appUnavailable')} unknownReason="redirect url is invalid." />
+      </div>
+    )
   }
 
   if (!systemFeatures.webapp_auth.enabled) {
-    return <div className="flex h-full items-center justify-center">
-      <p className='system-xs-regular text-text-tertiary'>{t('login.webapp.disabled')}</p>
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <p className="system-xs-regular text-text-tertiary">{t('login.webapp.disabled')}</p>
+      </div>
+    )
   }
   if (webAppAccessMode && (webAppAccessMode === AccessMode.ORGANIZATION || webAppAccessMode === AccessMode.SPECIFIC_GROUPS_MEMBERS)) {
-    return <div className='w-full max-w-[400px]'>
-      <NormalForm />
-    </div>
+    return (
+      <div className="w-full max-w-[400px]">
+        <NormalForm />
+      </div>
+    )
   }
 
   if (webAppAccessMode && webAppAccessMode === AccessMode.EXTERNAL_MEMBERS)
     return <ExternalMemberSsoAuth />
 
-  return <div className='flex h-full flex-col items-center justify-center gap-y-4'>
-    <AppUnavailable className='h-auto w-auto' isUnknownReason={true} />
-    <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('share.login.backToHome')}</span>
-  </div>
+  return (
+    <div className="flex h-full flex-col items-center justify-center gap-y-4">
+      <AppUnavailable className="h-auto w-auto" isUnknownReason={true} />
+      <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('share.login.backToHome')}</span>
+    </div>
+  )
 }
 
 export default React.memo(WebSSOForm)

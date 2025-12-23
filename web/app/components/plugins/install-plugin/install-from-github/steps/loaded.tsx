@@ -142,33 +142,35 @@ const Loaded: React.FC<LoadedProps> = ({
 
   return (
     <>
-      <div className='system-md-regular text-text-secondary'>
+      <div className="system-md-regular text-text-secondary">
         <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
       </div>
-      <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
+      <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
         <Card
-          className='w-full'
+          className="w-full"
           payload={pluginManifestToCardPluginProps(payload as PluginDeclaration)}
-          titleLeft={!isLoading && <Version
-            hasInstalled={hasInstalled}
-            installedVersion={installedVersion}
-            toInstallVersion={toInstallVersion}
-          />}
+          titleLeft={!isLoading && (
+            <Version
+              hasInstalled={hasInstalled}
+              installedVersion={installedVersion}
+              toInstallVersion={toInstallVersion}
+            />
+          )}
         />
       </div>
-      <div className='mt-4 flex items-center justify-end gap-2 self-stretch'>
+      <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isInstalling && (
-          <Button variant='secondary' className='min-w-[72px]' onClick={onBack}>
+          <Button variant="secondary" className="min-w-[72px]" onClick={onBack}>
             {t('plugin.installModal.back')}
           </Button>
         )}
         <Button
-          variant='primary'
-          className='flex min-w-[72px] space-x-0.5'
+          variant="primary"
+          className="flex min-w-[72px] space-x-0.5"
           onClick={handleInstall}
           disabled={isInstalling || isLoading}
         >
-          {isInstalling && <RiLoader2Line className='h-4 w-4 animate-spin-slow' />}
+          {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
           <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>

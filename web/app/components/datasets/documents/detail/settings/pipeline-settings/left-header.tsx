@@ -20,22 +20,22 @@ const LeftHeader = ({
   }, [back])
 
   return (
-    <div className='relative flex flex-col gap-y-0.5 pb-2 pt-4'>
-      <div className='system-2xs-semibold-uppercase bg-pipeline-add-documents-title-bg bg-clip-text text-transparent'>
+    <div className="relative flex flex-col gap-y-0.5 pb-2 pt-4">
+      <div className="system-2xs-semibold-uppercase bg-pipeline-add-documents-title-bg bg-clip-text text-transparent">
         {title}
       </div>
-      <div className='system-md-semibold text-text-primary'>
+      <div className="system-md-semibold text-text-primary">
         {t('datasetPipeline.addDocuments.steps.processDocuments')}
       </div>
       <Button
-        variant='secondary-accent'
-        className='absolute -left-11 top-3.5 size-9 rounded-full p-0'
+        variant="secondary-accent"
+        className="absolute -left-11 top-3.5 size-9 rounded-full p-0"
         onClick={navigateBack}
         aria-label={t('common.operation.back')}
       >
-        <RiArrowLeftLine className='size-5 ' />
+        <RiArrowLeftLine className="size-5 " />
       </Button>
-      <Effect className='left-8 top-[-34px] opacity-20' />
+      <Effect className="left-8 top-[-34px] opacity-20" />
     </div>
   )
 }

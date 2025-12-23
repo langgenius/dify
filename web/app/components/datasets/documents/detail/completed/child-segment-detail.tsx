@@ -71,21 +71,21 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
   }, [childChunkInfo?.updated_at])
 
   return (
-    <div className={'flex h-full flex-col'}>
+    <div className="flex h-full flex-col">
       <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
-        <div className='flex flex-col'>
-          <div className='system-xl-semibold text-text-primary'>{t('datasetDocuments.segment.editChildChunk')}</div>
-          <div className='flex items-center gap-x-2'>
+        <div className="flex flex-col">
+          <div className="system-xl-semibold text-text-primary">{t('datasetDocuments.segment.editChildChunk')}</div>
+          <div className="flex items-center gap-x-2">
             <SegmentIndexTag positionId={childChunkInfo?.position || ''} labelPrefix={t('datasetDocuments.segment.childChunk') as string} />
             <Dot />
-            <span className='system-xs-medium text-text-tertiary'>{wordCountText}</span>
+            <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
             <Dot />
-            <span className='system-xs-medium text-text-tertiary'>
+            <span className="system-xs-medium text-text-tertiary">
               {EditTimeText}
             </span>
           </div>
         </div>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           {fullScreen && (
             <>
               <ActionButtons
@@ -94,14 +94,14 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
                 loading={loading}
                 isChildChunk={true}
               />
-              <Divider type='vertical' className='ml-4 mr-2 h-3.5 bg-divider-regular' />
+              <Divider type="vertical" className="ml-4 mr-2 h-3.5 bg-divider-regular" />
             </>
           )}
-          <div className='mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={toggleFullScreen}>
-            {fullScreen ? <RiCollapseDiagonalLine className='h-4 w-4 text-text-tertiary' /> : <RiExpandDiagonalLine className='h-4 w-4 text-text-tertiary' />}
+          <div className="mr-1 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={toggleFullScreen}>
+            {fullScreen ? <RiCollapseDiagonalLine className="h-4 w-4 text-text-tertiary" /> : <RiExpandDiagonalLine className="h-4 w-4 text-text-tertiary" />}
           </div>
-          <div className='flex h-8 w-8 cursor-pointer items-center justify-center p-1.5' onClick={onCancel}>
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+          <div className="flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onCancel}>
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>
@@ -116,7 +116,7 @@ const ChildSegmentDetail: FC<IChildSegmentDetailProps> = ({
         </div>
       </div>
       {!fullScreen && (
-        <div className='flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3'>
+        <div className="flex items-center justify-end border-t-[1px] border-t-divider-subtle p-4 pt-3">
           <ActionButtons
             handleCancel={handleCancel}
             handleSave={handleSave}

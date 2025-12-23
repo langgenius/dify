@@ -35,14 +35,14 @@ const BaseForm = ({
 
   return (
     <form
-      className='w-full'
+      className="w-full"
       onSubmit={(e) => {
         e.preventDefault()
         e.stopPropagation()
         baseForm.handleSubmit()
       }}
     >
-      <div className='flex flex-col gap-4 px-4 py-2'>
+      <div className="flex flex-col gap-4 px-4 py-2">
         {configurations.map((config, index) => {
           const FieldComponent = BaseField({
             initialData,

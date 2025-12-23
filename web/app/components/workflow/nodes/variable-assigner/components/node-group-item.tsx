@@ -90,7 +90,7 @@ const NodeGroupItem = ({
       onMouseEnter={() => groupEnabled && handleGroupItemMouseEnter(item.targetHandleId)}
       onMouseLeave={handleGroupItemMouseLeave}
     >
-      <div className='flex h-4 items-center justify-between text-[10px] font-medium text-text-tertiary'>
+      <div className="flex h-4 items-center justify-between text-[10px] font-medium text-text-tertiary">
         <span
           className={cn(
             'grow truncate uppercase',
@@ -100,9 +100,9 @@ const NodeGroupItem = ({
         >
           {item.title}
         </span>
-        <div className='flex items-center'>
-          <span className='ml-2 shrink-0'>{item.type}</span>
-          <div className='ml-2 mr-1 h-2.5 w-[1px] bg-divider-regular'></div>
+        <div className="flex items-center">
+          <span className="ml-2 shrink-0">{item.type}</span>
+          <div className="ml-2 mr-1 h-2.5 w-[1px] bg-divider-regular"></div>
           <AddVariable
             availableVars={availableVars}
             variableAssignerNodeId={item.variableAssignerNodeId}
@@ -125,7 +125,7 @@ const NodeGroupItem = ({
       }
       {
         !!item.variables.length && (
-          <div className='space-y-0.5'>
+          <div className="space-y-0.5">
             {
               item.variables.map((variable = [], index) => {
                 const isSystem = isSystemVar(variable)

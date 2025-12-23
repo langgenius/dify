@@ -105,9 +105,9 @@ export const useProviderCredentialsAndLoadBalancing = (
       ? predefinedFormSchemasValue?.credentials
       : customFormSchemasValue?.credentials
         ? {
-          ...customFormSchemasValue?.credentials,
-          ...currentCustomConfigurationModelFixedFields,
-        }
+            ...customFormSchemasValue?.credentials,
+            ...currentCustomConfigurationModelFixedFields,
+          }
         : undefined
   }, [
     configurationMethod,
@@ -353,11 +353,11 @@ export const useModelModalHandler = () => {
     configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     extra: {
-      isModelCredential?: boolean,
-      credential?: Credential,
-      model?: CustomModel,
-      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void,
-      mode?: ModelModalModeEnum,
+      isModelCredential?: boolean
+      credential?: Credential
+      model?: CustomModel
+      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void
+      mode?: ModelModalModeEnum
     } = {},
   ) => {
     setShowModelModal({

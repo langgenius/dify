@@ -115,8 +115,8 @@ const Panel = (props: PanelProps) => {
   })
 
   return (
-    <div className='relative w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur'>
-      <div className='p-2 pb-1'>
+    <div className="relative w-full rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur">
+      <div className="p-2 pb-1">
         <Input
           showLeftIcon
           showClearIcon
@@ -127,38 +127,38 @@ const Panel = (props: PanelProps) => {
         />
       </div>
       {keywords && notExisted && (
-        <div className='p-1'>
+        <div className="p-1">
           <div
-            className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
+            className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
             onClick={createNewTag}
           >
-            <RiAddLine className='h-4 w-4 text-text-tertiary' />
-            <div className='system-md-regular grow truncate px-1 text-text-secondary'>
+            <RiAddLine className="h-4 w-4 text-text-tertiary" />
+            <div className="system-md-regular grow truncate px-1 text-text-secondary">
               {`${t('common.tag.create')} `}
-              <span className='system-md-medium'>{`'${keywords}'`}</span>
+              <span className="system-md-medium">{`'${keywords}'`}</span>
             </div>
           </div>
         </div>
       )}
       {keywords && notExisted && filteredTagList.length > 0 && (
-        <Divider type='horizontal' className='my-0 h-px bg-divider-subtle' />
+        <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
       )}
       {(filteredTagList.length > 0 || filteredSelectedTagList.length > 0) && (
-        <div className='max-h-[232px] overflow-y-auto p-1'>
+        <div className="max-h-[232px] overflow-y-auto p-1">
           {filteredSelectedTagList.map(tag => (
             <div
               key={tag.id}
-              className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
+              className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
               onClick={() => selectTag(tag)}
             >
               <Checkbox
-                className='shrink-0'
+                className="shrink-0"
                 checked={selectedTagIDs.includes(tag.id)}
                 onCheck={noop}
               />
               <div
                 title={tag.name}
-                className='system-md-regular grow truncate px-1 text-text-secondary'
+                className="system-md-regular grow truncate px-1 text-text-secondary"
               >
                 {tag.name}
               </div>
@@ -167,17 +167,17 @@ const Panel = (props: PanelProps) => {
           {filteredTagList.map(tag => (
             <div
               key={tag.id}
-              className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
+              className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
               onClick={() => selectTag(tag)}
             >
               <Checkbox
-                className='shrink-0'
+                className="shrink-0"
                 checked={selectedTagIDs.includes(tag.id)}
                 onCheck={noop}
               />
               <div
                 title={tag.name}
-                className='system-md-regular grow truncate px-1 text-text-secondary'
+                className="system-md-regular grow truncate px-1 text-text-secondary"
               >
                 {tag.name}
               </div>
@@ -186,21 +186,21 @@ const Panel = (props: PanelProps) => {
         </div>
       )}
       {!keywords && !filteredTagList.length && !filteredSelectedTagList.length && (
-        <div className='p-1'>
-          <div className='flex flex-col items-center gap-y-1 p-3'>
-            <RiPriceTag3Line className='h-6 w-6 text-text-quaternary' />
-            <div className='system-xs-regular text-text-tertiary'>{t('common.tag.noTag')}</div>
+        <div className="p-1">
+          <div className="flex flex-col items-center gap-y-1 p-3">
+            <RiPriceTag3Line className="h-6 w-6 text-text-quaternary" />
+            <div className="system-xs-regular text-text-tertiary">{t('common.tag.noTag')}</div>
           </div>
         </div>
       )}
-      <Divider type='horizontal' className='my-0 h-px bg-divider-subtle' />
-      <div className='p-1'>
+      <Divider type="horizontal" className="my-0 h-px bg-divider-subtle" />
+      <div className="p-1">
         <div
-          className='flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover'
+          className="flex cursor-pointer items-center gap-x-1 rounded-lg px-2 py-1.5 hover:bg-state-base-hover"
           onClick={() => setShowTagManagementModal(true)}
         >
-          <RiPriceTag3Line className='h-4 w-4 text-text-tertiary' />
-          <div className='system-md-regular grow truncate px-1 text-text-secondary'>
+          <RiPriceTag3Line className="h-4 w-4 text-text-tertiary" />
+          <div className="system-md-regular grow truncate px-1 text-text-secondary">
             {t('common.tag.manageTags')}
           </div>
         </div>

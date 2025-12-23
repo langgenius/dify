@@ -93,7 +93,7 @@ const TriggerPluginItem: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className='group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
+          className="group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover"
           onClick={() => {
             if (hasAction) {
               setFold(!isFold)
@@ -124,19 +124,19 @@ const TriggerPluginItem: FC<Props> = ({
             })
           }}
         >
-          <div className='flex h-8 grow items-center'>
+          <div className="flex h-8 grow items-center">
             <BlockIcon
-              className='shrink-0'
+              className="shrink-0"
               type={BlockEnum.TriggerPlugin}
               toolIcon={providerIcon}
             />
-            <div className='ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary'>
-              <span className='max-w-[200px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
-              <span className='system-xs-regular ml-2 truncate text-text-quaternary'>{groupName}</span>
+            <div className="ml-2 flex min-w-0 flex-1 items-center text-sm text-text-primary">
+              <span className="max-w-[200px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
+              <span className="system-xs-regular ml-2 truncate text-text-quaternary">{groupName}</span>
             </div>
           </div>
 
-          <div className='ml-2 flex items-center'>
+          <div className="ml-2 flex items-center">
             {hasAction && (
               <FoldIcon className={cn('h-4 w-4 shrink-0 text-text-tertiary group-hover/item:text-text-tertiary', isFold && 'text-text-quaternary')} />
             )}

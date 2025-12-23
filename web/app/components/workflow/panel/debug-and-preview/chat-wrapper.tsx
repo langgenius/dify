@@ -39,7 +39,7 @@ const ChatWrapper = (
     showInputsFieldsPanel,
     onHide,
   }: ChatWrapperProps & {
-    ref: React.RefObject<ChatWrapperRefType>;
+    ref: React.RefObject<ChatWrapperRefType>
   },
 ) => {
   const nodes = useNodes<StartNodeType>()
@@ -160,10 +160,10 @@ const ChatWrapper = (
         } as any}
         chatList={chatList}
         isResponding={isResponding}
-        chatContainerClassName='px-3'
-        chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
-        chatFooterClassName='px-4 rounded-bl-2xl'
-        chatFooterInnerClassName='pb-0'
+        chatContainerClassName="px-3"
+        chatContainerInnerClassName="pt-6 w-full max-w-full mx-auto"
+        chatFooterClassName="px-4 rounded-bl-2xl"
+        chatFooterInnerClassName="pb-0"
         showFileUpload
         showFeatureBar
         onFeatureBarClick={setShowFeaturesPanel}
@@ -185,7 +185,7 @@ const ChatWrapper = (
         noSpacing
         suggestedQuestions={suggestedQuestions}
         showPromptLog
-        chatAnswerContainerInner='!pr-2'
+        chatAnswerContainerInner="!pr-2"
         switchSibling={setTargetMessageId}
       />
       {showConversationVariableModal && (

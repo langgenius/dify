@@ -112,8 +112,8 @@ const TruncableElement = ({ prev }: ITruncableElementProps) => {
 
   return ((isPreviousTruncable && prev === true) || (isNextTruncable && !prev))
     ? (
-      <li className={truncableClassName || undefined}>{truncableText}</li>
-    )
+        <li className={truncableClassName || undefined}>{truncableText}</li>
+      )
     : null
 }
 

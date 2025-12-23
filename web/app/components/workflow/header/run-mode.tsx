@@ -112,57 +112,57 @@ const RunMode = ({
   })
 
   return (
-    <div className='flex items-center gap-x-px'>
+    <div className="flex items-center gap-x-px">
       {
         isRunning
           ? (
-            <button
-              type='button'
-              className={cn(
-                'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
-              )}
-              disabled={true}
-            >
-              <RiLoader2Line className='mr-1 size-4 animate-spin' />
-              {isListening ? t('workflow.common.listening') : t('workflow.common.running')}
-            </button>
-          )
-          : (
-            <TestRunMenu
-              ref={testRunMenuRef}
-              options={dynamicOptions}
-              onSelect={handleTriggerSelect}
-            >
-              <div
+              <button
+                type="button"
                 className={cn(
-                  'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
+                  'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
                 )}
-                style={{ userSelect: 'none' }}
+                disabled={true}
               >
-                <RiPlayLargeLine className='mr-1 size-4' />
-                {text ?? t('workflow.common.run')}
-                <div className='system-kbd flex items-center gap-x-0.5 text-text-tertiary'>
-                  <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
-                    {getKeyboardKeyNameBySystem('alt')}
-                  </div>
-                  <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
-                    R
+                <RiLoader2Line className="mr-1 size-4 animate-spin" />
+                {isListening ? t('workflow.common.listening') : t('workflow.common.running')}
+              </button>
+            )
+          : (
+              <TestRunMenu
+                ref={testRunMenuRef}
+                options={dynamicOptions}
+                onSelect={handleTriggerSelect}
+              >
+                <div
+                  className={cn(
+                    'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
+                  )}
+                  style={{ userSelect: 'none' }}
+                >
+                  <RiPlayLargeLine className="mr-1 size-4" />
+                  {text ?? t('workflow.common.run')}
+                  <div className="system-kbd flex items-center gap-x-0.5 text-text-tertiary">
+                    <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
+                      {getKeyboardKeyNameBySystem('alt')}
+                    </div>
+                    <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
+                      R
+                    </div>
                   </div>
                 </div>
-              </div>
-            </TestRunMenu>
-          )
+              </TestRunMenu>
+            )
       }
       {
         isRunning && (
           <button
-            type='button'
+            type="button"
             className={cn(
               'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
             )}
             onClick={handleStop}
           >
-            <StopCircle className='size-4 text-text-accent' />
+            <StopCircle className="size-4 text-text-accent" />
           </button>
         )
       }

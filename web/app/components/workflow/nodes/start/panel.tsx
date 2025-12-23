@@ -40,8 +40,8 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
   }
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-2'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-2">
         <Field
           title={t(`${i18nPrefix}.inputField`)}
           operations={
@@ -55,8 +55,8 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
               onChange={handleVarListChange}
             />
 
-            <div className='mt-1 space-y-1'>
-              <Split className='my-2' />
+            <div className="mt-1 space-y-1">
+              <Split className="my-2" />
               {
                 isChatMode && (
                   <VarItem
@@ -64,12 +64,13 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                     payload={{
                       variable: 'userinput.query',
                     } as any}
-                    rightContent={
-                      <div className='text-xs font-normal text-text-tertiary'>
+                    rightContent={(
+                      <div className="text-xs font-normal text-text-tertiary">
                         String
                       </div>
-                    }
-                  />)
+                    )}
+                  />
+                )
               }
 
               <VarItem
@@ -78,11 +79,11 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
                 payload={{
                   variable: 'userinput.files',
                 } as any}
-                rightContent={
-                  <div className='text-xs font-normal text-text-tertiary'>
+                rightContent={(
+                  <div className="text-xs font-normal text-text-tertiary">
                     Array[File]
                   </div>
-                }
+                )}
               />
             </div>
           </>

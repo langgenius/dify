@@ -47,15 +47,15 @@ const KeyValueItem: FC<Props> = ({
   const CopyIcon = isCopied ? CopyCheck : RiClipboardLine
 
   return (
-    <div className='flex items-center gap-1'>
+    <div className="flex items-center gap-1">
       <span className={cn('system-xs-medium flex flex-col items-start justify-center text-text-tertiary', labelWidthClassName)}>{label}</span>
-      <div className='flex items-center justify-center gap-0.5'>
+      <div className="flex items-center justify-center gap-0.5">
         <span className={cn(valueMaxWidthClassName, ' system-xs-medium truncate text-text-secondary')}>
           {maskedValue || value}
         </span>
-        <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position='top'>
+        <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position="top">
           <ActionButton onClick={handleCopy}>
-            <CopyIcon className='h-3.5 w-3.5 shrink-0 text-text-tertiary' />
+            <CopyIcon className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
           </ActionButton>
         </Tooltip>
       </div>

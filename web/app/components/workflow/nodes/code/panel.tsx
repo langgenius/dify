@@ -65,17 +65,19 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
   }
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
           operations={
-            !readOnly ? (
-              <div className="flex gap-2">
-                <SyncButton popupContent={t(`${i18nPrefix}.syncFunctionSignature`)} onClick={handleSyncFunctionSignature} />
-                <AddButton onClick={handleAddVariable} />
-              </div>
-            ) : undefined
+            !readOnly
+              ? (
+                  <div className="flex gap-2">
+                    <SyncButton popupContent={t(`${i18nPrefix}.syncFunctionSignature`)} onClick={handleSyncFunctionSignature} />
+                    <AddButton onClick={handleAddVariable} />
+                  </div>
+                )
+              : undefined
           }
         >
           <VarList
@@ -92,13 +94,13 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
           nodeId={id}
           isInNode
           readOnly={readOnly}
-          title={
+          title={(
             <TypeSelector
               options={codeLanguages}
               value={inputs.code_language}
               onChange={handleCodeLanguageChange}
             />
-          }
+          )}
           language={inputs.code_language}
           value={inputs.code}
           onChange={handleCodeChange}
@@ -107,7 +109,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         />
       </div>
       <Split />
-      <div className='px-4 pb-2 pt-4'>
+      <div className="px-4 pb-2 pt-4">
         <Field
           title={t(`${i18nPrefix}.outputVars`)}
           operations={
@@ -129,7 +131,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
         onCancel={hideRemoveVarConfirm}
         onConfirm={onRemoveVarConfirm}
       />
-    </div >
+    </div>
   )
 }
 

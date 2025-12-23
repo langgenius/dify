@@ -17,7 +17,8 @@ export const useChunkStructure = () => {
         className={cn(
           'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
           isActive && 'text-util-colors-indigo-indigo-600',
-        )} />
+        )}
+      />
     ),
     title: t('datasetCreation.stepTwo.general'),
     description: t('datasetCreation.stepTwo.generalTip'),

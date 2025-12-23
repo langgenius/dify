@@ -162,8 +162,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
                     ? t('appOverview.overview.triggerInfo.triggersAdded', { count: triggerCount })
-                    : t('appOverview.overview.triggerInfo.noTriggerAdded')
-                  }
+                    : t('appOverview.overview.triggerInfo.noTriggerAdded')}
                 </div>
               </div>
             </div>
@@ -204,7 +203,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
         {triggerCount === 0 && (
           <div className="p-3">
             <div className="system-xs-regular leading-4 text-text-tertiary">
-              {t('appOverview.overview.triggerInfo.triggerStatusDescription')}{' '}
+              {t('appOverview.overview.triggerInfo.triggerStatusDescription')}
+              {' '}
               <Link
                 href={docLink('/guides/workflow/node/trigger')}
                 target="_blank"

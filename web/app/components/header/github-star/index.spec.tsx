@@ -13,7 +13,7 @@ const renderWithQueryClient = () => {
   })
   return render(
     <QueryClientProvider client={queryClient}>
-      <GithubStar className='test-class' />
+      <GithubStar className="test-class" />
     </QueryClientProvider>,
   )
 }

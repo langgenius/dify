@@ -20,7 +20,7 @@ const NotionIcon = ({
       if (src.startsWith('https://') || src.startsWith('http://')) {
         return (
           <img
-            alt='workspace icon'
+            alt="workspace icon"
             src={src}
             className={cn('block h-5 w-5 object-cover', className)}
           />
@@ -39,7 +39,7 @@ const NotionIcon = ({
     if (src?.type === 'url') {
       return (
         <img
-          alt='page icon'
+          alt="page icon"
           src={src.url || ''}
           className={cn('block h-5 w-5 object-cover', className)}
         />

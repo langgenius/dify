@@ -22,7 +22,7 @@ vi.mock('@/hooks/use-breakpoints', () => {
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   __esModule: true,
-  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
+  default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
     <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
   ),
 }))

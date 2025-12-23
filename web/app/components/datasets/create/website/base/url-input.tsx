@@ -30,17 +30,17 @@ const UrlInput: FC<Props> = ({
   }, [isRunning, onRun, url])
 
   return (
-    <div className='flex items-center justify-between gap-x-2'>
+    <div className="flex items-center justify-between gap-x-2">
       <Input
         value={url}
         onChange={handleUrlChange}
         placeholder={docLink()}
       />
       <Button
-        variant='primary'
+        variant="primary"
         onClick={handleOnRun}
         loading={isRunning}
-        spinnerClassName='!ml-0'
+        spinnerClassName="!ml-0"
       >
         {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
       </Button>

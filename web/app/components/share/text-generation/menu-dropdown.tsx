@@ -76,24 +76,24 @@ const MenuDropdown: FC<Props> = ({
       >
         <PortalToFollowElemTrigger onClick={handleTrigger}>
           <div>
-            <ActionButton size='l' className={cn(open && 'bg-state-base-hover')}>
-              <RiEqualizer2Line className='h-[18px] w-[18px]' />
+            <ActionButton size="l" className={cn(open && 'bg-state-base-hover')}>
+              <RiEqualizer2Line className="h-[18px] w-[18px]" />
             </ActionButton>
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-50'>
-          <div className='w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm'>
-            <div className='p-1'>
+        <PortalToFollowElemContent className="z-50">
+          <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
+            <div className="p-1">
               <div className={cn('system-md-regular flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary')}>
-                <div className='grow'>{t('common.theme.theme')}</div>
+                <div className="grow">{t('common.theme.theme')}</div>
                 <ThemeSwitcher />
               </div>
             </div>
-            <Divider type='horizontal' className='my-0' />
-            <div className='p-1'>
+            <Divider type="horizontal" className="my-0" />
+            <div className="p-1">
               {data?.privacy_policy && (
-                <a href={data.privacy_policy} target='_blank' className='system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'>
-                  <span className='grow'>{t('share.chat.privacyPolicyMiddle')}</span>
+                <a href={data.privacy_policy} target="_blank" className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">
+                  <span className="grow">{t('share.chat.privacyPolicyMiddle')}</span>
                 </a>
               )}
               <div
@@ -101,14 +101,16 @@ const MenuDropdown: FC<Props> = ({
                   handleTrigger()
                   setShow(true)
                 }}
-                className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
-              >{t('common.userProfile.about')}</div>
+                className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
+              >
+                {t('common.userProfile.about')}
+              </div>
             </div>
             {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
-              <div className='p-1'>
+              <div className="p-1">
                 <div
                   onClick={handleLogout}
-                  className='system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover'
+                  className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
                 >
                   {t('common.userProfile.logout')}
                 </div>

@@ -59,16 +59,16 @@ const RenameModal: FC<Props> = ({
       isShow
       onClose={onClose}
     >
-      <div className={'mt-6 text-sm font-medium leading-[21px] text-text-primary'}>{t('datasetDocuments.list.table.name')}</div>
+      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('datasetDocuments.list.table.name')}</div>
       <Input
-        className='mt-2 h-10'
+        className="mt-2 h-10"
         value={newName}
         onChange={e => setNewName(e.target.value)}
       />
 
-      <div className='mt-10 flex justify-end'>
-        <Button className='mr-2 shrink-0' onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='shrink-0' onClick={handleSave} loading={saveLoading}>{t('common.operation.save')}</Button>
+      <div className="mt-10 flex justify-end">
+        <Button className="mr-2 shrink-0" onClick={onClose}>{t('common.operation.cancel')}</Button>
+        <Button variant="primary" className="shrink-0" onClick={handleSave} loading={saveLoading}>{t('common.operation.save')}</Button>
       </div>
     </Modal>
   )

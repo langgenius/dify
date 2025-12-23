@@ -19,11 +19,11 @@ const AddedMetadataButton: FC<Props> = ({
   return (
     <Button
       className={cn('flex w-full items-center', className)}
-      size='small'
-      variant='tertiary'
+      size="small"
+      variant="tertiary"
       onClick={onClick}
     >
-      <RiAddLine className='mr-1 size-3.5' />
+      <RiAddLine className="mr-1 size-3.5" />
       <div>{t('dataset.metadata.addMetadata')}</div>
     </Button>
   )

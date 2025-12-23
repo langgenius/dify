@@ -80,7 +80,8 @@ const ImportFromTool: FC<Props> = ({
         <div className={cn(
           'flex h-6 cursor-pointer items-center rounded-md px-2 text-xs font-medium text-text-tertiary hover:bg-state-base-hover',
           open && 'bg-state-base-hover',
-        )}>
+        )}
+        >
           {t(`${i18nPrefix}.importFromTool`)}
         </div>
       </div>
@@ -89,7 +90,7 @@ const ImportFromTool: FC<Props> = ({
 
   return (
     <BlockSelector
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 4,
         crossAxis: 52,

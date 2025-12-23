@@ -235,36 +235,36 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
   return (
     <Panel
       className="mt-2"
-      title={
-        <div className='flex items-center'>
-          <div className='mr-1'>{t('appDebug.variableTitle')}</div>
+      title={(
+        <div className="flex items-center">
+          <div className="mr-1">{t('appDebug.variableTitle')}</div>
           {!readonly && (
             <Tooltip
-              popupContent={
-                <div className='w-[180px]'>
+              popupContent={(
+                <div className="w-[180px]">
                   {t('appDebug.variableTip')}
                 </div>
-              }
+              )}
             />
           )}
         </div>
-      }
+      )}
       headerRight={!readonly ? <SelectVarType onChange={handleAddVar} /> : null}
       noBodySpacing
     >
       {!hasVar && (
-        <div className='mt-1 px-3 pb-3'>
-          <div className='pb-1 pt-2 text-xs text-text-tertiary'>{t('appDebug.notSetVar')}</div>
+        <div className="mt-1 px-3 pb-3">
+          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.notSetVar')}</div>
         </div>
       )}
       {hasVar && (
-        <div className='mt-1 px-3 pb-3'>
+        <div className="mt-1 px-3 pb-3">
           <ReactSortable
-            className='space-y-1'
+            className="space-y-1"
             list={promptVariablesWithIds}
             setList={(list) => { onPromptVariablesChange?.(list.map(item => item.variable)) }}
-            handle='.handle'
-            ghostClass='opacity-50'
+            handle=".handle"
+            ghostClass="opacity-50"
             animation={150}
           >
             {promptVariablesWithIds.map((item, index) => {

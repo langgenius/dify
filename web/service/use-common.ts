@@ -44,7 +44,7 @@ export const commonQueryKeys = {
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
-  invitationCheck: (params?: { workspace_id?: string; email?: string; token?: string }) => [
+  invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
     NAME_SPACE,
     'invitation-check',
     params?.workspace_id ?? '',
@@ -220,7 +220,7 @@ export const useIsLogin = () => {
         })
       }
       catch (e: any) {
-        if(e.status === 401)
+        if (e.status === 401)
           return { logged_in: false }
         return { logged_in: true }
       }
@@ -236,7 +236,7 @@ export const useLogout = () => {
   })
 }
 
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string }
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string }
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
@@ -345,12 +345,12 @@ export const useApiBasedExtensions = () => {
   })
 }
 
-export const useInvitationCheck = (params?: { workspace_id?: string; email?: string; token?: string }, enabled?: boolean) => {
+export const useInvitationCheck = (params?: { workspace_id?: string, email?: string, token?: string }, enabled?: boolean) => {
   return useQuery({
     queryKey: commonQueryKeys.invitationCheck(params),
     queryFn: () => get<{
       is_valid: boolean
-      data: { workspace_name: string; email: string; workspace_id: string }
+      data: { workspace_name: string, email: string, workspace_id: string }
       result: string
     }>('/activate/check', { params }),
     enabled: enabled ?? !!params?.token,

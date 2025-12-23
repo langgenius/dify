@@ -58,17 +58,17 @@ const WorkflowProcessItem = ({
       >
         {
           running && (
-            <RiLoader2Line className='mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary' />
+            <RiLoader2Line className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary" />
           )
         }
         {
           succeeded && (
-            <CheckCircle className='mr-1 h-3.5 w-3.5 shrink-0 text-text-success' />
+            <CheckCircle className="mr-1 h-3.5 w-3.5 shrink-0 text-text-success" />
           )
         }
         {
           failed && (
-            <RiErrorWarningFill className='mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive' />
+            <RiErrorWarningFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive" />
           )
         }
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
@@ -78,14 +78,12 @@ const WorkflowProcessItem = ({
       </div>
       {
         !collapse && (
-          <div className='mt-1.5'>
-            {
-              <TracingPanel
-                list={data.tracing}
-                hideNodeInfo={hideInfo}
-                hideNodeProcessDetail={hideProcessDetail}
-              />
-            }
+          <div className="mt-1.5">
+            <TracingPanel
+              list={data.tracing}
+              hideNodeInfo={hideInfo}
+              hideNodeProcessDetail={hideProcessDetail}
+            />
           </div>
         )
       }

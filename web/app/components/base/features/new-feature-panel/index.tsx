@@ -56,31 +56,34 @@ const NewFeaturePanel = ({
       onClose={onClose}
       inWorkflow={inWorkflow}
     >
-      <div className='flex h-full grow flex-col'>
+      <div className="flex h-full grow flex-col">
         {/* header */}
-        <div className='flex shrink-0 justify-between p-4 pb-3'>
+        <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className='system-xl-semibold text-text-primary'>{t('workflow.common.features')}</div>
-            <div className='body-xs-regular text-text-tertiary'>{t('workflow.common.featuresDescription')}</div>
+            <div className="system-xl-semibold text-text-primary">{t('workflow.common.features')}</div>
+            <div className="body-xs-regular text-text-tertiary">{t('workflow.common.featuresDescription')}</div>
           </div>
-          <div className='h-8 w-8 cursor-pointer p-2' onClick={onClose}><RiCloseLine className='h-4 w-4 text-text-tertiary'/></div>
+          <div className="h-8 w-8 cursor-pointer p-2" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
         </div>
         {/* list */}
-        <div className='grow basis-0 overflow-y-auto px-4 pb-4'>
+        <div className="grow basis-0 overflow-y-auto px-4 pb-4">
           {showFileUpload && (
-            <div className='relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs'>
-              <div className='absolute left-0 top-0 h-full w-full rounded-xl opacity-40' style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
-              <div className='relative flex h-full w-full items-start'>
-                <div className='mr-0.5 shrink-0 p-0.5'>
-                  <RiInformation2Fill className='h-5 w-5 text-text-accent' />
+            <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
+              <div className="absolute left-0 top-0 h-full w-full rounded-xl opacity-40" style={{ background: 'linear-gradient(92deg, rgba(11, 165, 236, 0.25) 18.12%, rgba(255, 255, 255, 0.00) 167.31%)' }}></div>
+              <div className="relative flex h-full w-full items-start">
+                <div className="mr-0.5 shrink-0 p-0.5">
+                  <RiInformation2Fill className="h-5 w-5 text-text-accent" />
                 </div>
-                <div className='system-xs-medium p-1 text-text-primary'>
+                <div className="system-xs-medium p-1 text-text-primary">
                   <span>{isChatMode ? t('workflow.common.fileUploadTip') : t('workflow.common.ImageUploadLegacyTip')}</span>
                   <a
-                    className='text-text-accent'
+                    className="text-text-accent"
                     href={docLink('/guides/workflow/bulletin')}
-                    target='_blank' rel='noopener noreferrer'
-                  >{t('workflow.common.featuresDocLink')}</a>
+                    target="_blank"
+                    rel="noopener noreferrer"
+                  >
+                    {t('workflow.common.featuresDocLink')}
+                  </a>
                 </div>
               </div>
             </div>

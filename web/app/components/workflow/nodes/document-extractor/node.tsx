@@ -25,8 +25,8 @@ const NodeComponent: FC<NodeProps<DocExtractorNodeType>> = ({
   const isSystem = isSystemVar(variable)
   const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
   return (
-    <div className='relative mb-1 px-3 py-1'>
-      <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t(`${i18nPrefix}.inputVar`)}</div>
+    <div className="relative mb-1 px-3 py-1">
+      <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t(`${i18nPrefix}.inputVar`)}</div>
       <VariableLabelInNode
         variables={variable}
         nodeType={node?.data.type}

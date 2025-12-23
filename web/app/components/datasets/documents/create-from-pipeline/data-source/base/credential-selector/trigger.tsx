@@ -30,11 +30,11 @@ const Trigger = ({
         name={name}
         size={20}
       />
-      <div className='flex grow items-center gap-x-1 overflow-hidden'>
-        <span className='system-md-semibold grow truncate text-text-secondary'>
+      <div className="flex grow items-center gap-x-1 overflow-hidden">
+        <span className="system-md-semibold grow truncate text-text-secondary">
           {name}
         </span>
-        <RiArrowDownSLine className='size-4 shrink-0 text-text-secondary' />
+        <RiArrowDownSLine className="size-4 shrink-0 text-text-secondary" />
       </div>
     </div>
   )

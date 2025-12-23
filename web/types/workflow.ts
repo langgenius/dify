@@ -8,19 +8,19 @@ import type { SpecialResultPanelProps } from '@/app/components/workflow/run/spec
 import type { RefObject } from 'react'
 
 export type AgentLogItem = {
-  node_execution_id: string,
-  message_id: string,
-  node_id: string,
-  parent_id?: string,
-  label: string,
-  data: object, // debug data
-  error?: string,
-  status: string,
+  node_execution_id: string
+  message_id: string
+  node_id: string
+  parent_id?: string
+  label: string
+  data: object // debug data
+  error?: string
+  status: string
   metadata?: {
     elapsed_time?: number
     provider?: string
     icon?: string
-  },
+  }
 }
 
 export type AgentLogItemWithChildren = AgentLogItem & {
@@ -126,7 +126,7 @@ export type FetchWorkflowDraftResponse = {
     id: string
     name: string
     email: string
-  },
+  }
   tool_published: boolean
   environment_variables?: EnvironmentVariable[]
   conversation_variables?: ConversationVariable[]
@@ -337,7 +337,7 @@ export type NodesDefaultConfigsResponse = {
 }[]
 
 export type ConversationVariableResponse = {
-  data: (ConversationVariable & { updated_at: number; created_at: number })[]
+  data: (ConversationVariable & { updated_at: number, created_at: number })[]
   has_more: boolean
   limit: number
   total: number

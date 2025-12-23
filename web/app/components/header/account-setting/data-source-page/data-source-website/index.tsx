@@ -91,22 +91,27 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
             if (item.provider === DataSourceProvider.fireCrawl) {
               return (
                 <div
-                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>🔥</div>
+                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}
+                >
+                  🔥
+                </div>
               )
             }
 
             if (item.provider === DataSourceProvider.waterCrawl) {
               return (
                 <div
-                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
-                  <span className={s.watercrawlLogo}/>
+                  className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}
+                >
+                  <span className={s.watercrawlLogo} />
                 </div>
               )
             }
             return (
               <div
-                className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}>
-                <span className={s.jinaLogo}/>
+                className={cn(className, 'ml-3 flex h-5 w-5 items-center justify-center rounded border border-divider-subtle !bg-background-default text-xs font-medium text-text-tertiary')}
+              >
+                <span className={s.jinaLogo} />
               </div>
             )
           },
@@ -116,13 +121,13 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
         onRemove={handleRemove(provider)}
       />
       {configTarget === DataSourceProvider.fireCrawl && (
-        <ConfigFirecrawlModal onSaved={handleAdded} onCancel={hideConfig}/>
+        <ConfigFirecrawlModal onSaved={handleAdded} onCancel={hideConfig} />
       )}
       {configTarget === DataSourceProvider.waterCrawl && (
-        <ConfigWatercrawlModal onSaved={handleAdded} onCancel={hideConfig}/>
+        <ConfigWatercrawlModal onSaved={handleAdded} onCancel={hideConfig} />
       )}
       {configTarget === DataSourceProvider.jinaReader && (
-        <ConfigJinaReaderModal onSaved={handleAdded} onCancel={hideConfig}/>
+        <ConfigJinaReaderModal onSaved={handleAdded} onCancel={hideConfig} />
       )}
     </>
 

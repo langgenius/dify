@@ -28,7 +28,7 @@ const AutoDisabledDocument: FC<Props> = ({
 
   return (
     <StatusWithAction
-      type='info'
+      type="info"
       description={t('dataset.documentsDisabled', { num: documentIds?.length })}
       actionText={t('dataset.enable')}
       onAction={handleEnableDocuments}

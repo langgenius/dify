@@ -16,7 +16,7 @@ const nodeDefault: NodeDefault<AgentNodeType> = {
     tool_node_version: '2',
   },
   checkValid(payload, t, moreDataForCheckValid: {
-    strategyProvider?: StrategyPluginDetail,
+    strategyProvider?: StrategyPluginDetail
     strategy?: StrategyDetail
     language: string
     isReadyForCheckValid: boolean

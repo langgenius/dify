@@ -65,49 +65,64 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
     })
     return tools
   }, [currentStrategy?.parameters, inputs.agent_parameters])
-  return <div className='mb-1 space-y-1 px-3'>
-    {inputs.agent_strategy_name
-      ? <SettingItem
-        label={t('workflow.nodes.agent.strategy.shortLabel')}
-        status={
-          currentStrategyStatus && !currentStrategyStatus.isExistInPlugin
-            ? 'error'
-            : undefined
-        }
-        tooltip={
-          (currentStrategyStatus && !currentStrategyStatus.isExistInPlugin)
-            ? t('workflow.nodes.agent.strategyNotInstallTooltip', {
-              plugin: pluginDetail?.declaration.label
-                ? renderI18nObject(pluginDetail?.declaration.label)
-                : undefined,
-              strategy: inputs.agent_strategy_label,
-            })
-            : undefined
-        }
-      >
-        {inputs.agent_strategy_label}
-      </SettingItem>
-      : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
-    {models.length > 0 && <Group
-      label={<GroupLabel className='mt-1'>
-        {t('workflow.nodes.agent.model')}
-      </GroupLabel>}
-    >
-      {models.map((model) => {
-        return <ModelBar
-          {...model}
-          key={model.param}
-        />
-      })}
-    </Group>}
-    {tools.length > 0 && <Group label={<GroupLabel className='mt-1'>
-      {t('workflow.nodes.agent.toolbox')}
-    </GroupLabel>}>
-      <div className='grid grid-cols-10 gap-0.5'>
-        {tools.map((tool, i) => <ToolIcon {...tool} key={tool.id + i} />)}
-      </div>
-    </Group>}
-  </div>
+  return (
+    <div className="mb-1 space-y-1 px-3">
+      {inputs.agent_strategy_name
+        ? (
+            <SettingItem
+              label={t('workflow.nodes.agent.strategy.shortLabel')}
+              status={
+                currentStrategyStatus && !currentStrategyStatus.isExistInPlugin
+                  ? 'error'
+                  : undefined
+              }
+              tooltip={
+                (currentStrategyStatus && !currentStrategyStatus.isExistInPlugin)
+                  ? t('workflow.nodes.agent.strategyNotInstallTooltip', {
+                      plugin: pluginDetail?.declaration.label
+                        ? renderI18nObject(pluginDetail?.declaration.label)
+                        : undefined,
+                      strategy: inputs.agent_strategy_label,
+                    })
+                  : undefined
+              }
+            >
+              {inputs.agent_strategy_label}
+            </SettingItem>
+          )
+        : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
+      {models.length > 0 && (
+        <Group
+          label={(
+            <GroupLabel className="mt-1">
+              {t('workflow.nodes.agent.model')}
+            </GroupLabel>
+          )}
+        >
+          {models.map((model) => {
+            return (
+              <ModelBar
+                {...model}
+                key={model.param}
+              />
+            )
+          })}
+        </Group>
+      )}
+      {tools.length > 0 && (
+        <Group label={(
+          <GroupLabel className="mt-1">
+            {t('workflow.nodes.agent.toolbox')}
+          </GroupLabel>
+        )}
+        >
+          <div className="grid grid-cols-10 gap-0.5">
+            {tools.map((tool, i) => <ToolIcon {...tool} key={tool.id + i} />)}
+          </div>
+        </Group>
+      )}
+    </div>
+  )
 }
 
 AgentNode.displayName = 'AgentNode'

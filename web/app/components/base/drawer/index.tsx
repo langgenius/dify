@@ -59,42 +59,56 @@ export default function Drawer({
     >
       <div className={cn('flex h-screen w-screen justify-end', positionCenter && '!justify-center', containerClassName)}>
         {/* mask */}
-        {!noOverlay && <DialogBackdrop
-          className={cn('fixed inset-0 z-[40]', mask && 'bg-black/30', dialogBackdropClassName)}
-          onClick={() => {
-            if (!clickOutsideNotOpen)
-              onClose()
-          }}
-        />}
+        {!noOverlay && (
+          <DialogBackdrop
+            className={cn('fixed inset-0 z-[40]', mask && 'bg-black/30', dialogBackdropClassName)}
+            onClick={() => {
+              if (!clickOutsideNotOpen)
+                onClose()
+            }}
+          />
+        )}
         <div className={cn('relative z-[50] flex w-full max-w-sm flex-col justify-between overflow-hidden bg-components-panel-bg p-6 text-left align-middle shadow-xl', panelClassName)}>
           <>
-            <div className='flex justify-between'>
-              {title && <DialogTitle
-                as="h3"
-                className="text-lg font-medium leading-6 text-text-primary"
-              >
-                {title}
-              </DialogTitle>}
-              {showClose && <DialogTitle className="mb-4 flex cursor-pointer items-center" as="div">
-                <XMarkIcon className='h-4 w-4 text-text-tertiary' onClick={onClose} />
-              </DialogTitle>}
+            <div className="flex justify-between">
+              {title && (
+                <DialogTitle
+                  as="h3"
+                  className="text-lg font-medium leading-6 text-text-primary"
+                >
+                  {title}
+                </DialogTitle>
+              )}
+              {showClose && (
+                <DialogTitle className="mb-4 flex cursor-pointer items-center" as="div">
+                  <XMarkIcon className="h-4 w-4 text-text-tertiary" onClick={onClose} />
+                </DialogTitle>
+              )}
             </div>
-            {description && <div className='mt-2 text-xs font-normal text-text-tertiary'>{description}</div>}
+            {description && <div className="mt-2 text-xs font-normal text-text-tertiary">{description}</div>}
             {children}
           </>
           {footer || (footer === null
             ? null
-            : <div className="mt-10 flex flex-row justify-end">
-              <Button
-                className='mr-2'
-                onClick={() => {
-                  onCancel?.()
-                }}>{t('common.operation.cancel')}</Button>
-              <Button
-                onClick={() => {
-                  onOk?.()
-                }}>{t('common.operation.save')}</Button>
-            </div>)}
+            : (
+                <div className="mt-10 flex flex-row justify-end">
+                  <Button
+                    className="mr-2"
+                    onClick={() => {
+                      onCancel?.()
+                    }}
+                  >
+                    {t('common.operation.cancel')}
+                  </Button>
+                  <Button
+                    onClick={() => {
+                      onOk?.()
+                    }}
+                  >
+                    {t('common.operation.save')}
+                  </Button>
+                </div>
+              ))}
         </div>
       </div>
     </Dialog>

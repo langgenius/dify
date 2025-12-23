@@ -106,7 +106,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     return true
   }
 
-  const handleModelChange = useCallback((newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
+  const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     const newModel = {
       ...model,
       provider: newValue.provider,
@@ -190,9 +190,9 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   }, [defaultModel])
 
   const renderLoading = (
-    <div className='flex h-full w-0 grow flex-col items-center justify-center space-y-3'>
+    <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className='text-[13px] text-text-tertiary'>{t('appDebug.codegen.loading')}</div>
+      <div className="text-[13px] text-text-tertiary">{t('appDebug.codegen.loading')}</div>
     </div>
   )
 
@@ -200,18 +200,18 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     <Modal
       isShow={isShow}
       onClose={onClose}
-      className='min-w-[1140px] !p-0'
+      className="min-w-[1140px] !p-0"
     >
-      <div className='relative flex h-[680px] flex-wrap'>
-        <div className='h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6'>
-          <div className='mb-5'>
+      <div className="relative flex h-[680px] flex-wrap">
+        <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+          <div className="mb-5">
             <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.codegen.title')}</div>
-            <div className='mt-1 text-[13px] font-normal text-text-tertiary'>{t('appDebug.codegen.description')}</div>
+            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('appDebug.codegen.description')}</div>
           </div>
-          <div className='mb-4'>
+          <div className="mb-4">
             <ModelParameterModal
-              popupClassName='!w-[520px]'
-              portalToFollowElemContentClassName='z-[1000]'
+              popupClassName="!w-[520px]"
+              portalToFollowElemContentClassName="z-[1000]"
               isAdvancedMode={true}
               provider={model.provider}
               completionParams={model.completion_params}
@@ -222,8 +222,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
             />
           </div>
           <div>
-            <div className='text-[0px]'>
-              <div className='system-sm-semibold-uppercase mb-1.5 text-text-secondary'>{t('appDebug.codegen.instruction')}</div>
+            <div className="text-[0px]">
+              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('appDebug.codegen.instruction')}</div>
               <InstructionEditor
                 editorKey={editorKey}
                 value={instruction}
@@ -238,16 +238,16 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
               onChange={setIdeaOutput}
             />
 
-            <div className='mt-7 flex justify-end space-x-2'>
+            <div className="mt-7 flex justify-end space-x-2">
               <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`)}</Button>
               <Button
-                className='flex space-x-1'
-                variant='primary'
+                className="flex space-x-1"
+                variant="primary"
                 onClick={onGenerate}
                 disabled={isLoading}
               >
-                <Generator className='h-4 w-4' />
-                <span className='text-xs font-semibold '>{t('appDebug.codegen.generate')}</span>
+                <Generator className="h-4 w-4" />
+                <span className="text-xs font-semibold ">{t('appDebug.codegen.generate')}</span>
               </Button>
             </div>
           </div>
@@ -255,7 +255,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
         {isLoading && renderLoading}
         {!isLoading && !current && <ResPlaceholder />}
         {(!isLoading && current) && (
-          <div className='h-full w-0 grow bg-background-default-subtle p-6 pb-0'>
+          <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
             <Result
               current={current!}
               currentVersionIndex={currentVersionIndex || 0}

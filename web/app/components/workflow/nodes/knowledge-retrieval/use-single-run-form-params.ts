@@ -13,7 +13,7 @@ import { findVariableWhenOnLLMVision } from '../utils'
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
 type Params = {
-  id: string,
+  id: string
   payload: KnowledgeRetrievalNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>

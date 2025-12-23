@@ -68,13 +68,13 @@ const RetrievalConfig: FC<Props> = ({
       retrieval_model: retrieval_mode,
       reranking_model: (reranking_model?.provider && reranking_model?.model)
         ? {
-          reranking_provider_name: reranking_model?.provider,
-          reranking_model_name: reranking_model?.model,
-        }
+            reranking_provider_name: reranking_model?.provider,
+            reranking_model_name: reranking_model?.model,
+          }
         : {
-          reranking_provider_name: '',
-          reranking_model_name: '',
-        },
+            reranking_provider_name: '',
+            reranking_model_name: '',
+          },
       top_k: top_k || DATASET_DEFAULT.top_k,
       score_threshold_enabled: !(score_threshold === undefined || score_threshold === null),
       score_threshold,
@@ -100,11 +100,11 @@ const RetrievalConfig: FC<Props> = ({
         ? undefined
         // eslint-disable-next-line sonarjs/no-nested-conditional
         : (!configs.reranking_model?.reranking_provider_name
-          ? undefined
-          : {
-            provider: configs.reranking_model?.reranking_provider_name,
-            model: configs.reranking_model?.reranking_model_name,
-          }),
+            ? undefined
+            : {
+                provider: configs.reranking_model?.reranking_provider_name,
+                model: configs.reranking_model?.reranking_model_name,
+              }),
       reranking_mode: configs.reranking_mode,
       weights: configs.weights,
       reranking_enable: configs.reranking_enable,
@@ -115,7 +115,7 @@ const RetrievalConfig: FC<Props> = ({
     <PortalToFollowElem
       open={rerankModalOpen}
       onOpenChange={handleOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         crossAxis: -2,
       }}
@@ -128,17 +128,17 @@ const RetrievalConfig: FC<Props> = ({
         }}
       >
         <Button
-          variant='ghost'
-          size='small'
+          variant="ghost"
+          size="small"
           disabled={readonly}
           className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
         >
-          <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
+          <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
           {t('dataset.retrievalSettings')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>
-        <div className='w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg  px-4 pb-4 pt-3  shadow-xl'>
+        <div className="w-[404px] rounded-2xl border border-components-panel-border bg-components-panel-bg  px-4 pb-4 pt-3  shadow-xl">
           <ConfigRetrievalContent
             datasetConfigs={datasetConfigs}
             onChange={handleChange}

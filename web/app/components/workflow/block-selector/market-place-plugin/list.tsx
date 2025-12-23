@@ -79,12 +79,12 @@ const List = ({
 
     return (
       <Link
-        className='system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg'
+        className="system-sm-medium sticky bottom-0 z-10 flex h-8 cursor-pointer items-center rounded-b-lg border-[0.5px] border-t border-components-panel-border bg-components-panel-bg-blur px-4 py-1 text-text-accent-light-mode-only shadow-lg"
         href={getMarketplaceUrl('', { category })}
-        target='_blank'
+        target="_blank"
       >
         <span>{t('plugin.findMoreInMarketplace')}</span>
-        <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+        <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
       </Link>
     )
   }
@@ -101,12 +101,12 @@ const List = ({
           <span>{t('plugin.fromMarketplace')}</span>
           <Link
             href={urlWithSearchText}
-            target='_blank'
-            className='flex items-center text-text-accent-light-mode-only'
+            target="_blank"
+            className="flex items-center text-text-accent-light-mode-only"
             onClick={e => e.stopPropagation()}
           >
             <span>{t('plugin.searchInMarketplace')}</span>
-            <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
           </Link>
         </div>
       )}
@@ -119,14 +119,14 @@ const List = ({
           />
         ))}
         {hasRes && (
-          <div className='mb-3 mt-2 flex items-center justify-center space-x-2'>
+          <div className="mb-3 mt-2 flex items-center justify-center space-x-2">
             <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(16,24,40,0.08)] to-[rgba(255,255,255,0.01)]"></div>
             <Link
               href={urlWithSearchText}
-              target='_blank'
-              className='system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only'
+              target="_blank"
+              className="system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only"
             >
-              <RiSearchLine className='mr-0.5 h-3 w-3' />
+              <RiSearchLine className="mr-0.5 h-3 w-3" />
               <span>{t('plugin.searchInMarketplace')}</span>
             </Link>
             <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>

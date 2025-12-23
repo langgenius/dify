@@ -69,8 +69,8 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
     if (!isSearch) {
       const text = isFullDocMode
         ? !total
-          ? '--'
-          : formatNumber(total)
+            ? '--'
+            : formatNumber(total)
         : formatNumber(childChunks.length)
       const count = isFullDocMode
         ? text === '--'
@@ -92,8 +92,9 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
       contentOpacity,
       isParagraphMode ? 'pb-2 pt-1' : 'grow px-3',
       (isFullDocMode && isLoading) && 'overflow-y-hidden',
-    )}>
-      {isFullDocMode ? <Divider type='horizontal' className='my-1 h-px bg-divider-subtle' /> : null}
+    )}
+    >
+      {isFullDocMode ? <Divider type="horizontal" className="my-1 h-px bg-divider-subtle" /> : null}
       <div className={cn('flex items-center justify-between', isFullDocMode ? 'sticky -top-2 left-0 bg-background-default pb-3 pt-2' : '')}>
         <div
           className={cn(
@@ -111,15 +112,15 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             isParagraphMode
               ? collapsed
                 ? (
-                  <RiArrowRightSLine className='mr-0.5 h-4 w-4 text-text-secondary opacity-50' />
-                )
-                : (<RiArrowDownSLine className='mr-0.5 h-4 w-4 text-text-secondary' />)
+                    <RiArrowRightSLine className="mr-0.5 h-4 w-4 text-text-secondary opacity-50" />
+                  )
+                : (<RiArrowDownSLine className="mr-0.5 h-4 w-4 text-text-secondary" />)
               : null
           }
-          <span className='system-sm-semibold-uppercase text-text-secondary'>{totalText}</span>
+          <span className="system-sm-semibold-uppercase text-text-secondary">{totalText}</span>
           <span className={cn('pl-1.5 text-xs font-medium text-text-quaternary', isParagraphMode ? 'hidden group-hover/card:inline-block' : '')}>·</span>
           <button
-            type='button'
+            type="button"
             className={cn(
               'system-xs-semibold-uppercase px-1.5 py-1 text-components-button-secondary-accent-text',
               isParagraphMode ? 'hidden group-hover/card:inline-block' : '',
@@ -135,59 +136,68 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           </button>
         </div>
         {isFullDocMode
-          ? <Input
-            showLeftIcon
-            showClearIcon
-            wrapperClassName='!w-52'
-            value={inputValue}
-            onChange={e => handleInputChange?.(e.target.value)}
-            onClear={() => handleInputChange?.('')}
-          />
+          ? (
+              <Input
+                showLeftIcon
+                showClearIcon
+                wrapperClassName="!w-52"
+                value={inputValue}
+                onChange={e => handleInputChange?.(e.target.value)}
+                onClear={() => handleInputChange?.('')}
+              />
+            )
           : null}
       </div>
       {isLoading ? <FullDocListSkeleton /> : null}
       {((isFullDocMode && !isLoading) || !collapsed)
-        ? <div className={cn('flex gap-x-0.5', isFullDocMode ? 'mb-6 grow' : 'items-center')}>
-          {isParagraphMode && (
-            <div className='self-stretch'>
-              <Divider type='vertical' className='mx-[7px] w-[2px] bg-text-accent-secondary' />
+        ? (
+            <div className={cn('flex gap-x-0.5', isFullDocMode ? 'mb-6 grow' : 'items-center')}>
+              {isParagraphMode && (
+                <div className="self-stretch">
+                  <Divider type="vertical" className="mx-[7px] w-[2px] bg-text-accent-secondary" />
+                </div>
+              )}
+              {childChunks.length > 0
+                ? (
+                    <FormattedText className={cn('flex w-full flex-col !leading-6', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
+                      {childChunks.map((childChunk) => {
+                        const edited = childChunk.updated_at !== childChunk.created_at
+                        const focused = currChildChunk?.childChunkInfo?.id === childChunk.id
+                        return (
+                          <EditSlice
+                            key={childChunk.id}
+                            label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
+                            text={childChunk.content}
+                            onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
+                            className="child-chunk"
+                            labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
+                            labelInnerClassName="text-[10px] font-semibold align-bottom leading-6"
+                            contentClassName={cn('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
+                            showDivider={false}
+                            onClick={(e) => {
+                              e.stopPropagation()
+                              onClickSlice?.(childChunk)
+                            }}
+                            offsetOptions={({ rects }) => {
+                              return {
+                                mainAxis: isFullDocMode ? -rects.floating.width : 12 - rects.floating.width,
+                                crossAxis: (20 - rects.floating.height) / 2,
+                              }
+                            }}
+                          />
+                        )
+                      })}
+                    </FormattedText>
+                  )
+                : inputValue !== ''
+                  ? (
+                      <div className="h-full w-full">
+                        <Empty onClearFilter={onClearFilter!} />
+                      </div>
+                    )
+                  : null}
             </div>
-          )}
-          {childChunks.length > 0
-            ? <FormattedText className={cn('flex w-full flex-col !leading-6', isParagraphMode ? 'gap-y-2' : 'gap-y-3')}>
-              {childChunks.map((childChunk) => {
-                const edited = childChunk.updated_at !== childChunk.created_at
-                const focused = currChildChunk?.childChunkInfo?.id === childChunk.id
-                return <EditSlice
-                  key={childChunk.id}
-                  label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
-                  text={childChunk.content}
-                  onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
-                  className='child-chunk'
-                  labelClassName={focused ? 'bg-state-accent-solid text-text-primary-on-surface' : ''}
-                  labelInnerClassName={'text-[10px] font-semibold align-bottom leading-6'}
-                  contentClassName={cn('!leading-6', focused ? 'bg-state-accent-hover-alt text-text-primary' : 'text-text-secondary')}
-                  showDivider={false}
-                  onClick={(e) => {
-                    e.stopPropagation()
-                    onClickSlice?.(childChunk)
-                  }}
-                  offsetOptions={({ rects }) => {
-                    return {
-                      mainAxis: isFullDocMode ? -rects.floating.width : 12 - rects.floating.width,
-                      crossAxis: (20 - rects.floating.height) / 2,
-                    }
-                  }}
-                />
-              })}
-            </FormattedText>
-            : inputValue !== ''
-              ? <div className='h-full w-full'>
-                <Empty onClearFilter={onClearFilter!} />
-              </div>
-              : null
-          }
-        </div>
+          )
         : null}
     </div>
   )

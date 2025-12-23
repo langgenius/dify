@@ -38,7 +38,7 @@ const mockInvalidDatasetList = vi.fn()
 const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<typeof useInvalidDatasetList>
 
 // Test data builder for props
-const createDefaultProps = (overrides?: Partial<{ show: boolean; onHide: () => void }>) => ({
+const createDefaultProps = (overrides?: Partial<{ show: boolean, onHide: () => void }>) => ({
   show: true,
   onHide: vi.fn(),
   ...overrides,

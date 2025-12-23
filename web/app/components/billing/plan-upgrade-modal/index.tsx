@@ -47,20 +47,20 @@ const PlanUpgradeModal: FC<Props> = ({
       clickOutsideNotClose
       className={`${styles.surface} w-[580px] rounded-2xl !p-0`}
     >
-      <div className='relative'>
+      <div className="relative">
         <div
           aria-hidden
           className={`${styles.heroOverlay} pointer-events-none absolute inset-0`}
         />
-        <div className='px-8 pt-8'>
+        <div className="px-8 pt-8">
           <div className={`${styles.icon} flex size-12 items-center justify-center rounded-xl shadow-lg backdrop-blur-[5px]`}>
-            <Icon className='size-6 text-text-primary-on-surface' />
+            <Icon className="size-6 text-text-primary-on-surface" />
           </div>
-          <div className='mt-6 space-y-2'>
+          <div className="mt-6 space-y-2">
             <div className={`${styles.highlight} title-3xl-semi-bold`}>
               {title}
             </div>
-            <div className='system-md-regular text-text-tertiary'>
+            <div className="system-md-regular text-text-tertiary">
               {description}
             </div>
           </div>
@@ -68,19 +68,19 @@ const PlanUpgradeModal: FC<Props> = ({
         </div>
       </div>
 
-      <div className='mb-8 mt-10 flex justify-end space-x-2 px-8'>
+      <div className="mb-8 mt-10 flex justify-end space-x-2 px-8">
         <Button
           onClick={onClose}
         >
           {t('billing.triggerLimitModal.dismiss')}
         </Button>
         <UpgradeBtn
-          size='custom'
+          size="custom"
           isShort
           onClick={handleUpgrade}
-          className='!h-8 !rounded-lg px-2'
-          labelKey='billing.triggerLimitModal.upgrade'
-          loc='trigger-events-limit-modal'
+          className="!h-8 !rounded-lg px-2"
+          labelKey="billing.triggerLimitModal.upgrade"
+          loc="trigger-events-limit-modal"
         />
       </div>
     </Modal>

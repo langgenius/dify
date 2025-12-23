@@ -59,11 +59,11 @@ const PanelOperatorPopup = ({
   }, [isWorkflowTool, workflowTools, data.provider_id])
 
   return (
-    <div className='w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'>
+    <div className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
       {
         (showChangeBlock || canRunBySingle(data.type, isChildNode)) && (
           <>
-            <div className='p-1'>
+            <div className="p-1">
               {
                 canRunBySingle(data.type, isChildNode) && (
                   <div
@@ -92,7 +92,7 @@ const PanelOperatorPopup = ({
                 )
               }
             </div>
-            <div className='h-px bg-divider-regular'></div>
+            <div className="h-px bg-divider-regular"></div>
           </>
         )
       }
@@ -102,9 +102,9 @@ const PanelOperatorPopup = ({
             {
               !nodeMetaData.isSingleton && (
                 <>
-                  <div className='p-1'>
+                  <div className="p-1">
                     <div
-                      className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                      className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                       onClick={() => {
                         onClosePopup()
                         handleNodesCopy(id)
@@ -114,7 +114,7 @@ const PanelOperatorPopup = ({
                       <ShortcutsName keys={['ctrl', 'c']} />
                     </div>
                     <div
-                      className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                      className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
                       onClick={() => {
                         onClosePopup()
                         handleNodesDuplicate(id)
@@ -124,14 +124,14 @@ const PanelOperatorPopup = ({
                       <ShortcutsName keys={['ctrl', 'd']} />
                     </div>
                   </div>
-                  <div className='h-px bg-divider-regular'></div>
+                  <div className="h-px bg-divider-regular"></div>
                 </>
               )
             }
             {
               !nodeMetaData.isUndeletable && (
                 <>
-                  <div className='p-1'>
+                  <div className="p-1">
                     <div
                       className={`
                       flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary
@@ -143,7 +143,7 @@ const PanelOperatorPopup = ({
                       <ShortcutsName keys={['del']} />
                     </div>
                   </div>
-                  <div className='h-px bg-divider-regular'></div>
+                  <div className="h-px bg-divider-regular"></div>
                 </>
               )
             }
@@ -153,43 +153,45 @@ const PanelOperatorPopup = ({
       {
         isWorkflowTool && workflowAppId && (
           <>
-            <div className='p-1'>
+            <div className="p-1">
               <a
                 href={`/app/${workflowAppId}/workflow`}
-                target='_blank'
-                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                target="_blank"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
                 {t('workflow.panel.openWorkflow')}
               </a>
             </div>
-            <div className='h-px bg-divider-regular'></div>
+            <div className="h-px bg-divider-regular"></div>
           </>
         )
       }
       {
         showHelpLink && nodeMetaData.helpLinkUri && (
           <>
-            <div className='p-1'>
+            <div className="p-1">
               <a
                 href={nodeMetaData.helpLinkUri}
-                target='_blank'
-                className='flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+                target="_blank"
+                className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
                 {t('workflow.panel.helpLink')}
               </a>
             </div>
-            <div className='h-px bg-divider-regular'></div>
+            <div className="h-px bg-divider-regular"></div>
           </>
         )
       }
-      <div className='p-1'>
-        <div className='px-3 py-2 text-xs text-text-tertiary'>
-          <div className='mb-1 flex h-[22px] items-center font-medium'>
+      <div className="p-1">
+        <div className="px-3 py-2 text-xs text-text-tertiary">
+          <div className="mb-1 flex h-[22px] items-center font-medium">
             {t('workflow.panel.about').toLocaleUpperCase()}
           </div>
-          <div className='mb-1 leading-[18px] text-text-secondary'>{nodeMetaData.description}</div>
-          <div className='leading-[18px]'>
-            {t('workflow.panel.createdBy')} {nodeMetaData.author}
+          <div className="mb-1 leading-[18px] text-text-secondary">{nodeMetaData.description}</div>
+          <div className="leading-[18px]">
+            {t('workflow.panel.createdBy')}
+            {' '}
+            {nodeMetaData.author}
           </div>
         </div>
       </div>

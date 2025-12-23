@@ -34,11 +34,11 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
   return (
     <div className="grid grid-cols-2 gap-4">
       <StartNodeOption
-        icon={
+        icon={(
           <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
             <Home className="h-5 w-5 text-white" />
           </div>
-        }
+        )}
         title={t('workflow.onboarding.userInputFull')}
         description={t('workflow.onboarding.userInputDescription')}
         onClick={onSelectUserInput}
@@ -61,11 +61,11 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
         ]}
         trigger={() => (
           <StartNodeOption
-            icon={
+            icon={(
               <div className="flex h-9 w-9 items-center justify-center rounded-[10px] border-[0.5px] border-transparent bg-util-colors-blue-brand-blue-brand-500 p-2">
                 <TriggerAll className="h-5 w-5 text-white" />
               </div>
-            }
+            )}
             title={t('workflow.onboarding.trigger')}
             description={t('workflow.onboarding.triggerDescription')}
             onClick={handleTriggerClick}

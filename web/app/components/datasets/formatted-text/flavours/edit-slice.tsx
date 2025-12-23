@@ -55,7 +55,8 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
 
   return (
     <>
-      <SliceContainer {...rest}
+      <SliceContainer
+        {...rest}
         className={cn('mr-0 block', className)}
         ref={(ref) => {
           refs.setReference(ref)
@@ -77,32 +78,36 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
         >
           {text}
         </SliceContent>
-        {showDivider && <SliceDivider
-          className={cn(isDestructive && '!bg-state-destructive-hover-alt')}
-        />}
-        {delBtnShow && <FloatingFocusManager
-          context={context}
-        >
-          <span
-            ref={refs.setFloating}
-            style={floatingStyles}
-            {...getFloatingProps()}
-            className='inline-flex items-center justify-center rounded-lg bg-components-actionbar-bg p-1 shadow'
-            onMouseEnter={() => setDelBtnHover(true)}
-            onMouseLeave={() => setDelBtnHover(false)}
+        {showDivider && (
+          <SliceDivider
+            className={cn(isDestructive && '!bg-state-destructive-hover-alt')}
+          />
+        )}
+        {delBtnShow && (
+          <FloatingFocusManager
+            context={context}
           >
-            <ActionButton
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-                setDelBtnShow(false)
-              }}
-              state={ActionButtonState.Destructive}
+            <span
+              ref={refs.setFloating}
+              style={floatingStyles}
+              {...getFloatingProps()}
+              className="inline-flex items-center justify-center rounded-lg bg-components-actionbar-bg p-1 shadow"
+              onMouseEnter={() => setDelBtnHover(true)}
+              onMouseLeave={() => setDelBtnHover(false)}
             >
-              <RiDeleteBinLine className='h-4 w-4' />
-            </ActionButton>
-          </span>
-        </FloatingFocusManager>}
+              <ActionButton
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                  setDelBtnShow(false)
+                }}
+                state={ActionButtonState.Destructive}
+              >
+                <RiDeleteBinLine className="h-4 w-4" />
+              </ActionButton>
+            </span>
+          </FloatingFocusManager>
+        )}
       </SliceContainer>
     </>
   )

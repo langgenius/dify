@@ -77,10 +77,12 @@ const DatasetConfig: FC = () => {
     const oldRetrievalConfig = {
       top_k,
       score_threshold,
-      reranking_model: (reranking_model && reranking_model.reranking_provider_name && reranking_model.reranking_model_name) ? {
-        provider: reranking_model.reranking_provider_name,
-        model: reranking_model.reranking_model_name,
-      } : undefined,
+      reranking_model: (reranking_model && reranking_model.reranking_provider_name && reranking_model.reranking_model_name)
+        ? {
+            provider: reranking_model.reranking_provider_name,
+            model: reranking_model.reranking_model_name,
+          }
+        : undefined,
       reranking_mode,
       weights,
       reranking_enable,
@@ -227,7 +229,7 @@ const DatasetConfig: FC = () => {
     setDatasetConfigs(newInputs)
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleMetadataModelChange = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleMetadataModelChange = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(datasetConfigsRef.current!, (draft) => {
       draft.metadata_model_config = {
         provider: model.provider,
@@ -251,38 +253,38 @@ const DatasetConfig: FC = () => {
 
   return (
     <FeaturePanel
-      className='mt-2'
+      className="mt-2"
       title={t('appDebug.feature.dataSet.title')}
-      headerRight={
-        <div className='flex items-center gap-1'>
+      headerRight={(
+        <div className="flex items-center gap-1">
           {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
           <OperationBtn type="add" onClick={showSelectDataSet} />
         </div>
-      }
+      )}
       hasHeaderBottomBorder={!hasData}
       noBodySpacing
     >
       {hasData
         ? (
-          <div className='mt-1 flex flex-wrap justify-between px-3 pb-3'>
-            {formattedDataset.map(item => (
-              <CardItem
-                key={item.id}
-                config={item}
-                onRemove={onRemove}
-                onSave={handleSave}
-                editable={item.editable}
-              />
-            ))}
-          </div>
-        )
+            <div className="mt-1 flex flex-wrap justify-between px-3 pb-3">
+              {formattedDataset.map(item => (
+                <CardItem
+                  key={item.id}
+                  config={item}
+                  onRemove={onRemove}
+                  onSave={handleSave}
+                  editable={item.editable}
+                />
+              ))}
+            </div>
+          )
         : (
-          <div className='mt-1 px-3 pb-3'>
-            <div className='pb-1 pt-2 text-xs text-text-tertiary'>{t('appDebug.feature.dataSet.noData')}</div>
-          </div>
-        )}
+            <div className="mt-1 px-3 pb-3">
+              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.feature.dataSet.noData')}</div>
+            </div>
+          )}
 
-      <div className='border-t border-t-divider-subtle py-2'>
+      <div className="border-t border-t-divider-subtle py-2">
         <MetadataFilter
           metadataList={metadataList}
           selectedDatasetsLoaded

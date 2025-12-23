@@ -16,13 +16,13 @@ const NoDataPlaceholder: FC<Props> = ({
   noPlugins,
 }) => {
   const { t } = useTranslation()
-  const icon = noPlugins ? (<Group className='size-6 text-text-quaternary' />) : (<SearchMenu className='size-8 text-text-tertiary' />)
+  const icon = noPlugins ? (<Group className="size-6 text-text-quaternary" />) : (<SearchMenu className="size-8 text-text-tertiary" />)
   const text = t(`plugin.autoUpdate.noPluginPlaceholder.${noPlugins ? 'noInstalled' : 'noFound'}`)
   return (
     <div className={cn('flex items-center justify-center', className)}>
-      <div className='flex flex-col items-center'>
+      <div className="flex flex-col items-center">
         {icon}
-        <div className='system-sm-regular mt-2 text-text-tertiary'>{text}</div>
+        <div className="system-sm-regular mt-2 text-text-tertiary">{text}</div>
       </div>
     </div>
   )

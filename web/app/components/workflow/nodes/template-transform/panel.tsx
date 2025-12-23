@@ -36,8 +36,8 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-4">
 
         <Field
           title={t(`${i18nPrefix}.inputVars`)}
@@ -64,20 +64,21 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           readOnly={readOnly}
           language={CodeLanguage.python3}
           title={
-            <div className='uppercase'>{t(`${i18nPrefix}.code`)}</div>
+            <div className="uppercase">{t(`${i18nPrefix}.code`)}</div>
           }
-          headerRight={
-            <div className='flex items-center'>
+          headerRight={(
+            <div className="flex items-center">
               <a
-                className='flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary'
+                className="flex h-[18px] items-center space-x-0.5 text-xs font-normal text-text-tertiary"
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
-                target='_blank'>
+                target="_blank"
+              >
                 <span>{t(`${i18nPrefix}.codeSupportTip`)}</span>
-                <RiQuestionLine className='h-3 w-3' />
+                <RiQuestionLine className="h-3 w-3" />
               </a>
-              <div className='mx-1.5 h-3 w-px bg-divider-regular'></div>
+              <div className="mx-1.5 h-3 w-px bg-divider-regular"></div>
             </div>
-          }
+          )}
           value={inputs.template}
           onChange={handleCodeChange}
         />
@@ -87,8 +88,8 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='output'
-              type='string'
+              name="output"
+              type="string"
               description={t(`${i18nPrefix}.outputVars.output`)}
             />
           </>

@@ -57,14 +57,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   const model = inputs.model
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4">
         <Field
           title={t(`${i18nCommonPrefix}.model`)}
           required
         >
           <ModelParameterModal
-            popupClassName='!w-[387px]'
+            popupClassName="!w-[387px]"
             isInWorkflow
             isAdvancedMode={true}
             provider={model?.provider}
@@ -108,14 +108,14 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           operations={
             !readOnly
               ? (
-                <div className='flex items-center space-x-1'>
-                  {!readOnly && (
-                    <ImportFromTool onImport={handleImportFromTool} />
-                  )}
-                  {!readOnly && (<div className='h-3 w-px bg-divider-regular'></div>)}
-                  <AddExtractParameter type='add' onSave={addExtractParameter} />
-                </div>
-              )
+                  <div className="flex items-center space-x-1">
+                    {!readOnly && (
+                      <ImportFromTool onImport={handleImportFromTool} />
+                    )}
+                    {!readOnly && (<div className="h-3 w-px bg-divider-regular"></div>)}
+                    <AddExtractParameter type="add" onSave={addExtractParameter} />
+                  </div>
+                )
               : undefined
           }
         >
@@ -126,19 +126,19 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           />
         </Field>
         <Editor
-          title={
-            <div className='flex items-center space-x-1'>
-              <span className='uppercase'>{t(`${i18nPrefix}.instruction`)}</span>
+          title={(
+            <div className="flex items-center space-x-1">
+              <span className="uppercase">{t(`${i18nPrefix}.instruction`)}</span>
               <Tooltip
-                popupContent={
-                  <div className='w-[120px]'>
+                popupContent={(
+                  <div className="w-[120px]">
                     {t(`${i18nPrefix}.instructionTip`)}
                   </div>
-                }
-                triggerClassName='w-3.5 h-3.5 ml-0.5'
+                )}
+                triggerClassName="w-3.5 h-3.5 ml-0.5"
               />
             </div>
-          }
+          )}
           value={inputs.instruction}
           onChange={handleInstructionChange}
           readOnly={readOnly}
@@ -154,7 +154,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         <>
           {/* Memory */}
           {isChatMode && (
-            <div className='mt-4'>
+            <div className="mt-4">
               <MemoryConfig
                 readonly={readOnly}
                 config={{ data: inputs.memory }}
@@ -164,7 +164,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
             </div>
           )}
           {isSupportFunctionCall && (
-            <div className='mt-2'>
+            <div className="mt-2">
               <ReasoningModePicker
                 type={inputs.reasoning_mode}
                 onChange={handleReasoningModeChange}
@@ -173,38 +173,40 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           )}
         </>
       </FieldCollapse>
-      {inputs.parameters?.length > 0 && (<>
-        <Split />
-        <div>
-          <OutputVars>
-            <>
-              {inputs.parameters.map((param, index) => (
+      {inputs.parameters?.length > 0 && (
+        <>
+          <Split />
+          <div>
+            <OutputVars>
+              <>
+                {inputs.parameters.map((param, index) => (
+                  <VarItem
+                    key={index}
+                    name={param.name}
+                    type={param.type}
+                    description={param.description}
+                  />
+                ))}
                 <VarItem
-                  key={index}
-                  name={param.name}
-                  type={param.type}
-                  description={param.description}
+                  name="__is_success"
+                  type={VarType.number}
+                  description={t(`${i18nPrefix}.outputVars.isSuccess`)}
                 />
-              ))}
-              <VarItem
-                name='__is_success'
-                type={VarType.number}
-                description={t(`${i18nPrefix}.outputVars.isSuccess`)}
-              />
-              <VarItem
-                name='__reason'
-                type={VarType.string}
-                description={t(`${i18nPrefix}.outputVars.errorReason`)}
-              />
-              <VarItem
-                name='__usage'
-                type='object'
-                description={t(`${i18nPrefix}.outputVars.usage`)}
-              />
-            </>
-          </OutputVars>
-        </div>
-      </>)}
+                <VarItem
+                  name="__reason"
+                  type={VarType.string}
+                  description={t(`${i18nPrefix}.outputVars.errorReason`)}
+                />
+                <VarItem
+                  name="__usage"
+                  type="object"
+                  description={t(`${i18nPrefix}.outputVars.usage`)}
+                />
+              </>
+            </OutputVars>
+          </div>
+        </>
+      )}
     </div>
   )
 }

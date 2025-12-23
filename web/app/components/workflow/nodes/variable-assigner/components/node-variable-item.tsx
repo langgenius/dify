@@ -39,9 +39,9 @@ const NodeVariableItem = ({
   const isChatVar = isConversationVar(variable)
   const isRagVar = isRagVariableVar(variable)
   const varName = useMemo(() => {
-    if(isSystem)
+    if (isSystem)
       return `sys.${variable[variable.length - 1]}`
-    if(isRagVar)
+    if (isRagVar)
       return variable[variable.length - 1]
     return variable.slice(1).join('.')
   }, [isRagVar, isSystem, variable])
@@ -49,19 +49,19 @@ const NodeVariableItem = ({
   const VariableIcon = useMemo(() => {
     if (isEnv) {
       return (
-        <Env className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />
+        <Env className="h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600" />
       )
     }
 
     if (isChatVar) {
       return (
-        <BubbleX className='h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700' />
+        <BubbleX className="h-3.5 w-3.5 shrink-0 text-util-colors-teal-teal-700" />
       )
     }
 
-    if(isRagVar) {
+    if (isRagVar) {
       return (
-        <InputField className='h-3.5 w-3.5 shrink-0 text-text-accent' />
+        <InputField className="h-3.5 w-3.5 shrink-0 text-text-accent" />
       )
     }
 
@@ -95,31 +95,32 @@ const NodeVariableItem = ({
       'relative flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg p-[3px] pl-[5px]',
       showBorder && '!bg-state-base-hover',
       className,
-    )}>
-      <div className='flex w-0 grow items-center'>
+    )}
+    >
+      <div className="flex w-0 grow items-center">
         {
           node && (
             <>
-              <div className='shrink-0 p-[1px]'>
+              <div className="shrink-0 p-[1px]">
                 <VarBlockIcon
-                  className='!text-text-primary'
+                  className="!text-text-primary"
                   type={node.data.type}
                 />
               </div>
               <div
-                className='mx-0.5 shrink-[1000] truncate text-xs font-medium text-text-secondary'
+                className="mx-0.5 shrink-[1000] truncate text-xs font-medium text-text-secondary"
                 title={node?.data.title}
               >
                 {node?.data.title}
               </div>
-              <Line3 className='mr-0.5 shrink-0'></Line3>
+              <Line3 className="mr-0.5 shrink-0"></Line3>
             </>
           )
         }
         {VariableIcon}
         {VariableName}
       </div>
-      {writeMode && <Badge className='shrink-0' text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
+      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
     </div>
   )
 }

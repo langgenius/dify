@@ -32,7 +32,7 @@ export type CommonHooksFnMap = {
     callback?: {
       onSuccess?: () => void
       onError?: () => void
-      onSettled?: () => void,
+      onSettled?: () => void
     },
   ) => Promise<void>
   syncWorkflowDraftWhenPageClose: () => void
@@ -50,7 +50,7 @@ export type CommonHooksFnMap = {
   handleWorkflowTriggerPluginRunInWorkflow: (nodeId?: string) => void
   handleWorkflowRunAllTriggersInWorkflow: (nodeIds: string[]) => void
   availableNodesMetaData?: AvailableNodesMetaData
-  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string; traceUrl: string }
+  getWorkflowRunAndTraceUrl: (runId?: string) => { runUrl: string, traceUrl: string }
   exportCheck?: () => Promise<void>
   handleExportDSL?: (include?: boolean, flowId?: string) => Promise<void>
   fetchInspectVars: (params: { passInVars?: boolean, vars?: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[] }) => Promise<void>

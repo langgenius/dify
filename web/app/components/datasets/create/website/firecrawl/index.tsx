@@ -187,38 +187,41 @@ const FireCrawl: FC<Props> = ({
         title={t(`${I18N_PREFIX}.firecrawlTitle`)}
         buttonText={t(`${I18N_PREFIX}.configureFirecrawl`)}
         docTitle={t(`${I18N_PREFIX}.firecrawlDoc`)}
-        docLink={'https://docs.firecrawl.dev/introduction'}
+        docLink="https://docs.firecrawl.dev/introduction"
       />
-      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0'>
+      <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0">
         <UrlInput onRun={handleRun} isRunning={isRunning} />
         <OptionsWrap
-          className='mt-4'
+          className="mt-4"
           controlFoldOptions={controlFoldOptions}
         >
-          <Options className='mt-2' payload={crawlOptions} onChange={onCrawlOptionsChange} />
+          <Options className="mt-2" payload={crawlOptions} onChange={onCrawlOptionsChange} />
         </OptionsWrap>
 
         {!isInit && (
-          <div className='relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl'>
+          <div className="relative left-[-16px] mt-3 w-[calc(100%_+_32px)] rounded-b-xl">
             {isRunning
-              && <Crawling
-                className='mt-2'
-                crawledNum={crawlResult?.current || 0}
-                totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
-              />}
+              && (
+                <Crawling
+                  className="mt-2"
+                  crawledNum={crawlResult?.current || 0}
+                  totalNum={crawlResult?.total || Number.parseFloat(crawlOptions.limit as string) || 0}
+                />
+              )}
             {showError && (
-              <ErrorMessage className='rounded-b-xl' title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
+              <ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
             )}
             {isCrawlFinished && !showError
-              && <CrawledResult
-                className='mb-2'
-                list={crawlResult?.data || []}
-                checkedList={checkedCrawlResult}
-                onSelectedChange={onCheckedCrawlResultChange}
-                onPreview={onPreview}
-                usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
-              />
-            }
+              && (
+                <CrawledResult
+                  className="mb-2"
+                  list={crawlResult?.data || []}
+                  checkedList={checkedCrawlResult}
+                  onSelectedChange={onCheckedCrawlResultChange}
+                  onPreview={onPreview}
+                  usedTime={Number.parseFloat(crawlResult?.time_consuming as string) || 0}
+                />
+              )}
           </div>
         )}
       </div>

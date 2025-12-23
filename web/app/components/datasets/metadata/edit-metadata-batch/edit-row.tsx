@@ -25,20 +25,24 @@ const EditMetadatabatchItem: FC<Props> = ({
   const isUpdated = payload.isUpdated
   const isDeleted = payload.updateType === UpdateType.delete
   return (
-    <div className='flex h-6 items-center space-x-0.5'>
-      {isUpdated ? <EditedBeacon onReset={() => onReset(payload.id)} /> : <div className='size-4 shrink-0' />}
+    <div className="flex h-6 items-center space-x-0.5">
+      {isUpdated ? <EditedBeacon onReset={() => onReset(payload.id)} /> : <div className="size-4 shrink-0" />}
       <Label text={payload.name} isDeleted={isDeleted} />
       {payload.isMultipleValue
-        ? <InputHasSetMultipleValue
-          onClear={() => onChange({ ...payload, value: null, isMultipleValue: false })}
-          readOnly={isDeleted}
-        />
-        : <InputCombined
-          type={payload.type}
-          value={payload.value}
-          onChange={v => onChange({ ...payload, value: v as string })}
-          readOnly={isDeleted}
-        />}
+        ? (
+            <InputHasSetMultipleValue
+              onClear={() => onChange({ ...payload, value: null, isMultipleValue: false })}
+              readOnly={isDeleted}
+            />
+          )
+        : (
+            <InputCombined
+              type={payload.type}
+              value={payload.value}
+              onChange={v => onChange({ ...payload, value: v as string })}
+              readOnly={isDeleted}
+            />
+          )}
 
       <div
         className={
@@ -48,7 +52,7 @@ const EditMetadatabatchItem: FC<Props> = ({
         }
         onClick={() => onRemove(payload.id)}
       >
-        <RiDeleteBinLine className='size-4' />
+        <RiDeleteBinLine className="size-4" />
       </div>
     </div>
   )

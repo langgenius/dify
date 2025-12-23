@@ -53,7 +53,7 @@ export const useCheckInstalled = ({
   pluginIds,
   enabled,
 }: {
-  pluginIds: string[],
+  pluginIds: string[]
   enabled: boolean
 }) => {
   return useQuery<{ plugins: PluginDetail[] }>({
@@ -165,10 +165,12 @@ export const useInstalledPluginList = (disable?: boolean, pageSize = 100) => {
   const total = data?.pages[0].total ?? 0
 
   return {
-    data: disable ? undefined : {
-      plugins,
-      total,
-    },
+    data: disable
+      ? undefined
+      : {
+          plugins,
+          total,
+        },
     isLastPage: !hasNextPage,
     loadNextPage: () => {
       fetchNextPage()
@@ -300,8 +302,8 @@ export const useInstallOrUpdate = ({
 
   return useMutation({
     mutationFn: (data: {
-      payload: Dependency[],
-      plugin: Plugin[],
+      payload: Dependency[]
+      plugin: Plugin[]
       installedInfo: Record<string, VersionInfo>
     }) => {
       const { payload, plugin, installedInfo } = data
@@ -633,7 +635,7 @@ export const usePluginTaskList = (category?: PluginCategoryEnum | string) => {
 
 export const useMutationClearTaskPlugin = () => {
   return useMutation({
-    mutationFn: ({ taskId, pluginId }: { taskId: string; pluginId: string }) => {
+    mutationFn: ({ taskId, pluginId }: { taskId: string, pluginId: string }) => {
       const encodedPluginId = encodeURIComponent(pluginId)
       return post<{ success: boolean }>(`/workspaces/current/plugin/tasks/${taskId}/delete/${encodedPluginId}`)
     },
@@ -657,7 +659,7 @@ export const usePluginManifestInfo = (pluginUID: string) => {
   })
 }
 
-export const useDownloadPlugin = (info: { organization: string; pluginName: string; version: string }, needDownload: boolean) => {
+export const useDownloadPlugin = (info: { organization: string, pluginName: string, version: string }, needDownload: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'downloadPlugin', info],
     queryFn: () => getMarketplace<Blob>(`/plugins/${info.organization}/${info.pluginName}/${info.version}/download`),

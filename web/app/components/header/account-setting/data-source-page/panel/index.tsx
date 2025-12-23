@@ -48,21 +48,23 @@ const Panel: FC<Props> = ({
   }
 
   return (
-    <div className='mb-2 rounded-xl bg-background-section-burn'>
-      <div className='flex items-center px-3 py-[9px]'>
+    <div className="mb-2 rounded-xl bg-background-section-burn">
+      <div className="flex items-center px-3 py-[9px]">
         <div className={cn(s[`${type}-icon`], 'mr-3 h-8 w-8 rounded-lg border border-divider-subtle !bg-background-default')} />
-        <div className='grow'>
-          <div className='flex h-5 items-center'>
-            <div className='text-sm font-medium text-text-primary'>{t(`common.dataSource.${type}.title`)}</div>
+        <div className="grow">
+          <div className="flex h-5 items-center">
+            <div className="text-sm font-medium text-text-primary">{t(`common.dataSource.${type}.title`)}</div>
             {isWebsite && (
-              <div className='ml-1 rounded-md bg-components-badge-white-to-dark px-1.5 text-xs font-medium leading-[18px] text-text-secondary'>
-                <span className='text-text-tertiary'>{t('common.dataSource.website.with')}</span> {getProviderName()}
+              <div className="ml-1 rounded-md bg-components-badge-white-to-dark px-1.5 text-xs font-medium leading-[18px] text-text-secondary">
+                <span className="text-text-tertiary">{t('common.dataSource.website.with')}</span>
+                {' '}
+                {getProviderName()}
               </div>
             )}
           </div>
           {
             !isConfigured && (
-              <div className='system-xs-medium text-text-tertiary'>
+              <div className="system-xs-medium text-text-tertiary">
                 {t(`common.dataSource.${type}.description`)}
               </div>
             )
@@ -73,28 +75,30 @@ const Panel: FC<Props> = ({
             {
               isConfigured
                 ? (
-                  <Button
-                    disabled={readOnly}
-                    className='ml-3'
-                    onClick={onConfigure}
-                  >
-                    {t('common.dataSource.configure')}
-                  </Button>
-                )
-                : (
-                  <>
-                    {isSupportList && <div
-                      className={
-                        `system-sm-medium flex min-h-7 items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-1 text-components-button-secondary-accent-text
-                  ${!readOnly ? 'cursor-pointer' : 'cursor-default opacity-50 grayscale'}`
-                      }
+                    <Button
+                      disabled={readOnly}
+                      className="ml-3"
                       onClick={onConfigure}
                     >
-                      <RiAddLine className='mr-[5px] h-4 w-4 text-components-button-secondary-accent-text' />
-                      {t('common.dataSource.connect')}
-                    </div>}
-                  </>
-                )
+                      {t('common.dataSource.configure')}
+                    </Button>
+                  )
+                : (
+                    <>
+                      {isSupportList && (
+                        <div
+                          className={
+                            `system-sm-medium flex min-h-7 items-center rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-1 text-components-button-secondary-accent-text
+                  ${!readOnly ? 'cursor-pointer' : 'cursor-default opacity-50 grayscale'}`
+                          }
+                          onClick={onConfigure}
+                        >
+                          <RiAddLine className="mr-[5px] h-4 w-4 text-components-button-secondary-accent-text" />
+                          {t('common.dataSource.connect')}
+                        </div>
+                      )}
+                    </>
+                  )
             }
           </>
         )}
@@ -116,13 +120,13 @@ const Panel: FC<Props> = ({
       {
         isConfigured && (
           <>
-            <div className='flex h-[18px] items-center px-3'>
-              <div className='system-xs-medium text-text-tertiary'>
+            <div className="flex h-[18px] items-center px-3">
+              <div className="system-xs-medium text-text-tertiary">
                 {isNotion ? t('common.dataSource.notion.connectedWorkspace') : t('common.dataSource.website.configuredCrawlers')}
               </div>
-              <div className='ml-3 grow border-t border-t-divider-subtle' />
+              <div className="ml-3 grow border-t border-t-divider-subtle" />
             </div>
-            <div className='px-3 pb-3 pt-2'>
+            <div className="px-3 pb-3 pt-2">
               {
                 configuredList.map(item => (
                   <ConfigItem

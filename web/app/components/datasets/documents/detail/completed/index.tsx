@@ -583,88 +583,96 @@ const Completed: FC<ICompletedProps> = ({
       toggleFullScreen,
       currSegment,
       currChildChunk,
-    }}>
+    }}
+    >
       {/* Menu Bar */}
-      {!isFullDocMode && <div className={s.docSearchWrapper}>
-        <Checkbox
-          className='shrink-0'
-          checked={isAllSelected}
-          indeterminate={!isAllSelected && isSomeSelected}
-          onCheck={onSelectedAll}
-          disabled={isLoadingSegmentList}
-        />
-        <div className={'system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary'}>{totalText}</div>
-        <SimpleSelect
-          onSelect={onChangeStatus}
-          items={statusList.current}
-          defaultValue={selectDefaultValue}
-          className={s.select}
-          wrapperClassName='h-fit mr-2'
-          optionWrapClassName='w-[160px]'
-          optionClassName='p-0'
-          renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
-          notClearable
-        />
-        <Input
-          showLeftIcon
-          showClearIcon
-          wrapperClassName='!w-52'
-          value={inputValue}
-          onChange={e => handleInputChange(e.target.value)}
-          onClear={() => handleInputChange('')}
-        />
-        <Divider type='vertical' className='mx-3 h-3.5' />
-        <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
-      </div>}
+      {!isFullDocMode && (
+        <div className={s.docSearchWrapper}>
+          <Checkbox
+            className="shrink-0"
+            checked={isAllSelected}
+            indeterminate={!isAllSelected && isSomeSelected}
+            onCheck={onSelectedAll}
+            disabled={isLoadingSegmentList}
+          />
+          <div className="system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary">{totalText}</div>
+          <SimpleSelect
+            onSelect={onChangeStatus}
+            items={statusList.current}
+            defaultValue={selectDefaultValue}
+            className={s.select}
+            wrapperClassName="h-fit mr-2"
+            optionWrapClassName="w-[160px]"
+            optionClassName="p-0"
+            renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+            notClearable
+          />
+          <Input
+            showLeftIcon
+            showClearIcon
+            wrapperClassName="!w-52"
+            value={inputValue}
+            onChange={e => handleInputChange(e.target.value)}
+            onClear={() => handleInputChange('')}
+          />
+          <Divider type="vertical" className="mx-3 h-3.5" />
+          <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
+        </div>
+      )}
       {/* Segment list */}
       {
         isFullDocMode
-          ? <div className={cn(
-            'flex grow flex-col overflow-x-hidden',
-            (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
-          )}>
-            <SegmentCard
-              detail={segments[0]}
-              onClick={() => onClickCard(segments[0])}
-              loading={isLoadingSegmentList}
-              focused={{
-                segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
-                segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
-              }}
-            />
-            <ChildSegmentList
-              parentChunkId={segments[0]?.id}
-              onDelete={onDeleteChildChunk}
-              childChunks={childSegments}
-              handleInputChange={handleInputChange}
-              handleAddNewChildChunk={handleAddNewChildChunk}
-              onClickSlice={onClickSlice}
-              enabled={!archived}
-              total={childChunkListData?.total || 0}
-              inputValue={inputValue}
-              onClearFilter={onClearFilter}
-              isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
-            />
-          </div>
-          : <SegmentList
-            ref={segmentListRef}
-            embeddingAvailable={embeddingAvailable}
-            isLoading={isLoadingSegmentList}
-            items={segments}
-            selectedSegmentIds={selectedSegmentIds}
-            onSelected={onSelected}
-            onChangeSwitch={onChangeSwitch}
-            onDelete={onDelete}
-            onClick={onClickCard}
-            archived={archived}
-            onDeleteChildChunk={onDeleteChildChunk}
-            handleAddNewChildChunk={handleAddNewChildChunk}
-            onClickSlice={onClickSlice}
-            onClearFilter={onClearFilter}
-          />
+          ? (
+              <div className={cn(
+                'flex grow flex-col overflow-x-hidden',
+                (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
+              )}
+              >
+                <SegmentCard
+                  detail={segments[0]}
+                  onClick={() => onClickCard(segments[0])}
+                  loading={isLoadingSegmentList}
+                  focused={{
+                    segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
+                    segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
+                  }}
+                />
+                <ChildSegmentList
+                  parentChunkId={segments[0]?.id}
+                  onDelete={onDeleteChildChunk}
+                  childChunks={childSegments}
+                  handleInputChange={handleInputChange}
+                  handleAddNewChildChunk={handleAddNewChildChunk}
+                  onClickSlice={onClickSlice}
+                  enabled={!archived}
+                  total={childChunkListData?.total || 0}
+                  inputValue={inputValue}
+                  onClearFilter={onClearFilter}
+                  isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
+                />
+              </div>
+            )
+          : (
+              <SegmentList
+                ref={segmentListRef}
+                embeddingAvailable={embeddingAvailable}
+                isLoading={isLoadingSegmentList}
+                items={segments}
+                selectedSegmentIds={selectedSegmentIds}
+                onSelected={onSelected}
+                onChangeSwitch={onChangeSwitch}
+                onDelete={onDelete}
+                onClick={onClickCard}
+                archived={archived}
+                onDeleteChildChunk={onDeleteChildChunk}
+                handleAddNewChildChunk={handleAddNewChildChunk}
+                onClickSlice={onClickSlice}
+                onClearFilter={onClearFilter}
+              />
+            )
       }
       {/* Pagination */}
-      <Divider type='horizontal' className='mx-6 my-0 h-px w-auto bg-divider-subtle' />
+      <Divider type="horizontal" className="mx-6 my-0 h-px w-auto bg-divider-subtle" />
       <Pagination
         current={currentPage - 1}
         onChange={cur => setCurrentPage(cur + 1)}
@@ -740,7 +748,7 @@ const Completed: FC<ICompletedProps> = ({
       {/* Batch Action Buttons */}
       {selectedSegmentIds.length > 0 && (
         <BatchAction
-          className='absolute bottom-16 left-0 z-20'
+          className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedSegmentIds}
           onBatchEnable={onChangeSwitch.bind(null, true, '')}
           onBatchDisable={onChangeSwitch.bind(null, false, '')}

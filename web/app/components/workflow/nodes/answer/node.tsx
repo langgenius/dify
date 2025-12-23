@@ -12,13 +12,16 @@ const Node: FC<NodeProps<AnswerNodeType>> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='mb-1 px-3 py-1'>
-      <InfoPanel title={t('workflow.nodes.answer.answer')} content={
-        <ReadonlyInputWithSelectVar
-          value={data.answer}
-          nodeId={id}
-        />
-      } />
+    <div className="mb-1 px-3 py-1">
+      <InfoPanel
+        title={t('workflow.nodes.answer.answer')}
+        content={(
+          <ReadonlyInputWithSelectVar
+            value={data.answer}
+            nodeId={id}
+          />
+        )}
+      />
     </div>
   )
 }

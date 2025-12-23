@@ -107,70 +107,74 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
     }
   }
 
-  return <form onSubmit={noop}>
-    <div className='mb-3'>
-      <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
-        {t('login.email')}
-      </label>
-      <div className="mt-1">
-        <Input
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder={t('login.emailPlaceholder') || ''}
-          tabIndex={1}
-        />
-      </div>
-    </div>
-
-    <div className='mb-3'>
-      <label htmlFor="password" className="my-2 flex items-center justify-between">
-        <span className='system-md-semibold text-text-secondary'>{t('login.password')}</span>
-        <Link
-          href={`/webapp-reset-password?${searchParams.toString()}`}
-          className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
-          tabIndex={isEmailSetup ? 0 : -1}
-          aria-disabled={!isEmailSetup}
-        >
-          {t('login.forget')}
-        </Link>
-      </label>
-      <div className="relative mt-1">
-        <Input
-          value={password}
-          onChange={e => setPassword(e.target.value)}
-          id="password"
-          onKeyDown={(e) => {
-            if (e.key === 'Enter')
-              handleEmailPasswordLogin()
-          }}
-          type={showPassword ? 'text' : 'password'}
-          autoComplete="current-password"
-          placeholder={t('login.passwordPlaceholder') || ''}
-          tabIndex={2}
-        />
-        <div className="absolute inset-y-0 right-0 flex items-center">
-          <Button
-            type="button"
-            variant='ghost'
-            onClick={() => setShowPassword(!showPassword)}
-          >
-            {showPassword ? '👀' : '😝'}
-          </Button>
+  return (
+    <form onSubmit={noop}>
+      <div className="mb-3">
+        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
+          {t('login.email')}
+        </label>
+        <div className="mt-1">
+          <Input
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder={t('login.emailPlaceholder') || ''}
+            tabIndex={1}
+          />
         </div>
       </div>
-    </div>
 
-    <div className='mb-2'>
-      <Button
-        tabIndex={2}
-        variant='primary'
-        onClick={handleEmailPasswordLogin}
-        disabled={isLoading || !email || !password}
-        className="w-full"
-      >{t('login.signBtn')}</Button>
-    </div>
-  </form>
+      <div className="mb-3">
+        <label htmlFor="password" className="my-2 flex items-center justify-between">
+          <span className="system-md-semibold text-text-secondary">{t('login.password')}</span>
+          <Link
+            href={`/webapp-reset-password?${searchParams.toString()}`}
+            className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
+            tabIndex={isEmailSetup ? 0 : -1}
+            aria-disabled={!isEmailSetup}
+          >
+            {t('login.forget')}
+          </Link>
+        </label>
+        <div className="relative mt-1">
+          <Input
+            value={password}
+            onChange={e => setPassword(e.target.value)}
+            id="password"
+            onKeyDown={(e) => {
+              if (e.key === 'Enter')
+                handleEmailPasswordLogin()
+            }}
+            type={showPassword ? 'text' : 'password'}
+            autoComplete="current-password"
+            placeholder={t('login.passwordPlaceholder') || ''}
+            tabIndex={2}
+          />
+          <div className="absolute inset-y-0 right-0 flex items-center">
+            <Button
+              type="button"
+              variant="ghost"
+              onClick={() => setShowPassword(!showPassword)}
+            >
+              {showPassword ? '👀' : '😝'}
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      <div className="mb-2">
+        <Button
+          tabIndex={2}
+          variant="primary"
+          onClick={handleEmailPasswordLogin}
+          disabled={isLoading || !email || !password}
+          className="w-full"
+        >
+          {t('login.signBtn')}
+        </Button>
+      </div>
+    </form>
+  )
 }

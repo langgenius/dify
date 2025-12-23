@@ -85,7 +85,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
     setOpen(false)
   }, [])
 
-  const handleModelChange = useCallback((newValue: { modelId: string; provider: string; mode?: string; features?: string[] }) => {
+  const handleModelChange = useCallback((newValue: { modelId: string, provider: string, mode?: string, features?: string[] }) => {
     const newModel = {
       ...model,
       provider: newValue.provider,
@@ -147,7 +147,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 4,
         crossAxis: crossAxisOffset ?? 0,
@@ -155,7 +155,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
         <button
-          type='button'
+          type="button"
           className={cn(
             'flex h-6 w-6 items-center justify-center rounded-md p-0.5 hover:bg-state-accent-hover',
             open && 'bg-state-accent-active',
@@ -164,7 +164,7 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
           <SchemaGenerator />
         </button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[100]'>
+      <PortalToFollowElemContent className="z-[100]">
         {view === GeneratorView.promptEditor && (
           <PromptEditor
             instruction={instruction}

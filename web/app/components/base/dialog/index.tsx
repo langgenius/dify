@@ -38,7 +38,8 @@ const CustomDialog = ({
           <div className={cn('fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]',
             'duration-300 ease-in data-[closed]:opacity-0',
             'data-[enter]:opacity-100',
-            'data-[leave]:opacity-0')} />
+            'data-[leave]:opacity-0')}
+          />
         </TransitionChild>
 
         <div className="fixed inset-0 overflow-y-auto">
@@ -48,7 +49,8 @@ const CustomDialog = ({
                 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',
-                className)}>
+                className)}
+              >
                 {Boolean(title) && (
                   <DialogTitle
                     as={titleAs || 'h3'}
@@ -70,7 +72,7 @@ const CustomDialog = ({
           </div>
         </div>
       </Dialog>
-    </Transition >
+    </Transition>
   )
 }
 

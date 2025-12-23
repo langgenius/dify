@@ -21,8 +21,8 @@ import {
 import { cn } from '@/utils/classnames'
 
 type ManageCustomModelCredentialsProps = {
-  provider: ModelProvider,
-  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  provider: ModelProvider
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
 }
 const ManageCustomModelCredentials = ({
   provider,
@@ -35,8 +35,8 @@ const ManageCustomModelCredentials = ({
   const renderTrigger = useCallback((open?: boolean) => {
     const Item = (
       <Button
-        variant='ghost'
-        size='small'
+        variant="ghost"
+        size="small"
         className={cn(
           'mr-0.5 text-text-tertiary',
           open && 'bg-components-button-ghost-bg-hover',
@@ -59,10 +59,12 @@ const ManageCustomModelCredentials = ({
       items={customModels.map(model => ({
         model,
         credentials: model.available_model_credentials ?? [],
-        selectedCredential: model.current_credential_id ? {
-          credential_id: model.current_credential_id,
-          credential_name: model.current_credential_name,
-        } : undefined,
+        selectedCredential: model.current_credential_id
+          ? {
+              credential_id: model.current_credential_id,
+              credential_name: model.current_credential_name,
+            }
+          : undefined,
       }))}
       renderTrigger={renderTrigger}
       authParams={{

@@ -43,7 +43,7 @@ export const useImportDSL = () => {
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const isCurrentWorkspaceEditor = useSelector(s => s.isCurrentWorkspaceEditor)
   const { push } = useRouter()
-  const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
+  const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
 
   const handleImportDSL = useCallback(async (

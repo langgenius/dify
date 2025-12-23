@@ -38,22 +38,22 @@ const BulkEdit: FC<Props> = ({
     <div>
       <TextEditor
         isInNode
-        title={<div className='uppercase'>{t(`${i18nPrefix}.bulkEdit`)}</div>}
+        title={<div className="uppercase">{t(`${i18nPrefix}.bulkEdit`)}</div>}
         value={tempValue}
         onChange={handleChange}
         onBlur={handleBlur}
-        headerRight={
-          <div className='flex h-[18px] items-center'>
+        headerRight={(
+          <div className="flex h-[18px] items-center">
             <div
-              className='flex cursor-pointer items-center space-x-1'
+              className="flex cursor-pointer items-center space-x-1"
               onClick={handleSwitchToKeyValueEdit}
             >
-              <LayoutGrid02 className='h-3 w-3 text-gray-500' />
-              <div className='text-xs font-normal leading-[18px] text-gray-500'>{t(`${i18nPrefix}.keyValueEdit`)}</div>
+              <LayoutGrid02 className="h-3 w-3 text-gray-500" />
+              <div className="text-xs font-normal leading-[18px] text-gray-500">{t(`${i18nPrefix}.keyValueEdit`)}</div>
             </div>
-            <div className='ml-3 mr-1.5 h-3 w-px bg-gray-200'></div>
+            <div className="ml-3 mr-1.5 h-3 w-px bg-gray-200"></div>
           </div>
-        }
+        )}
         minHeight={150}
       />
     </div>

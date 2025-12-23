@@ -44,7 +44,8 @@ export default function Modal({
             overlayOpacity ? 'bg-workflow-canvas-canvas-overlay' : 'bg-background-overlay',
             'duration-300 ease-in data-[closed]:opacity-0',
             'data-[enter]:opacity-100',
-            'data-[leave]:opacity-0')} />
+            'data-[leave]:opacity-0')}
+          />
         </TransitionChild>
         <div
           className="fixed inset-0 overflow-y-auto"
@@ -60,25 +61,35 @@ export default function Modal({
                 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',
-                className)}>
-                {title && <DialogTitle
-                  as="h3"
-                  className="title-2xl-semi-bold text-text-primary"
-                >
-                  {title}
-                </DialogTitle>}
-                {description && <div className='body-md-regular mt-2 text-text-secondary'>
-                  {description}
-                </div>}
+                className)}
+              >
+                {title && (
+                  <DialogTitle
+                    as="h3"
+                    className="title-2xl-semi-bold text-text-primary"
+                  >
+                    {title}
+                  </DialogTitle>
+                )}
+                {description && (
+                  <div className="body-md-regular mt-2 text-text-secondary">
+                    {description}
+                  </div>
+                )}
                 {closable
-                  && <div className='absolute right-6 top-6 z-10 flex h-5 w-5 items-center justify-center rounded-2xl hover:cursor-pointer hover:bg-state-base-hover'>
-                    <RiCloseLine className='h-4 w-4 text-text-tertiary' onClick={
-                      (e) => {
-                        e.stopPropagation()
-                        onClose()
-                      }
-                    } />
-                  </div>}
+                  && (
+                    <div className="absolute right-6 top-6 z-10 flex h-5 w-5 items-center justify-center rounded-2xl hover:cursor-pointer hover:bg-state-base-hover">
+                      <RiCloseLine
+                        className="h-4 w-4 text-text-tertiary"
+                        onClick={
+                          (e) => {
+                            e.stopPropagation()
+                            onClose()
+                          }
+                        }
+                      />
+                    </div>
+                  )}
                 {children}
               </DialogPanel>
             </TransitionChild>

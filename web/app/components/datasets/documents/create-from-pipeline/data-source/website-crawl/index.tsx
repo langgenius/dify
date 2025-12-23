@@ -154,9 +154,9 @@ const WebsiteCrawl = ({
   }, [onCredentialChange])
 
   return (
-    <div className='flex flex-col'>
+    <div className="flex flex-col">
       <Header
-        docTitle='Docs'
+        docTitle="Docs"
         docLink={docLink('/guides/knowledge-base/knowledge-pipeline/authorize-data-source')}
         onClickConfiguration={handleSetting}
         pluginName={nodeData.datasource_label}
@@ -164,7 +164,7 @@ const WebsiteCrawl = ({
         onCredentialChange={handleCredentialChange}
         credentials={dataSourceAuth?.result || []}
       />
-      <div className='mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle'>
+      <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle">
         <Options
           variables={paramsConfig?.variables || []}
           step={step}
@@ -173,7 +173,7 @@ const WebsiteCrawl = ({
         />
       </div>
       {!isInit && (
-        <div className='relative flex flex-col'>
+        <div className="relative flex flex-col">
           {isRunning && (
             <Crawling
               crawledNum={crawledNum}
@@ -182,14 +182,14 @@ const WebsiteCrawl = ({
           )}
           {showError && (
             <ErrorMessage
-              className='mt-2'
+              className="mt-2"
               title={t(`${I18N_PREFIX}.exceptionErrorTitle`)}
               errorMsg={crawlErrorMessage}
             />
           )}
           {isCrawlFinished && !showError && (
             <CrawledResult
-              className='mt-2'
+              className="mt-2"
               list={crawlResult?.data || []}
               checkedList={checkedCrawlResult}
               onSelectedChange={handleCheckedCrawlResultChange}

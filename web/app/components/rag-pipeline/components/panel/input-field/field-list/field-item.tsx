@@ -57,24 +57,24 @@ const FieldItem = ({
       )}
     // onClick={handleOnClickEdit}
     >
-      <div className='flex grow basis-0 items-center gap-x-1 overflow-hidden'>
+      <div className="flex grow basis-0 items-center gap-x-1 overflow-hidden">
         {
           (isHovering && !readonly)
-            ? <RiDraggable className='size-4 shrink-0 text-text-quaternary' />
-            : <InputField className='size-4 shrink-0 text-text-accent' />
+            ? <RiDraggable className="size-4 shrink-0 text-text-quaternary" />
+            : <InputField className="size-4 shrink-0 text-text-accent" />
         }
         <div
           title={payload.variable}
-          className='system-sm-medium max-w-[130px] shrink-0 truncate text-text-secondary'
+          className="system-sm-medium max-w-[130px] shrink-0 truncate text-text-secondary"
         >
           {payload.variable}
         </div>
         {payload.label && (
           <>
-            <div className='system-xs-regular shrink-0 text-text-quaternary'>·</div>
+            <div className="system-xs-regular shrink-0 text-text-quaternary">·</div>
             <div
               title={payload.label}
-              className='system-xs-medium grow truncate text-text-tertiary'
+              className="system-xs-medium grow truncate text-text-tertiary"
             >
               {payload.label}
             </div>
@@ -83,29 +83,28 @@ const FieldItem = ({
       </div>
       {(isHovering && !readonly)
         ? (
-          <div className='flex shrink-0 items-center gap-x-1'>
-            <ActionButton
-              className='mr-1'
-              onClick={handleOnClickEdit}
-            >
-              <RiEditLine className='size-4 text-text-tertiary' />
-            </ActionButton>
-            <ActionButton
-              onClick={handleRemove}
-            >
-              <RiDeleteBinLine className='size-4 text-text-tertiary group-hover:text-text-destructive' />
-            </ActionButton>
-          </div>
-        )
+            <div className="flex shrink-0 items-center gap-x-1">
+              <ActionButton
+                className="mr-1"
+                onClick={handleOnClickEdit}
+              >
+                <RiEditLine className="size-4 text-text-tertiary" />
+              </ActionButton>
+              <ActionButton
+                onClick={handleRemove}
+              >
+                <RiDeleteBinLine className="size-4 text-text-tertiary group-hover:text-text-destructive" />
+              </ActionButton>
+            </div>
+          )
         : (
-          <div className='flex shrink-0 items-center gap-x-2'>
-            {payload.required && (
-              <Badge>{t('workflow.nodes.start.required')}</Badge>
-            )}
-            <InputVarTypeIcon type={payload.type as unknown as InputVarType} className='h-3 w-3 text-text-tertiary' />
-          </div>
-        )
-      }
+            <div className="flex shrink-0 items-center gap-x-2">
+              {payload.required && (
+                <Badge>{t('workflow.nodes.start.required')}</Badge>
+              )}
+              <InputVarTypeIcon type={payload.type as unknown as InputVarType} className="h-3 w-3 text-text-tertiary" />
+            </div>
+          )}
     </div>
   )
 }

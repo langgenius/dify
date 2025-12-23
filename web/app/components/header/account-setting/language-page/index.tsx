@@ -63,7 +63,7 @@ export default function LanguagePage() {
 
   return (
     <>
-      <div className='mb-8'>
+      <div className="mb-8">
         <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
         <SimpleSelect
           defaultValue={locale || userProfile.interface_language}
@@ -73,7 +73,7 @@ export default function LanguagePage() {
           notClearable={true}
         />
       </div>
-      <div className='mb-8'>
+      <div className="mb-8">
         <div className={titleClassName}>{t('common.language.timezone')}</div>
         <SimpleSelect
           defaultValue={userProfile.timezone}

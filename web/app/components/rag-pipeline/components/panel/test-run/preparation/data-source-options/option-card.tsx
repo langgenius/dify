@@ -36,7 +36,7 @@ const OptionCard = ({
       )}
       onClick={handleClickCard}
     >
-      <div className='flex size-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1'>
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1">
         <BlockIcon
           type={BlockEnum.DataSource}
           toolIcon={toolIcon}

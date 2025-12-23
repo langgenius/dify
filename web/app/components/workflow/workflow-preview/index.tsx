@@ -82,7 +82,7 @@ const WorkflowPreview = ({
 
   return (
     <div
-      id='workflow-container'
+      id="workflow-container"
       className={cn(
         'relative h-full w-full',
         className,
@@ -96,11 +96,11 @@ const WorkflowPreview = ({
             width: 102,
             height: 72,
           }}
-          maskColor='var(--color-workflow-minimap-bg)'
-          className='!absolute !bottom-14 !left-4 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px]
-          !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5'
+          maskColor="var(--color-workflow-minimap-bg)"
+          className="!absolute !bottom-14 !left-4 z-[9] !m-0 !h-[72px] !w-[102px] !rounded-lg !border-[0.5px]
+          !border-divider-subtle !bg-background-default-subtle !shadow-md !shadow-shadow-shadow-5"
         />
-        <div className='absolute bottom-4 left-4 z-[9] mt-1 flex items-center gap-2'>
+        <div className="absolute bottom-4 left-4 z-[9] mt-1 flex items-center gap-2">
           <ZoomInOut />
         </div>
       </>
@@ -128,8 +128,8 @@ const WorkflowPreview = ({
         <Background
           gap={[14, 14]}
           size={2}
-          className='bg-workflow-canvas-workflow-bg'
-          color='var(--color-workflow-canvas-workflow-dot-color)'
+          className="bg-workflow-canvas-workflow-bg"
+          color="var(--color-workflow-canvas-workflow-dot-color)"
         />
       </ReactFlow>
     </div>

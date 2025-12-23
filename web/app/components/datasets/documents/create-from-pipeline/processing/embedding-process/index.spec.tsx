@@ -22,7 +22,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock next/link
 vi.mock('next/link', () => ({
-  default: function MockLink({ children, href, ...props }: { children: React.ReactNode; href: string }) {
+  default: function MockLink({ children, href, ...props }: { children: React.ReactNode, href: string }) {
     return <a href={href} {...props}>{children}</a>
   },
 }))

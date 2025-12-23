@@ -95,56 +95,60 @@ const RuleDetail: FC<IRuleDetailProps> = React.memo(({
         value = !sourceData?.mode
           ? value
           : sourceData?.rules?.pre_processing_rules?.filter(rule =>
-            rule.enabled).map(rule => getRuleName(rule.id)).join(',')
+              rule.enabled).map(rule => getRuleName(rule.id)).join(',')
         break
     }
     return value
   }, [sourceData])
 
-  return <div className='py-3'>
-    <div className='flex flex-col gap-y-1'>
-      {Object.keys(segmentationRuleMap).map((field) => {
-        return <FieldInfo
-          key={field}
-          label={segmentationRuleMap[field as keyof typeof segmentationRuleMap]}
-          displayedValue={String(getValue(field))}
-        />
-      })}
+  return (
+    <div className="py-3">
+      <div className="flex flex-col gap-y-1">
+        {Object.keys(segmentationRuleMap).map((field) => {
+          return (
+            <FieldInfo
+              key={field}
+              label={segmentationRuleMap[field as keyof typeof segmentationRuleMap]}
+              displayedValue={String(getValue(field))}
+            />
+          )
+        })}
+      </div>
+      <Divider type="horizontal" className="bg-divider-subtle" />
+      <FieldInfo
+        label={t('datasetCreation.stepTwo.indexMode')}
+        displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
+        valueIcon={(
+          <Image
+            className="size-4"
+            src={
+              indexingType === IndexingType.ECONOMICAL
+                ? indexMethodIcon.economical
+                : indexMethodIcon.high_quality
+            }
+            alt=""
+          />
+        )}
+      />
+      <FieldInfo
+        label={t('datasetSettings.form.retrievalSetting.title')}
+        displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
+        valueIcon={(
+          <Image
+            className="size-4"
+            src={
+              retrievalMethod === RETRIEVE_METHOD.fullText
+                ? retrievalIcon.fullText
+                : retrievalMethod === RETRIEVE_METHOD.hybrid
+                  ? retrievalIcon.hybrid
+                  : retrievalIcon.vector
+            }
+            alt=""
+          />
+        )}
+      />
     </div>
-    <Divider type='horizontal' className='bg-divider-subtle' />
-    <FieldInfo
-      label={t('datasetCreation.stepTwo.indexMode')}
-      displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
-      valueIcon={
-        <Image
-          className='size-4'
-          src={
-            indexingType === IndexingType.ECONOMICAL
-              ? indexMethodIcon.economical
-              : indexMethodIcon.high_quality
-          }
-          alt=''
-        />
-      }
-    />
-    <FieldInfo
-      label={t('datasetSettings.form.retrievalSetting.title')}
-      displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
-      valueIcon={
-        <Image
-          className='size-4'
-          src={
-            retrievalMethod === RETRIEVE_METHOD.fullText
-              ? retrievalIcon.fullText
-              : retrievalMethod === RETRIEVE_METHOD.hybrid
-                ? retrievalIcon.hybrid
-                : retrievalIcon.vector
-          }
-          alt=''
-        />
-      }
-    />
-  </div>
+  )
 })
 
 RuleDetail.displayName = 'RuleDetail'
@@ -240,10 +244,10 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
 
   return (
     <>
-      <div className='flex flex-col gap-y-2 px-16 py-12'>
-        <div className='flex h-6 items-center gap-x-1'>
-          {isEmbedding && <RiLoader2Line className='h-4 w-4 animate-spin text-text-secondary' />}
-          <span className='system-md-semibold-uppercase grow text-text-secondary'>
+      <div className="flex flex-col gap-y-2 px-16 py-12">
+        <div className="flex h-6 items-center gap-x-1">
+          {isEmbedding && <RiLoader2Line className="h-4 w-4 animate-spin text-text-secondary" />}
+          <span className="system-md-semibold-uppercase grow text-text-secondary">
             {isEmbedding && t('datasetDocuments.embedding.processing')}
             {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
             {isEmbeddingPaused && t('datasetDocuments.embedding.paused')}
@@ -251,26 +255,26 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
           </span>
           {isEmbedding && (
             <button
-              type='button'
+              type="button"
               className={`flex items-center gap-x-1 rounded-md border-[0.5px]
               border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <RiPauseCircleLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
-              <span className='system-xs-medium pr-[3px] text-components-button-secondary-text'>
+              <RiPauseCircleLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
+              <span className="system-xs-medium pr-[3px] text-components-button-secondary-text">
                 {t('datasetDocuments.embedding.pause')}
               </span>
             </button>
           )}
           {isEmbeddingPaused && (
             <button
-              type='button'
+              type="button"
               className={`flex items-center gap-x-1 rounded-md border-[0.5px]
               border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 py-1 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px]`}
               onClick={handleSwitch}
             >
-              <RiPlayCircleLine className='h-3.5 w-3.5 text-components-button-secondary-text' />
-              <span className='system-xs-medium pr-[3px] text-components-button-secondary-text'>
+              <RiPlayCircleLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
+              <span className="system-xs-medium pr-[3px] text-components-button-secondary-text">
                 {t('datasetDocuments.embedding.resume')}
               </span>
             </button>
@@ -280,7 +284,8 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
         <div className={cn(
           'flex h-2 w-full items-center overflow-hidden rounded-md border border-components-progress-bar-border',
           isEmbedding ? 'bg-components-progress-bar-bg/50' : 'bg-components-progress-bar-bg',
-        )}>
+        )}
+        >
           <div
             className={cn(
               'h-full',
@@ -290,8 +295,8 @@ const EmbeddingDetail: FC<IEmbeddingDetailProps> = ({
             style={{ width: `${percent}%` }}
           />
         </div>
-        <div className={'flex w-full items-center'}>
-          <span className='system-xs-medium text-text-secondary'>
+        <div className="flex w-full items-center">
+          <span className="system-xs-medium text-text-secondary">
             {`${t('datasetDocuments.embedding.segments')} ${indexingStatusDetail?.completed_segments || '--'}/${indexingStatusDetail?.total_segments || '--'} · ${percent}%`}
           </span>
         </div>

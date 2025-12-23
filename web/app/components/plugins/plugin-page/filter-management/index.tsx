@@ -25,7 +25,7 @@ const FilterManagement: React.FC<FilterManagementProps> = ({ onFilterChange }) =
   }
 
   return (
-    <div className='flex items-center gap-2 self-stretch'>
+    <div className="flex items-center gap-2 self-stretch">
       <CategoriesFilter
         value={filters.categories}
         onChange={categories => updateFilters({ categories })}

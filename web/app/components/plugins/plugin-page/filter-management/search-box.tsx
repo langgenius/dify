@@ -15,8 +15,8 @@ const SearchBox: React.FC<SearchBoxProps> = ({
 
   return (
     <Input
-      wrapperClassName='flex w-[200px] items-center rounded-lg'
-      className='bg-components-input-bg-normal'
+      wrapperClassName="flex w-[200px] items-center rounded-lg"
+      className="bg-components-input-bg-normal"
       showLeftIcon
       value={searchQuery}
       placeholder={t('plugin.search')}

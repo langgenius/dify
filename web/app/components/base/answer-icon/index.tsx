@@ -31,15 +31,16 @@ const AnswerIcon: FC<AnswerIconProps> = ({
     'border-black/5',
     'text-xl')
   const isValidImageIcon = iconType === 'image' && imageUrl
-  return <div
-    className={wrapperClassName}
-    style={{ background: background || '#D5F5F6' }}
-  >
-    {isValidImageIcon
-      ? <img src={imageUrl} className="h-full w-full rounded-full" alt="answer icon" />
-      : (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />
-    }
-  </div>
+  return (
+    <div
+      className={wrapperClassName}
+      style={{ background: background || '#D5F5F6' }}
+    >
+      {isValidImageIcon
+        ? <img src={imageUrl} className="h-full w-full rounded-full" alt="answer icon" />
+        : (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id="🤖" />}
+    </div>
+  )
 }
 
 export default AnswerIcon

@@ -37,12 +37,12 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
   }
 
   return (
-    <div className='flex flex-col items-start self-stretch py-2'>
-      <div className='flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2'>
-        <div className='flex items-start gap-2 self-stretch'>
-          <div className='system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary'>{t(`${i18nPrefix}.variables`)}</div>
+    <div className="flex flex-col items-start self-stretch py-2">
+      <div className="flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2">
+        <div className="flex items-start gap-2 self-stretch">
+          <div className="system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.variables`)}</div>
           <ActionButton onClick={handleAddOperation}>
-            <RiAddLine className='h-4 w-4 shrink-0 text-text-tertiary' />
+            <RiAddLine className="h-4 w-4 shrink-0 text-text-tertiary" />
           </ActionButton>
         </div>
         <VarList

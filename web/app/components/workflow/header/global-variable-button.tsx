@@ -31,9 +31,9 @@ const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
       )}
       disabled={disabled}
       onClick={handleClick}
-      variant='ghost'
+      variant="ghost"
     >
-      <GlobalVariable className='h-4 w-4 text-components-button-secondary-text' />
+      <GlobalVariable className="h-4 w-4 text-components-button-secondary-text" />
     </Button>
   )
 }

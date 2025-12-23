@@ -14,9 +14,9 @@ const Actions = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center justify-end'>
+    <div className="flex items-center justify-end">
       <Button
-        variant='primary'
+        variant="primary"
         onClick={onProcess}
         disabled={runDisabled}
       >

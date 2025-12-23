@@ -19,12 +19,12 @@ const AuthorizedInDataSourceNode = ({
 
   return (
     <Button
-      size='small'
+      size="small"
       onClick={onJumpToDataSourcePage}
     >
       <Indicator
-        className='mr-1.5'
-        color='green'
+        className="mr-1.5"
+        color="green"
       />
       {
         authorizationsNum > 1

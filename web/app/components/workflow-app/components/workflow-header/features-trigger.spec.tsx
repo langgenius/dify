@@ -96,7 +96,7 @@ vi.mock('@/app/components/app/app-publisher', () => ({
     const inputs = props.inputs ?? []
     return (
       <div
-        data-testid='app-publisher'
+        data-testid="app-publisher"
         data-disabled={String(Boolean(props.disabled))}
         data-publish-disabled={String(Boolean(props.publishDisabled))}
         data-start-node-limit-exceeded={String(Boolean(props.startNodeLimitExceeded))}
@@ -147,7 +147,7 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/app/components/app/store', () => ({
   __esModule: true,
-  useStore: (selector: (state: { appDetail?: { id: string }; setAppDetail: typeof mockSetAppDetail }) => unknown) => mockUseAppStoreSelector(selector),
+  useStore: (selector: (state: { appDetail?: { id: string }, setAppDetail: typeof mockSetAppDetail }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
 const createProviderContext = ({

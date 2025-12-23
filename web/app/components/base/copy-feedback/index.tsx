@@ -44,8 +44,8 @@ const CopyFeedback = ({ content }: Props) => {
           onClick={onClickCopy}
           onMouseLeave={onMouseLeave}
         >
-          {isCopied && <RiClipboardFill className='h-4 w-4' />}
-          {!isCopied && <RiClipboardLine className='h-4 w-4' />}
+          {isCopied && <RiClipboardFill className="h-4 w-4" />}
+          {!isCopied && <RiClipboardLine className="h-4 w-4" />}
         </div>
       </ActionButton>
     </Tooltip>
@@ -84,7 +84,8 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
           onMouseLeave={onMouseLeave}
           className={`h-full w-full ${copyStyle.copyIcon} ${isCopied ? copyStyle.copied : ''
           }`}
-        ></div>
+        >
+        </div>
       </div>
     </Tooltip>
   )

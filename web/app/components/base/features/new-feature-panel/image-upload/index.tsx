@@ -49,20 +49,20 @@ const FileUpload = ({
 
   return (
     <FeatureCard
-      icon={
-        <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs'>
-          <RiImage2Fill className='h-4 w-4 text-text-primary-on-surface' />
+      icon={(
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-indigo-indigo-600 p-1 shadow-xs">
+          <RiImage2Fill className="h-4 w-4 text-text-primary-on-surface" />
         </div>
-      }
-      title={
-        <div className='flex items-center'>
+      )}
+      title={(
+        <div className="flex items-center">
           {t('appDebug.feature.imageUpload.title')}
           <Badge
-            text='LEGACY'
-            className='mx-1 shrink-0 border-text-accent-secondary text-text-accent-secondary'
+            text="LEGACY"
+            className="mx-1 shrink-0 border-text-accent-secondary text-text-accent-secondary"
           />
         </div>
-      }
+      )}
       value={file?.enabled}
       onChange={state => handleChange(FeatureEnum.file, state)}
       onMouseEnter={() => setIsHovering(true)}
@@ -71,20 +71,20 @@ const FileUpload = ({
     >
       <>
         {!file?.enabled && (
-          <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>{t('appDebug.feature.imageUpload.description')}</div>
+          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('appDebug.feature.imageUpload.description')}</div>
         )}
         {file?.enabled && (
           <>
             {!isHovering && !modalOpen && (
-              <div className='flex items-center gap-4 pt-0.5'>
-                <div className=''>
-                  <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('appDebug.feature.imageUpload.supportedTypes')}</div>
-                  <div className='system-xs-regular text-text-secondary'>{supportedTypes}</div>
+              <div className="flex items-center gap-4 pt-0.5">
+                <div className="">
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.imageUpload.supportedTypes')}</div>
+                  <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
                 </div>
-                <div className='h-[27px] w-px rotate-12 bg-divider-subtle'></div>
-                <div className=''>
-                  <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('appDebug.feature.imageUpload.numberLimit')}</div>
-                  <div className='system-xs-regular text-text-secondary'>{file?.number_limits}</div>
+                <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
+                <div className="">
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.imageUpload.numberLimit')}</div>
+                  <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
                 </div>
               </div>
             )}
@@ -98,8 +98,8 @@ const FileUpload = ({
                 }}
                 onChange={onChange}
               >
-                <Button className='w-full' disabled={disabled}>
-                  <RiEqualizer2Line className='mr-1 h-4 w-4' />
+                <Button className="w-full" disabled={disabled}>
+                  <RiEqualizer2Line className="mr-1 h-4 w-4" />
                   {t('common.operation.settings')}
                 </Button>
               </SettingModal>

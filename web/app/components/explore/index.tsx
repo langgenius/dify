@@ -41,7 +41,7 @@ const Explore: FC<IExploreProps> = ({
   }, [isCurrentWorkspaceDatasetOperator])
 
   return (
-    <div className='flex h-full overflow-hidden border-t border-divider-regular bg-background-body'>
+    <div className="flex h-full overflow-hidden border-t border-divider-regular bg-background-body">
       <ExploreContext.Provider
         value={
           {
@@ -56,7 +56,7 @@ const Explore: FC<IExploreProps> = ({
         }
       >
         <Sidebar controlUpdateInstalledApps={controlUpdateInstalledApps} />
-        <div className='w-0 grow'>
+        <div className="w-0 grow">
           {children}
         </div>
       </ExploreContext.Provider>

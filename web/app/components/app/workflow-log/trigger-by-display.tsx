@@ -54,7 +54,7 @@ const getPluginIcon = (metadata: TriggerMetadata | undefined, theme: Theme) => {
   return (
     <BlockIcon
       type={BlockEnum.TriggerPlugin}
-      size='md'
+      size="md"
       toolIcon={icon}
     />
   )
@@ -64,14 +64,14 @@ const getTriggerIcon = (triggeredFrom: WorkflowRunTriggeredFrom, metadata: Trigg
   switch (triggeredFrom) {
     case 'webhook':
       return (
-        <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md'>
-          <WebhookLine className='h-4 w-4 text-text-primary-on-surface' />
+        <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md">
+          <WebhookLine className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )
     case 'schedule':
       return (
-        <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-500 p-1 shadow-md'>
-          <Schedule className='h-4 w-4 text-text-primary-on-surface' />
+        <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-500 p-1 shadow-md">
+          <Schedule className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )
     case 'plugin':
@@ -83,23 +83,23 @@ const getTriggerIcon = (triggeredFrom: WorkflowRunTriggeredFrom, metadata: Trigg
       )
     case 'debugging':
       return (
-        <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md'>
-          <Code className='h-4 w-4 text-text-primary-on-surface' />
+        <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-blue-500 p-1 shadow-md">
+          <Code className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )
     case 'rag-pipeline-run':
     case 'rag-pipeline-debugging':
       return (
-        <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-1 shadow-md'>
-          <KnowledgeRetrieval className='h-4 w-4 text-text-primary-on-surface' />
+        <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-green-green-500 p-1 shadow-md">
+          <KnowledgeRetrieval className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )
     case 'app-run':
     default:
       // For user input types (app-run, etc.), use webapp icon
       return (
-        <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md'>
-          <WindowCursor className='h-4 w-4 text-text-primary-on-surface' />
+        <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 p-1 shadow-md">
+          <WindowCursor className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )
   }

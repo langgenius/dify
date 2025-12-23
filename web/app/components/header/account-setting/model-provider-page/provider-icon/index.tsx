@@ -21,17 +21,17 @@ const ProviderIcon: FC<ProviderIconProps> = ({
 
   if (provider.provider === 'langgenius/anthropic/anthropic') {
     return (
-      <div className='mb-2 py-[7px]'>
-        {theme === Theme.dark && <AnthropicLight className='h-2.5 w-[90px]' />}
-        {theme === Theme.light && <AnthropicDark className='h-2.5 w-[90px]' />}
+      <div className="mb-2 py-[7px]">
+        {theme === Theme.dark && <AnthropicLight className="h-2.5 w-[90px]" />}
+        {theme === Theme.light && <AnthropicDark className="h-2.5 w-[90px]" />}
       </div>
     )
   }
 
   if (provider.provider === 'langgenius/openai/openai') {
     return (
-      <div className='mb-2'>
-        <Openai className='h-6 w-auto text-text-inverted-dimmed' />
+      <div className="mb-2">
+        <Openai className="h-6 w-auto text-text-inverted-dimmed" />
       </div>
     )
   }
@@ -39,16 +39,16 @@ const ProviderIcon: FC<ProviderIconProps> = ({
   return (
     <div className={cn('inline-flex items-center gap-2', className)}>
       <img
-        alt='provider-icon'
+        alt="provider-icon"
         src={renderI18nObject(
           theme === Theme.dark && provider.icon_small_dark
             ? provider.icon_small_dark
             : provider.icon_small,
           language,
         )}
-        className='h-6 w-6'
+        className="h-6 w-6"
       />
-      <div className='system-md-semibold text-text-primary'>
+      <div className="system-md-semibold text-text-primary">
         {renderI18nObject(provider.label, language)}
       </div>
     </div>

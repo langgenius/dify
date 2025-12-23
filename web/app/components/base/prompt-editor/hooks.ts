@@ -157,16 +157,16 @@ export type TriggerFn = (
 export const PUNCTUATION = '\\.,\\+\\*\\?\\$\\@\\|#{}\\(\\)\\^\\-\\[\\]\\\\/!%\'"~=<>_:;'
 export function useBasicTypeaheadTriggerMatch(
   trigger: string,
-  { minLength = 1, maxLength = 75 }: { minLength?: number; maxLength?: number },
+  { minLength = 1, maxLength = 75 }: { minLength?: number, maxLength?: number },
 ): TriggerFn {
   return useCallback(
     (text: string) => {
       const validChars = `[${PUNCTUATION}\\s]`
       const TypeaheadTriggerRegex = new RegExp(
         '(.*)('
-          + `[${trigger}]`
-          + `((?:${validChars}){0,${maxLength}})`
-          + ')$',
+        + `[${trigger}]`
+        + `((?:${validChars}){0,${maxLength}})`
+        + ')$',
       )
       const match = TypeaheadTriggerRegex.exec(text)
       if (match !== null) {

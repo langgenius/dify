@@ -32,7 +32,7 @@ let lastUploadedFile: File | undefined
 
 vi.mock('./csv-uploader', () => ({
   __esModule: true,
-  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
+  default: ({ file, updateFile }: { file?: File, updateFile: (file?: File) => void }) => (
     <div>
       <button
         data-testid="mock-uploader"

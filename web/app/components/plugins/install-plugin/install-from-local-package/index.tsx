@@ -91,8 +91,8 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
       className={cn(modalClassName, 'shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0')}
       closable
     >
-      <div className='flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6'>
-        <div className='title-2xl-semi-bold self-stretch text-text-primary'>
+      <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
+        <div className="title-2xl-semi-bold self-stretch text-text-primary">
           {getTitle()}
         </div>
       </div>
@@ -106,28 +106,30 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
           onFailed={handleUploadFail}
         />
       )}
-      {isBundle ? (
-        <ReadyToInstallBundle
-          step={step}
-          onStepChange={setStep}
-          onStartToInstall={handleStartToInstall}
-          setIsInstalling={setIsInstalling}
-          onClose={onClose}
-          allPlugins={dependencies}
-        />
-      ) : (
-        <ReadyToInstallPackage
-          step={step}
-          onStepChange={setStep}
-          onStartToInstall={handleStartToInstall}
-          setIsInstalling={setIsInstalling}
-          onClose={onClose}
-          uniqueIdentifier={uniqueIdentifier}
-          manifest={manifest}
-          errorMsg={errorMsg}
-          onError={setErrorMsg}
-        />
-      )}
+      {isBundle
+        ? (
+            <ReadyToInstallBundle
+              step={step}
+              onStepChange={setStep}
+              onStartToInstall={handleStartToInstall}
+              setIsInstalling={setIsInstalling}
+              onClose={onClose}
+              allPlugins={dependencies}
+            />
+          )
+        : (
+            <ReadyToInstallPackage
+              step={step}
+              onStepChange={setStep}
+              onStartToInstall={handleStartToInstall}
+              setIsInstalling={setIsInstalling}
+              onClose={onClose}
+              uniqueIdentifier={uniqueIdentifier}
+              manifest={manifest}
+              errorMsg={errorMsg}
+              onError={setErrorMsg}
+            />
+          )}
     </Modal>
   )
 }

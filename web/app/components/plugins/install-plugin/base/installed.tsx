@@ -30,25 +30,25 @@ const Installed: FC<Props> = ({
   }
   return (
     <>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <p className='system-md-regular text-text-secondary'>{(isFailed && errMsg) ? errMsg : t(`plugin.installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`)}</p>
+      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+        <p className="system-md-regular text-text-secondary">{(isFailed && errMsg) ? errMsg : t(`plugin.installModal.${isFailed ? 'installFailedDesc' : 'installedSuccessfullyDesc'}`)}</p>
         {payload && (
-          <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
+          <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
             <Card
-              className='w-full'
+              className="w-full"
               payload={isMarketPayload ? pluginManifestInMarketToPluginProps(payload as PluginManifestInMarket) : pluginManifestToCardPluginProps(payload as PluginDeclaration)}
               installed={!isFailed}
               installFailed={isFailed}
-              titleLeft={<Badge className='mx-1' size="s" state={BadgeState.Default}>{(payload as PluginDeclaration).version || (payload as PluginManifestInMarket).latest_version}</Badge>}
+              titleLeft={<Badge className="mx-1" size="s" state={BadgeState.Default}>{(payload as PluginDeclaration).version || (payload as PluginManifestInMarket).latest_version}</Badge>}
             />
           </div>
         )}
       </div>
       {/* Action Buttons */}
-      <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
+      <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         <Button
-          variant='primary'
-          className='min-w-[72px]'
+          variant="primary"
+          className="min-w-[72px]"
           onClick={handleClose}
         >
           {t('common.operation.close')}

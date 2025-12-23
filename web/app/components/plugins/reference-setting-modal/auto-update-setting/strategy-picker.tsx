@@ -46,28 +46,29 @@ const StrategyPicker = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='top-end'
+      placement="top-end"
       offset={4}
     >
       <PortalToFollowElemTrigger onClick={(e) => {
         e.stopPropagation()
         e.nativeEvent.stopImmediatePropagation()
         setOpen(v => !v)
-      }}>
+      }}
+      >
         <Button
-          size='small'
+          size="small"
         >
           {selectedOption?.label}
-          <RiArrowDownSLine className='h-3.5 w-3.5' />
+          <RiArrowDownSLine className="h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[99]'>
-        <div className='w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
+      <PortalToFollowElemContent className="z-[99]">
+        <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (
               <div
                 key={option.value}
-                className='flex cursor-pointer rounded-lg p-2 pr-3 hover:bg-state-base-hover'
+                className="flex cursor-pointer rounded-lg p-2 pr-3 hover:bg-state-base-hover"
                 onClick={(e) => {
                   e.stopPropagation()
                   e.nativeEvent.stopImmediatePropagation()
@@ -75,16 +76,16 @@ const StrategyPicker = ({
                   setOpen(false)
                 }}
               >
-                <div className='mr-1 w-4 shrink-0'>
+                <div className="mr-1 w-4 shrink-0">
                   {
                     value === option.value && (
-                      <RiCheckLine className='h-4 w-4 text-text-accent' />
+                      <RiCheckLine className="h-4 w-4 text-text-accent" />
                     )
                   }
                 </div>
-                <div className='grow'>
-                  <div className='system-sm-semibold mb-0.5 text-text-secondary'>{option.label}</div>
-                  <div className='system-xs-regular text-text-tertiary'>{option.description}</div>
+                <div className="grow">
+                  <div className="system-sm-semibold mb-0.5 text-text-secondary">{option.label}</div>
+                  <div className="system-xs-regular text-text-tertiary">{option.description}</div>
                 </div>
               </div>
             ))

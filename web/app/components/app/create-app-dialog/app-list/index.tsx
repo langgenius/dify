@@ -177,58 +177,65 @@ const Apps = ({
   }
 
   return (
-    <div className='flex h-full flex-col'>
-      <div className='flex items-center justify-between border-b border-divider-burn py-3'>
-        <div className='min-w-[180px] pl-5'>
-          <span className='title-xl-semi-bold text-text-primary'>{t('app.newApp.startFromTemplate')}</span>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-divider-burn py-3">
+        <div className="min-w-[180px] pl-5">
+          <span className="title-xl-semi-bold text-text-primary">{t('app.newApp.startFromTemplate')}</span>
         </div>
-        <div className='flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md'>
+        <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
-          <div className='h-[14px]'>
-            <Divider type='vertical' />
+          <div className="h-[14px]">
+            <Divider type="vertical" />
           </div>
           <Input
             showClearIcon
-            wrapperClassName='w-full flex-1'
-            className='bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none'
+            wrapperClassName="w-full flex-1"
+            className="bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
             placeholder={t('app.newAppFromTemplate.searchAllTemplate') as string}
             value={keywords}
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
         </div>
-        <div className='h-8 w-[180px]'></div>
+        <div className="h-8 w-[180px]"></div>
       </div>
-      <div className='relative flex flex-1 overflow-y-auto'>
-        {!searchKeywords && <div className='h-full w-[200px] p-4'>
-          <Sidebar current={currCategory as AppCategories} categories={categories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
-        </div>}
-        <div className='h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2'>
-          {searchFilteredList && searchFilteredList.length > 0 && <>
-            <div className='pb-1 pt-4'>
-              {searchKeywords
-                ? <p className='title-md-semi-bold text-text-tertiary'>{searchFilteredList.length > 1 ? t('app.newApp.foundResults', { count: searchFilteredList.length }) : t('app.newApp.foundResult', { count: searchFilteredList.length })}</p>
-                : <div className='flex h-[22px] items-center'>
-                  <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />
-                </div>}
-            </div>
-            <div
-              className={cn(
-                'grid shrink-0 grid-cols-1 content-start gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
-              )}>
-              {searchFilteredList.map(app => (
-                <AppCard
-                  key={app.app_id}
-                  app={app}
-                  canCreate={hasEditPermission}
-                  onCreate={() => {
-                    setCurrApp(app)
-                    setIsShowCreateModal(true)
-                  }}
-                />
-              ))}
-            </div>
-          </>}
+      <div className="relative flex flex-1 overflow-y-auto">
+        {!searchKeywords && (
+          <div className="h-full w-[200px] p-4">
+            <Sidebar current={currCategory as AppCategories} categories={categories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+          </div>
+        )}
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+          {searchFilteredList && searchFilteredList.length > 0 && (
+            <>
+              <div className="pb-1 pt-4">
+                {searchKeywords
+                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('app.newApp.foundResults', { count: searchFilteredList.length }) : t('app.newApp.foundResult', { count: searchFilteredList.length })}</p>
+                  : (
+                      <div className="flex h-[22px] items-center">
+                        <AppCategoryLabel category={currCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
+                      </div>
+                    )}
+              </div>
+              <div
+                className={cn(
+                  'grid shrink-0 grid-cols-1 content-start gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+                )}
+              >
+                {searchFilteredList.map(app => (
+                  <AppCard
+                    key={app.app_id}
+                    app={app}
+                    canCreate={hasEditPermission}
+                    onCreate={() => {
+                      setCurrApp(app)
+                      setIsShowCreateModal(true)
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
           {(!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />}
         </div>
       </div>
@@ -253,11 +260,13 @@ export default React.memo(Apps)
 
 function NoTemplateFound() {
   const { t } = useTranslation()
-  return <div className='w-full rounded-lg bg-workflow-process-bg p-4'>
-    <div className='mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg'>
-      <RiRobot2Line className='h-5 w-5 text-text-tertiary' />
+  return (
+    <div className="w-full rounded-lg bg-workflow-process-bg p-4">
+      <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
+        <RiRobot2Line className="h-5 w-5 text-text-tertiary" />
+      </div>
+      <p className="title-md-semi-bold text-text-primary">{t('app.newApp.noTemplateFound')}</p>
+      <p className="system-sm-regular text-text-tertiary">{t('app.newApp.noTemplateFoundTip')}</p>
     </div>
-    <p className='title-md-semi-bold text-text-primary'>{t('app.newApp.noTemplateFound')}</p>
-    <p className='system-sm-regular text-text-tertiary'>{t('app.newApp.noTemplateFoundTip')}</p>
-  </div>
+  )
 }

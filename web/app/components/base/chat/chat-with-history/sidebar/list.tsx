@@ -19,9 +19,9 @@ const List: FC<ListProps> = ({
   currentConversationId,
 }) => {
   return (
-    <div className='space-y-0.5'>
+    <div className="space-y-0.5">
       {title && (
-        <div className='system-xs-medium-uppercase px-3 pb-1 pt-2 text-text-tertiary'>{title}</div>
+        <div className="system-xs-medium-uppercase px-3 pb-1 pt-2 text-text-tertiary">{title}</div>
       )}
       {list.map(item => (
         <Item

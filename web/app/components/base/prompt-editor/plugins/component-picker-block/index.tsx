@@ -170,9 +170,9 @@ const ComponentPicker = ({
             // The `LexicalMenu` will try to calculate the position of the floating menu based on the first child.
             // Since we use floating ui, we need to wrap it with a div to prevent the position calculation being affected.
             // See https://github.com/facebook/lexical/blob/ac97dfa9e14a73ea2d6934ff566282d7f758e8bb/packages/lexical-react/src/shared/LexicalMenu.ts#L493
-            <div className='h-0 w-0'>
+            <div className="h-0 w-0">
               <div
-                className='w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'
+                className="w-[260px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg"
                 style={{
                   ...floatingStyles,
                   visibility: isPositioned ? 'visible' : 'hidden',
@@ -181,14 +181,14 @@ const ComponentPicker = ({
               >
                 {
                   workflowVariableBlock?.show && (
-                    <div className='p-1'>
+                    <div className="p-1">
                       <VarReferenceVars
-                        searchBoxClassName='mt-1'
+                        searchBoxClassName="mt-1"
                         vars={workflowVariableOptions}
                         onChange={(variables: string[]) => {
                           handleSelectWorkflowVariable(variables)
                         }}
-                        maxHeightClass='max-h-[34vh]'
+                        maxHeightClass="max-h-[34vh]"
                         isSupportFileVar={isSupportFileVar}
                         onClose={handleClose}
                         onBlur={handleClose}
@@ -202,7 +202,7 @@ const ComponentPicker = ({
                 }
                 {
                   workflowVariableBlock?.show && !!options.length && (
-                    <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                    <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
                   )
                 }
                 <div>
@@ -212,7 +212,7 @@ const ComponentPicker = ({
                         {
                           // Divider
                           index !== 0 && options.at(index - 1)?.group !== option.group && (
-                            <div className='my-1 h-px w-full -translate-x-1 bg-divider-subtle'></div>
+                            <div className="my-1 h-px w-full -translate-x-1 bg-divider-subtle"></div>
                           )
                         }
                         {option.renderMenuOption({
@@ -248,7 +248,7 @@ const ComponentPicker = ({
       //
       // We no need the position function of the `LexicalTypeaheadMenuPlugin`,
       // so the reference anchor should be positioned based on the range of the trigger string, and the menu will be positioned by the floating ui.
-      anchorClassName='z-[999999] translate-y-[calc(-100%-3px)]'
+      anchorClassName="z-[999999] translate-y-[calc(-100%-3px)]"
       menuRenderFn={renderMenu}
       triggerFn={checkForTriggerMatch}
     />

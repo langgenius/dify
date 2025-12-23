@@ -85,13 +85,13 @@ const LocaleLayout = async ({
         <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
       <body
-        className='color-scheme h-full select-auto'
+        className="color-scheme h-full select-auto"
         {...datasetMap}
       >
         <ReactScan />
         <ThemeProvider
-          attribute='data-theme'
-          defaultTheme='system'
+          attribute="data-theme"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
           enableColorScheme={false}

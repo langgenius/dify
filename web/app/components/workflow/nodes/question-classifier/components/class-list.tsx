@@ -87,9 +87,11 @@ const ClassList: FC<Props> = ({
 
   return (
     <>
-      <div className='mb-2 flex items-center justify-between' onClick={handleCollapse}>
-        <div className='flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary'>
-          {t(`${i18nPrefix}.class`)} <span className='text-text-destructive'>*</span>
+      <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
+        <div className="flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary">
+          {t(`${i18nPrefix}.class`)}
+          {' '}
+          <span className="text-text-destructive">*</span>
           {list.length > 0 && (
             <ArrowDownRoundFill
               className={cn(
@@ -109,11 +111,11 @@ const ClassList: FC<Props> = ({
           <ReactSortable
             list={list.map(item => ({ ...item }))}
             setList={handleSortTopic}
-            handle='.handle'
-            ghostClass='bg-components-panel-bg'
+            handle=".handle"
+            ghostClass="bg-components-panel-bg"
             animation={150}
             disabled={readonly}
-            className='space-y-2'
+            className="space-y-2"
           >
             {
               list.map((item, index) => {
@@ -136,10 +138,13 @@ const ClassList: FC<Props> = ({
                     }}
                   >
                     <div>
-                      {canDrag && <RiDraggable className={cn(
-                        'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
-                        'group-hover:block',
-                      )} />}
+                      {canDrag && (
+                        <RiDraggable className={cn(
+                          'handle absolute left-2 top-3 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+                          'group-hover:block',
+                        )}
+                        />
+                      )}
                       <Item
                         className={cn(canDrag && 'handle')}
                         headerClassName={cn(canDrag && 'cursor-grab group-hover:pl-5')}
@@ -161,7 +166,7 @@ const ClassList: FC<Props> = ({
         </div>
       )}
       {!readonly && !collapsed && (
-        <div className='mt-2'>
+        <div className="mt-2">
           <AddButton
             onClick={handleAddClass}
             text={t(`${i18nPrefix}.addClass`)}

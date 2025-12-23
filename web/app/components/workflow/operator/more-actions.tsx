@@ -197,58 +197,58 @@ const MoreActions: FC = () => {
               )}
               onClick={handleTrigger}
             >
-              <RiMoreFill className='h-4 w-4' />
+              <RiMoreFill className="h-4 w-4" />
             </div>
           </TipPopup>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-10'>
-          <div className='min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg'>
-            <div className='p-1'>
-              <div className='flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary'>
-                <RiExportLine className='h-3 w-3' />
+        <PortalToFollowElemContent className="z-10">
+          <div className="min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg">
+            <div className="p-1">
+              <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
+                <RiExportLine className="h-3 w-3" />
                 {t('workflow.common.exportImage')}
               </div>
-              <div className='px-2 py-1 text-xs font-medium text-text-tertiary'>
+              <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
                 {t('workflow.common.currentView')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png')}
               >
                 {t('workflow.common.exportPNG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg')}
               >
                 {t('workflow.common.exportJPEG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg')}
               >
                 {t('workflow.common.exportSVG')}
               </div>
 
-              <div className='border-border-divider mx-2 my-1 border-t' />
+              <div className="border-border-divider mx-2 my-1 border-t" />
 
-              <div className='px-2 py-1 text-xs font-medium text-text-tertiary'>
+              <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
                 {t('workflow.common.currentWorkflow')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png', true)}
               >
                 {t('workflow.common.exportPNG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg', true)}
               >
                 {t('workflow.common.exportJPEG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg', true)}
               >
                 {t('workflow.common.exportSVG')}

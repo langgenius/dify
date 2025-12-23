@@ -16,7 +16,8 @@ const ShortcutsName = ({
     <div className={cn(
       'flex items-center gap-0.5',
       className,
-    )}>
+    )}
+    >
       {
         keys.map(key => (
           <div

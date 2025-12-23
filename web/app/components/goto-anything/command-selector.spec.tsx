@@ -49,8 +49,8 @@ describe('CommandSelector', () => {
         <CommandSelector
           actions={actions}
           onCommandSelect={onSelect}
-          searchFilter='app'
-          originalQuery='@app'
+          searchFilter="app"
+          originalQuery="@app"
         />
       </Command>,
     )
@@ -70,8 +70,8 @@ describe('CommandSelector', () => {
         <CommandSelector
           actions={actions}
           onCommandSelect={onSelect}
-          searchFilter='zen'
-          originalQuery='/zen'
+          searchFilter="zen"
+          originalQuery="/zen"
         />
       </Command>,
     )

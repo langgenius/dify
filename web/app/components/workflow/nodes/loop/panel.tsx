@@ -41,20 +41,20 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
+    <div className="mt-2">
       <div>
         <Field
-          title={<div className='pl-3'>{t('workflow.nodes.loop.loopVariables')}</div>}
-          operations={
+          title={<div className="pl-3">{t('workflow.nodes.loop.loopVariables')}</div>}
+          operations={(
             <div
-              className='mr-4 flex h-5 w-5 cursor-pointer items-center justify-center'
+              className="mr-4 flex h-5 w-5 cursor-pointer items-center justify-center"
               onClick={handleAddLoopVariable}
             >
-              <RiAddLine className='h-4 w-4 text-text-tertiary' />
+              <RiAddLine className="h-4 w-4 text-text-tertiary" />
             </div>
-          }
+          )}
         >
-          <div className='px-4'>
+          <div className="px-4">
             <LoopVariable
               variables={inputs.loop_variables}
               nodeId={id}
@@ -63,9 +63,9 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
             />
           </div>
         </Field>
-        <Split className='my-2' />
+        <Split className="my-2" />
         <Field
-          title={<div className='pl-3'>{t(`${i18nPrefix}.breakCondition`)}</div>}
+          title={<div className="pl-3">{t(`${i18nPrefix}.breakCondition`)}</div>}
           tooltip={t(`${i18nPrefix}.breakConditionTip`)}
         >
           <ConditionWrap
@@ -85,12 +85,12 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
             logicalOperator={inputs.logical_operator!}
           />
         </Field>
-        <Split className='mt-2' />
-        <div className='mt-2'>
+        <Split className="mt-2" />
+        <div className="mt-2">
           <Field
-            title={<div className='pl-3'>{t(`${i18nPrefix}.loopMaxCount`)}</div>}
+            title={<div className="pl-3">{t(`${i18nPrefix}.loopMaxCount`)}</div>}
           >
-            <div className='px-3 py-2'>
+            <div className="px-3 py-2">
               <InputNumberWithSlider
                 min={1}
                 max={LOOP_NODE_MAX_COUNT}

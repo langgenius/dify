@@ -38,14 +38,14 @@ const HeaderInHistory = ({
       <div>
         <RunningTitle />
       </div>
-      <div className='flex items-center space-x-2'>
+      <div className="flex items-center space-x-2">
         <ViewHistory {...viewHistoryProps} withText />
-        <Divider type='vertical' className='mx-auto h-3.5' />
+        <Divider type="vertical" className="mx-auto h-3.5" />
         <Button
-          variant='primary'
+          variant="primary"
           onClick={handleGoBackToEdit}
         >
-          <ArrowNarrowLeft className='mr-1 h-4 w-4' />
+          <ArrowNarrowLeft className="mr-1 h-4 w-4" />
           {t('workflow.common.goBackToEdit')}
         </Button>
       </div>

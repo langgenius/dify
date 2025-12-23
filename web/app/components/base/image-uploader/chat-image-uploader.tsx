@@ -134,7 +134,7 @@ const ChatImageUploader: FC<ChatImageUploaderProps> = ({
 }) => {
   const onlyUploadLocal
     = settings.transfer_methods.length === 1
-    && settings.transfer_methods[0] === TransferMethod.local_file
+      && settings.transfer_methods[0] === TransferMethod.local_file
 
   if (onlyUploadLocal) {
     return (

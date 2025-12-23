@@ -49,12 +49,12 @@ type FormProps<
   customRenderField?: (
     formSchema: CustomFormSchema,
     props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>,
-  ) => ReactNode,
+  ) => ReactNode
   // If return falsy value, this field will fallback to default render
   override?: [Array<FormTypeEnum>, (formSchema: CredentialFormSchema, props: Omit<FormProps<CustomFormSchema>, 'override' | 'customRenderField'>) => ReactNode]
   nodeId?: string
-  nodeOutputVars?: NodeOutPutVar[],
-  availableNodes?: Node[],
+  nodeOutputVars?: NodeOutPutVar[]
+  availableNodes?: Node[]
   canChooseMCPTool?: boolean
 }
 
@@ -130,11 +130,14 @@ function Form<
     const tooltip = formSchema.tooltip
     const tooltipContent = (tooltip && (
       <Tooltip
-        popupContent={<div className='w-[200px]'>
-          {tooltip[language] || tooltip.en_US}
-        </div>}
-        triggerClassName='ml-1 w-4 h-4'
-        asChild={false} />
+        popupContent={(
+          <div className="w-[200px]">
+            {tooltip[language] || tooltip.en_US}
+          </div>
+        )}
+        triggerClassName="ml-1 w-4 h-4"
+        asChild={false}
+      />
     ))
     if (override) {
       const [overrideTypes, overrideRender] = override
@@ -159,7 +162,7 @@ function Form<
           <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>
@@ -170,10 +173,13 @@ function Form<
             validated={validatedSuccess}
             placeholder={placeholder?.[language] || placeholder?.en_US}
             disabled={disabled}
-            type={formSchema.type === FormTypeEnum.secretInput ? 'password'
-              : formSchema.type === FormTypeEnum.textNumber ? 'number'
+            type={formSchema.type === FormTypeEnum.secretInput
+              ? 'password'
+              : formSchema.type === FormTypeEnum.textNumber
+                ? 'number'
                 : 'text'}
-            {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})} />
+            {...(formSchema.type === FormTypeEnum.textNumber ? { min: (formSchema as CredentialFormSchemaNumberInput).min, max: (formSchema as CredentialFormSchemaNumberInput).max } : {})}
+          />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -195,7 +201,7 @@ function Form<
           <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>
@@ -217,7 +223,7 @@ function Form<
               >
                 <RadioE isChecked={value[variable] === option.value} />
 
-                <div className='system-sm-regular text-text-secondary'>{option.label[language] || option.label.en_US}</div>
+                <div className="system-sm-regular text-text-secondary">{option.label[language] || option.label.en_US}</div>
               </div>
             ))}
           </div>
@@ -241,12 +247,12 @@ function Form<
             {label[language] || label.en_US}
 
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>
           <SimpleSelect
-            wrapperClassName='h-8'
+            wrapperClassName="h-8"
             className={cn(inputClassName)}
             disabled={readonly}
             defaultValue={(isShowDefaultValue && ((value[variable] as string) === '' || value[variable] === undefined || value[variable] === null)) ? formSchema.default : value[variable]}
@@ -257,7 +263,8 @@ function Form<
               return true
             }).map(option => ({ value: option.value, name: option.label[language] || option.label.en_US }))}
             onSelect={item => handleFormChange(variable, item.value as string)}
-            placeholder={placeholder?.[language] || placeholder?.en_US} />
+            placeholder={placeholder?.[language] || placeholder?.en_US}
+          />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -274,20 +281,20 @@ function Form<
 
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
-          <div className='system-sm-semibold flex items-center justify-between py-2 text-text-secondary'>
-            <div className='flex items-center space-x-2'>
+          <div className="system-sm-semibold flex items-center justify-between py-2 text-text-secondary">
+            <div className="flex items-center space-x-2">
               <span className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>{label[language] || label.en_US}</span>
               {required && (
-                <span className='ml-1 text-red-500'>*</span>
+                <span className="ml-1 text-red-500">*</span>
               )}
               {tooltipContent}
             </div>
             <Radio.Group
-              className='flex items-center'
+              className="flex items-center"
               value={value[variable]}
               onChange={val => handleFormChange(variable, val)}
             >
-              <Radio value={true} className='!mr-1'>True</Radio>
+              <Radio value={true} className="!mr-1">True</Radio>
               <Radio value={false}>False</Radio>
             </Radio.Group>
           </div>
@@ -305,19 +312,20 @@ function Form<
           <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>
           <ModelParameterModal
-            popupClassName='!w-[387px]'
+            popupClassName="!w-[387px]"
             isAdvancedMode
             isInWorkflow
             isAgentStrategy={isAgentStrategy}
             value={value[variable]}
             setModel={model => handleModelChanged(variable, model)}
             readonly={readonly}
-            scope={scope} />
+            scope={scope}
+          />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -336,7 +344,7 @@ function Form<
           <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>
@@ -398,7 +406,7 @@ function Form<
           <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>
@@ -406,7 +414,8 @@ function Form<
             disabled={readonly}
             scope={scope}
             value={value[variable]}
-            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)} />
+            onSelect={item => handleFormChange(variable, { ...item, type: FormTypeEnum.appSelector } as any)}
+          />
           {fieldMoreInfo?.(formSchema)}
           {validating && changeKey === variable && <ValidatingTip />}
         </div>
@@ -423,7 +432,7 @@ function Form<
           <div className={cn(fieldLabelClassName, 'system-sm-semibold flex items-center py-2 text-text-secondary')}>
             {label[language] || label.en_US}
             {required && (
-              <span className='ml-1 text-red-500'>*</span>
+              <span className="ml-1 text-red-500">*</span>
             )}
             {tooltipContent}
           </div>

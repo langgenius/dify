@@ -24,19 +24,19 @@ const ToolItem: FC<Props> = ({
   const { plugin_id, declaration } = payload
   const { label, author: org } = declaration
   return (
-    <div className='p-1'>
+    <div className="p-1">
       <div
-        className='flex w-full select-none items-center rounded-lg pr-2 hover:bg-state-base-hover'
+        className="flex w-full select-none items-center rounded-lg pr-2 hover:bg-state-base-hover"
       >
-        <div className='flex h-8 grow items-center space-x-2 pl-3 pr-2'>
-          <Icon size='tiny' src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
-          <div className='system-sm-medium max-w-[150px] shrink-0 truncate text-text-primary'>{renderI18nObject(label, language)}</div>
-          <div className='system-xs-regular max-w-[150px] shrink-0  truncate text-text-quaternary'>{org}</div>
+        <div className="flex h-8 grow items-center space-x-2 pl-3 pr-2">
+          <Icon size="tiny" src={`${MARKETPLACE_API_PREFIX}/plugins/${plugin_id}/icon`} />
+          <div className="system-sm-medium max-w-[150px] shrink-0 truncate text-text-primary">{renderI18nObject(label, language)}</div>
+          <div className="system-xs-regular max-w-[150px] shrink-0  truncate text-text-quaternary">{org}</div>
         </div>
         <Checkbox
           checked={isChecked}
           onCheck={onCheckChange}
-          className='shrink-0'
+          className="shrink-0"
         />
       </div>
     </div>

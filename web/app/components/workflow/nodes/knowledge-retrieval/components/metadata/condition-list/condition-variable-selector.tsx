@@ -43,7 +43,7 @@ const ConditionVariableSelector = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{
         mainAxis: 4,
         crossAxis: 0,
@@ -64,11 +64,11 @@ const ConditionVariableSelector = ({
           {
             !valueSelector.length && (
               <>
-                <div className='system-sm-regular flex grow items-center text-components-input-text-placeholder'>
-                  <Variable02 className='mr-1 h-4 w-4' />
+                <div className="system-sm-regular flex grow items-center text-components-input-text-placeholder">
+                  <Variable02 className="mr-1 h-4 w-4" />
                   {t('workflow.nodes.knowledgeRetrieval.metadata.panel.select')}
                 </div>
-                <div className='system-2xs-medium flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary'>
+                <div className="system-2xs-medium flex h-5 shrink-0 items-center rounded-[5px] border border-divider-deep px-[5px] text-text-tertiary">
                   {varType}
                 </div>
               </>
@@ -76,8 +76,8 @@ const ConditionVariableSelector = ({
           }
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+      <PortalToFollowElemContent className="z-[1000]">
+        <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars
             vars={nodesOutputVars}
             isSupportFileVar

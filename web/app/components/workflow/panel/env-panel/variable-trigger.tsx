@@ -36,7 +36,7 @@ const VariableTrigger = ({
         if (open)
           onClose()
       }}
-      placement='left-start'
+      placement="left-start"
       offset={{
         mainAxis: 8,
         alignmentAxis: -104,
@@ -46,13 +46,14 @@ const VariableTrigger = ({
         setOpen(v => !v)
         if (open)
           onClose()
-      }}>
-        <Button variant='primary'>
-          <RiAddLine className='mr-1 h-4 w-4' />
-          <span className='system-sm-medium'>{t('workflow.env.envPanelButton')}</span>
+      }}
+      >
+        <Button variant="primary">
+          <RiAddLine className="mr-1 h-4 w-4" />
+          <span className="system-sm-medium">{t('workflow.env.envPanelButton')}</span>
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <VariableModal
           env={env}
           onSave={onSave}

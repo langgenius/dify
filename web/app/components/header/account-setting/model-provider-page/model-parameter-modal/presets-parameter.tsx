@@ -20,12 +20,12 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <Button
-        size={'small'}
-        variant={'secondary'}
+        size="small"
+        variant="secondary"
         className={cn(open && 'bg-state-base-hover')}
       >
         {t('common.modelProvider.loadPresets')}
-        <RiArrowDownSLine className='ml-0.5 h-3.5 w-3.5' />
+        <RiArrowDownSLine className="ml-0.5 h-3.5 w-3.5" />
       </Button>
     )
   }, [t])
@@ -42,7 +42,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
     return {
       value: tone.id,
       text: (
-        <div className='flex h-full items-center'>
+        <div className="flex h-full items-center">
           {getToneIcon(tone.id)}
           {t(`common.model.tone.${tone.name}`) as string}
         </div>
@@ -55,7 +55,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
       renderTrigger={renderTrigger}
       items={options}
       onSelect={item => onSelect(item.value as number)}
-      popupClassName='z-[1003]'
+      popupClassName="z-[1003]"
     />
   )
 }

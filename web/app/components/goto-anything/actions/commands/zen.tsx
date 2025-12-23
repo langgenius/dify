@@ -38,8 +38,8 @@ export const zenCommand: SlashCommandHandler<ZenDeps> = {
       description: i18n.t('app.gotoAnything.actions.zenDesc', { lng: locale }) || 'Toggle canvas focus mode',
       type: 'command' as const,
       icon: (
-        <div className='flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg'>
-          <RiFullscreenLine className='h-4 w-4 text-text-tertiary' />
+        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+          <RiFullscreenLine className="h-4 w-4 text-text-tertiary" />
         </div>
       ),
       data: { command: 'workflow.zen', args: {} },

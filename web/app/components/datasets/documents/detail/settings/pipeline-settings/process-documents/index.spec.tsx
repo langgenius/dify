@@ -33,7 +33,7 @@ vi.mock('../../../../create-from-pipeline/process-documents/form', () => ({
   }: {
     ref: React.RefObject<{ submit: () => void }>
     initialData: Record<string, unknown>
-    configurations: Array<{ variable: string; label: string; type: string }>
+    configurations: Array<{ variable: string, label: string, type: string }>
     schema: unknown
     onSubmit: (data: Record<string, unknown>) => void
     onPreview: () => void

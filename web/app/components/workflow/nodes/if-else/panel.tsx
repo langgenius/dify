@@ -42,7 +42,7 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
   const cases = inputs.cases || []
 
   return (
-    <div className='p-1'>
+    <div className="p-1">
       <ConditionWrap
         nodeId={id}
         cases={cases}
@@ -62,23 +62,23 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
         varsIsVarFileAttribute={varsIsVarFileAttribute}
         filterVar={filterVar}
       />
-      <div className='px-4 py-2'>
+      <div className="px-4 py-2">
         <Button
-          className='w-full'
-          variant='tertiary'
+          className="w-full"
+          variant="tertiary"
           onClick={() => handleAddCase()}
           disabled={readOnly}
         >
-          <RiAddLine className='mr-1 h-4 w-4' />
+          <RiAddLine className="mr-1 h-4 w-4" />
           ELIF
         </Button>
       </div>
-      <div className='mx-3 my-2 h-px bg-divider-subtle'></div>
+      <div className="mx-3 my-2 h-px bg-divider-subtle"></div>
       <Field
         title={t(`${i18nPrefix}.else`)}
-        className='px-4 py-2'
+        className="px-4 py-2"
       >
-        <div className='text-xs font-normal leading-[18px] text-text-tertiary'>{t(`${i18nPrefix}.elseDescription`)}</div>
+        <div className="text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.elseDescription`)}</div>
       </Field>
     </div>
   )

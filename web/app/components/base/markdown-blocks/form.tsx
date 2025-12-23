@@ -56,7 +56,7 @@ const MarkdownForm = ({ node }: any) => {
         let value = formValues[child.properties.name]
 
         if (child.tagName === SUPPORTED_TAGS.INPUT
-            && (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME)) {
+          && (child.properties.type === SUPPORTED_TYPES.DATE || child.properties.type === SUPPORTED_TYPES.DATETIME)) {
           if (value && typeof value.format === 'function') {
             // Format date output consistently
             const includeTime = child.properties.type === SUPPORTED_TYPES.DATETIME
@@ -88,7 +88,7 @@ const MarkdownForm = ({ node }: any) => {
   return (
     <form
       autoComplete="off"
-      className='flex flex-col self-stretch'
+      className="flex flex-col self-stretch"
       onSubmit={(e: any) => {
         e.preventDefault()
         e.stopPropagation()
@@ -150,7 +150,7 @@ const MarkdownForm = ({ node }: any) => {
           }
           if (child.properties.type === SUPPORTED_TYPES.CHECKBOX) {
             return (
-              <div className='mt-2 flex h-6 items-center space-x-2' key={index}>
+              <div className="mt-2 flex h-6 items-center space-x-2" key={index}>
                 <Checkbox
                   key={index}
                   checked={formValues[child.properties.name]}
@@ -249,16 +249,21 @@ const MarkdownForm = ({ node }: any) => {
             <Button
               variant={variant}
               size={size}
-              className='mt-4'
+              className="mt-4"
               key={index}
               onClick={onSubmit}
             >
-              <span className='text-[13px]'>{child.children[0]?.value || ''}</span>
+              <span className="text-[13px]">{child.children[0]?.value || ''}</span>
             </Button>
           )
         }
 
-        return <p key={index}>Unsupported tag: {child.tagName}</p>
+        return (
+          <p key={index}>
+            Unsupported tag:
+            {child.tagName}
+          </p>
+        )
       })}
     </form>
   )

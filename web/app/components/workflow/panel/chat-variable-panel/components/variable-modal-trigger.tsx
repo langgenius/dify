@@ -38,7 +38,7 @@ const VariableModalTrigger = ({
         if (open)
           onClose()
       }}
-      placement='left-start'
+      placement="left-start"
       offset={{
         mainAxis: 8,
         alignmentAxis: showTip ? -278 : -48,
@@ -48,13 +48,14 @@ const VariableModalTrigger = ({
         setOpen(v => !v)
         if (open)
           onClose()
-      }}>
-        <Button variant='primary'>
-          <RiAddLine className='mr-1 h-4 w-4' />
-          <span className='system-sm-medium'>{t('workflow.chatVariable.button')}</span>
+      }}
+      >
+        <Button variant="primary">
+          <RiAddLine className="mr-1 h-4 w-4" />
+          <span className="system-sm-medium">{t('workflow.chatVariable.button')}</span>
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <VariableModal
           chatVar={chatVar}
           onSave={onSave}

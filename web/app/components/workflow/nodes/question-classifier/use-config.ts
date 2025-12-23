@@ -56,7 +56,7 @@ const useConfig = (id: string, payload: QuestionClassifierNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId

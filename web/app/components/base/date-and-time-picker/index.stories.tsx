@@ -35,14 +35,17 @@ const DatePickerPlayground = (props: DatePickerProps) => {
 
   return (
     <div className="inline-flex flex-col items-start gap-3">
-      <DatePicker popupZIndexClassname="z-50"
+      <DatePicker
+        popupZIndexClassname="z-50"
         {...props}
         value={value}
         onChange={setValue}
         onClear={() => setValue(undefined)}
       />
       <div className="w-[252px] rounded-lg border border-divider-subtle bg-components-panel-bg p-3 text-xs text-text-secondary">
-        Selected datetime: <span className="font-mono text-text-primary">{value ? value.format() : 'undefined'}</span>
+        Selected datetime:
+        {' '}
+        <span className="font-mono text-text-primary">{value ? value.format() : 'undefined'}</span>
       </div>
     </div>
   )

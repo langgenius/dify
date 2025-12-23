@@ -205,8 +205,8 @@ const AllTools = ({
 
   return (
     <div className={cn('max-w-[500px]', className)}>
-      <div className='flex items-center justify-between border-b border-divider-subtle px-3'>
-        <div className='flex h-8 items-center space-x-1'>
+      <div className="flex items-center justify-between border-b border-divider-subtle px-3">
+        <div className="flex h-8 items-center space-x-1">
           {
             tabs.map(tab => (
               <div
@@ -227,10 +227,10 @@ const AllTools = ({
           <ViewTypeSelect viewType={activeView} onChange={setActiveView} />
         )}
       </div>
-      <div className='flex max-h-[464px] flex-col'>
+      <div className="flex max-h-[464px] flex-col">
         <div
           ref={wrapElemRef}
-          className='flex-1 overflow-y-auto'
+          className="flex-1 overflow-y-auto"
           onScroll={() => pluginRef.current?.handleScroll()}
         >
           <div className={cn(shouldShowEmptyState && 'hidden')}>
@@ -254,15 +254,15 @@ const AllTools = ({
                     await onFeaturedInstallSuccess?.()
                   }}
                 />
-                <div className='px-3'>
-                  <Divider className='!h-px' />
+                <div className="px-3">
+                  <Divider className="!h-px" />
                 </div>
               </>
             )}
             {hasToolsListContent && (
               <>
-                <div className='px-3 pb-1 pt-2'>
-                  <span className='system-xs-medium text-text-primary'>{t('tools.allTools')}</span>
+                <div className="px-3 pb-1 pt-2">
+                  <span className="system-xs-medium text-text-primary">{t('tools.allTools')}</span>
                 </div>
                 <Tools
                   className={toolContentClassName}
@@ -293,19 +293,19 @@ const AllTools = ({
           </div>
 
           {shouldShowEmptyState && (
-            <div className='flex h-full flex-col items-center justify-center gap-3 py-12 text-center'>
-              <SearchMenu className='h-8 w-8 text-text-quaternary' />
-              <div className='text-sm font-medium text-text-secondary'>
+            <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
+              <SearchMenu className="h-8 w-8 text-text-quaternary" />
+              <div className="text-sm font-medium text-text-secondary">
                 {t('workflow.tabs.noPluginsFound')}
               </div>
               <Link
-                href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
-                target='_blank'
+                href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                target="_blank"
               >
                 <Button
-                  size='small'
-                  variant='secondary-accent'
-                  className='h-6 cursor-pointer px-3 text-xs'
+                  size="small"
+                  variant="secondary-accent"
+                  className="h-6 cursor-pointer px-3 text-xs"
                 >
                   {t('workflow.tabs.requestToCommunity')}
                 </Button>
@@ -317,10 +317,10 @@ const AllTools = ({
           <Link
             className={marketplaceFooterClassName}
             href={getMarketplaceUrl('', { category: PluginCategoryEnum.tool })}
-            target='_blank'
+            target="_blank"
           >
             <span>{t('plugin.findMoreInMarketplace')}</span>
-            <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+            <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
           </Link>
         )}
       </div>

@@ -105,16 +105,16 @@ const InputsPanel = ({ onRun }: Props) => {
 
   return (
     <>
-      <div className='px-4 pb-2 pt-3'>
+      <div className="px-4 pb-2 pt-3">
         {
           variables.map((variable, index) => (
             <div
               key={variable.variable}
-              className='mb-2 last-of-type:mb-0'
+              className="mb-2 last-of-type:mb-0"
             >
               <FormItem
                 autoFocus={index === 0}
-                className='!block'
+                className="!block"
                 payload={variable}
                 value={initialInputs[variable.variable]}
                 onChange={v => handleValueChange(variable.variable, v)}
@@ -123,11 +123,11 @@ const InputsPanel = ({ onRun }: Props) => {
           ))
         }
       </div>
-      <div className='flex items-center justify-between px-4 py-2'>
+      <div className="flex items-center justify-between px-4 py-2">
         <Button
-          variant='primary'
+          variant="primary"
           disabled={!canRun || workflowRunningData?.result?.status === WorkflowRunningStatus.Running}
-          className='w-full'
+          className="w-full"
           onClick={doRun}
         >
           {t('workflow.singleRun.startRun')}

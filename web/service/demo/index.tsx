@@ -84,12 +84,16 @@ const Service: FC = () => {
 
   return (
     <div>
-      <div className='flex flex-col gap-3'>
+      <div className="flex flex-col gap-3">
         <div>
           <div>1.App list</div>
           <div>
             {appList.data.map(item => (
-              <div key={item.id}>{item.id} {item.name}</div>
+              <div key={item.id}>
+                {item.id}
+                {' '}
+                {item.name}
+              </div>
             ))}
           </div>
         </div>

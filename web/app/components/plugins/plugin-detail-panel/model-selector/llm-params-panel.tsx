@@ -66,13 +66,13 @@ const LLMParamsPanel = ({
 
   if (isLoading) {
     return (
-      <div className='mt-5'><Loading /></div>
+      <div className="mt-5"><Loading /></div>
     )
   }
 
   return (
     <>
-      <div className='mb-2 flex items-center justify-between'>
+      <div className="mb-2 flex items-center justify-between">
         <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('common.modelProvider.parameters')}</div>
         {
           PROVIDER_WITH_PRESET_TONE.includes(provider) && (

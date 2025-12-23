@@ -165,7 +165,7 @@ export const PortalToFollowElemContent = (
     style,
     ...props
   }: React.HTMLProps<HTMLDivElement> & {
-    ref?: React.RefObject<HTMLDivElement | null>;
+    ref?: React.RefObject<HTMLDivElement | null>
   },
 ) => {
   const context = usePortalToFollowElemContext()

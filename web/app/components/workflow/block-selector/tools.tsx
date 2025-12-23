@@ -93,36 +93,38 @@ const Tools = ({
   return (
     <div className={cn('max-w-[100%] p-1', className)}>
       {!tools.length && !hasSearchText && (
-        <div className='py-10'>
+        <div className="py-10">
           <Empty type={toolType!} isAgent={isAgent} />
         </div>
       )}
       {!!tools.length && (
-        isFlatView ? (
-          <ToolListFlatView
-            toolRefs={toolRefs}
-            letters={letters}
-            payload={listViewToolData}
-            isShowLetterIndex={isShowLetterIndex}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-            indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
-          />
-        ) : (
-          <ToolListTreeView
-            payload={treeViewToolsData}
-            hasSearchText={hasSearchText}
-            onSelect={onSelect}
-            canNotSelectMultiple={canNotSelectMultiple}
-            onSelectMultiple={onSelectMultiple}
-            selectedTools={selectedTools}
-            canChooseMCPTool={canChooseMCPTool}
-          />
-        )
+        isFlatView
+          ? (
+              <ToolListFlatView
+                toolRefs={toolRefs}
+                letters={letters}
+                payload={listViewToolData}
+                isShowLetterIndex={isShowLetterIndex}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+                canChooseMCPTool={canChooseMCPTool}
+                indexBar={<IndexBar letters={letters} itemRefs={toolRefs} className={indexBarClassName} />}
+              />
+            )
+          : (
+              <ToolListTreeView
+                payload={treeViewToolsData}
+                hasSearchText={hasSearchText}
+                onSelect={onSelect}
+                canNotSelectMultiple={canNotSelectMultiple}
+                onSelectMultiple={onSelectMultiple}
+                selectedTools={selectedTools}
+                canChooseMCPTool={canChooseMCPTool}
+              />
+            )
       )}
     </div>
   )

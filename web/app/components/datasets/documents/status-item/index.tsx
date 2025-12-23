@@ -89,45 +89,48 @@ const StatusItem = ({
     return ['queuing', 'indexing', 'paused'].includes(localStatus)
   }, [localStatus])
 
-  return <div className={
-    cn('flex items-center',
-      reverse ? 'flex-row-reverse' : '',
-      scene === 'detail' ? s.statusItemDetail : '')
-  }>
-    <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
-    <span className={cn(`${STATUS_TEXT_COLOR_MAP[DOC_INDEX_STATUS_MAP[localStatus].color as keyof typeof STATUS_TEXT_COLOR_MAP]} text-sm`, textCls)}>
-      {DOC_INDEX_STATUS_MAP[localStatus]?.text}
-    </span>
-    {
-      errorMessage && (
-        <Tooltip
-          popupContent={
-            <div className='max-w-[260px] break-all'>{errorMessage}</div>
-          }
-          triggerClassName='ml-1 w-4 h-4'
-          triggerTestId='error-tooltip-trigger'
-        />
-      )
+  return (
+    <div className={
+      cn('flex items-center',
+        reverse ? 'flex-row-reverse' : '',
+        scene === 'detail' ? s.statusItemDetail : '')
     }
-    {
-      scene === 'detail' && (
-        <div className='ml-1.5 flex items-center justify-between'>
+    >
+      <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
+      <span className={cn(`${STATUS_TEXT_COLOR_MAP[DOC_INDEX_STATUS_MAP[localStatus].color as keyof typeof STATUS_TEXT_COLOR_MAP]} text-sm`, textCls)}>
+        {DOC_INDEX_STATUS_MAP[localStatus]?.text}
+      </span>
+      {
+        errorMessage && (
           <Tooltip
-            popupContent={t('datasetDocuments.list.action.enableWarning')}
-            popupClassName='text-text-secondary system-xs-medium'
-            disabled={!archived}
-          >
-            <Switch
-              defaultValue={archived ? false : enabled}
-              onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-              disabled={embedding || archived}
-              size='md'
-            />
-          </Tooltip>
-        </div>
-      )
-    }
-  </div>
+            popupContent={
+              <div className="max-w-[260px] break-all">{errorMessage}</div>
+            }
+            triggerClassName="ml-1 w-4 h-4"
+            triggerTestId="error-tooltip-trigger"
+          />
+        )
+      }
+      {
+        scene === 'detail' && (
+          <div className="ml-1.5 flex items-center justify-between">
+            <Tooltip
+              popupContent={t('datasetDocuments.list.action.enableWarning')}
+              popupClassName="text-text-secondary system-xs-medium"
+              disabled={!archived}
+            >
+              <Switch
+                defaultValue={archived ? false : enabled}
+                onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
+                disabled={embedding || archived}
+                size="md"
+              />
+            </Tooltip>
+          </div>
+        )
+      }
+    </div>
+  )
 }
 
 export default React.memo(StatusItem)

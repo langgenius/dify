@@ -111,7 +111,7 @@ const DebugWithMultipleModel = () => {
     })) as InputForm[]
 
   return (
-    <div className='flex h-full flex-col'>
+    <div className="flex h-full flex-col">
       <div
         className={`
           relative mb-3 grow overflow-auto px-6
@@ -140,9 +140,9 @@ const DebugWithMultipleModel = () => {
         }
       </div>
       {isChatMode && (
-        <div className='shrink-0 px-6 pb-0'>
+        <div className="shrink-0 px-6 pb-0">
           <ChatInputArea
-            botName='Bot'
+            botName="Bot"
             showFeatureBar
             showFileUpload={false}
             onFeatureBarClick={setShowAppConfigureFeaturesModal}

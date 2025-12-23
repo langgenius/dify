@@ -48,7 +48,8 @@ const List = ({
           <div className={cn(
             'grid grid-cols-4 gap-3',
             cardContainerClassName,
-          )}>
+          )}
+          >
             {
               plugins.map((plugin) => {
                 if (cardRender)

@@ -98,7 +98,7 @@ export type ExternalAPIItem = {
     endpoint: string
     api_key: string
   }
-  dataset_bindings: { id: string; name: string }[]
+  dataset_bindings: { id: string, name: string }[]
   created_by: string
   created_at: string
 }
@@ -224,7 +224,7 @@ export type IndexingEstimateResponse = {
   total_price: number
   currency: string
   total_segments: number
-  preview: Array<{ content: string; child_chunks: string[] }>
+  preview: Array<{ content: string, child_chunks: string[] }>
   qa_preview?: QA[]
 }
 
@@ -360,7 +360,7 @@ export type OnlineDocumentInfo = {
     page_name: string
     parent_id: string
     type: string
-  },
+  }
 }
 
 export type OnlineDriveInfo = {
@@ -590,7 +590,7 @@ export type SegmentsResponse = {
 
 export type Query = {
   content: string
-  content_type: 'text_query' | 'image_query',
+  content_type: 'text_query' | 'image_query'
   file_info: Attachment | null
 }
 

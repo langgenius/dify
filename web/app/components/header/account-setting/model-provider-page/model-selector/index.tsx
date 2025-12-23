@@ -67,13 +67,13 @@ const ModelSelector: FC<ModelSelectorProps> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={4}
     >
       <div className={cn('relative')}>
         <PortalToFollowElemTrigger
           onClick={handleToggle}
-          className='block'
+          className="block"
         >
           {
             currentModel && currentProvider && (

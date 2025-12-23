@@ -34,13 +34,13 @@ const InvitationLink = ({
   }, [isCopied])
 
   return (
-    <div className='flex items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal py-2 hover:bg-state-base-hover'>
+    <div className="flex items-center rounded-lg border border-components-input-border-active bg-components-input-bg-normal py-2 hover:bg-state-base-hover">
       <div className="flex h-5 grow items-center">
-        <div className='relative h-full grow text-[13px]'>
+        <div className="relative h-full grow text-[13px]">
           <Tooltip
             popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
           >
-            <div className='r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2 text-text-primary' onClick={copyHandle}>{value.url}</div>
+            <div className="r-0 absolute left-0 top-0 w-full cursor-pointer truncate pl-2 pr-2 text-text-primary" onClick={copyHandle}>{value.url}</div>
           </Tooltip>
         </div>
         <div className="h-4 shrink-0 border bg-divider-regular" />

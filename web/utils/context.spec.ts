@@ -106,8 +106,8 @@ describe('Context Utilities', () => {
      */
     it('should handle complex context values', () => {
       type ComplexContext = {
-        user: { id: string; name: string }
-        settings: { theme: string; locale: string }
+        user: { id: string, name: string }
+        settings: { theme: string, locale: string }
         actions: Array<() => void>
       }
 

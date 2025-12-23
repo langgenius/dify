@@ -24,7 +24,7 @@ vi.mock('@/hooks/use-theme', () => ({
 // Mock BlockIcon as it has complex dependencies
 vi.mock('@/app/components/workflow/block-icon', () => ({
   __esModule: true,
-  default: ({ type, toolIcon }: { type: string; toolIcon?: string }) => (
+  default: ({ type, toolIcon }: { type: string, toolIcon?: string }) => (
     <div data-testid="block-icon" data-type={type} data-tool-icon={toolIcon || ''}>
       BlockIcon
     </div>

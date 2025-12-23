@@ -15,17 +15,17 @@ const ContextVar: FC<Props> = (props) => {
   const notSetVar = !currItem
   return (
     <div className={cn(notSetVar ? 'rounded-bl-xl rounded-br-xl border-[#FEF0C7] bg-[#FEF0C7]' : 'border-components-panel-border-subtle', 'flex h-12 items-center justify-between border-t px-3 ')}>
-      <div className='flex shrink-0 items-center space-x-1'>
-        <div className='p-1'>
-          <BracketsX className='h-4 w-4 text-text-accent' />
+      <div className="flex shrink-0 items-center space-x-1">
+        <div className="p-1">
+          <BracketsX className="h-4 w-4 text-text-accent" />
         </div>
-        <div className='mr-1 text-sm font-medium text-text-secondary'>{t('appDebug.feature.dataSet.queryVariable.title')}</div>
+        <div className="mr-1 text-sm font-medium text-text-secondary">{t('appDebug.feature.dataSet.queryVariable.title')}</div>
         <Tooltip
-          popupContent={
-            <div className='w-[180px]'>
+          popupContent={(
+            <div className="w-[180px]">
               {t('appDebug.feature.dataSet.queryVariable.tip')}
             </div>
-          }
+          )}
         />
       </div>
 

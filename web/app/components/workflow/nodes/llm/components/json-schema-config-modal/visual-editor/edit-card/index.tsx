@@ -208,9 +208,9 @@ const EditCard: FC<EditCardProps> = ({
   })
 
   return (
-    <div className='flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4'>
-      <div className='flex h-6 items-center pl-1 pr-0.5'>
-        <div className='flex grow items-center gap-x-1'>
+    <div className="flex flex-col rounded-lg bg-components-panel-bg py-0.5 shadow-sm shadow-shadow-shadow-4">
+      <div className="flex h-6 items-center pl-1 pr-0.5">
+        <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}
             placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
@@ -223,11 +223,11 @@ const EditCard: FC<EditCardProps> = ({
             currentValue={currentFields.type}
             items={maximumDepthReached ? MAXIMUM_DEPTH_TYPE_OPTIONS : TYPE_OPTIONS}
             onSelect={handleTypeChange}
-            popupClassName={'z-[1000]'}
+            popupClassName="z-[1000]"
           />
           {
             currentFields.required && (
-              <div className='system-2xs-medium-uppercase px-1 py-0.5 text-text-warning'>
+              <div className="system-2xs-medium-uppercase px-1 py-0.5 text-text-warning">
                 {t('workflow.nodes.llm.jsonSchema.required')}
               </div>
             )
@@ -237,28 +237,30 @@ const EditCard: FC<EditCardProps> = ({
           defaultValue={currentFields.required}
           toggleRequired={toggleRequired}
         />
-        <Divider type='vertical' className='h-3' />
-        {isAdvancedEditing ? (
-          <AdvancedActions
-            isConfirmDisabled={currentFields.name === ''}
-            onCancel={handleCancel}
-            onConfirm={handleConfirm}
-          />
-        ) : (
-          <Actions
-            disableAddBtn={disableAddBtn}
-            onAddChildField={handleAddChildField}
-            onDelete={handleDelete}
-            onEdit={handleAdvancedEdit}
-          />
-        )}
+        <Divider type="vertical" className="h-3" />
+        {isAdvancedEditing
+          ? (
+              <AdvancedActions
+                isConfirmDisabled={currentFields.name === ''}
+                onCancel={handleCancel}
+                onConfirm={handleConfirm}
+              />
+            )
+          : (
+              <Actions
+                disableAddBtn={disableAddBtn}
+                onAddChildField={handleAddChildField}
+                onDelete={handleDelete}
+                onEdit={handleAdvancedEdit}
+              />
+            )}
       </div>
 
       {(fields.description || isAdvancedEditing) && (
         <div className={cn('flex', isAdvancedEditing ? 'p-2 pt-1' : 'px-2 pb-1')}>
           <input
             value={currentFields.description}
-            className='system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder'
+            className="system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder"
             placeholder={t('workflow.nodes.llm.jsonSchema.descriptionPlaceholder')}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}

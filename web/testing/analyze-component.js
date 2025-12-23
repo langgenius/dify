@@ -47,7 +47,7 @@ class ComponentAnalyzer {
       hasImperativeHandle: code.includes('useImperativeHandle'),
       hasSWR: code.includes('useSWR'),
       hasReactQuery: code.includes('useQuery') || code.includes('useMutation'),
-      hasAhooks: code.includes("from 'ahooks'"),
+      hasAhooks: code.includes('from \'ahooks\''),
       complexity,
       maxComplexity,
       rawComplexity,
@@ -112,7 +112,7 @@ class ComponentAnalyzer {
         msg => msg.ruleId === 'sonarjs/cognitive-complexity'
           && msg.messageId === 'fileComplexity',
       )
-      const total = totalMsg ? parseInt(totalMsg.message, 10) : 0
+      const total = totalMsg ? Number.parseInt(totalMsg.message, 10) : 0
 
       // Get max function complexity by analyzing each function
       const maxConfig = {
@@ -127,7 +127,7 @@ class ComponentAnalyzer {
         if (msg.ruleId === 'sonarjs/cognitive-complexity') {
           const match = msg.message.match(complexityPattern)
           if (match && match[1])
-            max = Math.max(max, parseInt(match[1], 10))
+            max = Math.max(max, Number.parseInt(match[1], 10))
         }
       })
 
@@ -206,7 +206,7 @@ class ComponentAnalyzer {
 
         const entries = fs.readdirSync(currentDir, { withFileTypes: true })
 
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
           const entryPath = path.join(currentDir, entry.name)
 
           if (entry.isDirectory()) {
@@ -223,7 +223,7 @@ class ComponentAnalyzer {
           const source = fs.readFileSync(entryPath, 'utf-8')
           if (!source.includes(searchName)) return
 
-          if (patterns.some(pattern => {
+          if (patterns.some((pattern) => {
             pattern.lastIndex = 0
             return pattern.test(source)
           })) {
@@ -262,7 +262,7 @@ class ComponentAnalyzer {
       path.join(workspaceRoot, 'src'),
     ]
 
-    fallbackRoots.forEach(root => {
+    fallbackRoots.forEach((root) => {
       if (fs.existsSync(root) && fs.statSync(root).isDirectory()) roots.add(root)
     })
 
@@ -797,7 +797,7 @@ function main() {
   let isJsonMode = false
   const args = []
 
-  rawArgs.forEach(arg => {
+  rawArgs.forEach((arg) => {
     if (arg === '--review') {
       isReviewMode = true
       return

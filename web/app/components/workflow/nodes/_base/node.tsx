@@ -160,13 +160,13 @@ const BaseNode: FC<BaseNodeProps> = ({
               ? 'pointer-events-auto z-30 bg-workflow-block-parma-bg opacity-80 backdrop-blur-[2px]'
               : 'pointer-events-none z-20 bg-workflow-block-parma-bg opacity-50',
           )}
-          data-testid='workflow-node-install-overlay'
+          data-testid="workflow-node-install-overlay"
         />
       )}
       {
         data.type === BlockEnum.DataSource && (
-          <div className='absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]'>
-            <div className='system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary'>
+          <div className="absolute inset-[-2px] top-[-22px] z-[-1] rounded-[18px] bg-node-data-source-bg p-0.5 backdrop-blur-[6px]">
+            <div className="system-2xs-semibold-uppercase flex h-5 items-center px-2.5 text-text-tertiary">
               {t('workflow.blocks.datasource')}
             </div>
           </div>
@@ -215,8 +215,8 @@ const BaseNode: FC<BaseNodeProps> = ({
             <NodeTargetHandle
               id={id}
               data={data}
-              handleClassName='!top-4 !-left-[9px] !translate-y-0'
-              handleId='target'
+              handleClassName="!top-4 !-left-[9px] !translate-y-0"
+              handleId="target"
             />
           )
         }
@@ -225,8 +225,8 @@ const BaseNode: FC<BaseNodeProps> = ({
             <NodeSourceHandle
               id={id}
               data={data}
-              handleClassName='!top-4 !-right-[9px] !translate-y-0'
-              handleId='source'
+              handleClassName="!top-4 !-right-[9px] !translate-y-0"
+              handleId="source"
             />
           )
         }
@@ -241,31 +241,33 @@ const BaseNode: FC<BaseNodeProps> = ({
         <div className={cn(
           'flex items-center rounded-t-2xl px-3 pb-2 pt-3',
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && 'bg-transparent',
-        )}>
+        )}
+        >
           <BlockIcon
-            className='mr-2 shrink-0'
+            className="mr-2 shrink-0"
             type={data.type}
-            size='md'
+            size="md"
             toolIcon={toolIcon}
           />
           <div
             title={data.title}
-            className='system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary'
+            className="system-sm-semibold-uppercase mr-1 flex grow items-center truncate text-text-primary"
           >
             <div>
               {data.title}
             </div>
             {
               data.type === BlockEnum.Iteration && (data as IterationNodeType).is_parallel && (
-                <Tooltip popupContent={
-                  <div className='w-[180px]'>
-                    <div className='font-extrabold'>
+                <Tooltip popupContent={(
+                  <div className="w-[180px]">
+                    <div className="font-extrabold">
                       {t('workflow.nodes.iteration.parallelModeEnableTitle')}
                     </div>
                     {t('workflow.nodes.iteration.parallelModeEnableDesc')}
-                  </div>}
+                  </div>
+                )}
                 >
-                  <div className='system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning '>
+                  <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning ">
                     {t('workflow.nodes.iteration.parallelModeUpper')}
                   </div>
                 </Tooltip>
@@ -274,8 +276,10 @@ const BaseNode: FC<BaseNodeProps> = ({
           </div>
           {
             data._iterationLength && data._iterationIndex && data._runningStatus === NodeRunningStatus.Running && (
-              <div className='mr-1.5 text-xs font-medium text-text-accent'>
-                {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}/{data._iterationLength}
+              <div className="mr-1.5 text-xs font-medium text-text-accent">
+                {data._iterationIndex > data._iterationLength ? data._iterationLength : data._iterationIndex}
+                /
+                {data._iterationLength}
               </div>
             )
           }
@@ -284,14 +288,14 @@ const BaseNode: FC<BaseNodeProps> = ({
           }
           {
             isLoading
-              ? <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-text-accent' />
+              ? <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-text-accent" />
               : data._runningStatus === NodeRunningStatus.Failed
-                ? <RiErrorWarningFill className='h-3.5 w-3.5 text-text-destructive' />
+                ? <RiErrorWarningFill className="h-3.5 w-3.5 text-text-destructive" />
                 : data._runningStatus === NodeRunningStatus.Exception
-                  ? <RiAlertFill className='h-3.5 w-3.5 text-text-warning-secondary' />
+                  ? <RiAlertFill className="h-3.5 w-3.5 text-text-warning-secondary" />
                   : (data._runningStatus === NodeRunningStatus.Succeeded || hasVarValue)
-                    ? <RiCheckboxCircleFill className='h-3.5 w-3.5 text-text-success' />
-                    : null
+                      ? <RiCheckboxCircleFill className="h-3.5 w-3.5 text-text-success" />
+                      : null
           }
         </div>
         {
@@ -301,7 +305,7 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           (data.type === BlockEnum.Iteration || data.type === BlockEnum.Loop) && (
-            <div className='grow pb-1 pl-1 pr-1'>
+            <div className="grow pb-1 pl-1 pr-1">
               {cloneElement(children, { id, data } as any)}
             </div>
           )
@@ -324,13 +328,13 @@ const BaseNode: FC<BaseNodeProps> = ({
         }
         {
           data.desc && data.type !== BlockEnum.Iteration && data.type !== BlockEnum.Loop && (
-            <div className='system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary'>
+            <div className="system-xs-regular whitespace-pre-line break-words px-3 pb-2 pt-1 text-text-tertiary">
               {data.desc}
             </div>
           )
         }
         {data.type === BlockEnum.Tool && data.provider_type === ToolTypeEnum.MCP && (
-          <div className='px-3 pb-2'>
+          <div className="px-3 pb-2">
             <CopyID content={data.provider_id || ''} />
           </div>
         )}
@@ -341,13 +345,15 @@ const BaseNode: FC<BaseNodeProps> = ({
   const isStartNode = data.type === BlockEnum.Start
   const isEntryNode = isTriggerNode(data.type as any) || isStartNode
 
-  return isEntryNode ? (
-    <EntryNodeContainer
-      nodeType={isStartNode ? StartNodeTypeEnum.Start : StartNodeTypeEnum.Trigger}
-    >
-      {nodeContent}
-    </EntryNodeContainer>
-  ) : nodeContent
+  return isEntryNode
+    ? (
+        <EntryNodeContainer
+          nodeType={isStartNode ? StartNodeTypeEnum.Start : StartNodeTypeEnum.Trigger}
+        >
+          {nodeContent}
+        </EntryNodeContainer>
+      )
+    : nodeContent
 }
 
 export default memo(BaseNode)

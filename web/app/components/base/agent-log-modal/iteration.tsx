@@ -17,14 +17,14 @@ const Iteration: FC<Props> = ({ iterationInfo, isFinal, index }) => {
 
   return (
     <div className={cn('px-4 py-2')}>
-      <div className='flex items-center'>
+      <div className="flex items-center">
         {isFinal && (
-          <div className='mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary'>{t('appLog.agentLogDetail.finalProcessing')}</div>
+          <div className="mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary">{t('appLog.agentLogDetail.finalProcessing')}</div>
         )}
         {!isFinal && (
-          <div className='mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary'>{`${t('appLog.agentLogDetail.iteration').toUpperCase()} ${index}`}</div>
+          <div className="mr-3 shrink-0 text-xs font-semibold leading-[18px] text-text-tertiary">{`${t('appLog.agentLogDetail.iteration').toUpperCase()} ${index}`}</div>
         )}
-        <Divider bgStyle='gradient' className='mx-0 h-px grow'/>
+        <Divider bgStyle="gradient" className="mx-0 h-px grow" />
       </div>
       <ToolCall
         isLLM

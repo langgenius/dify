@@ -53,25 +53,25 @@ const LimitConfig: FC<Props> = ({
     <div className={cn(className)}>
       <Field
         title={t(`${i18nPrefix}.limit`)}
-        operations={
+        operations={(
           <Switch
             defaultValue={payload.enabled}
             onChange={handleLimitEnabledChange}
-            size='md'
+            size="md"
             disabled={readonly}
           />
-        }
+        )}
       >
         {payload?.enabled
           ? (
-            <InputNumberWithSlider
-              value={payload?.size || LIMIT_SIZE_DEFAULT}
-              min={LIMIT_SIZE_MIN}
-              max={LIMIT_SIZE_MAX}
-              onChange={handleLimitSizeChange}
-              readonly={readonly || !payload?.enabled}
-            />
-          )
+              <InputNumberWithSlider
+                value={payload?.size || LIMIT_SIZE_DEFAULT}
+                min={LIMIT_SIZE_MIN}
+                max={LIMIT_SIZE_MAX}
+                onChange={handleLimitSizeChange}
+                readonly={readonly || !payload?.enabled}
+              />
+            )
           : null}
       </Field>
     </div>

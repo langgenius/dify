@@ -94,7 +94,9 @@ vi.mock('./params-config', () => ({
   __esModule: true,
   default: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
-      Params ({selectedDatasets.length})
+      Params (
+      {selectedDatasets.length}
+      )
     </button>
   ),
 }))

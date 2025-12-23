@@ -12,7 +12,7 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 // Mock next/image (using img element for simplicity in tests)
 vi.mock('next/image', () => ({
   __esModule: true,
-  default: function MockImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
+  default: function MockImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
     // eslint-disable-next-line next/no-img-element
     return <img src={src} alt={alt} className={className} data-testid="next-image" />
   },
@@ -20,7 +20,7 @@ vi.mock('next/image', () => ({
 
 // Mock FieldInfo component
 vi.mock('@/app/components/datasets/documents/detail/metadata', () => ({
-  FieldInfo: ({ label, displayedValue, valueIcon }: { label: string; displayedValue: string; valueIcon?: React.ReactNode }) => (
+  FieldInfo: ({ label, displayedValue, valueIcon }: { label: string, displayedValue: string, valueIcon?: React.ReactNode }) => (
     <div data-testid="field-info" data-label={label}>
       <span data-testid="field-label">{label}</span>
       <span data-testid="field-value">{displayedValue}</span>

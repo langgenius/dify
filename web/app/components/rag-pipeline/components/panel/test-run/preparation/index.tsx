@@ -154,11 +154,11 @@ const Preparation = () => {
   return (
     <>
       <StepIndicator steps={steps} currentStep={currentStep} />
-      <div className='flex grow flex-col overflow-y-auto'>
+      <div className="flex grow flex-col overflow-y-auto">
         {
           currentStep === 1 && (
             <>
-              <div className='flex flex-col gap-y-4 px-4 py-2'>
+              <div className="flex flex-col gap-y-4 px-4 py-2">
                 <DataSourceOptions
                   dataSourceNodeId={datasource?.nodeId || ''}
                   onSelect={handleSwitchDataSource}

@@ -12,13 +12,13 @@ export default antfu(
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
-      }
+      },
     },
     test: {
       overrides: {
         'test/prefer-lowercase-title': 'off',
-      }
-    }
+      },
+    },
   },
   // downgrade some rules from error to warn for gradual adoption
   {
@@ -77,33 +77,6 @@ export default antfu(
       'regexp/prefer-w': 'off',
       'regexp/strict': 'off',
       'regexp/use-ignore-case': 'off',
-      'style/arrow-parens': 'off',
-      'style/brace-style': 'off',
-      'style/comma-dangle': 'off',
-      'style/eol-last': 'off',
-      'style/indent-binary-ops': 'off',
-      'style/indent': 'off',
-      'style/jsx-closing-bracket-location': 'off',
-      'style/jsx-closing-tag-location': 'off',
-      'style/jsx-curly-brace-presence': 'off',
-      'style/jsx-curly-newline': 'off',
-      'style/jsx-curly-spacing': 'off',
-      'style/jsx-first-prop-new-line': 'off',
-      'style/jsx-function-call-newline': 'off',
-      'style/jsx-indent-props': 'off',
-      'style/jsx-max-props-per-line': 'off',
-      'style/jsx-one-expression-per-line': 'off',
-      'style/jsx-quotes': 'off',
-      'style/jsx-tag-spacing': 'off',
-      'style/jsx-wrap-multilines': 'off',
-      'style/keyword-spacing': 'off',
-      'style/member-delimiter-style': 'off',
-      'style/multiline-ternary': 'off',
-      'style/no-tabs': 'off',
-      'style/no-trailing-spaces': 'off',
-      'style/padded-blocks': 'off',
-      'style/quotes': 'off',
-      'style/semi': 'off',
       'unicorn/prefer-node-protocol': 'off',
     },
   },

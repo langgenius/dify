@@ -75,10 +75,10 @@ const Add = ({
           ${nodesReadOnly && '!cursor-not-allowed'}
         `}
       >
-        <div className='mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed'>
-          <RiAddLine className='h-3 w-3' />
+        <div className="mr-1.5 flex h-5 w-5 items-center justify-center rounded-[5px] bg-background-default-dimmed">
+          <RiAddLine className="h-3 w-3" />
         </div>
-        <div className='flex items-center uppercase'>
+        <div className="flex items-center uppercase">
           {tip}
         </div>
       </div>
@@ -91,10 +91,10 @@ const Add = ({
       onOpenChange={handleOpenChange}
       disabled={nodesReadOnly}
       onSelect={handleSelect}
-      placement='top'
+      placement="top"
       offset={0}
       trigger={renderTrigger}
-      popupClassName='!w-[328px]'
+      popupClassName="!w-[328px]"
       availableBlocksTypes={availableNextBlocks}
     />
   )

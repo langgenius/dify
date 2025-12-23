@@ -80,16 +80,17 @@ const PluginAuthInAgent = ({
           'w-full',
           isOpen && 'bg-components-button-secondary-bg-hover',
           removed && 'text-text-destructive',
-        )}>
+        )}
+      >
         <Indicator
-          className='mr-2'
+          className="mr-2"
           color={color as any}
         />
         {label}
         {
           unavailable && t('plugin.auth.unavailable')
         }
-        <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
+        <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
       </Button>
     )
   }, [credentialId, credentials, t])

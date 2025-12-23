@@ -91,7 +91,7 @@ const FormItem = ({
           <Textarea
             value={value}
             onChange={handleInputChange}
-            className='min-h-12 w-full'
+            className="min-h-12 w-full"
           />
         )
       }
@@ -101,7 +101,7 @@ const FormItem = ({
             type="number"
             value={value}
             onChange={handleInputChange}
-            className='w-full'
+            className="w-full"
           />
         )
       }
@@ -117,15 +117,15 @@ const FormItem = ({
         value_type === ValueType.constant
         && (var_type === VarType.object || var_type === VarType.arrayString || var_type === VarType.arrayNumber || var_type === VarType.arrayObject)
         && (
-          <div className='w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1' style={{ height: editorMinHeight }}>
+          <div className="w-full rounded-[10px] bg-components-input-bg-normal py-2 pl-3 pr-1" style={{ height: editorMinHeight }}>
             <CodeEditor
               value={value}
               isExpand
               noWrapper
               language={CodeLanguage.json}
               onChange={handleChange}
-              className='w-full'
-              placeholder={<div className='whitespace-pre'>{placeholder}</div>}
+              className="w-full"
+              placeholder={<div className="whitespace-pre">{placeholder}</div>}
             />
           </div>
         )
@@ -133,7 +133,7 @@ const FormItem = ({
       {
         value_type === ValueType.constant && var_type === VarType.arrayBoolean && (
           <ArrayBoolList
-            className='mt-2'
+            className="mt-2"
             list={value || [false]}
             onChange={handleChange}
           />

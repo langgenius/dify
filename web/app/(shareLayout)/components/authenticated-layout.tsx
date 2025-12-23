@@ -49,35 +49,47 @@ const AuthenticatedLayout = ({ children }: { children: React.ReactNode }) => {
   }, [getSigninUrl, router, webAppLogout, shareCode])
 
   if (appInfoError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appInfoError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appInfoError.message} />
+      </div>
+    )
   }
   if (appParamsError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appParamsError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appParamsError.message} />
+      </div>
+    )
   }
   if (appMetaError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appMetaError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appMetaError.message} />
+      </div>
+    )
   }
   if (useCanAccessAppError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={useCanAccessAppError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={useCanAccessAppError.message} />
+      </div>
+    )
   }
   if (userCanAccessApp && !userCanAccessApp.result) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
-      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
-      <span className='system-sm-regular cursor-pointer text-text-tertiary' onClick={backToHome}>{t('common.userProfile.logout')}</span>
-    </div>
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-y-2">
+        <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
+        <span className="system-sm-regular cursor-pointer text-text-tertiary" onClick={backToHome}>{t('common.userProfile.logout')}</span>
+      </div>
+    )
   }
   if (isFetchingAppInfo || isFetchingAppParams || isFetchingAppMeta) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   return <>{children}</>
 }

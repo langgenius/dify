@@ -24,19 +24,18 @@ const Keywords: FC<IKeywordsProps> = ({
   const { t } = useTranslation()
   return (
     <div className={cn('flex flex-col', className)}>
-      <div className='system-xs-medium-uppercase text-text-tertiary'>{t('datasetDocuments.segment.keywords')}</div>
-      <div className='flex max-h-[200px] w-full flex-wrap gap-1 overflow-auto text-text-tertiary'>
+      <div className="system-xs-medium-uppercase text-text-tertiary">{t('datasetDocuments.segment.keywords')}</div>
+      <div className="flex max-h-[200px] w-full flex-wrap gap-1 overflow-auto text-text-tertiary">
         {(!segInfo?.keywords?.length && actionType === 'view')
           ? '-'
           : (
-            <TagInput
-              items={keywords}
-              onChange={newKeywords => onKeywordsChange(newKeywords)}
-              disableAdd={!isEditMode}
-              disableRemove={!isEditMode || (keywords.length === 1)}
-            />
-          )
-        }
+              <TagInput
+                items={keywords}
+                onChange={newKeywords => onKeywordsChange(newKeywords)}
+                disableAdd={!isEditMode}
+                disableRemove={!isEditMode || (keywords.length === 1)}
+              />
+            )}
       </div>
     </div>
   )

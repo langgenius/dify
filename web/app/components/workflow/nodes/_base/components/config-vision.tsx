@@ -57,32 +57,32 @@ const ConfigVision: FC<Props> = ({
     <Field
       title={t(`${i18nPrefix}.vision`)}
       tooltip={t('appDebug.vision.description')!}
-      operations={
+      operations={(
         <Tooltip
           popupContent={t('appDebug.vision.onlySupportVisionModelTip')!}
           disabled={isVisionModel}
         >
-          <Switch disabled={readOnly || !isVisionModel} size='md' defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
+          <Switch disabled={readOnly || !isVisionModel} size="md" defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />
         </Tooltip>
-      }
+      )}
     >
       {(enabled && isVisionModel)
         ? (
-          <div>
-            <VarReferencePicker
-              className='mb-4'
-              filterVar={filterVar}
-              nodeId={nodeId}
-              value={config.variable_selector || []}
-              onChange={handleVarSelectorChange}
-              readonly={readOnly}
-            />
-            <ResolutionPicker
-              value={config.detail}
-              onChange={handleVisionResolutionChange}
-            />
-          </div>
-        )
+            <div>
+              <VarReferencePicker
+                className="mb-4"
+                filterVar={filterVar}
+                nodeId={nodeId}
+                value={config.variable_selector || []}
+                onChange={handleVarSelectorChange}
+                readonly={readOnly}
+              />
+              <ResolutionPicker
+                value={config.detail}
+                onChange={handleVisionResolutionChange}
+              />
+            </div>
+          )
         : null}
 
     </Field>

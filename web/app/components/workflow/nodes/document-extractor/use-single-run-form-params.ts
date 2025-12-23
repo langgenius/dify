@@ -8,8 +8,8 @@ import { InputVarType } from '@/app/components/workflow/types'
 const i18nPrefix = 'workflow.nodes.docExtractor'
 
 type Params = {
-  id: string,
-  payload: DocExtractorNodeType,
+  id: string
+  payload: DocExtractorNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -50,7 +50,7 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVar = (variable: string) => {
-    if(variable === 'files')
+    if (variable === 'files')
       return payload.variable_selector
   }
 

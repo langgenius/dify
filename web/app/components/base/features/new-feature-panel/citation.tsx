@@ -39,11 +39,11 @@ const Citation = ({
 
   return (
     <FeatureCard
-      icon={
-        <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-warning-warning-500 p-1 shadow-xs'>
-          <Citations className='h-4 w-4 text-text-primary-on-surface' />
+      icon={(
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-warning-warning-500 p-1 shadow-xs">
+          <Citations className="h-4 w-4 text-text-primary-on-surface" />
         </div>
-      }
+      )}
       title={t('appDebug.feature.citation.title')}
       value={!!features.citation?.enabled}
       description={t('appDebug.feature.citation.description')!}

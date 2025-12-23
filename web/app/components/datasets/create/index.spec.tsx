@@ -27,7 +27,7 @@ vi.mock('react-i18next', () => ({
 
 // Mock next/link
 vi.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  return function MockLink({ children, href }: { children: React.ReactNode, href: string }) {
     return <a href={href}>{children}</a>
   }
 })
@@ -55,7 +55,7 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock useDefaultModel hook
-let mockEmbeddingsDefaultModel: { model: string; provider: string } | undefined
+let mockEmbeddingsDefaultModel: { model: string, provider: string } | undefined
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
     data: mockEmbeddingsDefaultModel,

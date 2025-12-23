@@ -46,14 +46,16 @@ export const usePromptOptions = (
       key: t('common.promptEditor.context.item.title'),
       group: 'prompt context',
       render: ({ isSelected, onSelect, onSetHighlight }) => {
-        return <PromptMenuItem
-          title={t('common.promptEditor.context.item.title')}
-          icon={<File05 className='h-4 w-4 text-[#6938EF]' />}
-          disabled={!contextBlock.selectable}
-          isSelected={isSelected}
-          onClick={onSelect}
-          onMouseEnter={onSetHighlight}
-        />
+        return (
+          <PromptMenuItem
+            title={t('common.promptEditor.context.item.title')}
+            icon={<File05 className="h-4 w-4 text-[#6938EF]" />}
+            disabled={!contextBlock.selectable}
+            isSelected={isSelected}
+            onClick={onSelect}
+            onMouseEnter={onSetHighlight}
+          />
+        )
       },
       onSelect: () => {
         if (!contextBlock?.selectable)
@@ -72,7 +74,7 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.query.item.title')}
-              icon={<UserEdit02 className='h-4 w-4 text-[#FD853A]' />}
+              icon={<UserEdit02 className="h-4 w-4 text-[#FD853A]" />}
               disabled={!queryBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
@@ -98,9 +100,8 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.history.item.title')}
-              icon={<MessageClockCircle className='h-4 w-4 text-[#DD2590]' />}
-              disabled={!historyBlock.selectable
-              }
+              icon={<MessageClockCircle className="h-4 w-4 text-[#DD2590]" />}
+              disabled={!historyBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
               onMouseEnter={onSetHighlight}
@@ -137,7 +138,7 @@ export const useVariableOptions = (
           return (
             <VariableMenuItem
               title={item.value}
-              icon={<BracketsX className='h-[14px] w-[14px] text-text-accent' />}
+              icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -166,7 +167,7 @@ export const useVariableOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.add')}
-            icon={<BracketsX className='h-[14px] w-[14px] text-text-accent' />}
+            icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -208,14 +209,14 @@ export const useExternalToolOptions = (
           return (
             <VariableMenuItem
               title={item.name}
-              icon={
+              icon={(
                 <AppIcon
-                  className='!h-[14px] !w-[14px]'
+                  className="!h-[14px] !w-[14px]"
                   icon={item.icon}
                   background={item.icon_background}
                 />
-              }
-              extraElement={<div className='text-xs text-text-tertiary'>{item.variableName}</div>}
+              )}
+              extraElement={<div className="text-xs text-text-tertiary">{item.variableName}</div>}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -244,8 +245,8 @@ export const useExternalToolOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.addTool')}
-            icon={<Tool03 className='h-[14px] w-[14px] text-text-accent' />}
-            extraElement={< ArrowUpRight className='h-3 w-3 text-text-tertiary' />}
+            icon={<Tool03 className="h-[14px] w-[14px] text-text-accent" />}
+            extraElement={<ArrowUpRight className="h-3 w-3 text-text-tertiary" />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -284,7 +285,7 @@ export const useOptions = (
     if (!workflowVariableBlockType?.show)
       return []
     const res = workflowVariableBlockType.variables || []
-    if(errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
+    if (errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
       res.unshift({
         nodeId: 'error_message',
         title: 'error_message',
@@ -297,7 +298,7 @@ export const useOptions = (
         ],
       })
     }
-    if(lastRunBlockType?.show && res.findIndex(v => v.nodeId === 'last_run') === -1) {
+    if (lastRunBlockType?.show && res.findIndex(v => v.nodeId === 'last_run') === -1) {
       res.unshift({
         nodeId: 'last_run',
         title: 'last_run',
@@ -310,7 +311,7 @@ export const useOptions = (
         ],
       })
     }
-    if(currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
+    if (currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
       const title = currentBlockType.generatorType === 'prompt' ? 'current_prompt' : 'current_code'
       res.unshift({
         nodeId: 'current',

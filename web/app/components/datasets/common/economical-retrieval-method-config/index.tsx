@@ -26,15 +26,15 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
     <OptionCard
       id={RETRIEVE_METHOD.keywordSearch}
       disabled={disabled}
-      icon={<VectorSearch className='size-4' />}
-      iconActiveColor='text-util-colors-purple-purple-600'
+      icon={<VectorSearch className="size-4" />}
+      iconActiveColor="text-util-colors-purple-purple-600"
       title={t('dataset.retrieval.keyword_search.title')}
       description={t('dataset.retrieval.keyword_search.description')}
       isActive
       effectColor={EffectColor.purple}
       showEffectColor
       showChildren
-      className='gap-x-2'
+      className="gap-x-2"
     >
       <RetrievalParamConfig
         type={RETRIEVE_METHOD.keywordSearch}

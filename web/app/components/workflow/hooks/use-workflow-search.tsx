@@ -51,11 +51,13 @@ export const useWorkflowSearch = () => {
     if (nodeData?.type !== BlockEnum.LLM) return {}
 
     const llmNodeData = nodeData as LLMNodeType
-    return llmNodeData.model ? {
-      provider: llmNodeData.model.provider,
-      name: llmNodeData.model.name,
-      mode: llmNodeData.model.mode,
-    } : {}
+    return llmNodeData.model
+      ? {
+          provider: llmNodeData.model.provider,
+          name: llmNodeData.model.name,
+          mode: llmNodeData.model.mode,
+        }
+      : {}
   }, [])
 
   const searchableNodes = useMemo(() => {
@@ -87,10 +89,10 @@ export const useWorkflowSearch = () => {
 
   // Calculate search score - clean scoring logic
   const calculateScore = useCallback((node: {
-    title: string;
-    type: string;
-    desc: string;
-    modelInfo: { provider?: string; name?: string; mode?: string }
+    title: string
+    type: string
+    desc: string
+    modelInfo: { provider?: string, name?: string, mode?: string }
   }, searchTerm: string): number => {
     if (!searchTerm) return 1
 
@@ -132,27 +134,29 @@ export const useWorkflowSearch = () => {
       .map((node) => {
         const score = calculateScore(node, searchTerm)
 
-        return score > 0 ? {
-          id: node.id,
-          title: node.title,
-          description: node.desc || node.type,
-          type: 'workflow-node' as const,
-          path: `#${node.id}`,
-          icon: (
-            <BlockIcon
-              type={node.blockType}
-              className="shrink-0"
-              size="sm"
-              toolIcon={node.toolIcon}
-            />
-          ),
-          metadata: {
-            nodeId: node.id,
-            nodeData: node.nodeData,
-          },
-          data: node.nodeData,
-          score,
-        } : null
+        return score > 0
+          ? {
+              id: node.id,
+              title: node.title,
+              description: node.desc || node.type,
+              type: 'workflow-node' as const,
+              path: `#${node.id}`,
+              icon: (
+                <BlockIcon
+                  type={node.blockType}
+                  className="shrink-0"
+                  size="sm"
+                  toolIcon={node.toolIcon}
+                />
+              ),
+              metadata: {
+                nodeId: node.id,
+                nodeData: node.nodeData,
+              },
+              data: node.nodeData,
+              score,
+            }
+          : null
       })
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => {

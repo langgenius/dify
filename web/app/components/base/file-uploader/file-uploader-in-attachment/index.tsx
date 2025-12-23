@@ -43,12 +43,12 @@ const FileUploaderInAttachment = ({
     {
       value: TransferMethod.local_file,
       label: t('common.fileUploader.uploadFromComputer'),
-      icon: <RiUploadCloud2Line className='h-4 w-4' />,
+      icon: <RiUploadCloud2Line className="h-4 w-4" />,
     },
     {
       value: TransferMethod.remote_url,
       label: t('common.fileUploader.pasteFileLink'),
-      icon: <RiLink className='h-4 w-4' />,
+      icon: <RiLink className="h-4 w-4" />,
     },
   ]
 
@@ -56,12 +56,12 @@ const FileUploaderInAttachment = ({
     return (
       <Button
         key={option.value}
-        variant='tertiary'
+        variant="tertiary"
         className={cn('relative grow', open && 'bg-components-button-tertiary-bg-hover')}
         disabled={!!(fileConfig.number_limits && files.length >= fileConfig.number_limits)}
       >
         {option.icon}
-        <span className='ml-1'>{option.label}</span>
+        <span className="ml-1">{option.label}</span>
         {
           option.value === TransferMethod.local_file && (
             <FileInput fileConfig={fileConfig} />
@@ -92,11 +92,11 @@ const FileUploaderInAttachment = ({
   return (
     <div>
       {!isDisabled && (
-        <div className='flex items-center space-x-1'>
+        <div className="flex items-center space-x-1">
           {options.map(renderOption)}
         </div>
       )}
-      <div className='mt-1 space-y-1'>
+      <div className="mt-1 space-y-1">
         {
           files.map(file => (
             <FileItem

@@ -503,7 +503,7 @@ const Flowchart = (props: FlowchartProps) => {
         <div className="msh-segmented-group">
           <label className="msh-segmented-item m-2 flex w-[200px] items-center space-x-1">
             <div
-              key='classic'
+              key="classic"
               className={getLookButtonClass('classic')}
               onClick={() => {
                 if (look !== 'classic') {
@@ -516,7 +516,7 @@ const Flowchart = (props: FlowchartProps) => {
               <div className="msh-segmented-item-label">{t('app.mermaid.classic')}</div>
             </div>
             <div
-              key='handDrawn'
+              key="handDrawn"
               className={getLookButtonClass('handDrawn')}
               onClick={() => {
                 if (look !== 'handDrawn') {
@@ -535,8 +535,8 @@ const Flowchart = (props: FlowchartProps) => {
       <div ref={containerRef} style={{ position: 'absolute', visibility: 'hidden', height: 0, overflow: 'hidden' }} />
 
       {isLoading && !svgString && (
-        <div className='px-[26px] py-4'>
-          <LoadingAnim type='text' />
+        <div className="px-[26px] py-4">
+          <LoadingAnim type="text" />
           <div className="mt-2 text-sm text-gray-500">
             {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
           </div>
@@ -546,7 +546,8 @@ const Flowchart = (props: FlowchartProps) => {
       {svgString && (
         <div className={themeClasses.mermaidDiv} style={{ objectFit: 'cover' }} onClick={handlePreviewClick}>
           <div className="absolute bottom-2 left-2 z-[100]">
-            <button type="button"
+            <button
+              type="button"
               onClick={(e) => {
                 e.stopPropagation()
                 toggleTheme()
@@ -576,7 +577,7 @@ const Flowchart = (props: FlowchartProps) => {
       )}
 
       {imagePreviewUrl && (
-        <ImagePreview title='mermaid_chart' url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />
+        <ImagePreview title="mermaid_chart" url={imagePreviewUrl} onCancel={() => setImagePreviewUrl('')} />
       )}
     </div>
   )

@@ -58,7 +58,7 @@ export const removeBuiltInToolCredential = (collectionName: string) => {
 }
 
 export const parseParamsSchema = (schema: string) => {
-  return post<{ parameters_schema: CustomParamSchema[]; schema_type: string }>('/workspaces/current/tool-provider/api/schema', {
+  return post<{ parameters_schema: CustomParamSchema[], schema_type: string }>('/workspaces/current/tool-provider/api/schema', {
     body: {
       schema,
     },

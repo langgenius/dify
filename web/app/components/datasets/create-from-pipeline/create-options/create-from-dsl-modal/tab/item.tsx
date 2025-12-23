@@ -23,7 +23,7 @@ const Item = ({
       {label}
       {
         isActive && (
-          <div className='absolute bottom-0 h-0.5 w-full bg-util-colors-blue-brand-blue-brand-600' />
+          <div className="absolute bottom-0 h-0.5 w-full bg-util-colors-blue-brand-blue-brand-600" />
         )
       }
     </div>

@@ -92,7 +92,7 @@ export type ModalState<T> = {
   onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
   isEditMode?: boolean
-  datasetBindings?: { id: string; name: string }[]
+  datasetBindings?: { id: string, name: string }[]
 }
 
 export type ModelModalType = {
@@ -358,7 +358,8 @@ export const ModalContextProvider = ({
       setShowUpdatePluginModal,
       setShowEducationExpireNoticeModal,
       setShowTriggerEventsLimitModal,
-    }}>
+    }}
+    >
       <>
         {children}
         {
@@ -410,7 +411,8 @@ export const ModalContextProvider = ({
           showAnnotationFullModal && (
             <AnnotationFullModal
               show={showAnnotationFullModal}
-              onHide={() => setShowAnnotationFullModal(false)} />
+              onHide={() => setShowAnnotationFullModal(false)}
+            />
           )
         }
         {
@@ -478,7 +480,8 @@ export const ModalContextProvider = ({
               {...showEducationExpireNoticeModal.payload}
               onClose={() => setShowEducationExpireNoticeModal(null)}
             />
-          )}
+          )
+        }
         {
           !!showTriggerEventsLimitModal && (
             <TriggerEventsLimitModal
@@ -496,7 +499,8 @@ export const ModalContextProvider = ({
                 handleShowPricingModal()
               }}
             />
-          )}
+          )
+        }
       </>
     </ModalContext.Provider>
   )

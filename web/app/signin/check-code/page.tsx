@@ -88,44 +88,46 @@ export default function CheckCode() {
     catch (error) { console.error(error) }
   }
 
-  return <div className='flex flex-col gap-3'>
-    <div className='inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg'>
-      <RiMailSendFill className='h-6 w-6 text-2xl text-text-accent-light-mode-only' />
-    </div>
-    <div className='pb-4 pt-2'>
-      <h2 className='title-4xl-semi-bold text-text-primary'>{t('login.checkCode.checkYourEmail')}</h2>
-      <p className='body-md-regular mt-2 text-text-secondary'>
-        <span>
-          {t('login.checkCode.tipsPrefix')}
-          <strong>{email}</strong>
-        </span>
-        <br />
-        {t('login.checkCode.validTime')}
-      </p>
-    </div>
-
-    <form onSubmit={handleSubmit}>
-      <label htmlFor="code" className='system-md-semibold mb-1 text-text-secondary'>{t('login.checkCode.verificationCode')}</label>
-      <Input
-        ref={codeInputRef}
-        id='code'
-        value={code}
-        onChange={e => setVerifyCode(e.target.value)}
-        maxLength={6}
-        className='mt-1'
-        placeholder={t('login.checkCode.verificationCodePlaceholder') as string}
-      />
-      <Button type='submit' loading={loading} disabled={loading} className='my-3 w-full' variant='primary'>{t('login.checkCode.verify')}</Button>
-      <Countdown onResend={resendCode} />
-    </form>
-    <div className='py-2'>
-      <div className='h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent'></div>
-    </div>
-    <div onClick={() => router.back()} className='flex h-9 cursor-pointer items-center justify-center text-text-tertiary'>
-      <div className='inline-block rounded-full bg-background-default-dimmed p-1'>
-        <RiArrowLeftLine size={12} />
+  return (
+    <div className="flex flex-col gap-3">
+      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle bg-background-default-dodge shadow-lg">
+        <RiMailSendFill className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
-      <span className='system-xs-regular ml-2'>{t('login.back')}</span>
+      <div className="pb-4 pt-2">
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.checkCode.checkYourEmail')}</h2>
+        <p className="body-md-regular mt-2 text-text-secondary">
+          <span>
+            {t('login.checkCode.tipsPrefix')}
+            <strong>{email}</strong>
+          </span>
+          <br />
+          {t('login.checkCode.validTime')}
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit}>
+        <label htmlFor="code" className="system-md-semibold mb-1 text-text-secondary">{t('login.checkCode.verificationCode')}</label>
+        <Input
+          ref={codeInputRef}
+          id="code"
+          value={code}
+          onChange={e => setVerifyCode(e.target.value)}
+          maxLength={6}
+          className="mt-1"
+          placeholder={t('login.checkCode.verificationCodePlaceholder') as string}
+        />
+        <Button type="submit" loading={loading} disabled={loading} className="my-3 w-full" variant="primary">{t('login.checkCode.verify')}</Button>
+        <Countdown onResend={resendCode} />
+      </form>
+      <div className="py-2">
+        <div className="h-px bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
+      </div>
+      <div onClick={() => router.back()} className="flex h-9 cursor-pointer items-center justify-center text-text-tertiary">
+        <div className="inline-block rounded-full bg-background-default-dimmed p-1">
+          <RiArrowLeftLine size={12} />
+        </div>
+        <span className="system-xs-regular ml-2">{t('login.back')}</span>
+      </div>
     </div>
-  </div>
+  )
 }

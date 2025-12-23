@@ -13,7 +13,7 @@ import { formatToLocalTime } from '@/utils/format'
 const today = dayjs()
 
 type Props = {
-  ranges: { value: number; name: string }[]
+  ranges: { value: number, name: string }[]
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
 }
@@ -67,13 +67,13 @@ const TimeRangePicker: FC<Props> = ({
   }, [start, end, onSelect, locale, queryDateFormat])
 
   return (
-    <div className='flex items-center'>
+    <div className="flex items-center">
       <RangeSelector
         isCustomRange={isCustomRange}
         ranges={ranges}
         onSelect={handleRangeChange}
       />
-      <HourglassShape className='h-3.5 w-2 text-components-input-bg-normal' />
+      <HourglassShape className="h-3.5 w-2 text-components-input-bg-normal" />
       <DatePicker
         start={start}
         end={end}

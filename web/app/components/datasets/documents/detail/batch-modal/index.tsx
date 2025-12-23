@@ -40,10 +40,10 @@ const BatchModal: FC<IBatchModalProps> = ({
   }, [isShow])
 
   return (
-    <Modal isShow={isShow} onClose={noop} className='!max-w-[520px] !rounded-xl px-8 py-6'>
-      <div className='relative pb-1 text-xl font-medium leading-[30px] text-text-primary'>{t('datasetDocuments.list.batchModal.title')}</div>
-      <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onCancel}>
-        <RiCloseLine className='h-4 w-4 text-text-secondary' />
+    <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
+      <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('datasetDocuments.list.batchModal.title')}</div>
+      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
+        <RiCloseLine className="h-4 w-4 text-text-secondary" />
       </div>
       <CSVUploader
         file={currentCSV}
@@ -52,8 +52,8 @@ const BatchModal: FC<IBatchModalProps> = ({
       <CSVDownloader
         docForm={docForm}
       />
-      <div className='mt-[28px] flex justify-end pt-6'>
-        <Button className='mr-2' onClick={onCancel}>
+      <div className="mt-[28px] flex justify-end pt-6">
+        <Button className="mr-2" onClick={onCancel}>
           {t('datasetDocuments.list.batchModal.cancel')}
         </Button>
         <Button variant="primary" onClick={handleSend} disabled={!currentCSV || !currentCSV.file || !currentCSV.file.id}>

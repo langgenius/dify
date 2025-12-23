@@ -890,7 +890,7 @@ describe('DocumentPicker', () => {
     })
 
     describe('value.parentMode variations', () => {
-      const parentModes: Array<{ mode: ParentMode; label: string }> = [
+      const parentModes: Array<{ mode: ParentMode, label: string }> = [
         { mode: 'paragraph', label: 'dataset.parentMode.paragraph' },
         { mode: 'full-doc', label: 'dataset.parentMode.fullDoc' },
       ]

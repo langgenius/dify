@@ -55,7 +55,8 @@ export const ChatContextProvider = ({
       onAnnotationAdded,
       onAnnotationRemoved,
       onFeedback,
-    }}>
+    }}
+    >
       {children}
     </ChatContext.Provider>
   )

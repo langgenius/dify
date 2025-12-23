@@ -81,47 +81,50 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     onChange(parsed)
   }, [isValidValue, onChange])
 
-  return <div className={cn('flex', wrapClassName)}>
-    <Input {...rest}
-      // disable default controller
-      type='number'
-      className={cn('no-spinner rounded-r-none', className)}
-      value={value ?? 0}
-      max={max}
-      min={min}
-      disabled={disabled}
-      onChange={handleInputChange}
-      unit={unit}
-      size={size}
-    />
-    <div className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs',
-      disabled && 'cursor-not-allowed opacity-50',
-      controlWrapClassName)}
-    >
-      <button
-        type='button'
-        onClick={inc}
+  return (
+    <div className={cn('flex', wrapClassName)}>
+      <Input
+        {...rest}
+        // disable default controller
+        type="number"
+        className={cn('no-spinner rounded-r-none', className)}
+        value={value ?? 0}
+        max={max}
+        min={min}
         disabled={disabled}
-        aria-label='increment'
-        className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5',
-          'px-1.5 hover:bg-components-input-bg-hover',
-          disabled && 'cursor-not-allowed hover:bg-transparent',
-          controlClassName)}
+        onChange={handleInputChange}
+        unit={unit}
+        size={size}
+      />
+      <div className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs',
+        disabled && 'cursor-not-allowed opacity-50',
+        controlWrapClassName)}
       >
-        <RiArrowUpSLine className='size-3' />
-      </button>
-      <button
-        type='button'
-        onClick={dec}
-        disabled={disabled}
-        aria-label='decrement'
-        className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5',
-          'px-1.5 hover:bg-components-input-bg-hover',
-          disabled && 'cursor-not-allowed hover:bg-transparent',
-          controlClassName)}
-      >
-        <RiArrowDownSLine className='size-3' />
-      </button>
+        <button
+          type="button"
+          onClick={inc}
+          disabled={disabled}
+          aria-label="increment"
+          className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5',
+            'px-1.5 hover:bg-components-input-bg-hover',
+            disabled && 'cursor-not-allowed hover:bg-transparent',
+            controlClassName)}
+        >
+          <RiArrowUpSLine className="size-3" />
+        </button>
+        <button
+          type="button"
+          onClick={dec}
+          disabled={disabled}
+          aria-label="decrement"
+          className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5',
+            'px-1.5 hover:bg-components-input-bg-hover',
+            disabled && 'cursor-not-allowed hover:bg-transparent',
+            controlClassName)}
+        >
+          <RiArrowDownSLine className="size-3" />
+        </button>
+      </div>
     </div>
-  </div>
+  )
 }

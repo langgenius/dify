@@ -20,12 +20,12 @@ const Node: FC<NodeProps<LLMNodeType>> = ({
     return null
 
   return (
-    <div className='mb-1 px-3 py-1'>
+    <div className="mb-1 px-3 py-1">
       {hasSetModel && (
         <ModelSelector
           defaultModel={{ provider, model: modelId }}
           modelList={textGenerationModelList}
-          triggerClassName='!h-6 !rounded-md'
+          triggerClassName="!h-6 !rounded-md"
           readonly
         />
       )}

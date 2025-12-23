@@ -14,8 +14,8 @@ import useAvailableVarList from '../_base/hooks/use-available-var-list'
 const i18nPrefix = 'workflow.nodes.questionClassifiers'
 
 type Params = {
-  id: string,
-  payload: QuestionClassifierNodeType,
+  id: string
+  payload: QuestionClassifierNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -134,9 +134,9 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVar = (variable: string) => {
-    if(variable === 'query')
+    if (variable === 'query')
       return payload.query_variable_selector
-    if(variable === '#files#')
+    if (variable === '#files#')
       return payload.vision.configs?.variable_selector
 
     return false

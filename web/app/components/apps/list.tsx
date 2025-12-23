@@ -97,12 +97,12 @@ const List = () => {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.WORKFLOW, text: t('app.types.workflow'), icon: <RiExchange2Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('app.types.advanced'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.CHAT, text: t('app.types.chatbot'), icon: <RiMessage3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('app.types.agent'), icon: <RiRobot3Line className='mr-1 h-[14px] w-[14px]' /> },
-    { value: AppModeEnum.COMPLETION, text: t('app.types.completion'), icon: <RiFile4Line className='mr-1 h-[14px] w-[14px]' /> },
+    { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('app.types.workflow'), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('app.types.advanced'), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('app.types.chatbot'), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('app.types.agent'), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('app.types.completion'), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -174,30 +174,30 @@ const List = () => {
 
   return (
     <>
-      <div ref={containerRef} className='relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body'>
+      <div ref={containerRef} className="relative flex h-0 shrink-0 grow flex-col overflow-y-auto bg-background-body">
         {dragging && (
           <div className="absolute inset-0 z-50 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent bg-[rgba(21,90,239,0.14)] p-2">
           </div>
         )}
 
-        <div className='sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7'>
+        <div className="sticky top-0 z-10 flex flex-wrap items-center justify-between gap-y-2 bg-background-body px-12 pb-5 pt-7">
           <TabSliderNew
             value={activeTab}
             onChange={setActiveTab}
             options={options}
           />
-          <div className='flex items-center gap-2'>
+          <div className="flex items-center gap-2">
             <CheckboxWithLabel
-              className='mr-2'
+              className="mr-2"
               label={t('app.showMyCreatedAppsOnly')}
               isChecked={isCreatedByMe}
               onChange={handleCreatedByMeChange}
             />
-            <TagFilter type='app' value={tagFilterValue} onChange={handleTagsChange} />
+            <TagFilter type="app" value={tagFilterValue} onChange={handleTagsChange} />
             <Input
               showLeftIcon
               showClearIcon
-              wrapperClassName='w-[200px]'
+              wrapperClassName="w-[200px]"
               value={keywords}
               onChange={e => handleKeywordsChange(e.target.value)}
               onClear={() => handleKeywordsChange('')}
@@ -205,18 +205,22 @@ const List = () => {
           </div>
         </div>
         {hasAnyApp
-          ? <div className='relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} onSuccess={refetch} selectedAppType={activeTab} />}
-            {pages.map(({ data: apps }) => apps.map(app => (
-              <AppCard key={app.id} app={app} onRefresh={refetch} />
-            )))}
-          </div>
-          : <div className='relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6'>
-            {isCurrentWorkspaceEditor
-              && <NewAppCard ref={newAppCardRef} className='z-10' onSuccess={refetch} selectedAppType={activeTab} />}
-            <Empty />
-          </div>}
+          ? (
+              <div className="relative grid grow grid-cols-1 content-start gap-4 px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6">
+                {isCurrentWorkspaceEditor
+                  && <NewAppCard ref={newAppCardRef} onSuccess={refetch} selectedAppType={activeTab} />}
+                {pages.map(({ data: apps }) => apps.map(app => (
+                  <AppCard key={app.id} app={app} onRefresh={refetch} />
+                )))}
+              </div>
+            )
+          : (
+              <div className="relative grid grow grid-cols-1 content-start gap-4 overflow-hidden px-12 pt-2 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6">
+                {isCurrentWorkspaceEditor
+                  && <NewAppCard ref={newAppCardRef} className="z-10" onSuccess={refetch} selectedAppType={activeTab} />}
+                <Empty />
+              </div>
+            )}
 
         {isCurrentWorkspaceEditor && (
           <div
@@ -232,9 +236,9 @@ const List = () => {
           <Footer />
         )}
         <CheckModal />
-        <div ref={anchorRef} className='h-0'> </div>
+        <div ref={anchorRef} className="h-0"> </div>
         {showTagManagementModal && (
-          <TagManagementModal type='app' show={showTagManagementModal} />
+          <TagManagementModal type="app" show={showTagManagementModal} />
         )}
       </div>
 

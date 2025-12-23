@@ -58,11 +58,11 @@ const List: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <ListNoDataPlaceholder >{t(`${i18nPrefix}.extractParametersNotSet`)}</ListNoDataPlaceholder>
+      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`)}</ListNoDataPlaceholder>
     )
   }
   return (
-    <div className='space-y-1'>
+    <div className="space-y-1">
       {list.map((item, index) => (
         <Item
           key={index}
@@ -73,7 +73,7 @@ const List: FC<Props> = ({
       ))}
       {isShowEditModal && (
         <EditParam
-          type='edit'
+          type="edit"
           payload={list[currEditItemIndex]}
           onSave={handleItemChange(currEditItemIndex)}
           onCancel={hideEditModal}

@@ -51,25 +51,25 @@ const ModelList: FC<ModelListProps> = ({
   }, [onChange, provider, setShowModelLoadBalancingModal])
 
   return (
-    <div className='rounded-b-xl px-2 pb-2'>
-      <div className='rounded-lg bg-components-panel-bg py-1'>
-        <div className='flex items-center pl-1 pr-[3px]'>
-          <span className='group mr-2 flex shrink-0 items-center'>
-            <span className='system-xs-medium inline-flex h-6 items-center pl-1 pr-1.5 text-text-tertiary group-hover:hidden'>
+    <div className="rounded-b-xl px-2 pb-2">
+      <div className="rounded-lg bg-components-panel-bg py-1">
+        <div className="flex items-center pl-1 pr-[3px]">
+          <span className="group mr-2 flex shrink-0 items-center">
+            <span className="system-xs-medium inline-flex h-6 items-center pl-1 pr-1.5 text-text-tertiary group-hover:hidden">
               {t('common.modelProvider.modelsNum', { num: models.length })}
-              <RiArrowRightSLine className='mr-0.5 h-4 w-4 rotate-90' />
+              <RiArrowRightSLine className="mr-0.5 h-4 w-4 rotate-90" />
             </span>
             <span
-              className='system-xs-medium hidden h-6 cursor-pointer items-center rounded-lg bg-state-base-hover pl-1 pr-1.5 text-text-tertiary group-hover:inline-flex'
+              className="system-xs-medium hidden h-6 cursor-pointer items-center rounded-lg bg-state-base-hover pl-1 pr-1.5 text-text-tertiary group-hover:inline-flex"
               onClick={() => onCollapse()}
             >
               {t('common.modelProvider.modelsNum', { num: models.length })}
-              <RiArrowRightSLine className='mr-0.5 h-4 w-4 rotate-90' />
+              <RiArrowRightSLine className="mr-0.5 h-4 w-4 rotate-90" />
             </span>
           </span>
           {
             isConfigurable && isCurrentWorkspaceManager && (
-              <div className='flex grow justify-end'>
+              <div className="flex grow justify-end">
                 <ManageCustomModelCredentials
                   provider={provider}
                   currentCustomConfigurationModelFixedFields={undefined}

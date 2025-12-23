@@ -21,16 +21,16 @@ const Header = () => {
   }, [workflowStore])
 
   return (
-    <div className='flex items-center gap-x-2 pl-4 pr-3 pt-4'>
-      <div className='system-xl-semibold grow pl-1 pr-8 text-text-primary'>
+    <div className="flex items-center gap-x-2 pl-4 pr-3 pt-4">
+      <div className="system-xl-semibold grow pl-1 pr-8 text-text-primary">
         {t('datasetPipeline.testRun.title')}
       </div>
       <button
-        type='button'
-        className='flex size-8 shrink-0 items-center justify-center p-1.5'
+        type="button"
+        className="flex size-8 shrink-0 items-center justify-center p-1.5"
         onClick={handleClose}
       >
-        <RiCloseLine className='size-4 text-text-tertiary' />
+        <RiCloseLine className="size-4 text-text-tertiary" />
       </button>
     </div>
   )

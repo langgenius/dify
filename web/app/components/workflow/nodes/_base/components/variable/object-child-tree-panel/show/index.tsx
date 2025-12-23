@@ -23,7 +23,7 @@ const ShowPanel: FC<Props> = ({
     },
   }
   return (
-    <div className='relative left-[-7px]'>
+    <div className="relative left-[-7px]">
       {Object.keys(schema.schema.properties!).map(name => (
         <Field
           key={name}

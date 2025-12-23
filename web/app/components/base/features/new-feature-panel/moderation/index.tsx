@@ -125,11 +125,11 @@ const Moderation = ({
 
   return (
     <FeatureCard
-      icon={
-        <div className='shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs'>
-          <ContentModeration className='h-4 w-4 text-text-primary-on-surface' />
+      icon={(
+        <div className="shrink-0 rounded-lg border-[0.5px] border-divider-subtle bg-text-success p-1 shadow-xs">
+          <ContentModeration className="h-4 w-4 text-text-primary-on-surface" />
         </div>
-      }
+      )}
       title={t('appDebug.feature.moderation.title')}
       value={!!moderation?.enabled}
       onChange={state => handleChange(FeatureEnum.moderation, state)}
@@ -139,26 +139,26 @@ const Moderation = ({
     >
       <>
         {!moderation?.enabled && (
-          <div className='system-xs-regular line-clamp-2 min-h-8 text-text-tertiary'>{t('appDebug.feature.moderation.description')}</div>
+          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('appDebug.feature.moderation.description')}</div>
         )}
         {!!moderation?.enabled && (
           <>
             {!isHovering && (
-              <div className='flex items-center gap-4 pt-0.5'>
-                <div className=''>
-                  <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('appDebug.feature.moderation.modal.provider.title')}</div>
-                  <div className='system-xs-regular text-text-secondary'>{providerContent}</div>
+              <div className="flex items-center gap-4 pt-0.5">
+                <div className="">
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.moderation.modal.provider.title')}</div>
+                  <div className="system-xs-regular text-text-secondary">{providerContent}</div>
                 </div>
-                <div className='h-[27px] w-px rotate-12 bg-divider-subtle'></div>
-                <div className=''>
-                  <div className='system-2xs-medium-uppercase mb-0.5 text-text-tertiary'>{t('appDebug.feature.moderation.contentEnableLabel')}</div>
-                  <div className='system-xs-regular text-text-secondary'>{enableContent}</div>
+                <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
+                <div className="">
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.moderation.contentEnableLabel')}</div>
+                  <div className="system-xs-regular text-text-secondary">{enableContent}</div>
                 </div>
               </div>
             )}
             {isHovering && (
-              <Button className='w-full' onClick={handleOpenModerationSettingModal} disabled={disabled}>
-                <RiEqualizer2Line className='mr-1 h-4 w-4' />
+              <Button className="w-full" onClick={handleOpenModerationSettingModal} disabled={disabled}>
+                <RiEqualizer2Line className="mr-1 h-4 w-4" />
                 {t('common.operation.settings')}
               </Button>
             )}

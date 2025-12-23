@@ -70,8 +70,8 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
   }, [readOnly, inputs.webhook_url, generateWebhookUrl])
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-3 pt-2'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-3 pt-2">
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`)}>
           <div className="space-y-1">
@@ -225,7 +225,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
 
       <Split />
 
-      <div className=''>
+      <div className="">
         <OutputVars
           collapsed={outputVarsCollapsed}
           onCollapse={setOutputVarsCollapsed}

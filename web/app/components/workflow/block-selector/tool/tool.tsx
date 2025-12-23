@@ -89,7 +89,7 @@ const Tool: FC<Props> = ({
   const notShowProviderSelectInfo = useMemo(() => {
     if (isAllSelected) {
       return (
-        <span className='system-xs-regular text-text-tertiary'>
+        <span className="system-xs-regular text-text-tertiary">
           {t('tools.addToolModal.added')}
         </span>
       )
@@ -98,7 +98,8 @@ const Tool: FC<Props> = ({
   const selectedInfo = useMemo(() => {
     if (isHovering && !isAllSelected) {
       return (
-        <span className='system-xs-regular text-components-button-secondary-accent-text'
+        <span
+          className="system-xs-regular text-components-button-secondary-accent-text"
           onClick={() => {
             onSelectMultiple?.(BlockEnum.Tool, actions.filter(action => !getIsDisabled(action)).map((tool) => {
               const params: Record<string, string> = {}
@@ -135,11 +136,10 @@ const Tool: FC<Props> = ({
       return <></>
 
     return (
-      <span className='system-xs-regular text-text-tertiary'>
+      <span className="system-xs-regular text-text-tertiary">
         {isAllSelected
           ? t('workflow.tabs.allAdded')
-          : `${selectedToolsNum} / ${totalToolsNum}`
-        }
+          : `${selectedToolsNum} / ${totalToolsNum}`}
       </span>
     )
   }, [actions, getIsDisabled, isAllSelected, isHovering, language, onSelectMultiple, payload.id, payload.is_team_authorization, payload.name, payload.type, selectedToolsNum, t, totalToolsNum])
@@ -176,7 +176,7 @@ const Tool: FC<Props> = ({
     >
       <div className={cn(className)}>
         <div
-          className='group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover'
+          className="group/item flex w-full cursor-pointer select-none items-center justify-between rounded-lg pl-3 pr-1 hover:bg-state-base-hover"
           onClick={() => {
             if (hasAction) {
               setFold(!isFold)
@@ -210,20 +210,20 @@ const Tool: FC<Props> = ({
         >
           <div className={cn('flex h-8 grow items-center', isShowCanNotChooseMCPTip && 'opacity-30')}>
             <BlockIcon
-              className='shrink-0'
+              className="shrink-0"
               type={BlockEnum.Tool}
               toolIcon={providerIcon}
             />
-            <div className='ml-2 flex w-0 grow items-center text-sm text-text-primary'>
-              <span className='max-w-[250px] truncate'>{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
+            <div className="ml-2 flex w-0 grow items-center text-sm text-text-primary">
+              <span className="max-w-[250px] truncate">{notShowProvider ? actions[0]?.label[language] : payload.label[language]}</span>
               {isFlatView && groupName && (
-                <span className='system-xs-regular ml-2 shrink-0 text-text-quaternary'>{groupName}</span>
+                <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{groupName}</span>
               )}
-              {isMCPTool && <Mcp className='ml-2 size-3.5 shrink-0 text-text-quaternary' />}
+              {isMCPTool && <Mcp className="ml-2 size-3.5 shrink-0 text-text-quaternary" />}
             </div>
           </div>
 
-          <div className='ml-2 flex items-center'>
+          <div className="ml-2 flex items-center">
             {!isShowCanNotChooseMCPTip && !canNotSelectMultiple && (notShowProvider ? notShowProviderSelectInfo : selectedInfo)}
             {isShowCanNotChooseMCPTip && <McpToolNotSupportTooltip />}
             {hasAction && (

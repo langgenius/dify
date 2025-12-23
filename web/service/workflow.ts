@@ -21,7 +21,7 @@ export const syncWorkflowDraft = ({ url, params }: {
   url: string
   params: Pick<FetchWorkflowDraftResponse, 'graph' | 'features' | 'environment_variables' | 'conversation_variables'>
 }) => {
-  return post<CommonResponse & { updated_at: number; hash: string }>(url, { body: params }, { silent: true })
+  return post<CommonResponse & { updated_at: number, hash: string }>(url, { body: params }, { silent: true })
 }
 
 export const fetchNodesDefaultConfigs: Fetcher<NodesDefaultConfigsResponse, string> = (url) => {

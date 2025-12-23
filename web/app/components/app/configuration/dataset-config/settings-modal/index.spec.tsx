@@ -51,7 +51,7 @@ vi.mock('@/service/use-common', async () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({ isCurrentWorkspaceDatasetOperator: mockIsWorkspaceDatasetOperator }),
-  useSelector: <T,>(selector: (value: { userProfile: { id: string; name: string; email: string; avatar_url: string } }) => T) => selector({
+  useSelector: <T,>(selector: (value: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => T) => selector({
     userProfile: {
       id: 'user-1',
       name: 'User One',
@@ -95,8 +95,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div data-testid='model-selector'>
+  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+    <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
     </div>
   ),

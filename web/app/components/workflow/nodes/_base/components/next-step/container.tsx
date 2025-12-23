@@ -27,7 +27,8 @@ const Container = ({
     <div className={cn(
       'space-y-0.5 rounded-[10px] bg-background-section-burn p-0.5',
       isFailBranch && 'border-[0.5px] border-state-warning-hover-alt bg-state-warning-hover',
-    )}>
+    )}
+    >
       {
         branchName && (
           <div
@@ -47,7 +48,7 @@ const Container = ({
             key={nextNode.id}
             nodeId={nextNode.id}
             data={nextNode.data}
-            sourceHandle='source'
+            sourceHandle="source"
           />
         ))
       }

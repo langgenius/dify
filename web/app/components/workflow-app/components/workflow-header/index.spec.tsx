@@ -13,7 +13,7 @@ let appDetail: App
 
 vi.mock('@/app/components/app/store', () => ({
   __esModule: true,
-  useStore: (selector: (state: { appDetail?: App; setCurrentLogItem: typeof mockSetCurrentLogItem; setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => mockUseAppStoreSelector(selector),
+  useStore: (selector: (state: { appDetail?: App, setCurrentLogItem: typeof mockSetCurrentLogItem, setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({
@@ -24,7 +24,7 @@ vi.mock('@/app/components/workflow/header', () => ({
 
     return (
       <div
-        data-testid='workflow-header'
+        data-testid="workflow-header"
         data-show-run={String(Boolean(props.normal?.runAndHistoryProps?.showRunButton))}
         data-show-preview={String(Boolean(props.normal?.runAndHistoryProps?.showPreviewButton))}
         data-history-url={props.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl ?? ''}

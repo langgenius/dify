@@ -48,28 +48,28 @@ const ConfigAudio: FC = () => {
     return null
 
   return (
-    <div className='mt-2 flex items-center gap-2 rounded-xl border-l-[0.5px] border-t-[0.5px] bg-background-section-burn p-2'>
-      <div className='shrink-0 p-1'>
-        <div className='rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs'>
-          <Microphone01 className='h-4 w-4 text-text-primary-on-surface' />
+    <div className="mt-2 flex items-center gap-2 rounded-xl border-l-[0.5px] border-t-[0.5px] bg-background-section-burn p-2">
+      <div className="shrink-0 p-1">
+        <div className="rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-violet-violet-600 p-1 shadow-xs">
+          <Microphone01 className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       </div>
-      <div className='flex grow items-center'>
-        <div className='system-sm-semibold mr-1 text-text-secondary'>{t('appDebug.feature.audioUpload.title')}</div>
+      <div className="flex grow items-center">
+        <div className="system-sm-semibold mr-1 text-text-secondary">{t('appDebug.feature.audioUpload.title')}</div>
         <Tooltip
-          popupContent={
-            <div className='w-[180px]' >
+          popupContent={(
+            <div className="w-[180px]">
               {t('appDebug.feature.audioUpload.description')}
             </div>
-          }
+          )}
         />
       </div>
-      <div className='flex shrink-0 items-center'>
-        <div className='ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle'></div>
+      <div className="flex shrink-0 items-center">
+        <div className="ml-1 mr-3 h-3.5 w-[1px] bg-divider-subtle"></div>
         <Switch
           defaultValue={isAudioEnabled}
           onChange={handleChange}
-          size='md'
+          size="md"
         />
       </div>
     </div>

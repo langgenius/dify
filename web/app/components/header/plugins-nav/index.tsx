@@ -26,9 +26,12 @@ const PluginsNav = ({
   } = usePluginTaskStatus()
 
   return (
-    <Link href="/plugins" className={cn(className, 'group', 'plugins-nav-button',
-       // used for use-fold-anim-into.ts
-    )}>
+    <Link
+      href="/plugins"
+      className={cn(className, 'group', 'plugins-nav-button',
+      // used for use-fold-anim-into.ts
+      )}
+    >
       <div
         className={cn('system-sm-medium relative flex h-8 flex-row items-center justify-center gap-0.5 rounded-xl border border-transparent p-1.5',
           activated && 'border-components-main-nav-nav-button-border bg-components-main-nav-nav-button-bg-active text-components-main-nav-nav-button-text shadow-md',
@@ -38,15 +41,15 @@ const PluginsNav = ({
         {
           (isFailed || isInstallingWithError) && !activated && (
             <Indicator
-              color='red'
-              className='absolute left-[-1px] top-[-1px]'
+              color="red"
+              className="absolute left-[-1px] top-[-1px]"
             />
           )
         }
-        <div className='mr-0.5 flex h-5 w-5 items-center justify-center'>
+        <div className="mr-0.5 flex h-5 w-5 items-center justify-center">
           {
             (!(isInstalling || isInstallingWithError) || activated) && (
-              <Group className='h-4 w-4' />
+              <Group className="h-4 w-4" />
             )
           }
           {
@@ -55,7 +58,7 @@ const PluginsNav = ({
             )
           }
         </div>
-        <span className='px-0.5'>{t('common.menus.plugins')}</span>
+        <span className="px-0.5">{t('common.menus.plugins')}</span>
       </div>
     </Link>
   )

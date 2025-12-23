@@ -93,14 +93,14 @@ const OutputVarList: FC<Props> = ({
   }, [onRemove])
 
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {list.map((item, index) => (
-        <div className='flex items-center space-x-1' key={index}>
+        <div className="flex items-center space-x-1" key={index}>
           <Input
             readOnly={readonly}
             value={item.variable}
             onChange={handleVarNameChange(index)}
-            wrapperClassName='grow'
+            wrapperClassName="grow"
           />
           <VarTypePicker
             readonly={readonly}
@@ -108,7 +108,7 @@ const OutputVarList: FC<Props> = ({
             onChange={handleVarTypeChange(index)}
           />
           <RemoveButton
-            className='!bg-gray-100 !p-2 hover:!bg-gray-200'
+            className="!bg-gray-100 !p-2 hover:!bg-gray-200"
             onClick={handleVarRemove(index)}
           />
         </div>

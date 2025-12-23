@@ -30,7 +30,7 @@ const Actions = ({
 
   return (
     <Button
-      variant='primary'
+      variant="primary"
       disabled={isSubmitting || !canSubmit}
       loading={isSubmitting}
       onClick={() => form.handleSubmit()}

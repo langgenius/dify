@@ -59,15 +59,15 @@ const ChunkStructure = ({
               readonly={readonly}
               trigger={(
                 <Button
-                  className='w-full'
-                  variant='secondary-accent'
+                  className="w-full"
+                  variant="secondary-accent"
                 >
-                  <RiAddLine className='mr-1 h-4 w-4' />
+                  <RiAddLine className="mr-1 h-4 w-4" />
                   {t('workflow.nodes.knowledgeBase.chooseChunkStructure')}
                 </Button>
               )}
             />
-            <Instruction className='mt-2' />
+            <Instruction className="mt-2" />
           </>
         )
       }

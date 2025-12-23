@@ -165,7 +165,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       })
       handleOutVarRenameChange(id, [id, inputs.advanced_settings.groups[index].group_name, 'output'], [id, name, 'output'])
       setInputs(newInputs)
-      if(!(id in oldNameRecord.current))
+      if (!(id in oldNameRecord.current))
         oldNameRecord.current[id] = inputs.advanced_settings.groups[index].group_name
       renameInspectNameWithDebounce(id, name)
     }

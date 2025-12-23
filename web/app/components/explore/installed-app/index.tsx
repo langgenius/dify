@@ -67,44 +67,58 @@ const InstalledApp: FC<IInstalledAppProps> = ({
   }, [installedApp, appMeta, appParams, updateAppInfo, updateAppParams, updateUserCanAccessApp, updateWebAppMeta, userCanAccessApp, webAppAccessMode, updateWebAppAccessMode])
 
   if (appParamsError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appParamsError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appParamsError.message} />
+      </div>
+    )
   }
   if (appMetaError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={appMetaError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={appMetaError.message} />
+      </div>
+    )
   }
   if (useCanAccessAppError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={useCanAccessAppError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={useCanAccessAppError.message} />
+      </div>
+    )
   }
   if (webAppAccessModeError) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable unknownReason={webAppAccessModeError.message} />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable unknownReason={webAppAccessModeError.message} />
+      </div>
+    )
   }
   if (userCanAccessApp && !userCanAccessApp.result) {
-    return <div className='flex h-full flex-col items-center justify-center gap-y-2'>
-      <AppUnavailable className='h-auto w-auto' code={403} unknownReason='no permission.' />
-    </div>
+    return (
+      <div className="flex h-full flex-col items-center justify-center gap-y-2">
+        <AppUnavailable className="h-auto w-auto" code={403} unknownReason="no permission." />
+      </div>
+    )
   }
   if (isFetchingAppParams || isFetchingAppMeta || isFetchingWebAppAccessMode || isFetchingInstalledApps) {
-    return <div className='flex h-full items-center justify-center'>
-      <Loading />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <Loading />
+      </div>
+    )
   }
   if (!installedApp) {
-    return <div className='flex h-full items-center justify-center'>
-      <AppUnavailable code={404} isUnknownReason />
-    </div>
+    return (
+      <div className="flex h-full items-center justify-center">
+        <AppUnavailable code={404} isUnknownReason />
+      </div>
+    )
   }
   return (
-    <div className='h-full bg-background-default py-2 pl-0 pr-2 sm:p-2'>
+    <div className="h-full bg-background-default py-2 pl-0 pr-2 sm:p-2">
       {installedApp?.app.mode !== AppModeEnum.COMPLETION && installedApp?.app.mode !== AppModeEnum.WORKFLOW && (
-        <ChatWithHistory installedAppInfo={installedApp} className='overflow-hidden rounded-2xl shadow-md' />
+        <ChatWithHistory installedAppInfo={installedApp} className="overflow-hidden rounded-2xl shadow-md" />
       )}
       {installedApp?.app.mode === AppModeEnum.COMPLETION && (
         <TextGenerationApp isInstalledApp installedAppInfo={installedApp} />

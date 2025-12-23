@@ -46,20 +46,27 @@ export default function FeedBack(props: DeleteAccountProps) {
     props.onCancel()
     handleSuccess()
   }, [handleSuccess, props])
-  return <CustomDialog
-    show={true}
-    onClose={props.onCancel}
-    title={t('common.account.feedbackTitle')}
-    className="max-w-[480px]"
-    footer={false}
-  >
-    <label className='system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary'>{t('common.account.feedbackLabel')}</label>
-    <Textarea rows={6} value={userFeedback} placeholder={t('common.account.feedbackPlaceholder') as string} onChange={(e) => {
-      setUserFeedback(e.target.value)
-    }} />
-    <div className='mt-3 flex w-full flex-col gap-2'>
-      <Button className='w-full' loading={isPending} variant='primary' onClick={handleSubmit}>{t('common.operation.submit')}</Button>
-      <Button className='w-full' onClick={handleSkip}>{t('common.operation.skip')}</Button>
-    </div>
-  </CustomDialog>
+  return (
+    <CustomDialog
+      show={true}
+      onClose={props.onCancel}
+      title={t('common.account.feedbackTitle')}
+      className="max-w-[480px]"
+      footer={false}
+    >
+      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('common.account.feedbackLabel')}</label>
+      <Textarea
+        rows={6}
+        value={userFeedback}
+        placeholder={t('common.account.feedbackPlaceholder') as string}
+        onChange={(e) => {
+          setUserFeedback(e.target.value)
+        }}
+      />
+      <div className="mt-3 flex w-full flex-col gap-2">
+        <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('common.operation.submit')}</Button>
+        <Button className="w-full" onClick={handleSkip}>{t('common.operation.skip')}</Button>
+      </div>
+    </CustomDialog>
+  )
 }

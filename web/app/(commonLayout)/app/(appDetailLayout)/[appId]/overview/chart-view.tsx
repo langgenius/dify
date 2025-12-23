@@ -43,63 +43,65 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
 
   return (
     <div>
-      <div className='mb-4'>
-        <div className='system-xl-semibold mb-2 text-text-primary'>{t('common.appMenus.overview')}</div>
-        <div className='flex items-center justify-between'>
-          {IS_CLOUD_EDITION ? (
-            <TimeRangePicker
-              ranges={TIME_PERIOD_MAPPING}
-              onSelect={setPeriod}
-              queryDateFormat={queryDateFormat}
-            />
-          ) : (
-            <LongTimeRangePicker
-              periodMapping={LONG_TIME_PERIOD_MAPPING}
-              onSelect={setPeriod}
-              queryDateFormat={queryDateFormat}
-            />
-          )}
+      <div className="mb-4">
+        <div className="system-xl-semibold mb-2 text-text-primary">{t('common.appMenus.overview')}</div>
+        <div className="flex items-center justify-between">
+          {IS_CLOUD_EDITION
+            ? (
+                <TimeRangePicker
+                  ranges={TIME_PERIOD_MAPPING}
+                  onSelect={setPeriod}
+                  queryDateFormat={queryDateFormat}
+                />
+              )
+            : (
+                <LongTimeRangePicker
+                  periodMapping={LONG_TIME_PERIOD_MAPPING}
+                  onSelect={setPeriod}
+                  queryDateFormat={queryDateFormat}
+                />
+              )}
 
           {headerRight}
         </div>
       </div>
       {!isWorkflow && (
-        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
+        <div className="mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           <ConversationsChart period={period} id={appId} />
           <EndUsersChart period={period} id={appId} />
         </div>
       )}
       {!isWorkflow && (
-        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
+        <div className="mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           {isChatApp
             ? (
-              <AvgSessionInteractions period={period} id={appId} />
-            )
+                <AvgSessionInteractions period={period} id={appId} />
+              )
             : (
-              <AvgResponseTime period={period} id={appId} />
-            )}
+                <AvgResponseTime period={period} id={appId} />
+              )}
           <TokenPerSecond period={period} id={appId} />
         </div>
       )}
       {!isWorkflow && (
-        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
+        <div className="mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           <UserSatisfactionRate period={period} id={appId} />
           <CostChart period={period} id={appId} />
         </div>
       )}
       {!isWorkflow && isChatApp && (
-        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
+        <div className="mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           <MessagesChart period={period} id={appId} />
         </div>
       )}
       {isWorkflow && (
-        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
+        <div className="mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           <WorkflowMessagesChart period={period} id={appId} />
           <WorkflowDailyTerminalsChart period={period} id={appId} />
         </div>
       )}
       {isWorkflow && (
-        <div className='mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2'>
+        <div className="mb-6 grid w-full grid-cols-1 gap-6 xl:grid-cols-2">
           <WorkflowCostChart period={period} id={appId} />
           <AvgUserInteractions period={period} id={appId} />
         </div>

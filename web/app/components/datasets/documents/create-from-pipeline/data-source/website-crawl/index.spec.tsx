@@ -63,7 +63,7 @@ vi.mock('@/service/use-pipeline', () => ({
 
 // Mock store
 const mockStoreState = {
-  crawlResult: undefined as { data: CrawlResultItem[]; time_consuming: number | string } | undefined,
+  crawlResult: undefined as { data: CrawlResultItem[], time_consuming: number | string } | undefined,
   step: CrawlStep.init,
   websitePages: [] as CrawlResultItem[],
   previewIndex: -1,
@@ -188,7 +188,7 @@ const createMockCrawlResultItem = (overrides?: Partial<CrawlResultItem>): CrawlR
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',

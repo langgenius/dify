@@ -17,7 +17,7 @@ const Tab = ({ isActive, label, value, workflowRunningData, onClick }: TabProps)
 
   return (
     <button
-      type='button'
+      type="button"
       className={cn(
         'system-sm-semibold-uppercase cursor-pointer border-b-2 border-transparent py-3 text-text-tertiary',
         isActive && 'border-util-colors-blue-brand-blue-brand-600 text-text-primary',

@@ -110,23 +110,23 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
       />
       {showClearIcon && value && !disabled && !destructive && (
         <div className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')} onClick={onClear}>
-          <RiCloseCircleFill className='h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary' />
+          <RiCloseCircleFill className="h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
         </div>
       )}
       {destructive && (
-        <RiErrorWarningLine className='absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary' />
+        <RiErrorWarningLine className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
       )}
       {showCopyIcon && (
         <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
           <CopyFeedbackNew
             content={String(value ?? '')}
-            className='!h-7 !w-7 hover:bg-transparent'
+            className="!h-7 !w-7 hover:bg-transparent"
           />
         </div>
       )}
       {
         unit && (
-          <div className='system-sm-regular absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary'>
+          <div className="system-sm-regular absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary">
             {unit}
           </div>
         )

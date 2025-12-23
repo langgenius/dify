@@ -82,11 +82,11 @@ const DatasetNav = () => {
   return (
     <Nav
       isApp={false}
-      icon={<RiBook2Line className='h-4 w-4' />}
-      activeIcon={<RiBook2Fill className='h-4 w-4' />}
+      icon={<RiBook2Line className="h-4 w-4" />}
+      activeIcon={<RiBook2Fill className="h-4 w-4" />}
       text={t('common.menus.datasets')}
-      activeSegment='datasets'
-      link='/datasets'
+      activeSegment="datasets"
+      link="/datasets"
       curNav={curNav}
       navigationItems={navigationItems}
       createText={t('common.menus.newDataset')}

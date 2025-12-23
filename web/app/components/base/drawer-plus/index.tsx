@@ -71,30 +71,30 @@ const DrawerPlus: FC<Props> = ({
         ref={ref}
       >
         <div className={cn(headerClassName, 'shrink-0 border-b border-divider-subtle py-4')}>
-          <div className='flex h-6 items-center justify-between pl-6 pr-5'>
-            <div className='system-xl-semibold text-text-primary'>
+          <div className="flex h-6 items-center justify-between pl-6 pr-5">
+            <div className="system-xl-semibold text-text-primary">
               {title}
             </div>
-            <div className='flex items-center'>
+            <div className="flex items-center">
               <div
                 onClick={onHide}
-                className='flex h-6 w-6 cursor-pointer items-center justify-center'
+                className="flex h-6 w-6 cursor-pointer items-center justify-center"
               >
-                <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+                <RiCloseLine className="h-4 w-4 text-text-tertiary" />
               </div>
             </div>
           </div>
           {titleDescription && (
-            <div className='system-xs-regular pl-6 pr-10 text-text-tertiary'>
+            <div className="system-xs-regular pl-6 pr-10 text-text-tertiary">
               {titleDescription}
             </div>
           )}
         </div>
-        <div className='grow overflow-y-auto'>
+        <div className="grow overflow-y-auto">
           {body}
         </div>
         {foot && (
-          <div className='shrink-0'>
+          <div className="shrink-0">
             {foot}
           </div>
         )}

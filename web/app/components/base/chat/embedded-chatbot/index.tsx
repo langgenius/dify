@@ -46,7 +46,7 @@ const Chatbot = () => {
   useDocumentTitle(site?.title || 'Chat')
 
   return (
-    <div className='relative'>
+    <div className="relative">
       <div
         className={cn(
           'flex flex-col rounded-2xl',
@@ -64,7 +64,7 @@ const Chatbot = () => {
         />
         <div className={cn('flex grow flex-col overflow-y-auto', isMobile && 'm-[0.5px] !h-[calc(100vh_-_3rem)] rounded-2xl bg-chatbot-bg')}>
           {appChatListDataLoading && (
-            <Loading type='app' />
+            <Loading type="app" />
           )}
           {!appChatListDataLoading && (
             <ChatWrapper key={chatShouldReloadKey} />
@@ -73,18 +73,19 @@ const Chatbot = () => {
       </div>
       {/* powered by */}
       {isMobile && (
-        <div className='flex h-[60px] shrink-0 items-center pl-2'>
+        <div className="flex h-[60px] shrink-0 items-center pl-2">
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn(
               'flex shrink-0 items-center gap-1.5 px-2',
-            )}>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
+            )}
+            >
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('share.chat.poweredBy')}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                  ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                  ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
                   : appData?.custom_config?.replace_webapp_logo
-                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
-                    : <DifyLogo size='small' />
+                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
+                    : <DifyLogo size="small" />
               }
             </div>
           )}
@@ -133,43 +134,46 @@ const EmbeddedChatbotWrapper = () => {
     initUserVariables,
   } = useEmbeddedChatbot()
 
-  return <EmbeddedChatbotContext.Provider value={{
-    appData,
-    appParams,
-    appMeta,
-    appChatListDataLoading,
-    currentConversationId,
-    currentConversationItem,
-    appPrevChatList,
-    pinnedConversationList,
-    conversationList,
-    newConversationInputs,
-    newConversationInputsRef,
-    handleNewConversationInputsChange,
-    inputsForms,
-    handleNewConversation,
-    handleStartChat,
-    handleChangeConversation,
-    handleNewConversationCompleted,
-    chatShouldReloadKey,
-    isMobile,
-    isInstalledApp,
-    allowResetChat,
-    appId,
-    handleFeedback,
-    currentChatInstanceRef,
-    themeBuilder,
-    clearChatList,
-    setClearChatList,
-    isResponding,
-    setIsResponding,
-    currentConversationInputs,
-    setCurrentConversationInputs,
-    allInputsHidden,
-    initUserVariables,
-  }}>
-    <Chatbot />
-  </EmbeddedChatbotContext.Provider>
+  return (
+    <EmbeddedChatbotContext.Provider value={{
+      appData,
+      appParams,
+      appMeta,
+      appChatListDataLoading,
+      currentConversationId,
+      currentConversationItem,
+      appPrevChatList,
+      pinnedConversationList,
+      conversationList,
+      newConversationInputs,
+      newConversationInputsRef,
+      handleNewConversationInputsChange,
+      inputsForms,
+      handleNewConversation,
+      handleStartChat,
+      handleChangeConversation,
+      handleNewConversationCompleted,
+      chatShouldReloadKey,
+      isMobile,
+      isInstalledApp,
+      allowResetChat,
+      appId,
+      handleFeedback,
+      currentChatInstanceRef,
+      themeBuilder,
+      clearChatList,
+      setClearChatList,
+      isResponding,
+      setIsResponding,
+      currentConversationInputs,
+      setCurrentConversationInputs,
+      allInputsHidden,
+      initUserVariables,
+    }}
+    >
+      <Chatbot />
+    </EmbeddedChatbotContext.Provider>
+  )
 }
 
 const EmbeddedChatbot = () => {

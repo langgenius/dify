@@ -51,7 +51,7 @@ export const pickItemSchema = (schema: any) => {
 export const resolveVarType = (
   schema: any,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
-): { type: VarType; schemaType?: string } => {
+): { type: VarType, schemaType?: string } => {
   const schemaType = getMatchedSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
 

@@ -36,7 +36,7 @@ const RagPipeline = () => {
 
   if (!data || isLoading) {
     return (
-      <div className='relative flex h-full w-full items-center justify-center'>
+      <div className="relative flex h-full w-full items-center justify-center">
         <Loading />
       </div>
     )

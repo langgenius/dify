@@ -157,21 +157,22 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
       documentId,
       docForm: documentDetail?.doc_form as ChunkingMode,
       parentMode,
-    }}>
-      <div className='flex h-full flex-col bg-background-default'>
-        <div className='flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4'>
-          <div onClick={backToPrev} className={'flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg'}>
-            <RiArrowLeftLine className='h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary' />
+    }}
+    >
+      <div className="flex h-full flex-col bg-background-default">
+        <div className="flex min-h-16 flex-wrap items-center justify-between border-b border-b-divider-subtle py-2.5 pl-3 pr-4">
+          <div onClick={backToPrev} className="flex h-8 w-8 shrink-0 cursor-pointer items-center justify-center rounded-full hover:bg-components-button-tertiary-bg">
+            <RiArrowLeftLine className="h-4 w-4 text-components-button-ghost-text hover:text-text-tertiary" />
           </div>
           <DocumentTitle
             datasetId={datasetId}
             extension={documentUploadFile?.extension}
             name={documentDetail?.name}
-            wrapperCls='mr-2'
+            wrapperCls="mr-2"
             parent_mode={parentMode}
             chunkingMode={documentDetail?.doc_form as ChunkingMode}
           />
-          <div className='flex flex-wrap items-center'>
+          <div className="flex flex-wrap items-center">
             {embeddingAvailable && documentDetail && !documentDetail.archived && !isFullDocMode && (
               <>
                 <SegmentAdd
@@ -181,14 +182,14 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
                   showBatchModal={showBatchModal}
                   embedding={embedding}
                 />
-                <Divider type='vertical' className='!mx-3 !h-[14px] !bg-divider-regular' />
+                <Divider type="vertical" className="!mx-3 !h-[14px] !bg-divider-regular" />
               </>
             )}
             <StatusItem
               status={documentDetail?.display_status || 'available'}
-              scene='detail'
+              scene="detail"
               errorMessage={documentDetail?.error || ''}
-              textCls='font-semibold text-xs uppercase'
+              textCls="font-semibold text-xs uppercase"
               detail={{
                 enabled: documentDetail?.enabled || false,
                 archived: documentDetail?.archived || false,
@@ -198,7 +199,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               onUpdate={handleOperate}
             />
             <Operations
-              scene='detail'
+              scene="detail"
               embeddingAvailable={embeddingAvailable}
               detail={{
                 name: documentDetail?.name || '',
@@ -210,46 +211,52 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
               }}
               datasetId={datasetId}
               onUpdate={handleOperate}
-              className='!w-[200px]'
+              className="!w-[200px]"
             />
-            <button type="button"
+            <button
+              type="button"
               className={style.layoutRightIcon}
               onClick={() => setShowMetadata(!showMetadata)}
             >
               {
                 showMetadata
-                  ? <RiLayoutLeft2Line className='h-4 w-4 text-components-button-secondary-text' />
-                  : <RiLayoutRight2Line className='h-4 w-4 text-components-button-secondary-text' />
+                  ? <RiLayoutLeft2Line className="h-4 w-4 text-components-button-secondary-text" />
+                  : <RiLayoutRight2Line className="h-4 w-4 text-components-button-secondary-text" />
               }
             </button>
           </div>
         </div>
-        <div className='flex flex-1 flex-row' style={{ height: 'calc(100% - 4rem)' }}>
+        <div className="flex flex-1 flex-row" style={{ height: 'calc(100% - 4rem)' }}>
           {isDetailLoading
-            ? <Loading type='app' />
-            : <div className={cn('flex h-full min-w-0 grow flex-col',
-              !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4',
-              !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3',
-            )}>
-              {embedding
-                ? <Embedding
-                  detailUpdate={detailMutate}
-                  indexingType={dataset?.indexing_technique}
-                  retrievalMethod={dataset?.retrieval_model_dict?.search_method}
-                />
-                : <Completed
-                  embeddingAvailable={embeddingAvailable}
-                  showNewSegmentModal={newSegmentModalVisible}
-                  onNewSegmentModalChange={setNewSegmentModalVisible}
-                  importStatus={importStatus}
-                  archived={documentDetail?.archived}
-                />
-              }
-            </div>
-          }
-          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName='!justify-start' footer={null}>
+            ? <Loading type="app" />
+            : (
+                <div className={cn('flex h-full min-w-0 grow flex-col',
+                  !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4',
+                  !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3',
+                )}
+                >
+                  {embedding
+                    ? (
+                        <Embedding
+                          detailUpdate={detailMutate}
+                          indexingType={dataset?.indexing_technique}
+                          retrievalMethod={dataset?.retrieval_model_dict?.search_method}
+                        />
+                      )
+                    : (
+                        <Completed
+                          embeddingAvailable={embeddingAvailable}
+                          showNewSegmentModal={newSegmentModalVisible}
+                          onNewSegmentModalChange={setNewSegmentModalVisible}
+                          importStatus={importStatus}
+                          archived={documentDetail?.archived}
+                        />
+                      )}
+                </div>
+              )}
+          <FloatRightContainer showClose isOpen={showMetadata} onClose={() => setShowMetadata(false)} isMobile={isMobile} panelClassName="!justify-start" footer={null}>
             <Metadata
-              className='mr-2 mt-3'
+              className="mr-2 mt-3"
               datasetId={datasetId}
               documentId={documentId}
               docDetail={{ ...documentDetail, ...documentMetadata, doc_type: documentMetadata?.doc_type === 'others' ? '' : documentMetadata?.doc_type } as any}

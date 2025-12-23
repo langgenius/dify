@@ -24,20 +24,20 @@ const AnnotationFullModal: FC<Props> = ({
       isShow={show}
       onClose={onHide}
       closable
-      className='!p-0'
+      className="!p-0"
     >
-      <GridMask wrapperClassName='rounded-lg' canvasClassName='rounded-lg' gradientClassName='rounded-lg'>
-        <div className='mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out'>
-          <div className='flex items-center justify-between'>
+      <GridMask wrapperClassName="rounded-lg" canvasClassName="rounded-lg" gradientClassName="rounded-lg">
+        <div className="mt-6 flex cursor-pointer flex-col rounded-lg border-2 border-solid border-transparent px-7 py-6 shadow-md transition-all duration-200 ease-in-out">
+          <div className="flex items-center justify-between">
             <div className={cn(s.textGradient, 'text-[18px] font-semibold leading-[27px]')}>
               <div>{t('billing.annotatedResponse.fullTipLine1')}</div>
               <div>{t('billing.annotatedResponse.fullTipLine2')}</div>
             </div>
 
           </div>
-          <Usage className='mt-4' />
-          <div className='mt-7 flex justify-end'>
-            <UpgradeBtn loc={'annotation-create'} />
+          <Usage className="mt-4" />
+          <div className="mt-7 flex justify-end">
+            <UpgradeBtn loc="annotation-create" />
           </div>
         </div>
       </GridMask>

@@ -156,13 +156,13 @@ const Panel: FC = () => {
   if (isListening) {
     return (
       <div className={cn('flex h-full flex-col')}>
-        <div className='flex shrink-0 items-center justify-between pl-4 pr-2 pt-2'>
-          <div className='system-sm-semibold-uppercase text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
+        <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
+          <div className="system-sm-semibold-uppercase text-text-primary">{t('workflow.debug.variableInspect.title')}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className='h-4 w-4' />
+            <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
-        <div className='grow p-2'>
+        <div className="grow p-2">
           <Listening
             onStop={handleStopListening}
           />
@@ -174,13 +174,13 @@ const Panel: FC = () => {
   if (isEmpty) {
     return (
       <div className={cn('flex h-full flex-col')}>
-        <div className='flex shrink-0 items-center justify-between pl-4 pr-2 pt-2'>
-          <div className='system-sm-semibold-uppercase text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
+        <div className="flex shrink-0 items-center justify-between pl-4 pr-2 pt-2">
+          <div className="system-sm-semibold-uppercase text-text-primary">{t('workflow.debug.variableInspect.title')}</div>
           <ActionButton onClick={() => setShowVariableInspectPanel(false)}>
-            <RiCloseLine className='h-4 w-4' />
+            <RiCloseLine className="h-4 w-4" />
           </ActionButton>
         </div>
-        <div className='grow p-2'>
+        <div className="grow p-2">
           <Empty />
         </div>
       </div>
@@ -190,7 +190,7 @@ const Panel: FC = () => {
   return (
     <div className={cn('relative flex h-full')}>
       {/* left */}
-      {bottomPanelWidth < 488 && showLeftPanel && <div className='absolute left-0 top-0 h-full w-full' onClick={() => setShowLeftPanel(false)}></div>}
+      {bottomPanelWidth < 488 && showLeftPanel && <div className="absolute left-0 top-0 h-full w-full" onClick={() => setShowLeftPanel(false)}></div>}
       <div
         className={cn(
           'w-60 shrink-0 border-r border-divider-burn',
@@ -207,7 +207,7 @@ const Panel: FC = () => {
         />
       </div>
       {/* right */}
-      <div className='w-0 grow'>
+      <div className="w-0 grow">
         <Right
           nodeId={currentFocusNodeId!}
           isValueFetching={isCurrentNodeVarValueFetching}

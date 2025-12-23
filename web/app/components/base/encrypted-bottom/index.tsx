@@ -15,12 +15,13 @@ export const EncryptedBottom = (props: Props) => {
 
   return (
     <div className={cn('system-xs-regular flex items-center justify-center rounded-b-2xl border-t-[0.5px] border-divider-subtle bg-background-soft px-2 py-3 text-text-tertiary', className)}>
-      <RiLock2Fill className='mx-1 h-3 w-3 text-text-quaternary' />
+      <RiLock2Fill className="mx-1 h-3 w-3 text-text-quaternary" />
       {t(frontTextKey || 'common.provider.encrypted.front')}
       <Link
-        className='mx-1 text-text-accent'
-        target='_blank' rel='noopener noreferrer'
-        href='https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html'
+        className="mx-1 text-text-accent"
+        target="_blank"
+        rel="noopener noreferrer"
+        href="https://pycryptodome.readthedocs.io/en/latest/src/cipher/oaep.html"
       >
         PKCS1_OAEP
       </Link>

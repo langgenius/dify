@@ -47,9 +47,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...(debouncedQueryParams.keyword ? { keyword: debouncedQueryParams.keyword } : {}),
     ...((debouncedQueryParams.period !== '9')
       ? {
-        created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
-        created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
-      }
+          created_at__after: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
+          created_at__before: dayjs().endOf('day').tz(timezone).format('YYYY-MM-DDTHH:mm:ssZ'),
+        }
       : {}),
     ...omit(debouncedQueryParams, ['period', 'status']),
   }
@@ -61,27 +61,28 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const total = workflowLogs?.total
 
   return (
-    <div className='flex h-full flex-col'>
-      <h1 className='system-xl-semibold text-text-primary'>{t('appLog.workflowTitle')}</h1>
-      <p className='system-sm-regular text-text-tertiary'>{t('appLog.workflowSubtitle')}</p>
-      <div className='flex max-h-[calc(100%-16px)] flex-1 flex-col py-4'>
+    <div className="flex h-full flex-col">
+      <h1 className="system-xl-semibold text-text-primary">{t('appLog.workflowTitle')}</h1>
+      <p className="system-sm-regular text-text-tertiary">{t('appLog.workflowSubtitle')}</p>
+      <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}
         {total === undefined
-          ? <Loading type='app' />
+          ? <Loading type="app" />
           : total > 0
             ? <List logs={workflowLogs} appDetail={appDetail} onRefresh={mutate} />
-            : <EmptyElement appDetail={appDetail} />
-        }
+            : <EmptyElement appDetail={appDetail} />}
         {/* Show Pagination only if the total is more than the limit */}
         {(total && total > APP_PAGE_LIMIT)
-          ? <Pagination
-            current={currPage}
-            onChange={setCurrPage}
-            total={total}
-            limit={limit}
-            onLimitChange={setLimit}
-          />
+          ? (
+              <Pagination
+                current={currPage}
+                onChange={setCurrPage}
+                total={total}
+                limit={limit}
+                onLimitChange={setLimit}
+              />
+            )
           : null}
       </div>
     </div>

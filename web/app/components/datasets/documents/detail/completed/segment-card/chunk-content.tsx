@@ -24,8 +24,8 @@ const ChunkContent: FC<ChunkContentProps> = ({
   if (answer) {
     return (
       <div className={className}>
-        <div className='flex gap-x-1'>
-          <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>Q</div>
+        <div className="flex gap-x-1">
+          <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">Q</div>
           <Markdown
             className={cn('body-md-regular text-text-secondary',
               isCollapsed ? 'line-clamp-2' : 'line-clamp-20',
@@ -34,8 +34,8 @@ const ChunkContent: FC<ChunkContentProps> = ({
             customDisallowedElements={['input']}
           />
         </div>
-        <div className='flex gap-x-1'>
-          <div className='w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary'>A</div>
+        <div className="flex gap-x-1">
+          <div className="w-4 shrink-0 text-[13px] font-medium leading-[20px] text-text-tertiary">A</div>
           <Markdown
             className={cn('body-md-regular text-text-secondary',
               isCollapsed ? 'line-clamp-2' : 'line-clamp-20',

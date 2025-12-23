@@ -12,7 +12,8 @@ export const Mask = ({
     <div className={cn(
       'h-12 bg-gradient-to-b from-components-panel-bg-transparent to-components-panel-bg',
       className,
-    )} />
+    )}
+    />
   )
 }
 

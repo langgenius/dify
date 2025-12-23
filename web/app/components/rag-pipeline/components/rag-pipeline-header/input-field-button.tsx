@@ -15,12 +15,12 @@ const InputFieldButton = () => {
 
   return (
     <Button
-      variant='secondary'
-      className='flex gap-x-0.5'
+      variant="secondary"
+      className="flex gap-x-0.5"
       onClick={handleClick}
     >
-      <InputField className='h-4 w-4' />
-      <span className='px-0.5'>{t('datasetPipeline.inputField')}</span>
+      <InputField className="h-4 w-4" />
+      <span className="px-0.5">{t('datasetPipeline.inputField')}</span>
     </Button>
   )
 }

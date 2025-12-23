@@ -7,7 +7,7 @@ import FileTypeItem from '@/app/components/workflow/nodes/_base/components/file-
 import { useCallback } from 'react'
 
 type FieldValue = {
-  allowedFileTypes: string[],
+  allowedFileTypes: string[]
   allowedFileExtensions: string[]
 }
 

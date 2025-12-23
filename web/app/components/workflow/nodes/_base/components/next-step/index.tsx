@@ -89,8 +89,8 @@ const NextStep = ({
   }, [branches, connectedEdges, data.error_strategy, data.type, outgoers, t])
 
   return (
-    <div className='flex py-1'>
-      <div className='relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default shadow-xs'>
+    <div className="flex py-1">
+      <div className="relative flex h-9 w-9 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-regular bg-background-default shadow-xs">
         <BlockIcon
           type={selectedNode!.data.type}
           toolIcon={toolIcon}
@@ -99,7 +99,7 @@ const NextStep = ({
       <Line
         list={list.length ? list.map(item => item.nextNodes.length + 1) : [1]}
       />
-      <div className='grow space-y-2'>
+      <div className="grow space-y-2">
         {
           list.map((item, index) => {
             return (

@@ -71,7 +71,8 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
         ...props,
         onPublish: handlePublish,
         onRestore: () => setRestoreConfirmOpen(true),
-      }} />
+      }}
+      />
       {restoreConfirmOpen && (
         <Confirm
           title={t('appDebug.resetConfig.title')}

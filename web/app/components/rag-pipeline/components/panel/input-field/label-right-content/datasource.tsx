@@ -14,15 +14,15 @@ const Datasource = ({
   const toolIcon = useToolIcon(nodeData)
 
   return (
-    <div className='flex items-center gap-x-1.5'>
-      <div className='flex size-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default'>
+    <div className="flex items-center gap-x-1.5">
+      <div className="flex size-5 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default">
         <BlockIcon
-          className='size-3.5'
+          className="size-3.5"
           type={BlockEnum.DataSource}
           toolIcon={toolIcon}
         />
       </div>
-      <span className='system-sm-medium text-text-secondary'>{nodeData.title}</span>
+      <span className="system-sm-medium text-text-secondary">{nodeData.title}</span>
     </div>
   )
 }

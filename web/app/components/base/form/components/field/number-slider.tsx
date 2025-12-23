@@ -30,7 +30,7 @@ const NumberSliderField = ({
           {...(labelOptions ?? {})}
         />
         {description && (
-          <div className='body-xs-regular pb-0.5 text-text-tertiary'>
+          <div className="body-xs-regular pb-0.5 text-text-tertiary">
             {description}
           </div>
         )}

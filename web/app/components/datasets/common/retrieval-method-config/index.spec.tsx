@@ -23,7 +23,7 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 // Mock model hooks with controllable return values
-let mockRerankDefaultModel: { provider: { provider: string }; model: string } | undefined = {
+let mockRerankDefaultModel: { provider: { provider: string }, model: string } | undefined = {
   provider: { provider: 'test-provider' },
   model: 'test-rerank-model',
 }

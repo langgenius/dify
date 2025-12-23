@@ -31,7 +31,8 @@ export default function FullScreenModal({
           <div className={cn('fixed inset-0 bg-background-overlay-backdrop backdrop-blur-[6px]',
             'duration-300 ease-in data-[closed]:opacity-0',
             'data-[enter]:opacity-100',
-            'data-[leave]:opacity-0')} />
+            'data-[leave]:opacity-0')}
+          />
         </TransitionChild>
 
         <div
@@ -48,17 +49,21 @@ export default function FullScreenModal({
                 'duration-100 ease-in data-[closed]:scale-95 data-[closed]:opacity-0',
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',
-                className)}>
+                className)}
+              >
                 {closable
-                  && <div
-                    className='absolute right-3 top-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center
-                  rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover'
-                    onClick={(e) => {
-                      e.stopPropagation()
-                      onClose()
-                    }}>
-                    <RiCloseLargeLine className='h-3.5 w-3.5 text-components-button-tertiary-text' />
-                  </div>}
+                  && (
+                    <div
+                      className="absolute right-3 top-3 z-50 flex h-9 w-9 cursor-pointer items-center justify-center
+                  rounded-[10px] bg-components-button-tertiary-bg hover:bg-components-button-tertiary-bg-hover"
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        onClose()
+                      }}
+                    >
+                      <RiCloseLargeLine className="h-3.5 w-3.5 text-components-button-tertiary-text" />
+                    </div>
+                  )}
                 {children}
               </DialogPanel>
             </TransitionChild>

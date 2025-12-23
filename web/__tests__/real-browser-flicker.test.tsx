@@ -81,9 +81,9 @@ const setupMockEnvironment = (storedTheme: string | null, systemPrefersDark = fa
 
 // Helper function to create timing page component
 const createTimingPageComponent = (
-  timingData: Array<{ phase: string; timestamp: number; styles: { backgroundColor: string; color: string } }>,
+  timingData: Array<{ phase: string, timestamp: number, styles: { backgroundColor: string, color: string } }>,
 ) => {
-  const recordTiming = (phase: string, styles: { backgroundColor: string; color: string }) => {
+  const recordTiming = (phase: string, styles: { backgroundColor: string, color: string }) => {
     timingData.push({
       phase,
       timestamp: performance.now(),
@@ -113,7 +113,17 @@ const createTimingPageComponent = (
         style={currentStyles}
       >
         <div data-testid="timing-status">
-          Phase: {mounted ? 'CSR' : 'Initial'} | Theme: {theme} | Visual: {isDark ? 'dark' : 'light'}
+          Phase:
+          {' '}
+          {mounted ? 'CSR' : 'Initial'}
+          {' '}
+          | Theme:
+          {' '}
+          {theme}
+          {' '}
+          | Visual:
+          {' '}
+          {isDark ? 'dark' : 'light'}
         </div>
       </div>
     )
@@ -124,7 +134,7 @@ const createTimingPageComponent = (
 
 // Helper function to create CSS test component
 const createCSSTestComponent = (
-  cssStates: Array<{ className: string; timestamp: number }>,
+  cssStates: Array<{ className: string, timestamp: number }>,
 ) => {
   const recordCSSState = (className: string) => {
     cssStates.push({
@@ -151,7 +161,10 @@ const createCSSTestComponent = (
         data-testid="css-component"
         className={className}
       >
-        <div data-testid="css-classes">Classes: {className}</div>
+        <div data-testid="css-classes">
+          Classes:
+          {className}
+        </div>
       </div>
     )
   }
@@ -161,7 +174,7 @@ const createCSSTestComponent = (
 
 // Helper function to create performance test component
 const createPerformanceTestComponent = (
-  performanceMarks: Array<{ event: string; timestamp: number }>,
+  performanceMarks: Array<{ event: string, timestamp: number }>,
 ) => {
   const recordPerformanceMark = (event: string) => {
     performanceMarks.push({ event, timestamp: performance.now() })
@@ -186,7 +199,13 @@ const createPerformanceTestComponent = (
 
     return (
       <div data-testid="performance-test">
-        Mounted: {mounted.toString()} | Theme: {theme || 'loading'}
+        Mounted:
+        {' '}
+        {mounted.toString()}
+        {' '}
+        | Theme:
+        {' '}
+        {theme || 'loading'}
       </div>
     )
   }
@@ -216,10 +235,14 @@ const PageComponent = () => {
           Dify Application
         </h1>
         <div data-testid="theme-indicator">
-          Current Theme: {mounted ? theme : 'unknown'}
+          Current Theme:
+          {' '}
+          {mounted ? theme : 'unknown'}
         </div>
         <div data-testid="visual-appearance">
-          Appearance: {isDark ? 'dark' : 'light'}
+          Appearance:
+          {' '}
+          {isDark ? 'dark' : 'light'}
         </div>
       </div>
     </div>
@@ -351,7 +374,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
     it('measures timing window of style changes', async () => {
       setupMockEnvironment('dark')
 
-      const timingData: Array<{ phase: string; timestamp: number; styles: any }> = []
+      const timingData: Array<{ phase: string, timestamp: number, styles: any }> = []
       const TimingPageComponent = createTimingPageComponent(timingData)
 
       render(
@@ -387,7 +410,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
     it('checks CSS class changes causing flicker', async () => {
       setupMockEnvironment('dark')
 
-      const cssStates: Array<{ className: string; timestamp: number }> = []
+      const cssStates: Array<{ className: string, timestamp: number }> = []
       const CSSTestComponent = createCSSTestComponent(cssStates)
 
       render(
@@ -478,7 +501,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
 
   describe('Performance and Regression Tests', () => {
     it('verifies ThemeProvider position fix reduces initialization delay', async () => {
-      const performanceMarks: Array<{ event: string; timestamp: number }> = []
+      const performanceMarks: Array<{ event: string, timestamp: number }> = []
 
       setupMockEnvironment('dark')
 

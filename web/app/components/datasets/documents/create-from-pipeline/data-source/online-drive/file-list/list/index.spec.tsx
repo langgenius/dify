@@ -1298,7 +1298,7 @@ describe('EmptySearchResult', () => {
 // ==========================================
 describe('FileIcon', () => {
   // Get real component for testing
-  type FileIconProps = { type: OnlineDriveFileType; fileName: string; size?: 'sm' | 'md' | 'lg' | 'xl'; className?: string }
+  type FileIconProps = { type: OnlineDriveFileType, fileName: string, size?: 'sm' | 'md' | 'lg' | 'xl', className?: string }
   let ActualFileIcon: React.ComponentType<FileIconProps>
 
   beforeAll(async () => {
@@ -1757,7 +1757,7 @@ describe('utils', () => {
   let FileAppearanceTypeEnum: Record<string, string>
 
   beforeAll(async () => {
-    const utils = await vi.importActual<{ getFileExtension: typeof getFileExtension; getFileType: typeof getFileType }>('./utils')
+    const utils = await vi.importActual<{ getFileExtension: typeof getFileExtension, getFileType: typeof getFileType }>('./utils')
     const types = await vi.importActual<{ FileAppearanceTypeEnum: typeof FileAppearanceTypeEnum }>('@/app/components/base/file-uploader/types')
     getFileExtension = utils.getFileExtension
     getFileType = utils.getFileType

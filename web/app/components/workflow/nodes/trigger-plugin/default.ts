@@ -55,7 +55,7 @@ const extractSchemaType = (schema: any, _schemaTypeDefinitions?: SchemaTypeDefin
 const resolveVarType = (
   schema: any,
   schemaTypeDefinitions?: SchemaTypeDefinition[],
-): { type: VarType; schemaType?: string } => {
+): { type: VarType, schemaType?: string } => {
   const schemaType = extractSchemaType(schema, schemaTypeDefinitions)
   const normalizedType = normalizeJsonSchemaType(schema)
 
@@ -195,9 +195,9 @@ const buildOutputVars = (schema: Record<string, any>, schemaTypeDefinitions?: Sc
     if (normalizedType === 'object') {
       const childProperties = propertySchema?.properties
         ? Object.entries(propertySchema.properties).reduce((acc, [key, value]) => {
-          acc[key] = convertJsonSchemaToField(value, schemaTypeDefinitions)
-          return acc
-        }, {} as Record<string, Field>)
+            acc[key] = convertJsonSchemaToField(value, schemaTypeDefinitions)
+            return acc
+          }, {} as Record<string, Field>)
         : {}
 
       const required = Array.isArray(propertySchema?.required) ? propertySchema.required.filter(Boolean) : undefined
@@ -263,7 +263,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
         }
 
         const targetParam = typeof rawParam === 'object' && rawParam !== null && 'type' in rawParam
-          ? rawParam as { type: VarKindType; value: any }
+          ? rawParam as { type: VarKindType, value: any }
           : { type: VarKindType.constant, value: rawParam }
 
         const { type, value } = targetParam

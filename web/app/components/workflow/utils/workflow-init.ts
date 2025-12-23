@@ -216,7 +216,7 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
         acc[node.parentId] = [{ nodeId: node.id, nodeType: node.data.type }]
     }
     return acc
-  }, {} as Record<string, { nodeId: string; nodeType: BlockEnum }[]>)
+  }, {} as Record<string, { nodeId: string, nodeType: BlockEnum }[]>)
 
   return nodes.map((node) => {
     if (!node.type)

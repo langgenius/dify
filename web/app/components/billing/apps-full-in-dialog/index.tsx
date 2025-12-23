@@ -15,7 +15,7 @@ import { cn } from '@/utils/classnames'
 const LOW = 50
 const MIDDLE = 80
 
-const AppsFull: FC<{ loc: string; className?: string; }> = ({
+const AppsFull: FC<{ loc: string, className?: string }> = ({
   loc,
   className,
 }) => {
@@ -39,14 +39,15 @@ const AppsFull: FC<{ loc: string; className?: string; }> = ({
     <div className={cn(
       'flex flex-col gap-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-4 shadow-xs backdrop-blur-sm',
       className,
-    )}>
-      <div className='flex justify-between'>
+    )}
+    >
+      <div className="flex justify-between">
         {!isTeam && (
           <div>
             <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
               {t('billing.apps.fullTip1')}
             </div>
-            <div className='system-xs-regular text-text-tertiary'>{t('billing.apps.fullTip1des')}</div>
+            <div className="system-xs-regular text-text-tertiary">{t('billing.apps.fullTip1des')}</div>
           </div>
         )}
         {isTeam && (
@@ -54,24 +55,28 @@ const AppsFull: FC<{ loc: string; className?: string; }> = ({
             <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
               {t('billing.apps.fullTip2')}
             </div>
-            <div className='system-xs-regular text-text-tertiary'>{t('billing.apps.fullTip2des')}</div>
+            <div className="system-xs-regular text-text-tertiary">{t('billing.apps.fullTip2des')}</div>
           </div>
         )}
         {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
           <UpgradeBtn isShort loc={loc} />
         )}
         {plan.type !== Plan.sandbox && plan.type !== Plan.professional && (
-          <Button variant='secondary-accent'>
-            <a target='_blank' rel='noopener noreferrer' href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo.current_version)}>
+          <Button variant="secondary-accent">
+            <a target="_blank" rel="noopener noreferrer" href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo.current_version)}>
               {t('billing.apps.contactUs')}
             </a>
           </Button>
         )}
       </div>
-      <div className='flex flex-col gap-2'>
-        <div className='system-xs-medium flex items-center justify-between text-text-secondary'>
+      <div className="flex flex-col gap-2">
+        <div className="system-xs-medium flex items-center justify-between text-text-secondary">
           <div>{t('billing.usagePage.buildApps')}</div>
-          <div>{usage}/{total}</div>
+          <div>
+            {usage}
+            /
+            {total}
+          </div>
         </div>
         <ProgressBar
           percent={percent}

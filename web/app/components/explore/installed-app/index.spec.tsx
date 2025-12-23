@@ -69,7 +69,9 @@ vi.mock('@/app/components/base/chat/chat-with-history', () => ({
     className?: string
   }) => (
     <div data-testid="chat-with-history" className={className}>
-      Chat With History - {installedAppInfo?.id}
+      Chat With History -
+      {' '}
+      {installedAppInfo?.id}
     </div>
   ),
 }))

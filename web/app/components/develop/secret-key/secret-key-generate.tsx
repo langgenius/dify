@@ -26,17 +26,17 @@ const SecretKeyGenerateModal = ({
       <div className="-mr-2 -mt-6 mb-4 flex justify-end">
         <XMarkIcon className="h-6 w-6 cursor-pointer text-text-tertiary" onClick={onClose} />
       </div>
-      <p className='mt-1 text-[13px] font-normal leading-5 text-text-tertiary'>{t('appApi.apiKeyModal.generateTips')}</p>
-      <div className='my-4'>
-        <InputCopy className='w-full' value={newKey?.token} />
+      <p className="mt-1 text-[13px] font-normal leading-5 text-text-tertiary">{t('appApi.apiKeyModal.generateTips')}</p>
+      <div className="my-4">
+        <InputCopy className="w-full" value={newKey?.token} />
       </div>
-      <div className='my-4 flex justify-end'>
+      <div className="my-4 flex justify-end">
         <Button className={`shrink-0 ${s.w64}`} onClick={onClose}>
-          <span className='text-xs font-medium text-text-secondary'>{t('appApi.actionMsg.ok')}</span>
+          <span className="text-xs font-medium text-text-secondary">{t('appApi.actionMsg.ok')}</span>
         </Button>
       </div>
 
-    </Modal >
+    </Modal>
   )
 }
 

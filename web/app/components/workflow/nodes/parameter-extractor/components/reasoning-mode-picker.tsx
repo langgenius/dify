@@ -30,14 +30,14 @@ const ReasoningModePicker: FC<Props> = ({
       title={t(`${i18nPrefix}.reasoningMode`)}
       tooltip={t(`${i18nPrefix}.reasoningModeTip`)!}
     >
-      <div className='grid grid-cols-2 gap-x-1'>
+      <div className="grid grid-cols-2 gap-x-1">
         <OptionCard
-          title='Function/Tool Calling'
+          title="Function/Tool Calling"
           onSelect={handleChange(ReasoningModeType.functionCall)}
           selected={type === ReasoningModeType.functionCall}
         />
         <OptionCard
-          title='Prompt'
+          title="Prompt"
           selected={type === ReasoningModeType.prompt}
           onSelect={handleChange(ReasoningModeType.prompt)}
         />

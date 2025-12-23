@@ -112,7 +112,7 @@ const AddVariablePopupWithPosition = ({
 
   return (
     <div
-      className='absolute z-10'
+      className="absolute z-10"
       style={{
         left: showAssignVariablePopup.x,
         top: showAssignVariablePopup.y,

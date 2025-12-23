@@ -52,13 +52,13 @@ vi.mock('next/navigation', () => ({
 
 vi.mock('next/link', () => ({
   __esModule: true,
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
 }))
 
 // Mock the Run component to avoid complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
   __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -323,7 +323,7 @@ describe('Logs Container', () => {
 
       render(<Logs {...defaultProps} />)
 
-      const keyArg = mockedUseSWR.mock.calls.at(-1)?.[0] as { url: string; params: Record<string, unknown> }
+      const keyArg = mockedUseSWR.mock.calls.at(-1)?.[0] as { url: string, params: Record<string, unknown> }
       expect(keyArg).toMatchObject({
         url: `/apps/${defaultProps.appDetail.id}/workflow-app-logs`,
         params: expect.objectContaining({

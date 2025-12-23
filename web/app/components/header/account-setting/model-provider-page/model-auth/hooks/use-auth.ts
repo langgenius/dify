@@ -25,10 +25,10 @@ export const useAuth = (
   configurationMethod: ConfigurationMethodEnum,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   extra: {
-    isModelCredential?: boolean,
-    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void,
-    onRemove?: (credentialId: string) => void,
-    mode?: ModelModalModeEnum,
+    isModelCredential?: boolean
+    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
+    onRemove?: (credentialId: string) => void
+    mode?: ModelModalModeEnum
   } = {},
 ) => {
   const {

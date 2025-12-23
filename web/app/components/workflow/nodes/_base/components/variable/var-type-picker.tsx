@@ -39,27 +39,28 @@ const VarReferencePicker: FC<Props> = ({
       <PortalToFollowElem
         open={open}
         onOpenChange={setOpen}
-        placement='bottom-start'
+        placement="bottom-start"
         offset={4}
       >
-        <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className='w-[120px] cursor-pointer'>
-          <div className='flex h-8 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-[13px] text-text-primary'>
-            <div className='w-0 grow truncate capitalize' title={value}>{value}</div>
-            <RiArrowDownSLine className='h-3.5 w-3.5 shrink-0 text-text-secondary' />
+        <PortalToFollowElemTrigger onClick={() => setOpen(!open)} className="w-[120px] cursor-pointer">
+          <div className="flex h-8 items-center justify-between rounded-lg border-0 bg-components-input-bg-normal px-2.5 text-[13px] text-text-primary">
+            <div className="w-0 grow truncate capitalize" title={value}>{value}</div>
+            <RiArrowDownSLine className="h-3.5 w-3.5 shrink-0 text-text-secondary" />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{
           zIndex: 100,
-        }}>
-          <div className='w-[120px] rounded-lg bg-components-panel-bg p-1 shadow-sm'>
+        }}
+        >
+          <div className="w-[120px] rounded-lg bg-components-panel-bg p-1 shadow-sm">
             {TYPES.map(type => (
               <div
                 key={type}
-                className='flex h-[30px] cursor-pointer items-center justify-between rounded-lg pl-3 pr-2 text-[13px] text-text-primary hover:bg-state-base-hover'
+                className="flex h-[30px] cursor-pointer items-center justify-between rounded-lg pl-3 pr-2 text-[13px] text-text-primary hover:bg-state-base-hover"
                 onClick={handleChange(type)}
               >
-                <div className='w-0 grow truncate capitalize'>{type}</div>
-                {type === value && <Check className='h-4 w-4 shrink-0 text-text-accent' />}
+                <div className="w-0 grow truncate capitalize">{type}</div>
+                {type === value && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
               </div>
             ))}
           </div>

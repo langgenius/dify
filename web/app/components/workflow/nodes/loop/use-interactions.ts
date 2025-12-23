@@ -75,7 +75,7 @@ export const useNodeLoopInteractions = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-    const restrictPosition: { x?: number; y?: number } = { x: undefined, y: undefined }
+    const restrictPosition: { x?: number, y?: number } = { x: undefined, y: undefined }
 
     if (node.data.isInLoop) {
       const parentNode = nodes.find(n => n.id === node.parentId)

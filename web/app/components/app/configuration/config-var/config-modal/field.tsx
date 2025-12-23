@@ -20,9 +20,15 @@ const Field: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <div className={cn(className)}>
-      <div className='system-sm-semibold leading-8 text-text-secondary'>
+      <div className="system-sm-semibold leading-8 text-text-secondary">
         {title}
-        {isOptional && <span className='system-xs-regular ml-1 text-text-tertiary'>({t('appDebug.variableConfig.optional')})</span>}
+        {isOptional && (
+          <span className="system-xs-regular ml-1 text-text-tertiary">
+            (
+            {t('appDebug.variableConfig.optional')}
+            )
+          </span>
+        )}
       </div>
       <div>{children}</div>
     </div>

@@ -41,28 +41,28 @@ const MetadataFilter = ({
       onCollapse={setCollapsed}
       hideCollapseIcon
       trigger={collapseIcon => (
-        <div className='flex grow items-center justify-between pr-4'>
-          <div className='flex items-center'>
-            <div className='system-sm-semibold-uppercase mr-0.5 text-text-secondary'>
+        <div className="flex grow items-center justify-between pr-4">
+          <div className="flex items-center">
+            <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
               {t('workflow.nodes.knowledgeRetrieval.metadata.title')}
             </div>
             <Tooltip
               popupContent={(
-                <div className='w-[200px]'>
+                <div className="w-[200px]">
                   {t('workflow.nodes.knowledgeRetrieval.metadata.tip')}
                 </div>
               )}
             />
             {collapseIcon}
           </div>
-          <div className='flex items-center'>
+          <div className="flex items-center">
             <MetadataFilterSelector
               value={metadataFilterMode}
               onSelect={handleMetadataFilterModeChangeWrapped}
             />
             {
               metadataFilterMode === MetadataFilteringModeEnum.manual && (
-                <div className='ml-1'>
+                <div className="ml-1">
                   <MetadataTrigger {...restProps} />
                 </div>
               )
@@ -75,13 +75,13 @@ const MetadataFilter = ({
         {
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
-              <div className='body-xs-regular px-4 text-text-tertiary'>
+              <div className="body-xs-regular px-4 text-text-tertiary">
                 {t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.desc')}
               </div>
-              <div className='mt-1 px-4'>
+              <div className="mt-1 px-4">
                 <ModelParameterModal
-                  portalToFollowElemContentClassName='z-[50]'
-                  popupClassName='!w-[387px]'
+                  portalToFollowElemContentClassName="z-[50]"
+                  popupClassName="!w-[387px]"
                   isInWorkflow
                   isAdvancedMode={true}
                   provider={metadataModelConfig?.provider || ''}

@@ -73,14 +73,15 @@ const TabSlider: FC<TabSliderProps> = ({
           {/* if no plugin installed, the badge won't show */}
           {option.value === 'plugins'
             && (pluginList?.total ?? 0) > 0
-            && <Badge
-              size='s'
-              uppercase={true}
-              state={BadgeState.Default}
-            >
-              {pluginList?.total}
-            </Badge>
-          }
+            && (
+              <Badge
+                size="s"
+                uppercase={true}
+                state={BadgeState.Default}
+              >
+                {pluginList?.total}
+              </Badge>
+            )}
         </div>
       ))}
     </div>

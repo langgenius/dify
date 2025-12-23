@@ -31,7 +31,7 @@ const DataSourceOptions = ({
   }, [])
 
   return (
-    <div className='grid w-full grid-cols-4 gap-1'>
+    <div className="grid w-full grid-cols-4 gap-1">
       {options.map(option => (
         <OptionCard
           key={option.value}

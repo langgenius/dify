@@ -25,7 +25,7 @@ const PreviewMode = memo(() => {
       )}
       onClick={() => handleWorkflowStartRunInChatflow()}
     >
-      <RiPlayLargeLine className='mr-1 h-4 w-4' />
+      <RiPlayLargeLine className="mr-1 h-4 w-4" />
       {t('workflow.common.debugAndPreview')}
     </div>
   )
@@ -56,7 +56,7 @@ const RunAndHistory = ({
   const { RunMode: CustomRunMode } = components || {}
 
   return (
-    <div className='flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs'>
+    <div className="flex h-8 items-center rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-0.5 shadow-xs">
       {
         showRunButton && (
           CustomRunMode ? <CustomRunMode text={runButtonText} /> : <RunMode text={runButtonText} />
@@ -65,7 +65,7 @@ const RunAndHistory = ({
       {
         showPreviewButton && <PreviewMode />
       }
-      <div className='mx-0.5 h-3.5 w-[1px] bg-divider-regular'></div>
+      <div className="mx-0.5 h-3.5 w-[1px] bg-divider-regular"></div>
       <ViewHistory {...viewHistoryProps} />
       <Checklist disabled={nodesReadOnly} />
     </div>

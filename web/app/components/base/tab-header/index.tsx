@@ -41,11 +41,11 @@ const TabHeader: FC<ITabHeaderProps> = ({
     </div>
   )
   return (
-    <div className='flex justify-between'>
-      <div className='flex space-x-4'>
+    <div className="flex justify-between">
+      <div className="flex space-x-4">
         {items.filter(item => !item.isRight).map(renderItem)}
       </div>
-      <div className='flex space-x-4'>
+      <div className="flex space-x-4">
         {items.filter(item => item.isRight).map(renderItem)}
       </div>
     </div>

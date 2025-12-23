@@ -61,12 +61,12 @@ const AddExtractParameter: FC<Props> = ({
       }
       setRenameInfo(key === 'name'
         ? {
-          type: ChangeType.changeVarName,
-          payload: {
-            beforeKey: param.name,
-            afterKey: value,
-          },
-        }
+            type: ChangeType.changeVarName,
+            payload: {
+              beforeKey: param.name,
+              afterKey: value,
+            },
+          }
         : undefined)
       setParam((prev) => {
         return {
@@ -124,17 +124,17 @@ const AddExtractParameter: FC<Props> = ({
   return (
     <div>
       {isAdd && (
-        <AddButton className='mx-1' onClick={showAddModal} />
+        <AddButton className="mx-1" onClick={showAddModal} />
       )}
       {isShowModal && (
         <Modal
           title={t(`${i18nPrefix}.addExtractParameter`)}
           isShow
           onClose={hideModal}
-          className='!w-[400px] !max-w-[400px] !p-4'
+          className="!w-[400px] !max-w-[400px] !p-4"
         >
           <div>
-            <div className='space-y-2'>
+            <div className="space-y-2">
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.name`)}>
                 <Input
                   value={param.name}
@@ -148,7 +148,7 @@ const AddExtractParameter: FC<Props> = ({
                   allowSearch={false}
                   // bgClassName='bg-gray-100'
                   onSelect={v => handleParamChange('type')(v.value)}
-                  optionClassName='capitalize'
+                  optionClassName="capitalize"
                   items={
                     TYPES.map(type => ({
                       value: type,
@@ -171,14 +171,14 @@ const AddExtractParameter: FC<Props> = ({
               </Field>
               <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`)}>
                 <>
-                  <div className='mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary'>{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
-                  <Switch size='l' defaultValue={param.required} onChange={handleParamChange('required')} />
+                  <div className="mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
+                  <Switch size="l" defaultValue={param.required} onChange={handleParamChange('required')} />
                 </>
               </Field>
             </div>
-            <div className='mt-4 flex justify-end space-x-2'>
-              <Button className='!w-[95px]' onClick={hideModal} >{t('common.operation.cancel')}</Button>
-              <Button className='!w-[95px]' variant='primary' onClick={handleSave} >{isAdd ? t('common.operation.add') : t('common.operation.save')}</Button>
+            <div className="mt-4 flex justify-end space-x-2">
+              <Button className="!w-[95px]" onClick={hideModal}>{t('common.operation.cancel')}</Button>
+              <Button className="!w-[95px]" variant="primary" onClick={handleSave}>{isAdd ? t('common.operation.add') : t('common.operation.save')}</Button>
             </div>
           </div>
         </Modal>

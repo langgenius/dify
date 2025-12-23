@@ -48,7 +48,7 @@ const TagManagementPlayground = ({
           })
         }
         if (method === 'POST') {
-          const body = await request.clone().json() as { name: string; type: string }
+          const body = await request.clone().json() as { name: string, type: string }
           const newTag: Tag = {
             id: `tag-${Date.now()}`,
             name: body.name,

@@ -37,8 +37,8 @@ type WorkflowVariableBlockComponentProps = {
   conversationVariables?: Var[]
   ragVariables?: Var[]
   getVarType?: (payload: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => Type
 }
 
@@ -157,16 +157,19 @@ const WorkflowVariableBlockComponent = ({
   return (
     <Tooltip
       noDecoration
-      popupContent={
+      popupContent={(
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
-          varType={getVarType ? getVarType({
-            nodeId: variables[0],
-            valueSelector: variables,
-          }) : Type.string}
+          varType={getVarType
+            ? getVarType({
+                nodeId: variables[0],
+                valueSelector: variables,
+              })
+            : Type.string}
           nodeType={node?.type}
-        />}
+        />
+      )}
       disabled={!isShowAPart}
     >
       <div>{Item}</div>

@@ -87,48 +87,48 @@ const ChatRecord = () => {
 
   return (
     <div
-      className='flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-chatbot-bg shadow-xl'
+      className="flex h-full w-[420px] flex-col rounded-l-2xl border border-components-panel-border bg-chatbot-bg shadow-xl"
       // style={{
       //   background: 'linear-gradient(156deg, rgba(242, 244, 247, 0.80) 0%, rgba(242, 244, 247, 0.00) 99.43%), var(--white, #FFF)',
       // }}
     >
       {!fetched && (
-        <div className='flex h-full items-center justify-center'>
+        <div className="flex h-full items-center justify-center">
           <Loading />
         </div>
       )}
       {fetched && (
         <>
-          <div className='flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
+          <div className="flex shrink-0 items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
             {`TEST CHAT${formatWorkflowRunIdentifier(historyWorkflowData?.finished_at)}`}
             <div
-              className='flex h-6 w-6 cursor-pointer items-center justify-center'
+              className="flex h-6 w-6 cursor-pointer items-center justify-center"
               onClick={() => {
                 handleLoadBackupDraft()
                 workflowStore.setState({ historyWorkflowData: undefined })
               }}
             >
-              <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+              <RiCloseLine className="h-4 w-4 text-text-tertiary" />
             </div>
           </div>
-          <div className='h-0 grow'>
+          <div className="h-0 grow">
             <Chat
               config={{
                 supportCitationHitInfo: true,
                 questionEditEnable: false,
               } as any}
               chatList={threadChatItems}
-              chatContainerClassName='px-3'
-              chatContainerInnerClassName='pt-6 w-full max-w-full mx-auto'
-              chatFooterClassName='px-4 rounded-b-2xl'
-              chatFooterInnerClassName='pb-4 w-full max-w-full mx-auto'
+              chatContainerClassName="px-3"
+              chatContainerInnerClassName="pt-6 w-full max-w-full mx-auto"
+              chatFooterClassName="px-4 rounded-b-2xl"
+              chatFooterInnerClassName="pb-4 w-full max-w-full mx-auto"
               chatNode={<UserInput />}
               noChatInput
               allToolIcons={{}}
               showPromptLog
               switchSibling={switchSibling}
               noSpacing
-              chatAnswerContainerInner='!pr-2'
+              chatAnswerContainerInner="!pr-2"
             />
           </div>
         </>

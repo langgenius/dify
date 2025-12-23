@@ -28,8 +28,8 @@ export const forumCommand: SlashCommandHandler<ForumDeps> = {
       description: i18n.t('app.gotoAnything.actions.feedbackDesc', { lng: locale }) || 'Open community feedback discussions',
       type: 'command' as const,
       icon: (
-        <div className='flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg'>
-          <RiFeedbackLine className='h-4 w-4 text-text-tertiary' />
+        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+          <RiFeedbackLine className="h-4 w-4 text-text-tertiary" />
         </div>
       ),
       data: { command: 'navigation.forum', args: { url: 'https://forum.dify.ai' } },

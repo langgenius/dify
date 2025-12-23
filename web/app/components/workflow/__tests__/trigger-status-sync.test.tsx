@@ -25,7 +25,9 @@ const TestTriggerNode: React.FC<{
 
   return (
     <div data-testid={`node-${nodeId}`} data-status={triggerStatus}>
-      Status: {triggerStatus}
+      Status:
+      {' '}
+      {triggerStatus}
     </div>
   )
 }
@@ -281,7 +283,9 @@ describe('Trigger Status Synchronization Integration', () => {
 
       return (
         <div data-testid={`optimized-node-${nodeId}`} data-status={triggerStatus}>
-          Status: {triggerStatus}
+          Status:
+          {' '}
+          {triggerStatus}
         </div>
       )
     }

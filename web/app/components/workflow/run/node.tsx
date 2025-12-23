@@ -113,7 +113,7 @@ const NodePanel: FC<Props> = ({
 
   return (
     <div className={cn('px-2 py-1', className)}>
-      <div className='group rounded-[10px] border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md'>
+      <div className="group rounded-[10px] border border-components-panel-border bg-background-default shadow-xs transition-all hover:shadow-md">
         <div
           className={cn(
             'flex cursor-pointer items-center pl-1 pr-3',
@@ -133,22 +133,28 @@ const NodePanel: FC<Props> = ({
           <BlockIcon size={inMessage ? 'xs' : 'sm'} className={cn('mr-2 shrink-0', inMessage && '!mr-1')} type={nodeInfo.node_type} toolIcon={nodeInfo.extras?.icon || nodeInfo.extras} />
           <Tooltip
             popupContent={
-              <div className='max-w-xs'>{nodeInfo.title}</div>
+              <div className="max-w-xs">{nodeInfo.title}</div>
             }
           >
             <div className={cn(
               'system-xs-semibold-uppercase grow truncate text-text-secondary',
               hideInfo && '!text-xs',
-            )}>{nodeInfo.title}</div>
+            )}
+            >
+              {nodeInfo.title}
+            </div>
           </Tooltip>
           {nodeInfo.status !== 'running' && !hideInfo && (
-            <div className='system-xs-regular shrink-0 text-text-tertiary'>{nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}{`${getTime(nodeInfo.elapsed_time || 0)}`}</div>
+            <div className="system-xs-regular shrink-0 text-text-tertiary">
+              {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
+              {`${getTime(nodeInfo.elapsed_time || 0)}`}
+            </div>
           )}
           {nodeInfo.status === 'succeeded' && (
-            <RiCheckboxCircleFill className='ml-2 h-3.5 w-3.5 shrink-0 text-text-success' />
+            <RiCheckboxCircleFill className="ml-2 h-3.5 w-3.5 shrink-0 text-text-success" />
           )}
           {nodeInfo.status === 'failed' && (
-            <RiErrorWarningLine className='ml-2 h-3.5 w-3.5 shrink-0 text-text-warning' />
+            <RiErrorWarningLine className="ml-2 h-3.5 w-3.5 shrink-0 text-text-warning" />
           )}
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
@@ -157,14 +163,14 @@ const NodePanel: FC<Props> = ({
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'running' && (
-            <div className='flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent'>
-              <span className='mr-2 text-xs font-normal'>Running</span>
-              <RiLoader2Line className='h-3.5 w-3.5 animate-spin' />
+            <div className="flex shrink-0 items-center text-[13px] font-medium leading-[16px] text-text-accent">
+              <span className="mr-2 text-xs font-normal">Running</span>
+              <RiLoader2Line className="h-3.5 w-3.5 animate-spin" />
             </div>
           )}
         </div>
         {!collapseState && !hideProcessDetail && (
-          <div className='px-1 pb-1'>
+          <div className="px-1 pb-1">
             {/* The nav to the iteration detail */}
             {isIterationNode && !notShowIterationNav && onShowIterationDetail && (
               <IterationLogTrigger
@@ -197,29 +203,29 @@ const NodePanel: FC<Props> = ({
             }
             <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
               {(nodeInfo.status === 'stopped') && (
-                <StatusContainer status='stopped'>
+                <StatusContainer status="stopped">
                   {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
                 </StatusContainer>
               )}
               {(nodeInfo.status === 'exception') && (
-                <StatusContainer status='stopped'>
+                <StatusContainer status="stopped">
                   {nodeInfo.error}
                   <a
                     href={docLink('/guides/workflow/error-handling/error-type')}
-                    target='_blank'
-                    className='text-text-accent'
+                    target="_blank"
+                    className="text-text-accent"
                   >
                     {t('workflow.common.learnMore')}
                   </a>
                 </StatusContainer>
               )}
               {nodeInfo.status === 'failed' && (
-                <StatusContainer status='failed'>
+                <StatusContainer status="failed">
                   {nodeInfo.error}
                 </StatusContainer>
               )}
               {nodeInfo.status === 'retry' && (
-                <StatusContainer status='failed'>
+                <StatusContainer status="failed">
                   {nodeInfo.error}
                 </StatusContainer>
               )}
@@ -232,7 +238,7 @@ const NodePanel: FC<Props> = ({
                   language={CodeLanguage.json}
                   value={nodeInfo.inputs}
                   isJSONStringifyBeauty
-                  footer={nodeInfo.inputs_truncated && <LargeDataAlert textHasNoExport className='mx-1 mb-1 mt-2 h-7' />}
+                  footer={nodeInfo.inputs_truncated && <LargeDataAlert textHasNoExport className="mx-1 mb-1 mt-2 h-7" />}
                 />
               </div>
             )}
@@ -256,7 +262,7 @@ const NodePanel: FC<Props> = ({
                   value={nodeInfo.outputs}
                   isJSONStringifyBeauty
                   tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
-                  footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className='mx-1 mb-1 mt-2 h-7' />}
+                  footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}
                 />
               </div>
             )}

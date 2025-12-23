@@ -83,8 +83,8 @@ const PlanComp: FC<Props> = ({
       setShowAccountSettingModal(null)
   }, [path, setShowAccountSettingModal])
   return (
-    <div className='relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn'>
-      <div className='p-6 pb-2'>
+    <div className="relative rounded-2xl border-[0.5px] border-effects-highlight-lightmode-off bg-background-section-burn">
+      <div className="p-6 pb-2">
         {plan.type === Plan.sandbox && (
           <Sandbox />
         )}
@@ -97,24 +97,24 @@ const PlanComp: FC<Props> = ({
         {(plan.type as any) === SelfHostedPlan.enterprise && (
           <Enterprise />
         )}
-        <div className='mt-1 flex items-center'>
-          <div className='grow'>
-            <div className='mb-1 flex items-center gap-1'>
-              <div className='system-md-semibold-uppercase text-text-primary'>{t(`billing.plans.${type}.name`)}</div>
+        <div className="mt-1 flex items-center">
+          <div className="grow">
+            <div className="mb-1 flex items-center gap-1">
+              <div className="system-md-semibold-uppercase text-text-primary">{t(`billing.plans.${type}.name`)}</div>
             </div>
-            <div className='system-xs-regular text-util-colors-gray-gray-600'>{t(`billing.plans.${type}.for`)}</div>
+            <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`billing.plans.${type}.for`)}</div>
           </div>
-          <div className='flex shrink-0 items-center gap-1'>
+          <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
-              <Button variant='ghost' onClick={handleVerify} disabled={isPending} >
-                <RiGraduationCapLine className='mr-1 h-4 w-4' />
+              <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
+                <RiGraduationCapLine className="mr-1 h-4 w-4" />
                 {t('education.toVerified')}
-                {isPending && <Loading className='ml-1 animate-spin-slow' />}
+                {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
             {(plan.type as any) !== SelfHostedPlan.enterprise && (
               <UpgradeBtn
-                className='shrink-0'
+                className="shrink-0"
                 isPlain={type === Plan.team}
                 isShort
                 loc={loc}
@@ -124,7 +124,7 @@ const PlanComp: FC<Props> = ({
         </div>
       </div>
       {/* Plan detail */}
-      <div className='grid grid-cols-3 content-start gap-1 p-2'>
+      <div className="grid grid-cols-3 content-start gap-1 p-2">
         <AppsInfo />
         <UsageInfo
           Icon={RiGroupLine}

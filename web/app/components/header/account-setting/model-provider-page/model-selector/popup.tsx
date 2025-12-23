@@ -81,12 +81,13 @@ const Popup: FC<PopupProps> = ({
   }, [language, modelList, scopeFeatures, searchText])
 
   return (
-    <div ref={scrollRef} className='max-h-[480px] w-[320px] overflow-y-auto rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg'>
-      <div className='sticky top-0 z-10 bg-components-panel-bg pb-1 pl-3 pr-2 pt-3'>
+    <div ref={scrollRef} className="max-h-[480px] w-[320px] overflow-y-auto rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
+      <div className="sticky top-0 z-10 bg-components-panel-bg pb-1 pl-3 pr-2 pt-3">
         <div className={`
           flex h-8 items-center rounded-lg border pl-[9px] pr-[10px]
           ${searchText ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-transparent bg-components-input-bg-normal'}
-        `}>
+        `}
+        >
           <RiSearchLine
             className={`
               mr-[7px] h-[14px] w-[14px] shrink-0
@@ -94,7 +95,7 @@ const Popup: FC<PopupProps> = ({
             `}
           />
           <input
-            className='block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-none'
+            className="block h-[18px] grow appearance-none bg-transparent text-[13px] text-text-primary outline-none"
             placeholder={t('datasetSettings.form.searchModel') || ''}
             value={searchText}
             onChange={e => setSearchText(e.target.value)}
@@ -102,14 +103,14 @@ const Popup: FC<PopupProps> = ({
           {
             searchText && (
               <XCircle
-                className='ml-1.5 h-[14px] w-[14px] shrink-0 cursor-pointer text-text-quaternary'
+                className="ml-1.5 h-[14px] w-[14px] shrink-0 cursor-pointer text-text-quaternary"
                 onClick={() => setSearchText('')}
               />
             )
           }
         </div>
       </div>
-      <div className='p-1'>
+      <div className="p-1">
         {
           filteredModelList.map(model => (
             <PopupItem
@@ -122,18 +123,21 @@ const Popup: FC<PopupProps> = ({
         }
         {
           !filteredModelList.length && (
-            <div className='break-all px-3 py-1.5 text-center text-xs leading-[18px] text-text-tertiary'>
+            <div className="break-all px-3 py-1.5 text-center text-xs leading-[18px] text-text-tertiary">
               {`No model found for “${searchText}”`}
             </div>
           )
         }
       </div>
-      <div className='sticky bottom-0 flex cursor-pointer items-center rounded-b-lg border-t border-divider-subtle bg-components-panel-bg px-4 py-2 text-text-accent-light-mode-only' onClick={() => {
-        onHide()
-        setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
-      }}>
-        <span className='system-xs-medium'>{t('common.model.settingsLink')}</span>
-        <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />
+      <div
+        className="sticky bottom-0 flex cursor-pointer items-center rounded-b-lg border-t border-divider-subtle bg-components-panel-bg px-4 py-2 text-text-accent-light-mode-only"
+        onClick={() => {
+          onHide()
+          setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })
+        }}
+      >
+        <span className="system-xs-medium">{t('common.model.settingsLink')}</span>
+        <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
       </div>
     </div>
   )

@@ -186,16 +186,16 @@ const ChatInputArea = ({
           disabled && 'pointer-events-none border-components-panel-border opacity-50 shadow-none',
         )}
       >
-        <div className='relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]'>
+        <div className="relative max-h-[158px] overflow-y-auto overflow-x-hidden px-[9px] pt-[9px]">
           <FileListInChatInput fileConfig={visionConfig!} />
           <div
             ref={wrapperRef}
-            className='flex items-center justify-between'
+            className="flex items-center justify-between"
           >
-            <div className='relative flex w-full grow items-center'>
+            <div className="relative flex w-full grow items-center">
               <div
                 ref={textValueRef}
-                className='body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6'
+                className="body-lg-regular pointer-events-none invisible absolute h-auto w-auto whitespace-pre p-1 leading-6"
               >
                 {query}
               </div>
@@ -234,7 +234,7 @@ const ChatInputArea = ({
         </div>
         {
           isMultipleLine && (
-            <div className='px-[9px]'>{operation}</div>
+            <div className="px-[9px]">{operation}</div>
           )
         }
       </div>

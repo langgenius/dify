@@ -464,7 +464,7 @@ export const ssePost = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string }) => {
+            res.json().then((data: { code?: string, message?: string }) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)

@@ -25,10 +25,13 @@ const CreateAppTemplateDialog = ({ show, onSuccess, onClose, onCreateFromBlank }
       closable
       onClose={onClose}
     >
-      <AppList onCreateFromBlank={onCreateFromBlank} onSuccess={() => {
-        onSuccess()
-        onClose()
-      }} />
+      <AppList
+        onCreateFromBlank={onCreateFromBlank}
+        onSuccess={() => {
+          onSuccess()
+          onClose()
+        }}
+      />
     </FullScreenModal>
   )
 }

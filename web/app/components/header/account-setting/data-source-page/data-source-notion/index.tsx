@@ -84,7 +84,8 @@ const DataSourceNotion: FC<Props> = ({
             src={workspace.source_info.workspace_icon!}
             name={workspace.source_info.workspace_name}
             className={className}
-          />),
+          />
+        ),
         name: workspace.source_info.workspace_name,
         isActive: workspace.is_bound,
         notionConfig: {

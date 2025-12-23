@@ -92,7 +92,7 @@ export type IChatItem = {
   useCurrentUserAvatar?: boolean
   isOpeningStatement?: boolean
   suggestedQuestions?: string[]
-  log?: { role: string; text: string; files?: FileEntity[] }[]
+  log?: { role: string, text: string, files?: FileEntity[] }[]
   agent_thoughts?: ThoughtItem[]
   message_files?: FileEntity[]
   workflow_run_id?: string

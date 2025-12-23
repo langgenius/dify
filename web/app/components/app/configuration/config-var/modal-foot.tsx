@@ -15,9 +15,9 @@ const ModalFoot: FC<IModalFootProps> = ({
 }) => {
   const { t } = useTranslation()
   return (
-    <div className='flex justify-end gap-2'>
+    <div className="flex justify-end gap-2">
       <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-      <Button variant='primary' onClick={onConfirm}>{t('common.operation.save')}</Button>
+      <Button variant="primary" onClick={onConfirm}>{t('common.operation.save')}</Button>
     </div>
   )
 }

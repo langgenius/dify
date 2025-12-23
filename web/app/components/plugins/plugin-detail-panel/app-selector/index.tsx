@@ -138,7 +138,7 @@ const AppSelector: FC<Props> = ({
         onOpenChange={onShowChange}
       >
         <PortalToFollowElemTrigger
-          className='w-full'
+          className="w-full"
           onClick={handleTriggerClick}
         >
           <AppTrigger
@@ -146,19 +146,19 @@ const AppSelector: FC<Props> = ({
             appDetail={currentAppInfo}
           />
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1000]'>
+        <PortalToFollowElemContent className="z-[1000]">
           <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
-            <div className='flex flex-col gap-1 px-4 py-3'>
-              <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('app.appSelector.label')}</div>
+            <div className="flex flex-col gap-1 px-4 py-3">
+              <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('app.appSelector.label')}</div>
               <AppPicker
-                placement='bottom'
+                placement="bottom"
                 offset={offset}
-                trigger={
+                trigger={(
                   <AppTrigger
                     open={isShowChooseApp}
                     appDetail={currentAppInfo}
                   />
-                }
+                )}
                 isShow={isShowChooseApp}
                 onShowChange={setIsShowChooseApp}
                 disabled={false}

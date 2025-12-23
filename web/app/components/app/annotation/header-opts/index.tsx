@@ -100,17 +100,21 @@ const HeaderOptions: FC<Props> = ({
   const Operations = () => {
     return (
       <div className="w-full py-1">
-        <button type="button" className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50' onClick={() => {
-          setShowBulkImportModal(true)
-        }}>
-          <FilePlus02 className='h-4 w-4 text-text-tertiary' />
-          <span className='system-sm-regular grow text-left text-text-secondary'>{t('appAnnotation.table.header.bulkImport')}</span>
+        <button
+          type="button"
+          className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50"
+          onClick={() => {
+            setShowBulkImportModal(true)
+          }}
+        >
+          <FilePlus02 className="h-4 w-4 text-text-tertiary" />
+          <span className="system-sm-regular grow text-left text-text-secondary">{t('appAnnotation.table.header.bulkImport')}</span>
         </button>
         <Menu as="div" className="relative h-full w-full">
-          <MenuButton className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50'>
-            <FileDownload02 className='h-4 w-4 text-text-tertiary' />
-            <span className='system-sm-regular grow text-left text-text-secondary'>{t('appAnnotation.table.header.bulkExport')}</span>
-            <ChevronRight className='h-[14px] w-[14px] shrink-0 text-text-tertiary' />
+          <MenuButton className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+            <FileDownload02 className="h-4 w-4 text-text-tertiary" />
+            <span className="system-sm-regular grow text-left text-text-secondary">{t('appAnnotation.table.header.bulkExport')}</span>
+            <ChevronRight className="h-[14px] w-[14px] shrink-0 text-text-tertiary" />
           </MenuButton>
           <Transition
             as={Fragment}
@@ -135,22 +139,23 @@ const HeaderOptions: FC<Props> = ({
                   ...list.map(item => [item.question, item.answer]),
                 ]}
               >
-                <button type="button" disabled={annotationUnavailable} className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50'>
-                  <span className='system-sm-regular grow text-left text-text-secondary'>CSV</span>
+                <button type="button" disabled={annotationUnavailable} className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50">
+                  <span className="system-sm-regular grow text-left text-text-secondary">CSV</span>
                 </button>
               </CSVDownloader>
               <button type="button" disabled={annotationUnavailable} className={cn('mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 hover:bg-components-panel-on-panel-item-bg-hover disabled:opacity-50', '!border-0')} onClick={JSONLOutput}>
-                <span className='system-sm-regular grow text-left text-text-secondary'>JSONL</span>
+                <span className="system-sm-regular grow text-left text-text-secondary">JSONL</span>
               </button>
             </MenuItems>
           </Transition>
         </Menu>
-        <button type="button"
+        <button
+          type="button"
           onClick={handleClearAll}
-          className='mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50'
+          className="mx-1 flex h-9 w-[calc(100%_-_8px)] cursor-pointer items-center space-x-2 rounded-lg px-3 py-2 text-red-600 hover:bg-red-50 disabled:opacity-50"
         >
-          <RiDeleteBinLine className='h-4 w-4' />
-          <span className='system-sm-regular grow text-left'>
+          <RiDeleteBinLine className="h-4 w-4" />
+          <span className="system-sm-regular grow text-left">
             {t('appAnnotation.table.header.clearAll')}
           </span>
         </button>
@@ -161,9 +166,9 @@ const HeaderOptions: FC<Props> = ({
   const [showAddModal, setShowAddModal] = React.useState(false)
 
   return (
-    <div className='flex space-x-2'>
-      <Button variant='primary' onClick={() => setShowAddModal(true)}>
-        <RiAddLine className='mr-0.5 h-4 w-4' />
+    <div className="flex space-x-2">
+      <Button variant="primary" onClick={() => setShowAddModal(true)}>
+        <RiAddLine className="mr-0.5 h-4 w-4" />
         <div>{t('appAnnotation.table.header.addAnnotation')}</div>
       </Button>
       <CustomPopover
@@ -171,11 +176,11 @@ const HeaderOptions: FC<Props> = ({
         position="br"
         trigger="click"
         btnElement={
-          <RiMoreFill className='h-4 w-4' />
+          <RiMoreFill className="h-4 w-4" />
         }
-        btnClassName='btn btn-secondary btn-medium w-8 p-0'
-        className={'!z-20 h-fit !w-[155px]'}
-        popupClassName='!w-full !overflow-visible'
+        btnClassName="btn btn-secondary btn-medium w-8 p-0"
+        className="!z-20 h-fit !w-[155px]"
+        popupClassName="!w-full !overflow-visible"
         manualClose
       />
       {showAddModal && (

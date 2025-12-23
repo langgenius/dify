@@ -34,7 +34,7 @@ const UploadMethodField = ({
         label={label}
         {...(labelOptions ?? {})}
       />
-      <div className='grid grid-cols-3 gap-2'>
+      <div className="grid grid-cols-3 gap-2">
         <OptionCard
           title={t('appDebug.variableConfig.localUpload')}
           selected={value.length === 1 && value.includes(TransferMethod.local_file)}

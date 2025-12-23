@@ -3,7 +3,7 @@ import { TopBar, type TopBarProps } from './index'
 
 // Mock next/link to capture href values
 vi.mock('next/link', () => ({
-  default: ({ children, href, replace, className }: { children: React.ReactNode; href: string; replace?: boolean; className?: string }) => (
+  default: ({ children, href, replace, className }: { children: React.ReactNode, href: string, replace?: boolean, className?: string }) => (
     <a href={href} data-replace={replace} className={className} data-testid="back-link">
       {children}
     </a>

@@ -56,9 +56,9 @@ const SettingContent = ({
 
   return (
     <>
-      <div className='mb-4 flex items-center justify-between'>
-        <div className='system-xl-semibold text-text-primary'>{!imageUpload ? t('appDebug.feature.fileUpload.modalTitle') : t('appDebug.feature.imageUpload.modalTitle')}</div>
-        <div className='cursor-pointer p-1' onClick={onClose}><RiCloseLine className='h-4 w-4 text-text-tertiary'/></div>
+      <div className="mb-4 flex items-center justify-between">
+        <div className="system-xl-semibold text-text-primary">{!imageUpload ? t('appDebug.feature.fileUpload.modalTitle') : t('appDebug.feature.imageUpload.modalTitle')}</div>
+        <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <FileUploadSetting
         isMultiple
@@ -67,15 +67,15 @@ const SettingContent = ({
         payload={tempPayload}
         onChange={(p: UploadFileSetting) => setTempPayload(p)}
       />
-      <div className='mt-4 flex items-center justify-end'>
+      <div className="mt-4 flex items-center justify-end">
         <Button
           onClick={onClose}
-          className='mr-2'
+          className="mr-2"
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           onClick={handleChange}
           disabled={tempPayload.allowed_file_types.length === 0}
         >

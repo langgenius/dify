@@ -80,9 +80,9 @@ const Breadcrumbs = ({
   }, [dataSourceStore])
 
   return (
-    <div className='flex grow items-center overflow-hidden'>
+    <div className="flex grow items-center overflow-hidden">
       {showSearchResult && (
-        <div className='system-sm-medium text-test-secondary px-[5px]'>
+        <div className="system-sm-medium text-test-secondary px-[5px]">
           {t('datasetPipeline.onlineDrive.breadcrumbs.searchResult', {
             searchResultsLength,
             folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
@@ -90,12 +90,12 @@ const Breadcrumbs = ({
         </div>
       )}
       {!showSearchResult && showBucketListTitle && (
-        <div className='system-sm-medium text-test-secondary px-[5px]'>
+        <div className="system-sm-medium text-test-secondary px-[5px]">
           {t('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')}
         </div>
       )}
       {!showSearchResult && !showBucketListTitle && (
-        <div className='flex w-full items-center gap-x-0.5 overflow-hidden'>
+        <div className="flex w-full items-center gap-x-0.5 overflow-hidden">
           {hasBucket && bucket && (
             <Bucket
               bucketName={bucket}

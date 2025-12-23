@@ -54,20 +54,20 @@ const ResultItem = ({
   return (
     <div className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')} onClick={showDetailModal}>
       {/* Meta info */}
-      <ResultItemMeta className='px-3' labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`} positionId={position} wordCount={word_count} score={score} />
+      <ResultItemMeta className="px-3" labelPrefix={`${isParentChildRetrieval ? 'Parent-' : ''}Chunk`} positionId={position} wordCount={word_count} score={score} />
 
       {/* Main */}
-      <div className='mt-1 px-3'>
-        {<Markdown
-          className='line-clamp-2'
+      <div className="mt-1 px-3">
+        <Markdown
+          className="line-clamp-2"
           content={sign_content || content}
           customDisallowedElements={['input']}
-        />}
+        />
         {images.length > 0 && (
-          <ImageList images={images} size='md' className='py-1' />
+          <ImageList images={images} size="md" className="py-1" />
         )}
         {isParentChildRetrieval && (
-          <div className='mt-1'>
+          <div className="mt-1">
             <div
               className={cn('inline-flex h-6 cursor-pointer select-none items-center space-x-0.5 rounded-lg text-text-secondary', isFold && 'bg-workflow-process-bg pl-1')}
               onClick={(e) => {
@@ -76,12 +76,12 @@ const ResultItem = ({
               }}
             >
               <Icon className={cn('h-4 w-4', isFold && 'opacity-50')} />
-              <div className='text-xs font-semibold uppercase'>{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
+              <div className="text-xs font-semibold uppercase">{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
             </div>
             {!isFold && (
-              <div className='space-y-2'>
+              <div className="space-y-2">
                 {child_chunks.map(item => (
-                  <div key={item.id} className='ml-[7px] border-l-[2px] border-text-accent-secondary pl-[7px]'>
+                  <div key={item.id} className="ml-[7px] border-l-[2px] border-text-accent-secondary pl-[7px]">
                     <ChildChunkItem payload={item} isShowAll={false} />
                   </div>
                 ))}
@@ -90,9 +90,9 @@ const ResultItem = ({
           </div>
         )}
         {!isParentChildRetrieval && keywords && keywords.length > 0 && (
-          <div className='mt-2 flex flex-wrap'>
+          <div className="mt-2 flex flex-wrap">
             {keywords.map(keyword => (
-              <Tag key={keyword} text={keyword} className='mr-2' />
+              <Tag key={keyword} text={keyword} className="mr-2" />
             ))}
           </div>
         )}
@@ -108,7 +108,7 @@ const ResultItem = ({
           />
         )
       }
-    </div >
+    </div>
   )
 }
 export default React.memo(ResultItem)

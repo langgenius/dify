@@ -19,21 +19,21 @@ const Header = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center gap-x-1 px-4 py-2'>
-      <div className='system-sm-semibold-uppercase grow text-text-secondary'>
+    <div className="flex items-center gap-x-1 px-4 py-2">
+      <div className="system-sm-semibold-uppercase grow text-text-secondary">
         {t('datasetPipeline.addDocuments.stepTwo.chunkSettings')}
       </div>
-      <Button variant='ghost' disabled={resetDisabled} onClick={onReset}>
+      <Button variant="ghost" disabled={resetDisabled} onClick={onReset}>
         {t('common.operation.reset')}
       </Button>
       <Button
-        variant='secondary-accent'
+        variant="secondary-accent"
         onClick={onPreview}
-        className='gap-x-0.5'
+        className="gap-x-0.5"
         disabled={previewDisabled}
       >
-        <RiSearchEyeLine className='size-4' />
-        <span className='px-0.5'>{t('datasetPipeline.addDocuments.stepTwo.previewChunks')}</span>
+        <RiSearchEyeLine className="size-4" />
+        <span className="px-0.5">{t('datasetPipeline.addDocuments.stepTwo.previewChunks')}</span>
       </Button>
     </div>
   )

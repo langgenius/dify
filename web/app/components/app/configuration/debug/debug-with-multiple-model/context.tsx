@@ -34,7 +34,8 @@ export const DebugWithMultipleModelContextProvider = ({
       multipleModelConfigs,
       onDebugWithMultipleModelChange,
       checkCanSend,
-    }}>
+    }}
+    >
       {children}
     </DebugWithMultipleModelContext.Provider>
   )

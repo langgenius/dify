@@ -35,41 +35,45 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
   const { t } = useTranslation()
   const modelList = useAllModel()
   if (!('provider' in props)) {
-    return <Tooltip
-      popupContent={t('workflow.nodes.agent.modelNotSelected')}
-      triggerMethod='hover'
-    >
-      <div className='relative'>
-        <ModelSelector
-          modelList={[]}
-          triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
-          defaultModel={undefined}
-          showDeprecatedWarnIcon={false}
-          readonly
-          deprecatedClassName='opacity-50'
-        />
-        <Indicator color={'red'} className='absolute -right-0.5 -top-0.5' />
-      </div>
-    </Tooltip>
+    return (
+      <Tooltip
+        popupContent={t('workflow.nodes.agent.modelNotSelected')}
+        triggerMethod="hover"
+      >
+        <div className="relative">
+          <ModelSelector
+            modelList={[]}
+            triggerClassName="bg-workflow-block-parma-bg !h-6 !rounded-md"
+            defaultModel={undefined}
+            showDeprecatedWarnIcon={false}
+            readonly
+            deprecatedClassName="opacity-50"
+          />
+          <Indicator color="red" className="absolute -right-0.5 -top-0.5" />
+        </div>
+      </Tooltip>
+    )
   }
   const modelInstalled = modelList?.some(
     provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model))
   const showWarn = modelList && !modelInstalled
-  return modelList && <Tooltip
-    popupContent={t('workflow.nodes.agent.modelNotInstallTooltip')}
-    triggerMethod='hover'
-    disabled={!modelList || modelInstalled}
-  >
-    <div className='relative'>
-      <ModelSelector
-        modelList={modelList}
-        triggerClassName='bg-workflow-block-parma-bg !h-6 !rounded-md'
-        defaultModel={props}
-        showDeprecatedWarnIcon={false}
-        readonly
-        deprecatedClassName='opacity-50'
-      />
-      {showWarn && <Indicator color={'red'} className='absolute -right-0.5 -top-0.5' />}
-    </div>
-  </Tooltip>
+  return modelList && (
+    <Tooltip
+      popupContent={t('workflow.nodes.agent.modelNotInstallTooltip')}
+      triggerMethod="hover"
+      disabled={!modelList || modelInstalled}
+    >
+      <div className="relative">
+        <ModelSelector
+          modelList={modelList}
+          triggerClassName="bg-workflow-block-parma-bg !h-6 !rounded-md"
+          defaultModel={props}
+          showDeprecatedWarnIcon={false}
+          readonly
+          deprecatedClassName="opacity-50"
+        />
+        {showWarn && <Indicator color="red" className="absolute -right-0.5 -top-0.5" />}
+      </div>
+    </Tooltip>
+  )
 }

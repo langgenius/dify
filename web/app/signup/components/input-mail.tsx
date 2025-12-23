@@ -40,63 +40,77 @@ export default function Form({
       return
     }
     const res = await submitMail({ email, language: locale })
-    if((res as MailSendResponse).result === 'success')
+    if ((res as MailSendResponse).result === 'success')
       onSuccess(email, (res as MailSendResponse).data)
   }, [email, locale, submitMail, t])
 
-  return <form onSubmit={noop}>
-    <div className='mb-3'>
-      <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
-        {t('login.email')}
-      </label>
-      <div className="mt-1">
-        <Input
-          value={email}
-          onChange={e => setEmail(e.target.value)}
-          id="email"
-          type="email"
-          autoComplete="email"
-          placeholder={t('login.emailPlaceholder') || ''}
-          tabIndex={1}
-        />
+  return (
+    <form onSubmit={noop}>
+      <div className="mb-3">
+        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
+          {t('login.email')}
+        </label>
+        <div className="mt-1">
+          <Input
+            value={email}
+            onChange={e => setEmail(e.target.value)}
+            id="email"
+            type="email"
+            autoComplete="email"
+            placeholder={t('login.emailPlaceholder') || ''}
+            tabIndex={1}
+          />
+        </div>
       </div>
-    </div>
-    <div className='mb-2'>
-      <Button
-        tabIndex={2}
-        variant='primary'
-        onClick={handleSubmit}
-        disabled={isPending || !email}
-        className="w-full"
-      >{t('login.signup.verifyMail')}</Button>
-    </div>
-    <Split className='mb-5 mt-4' />
+      <div className="mb-2">
+        <Button
+          tabIndex={2}
+          variant="primary"
+          onClick={handleSubmit}
+          disabled={isPending || !email}
+          className="w-full"
+        >
+          {t('login.signup.verifyMail')}
+        </Button>
+      </div>
+      <Split className="mb-5 mt-4" />
 
-    <div className='text-[13px] font-medium leading-4 text-text-secondary'>
-      <span>{t('login.signup.haveAccount')}</span>
-      <Link
-        className='text-text-accent'
-        href='/signin'
-      >{t('login.signup.signIn')}</Link>
-    </div>
+      <div className="text-[13px] font-medium leading-4 text-text-secondary">
+        <span>{t('login.signup.haveAccount')}</span>
+        <Link
+          className="text-text-accent"
+          href="/signin"
+        >
+          {t('login.signup.signIn')}
+        </Link>
+      </div>
 
-    {!systemFeatures.branding.enabled && <>
-      <div className="system-xs-regular mt-3 block w-full text-text-tertiary">
-        {t('login.tosDesc')}
+      {!systemFeatures.branding.enabled && (
+        <>
+          <div className="system-xs-regular mt-3 block w-full text-text-tertiary">
+            {t('login.tosDesc')}
               &nbsp;
-        <Link
-          className='system-xs-medium text-text-secondary hover:underline'
-          target='_blank' rel='noopener noreferrer'
-          href='https://dify.ai/terms'
-        >{t('login.tos')}</Link>
+            <Link
+              className="system-xs-medium text-text-secondary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://dify.ai/terms"
+            >
+              {t('login.tos')}
+            </Link>
               &nbsp;&&nbsp;
-        <Link
-          className='system-xs-medium text-text-secondary hover:underline'
-          target='_blank' rel='noopener noreferrer'
-          href='https://dify.ai/privacy'
-        >{t('login.pp')}</Link>
-      </div>
-    </>}
+            <Link
+              className="system-xs-medium text-text-secondary hover:underline"
+              target="_blank"
+              rel="noopener noreferrer"
+              href="https://dify.ai/privacy"
+            >
+              {t('login.pp')}
+            </Link>
+          </div>
+        </>
+      )}
 
-  </form>
+    </form>
+  )
 }

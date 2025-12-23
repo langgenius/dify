@@ -22,20 +22,21 @@ const EnvNav = () => {
     <div className={`
       mr-1 flex h-[22px] items-center rounded-md border px-2 text-xs font-medium
       ${headerEnvClassName[langGeniusVersionInfo.current_env]}
-    `}>
+    `}
+    >
       {
         langGeniusVersionInfo.current_env === 'TESTING' && (
           <>
-            <Beaker02 className='h-3 w-3' />
-            <div className='ml-1 max-[1280px]:hidden'>{t('common.environment.testing')}</div>
+            <Beaker02 className="h-3 w-3" />
+            <div className="ml-1 max-[1280px]:hidden">{t('common.environment.testing')}</div>
           </>
         )
       }
       {
         langGeniusVersionInfo.current_env === 'DEVELOPMENT' && (
           <>
-            <TerminalSquare className='h-3 w-3' />
-            <div className='ml-1 max-[1280px]:hidden'>{t('common.environment.development')}</div>
+            <TerminalSquare className="h-3 w-3" />
+            <div className="ml-1 max-[1280px]:hidden">{t('common.environment.development')}</div>
           </>
         )
       }

@@ -92,25 +92,26 @@ const PermissionSelector = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={4}
     >
-      <div className='relative'>
+      <div className="relative">
         <PortalToFollowElemTrigger
           onClick={() => !disabled && setOpen(v => !v)}
-          className='block'
+          className="block"
         >
           <div className={cn('flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
             open && 'bg-state-base-hover-alt',
             disabled && '!cursor-not-allowed !bg-components-input-bg-disabled hover:!bg-components-input-bg-disabled',
-          )}>
+          )}
+          >
             {
               isOnlyMe && (
                 <>
-                  <div className='flex size-6 shrink-0 items-center justify-center'>
+                  <div className="flex size-6 shrink-0 items-center justify-center">
                     <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={20} />
                   </div>
-                  <div className='system-sm-regular grow p-1 text-components-input-text-filled'>
+                  <div className="system-sm-regular grow p-1 text-components-input-text-filled">
                     {t('datasetSettings.form.permissionsOnlyMe')}
                   </div>
                 </>
@@ -119,10 +120,10 @@ const PermissionSelector = ({
             {
               isAllTeamMembers && (
                 <>
-                  <div className='flex size-6 shrink-0 items-center justify-center'>
-                    <RiGroup2Line className='size-4 text-text-secondary' />
+                  <div className="flex size-6 shrink-0 items-center justify-center">
+                    <RiGroup2Line className="size-4 text-text-secondary" />
                   </div>
-                  <div className='system-sm-regular grow p-1 text-components-input-text-filled'>
+                  <div className="system-sm-regular grow p-1 text-components-input-text-filled">
                     {t('datasetSettings.form.permissionsAllMember')}
                   </div>
                 </>
@@ -131,7 +132,7 @@ const PermissionSelector = ({
             {
               isPartialMembers && (
                 <>
-                  <div className='relative flex size-6 shrink-0 items-center justify-center'>
+                  <div className="relative flex size-6 shrink-0 items-center justify-center">
                     {
                       selectedMembers.length === 1 && (
                         <Avatar
@@ -147,13 +148,13 @@ const PermissionSelector = ({
                           <Avatar
                             avatar={selectedMembers[0].avatar_url}
                             name={selectedMembers[0].name}
-                            className='absolute left-0 top-0 z-0'
+                            className="absolute left-0 top-0 z-0"
                             size={16}
                           />
                           <Avatar
                             avatar={selectedMembers[1].avatar_url}
                             name={selectedMembers[1].name}
-                            className='absolute bottom-0 right-0 z-10'
+                            className="absolute bottom-0 right-0 z-10"
                             size={16}
                           />
                         </>
@@ -162,7 +163,7 @@ const PermissionSelector = ({
                   </div>
                   <div
                     title={selectedMemberNames}
-                    className='system-sm-regular grow truncate p-1 text-components-input-text-filled'
+                    className="system-sm-regular grow truncate p-1 text-components-input-text-filled"
                   >
                     {selectedMemberNames}
                   </div>
@@ -178,13 +179,13 @@ const PermissionSelector = ({
             />
           </div>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1002]'>
-          <div className='relative w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5'>
-            <div className='p-1'>
+        <PortalToFollowElemContent className="z-[1002]">
+          <div className="relative w-[480px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg shadow-shadow-shadow-5">
+            <div className="p-1">
               {/* Only me */}
               <Item
                 leftIcon={
-                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0' size={24} />
+                  <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size={24} />
                 }
                 text={t('datasetSettings.form.permissionsOnlyMe')}
                 onClick={onSelectOnlyMe}
@@ -192,30 +193,30 @@ const PermissionSelector = ({
               />
               {/* All team members */}
               <Item
-                leftIcon={
-                  <div className='flex size-6 shrink-0 items-center justify-center'>
-                    <RiGroup2Line className='size-4 text-text-secondary' />
+                leftIcon={(
+                  <div className="flex size-6 shrink-0 items-center justify-center">
+                    <RiGroup2Line className="size-4 text-text-secondary" />
                   </div>
-                }
+                )}
                 text={t('datasetSettings.form.permissionsAllMember')}
                 onClick={onSelectAllMembers}
                 isSelected={isAllTeamMembers}
               />
               {/* Partial members */}
               <Item
-                leftIcon={
-                  <div className='flex size-6 shrink-0 items-center justify-center'>
-                    <RiLock2Line className='size-4 text-text-secondary' />
+                leftIcon={(
+                  <div className="flex size-6 shrink-0 items-center justify-center">
+                    <RiLock2Line className="size-4 text-text-secondary" />
                   </div>
-                }
+                )}
                 text={t('datasetSettings.form.permissionsInvitedMembers')}
                 onClick={onSelectPartialMembers}
                 isSelected={isPartialMembers}
               />
             </div>
             {isPartialMembers && (
-              <div className='max-h-[360px] overflow-y-auto border-t-[1px] border-divider-regular pb-1 pl-1 pr-1'>
-                <div className='sticky left-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1'>
+              <div className="max-h-[360px] overflow-y-auto border-t-[1px] border-divider-regular pb-1 pl-1 pr-1">
+                <div className="sticky left-0 top-0 z-10 bg-components-panel-on-panel-item-bg p-2 pb-1">
                   <Input
                     showLeftIcon
                     showClearIcon
@@ -224,11 +225,11 @@ const PermissionSelector = ({
                     onClear={() => handleKeywordsChange('')}
                   />
                 </div>
-                <div className='flex flex-col p-1'>
+                <div className="flex flex-col p-1">
                   {showMe && (
                     <MemberItem
                       leftIcon={
-                        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className='shrink-0' size={24} />
+                        <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size={24} />
                       }
                       name={userProfile.name}
                       email={userProfile.email}
@@ -239,7 +240,7 @@ const PermissionSelector = ({
                   {filteredMemberList.map(member => (
                     <MemberItem
                       leftIcon={
-                        <Avatar avatar={member.avatar_url} name={member.name} className='shrink-0' size={24} />
+                        <Avatar avatar={member.avatar_url} name={member.name} className="shrink-0" size={24} />
                       }
                       name={member.name}
                       email={member.email}
@@ -249,7 +250,7 @@ const PermissionSelector = ({
                   ))}
                   {
                     !showMe && filteredMemberList.length === 0 && (
-                      <div className='system-xs-regular flex items-center justify-center whitespace-pre-wrap px-1 py-6 text-center text-text-tertiary'>
+                      <div className="system-xs-regular flex items-center justify-center whitespace-pre-wrap px-1 py-6 text-center text-text-tertiary">
                         {t('datasetSettings.form.onSearchResults')}
                       </div>
                     )

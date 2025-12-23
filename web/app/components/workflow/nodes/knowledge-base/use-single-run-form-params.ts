@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react'
 import type { KnowledgeBaseNodeType } from './types'
 
 type Params = {
-  id: string,
+  id: string
   payload: KnowledgeBaseNodeType
   runInputData: Record<string, any>
   getInputVars: (textList: string[]) => InputVar[]
@@ -45,7 +45,7 @@ const useSingleRunFormParams = ({
     return [payload.index_chunk_variable_selector]
   }
   const getDependentVar = (variable: string) => {
-    if(variable === 'query')
+    if (variable === 'query')
       return payload.index_chunk_variable_selector
   }
 
