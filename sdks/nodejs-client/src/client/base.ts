@@ -4,11 +4,11 @@ import type {
   DifyResponse,
   QueryParams,
   RequestMethod,
-} from "../types/common.js";
-import { HttpClient } from "../http/client.js";
-import { ensureNonEmptyString, ensureRating } from "./validation.js";
-import { FileUploadError, ValidationError } from "../errors/dify-error.js";
-import { isFormData } from "../http/form-data.js";
+} from "../types/common";
+import { HttpClient } from "../http/client";
+import { ensureNonEmptyString, ensureRating } from "./validation";
+import { FileUploadError, ValidationError } from "../errors/dify-error";
+import { isFormData } from "../http/form-data";
 
 const toConfig = (
   init: string | DifyClientConfig,

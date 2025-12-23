@@ -1,11 +1,11 @@
-import { DifyClient } from "./base.js";
-import type { WorkflowRunRequest, WorkflowRunResponse } from "../types/workflow.js";
-import type { DifyResponse, DifyStream, QueryParams } from "../types/common.js";
+import { DifyClient } from "./base";
+import type { WorkflowRunRequest, WorkflowRunResponse } from "../types/workflow";
+import type { DifyResponse, DifyStream, QueryParams } from "../types/common";
 import {
   ensureNonEmptyString,
   ensureOptionalInt,
   ensureOptionalString,
-} from "./validation.js";
+} from "./validation";
 
 export class WorkflowClient extends DifyClient {
   run(

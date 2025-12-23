@@ -11,15 +11,15 @@ import {
   DEFAULT_MAX_RETRIES,
   DEFAULT_RETRY_DELAY_SECONDS,
   DEFAULT_TIMEOUT_SECONDS,
-} from "../types/common.js";
+} from "../types/common";
 import type {
   DifyClientConfig,
   DifyResponse,
   Headers,
   QueryParams,
   RequestMethod,
-} from "../types/common.js";
-import type { DifyError } from "../errors/dify-error.js";
+} from "../types/common";
+import type { DifyError } from "../errors/dify-error";
 import {
   APIError,
   AuthenticationError,
@@ -27,10 +27,10 @@ import {
   RateLimitError,
   TimeoutError,
   ValidationError,
-} from "../errors/dify-error.js";
-import { getFormDataHeaders, isFormData } from "./form-data.js";
-import { createBinaryStream, createSseStream } from "./sse.js";
-import { getRetryDelayMs, shouldRetry, sleep } from "./retry.js";
+} from "../errors/dify-error";
+import { getFormDataHeaders, isFormData } from "./form-data";
+import { createBinaryStream, createSseStream } from "./sse";
+import { getRetryDelayMs, shouldRetry, sleep } from "./retry";
 
 const DEFAULT_USER_AGENT = "dify-client-node";
 

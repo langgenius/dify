@@ -1,7 +1,7 @@
-import { DifyClient } from "./base.js";
-import type { CompletionRequest, CompletionResponse } from "../types/completion.js";
-import type { DifyResponse, DifyStream } from "../types/common.js";
-import { ensureNonEmptyString } from "./validation.js";
+import { DifyClient } from "./base";
+import type { CompletionRequest, CompletionResponse } from "../types/completion";
+import type { DifyResponse, DifyStream } from "../types/common";
+import { ensureNonEmptyString } from "./validation";
 
 const warned = new Set<string>();
 const warnOnce = (message: string): void => {

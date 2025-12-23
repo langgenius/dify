@@ -1,12 +1,12 @@
-import { DifyClient } from "./base.js";
-import type { ChatMessageRequest, ChatMessageResponse } from "../types/chat.js";
-import type { DifyResponse, DifyStream, QueryParams } from "../types/common.js";
+import { DifyClient } from "./base";
+import type { ChatMessageRequest, ChatMessageResponse } from "../types/chat";
+import type { DifyResponse, DifyStream, QueryParams } from "../types/common";
 import {
   ensureNonEmptyString,
   ensureOptionalInt,
   ensureOptionalString,
   ensureRating,
-} from "./validation.js";
+} from "./validation";
 
 export class ChatClient extends DifyClient {
   createChatMessage(

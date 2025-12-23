@@ -1,4 +1,4 @@
-import { ValidationError } from "../errors/dify-error.js";
+import { ValidationError } from "../errors/dify-error";
 
 export function ensureNonEmptyString(
   value: unknown,

@@ -1,4 +1,4 @@
-import type { StreamEvent } from "./common.js";
+import type { StreamEvent } from "./common";
 
 export type ChatMessageRequest = {
   inputs?: Record<string, unknown>;

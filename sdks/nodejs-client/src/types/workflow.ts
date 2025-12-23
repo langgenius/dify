@@ -1,4 +1,4 @@
-import type { StreamEvent } from "./common.js";
+import type { StreamEvent } from "./common";
 
 export type WorkflowRunRequest = {
   inputs?: Record<string, unknown>;

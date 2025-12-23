@@ -1,4 +1,4 @@
-import { DEFAULT_BASE_URL } from "./types/common.js";
+import { DEFAULT_BASE_URL } from "./types/common";
 
 export const BASE_URL = DEFAULT_BASE_URL;
 
@@ -85,14 +85,14 @@ export const routes = {
   },
 };
 
-export { DifyClient } from "./client/base.js";
-export { ChatClient } from "./client/chat.js";
-export { CompletionClient } from "./client/completion.js";
-export { WorkflowClient } from "./client/workflow.js";
+export { DifyClient } from "./client/base";
+export { ChatClient } from "./client/chat";
+export { CompletionClient } from "./client/completion";
+export { WorkflowClient } from "./client/workflow";
 
-export * from "./errors/dify-error.js";
-export * from "./types/common.js";
-export * from "./types/chat.js";
-export * from "./types/completion.js";
-export * from "./types/workflow.js";
-export { HttpClient } from "./http/client.js";
+export * from "./errors/dify-error";
+export * from "./types/common";
+export * from "./types/chat";
+export * from "./types/completion";
+export * from "./types/workflow";
+export { HttpClient } from "./http/client";

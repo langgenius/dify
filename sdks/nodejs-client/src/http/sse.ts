@@ -1,6 +1,6 @@
 import type { Readable } from "node:stream";
 import { StringDecoder } from "node:string_decoder";
-import type { BinaryStream, DifyStream, Headers, StreamEvent } from "../types/common.js";
+import type { BinaryStream, DifyStream, Headers, StreamEvent } from "../types/common";
 
 const readLines = async function* (stream: Readable): AsyncIterable<string> {
   const decoder = new StringDecoder("utf8");
