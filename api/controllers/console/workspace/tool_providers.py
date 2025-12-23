@@ -682,8 +682,6 @@ class ToolWorkflowProviderGetApi(Resource):
                 tenant_id,
                 query.workflow_app_id,
             )
-        else:
-            raise ValueError("incorrect workflow_tool_id or workflow_app_id")
 
         return jsonable_encoder(tool)
 
