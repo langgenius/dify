@@ -1,3 +1,15 @@
+import type {
+  ChatConfig,
+  ChatItem,
+  Feedback,
+} from '../types'
+import type {
+  // AppData,
+  ConversationItem,
+} from '@/models/share'
+import { useLocalStorageState } from 'ahooks'
+import { produce } from 'immer'
+import { noop } from 'lodash-es'
 import {
   useCallback,
   useEffect,
@@ -7,33 +19,21 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
-import { useLocalStorageState } from 'ahooks'
-import { produce } from 'immer'
-import type {
-  ChatConfig,
-  ChatItem,
-  Feedback,
-} from '../types'
-import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams, getProcessedUserVariablesFromUrlParams } from '../utils'
-import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
+import { useToastContext } from '@/app/components/base/toast'
+import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
+import { InputVarType } from '@/app/components/workflow/types'
+import { useWebAppStore } from '@/context/web-app-context'
+import { changeLanguage } from '@/i18n-config/i18next-config'
 import {
   fetchChatList,
   fetchConversations,
   generationConversationName,
   updateFeedback,
 } from '@/service/share'
-import type {
-  // AppData,
-  ConversationItem,
-} from '@/models/share'
-import { useToastContext } from '@/app/components/base/toast'
-import { changeLanguage } from '@/i18n-config/i18next-config'
-import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
-import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
-import { noop } from 'lodash-es'
-import { useWebAppStore } from '@/context/web-app-context'
+import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
+import { CONVERSATION_ID_INFO } from '../constants'
+import { buildChatItemTree, getProcessedInputsFromUrlParams, getProcessedSystemVariablesFromUrlParams, getProcessedUserVariablesFromUrlParams } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []
@@ -112,8 +112,7 @@ export const useEmbeddedChatbot = () => {
     defaultValue: {},
   })
   const allowResetChat = !conversationId
-  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '',
-    [appId, conversationIdInfo, userId, conversationId])
+  const currentConversationId = useMemo(() => conversationIdInfo?.[appId || '']?.[userId || 'DEFAULT'] || conversationId || '', [appId, conversationIdInfo, userId, conversationId])
   const handleConversationIdInfoChange = useCallback((changeConversationId: string) => {
     if (appId) {
       let prevValue = conversationIdInfo?.[appId || '']

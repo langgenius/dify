@@ -1,18 +1,18 @@
-import React from 'react'
+import type { AgentConfig } from '@/models/debug'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AgentSettingButton from './agent-setting-button'
-import type { AgentConfig } from '@/models/debug'
+import * as React from 'react'
 import { AgentStrategy } from '@/types/app'
+import AgentSettingButton from './agent-setting-button'
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
 }))
 
 let latestAgentSettingProps: any
-jest.mock('./agent/agent-setting', () => ({
+vi.mock('./agent/agent-setting', () => ({
   __esModule: true,
   default: (props: any) => {
     latestAgentSettingProps = props
@@ -41,7 +41,7 @@ const setup = (overrides: Partial<React.ComponentProps<typeof AgentSettingButton
   const props: React.ComponentProps<typeof AgentSettingButton> = {
     isFunctionCall: false,
     isChatModel: true,
-    onAgentSettingChange: jest.fn(),
+    onAgentSettingChange: vi.fn(),
     agentConfig: createAgentConfig(),
     ...overrides,
   }
@@ -52,7 +52,7 @@ const setup = (overrides: Partial<React.ComponentProps<typeof AgentSettingButton
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   latestAgentSettingProps = undefined
 })
 

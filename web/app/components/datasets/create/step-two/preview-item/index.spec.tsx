@@ -1,7 +1,7 @@
-import { render, screen } from '@testing-library/react'
-import React from 'react'
-import PreviewItem, { PreviewType } from './index'
 import type { IPreviewItemProps } from './index'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import PreviewItem, { PreviewType } from './index'
 
 // Test data builder for props
 const createDefaultProps = (overrides?: Partial<IPreviewItemProps>): IPreviewItemProps => ({
@@ -23,7 +23,7 @@ const createQAProps = (overrides?: Partial<IPreviewItemProps>): IPreviewItemProp
 
 describe('PreviewItem', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -346,7 +346,7 @@ describe('PreviewItem', () => {
     it('should not re-render when props remain the same', () => {
       // Arrange
       const props = createDefaultProps()
-      const renderSpy = jest.fn()
+      const renderSpy = vi.fn()
 
       // Create a wrapper component to track renders
       const TrackedPreviewItem: React.FC<IPreviewItemProps> = (trackedProps) => {

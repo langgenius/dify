@@ -79,7 +79,6 @@ export type I18nText = {
 4. Add the new language to the `language.json` file.
 
 ```typescript
-
 export const languages = [
   {
     value: 'en-US',
@@ -172,7 +171,7 @@ export const languages = [
     supported: true,
   },
   // Add your language here 👇
-  ...
+  // ...
   // Add your language here 👆
 ]
 ```

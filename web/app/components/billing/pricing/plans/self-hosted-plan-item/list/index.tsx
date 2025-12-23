@@ -1,5 +1,5 @@
-import React from 'react'
 import type { SelfHostedPlan } from '@/app/components/billing/type'
+import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import Item from './item'
 
@@ -15,18 +15,19 @@ const List = ({
   const features = t(`${i18nPrefix}.features`, { returnObjects: true }) as string[]
 
   return (
-    <div className='flex flex-col gap-y-[10px] p-6'>
-      <div className='system-md-semibold text-text-secondary'>
+    <div className="flex flex-col gap-y-[10px] p-6">
+      <div className="system-md-semibold text-text-secondary">
         <Trans
           i18nKey={t(`${i18nPrefix}.includesTitle`)}
-          components={{ highlight: <span className='text-text-warning'></span> }}
+          components={{ highlight: <span className="text-text-warning"></span> }}
         />
       </div>
-      {features.map(feature =>
+      {features.map(feature => (
         <Item
           key={`${plan}-${feature}`}
           label={feature}
-        />,
+        />
+      ),
       )}
     </div>
   )

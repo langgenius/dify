@@ -1,14 +1,15 @@
+import type { WorkflowHistoryEventMeta } from '../workflow-history-store'
+import { debounce } from 'lodash-es'
 import {
   useCallback,
-  useRef, useState,
+  useRef,
+  useState,
 } from 'react'
-import { debounce } from 'lodash-es'
+import { useTranslation } from 'react-i18next'
 import {
   useStoreApi,
 } from 'reactflow'
-import { useTranslation } from 'react-i18next'
 import { useWorkflowHistoryStore } from '../workflow-history-store'
-import type { WorkflowHistoryEventMeta } from '../workflow-history-store'
 
 /**
  * All supported Events that create a new history state.

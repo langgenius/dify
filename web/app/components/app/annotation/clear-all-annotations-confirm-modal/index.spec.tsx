@@ -1,8 +1,8 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import ClearAllAnnotationsConfirmModal from './index'
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
@@ -16,19 +16,19 @@ jest.mock('react-i18next', () => ({
 }))
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 describe('ClearAllAnnotationsConfirmModal', () => {
   // Rendering visibility toggled by isShow flag
   describe('Rendering', () => {
-    test('should show confirmation dialog when isShow is true', () => {
+    it('should show confirmation dialog when isShow is true', () => {
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
           isShow
-          onHide={jest.fn()}
-          onConfirm={jest.fn()}
+          onHide={vi.fn()}
+          onConfirm={vi.fn()}
         />,
       )
 
@@ -38,13 +38,13 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
 
-    test('should not render anything when isShow is false', () => {
+    it('should not render anything when isShow is false', () => {
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
           isShow={false}
-          onHide={jest.fn()}
-          onConfirm={jest.fn()}
+          onHide={vi.fn()}
+          onConfirm={vi.fn()}
         />,
       )
 
@@ -55,9 +55,9 @@ describe('ClearAllAnnotationsConfirmModal', () => {
 
   // User confirms or cancels clearing annotations
   describe('Interactions', () => {
-    test('should trigger onHide when cancel is clicked', () => {
-      const onHide = jest.fn()
-      const onConfirm = jest.fn()
+    it('should trigger onHide when cancel is clicked', () => {
+      const onHide = vi.fn()
+      const onConfirm = vi.fn()
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
@@ -75,9 +75,9 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       expect(onConfirm).not.toHaveBeenCalled()
     })
 
-    test('should trigger onConfirm when confirm is clicked', () => {
-      const onHide = jest.fn()
-      const onConfirm = jest.fn()
+    it('should trigger onConfirm when confirm is clicked', () => {
+      const onHide = vi.fn()
+      const onConfirm = vi.fn()
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal

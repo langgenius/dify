@@ -17,7 +17,7 @@ export default function ThemeSwitcher() {
   }
 
   return (
-    <div className='flex items-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5'>
+    <div className="flex items-center rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
       <div
         className={cn(
           'rounded-lg px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -25,8 +25,8 @@ export default function ThemeSwitcher() {
         )}
         onClick={() => handleThemeChange('system')}
       >
-        <div className='p-0.5'>
-          <RiComputerLine className='h-4 w-4' />
+        <div className="p-0.5">
+          <RiComputerLine className="h-4 w-4" />
         </div>
       </div>
       <div className={cn('h-[14px] w-px bg-transparent', theme === 'dark' && 'bg-divider-regular')}></div>
@@ -37,8 +37,8 @@ export default function ThemeSwitcher() {
         )}
         onClick={() => handleThemeChange('light')}
       >
-        <div className='p-0.5'>
-          <RiSunLine className='h-4 w-4' />
+        <div className="p-0.5">
+          <RiSunLine className="h-4 w-4" />
         </div>
       </div>
       <div className={cn('h-[14px] w-px bg-transparent', theme === 'system' && 'bg-divider-regular')}></div>
@@ -49,8 +49,8 @@ export default function ThemeSwitcher() {
         )}
         onClick={() => handleThemeChange('dark')}
       >
-        <div className='p-0.5'>
-          <RiMoonLine className='h-4 w-4' />
+        <div className="p-0.5">
+          <RiMoonLine className="h-4 w-4" />
         </div>
       </div>
     </div>

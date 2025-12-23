@@ -1,18 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import FileList from './index'
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
+import FileList from './index'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock ahooks useDebounceFn - third-party library requires mocking
-const mockDebounceFnRun = jest.fn()
-jest.mock('ahooks', () => ({
+const mockDebounceFnRun = vi.fn()
+vi.mock('ahooks', () => ({
   useDebounceFn: (fn: (...args: any[]) => void) => {
     mockDebounceFnRun.mockImplementation(fn)
     return { run: mockDebounceFnRun }
@@ -21,21 +21,21 @@ jest.mock('ahooks', () => ({
 
 // Mock store - context provider requires mocking
 const mockStoreState = {
-  setNextPageParameters: jest.fn(),
+  setNextPageParameters: vi.fn(),
   currentNextPageParametersRef: { current: {} },
   isTruncated: { current: false },
   hasBucket: false,
-  setOnlineDriveFileList: jest.fn(),
-  setSelectedFileIds: jest.fn(),
-  setBreadcrumbs: jest.fn(),
-  setPrefix: jest.fn(),
-  setBucket: jest.fn(),
+  setOnlineDriveFileList: vi.fn(),
+  setSelectedFileIds: vi.fn(),
+  setBreadcrumbs: vi.fn(),
+  setPrefix: vi.fn(),
+  setBucket: vi.fn(),
 }
 
-const mockGetState = jest.fn(() => mockStoreState)
+const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
-jest.mock('../../store', () => ({
+vi.mock('../../store', () => ({
   useDataSourceStore: () => mockDataSourceStore,
   useDataSourceStoreWithSelector: (selector: (s: any) => any) => selector(mockStoreState),
 }))
@@ -60,11 +60,11 @@ const createDefaultProps = (overrides?: Partial<FileListProps>): FileListProps =
   keywords: '',
   bucket: '',
   isInPipeline: false,
-  resetKeywords: jest.fn(),
-  updateKeywords: jest.fn(),
+  resetKeywords: vi.fn(),
+  updateKeywords: vi.fn(),
   searchResultsLength: 0,
-  handleSelectFile: jest.fn(),
-  handleOpenFolder: jest.fn(),
+  handleSelectFile: vi.fn(),
+  handleOpenFolder: vi.fn(),
   isLoading: false,
   supportBatchUpload: true,
   ...overrides,
@@ -74,15 +74,15 @@ const createDefaultProps = (overrides?: Partial<FileListProps>): FileListProps =
 // Helper Functions
 // ==========================================
 const resetMockStoreState = () => {
-  mockStoreState.setNextPageParameters = jest.fn()
+  mockStoreState.setNextPageParameters = vi.fn()
   mockStoreState.currentNextPageParametersRef = { current: {} }
   mockStoreState.isTruncated = { current: false }
   mockStoreState.hasBucket = false
-  mockStoreState.setOnlineDriveFileList = jest.fn()
-  mockStoreState.setSelectedFileIds = jest.fn()
-  mockStoreState.setBreadcrumbs = jest.fn()
-  mockStoreState.setPrefix = jest.fn()
-  mockStoreState.setBucket = jest.fn()
+  mockStoreState.setOnlineDriveFileList = vi.fn()
+  mockStoreState.setSelectedFileIds = vi.fn()
+  mockStoreState.setBreadcrumbs = vi.fn()
+  mockStoreState.setPrefix = vi.fn()
+  mockStoreState.setBucket = vi.fn()
 }
 
 // ==========================================
@@ -90,7 +90,7 @@ const resetMockStoreState = () => {
 // ==========================================
 describe('FileList', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     resetMockStoreState()
     mockDebounceFnRun.mockClear()
   })
@@ -345,7 +345,7 @@ describe('FileList', () => {
     describe('debounced keywords update', () => {
       it('should call updateKeywords with debounce when input changes', () => {
         // Arrange
-        const mockUpdateKeywords = jest.fn()
+        const mockUpdateKeywords = vi.fn()
         const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
         render(<FileList {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -379,7 +379,7 @@ describe('FileList', () => {
 
       it('should trigger debounced updateKeywords on input change', () => {
         // Arrange
-        const mockUpdateKeywords = jest.fn()
+        const mockUpdateKeywords = vi.fn()
         const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
         render(<FileList {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -393,7 +393,7 @@ describe('FileList', () => {
 
       it('should handle multiple sequential input changes', () => {
         // Arrange
-        const mockUpdateKeywords = jest.fn()
+        const mockUpdateKeywords = vi.fn()
         const props = createDefaultProps({ updateKeywords: mockUpdateKeywords })
         render(<FileList {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -413,7 +413,7 @@ describe('FileList', () => {
     describe('handleResetKeywords', () => {
       it('should call resetKeywords prop when clear button is clicked', () => {
         // Arrange
-        const mockResetKeywords = jest.fn()
+        const mockResetKeywords = vi.fn()
         const props = createDefaultProps({ resetKeywords: mockResetKeywords, keywords: 'to-reset' })
         const { container } = render(<FileList {...props} />)
 
@@ -446,7 +446,7 @@ describe('FileList', () => {
     describe('handleSelectFile', () => {
       it('should call handleSelectFile when file item is clicked', () => {
         // Arrange
-        const mockHandleSelectFile = jest.fn()
+        const mockHandleSelectFile = vi.fn()
         const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
         const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
         render(<FileList {...props} />)
@@ -467,7 +467,7 @@ describe('FileList', () => {
     describe('handleOpenFolder', () => {
       it('should call handleOpenFolder when folder item is clicked', () => {
         // Arrange
-        const mockHandleOpenFolder = jest.fn()
+        const mockHandleOpenFolder = vi.fn()
         const fileList = [createMockOnlineDriveFile({ id: 'folder-1', name: 'my-folder', type: OnlineDriveFileType.folder })]
         const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
         render(<FileList {...props} />)
@@ -544,8 +544,7 @@ describe('FileList', () => {
     it('should handle large number of files', () => {
       // Arrange
       const fileList = Array.from({ length: 50 }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
-      )
+        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }))
       const props = createDefaultProps({ fileList })
 
       // Act
@@ -598,8 +597,7 @@ describe('FileList', () => {
     ])('should handle $description correctly', ({ isLoading, fileCount }) => {
       // Arrange
       const fileList = Array.from({ length: fileCount }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
-      )
+        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }))
       const props = createDefaultProps({ isLoading, fileList })
 
       // Act
@@ -714,7 +712,7 @@ describe('FileList', () => {
   describe('Callback Stability', () => {
     it('should maintain stable handleSelectFile callback', () => {
       // Arrange
-      const mockHandleSelectFile = jest.fn()
+      const mockHandleSelectFile = vi.fn()
       const fileList = [createMockOnlineDriveFile({ id: 'file-1', name: 'test.txt' })]
       const props = createDefaultProps({ handleSelectFile: mockHandleSelectFile, fileList })
       const { rerender } = render(<FileList {...props} />)
@@ -735,7 +733,7 @@ describe('FileList', () => {
 
     it('should maintain stable handleOpenFolder callback', () => {
       // Arrange
-      const mockHandleOpenFolder = jest.fn()
+      const mockHandleOpenFolder = vi.fn()
       const fileList = [createMockOnlineDriveFile({ id: 'folder-1', name: 'my-folder', type: OnlineDriveFileType.folder })]
       const props = createDefaultProps({ handleOpenFolder: mockHandleOpenFolder, fileList })
       const { rerender } = render(<FileList {...props} />)

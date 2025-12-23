@@ -1,27 +1,23 @@
-import React from 'react'
+import type { MockedFunction } from 'vitest'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Button from './button'
-import { SelfHostedPlan } from '../../../type'
+import * as React from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { SelfHostedPlan } from '../../../type'
+import Button from './button'
 
-jest.mock('@/hooks/use-theme')
+vi.mock('@/hooks/use-theme')
 
-jest.mock('@/app/components/base/icons/src/public/billing', () => ({
-  AwsMarketplaceLight: () => <div>AwsMarketplaceLight</div>,
-  AwsMarketplaceDark: () => <div>AwsMarketplaceDark</div>,
-}))
-
-const mockUseTheme = useTheme as jest.MockedFunction<typeof useTheme>
+const mockUseTheme = useTheme as MockedFunction<typeof useTheme>
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   mockUseTheme.mockReturnValue({ theme: Theme.light } as unknown as ReturnType<typeof useTheme>)
 })
 
 describe('SelfHostedPlanButton', () => {
-  test('should invoke handler when clicked', () => {
-    const handleGetPayUrl = jest.fn()
+  it('should invoke handler when clicked', () => {
+    const handleGetPayUrl = vi.fn()
     render(
       <Button
         plan={SelfHostedPlan.community}
@@ -33,29 +29,19 @@ describe('SelfHostedPlanButton', () => {
     expect(handleGetPayUrl).toHaveBeenCalledTimes(1)
   })
 
-  test('should render AWS marketplace badge for premium plan in light theme', () => {
-    const handleGetPayUrl = jest.fn()
+  it.each([
+    { label: 'light', theme: Theme.light },
+    { label: 'dark', theme: Theme.dark },
+  ])('should render premium button label when theme is $label', ({ theme }) => {
+    mockUseTheme.mockReturnValue({ theme } as unknown as ReturnType<typeof useTheme>)
 
     render(
       <Button
         plan={SelfHostedPlan.premium}
-        handleGetPayUrl={handleGetPayUrl}
+        handleGetPayUrl={vi.fn()}
       />,
     )
 
-    expect(screen.getByText('AwsMarketplaceLight')).toBeInTheDocument()
-  })
-
-  test('should switch to dark AWS badge in dark theme', () => {
-    mockUseTheme.mockReturnValue({ theme: Theme.dark } as unknown as ReturnType<typeof useTheme>)
-
-    render(
-      <Button
-        plan={SelfHostedPlan.premium}
-        handleGetPayUrl={jest.fn()}
-      />,
-    )
-
-    expect(screen.getByText('AwsMarketplaceDark')).toBeInTheDocument()
+    expect(screen.getByRole('button', { name: 'billing.plans.premium.btnText' })).toBeInTheDocument()
   })
 })

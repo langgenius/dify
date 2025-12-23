@@ -1,20 +1,20 @@
-import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import BatchAction from './batch-action'
 
 describe('BatchAction', () => {
   const baseProps = {
     selectedIds: ['1', '2', '3'],
-    onBatchDelete: jest.fn(),
-    onCancel: jest.fn(),
+    onBatchDelete: vi.fn(),
+    onCancel: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should show the selected count and trigger cancel action', () => {
-    render(<BatchAction {...baseProps} className='custom-class' />)
+    render(<BatchAction {...baseProps} className="custom-class" />)
 
     expect(screen.getByText('3')).toBeInTheDocument()
     expect(screen.getByText('appAnnotation.batchAction.selected')).toBeInTheDocument()
@@ -25,7 +25,7 @@ describe('BatchAction', () => {
   })
 
   it('should confirm before running batch delete', async () => {
-    const onBatchDelete = jest.fn().mockResolvedValue(undefined)
+    const onBatchDelete = vi.fn().mockResolvedValue(undefined)
     render(<BatchAction {...baseProps} onBatchDelete={onBatchDelete} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.delete' }))

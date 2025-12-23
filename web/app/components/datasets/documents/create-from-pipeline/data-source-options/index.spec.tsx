@@ -1,39 +1,39 @@
-import { act, fireEvent, render, screen } from '@testing-library/react'
-import { renderHook } from '@testing-library/react'
+import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { Node } from '@/app/components/workflow/types'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import React from 'react'
-import DataSourceOptions from './index'
-import OptionCard from './option-card'
+import { act, fireEvent, render, renderHook, screen } from '@testing-library/react'
+import * as React from 'react'
+import { BlockEnum } from '@/app/components/workflow/types'
 import DatasourceIcon from './datasource-icon'
 import { useDatasourceIcon } from './hooks'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { BlockEnum, type Node } from '@/app/components/workflow/types'
-import type { Datasource } from '@/app/components/rag-pipeline/components/panel/test-run/types'
+import DataSourceOptions from './index'
+import OptionCard from './option-card'
 
 // ==========================================
 // Mock External Dependencies
 // ==========================================
 
 // Mock useDatasourceOptions hook from parent hooks
-const mockUseDatasourceOptions = jest.fn()
-jest.mock('../hooks', () => ({
+const mockUseDatasourceOptions = vi.fn()
+vi.mock('../hooks', () => ({
   useDatasourceOptions: (nodes: Node<DataSourceNodeType>[]) => mockUseDatasourceOptions(nodes),
 }))
 
 // Mock useDataSourceList API hook
-const mockUseDataSourceList = jest.fn()
-jest.mock('@/service/use-pipeline', () => ({
+const mockUseDataSourceList = vi.fn()
+vi.mock('@/service/use-pipeline', () => ({
   useDataSourceList: (enabled: boolean) => mockUseDataSourceList(enabled),
 }))
 
 // Mock transformDataSourceToTool utility
-const mockTransformDataSourceToTool = jest.fn()
-jest.mock('@/app/components/workflow/block-selector/utils', () => ({
+const mockTransformDataSourceToTool = vi.fn()
+vi.mock('@/app/components/workflow/block-selector/utils', () => ({
   transformDataSourceToTool: (item: unknown) => mockTransformDataSourceToTool(item),
 }))
 
 // Mock basePath
-jest.mock('@/utils/var', () => ({
+vi.mock('@/utils/var', () => ({
   basePath: '/mock-base-path',
 }))
 
@@ -75,8 +75,7 @@ const createMockPipelineNodes = (count = 3): Node<DataSourceNodeType>[] => {
         plugin_id: `plugin-${i + 1}`,
         datasource_name: `datasource-${i + 1}`,
       }),
-    }),
-  )
+    }))
 }
 
 const createMockDatasourceOption = (
@@ -137,7 +136,7 @@ const createHookWrapper = () => {
 // ==========================================
 describe('DatasourceIcon', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -307,7 +306,7 @@ describe('DatasourceIcon', () => {
 // ==========================================
 describe('useDatasourceIcon', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseDataSourceList.mockReturnValue({
       data: [],
       isSuccess: false,
@@ -580,7 +579,7 @@ describe('OptionCard', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Setup default mock for useDatasourceIcon
     mockUseDataSourceList.mockReturnValue({
       data: [],
@@ -675,7 +674,7 @@ describe('OptionCard', () => {
     describe('onClick', () => {
       it('should call onClick when card is clicked', () => {
         // Arrange
-        const mockOnClick = jest.fn()
+        const mockOnClick = vi.fn()
         renderWithProviders(
           <OptionCard {...defaultProps} onClick={mockOnClick} />,
         )
@@ -788,11 +787,11 @@ describe('DataSourceOptions', () => {
   const defaultProps = {
     pipelineNodes: defaultNodes,
     datasourceNodeId: '',
-    onSelect: jest.fn(),
+    onSelect: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseDatasourceOptions.mockReturnValue(defaultOptions)
     mockUseDataSourceList.mockReturnValue({
       data: [],
@@ -972,7 +971,7 @@ describe('DataSourceOptions', () => {
     describe('onSelect', () => {
       it('should receive onSelect callback', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
 
         // Act
         renderWithProviders(
@@ -995,7 +994,7 @@ describe('DataSourceOptions', () => {
     describe('useEffect - Auto-select first option', () => {
       it('should auto-select first option when options exist and no datasourceNodeId', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
 
         // Act
         renderWithProviders(
@@ -1016,7 +1015,7 @@ describe('DataSourceOptions', () => {
 
       it('should NOT auto-select when datasourceNodeId is provided', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
 
         // Act
         renderWithProviders(
@@ -1034,7 +1033,7 @@ describe('DataSourceOptions', () => {
       it('should NOT auto-select when options array is empty', () => {
         // Arrange
         mockUseDatasourceOptions.mockReturnValue([])
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
 
         // Act
         renderWithProviders(
@@ -1052,7 +1051,7 @@ describe('DataSourceOptions', () => {
 
       it('should only run useEffect once on initial mount', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         const { rerender } = renderWithProviders(
           <DataSourceOptions
             {...defaultProps}
@@ -1087,7 +1086,7 @@ describe('DataSourceOptions', () => {
   describe('Callback Stability and Memoization', () => {
     it('should maintain callback reference stability across renders with same props', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
 
       const { rerender } = renderWithProviders(
         <DataSourceOptions
@@ -1120,8 +1119,8 @@ describe('DataSourceOptions', () => {
 
     it('should update callback when onSelect changes', () => {
       // Arrange
-      const mockOnSelect1 = jest.fn()
-      const mockOnSelect2 = jest.fn()
+      const mockOnSelect1 = vi.fn()
+      const mockOnSelect2 = vi.fn()
 
       const { rerender } = renderWithProviders(
         <DataSourceOptions
@@ -1159,7 +1158,7 @@ describe('DataSourceOptions', () => {
 
     it('should update callback when options change', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
 
       const { rerender } = renderWithProviders(
         <DataSourceOptions
@@ -1209,7 +1208,7 @@ describe('DataSourceOptions', () => {
     describe('Option Selection', () => {
       it('should call onSelect with correct datasource when clicking an option', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         renderWithProviders(
           <DataSourceOptions
             {...defaultProps}
@@ -1231,7 +1230,7 @@ describe('DataSourceOptions', () => {
 
       it('should allow selecting already selected option', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         renderWithProviders(
           <DataSourceOptions
             {...defaultProps}
@@ -1253,7 +1252,7 @@ describe('DataSourceOptions', () => {
 
       it('should allow multiple sequential selections', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         renderWithProviders(
           <DataSourceOptions
             {...defaultProps}
@@ -1287,7 +1286,7 @@ describe('DataSourceOptions', () => {
     describe('handelSelect Internal Logic', () => {
       it('should handle rapid successive clicks', async () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         renderWithProviders(
           <DataSourceOptions
             {...defaultProps}
@@ -1338,7 +1337,7 @@ describe('DataSourceOptions', () => {
           <DataSourceOptions
             pipelineNodes={defaultNodes}
             datasourceNodeId={undefined as unknown as string}
-            onSelect={jest.fn()}
+            onSelect={vi.fn()}
           />,
         )
 
@@ -1466,7 +1465,7 @@ describe('DataSourceOptions', () => {
         // Arrange
         const singleOption = [createMockDatasourceOption(defaultNodes[0])]
         mockUseDatasourceOptions.mockReturnValue(singleOption)
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
 
         // Act
         renderWithProviders(
@@ -1497,7 +1496,7 @@ describe('DataSourceOptions', () => {
           },
         ]
         mockUseDatasourceOptions.mockReturnValue(duplicateLabelOptions)
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
 
         // Act
         renderWithProviders(
@@ -1524,7 +1523,7 @@ describe('DataSourceOptions', () => {
     describe('Component Unmounting', () => {
       it('should handle unmounting without errors', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         const { unmount } = renderWithProviders(
           <DataSourceOptions
             {...defaultProps}
@@ -1541,7 +1540,7 @@ describe('DataSourceOptions', () => {
 
       it('should handle unmounting during rapid interactions', async () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         const { unmount } = renderWithProviders(
           <DataSourceOptions
             {...defaultProps}
@@ -1598,7 +1597,7 @@ describe('DataSourceOptions', () => {
       mockUseDatasourceOptions.mockReturnValue(uniqueValueOptions)
 
       // Act - Should render without console warnings about duplicate keys
-      const consoleSpy = jest.spyOn(console, 'error').mockImplementation(jest.fn())
+      const consoleSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
       renderWithProviders(<DataSourceOptions {...defaultProps} />)
 
       // Assert
@@ -1648,7 +1647,7 @@ describe('DataSourceOptions', () => {
         <DataSourceOptions
           pipelineNodes={nodes}
           datasourceNodeId=""
-          onSelect={jest.fn()}
+          onSelect={vi.fn()}
         />,
       )
 

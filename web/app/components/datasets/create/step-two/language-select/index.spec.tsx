@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import LanguageSelect from './index'
 import type { ILanguageSelectProps } from './index'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { languages } from '@/i18n-config/language'
+import LanguageSelect from './index'
 
 // Get supported languages for test assertions
 const supportedLanguages = languages.filter(lang => lang.supported)
@@ -10,14 +10,14 @@ const supportedLanguages = languages.filter(lang => lang.supported)
 // Test data builder for props
 const createDefaultProps = (overrides?: Partial<ILanguageSelectProps>): ILanguageSelectProps => ({
   currentLanguage: 'English',
-  onSelect: jest.fn(),
+  onSelect: vi.fn(),
   disabled: false,
   ...overrides,
 })
 
 describe('LanguageSelect', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -189,7 +189,7 @@ describe('LanguageSelect', () => {
 
     describe('onSelect prop', () => {
       it('should be callable as a function', () => {
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         const props = createDefaultProps({ onSelect: mockOnSelect })
         render(<LanguageSelect {...props} />)
 
@@ -224,7 +224,7 @@ describe('LanguageSelect', () => {
 
     it('should call onSelect when a language option is clicked', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({ onSelect: mockOnSelect })
       render(<LanguageSelect {...props} />)
 
@@ -241,7 +241,7 @@ describe('LanguageSelect', () => {
 
     it('should call onSelect with correct language when selecting different languages', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({ onSelect: mockOnSelect })
       render(<LanguageSelect {...props} />)
 
@@ -274,7 +274,7 @@ describe('LanguageSelect', () => {
 
     it('should not call onSelect when component is disabled', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({ onSelect: mockOnSelect, disabled: true })
       render(<LanguageSelect {...props} />)
 
@@ -288,7 +288,7 @@ describe('LanguageSelect', () => {
 
     it('should handle rapid consecutive clicks', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({ onSelect: mockOnSelect })
       render(<LanguageSelect {...props} />)
 
@@ -314,9 +314,9 @@ describe('LanguageSelect', () => {
 
     it('should not re-render when props remain the same', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({ onSelect: mockOnSelect })
-      const renderSpy = jest.fn()
+      const renderSpy = vi.fn()
 
       // Create a wrapper component to track renders
       const TrackedLanguageSelect: React.FC<ILanguageSelectProps> = (trackedProps) => {
@@ -515,7 +515,7 @@ describe('LanguageSelect', () => {
   describe('Popover Integration', () => {
     it('should use manualClose prop on Popover', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({ onSelect: mockOnSelect })
 
       // Act

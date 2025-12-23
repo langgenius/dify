@@ -1,11 +1,11 @@
-import React from 'react'
+import type { ActionItem, SearchResult } from './actions/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import GotoAnything from './index'
-import type { ActionItem, SearchResult } from './actions/types'
 
-const routerPush = jest.fn()
-jest.mock('next/navigation', () => ({
+const routerPush = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: routerPush,
   }),
@@ -13,7 +13,7 @@ jest.mock('next/navigation', () => ({
 }))
 
 const keyPressHandlers: Record<string, (event: any) => void> = {}
-jest.mock('ahooks', () => ({
+vi.mock('ahooks', () => ({
   useDebounce: (value: any) => value,
   useKeyPress: (keys: string | string[], handler: (event: any) => void) => {
     const keyList = Array.isArray(keys) ? keys : [keys]
@@ -27,22 +27,22 @@ const triggerKeyPress = (combo: string) => {
   const handler = keyPressHandlers[combo]
   if (handler) {
     act(() => {
-      handler({ preventDefault: jest.fn(), target: document.body })
+      handler({ preventDefault: vi.fn(), target: document.body })
     })
   }
 }
 
 let mockQueryResult = { data: [] as SearchResult[], isLoading: false, isError: false, error: null as Error | null }
-jest.mock('@tanstack/react-query', () => ({
+vi.mock('@tanstack/react-query', () => ({
   useQuery: () => mockQueryResult,
 }))
 
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en_US',
 }))
 
 const contextValue = { isWorkflowPage: false, isRagPipelinePage: false }
-jest.mock('./context', () => ({
+vi.mock('./context', () => ({
   useGotoAnythingContext: () => contextValue,
   GotoAnythingProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
@@ -52,8 +52,8 @@ const createActionItem = (key: ActionItem['key'], shortcut: string): ActionItem 
   shortcut,
   title: `${key} title`,
   description: `${key} desc`,
-  action: jest.fn(),
-  search: jest.fn(),
+  action: vi.fn(),
+  search: vi.fn(),
 })
 
 const actionsMock = {
@@ -62,22 +62,22 @@ const actionsMock = {
   plugin: createActionItem('@plugin', '@plugin'),
 }
 
-const createActionsMock = jest.fn(() => actionsMock)
-const matchActionMock = jest.fn(() => undefined)
-const searchAnythingMock = jest.fn(async () => mockQueryResult.data)
+const createActionsMock = vi.fn(() => actionsMock)
+const matchActionMock = vi.fn(() => undefined)
+const searchAnythingMock = vi.fn(async () => mockQueryResult.data)
 
-jest.mock('./actions', () => ({
+vi.mock('./actions', () => ({
   __esModule: true,
   createActions: () => createActionsMock(),
   matchAction: () => matchActionMock(),
   searchAnything: () => searchAnythingMock(),
 }))
 
-jest.mock('./actions/commands', () => ({
+vi.mock('./actions/commands', () => ({
   SlashCommandProvider: () => null,
 }))
 
-jest.mock('./actions/commands/registry', () => ({
+vi.mock('./actions/commands/registry', () => ({
   slashCommandRegistry: {
     findCommand: () => null,
     getAvailableCommands: () => [],
@@ -85,22 +85,24 @@ jest.mock('./actions/commands/registry', () => ({
   },
 }))
 
-jest.mock('@/app/components/workflow/utils/common', () => ({
+vi.mock('@/app/components/workflow/utils/common', () => ({
   getKeyboardKeyCodeBySystem: () => 'ctrl',
   isEventTargetInputArea: () => false,
   isMac: () => false,
 }))
 
-jest.mock('@/app/components/workflow/utils/node-navigation', () => ({
-  selectWorkflowNode: jest.fn(),
+vi.mock('@/app/components/workflow/utils/node-navigation', () => ({
+  selectWorkflowNode: vi.fn(),
 }))
 
-jest.mock('../plugins/install-plugin/install-from-marketplace', () => (props: { manifest?: { name?: string }, onClose: () => void }) => (
-  <div data-testid="install-modal">
-    <span>{props.manifest?.name}</span>
-    <button onClick={props.onClose}>close</button>
-  </div>
-))
+vi.mock('../plugins/install-plugin/install-from-marketplace', () => ({
+  default: (props: { manifest?: { name?: string }, onClose: () => void }) => (
+    <div data-testid="install-modal">
+      <span>{props.manifest?.name}</span>
+      <button onClick={props.onClose}>close</button>
+    </div>
+  ),
+}))
 
 describe('GotoAnything', () => {
   beforeEach(() => {

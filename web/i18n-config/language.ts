@@ -1,4 +1,5 @@
 import data from './languages.json'
+
 export type Item = {
   value: number | string
   name: string

@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import { cn } from '@/utils/classnames'
 import useTheme from '@/hooks/use-theme'
+import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
+
 export type LogoStyle = 'default' | 'monochromeWhite'
 
 export const logoPathMap: Record<LogoStyle, string> = {
@@ -36,7 +37,7 @@ const DifyLogo: FC<DifyLogoProps> = ({
     <img
       src={`${basePath}${logoPathMap[themedStyle]}`}
       className={cn('block object-contain', logoSizeMap[size], className)}
-      alt='Dify logo'
+      alt="Dify logo"
     />
   )
 }

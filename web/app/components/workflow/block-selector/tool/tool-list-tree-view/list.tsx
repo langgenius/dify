@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import type { ToolWithProvider } from '../../../types'
-import type { BlockEnum } from '../../../types'
+import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
-import Item from './item'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { AGENT_GROUP_NAME, CUSTOM_GROUP_NAME, WORKFLOW_GROUP_NAME } from '../../index-bar'
+import Item from './item'
 
 type Props = {
   payload: Record<string, ToolWithProvider[]>
@@ -41,7 +41,8 @@ const ToolListTreeView: FC<Props> = ({
     return name
   }, [t])
 
-  if (!payload) return null
+  if (!payload)
+    return null
 
   return (
     <div>

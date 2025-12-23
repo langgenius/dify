@@ -72,6 +72,22 @@ def _get_ssrf_client(ssl_verify_enabled: bool) -> httpx.Client:
     )
 
 
+def _get_user_provided_host_header(headers: dict | None) -> str | None:
+    """
+    Extract the user-provided Host header from the headers dict.
+
+    This is needed because when using a forward proxy, httpx may override the Host header.
+    We preserve the user's explicit Host header to support virtual hosting and other use cases.
+    """
+    if not headers:
+        return None
+    # Case-insensitive lookup for Host header
+    for key, value in headers.items():
+        if key.lower() == "host":
+            return value
+    return None
+
+
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
@@ -90,10 +106,26 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
     client = _get_ssrf_client(verify_option)
 
+    # Preserve user-provided Host header
+    # When using a forward proxy, httpx may override the Host header based on the URL.
+    # We extract and preserve any explicitly set Host header to support virtual hosting.
+    headers = kwargs.get("headers", {})
+    user_provided_host = _get_user_provided_host_header(headers)
+
     retries = 0
     while retries <= max_retries:
         try:
-            response = client.request(method=method, url=url, **kwargs)
+            # Build the request manually to preserve the Host header
+            # httpx may override the Host header when using a proxy, so we use
+            # the request API to explicitly set headers before sending
+            request = client.build_request(method=method, url=url, **kwargs)
+
+            # If user explicitly provided a Host header, ensure it's preserved
+            if user_provided_host is not None:
+                request.headers["Host"] = user_provided_host
+
+            response = client.send(request)
+
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
                 # Check if this is a Squid SSRF rejection

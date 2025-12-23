@@ -1,8 +1,9 @@
 import type { FC, ReactNode } from 'react'
 import { useEffect, useState } from 'react'
-import { cn } from '@/utils/classnames'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import { useInstalledPluginList } from '@/service/use-plugins'
+import { cn } from '@/utils/classnames'
+
 type Option = {
   value: string
   text: ReactNode
@@ -73,14 +74,15 @@ const TabSlider: FC<TabSliderProps> = ({
           {/* if no plugin installed, the badge won't show */}
           {option.value === 'plugins'
             && (pluginList?.total ?? 0) > 0
-            && <Badge
-              size='s'
-              uppercase={true}
-              state={BadgeState.Default}
-            >
-              {pluginList?.total}
-            </Badge>
-          }
+            && (
+              <Badge
+                size="s"
+                uppercase={true}
+                state={BadgeState.Default}
+              >
+                {pluginList?.total}
+              </Badge>
+            )}
         </div>
       ))}
     </div>

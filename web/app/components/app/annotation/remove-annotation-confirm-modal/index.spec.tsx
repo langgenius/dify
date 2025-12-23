@@ -1,8 +1,8 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import RemoveAnnotationConfirmModal from './index'
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
       const translations: Record<string, string> = {
@@ -16,19 +16,19 @@ jest.mock('react-i18next', () => ({
 }))
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
 })
 
 describe('RemoveAnnotationConfirmModal', () => {
   // Rendering behavior driven by isShow and translations
   describe('Rendering', () => {
-    test('should display the confirm modal when visible', () => {
+    it('should display the confirm modal when visible', () => {
       // Arrange
       render(
         <RemoveAnnotationConfirmModal
           isShow
-          onHide={jest.fn()}
-          onRemove={jest.fn()}
+          onHide={vi.fn()}
+          onRemove={vi.fn()}
         />,
       )
 
@@ -38,13 +38,13 @@ describe('RemoveAnnotationConfirmModal', () => {
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
 
-    test('should not render modal content when hidden', () => {
+    it('should not render modal content when hidden', () => {
       // Arrange
       render(
         <RemoveAnnotationConfirmModal
           isShow={false}
-          onHide={jest.fn()}
-          onRemove={jest.fn()}
+          onHide={vi.fn()}
+          onRemove={vi.fn()}
         />,
       )
 
@@ -55,9 +55,9 @@ describe('RemoveAnnotationConfirmModal', () => {
 
   // User interactions with confirm and cancel buttons
   describe('Interactions', () => {
-    test('should call onHide when cancel button is clicked', () => {
-      const onHide = jest.fn()
-      const onRemove = jest.fn()
+    it('should call onHide when cancel button is clicked', () => {
+      const onHide = vi.fn()
+      const onRemove = vi.fn()
       // Arrange
       render(
         <RemoveAnnotationConfirmModal
@@ -75,9 +75,9 @@ describe('RemoveAnnotationConfirmModal', () => {
       expect(onRemove).not.toHaveBeenCalled()
     })
 
-    test('should call onRemove when confirm button is clicked', () => {
-      const onHide = jest.fn()
-      const onRemove = jest.fn()
+    it('should call onRemove when confirm button is clicked', () => {
+      const onHide = vi.fn()
+      const onRemove = vi.fn()
       // Arrange
       render(
         <RemoveAnnotationConfirmModal

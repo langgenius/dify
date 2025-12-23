@@ -1,10 +1,10 @@
+import type { Locale } from '@/i18n-config'
+import { noop } from 'lodash-es'
 import {
   createContext,
   useContext,
 } from 'use-context-selector'
-import type { Locale } from '@/i18n-config'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
-import { noop } from 'lodash-es'
 
 type II18NContext = {
   locale: Locale
