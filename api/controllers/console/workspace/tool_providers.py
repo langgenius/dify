@@ -288,7 +288,7 @@ class ToolBuiltinProviderAddApi(Resource):
             provider=provider,
             credentials=payload.credentials,
             name=payload.name,
-            api_type=CredentialType.of(payload.type),
+            api_type=payload.type,
         )
 
 
