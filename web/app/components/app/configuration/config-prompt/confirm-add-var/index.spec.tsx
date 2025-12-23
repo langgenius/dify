@@ -1,19 +1,19 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import ConfirmAddVar from './index'
 
-jest.mock('../../base/var-highlight', () => ({
+vi.mock('../../base/var-highlight', () => ({
   __esModule: true,
   default: ({ name }: { name: string }) => <span data-testid="var-highlight">{name}</span>,
 }))
 
 describe('ConfirmAddVar', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should render variable names', () => {
-    render(<ConfirmAddVar varNameArr={['foo', 'bar']} onConfirm={jest.fn()} onCancel={jest.fn()} onHide={jest.fn()} />)
+    render(<ConfirmAddVar varNameArr={['foo', 'bar']} onConfirm={vi.fn()} onCancel={vi.fn()} onHide={vi.fn()} />)
 
     const highlights = screen.getAllByTestId('var-highlight')
     expect(highlights).toHaveLength(2)
@@ -22,9 +22,9 @@ describe('ConfirmAddVar', () => {
   })
 
   it('should trigger cancel actions', () => {
-    const onConfirm = jest.fn()
-    const onCancel = jest.fn()
-    render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={jest.fn()} />)
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+    render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={vi.fn()} />)
 
     fireEvent.click(screen.getByText('common.operation.cancel'))
 
@@ -32,9 +32,9 @@ describe('ConfirmAddVar', () => {
   })
 
   it('should trigger confirm actions', () => {
-    const onConfirm = jest.fn()
-    const onCancel = jest.fn()
-    render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={jest.fn()} />)
+    const onConfirm = vi.fn()
+    const onCancel = vi.fn()
+    render(<ConfirmAddVar varNameArr={['foo']} onConfirm={onConfirm} onCancel={onCancel} onHide={vi.fn()} />)
 
     fireEvent.click(screen.getByText('common.operation.add'))
 

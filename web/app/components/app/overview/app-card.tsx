@@ -1,7 +1,7 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
+import type { ConfigParams } from './settings'
+import type { AppDetailResponse } from '@/models/app'
+import type { AppSSO } from '@/types/app'
 import {
   RiArrowRightSLine,
   RiBookOpenLine,
@@ -14,36 +14,37 @@ import {
   RiVerifiedBadgeLine,
   RiWindowLine,
 } from '@remixicon/react'
-import SettingsModal from './settings'
-import EmbeddedModal from './embedded'
-import CustomizeModal from './customize'
-import style from './style.module.css'
-import type { ConfigParams } from './settings'
-import Tooltip from '@/app/components/base/tooltip'
+import { usePathname, useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppBasic from '@/app/components/app-sidebar/basic'
-import { asyncRunSafe } from '@/utils'
-import { basePath } from '@/utils/var'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
-import Switch from '@/app/components/base/switch'
-import Divider from '@/app/components/base/divider'
-import CopyFeedback from '@/app/components/base/copy-feedback'
 import Confirm from '@/app/components/base/confirm'
+import CopyFeedback from '@/app/components/base/copy-feedback'
+import Divider from '@/app/components/base/divider'
 import ShareQRCode from '@/app/components/base/qrcode'
+import Switch from '@/app/components/base/switch'
+import Tooltip from '@/app/components/base/tooltip'
 import SecretKeyButton from '@/app/components/develop/secret-key/secret-key-button'
-import type { AppDetailResponse } from '@/models/app'
-import { useAppContext } from '@/context/app-context'
-import type { AppSSO } from '@/types/app'
 import Indicator from '@/app/components/header/indicator'
-import { fetchAppDetailDirect } from '@/service/apps'
-import { AccessMode } from '@/models/access-control'
-import AccessControl from '../app-access-control'
-import { useAppWhiteListSubjects } from '@/service/access-control'
-import { useAppWorkflow } from '@/service/use-workflow'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 import { BlockEnum } from '@/app/components/workflow/types'
+import { useAppContext } from '@/context/app-context'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useDocLink } from '@/context/i18n'
+import { AccessMode } from '@/models/access-control'
+import { useAppWhiteListSubjects } from '@/service/access-control'
+import { fetchAppDetailDirect } from '@/service/apps'
+import { useAppWorkflow } from '@/service/use-workflow'
 import { AppModeEnum } from '@/types/app'
+import { asyncRunSafe } from '@/utils'
+import { basePath } from '@/utils/var'
+import AccessControl from '../app-access-control'
+import CustomizeModal from './customize'
+import EmbeddedModal from './embedded'
+import SettingsModal from './settings'
+import style from './style.module.css'
 
 export type IAppCardProps = {
   className?: string
@@ -91,7 +92,7 @@ function AppCard({
     const operationsMap = {
       webapp: [
         { opName: t('appOverview.overview.appInfo.launch'), opIcon: RiExternalLinkLine },
-      ] as { opName: string; opIcon: any }[],
+      ] as { opName: string, opIcon: any }[],
       api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: RiBookOpenLine }],
       app: [],
     }
@@ -191,24 +192,25 @@ function AppCard({
   return (
     <div
       className={
-        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${isMinimalState ? 'h-12' : ''}`}
+        `${isInPanel ? 'border-l-[0.5px] border-t' : 'border-[0.5px] shadow-xs'} w-full max-w-full rounded-xl border-effects-highlight ${className ?? ''} ${isMinimalState ? 'h-12' : ''}`
+      }
     >
       <div className={`${customBgColor ?? 'bg-background-default'} relative rounded-xl ${triggerModeDisabled ? 'opacity-60' : ''}`}>
         {triggerModeDisabled && (
           triggerModeMessage
             ? (
-              <Tooltip
-                popupContent={triggerModeMessage}
-                popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
-                position="right"
-              >
-                <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
-              </Tooltip>
-            )
-            : <div className='absolute inset-0 z-10 cursor-not-allowed rounded-xl' aria-hidden="true"></div>
+                <Tooltip
+                  popupContent={triggerModeMessage}
+                  popupClassName="max-w-64 rounded-xl bg-components-panel-bg px-3 py-2 text-xs text-text-secondary shadow-lg"
+                  position="right"
+                >
+                  <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
+                </Tooltip>
+              )
+            : <div className="absolute inset-0 z-10 cursor-not-allowed rounded-xl" aria-hidden="true"></div>
         )}
         <div className={`flex w-full flex-col items-start justify-center gap-3 self-stretch p-3 ${isMinimalState ? 'border-0' : 'border-b-[0.5px] border-divider-subtle'}`}>
-          <div className='flex w-full items-center gap-3 self-stretch'>
+          <div className="flex w-full items-center gap-3 self-stretch">
             <AppBasic
               iconType={cardType}
               icon={appInfo.icon}
@@ -221,7 +223,7 @@ function AppCard({
                   : t('appOverview.overview.apiInfo.explanation')
               }
             />
-            <div className='flex shrink-0 items-center gap-1'>
+            <div className="flex shrink-0 items-center gap-1">
               <Indicator color={runningStatus ? 'green' : 'yellow'} />
               <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                 {runningStatus
@@ -231,24 +233,27 @@ function AppCard({
             </div>
             <Tooltip
               popupContent={
-                toggleDisabled ? (
-                  triggerModeDisabled && triggerModeMessage
-                    ? triggerModeMessage
-                    : (appUnpublished || missingStartNode) ? (
-                      <>
-                        <div className="mb-1 text-xs font-normal text-text-secondary">
-                          {t('appOverview.overview.appInfo.enableTooltip.description')}
-                        </div>
-                        <div
-                          className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
-                          onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
-                        >
-                          {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
-                        </div>
-                      </>
+                toggleDisabled
+                  ? (
+                      triggerModeDisabled && triggerModeMessage
+                        ? triggerModeMessage
+                        : (appUnpublished || missingStartNode)
+                            ? (
+                                <>
+                                  <div className="mb-1 text-xs font-normal text-text-secondary">
+                                    {t('appOverview.overview.appInfo.enableTooltip.description')}
+                                  </div>
+                                  <div
+                                    className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
+                                    onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
+                                  >
+                                    {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+                                  </div>
+                                </>
+                              )
+                            : ''
                     )
-                      : ''
-                ) : ''
+                  : ''
               }
               position="right"
               popupClassName="w-58 max-w-60 rounded-xl bg-components-panel-bg px-3.5 py-3 shadow-lg"
@@ -260,7 +265,7 @@ function AppCard({
             </Tooltip>
           </div>
           {!isMinimalState && (
-            <div className='flex flex-col items-start justify-center self-stretch'>
+            <div className="flex flex-col items-start justify-center self-stretch">
               <div className="system-xs-medium pb-1 text-text-tertiary">
                 {isApp
                   ? t('appOverview.overview.appInfo.accessibleAddress')
@@ -274,14 +279,14 @@ function AppCard({
                 </div>
                 <CopyFeedback
                   content={isApp ? appUrl : apiUrl}
-                  className={'!size-6'}
+                  className="!size-6"
                 />
                 {isApp && <ShareQRCode content={isApp ? appUrl : apiUrl} />}
                 {isApp && <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />}
                 {/* button copy link/ button regenerate */}
                 {showConfirmDelete && (
                   <Confirm
-                    type='warning'
+                    type="warning"
                     title={t('appOverview.overview.appInfo.regenerate')}
                     content={t('appOverview.overview.appInfo.regenerateNotice')}
                     isShow={showConfirmDelete}
@@ -302,52 +307,63 @@ function AppCard({
                     >
                       <div
                         className={
-                          `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`}
-                      ></div>
+                          `h-full w-full ${style.refreshIcon} ${genLoading ? style.generateLogo : ''}`
+                        }
+                      >
+                      </div>
                     </div>
                   </Tooltip>
                 )}
               </div>
             </div>
           )}
-          {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && <div className='flex flex-col items-start justify-center self-stretch'>
-            <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
-            <div className='flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2'
-              onClick={handleClickAccessControl}>
-              <div className='flex grow items-center gap-x-1.5 pr-1'>
-                {appDetail?.access_mode === AccessMode.ORGANIZATION
-                  && <>
-                    <RiBuildingLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.organization')}</p>
-                  </>
-                }
-                {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
-                  && <>
-                    <RiLockLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.specific')}</p>
-                  </>
-                }
-                {appDetail?.access_mode === AccessMode.PUBLIC
-                  && <>
-                    <RiGlobalLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.anyone')}</p>
-                  </>
-                }
-                {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
-                  && <>
-                    <RiVerifiedBadgeLine className='h-4 w-4 shrink-0 text-text-secondary' />
-                    <p className='system-sm-medium text-text-secondary'>{t('app.accessControlDialog.accessItems.external')}</p>
-                  </>
-                }</div>
-              {!isAppAccessSet && <p className='system-xs-regular shrink-0 text-text-tertiary'>{t('app.publishApp.notSet')}</p>}
-              <div className='flex h-4 w-4 shrink-0 items-center justify-center'>
-                <RiArrowRightSLine className='h-4 w-4 text-text-quaternary' />
+          {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && (
+            <div className="flex flex-col items-start justify-center self-stretch">
+              <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
+              <div
+                className="flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2"
+                onClick={handleClickAccessControl}
+              >
+                <div className="flex grow items-center gap-x-1.5 pr-1">
+                  {appDetail?.access_mode === AccessMode.ORGANIZATION
+                    && (
+                      <>
+                        <RiBuildingLine className="h-4 w-4 shrink-0 text-text-secondary" />
+                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.organization')}</p>
+                      </>
+                    )}
+                  {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
+                    && (
+                      <>
+                        <RiLockLine className="h-4 w-4 shrink-0 text-text-secondary" />
+                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.specific')}</p>
+                      </>
+                    )}
+                  {appDetail?.access_mode === AccessMode.PUBLIC
+                    && (
+                      <>
+                        <RiGlobalLine className="h-4 w-4 shrink-0 text-text-secondary" />
+                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.anyone')}</p>
+                      </>
+                    )}
+                  {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
+                    && (
+                      <>
+                        <RiVerifiedBadgeLine className="h-4 w-4 shrink-0 text-text-secondary" />
+                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.external')}</p>
+                      </>
+                    )}
+                </div>
+                {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('app.publishApp.notSet')}</p>}
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center">
+                  <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
+                </div>
               </div>
             </div>
-          </div>}
+          )}
         </div>
         {!isMinimalState && (
-          <div className={'flex items-center gap-1 self-stretch p-3'}>
+          <div className="flex items-center gap-1 self-stretch p-3">
             {!isApp && <SecretKeyButton appId={appInfo.id} />}
             {OPERATIONS_MAP[cardType].map((op) => {
               const disabled
@@ -360,7 +376,7 @@ function AppCard({
                 <Button
                   className="mr-1 min-w-[88px]"
                   size="small"
-                  variant={'ghost'}
+                  variant="ghost"
                   key={op.opName}
                   onClick={genClickFuncByName(op.opName)}
                   disabled={disabled}
@@ -384,35 +400,39 @@ function AppCard({
       </div>
       {isApp
         ? (
-          <>
-            <SettingsModal
-              isChat={appMode === AppModeEnum.CHAT}
-              appInfo={appInfo}
-              isShow={showSettingsModal}
-              onClose={() => setShowSettingsModal(false)}
-              onSave={onSaveSiteConfig}
-            />
-            <EmbeddedModal
-              siteInfo={appInfo.site}
-              isShow={showEmbedded}
-              onClose={() => setShowEmbedded(false)}
-              appBaseUrl={app_base_url}
-              accessToken={access_token}
-            />
-            <CustomizeModal
-              isShow={showCustomizeModal}
-              onClose={() => setShowCustomizeModal(false)}
-              appId={appInfo.id}
-              api_base_url={appInfo.api_base_url}
-              mode={appInfo.mode}
-            />
-            {
-              showAccessControl && <AccessControl app={appDetail!}
-                onConfirm={handleAccessControlUpdate}
-                onClose={() => { setShowAccessControl(false) }} />
-            }
-          </>
-        )
+            <>
+              <SettingsModal
+                isChat={appMode === AppModeEnum.CHAT}
+                appInfo={appInfo}
+                isShow={showSettingsModal}
+                onClose={() => setShowSettingsModal(false)}
+                onSave={onSaveSiteConfig}
+              />
+              <EmbeddedModal
+                siteInfo={appInfo.site}
+                isShow={showEmbedded}
+                onClose={() => setShowEmbedded(false)}
+                appBaseUrl={app_base_url}
+                accessToken={access_token}
+              />
+              <CustomizeModal
+                isShow={showCustomizeModal}
+                onClose={() => setShowCustomizeModal(false)}
+                appId={appInfo.id}
+                api_base_url={appInfo.api_base_url}
+                mode={appInfo.mode}
+              />
+              {
+                showAccessControl && (
+                  <AccessControl
+                    app={appDetail!}
+                    onConfirm={handleAccessControlUpdate}
+                    onClose={() => { setShowAccessControl(false) }}
+                  />
+                )
+              }
+            </>
+          )
         : null}
     </div>
   )

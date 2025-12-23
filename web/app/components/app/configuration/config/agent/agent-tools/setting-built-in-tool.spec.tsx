@@ -1,15 +1,16 @@
-import React from 'react'
+import type { Tool, ToolParameter } from '@/app/components/tools/types'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SettingBuiltInTool from './setting-built-in-tool'
+import * as React from 'react'
+import { CollectionType } from '@/app/components/tools/types'
 import I18n from '@/context/i18n'
-import { CollectionType, type Tool, type ToolParameter } from '@/app/components/tools/types'
+import SettingBuiltInTool from './setting-built-in-tool'
 
-const fetchModelToolList = jest.fn()
-const fetchBuiltInToolList = jest.fn()
-const fetchCustomToolList = jest.fn()
-const fetchWorkflowToolList = jest.fn()
-jest.mock('@/service/tools', () => ({
+const fetchModelToolList = vi.fn()
+const fetchBuiltInToolList = vi.fn()
+const fetchCustomToolList = vi.fn()
+const fetchWorkflowToolList = vi.fn()
+vi.mock('@/service/tools', () => ({
   fetchModelToolList: (collectionName: string) => fetchModelToolList(collectionName),
   fetchBuiltInToolList: (collectionName: string) => fetchBuiltInToolList(collectionName),
   fetchCustomToolList: (collectionName: string) => fetchCustomToolList(collectionName),
@@ -34,13 +35,13 @@ const FormMock = ({ value, onChange }: MockFormProps) => {
     </div>
   )
 }
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
   __esModule: true,
   default: (props: MockFormProps) => <FormMock {...props} />,
 }))
 
 let pluginAuthClickValue = 'credential-from-plugin'
-jest.mock('@/app/components/plugins/plugin-auth', () => ({
+vi.mock('@/app/components/plugins/plugin-auth', () => ({
   AuthCategory: { tool: 'tool' },
   PluginAuthInAgent: (props: { onAuthorizationItemClick?: (id: string) => void }) => (
     <div data-testid="plugin-auth">
@@ -51,7 +52,7 @@ jest.mock('@/app/components/plugins/plugin-auth', () => ({
   ),
 }))
 
-jest.mock('@/app/components/plugins/readme-panel/entrance', () => ({
+vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
   ReadmeEntrance: ({ className }: { className?: string }) => <div className={className}>readme</div>,
 }))
 
@@ -124,11 +125,11 @@ const baseCollection = {
 }
 
 const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuiltInTool>>) => {
-  const onHide = jest.fn()
-  const onSave = jest.fn()
-  const onAuthorizationItemClick = jest.fn()
+  const onHide = vi.fn()
+  const onSave = vi.fn()
+  const onAuthorizationItemClick = vi.fn()
   const utils = render(
-    <I18n.Provider value={{ locale: 'en-US', i18n: {}, setLocaleOnClient: jest.fn() as any }}>
+    <I18n.Provider value={{ locale: 'en-US', i18n: {}, setLocaleOnClient: vi.fn() as any }}>
       <SettingBuiltInTool
         collection={baseCollection as any}
         toolName="search"
@@ -151,12 +152,12 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuil
 
 describe('SettingBuiltInTool', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     nextFormValue = {}
     pluginAuthClickValue = 'credential-from-plugin'
   })
 
-  test('should fetch tool list when collection has no tools', async () => {
+  it('should fetch tool list when collection has no tools', async () => {
     fetchModelToolList.mockResolvedValueOnce([createTool()])
     renderComponent({
       collection: {
@@ -172,7 +173,7 @@ describe('SettingBuiltInTool', () => {
     expect(await screen.findByText('Search Tool')).toBeInTheDocument()
   })
 
-  test('should switch between info and setting tabs', async () => {
+  it('should switch between info and setting tabs', async () => {
     renderComponent()
     await waitFor(() => {
       expect(screen.getByTestId('mock-form')).toBeInTheDocument()
@@ -184,7 +185,7 @@ describe('SettingBuiltInTool', () => {
     expect(screen.getByTestId('mock-form')).toBeInTheDocument()
   })
 
-  test('should call onSave with updated values when save button clicked', async () => {
+  it('should call onSave with updated values when save button clicked', async () => {
     const { onSave } = renderComponent()
     await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
     nextFormValue = { settingParam: 'updated' }
@@ -193,7 +194,7 @@ describe('SettingBuiltInTool', () => {
     expect(onSave).toHaveBeenCalledWith(expect.objectContaining({ settingParam: 'updated' }))
   })
 
-  test('should keep save disabled until required field provided', async () => {
+  it('should keep save disabled until required field provided', async () => {
     renderComponent({
       setting: {},
     })
@@ -205,20 +206,20 @@ describe('SettingBuiltInTool', () => {
     expect(saveButton).not.toBeDisabled()
   })
 
-  test('should call onHide when cancel button is pressed', async () => {
+  it('should call onHide when cancel button is pressed', async () => {
     const { onHide } = renderComponent()
     await waitFor(() => expect(screen.getByTestId('mock-form')).toBeInTheDocument())
     await userEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))
     expect(onHide).toHaveBeenCalled()
   })
 
-  test('should trigger authorization callback from plugin auth section', async () => {
+  it('should trigger authorization callback from plugin auth section', async () => {
     const { onAuthorizationItemClick } = renderComponent()
     await userEvent.click(screen.getByRole('button', { name: 'choose-plugin-credential' }))
     expect(onAuthorizationItemClick).toHaveBeenCalledWith('credential-from-plugin')
   })
 
-  test('should call onHide when back button is clicked', async () => {
+  it('should call onHide when back button is clicked', async () => {
     const { onHide } = renderComponent({
       showBackButton: true,
     })
@@ -226,7 +227,7 @@ describe('SettingBuiltInTool', () => {
     expect(onHide).toHaveBeenCalled()
   })
 
-  test('should load workflow tools when workflow collection is provided', async () => {
+  it('should load workflow tools when workflow collection is provided', async () => {
     fetchWorkflowToolList.mockResolvedValueOnce([createTool({
       name: 'workflow-tool',
     })])

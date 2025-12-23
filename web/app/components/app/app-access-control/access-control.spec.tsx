@@ -1,28 +1,28 @@
+import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
+import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AccessControl from './index'
+import useAccessControlStore from '@/context/access-control-store'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { AccessMode, SubjectType } from '@/models/access-control'
+import { defaultSystemFeatures } from '@/types/feature'
+import Toast from '../../base/toast'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
+import AccessControl from './index'
 import SpecificGroupsOrMembers from './specific-groups-or-members'
-import useAccessControlStore from '@/context/access-control-store'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
-import { AccessMode, SubjectType } from '@/models/access-control'
-import Toast from '../../base/toast'
-import { defaultSystemFeatures } from '@/types/feature'
-import type { App } from '@/types/app'
 
-const mockUseAppWhiteListSubjects = jest.fn()
-const mockUseSearchForWhiteListCandidates = jest.fn()
-const mockMutateAsync = jest.fn()
-const mockUseUpdateAccessMode = jest.fn(() => ({
+const mockUseAppWhiteListSubjects = vi.fn()
+const mockUseSearchForWhiteListCandidates = vi.fn()
+const mockMutateAsync = vi.fn()
+const mockUseUpdateAccessMode = vi.fn(() => ({
   isPending: false,
   mutateAsync: mockMutateAsync,
 }))
 
-jest.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (value: { userProfile: { email: string; id?: string; name?: string; avatar?: string; avatar_url?: string; is_password_set?: boolean } }) => T) => selector({
+vi.mock('@/context/app-context', () => ({
+  useSelector: <T,>(selector: (value: { userProfile: { email: string, id?: string, name?: string, avatar?: string, avatar_url?: string, is_password_set?: boolean } }) => T) => selector({
     userProfile: {
       id: 'current-user',
       name: 'Current User',
@@ -34,20 +34,20 @@ jest.mock('@/context/app-context', () => ({
   }),
 }))
 
-jest.mock('@/service/common', () => ({
-  fetchCurrentWorkspace: jest.fn(),
-  fetchLangGeniusVersion: jest.fn(),
-  fetchUserProfile: jest.fn(),
-  getSystemFeatures: jest.fn(),
+vi.mock('@/service/common', () => ({
+  fetchCurrentWorkspace: vi.fn(),
+  fetchLangGeniusVersion: vi.fn(),
+  fetchUserProfile: vi.fn(),
+  getSystemFeatures: vi.fn(),
 }))
 
-jest.mock('@/service/access-control', () => ({
+vi.mock('@/service/access-control', () => ({
   useAppWhiteListSubjects: (...args: unknown[]) => mockUseAppWhiteListSubjects(...args),
   useSearchForWhiteListCandidates: (...args: unknown[]) => mockUseSearchForWhiteListCandidates(...args),
   useUpdateAccessMode: () => mockUseUpdateAccessMode(),
 }))
 
-jest.mock('@headlessui/react', () => {
+vi.mock('@headlessui/react', () => {
   const DialogComponent: any = ({ children, className, ...rest }: any) => (
     <div role="dialog" className={className} {...rest}>{children}</div>
   )
@@ -75,8 +75,8 @@ jest.mock('@headlessui/react', () => {
   }
 })
 
-jest.mock('ahooks', () => {
-  const actual = jest.requireActual('ahooks')
+vi.mock('ahooks', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('ahooks')>()
   return {
     ...actual,
     useDebounce: (value: unknown) => value,
@@ -131,16 +131,16 @@ const resetGlobalStore = () => {
 
 beforeAll(() => {
   class MockIntersectionObserver {
-    observe = jest.fn(() => undefined)
-    disconnect = jest.fn(() => undefined)
-    unobserve = jest.fn(() => undefined)
+    observe = vi.fn(() => undefined)
+    disconnect = vi.fn(() => undefined)
+    unobserve = vi.fn(() => undefined)
   }
   // @ts-expect-error jsdom does not implement IntersectionObserver
   globalThis.IntersectionObserver = MockIntersectionObserver
 })
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   resetAccessControlStore()
   resetGlobalStore()
   mockMutateAsync.mockResolvedValue(undefined)
@@ -158,7 +158,7 @@ beforeEach(() => {
   mockUseSearchForWhiteListCandidates.mockReturnValue({
     isLoading: false,
     isFetchingNextPage: false,
-    fetchNextPage: jest.fn(),
+    fetchNextPage: vi.fn(),
     data: { pages: [{ currPage: 1, subjects: [groupSubject, memberSubject], hasMore: false }] },
   })
 })
@@ -210,7 +210,7 @@ describe('AccessControlDialog', () => {
   })
 
   it('should trigger onClose when clicking the close control', async () => {
-    const handleClose = jest.fn()
+    const handleClose = vi.fn()
     const { container } = render(
       <AccessControlDialog show onClose={handleClose}>
         <div>Dialog Content</div>
@@ -314,7 +314,7 @@ describe('AddMemberOrGroupDialog', () => {
     mockUseSearchForWhiteListCandidates.mockReturnValue({
       isLoading: false,
       isFetchingNextPage: false,
-      fetchNextPage: jest.fn(),
+      fetchNextPage: vi.fn(),
       data: { pages: [] },
     })
 
@@ -330,9 +330,9 @@ describe('AddMemberOrGroupDialog', () => {
 // AccessControl integrates dialog, selection items, and confirm flow
 describe('AccessControl', () => {
   it('should initialize menu from app and call update on confirm', async () => {
-    const onClose = jest.fn()
-    const onConfirm = jest.fn()
-    const toastSpy = jest.spyOn(Toast, 'notify').mockReturnValue({})
+    const onClose = vi.fn()
+    const onConfirm = vi.fn()
+    const toastSpy = vi.spyOn(Toast, 'notify').mockReturnValue({})
     useAccessControlStore.setState({
       specificGroups: [baseGroup],
       specificMembers: [baseMember],
@@ -379,7 +379,7 @@ describe('AccessControl', () => {
     render(
       <AccessControl
         app={app}
-        onClose={jest.fn()}
+        onClose={vi.fn()}
       />,
     )
 

@@ -1,19 +1,19 @@
 import type { RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
-import { useCallback, useMemo } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
-import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
+import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
 import type { DataSet } from '@/models/datasets'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
+import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import { findVariableWhenOnLLMVision } from '../utils'
 
 const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
 type Params = {
-  id: string,
+  id: string
   payload: KnowledgeRetrievalNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>

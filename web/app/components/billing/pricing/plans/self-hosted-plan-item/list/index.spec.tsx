@@ -1,9 +1,9 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
-import List from './index'
+import * as React from 'react'
 import { SelfHostedPlan } from '@/app/components/billing/type'
+import List from './index'
 
-jest.mock('react-i18next', () => ({
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       if (options?.returnObjects)
@@ -15,7 +15,7 @@ jest.mock('react-i18next', () => ({
 }))
 
 describe('SelfHostedPlanItem/List', () => {
-  test('should render plan info', () => {
+  it('should render plan info', () => {
     render(<List plan={SelfHostedPlan.community} />)
 
     expect(screen.getByText('billing.plans.community.includesTitle')).toBeInTheDocument()

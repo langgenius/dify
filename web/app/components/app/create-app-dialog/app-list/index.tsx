@@ -1,34 +1,35 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import useSWR from 'swr'
-import { useDebounceFn } from 'ahooks'
-import { RiRobot2Line } from '@remixicon/react'
-import AppCard from '../app-card'
-import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
-import Toast from '@/app/components/base/toast'
-import Divider from '@/app/components/base/divider'
-import { cn } from '@/utils/classnames'
-import ExploreContext from '@/context/explore-context'
-import type { App } from '@/models/explore'
-import { fetchAppDetail, fetchAppList } from '@/service/explore'
-import { importDSL } from '@/service/apps'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import CreateAppModal from '@/app/components/explore/create-app-modal'
-import AppTypeSelector from '@/app/components/app/type-selector'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
+import type { App } from '@/models/explore'
+import { RiRobot2Line } from '@remixicon/react'
+import { useDebounceFn } from 'ahooks'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import useSWR from 'swr'
+import { useContext } from 'use-context-selector'
+import AppTypeSelector from '@/app/components/app/type-selector'
+import { trackEvent } from '@/app/components/base/amplitude'
+import Divider from '@/app/components/base/divider'
+import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import CreateAppModal from '@/app/components/explore/create-app-modal'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { getRedirection } from '@/utils/app-redirection'
-import Input from '@/app/components/base/input'
-import { AppModeEnum } from '@/types/app'
+import ExploreContext from '@/context/explore-context'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DSLImportMode } from '@/models/app'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
-import { trackEvent } from '@/app/components/base/amplitude'
+import { importDSL } from '@/service/apps'
+import { fetchAppDetail, fetchAppList } from '@/service/explore'
+import { AppModeEnum } from '@/types/app'
+import { getRedirection } from '@/utils/app-redirection'
+import { cn } from '@/utils/classnames'
+import AppCard from '../app-card'
+import Sidebar, { AppCategories, AppCategoryLabel } from './sidebar'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -177,58 +178,65 @@ const Apps = ({
   }
 
   return (
-    <div className='flex h-full flex-col'>
-      <div className='flex items-center justify-between border-b border-divider-burn py-3'>
-        <div className='min-w-[180px] pl-5'>
-          <span className='title-xl-semi-bold text-text-primary'>{t('app.newApp.startFromTemplate')}</span>
+    <div className="flex h-full flex-col">
+      <div className="flex items-center justify-between border-b border-divider-burn py-3">
+        <div className="min-w-[180px] pl-5">
+          <span className="title-xl-semi-bold text-text-primary">{t('app.newApp.startFromTemplate')}</span>
         </div>
-        <div className='flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md'>
+        <div className="flex max-w-[548px] flex-1 items-center rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-1.5 shadow-md">
           <AppTypeSelector value={currentType} onChange={setCurrentType} />
-          <div className='h-[14px]'>
-            <Divider type='vertical' />
+          <div className="h-[14px]">
+            <Divider type="vertical" />
           </div>
           <Input
             showClearIcon
-            wrapperClassName='w-full flex-1'
-            className='bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none'
+            wrapperClassName="w-full flex-1"
+            className="bg-transparent hover:border-transparent hover:bg-transparent focus:border-transparent focus:bg-transparent focus:shadow-none"
             placeholder={t('app.newAppFromTemplate.searchAllTemplate') as string}
             value={keywords}
             onChange={e => handleKeywordsChange(e.target.value)}
             onClear={() => handleKeywordsChange('')}
           />
         </div>
-        <div className='h-8 w-[180px]'></div>
+        <div className="h-8 w-[180px]"></div>
       </div>
-      <div className='relative flex flex-1 overflow-y-auto'>
-        {!searchKeywords && <div className='h-full w-[200px] p-4'>
-          <Sidebar current={currCategory as AppCategories} categories={categories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
-        </div>}
-        <div className='h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2'>
-          {searchFilteredList && searchFilteredList.length > 0 && <>
-            <div className='pb-1 pt-4'>
-              {searchKeywords
-                ? <p className='title-md-semi-bold text-text-tertiary'>{searchFilteredList.length > 1 ? t('app.newApp.foundResults', { count: searchFilteredList.length }) : t('app.newApp.foundResult', { count: searchFilteredList.length })}</p>
-                : <div className='flex h-[22px] items-center'>
-                  <AppCategoryLabel category={currCategory as AppCategories} className='title-md-semi-bold text-text-primary' />
-                </div>}
-            </div>
-            <div
-              className={cn(
-                'grid shrink-0 grid-cols-1 content-start gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
-              )}>
-              {searchFilteredList.map(app => (
-                <AppCard
-                  key={app.app_id}
-                  app={app}
-                  canCreate={hasEditPermission}
-                  onCreate={() => {
-                    setCurrApp(app)
-                    setIsShowCreateModal(true)
-                  }}
-                />
-              ))}
-            </div>
-          </>}
+      <div className="relative flex flex-1 overflow-y-auto">
+        {!searchKeywords && (
+          <div className="h-full w-[200px] p-4">
+            <Sidebar current={currCategory as AppCategories} categories={categories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+          </div>
+        )}
+        <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
+          {searchFilteredList && searchFilteredList.length > 0 && (
+            <>
+              <div className="pb-1 pt-4">
+                {searchKeywords
+                  ? <p className="title-md-semi-bold text-text-tertiary">{searchFilteredList.length > 1 ? t('app.newApp.foundResults', { count: searchFilteredList.length }) : t('app.newApp.foundResult', { count: searchFilteredList.length })}</p>
+                  : (
+                      <div className="flex h-[22px] items-center">
+                        <AppCategoryLabel category={currCategory as AppCategories} className="title-md-semi-bold text-text-primary" />
+                      </div>
+                    )}
+              </div>
+              <div
+                className={cn(
+                  'grid shrink-0 grid-cols-1 content-start gap-3 sm:grid-cols-1 md:grid-cols-2 xl:grid-cols-4 2xl:grid-cols-5 2k:grid-cols-6',
+                )}
+              >
+                {searchFilteredList.map(app => (
+                  <AppCard
+                    key={app.app_id}
+                    app={app}
+                    canCreate={hasEditPermission}
+                    onCreate={() => {
+                      setCurrApp(app)
+                      setIsShowCreateModal(true)
+                    }}
+                  />
+                ))}
+              </div>
+            </>
+          )}
           {(!searchFilteredList || searchFilteredList.length === 0) && <NoTemplateFound />}
         </div>
       </div>
@@ -253,11 +261,13 @@ export default React.memo(Apps)
 
 function NoTemplateFound() {
   const { t } = useTranslation()
-  return <div className='w-full rounded-lg bg-workflow-process-bg p-4'>
-    <div className='mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg'>
-      <RiRobot2Line className='h-5 w-5 text-text-tertiary' />
+  return (
+    <div className="w-full rounded-lg bg-workflow-process-bg p-4">
+      <div className="mb-2 inline-flex h-8 w-8 items-center justify-center rounded-lg bg-components-card-bg shadow-lg">
+        <RiRobot2Line className="h-5 w-5 text-text-tertiary" />
+      </div>
+      <p className="title-md-semi-bold text-text-primary">{t('app.newApp.noTemplateFound')}</p>
+      <p className="system-sm-regular text-text-tertiary">{t('app.newApp.noTemplateFoundTip')}</p>
     </div>
-    <p className='title-md-semi-bold text-text-primary'>{t('app.newApp.noTemplateFound')}</p>
-    <p className='system-sm-regular text-text-tertiary'>{t('app.newApp.noTemplateFoundTip')}</p>
-  </div>
+  )
 }

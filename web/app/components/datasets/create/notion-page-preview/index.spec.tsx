@@ -1,14 +1,15 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import NotionPagePreview from './index'
+import type { MockedFunction } from 'vitest'
 import type { NotionPage } from '@/models/common'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { fetchNotionPagePreview } from '@/service/datasets'
+import NotionPagePreview from './index'
 
 // Mock the fetchNotionPagePreview service
-jest.mock('@/service/datasets', () => ({
-  fetchNotionPagePreview: jest.fn(),
+vi.mock('@/service/datasets', () => ({
+  fetchNotionPagePreview: vi.fn(),
 }))
 
-const mockFetchNotionPagePreview = fetchNotionPagePreview as jest.MockedFunction<typeof fetchNotionPagePreview>
+const mockFetchNotionPagePreview = fetchNotionPagePreview as MockedFunction<typeof fetchNotionPagePreview>
 
 // Factory function to create mock NotionPage objects
 const createMockNotionPage = (overrides: Partial<NotionPage> = {}): NotionPage => {
@@ -60,7 +61,7 @@ const renderNotionPagePreview = async (
   const defaultProps = {
     currentPage: createMockNotionPage(),
     notionCredentialId: 'credential-123',
-    hidePreview: jest.fn(),
+    hidePreview: vi.fn(),
     ...props,
   }
   const result = render(<NotionPagePreview {...defaultProps} />)
@@ -93,7 +94,7 @@ const findLoadingSpinner = (container: HTMLElement) => {
 // ============================================================================
 describe('NotionPagePreview', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Default successful API response
     mockFetchNotionPagePreview.mockResolvedValue({ content: 'Preview content here' })
   })
@@ -256,7 +257,7 @@ describe('NotionPagePreview', () => {
 
       // Act - Initial render
       const { rerender, container } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
       )
 
       // First page loading - spinner should be visible
@@ -272,7 +273,7 @@ describe('NotionPagePreview', () => {
       })
 
       // Rerender with new page
-      rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={jest.fn()} />)
+      rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
 
       // Should show loading again
       await waitFor(() => {
@@ -330,7 +331,7 @@ describe('NotionPagePreview', () => {
 
       // Act
       const { rerender } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -342,7 +343,7 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={jest.fn()} />)
+        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
       })
 
       // Assert
@@ -401,7 +402,7 @@ describe('NotionPagePreview', () => {
   describe('User Interactions', () => {
     it('should call hidePreview when close button is clicked', async () => {
       // Arrange
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
       const { container } = await renderNotionPagePreview({ hidePreview })
 
       // Act
@@ -414,7 +415,7 @@ describe('NotionPagePreview', () => {
 
     it('should handle multiple clicks on close button', async () => {
       // Arrange
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
       const { container } = await renderNotionPagePreview({ hidePreview })
 
       // Act
@@ -466,7 +467,7 @@ describe('NotionPagePreview', () => {
 
       // Act
       const { rerender, container } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -475,7 +476,7 @@ describe('NotionPagePreview', () => {
 
       // Change page
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={jest.fn()} />)
+        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
       })
 
       // Assert - Loading should be shown again
@@ -498,7 +499,7 @@ describe('NotionPagePreview', () => {
 
       // Act
       const { rerender } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -507,7 +508,7 @@ describe('NotionPagePreview', () => {
 
       // Change page
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={jest.fn()} />)
+        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
       })
 
       // Resolve second fetch
@@ -613,7 +614,7 @@ describe('NotionPagePreview', () => {
     describe('hidePreview prop', () => {
       it('should accept hidePreview callback', async () => {
         // Arrange
-        const hidePreview = jest.fn()
+        const hidePreview = vi.fn()
 
         // Act
         await renderNotionPagePreview({ hidePreview })
@@ -673,7 +674,7 @@ describe('NotionPagePreview', () => {
       const { container } = await renderNotionPagePreview()
 
       // Assert - Should render as text, not execute scripts
-      const contentDiv = container.querySelector('.fileContent')
+      const contentDiv = container.querySelector('[class*="fileContent"]')
       expect(contentDiv).toBeInTheDocument()
       expect(contentDiv?.textContent).toContain('alert')
     })
@@ -699,7 +700,7 @@ describe('NotionPagePreview', () => {
       const { container } = await renderNotionPagePreview()
 
       // Assert
-      const contentDiv = container.querySelector('.fileContent')
+      const contentDiv = container.querySelector('[class*="fileContent"]')
       expect(contentDiv).toBeInTheDocument()
       expect(contentDiv?.textContent).toContain('Line 1')
       expect(contentDiv?.textContent).toContain('Line 2')
@@ -742,7 +743,7 @@ describe('NotionPagePreview', () => {
 
       // Act
       const { rerender } = render(
-        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={page1} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -750,7 +751,7 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={jest.fn()} />)
+        rerender(<NotionPagePreview currentPage={page2} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
       })
 
       // Assert
@@ -762,8 +763,8 @@ describe('NotionPagePreview', () => {
     it('should not trigger effect when hidePreview changes', async () => {
       // Arrange
       const page = createMockNotionPage()
-      const hidePreview1 = jest.fn()
-      const hidePreview2 = jest.fn()
+      const hidePreview1 = vi.fn()
+      const hidePreview2 = vi.fn()
 
       // Act
       const { rerender } = render(
@@ -789,7 +790,7 @@ describe('NotionPagePreview', () => {
 
       // Act
       const { rerender } = render(
-        <NotionPagePreview currentPage={page} notionCredentialId="cred-1" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={page} notionCredentialId="cred-1" hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -797,7 +798,7 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={page} notionCredentialId="cred-2" hidePreview={jest.fn()} />)
+        rerender(<NotionPagePreview currentPage={page} notionCredentialId="cred-2" hidePreview={vi.fn()} />)
       })
 
       // Assert - Should not call API again (only currentPage is in dependency array)
@@ -807,18 +808,17 @@ describe('NotionPagePreview', () => {
     it('should handle rapid page changes', async () => {
       // Arrange
       const pages = Array.from({ length: 5 }, (_, i) =>
-        createMockNotionPage({ page_id: `page-${i}` }),
-      )
+        createMockNotionPage({ page_id: `page-${i}` }))
 
       // Act
       const { rerender } = render(
-        <NotionPagePreview currentPage={pages[0]} notionCredentialId="cred-123" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={pages[0]} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
       )
 
       // Rapidly change pages
       for (let i = 1; i < pages.length; i++) {
         await act(async () => {
-          rerender(<NotionPagePreview currentPage={pages[i]} notionCredentialId="cred-123" hidePreview={jest.fn()} />)
+          rerender(<NotionPagePreview currentPage={pages[i]} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
         })
       }
 
@@ -850,7 +850,7 @@ describe('NotionPagePreview', () => {
 
       // Act
       const { rerender, container } = render(
-        <NotionPagePreview currentPage={page} notionCredentialId="cred-123" hidePreview={jest.fn()} />,
+        <NotionPagePreview currentPage={page} notionCredentialId="cred-123" hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -858,7 +858,7 @@ describe('NotionPagePreview', () => {
       })
 
       await act(async () => {
-        rerender(<NotionPagePreview currentPage={undefined} notionCredentialId="cred-123" hidePreview={jest.fn()} />)
+        rerender(<NotionPagePreview currentPage={undefined} notionCredentialId="cred-123" hidePreview={vi.fn()} />)
       })
 
       // Assert - Should not crash, API should not be called again
@@ -1075,7 +1075,7 @@ describe('NotionPagePreview', () => {
     it('should handle page with icon object having empty url', async () => {
       // Arrange
       // Suppress console.error for this test as we're intentionally testing empty src edge case
-      const consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(jest.fn())
+      const consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
 
       const page = createMockNotionPage({
         page_icon: {
@@ -1112,7 +1112,7 @@ describe('NotionPagePreview', () => {
       const { container } = await renderNotionPagePreview()
 
       // Assert
-      const contentDiv = container.querySelector('.fileContent')
+      const contentDiv = container.querySelector('[class*="fileContent"]')
       expect(contentDiv).toBeInTheDocument()
       expect(contentDiv).toHaveTextContent('Test content')
     })
@@ -1126,7 +1126,7 @@ describe('NotionPagePreview', () => {
       const { container } = await renderNotionPagePreview()
 
       // Assert
-      const contentDiv = container.querySelector('.fileContent')
+      const contentDiv = container.querySelector('[class*="fileContent"]')
       expect(contentDiv).toBeInTheDocument()
       // The CSS class has white-space: pre-line
       expect(contentDiv?.textContent).toContain('indented content')
@@ -1142,7 +1142,7 @@ describe('NotionPagePreview', () => {
       // Assert
       const loadingElement = findLoadingSpinner(container)
       expect(loadingElement).not.toBeInTheDocument()
-      const contentDiv = container.querySelector('.fileContent')
+      const contentDiv = container.querySelector('[class*="fileContent"]')
       expect(contentDiv).toBeInTheDocument()
       expect(contentDiv?.textContent).toBe('')
     })

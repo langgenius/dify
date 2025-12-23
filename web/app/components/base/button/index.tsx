@@ -1,8 +1,9 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
-import Spinner from '../spinner'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
+import Spinner from '../spinner'
 
 const buttonVariants = cva(
   'btn disabled:btn-disabled',
@@ -41,9 +42,8 @@ export type ButtonProps = {
 const Button = ({ className, variant, size, destructive, loading, styleCss, children, spinnerClassName, ref, ...props }: ButtonProps) => {
   return (
     <button
-      type='button'
-      className={cn(buttonVariants({ variant, size, className }),
-        destructive && 'btn-destructive')}
+      type="button"
+      className={cn(buttonVariants({ variant, size, className }), destructive && 'btn-destructive')}
       ref={ref}
       style={styleCss}
       {...props}

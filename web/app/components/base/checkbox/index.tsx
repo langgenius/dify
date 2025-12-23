@@ -43,7 +43,7 @@ const Checkbox = ({
       data-testid={`checkbox-${id}`}
     >
       {!checked && indeterminate && <IndeterminateIcon />}
-      {checked && <RiCheckLine className='h-3 w-3' data-testid={`check-icon-${id}`} />}
+      {checked && <RiCheckLine className="h-3 w-3" data-testid={`check-icon-${id}`} />}
     </div>
   )
 }

@@ -1,3 +1,4 @@
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { useCallback, useState } from 'react'
 import {
   useBuildTriggerSubscription,
@@ -5,7 +6,6 @@ import {
   useUpdateTriggerSubscriptionBuilder,
   useVerifyTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 
 // Helper function to serialize complex values to strings for backend encryption
 const serializeFormValues = (values: Record<string, any>): Record<string, string> => {
@@ -51,7 +51,8 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
   const buildSubscription = useBuildTriggerSubscription()
 
   const startAuth = useCallback(async () => {
-    if (builderId) return // Prevent multiple calls if already started
+    if (builderId)
+      return // Prevent multiple calls if already started
 
     setIsLoading(true)
     setError(null)

@@ -1,40 +1,44 @@
-import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import ViewAnnotationModal from './index'
+import type { Mock } from 'vitest'
 import type { AnnotationItem, HitHistoryItem } from '../type'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { fetchHitHistoryList } from '@/service/annotation'
+import ViewAnnotationModal from './index'
 
-const mockFormatTime = jest.fn(() => 'formatted-time')
+const mockFormatTime = vi.fn(() => 'formatted-time')
 
-jest.mock('@/hooks/use-timestamp', () => ({
+vi.mock('@/hooks/use-timestamp', () => ({
   __esModule: true,
   default: () => ({
     formatTime: mockFormatTime,
   }),
 }))
 
-jest.mock('@/service/annotation', () => ({
-  fetchHitHistoryList: jest.fn(),
+vi.mock('@/service/annotation', () => ({
+  fetchHitHistoryList: vi.fn(),
 }))
 
-jest.mock('../edit-annotation-modal/edit-item', () => {
+vi.mock('../edit-annotation-modal/edit-item', () => {
   const EditItemType = {
     Query: 'query',
     Answer: 'answer',
   }
   return {
     __esModule: true,
-    default: ({ type, content, onSave }: { type: string; content: string; onSave: (value: string) => void }) => (
+    default: ({ type, content, onSave }: { type: string, content: string, onSave: (value: string) => void }) => (
       <div>
         <div data-testid={`content-${type}`}>{content}</div>
-        <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>edit-{type}</button>
+        <button data-testid={`edit-${type}`} onClick={() => onSave(`${type}-updated`)}>
+          edit-
+          {type}
+        </button>
       </div>
     ),
     EditItemType,
   }
 })
 
-const fetchHitHistoryListMock = fetchHitHistoryList as jest.Mock
+const fetchHitHistoryListMock = fetchHitHistoryList as Mock
 
 const createAnnotationItem = (overrides: Partial<AnnotationItem> = {}): AnnotationItem => ({
   id: overrides.id ?? 'annotation-id',
@@ -59,10 +63,10 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof ViewAnnotat
   const mergedProps: React.ComponentProps<typeof ViewAnnotationModal> = {
     appId: 'app-id',
     isShow: true,
-    onHide: jest.fn(),
+    onHide: vi.fn(),
     item,
-    onSave: jest.fn().mockResolvedValue(undefined),
-    onRemove: jest.fn().mockResolvedValue(undefined),
+    onSave: vi.fn().mockResolvedValue(undefined),
+    onRemove: vi.fn().mockResolvedValue(undefined),
     ...props,
   }
   return {
@@ -73,7 +77,7 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof ViewAnnotat
 
 describe('ViewAnnotationModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     fetchHitHistoryListMock.mockResolvedValue({ data: [], total: 0 })
   })
 
