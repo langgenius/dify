@@ -53,6 +53,7 @@ register_schema_models(web_ns, ForgotPasswordSendPayload, ForgotPasswordCheckPay
 
 @web_ns.route("/forgot-password")
 class ForgotPasswordSendEmailApi(Resource):
+    @web_ns.expect(web_ns.models[ForgotPasswordSendPayload.__name__])
     @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
@@ -91,6 +92,7 @@ class ForgotPasswordSendEmailApi(Resource):
 
 @web_ns.route("/forgot-password/validity")
 class ForgotPasswordCheckApi(Resource):
+    @web_ns.expect(web_ns.models[ForgotPasswordCheckPayload.__name__])
     @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
@@ -133,6 +135,7 @@ class ForgotPasswordCheckApi(Resource):
 
 @web_ns.route("/forgot-password/resets")
 class ForgotPasswordResetApi(Resource):
+    @web_ns.expect(web_ns.models[ForgotPasswordResetPayload.__name__])
     @only_edition_enterprise
     @setup_required
     @email_password_login_enabled
@@ -180,7 +183,7 @@ class ForgotPasswordResetApi(Resource):
 
         return {"result": "success"}
 
-    def _update_existing_account(self, account, password_hashed, salt, session):
+    def _update_existing_account(self, account: Account, password_hashed, salt, session):
         # Update existing account credentials
         account.password = base64.b64encode(password_hashed).decode()
         account.password_salt = base64.b64encode(salt).decode()
