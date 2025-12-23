@@ -1,6 +1,6 @@
+import type { DataSourceNotionWorkspace } from '@/models/common'
 import { useQuery, useQueryClient } from '@tanstack/react-query'
 import { get } from '../base'
-import type { DataSourceNotionWorkspace } from '@/models/common'
 
 type PreImportNotionPagesParams = {
   datasetId: string

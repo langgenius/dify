@@ -4,8 +4,8 @@ import React from 'react'
 import { cn } from '@/utils/classnames'
 
 type Props = {
-  depth?: number,
-  className?: string,
+  depth?: number
+  className?: string
 }
 
 const TreeIndentLine: FC<Props> = ({

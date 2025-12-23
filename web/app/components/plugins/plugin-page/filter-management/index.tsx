@@ -1,8 +1,8 @@
 import React, { useState } from 'react'
-import CategoriesFilter from './category-filter'
-import TagFilter from './tag-filter'
-import SearchBox from './search-box'
 import { usePluginPageContext } from '../context'
+import CategoriesFilter from './category-filter'
+import SearchBox from './search-box'
+import TagFilter from './tag-filter'
 
 export type FilterState = {
   categories: string[]
@@ -25,7 +25,7 @@ const FilterManagement: React.FC<FilterManagementProps> = ({ onFilterChange }) =
   }
 
   return (
-    <div className='flex items-center gap-2 self-stretch'>
+    <div className="flex items-center gap-2 self-stretch">
       <CategoriesFilter
         value={filters.categories}
         onChange={categories => updateFilters({ categories })}

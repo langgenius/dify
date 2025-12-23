@@ -22,7 +22,7 @@ const Tab = <T,>({
 
   return (
     <div
-      className='flex cursor-pointer items-center justify-center gap-x-2 px-5 py-3'
+      className="flex cursor-pointer items-center justify-center gap-x-2 px-5 py-3"
       onClick={handleClick}
     >
       <Icon isActive={isActive} />

@@ -12,7 +12,8 @@ function PreCode(props: { children: any }) {
     <pre ref={ref}>
       <span
         className="copy-code-button"
-      ></span>
+      >
+      </span>
       {props.children}
     </pre>
   )

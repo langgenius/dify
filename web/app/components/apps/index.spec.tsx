@@ -1,5 +1,8 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
+import React from 'react'
+
+// Import after mocks
+import Apps from './index'
 
 // Track mock calls
 let documentTitleCalls: string[] = []
@@ -28,9 +31,6 @@ vi.mock('./list', () => ({
     return React.createElement('div', { 'data-testid': 'apps-list' }, 'Apps List')
   },
 }))
-
-// Import after mocks
-import Apps from './index'
 
 describe('Apps', () => {
   beforeEach(() => {

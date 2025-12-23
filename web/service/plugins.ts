@@ -1,5 +1,8 @@
 import type { Fetcher } from 'swr'
-import { get, getMarketplace, post, upload } from './base'
+import type {
+  MarketplaceCollectionPluginsResponse,
+  MarketplaceCollectionsResponse,
+} from '@/app/components/plugins/marketplace/types'
 import type {
   Dependency,
   InstallPackageResponse,
@@ -13,10 +16,7 @@ import type {
   updatePackageResponse,
   uploadGitHubResponse,
 } from '@/app/components/plugins/types'
-import type {
-  MarketplaceCollectionPluginsResponse,
-  MarketplaceCollectionsResponse,
-} from '@/app/components/plugins/marketplace/types'
+import { get, getMarketplace, post, upload } from './base'
 
 export const uploadFile = async (file: File, isBundle: boolean) => {
   const formData = new FormData()
@@ -33,8 +33,7 @@ export const updateFromMarketPlace = async (body: Record<string, string>) => {
   })
 }
 
-export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string,
-  originalPlugin: string, newPlugin: string) => {
+export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string, originalPlugin: string, newPlugin: string) => {
   return post<updatePackageResponse>('/workspaces/current/plugin/upgrade/github', {
     body: {
       repo: repoUrl,
@@ -83,7 +82,7 @@ export const fetchPluginInfoFromMarketPlace = async ({
   return getMarketplace<{ data: { plugin: PluginInfoFromMarketPlace, version: { version: string } } }>(`/plugins/${org}/${name}`)
 }
 
-export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string; }> = ({ url }) => {
+export const fetchMarketplaceCollections: Fetcher<MarketplaceCollectionsResponse, { url: string }> = ({ url }) => {
   return get<MarketplaceCollectionsResponse>(url)
 }
 

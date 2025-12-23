@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
+import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
+import { RiArrowRightUpLine } from '@remixicon/react'
 import React from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowRightUpLine } from '@remixicon/react'
 import FileIcon from '@/app/components/base/file-uploader/file-type-icon'
-import type { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 
 type Props = {
   docType: FileAppearanceTypeEnum

@@ -1,13 +1,13 @@
 'use client'
-import React from 'react'
-import { type FC, useRef } from 'react'
-import { init } from 'emoji-mart'
-import data from '@emoji-mart/data'
-import { cva } from 'class-variance-authority'
+import type { FC } from 'react'
 import type { AppIconType } from '@/types/app'
-import { cn } from '@/utils/classnames'
-import { useHover } from 'ahooks'
+import data from '@emoji-mart/data'
 import { RiEditLine } from '@remixicon/react'
+import { useHover } from 'ahooks'
+import { cva } from 'class-variance-authority'
+import { init } from 'emoji-mart'
+import React, { useRef } from 'react'
+import { cn } from '@/utils/classnames'
 
 init({ data })
 
@@ -45,7 +45,8 @@ const appIconVariants = cva(
       size: 'medium',
       rounded: false,
     },
-  })
+  },
+)
 const EditIconWrapperVariants = cva(
   'absolute left-0 top-0 z-10 flex items-center justify-center bg-background-overlay-alt',
   {
@@ -67,7 +68,8 @@ const EditIconWrapperVariants = cva(
       size: 'medium',
       rounded: false,
     },
-  })
+  },
+)
 const EditIconVariants = cva(
   'text-text-primary-on-surface',
   {
@@ -85,7 +87,8 @@ const EditIconVariants = cva(
     defaultVariants: {
       size: 'medium',
     },
-  })
+  },
+)
 const AppIcon: FC<AppIconProps> = ({
   size = 'medium',
   rounded = false,
@@ -100,7 +103,7 @@ const AppIcon: FC<AppIconProps> = ({
   showEditIcon = false,
 }) => {
   const isValidImageIcon = iconType === 'image' && imageUrl
-  const Icon = (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id='🤖' />
+  const Icon = (icon && icon !== '') ? <em-emoji id={icon} /> : <em-emoji id="🤖" />
   const wrapperRef = useRef<HTMLSpanElement>(null)
   const isHovering = useHover(wrapperRef)
 
@@ -113,7 +116,7 @@ const AppIcon: FC<AppIconProps> = ({
     >
       {
         isValidImageIcon
-          ? <img src={imageUrl} className='h-full w-full' alt='app icon' />
+          ? <img src={imageUrl} className="h-full w-full" alt="app icon" />
           : (innerIcon || Icon)
       }
       {

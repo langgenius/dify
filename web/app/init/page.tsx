@@ -1,6 +1,6 @@
 import React from 'react'
-import InitPasswordPopup from './InitPasswordPopup'
 import { cn } from '@/utils/classnames'
+import InitPasswordPopup from './InitPasswordPopup'
 
 const Install = () => {
   return (

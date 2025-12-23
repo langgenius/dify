@@ -1,3 +1,16 @@
+import type {
+  ChatConfig,
+  ChatItem,
+  ChatItemInTree,
+  Inputs,
+} from '../types'
+import type { InputForm } from './type'
+import type AudioPlayer from '@/app/components/base/audio-btn/audio'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { Annotation } from '@/models/log'
+import { produce, setAutoFreeze } from 'immer'
+import { noop, uniqBy } from 'lodash-es'
+import { useParams, usePathname } from 'next/navigation'
 import {
   useCallback,
   useEffect,
@@ -6,36 +19,22 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { produce, setAutoFreeze } from 'immer'
-import { uniqBy } from 'lodash-es'
-import { useParams, usePathname } from 'next/navigation'
 import { v4 as uuidV4 } from 'uuid'
-import type {
-  ChatConfig,
-  ChatItem,
-  ChatItemInTree,
-  Inputs,
-} from '../types'
-import { getThreadMessages } from '../utils'
-import type { InputForm } from './type'
-import {
-  getProcessedInputs,
-  processOpeningStatement,
-} from './utils'
-import { TransferMethod } from '@/types/app'
-import { useToastContext } from '@/app/components/base/toast'
-import { ssePost } from '@/service/base'
-import type { Annotation } from '@/models/log'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import useTimestamp from '@/hooks/use-timestamp'
 import { AudioPlayerManager } from '@/app/components/base/audio-btn/audio.player.manager'
-import type AudioPlayer from '@/app/components/base/audio-btn/audio'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import {
   getProcessedFiles,
   getProcessedFilesFromResponse,
 } from '@/app/components/base/file-uploader/utils'
-import { noop } from 'lodash-es'
+import { useToastContext } from '@/app/components/base/toast'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import useTimestamp from '@/hooks/use-timestamp'
+import { ssePost } from '@/service/base'
+import { TransferMethod } from '@/types/app'
+import { getThreadMessages } from '../utils'
+import {
+  getProcessedInputs,
+  processOpeningStatement,
+} from './utils'
 
 type GetAbortController = (abortController: AbortController) => void
 type SendCallback = {
@@ -382,12 +381,12 @@ export const useChat = (
                 ...newResponseItem.message,
                 ...(newResponseItem.message[newResponseItem.message.length - 1].role !== 'assistant'
                   ? [
-                    {
-                      role: 'assistant',
-                      text: newResponseItem.answer,
-                      files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
-                    },
-                  ]
+                      {
+                        role: 'assistant',
+                        text: newResponseItem.answer,
+                        files: newResponseItem.message_files?.filter((file: any) => file.belongs_to === 'assistant') || [],
+                      },
+                    ]
                   : []),
               ],
               more: {
@@ -633,7 +632,8 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
-      })
+      },
+    )
     return true
   }, [
     t,

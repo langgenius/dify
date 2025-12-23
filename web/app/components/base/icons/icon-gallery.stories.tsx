@@ -185,7 +185,10 @@ const IconGalleryStory = () => {
       <header style={headerStyle}>
         <h1 style={{ margin: 0 }}>Icon Gallery</h1>
         <p style={{ margin: 0, color: '#5f5f66' }}>
-          Browse all icon components sourced from <code>app/components/base/icons/src</code>. Use the search bar
+          Browse all icon components sourced from
+          {' '}
+          <code>app/components/base/icons/src</code>
+          . Use the search bar
           to filter by name or path.
         </p>
         <div style={controlsStyle}>
@@ -195,13 +198,21 @@ const IconGalleryStory = () => {
             value={query}
             onChange={event => setQuery(event.target.value)}
           />
-          <span style={{ color: '#5f5f66' }}>{filtered.length} icons</span>
+          <span style={{ color: '#5f5f66' }}>
+            {filtered.length}
+            {' '}
+            icons
+          </span>
           <button
             type="button"
             onClick={() => setPreviewTheme(prev => (prev === 'light' ? 'dark' : 'light'))}
             style={toggleButtonStyle}
           >
-            Toggle {previewTheme === 'light' ? 'dark' : 'light'} preview
+            Toggle
+            {' '}
+            {previewTheme === 'light' ? 'dark' : 'light'}
+            {' '}
+            preview
           </button>
         </div>
       </header>

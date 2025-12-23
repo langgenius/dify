@@ -1,7 +1,7 @@
+import { useStore } from '@tanstack/react-form'
 import React from 'react'
 import { withForm } from '@/app/components/base/form'
 import InputField from '@/app/components/base/form/form-scenarios/input-field/field'
-import { useStore } from '@tanstack/react-form'
 import { useHiddenConfigurations } from './hooks'
 
 type HiddenFieldsProps = {

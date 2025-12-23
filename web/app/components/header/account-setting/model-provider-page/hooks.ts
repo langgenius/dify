@@ -1,11 +1,3 @@
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
-import { useContext } from 'use-context-selector'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -17,12 +9,23 @@ import type {
   ModelProvider,
   ModelTypeEnum,
 } from './declarations'
+import { useQuery, useQueryClient } from '@tanstack/react-query'
 import {
-  ConfigurationMethodEnum,
-  CustomConfigurationStatusEnum,
-  ModelStatusEnum,
-} from './declarations'
+  useCallback,
+  useEffect,
+  useMemo,
+  useState,
+} from 'react'
+import { useContext } from 'use-context-selector'
+import {
+  useMarketplacePlugins,
+  useMarketplacePluginsByCollectionId,
+} from '@/app/components/plugins/marketplace/hooks'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import I18n from '@/context/i18n'
+import { useModalContextSelector } from '@/context/modal-context'
+import { useProviderContext } from '@/context/provider-context'
 import {
   fetchDefaultModal,
   fetchModelList,
@@ -30,14 +33,11 @@ import {
   getPayUrl,
 } from '@/service/common'
 import { commonQueryKeys } from '@/service/use-common'
-import { useProviderContext } from '@/context/provider-context'
 import {
-  useMarketplacePlugins,
-  useMarketplacePluginsByCollectionId,
-} from '@/app/components/plugins/marketplace/hooks'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import { useModalContextSelector } from '@/context/modal-context'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
+  ConfigurationMethodEnum,
+  CustomConfigurationStatusEnum,
+  ModelStatusEnum,
+} from './declarations'
 import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './provider-added-card'
 
 type UseDefaultModelAndModelList = (
@@ -105,9 +105,9 @@ export const useProviderCredentialsAndLoadBalancing = (
       ? predefinedFormSchemasValue?.credentials
       : customFormSchemasValue?.credentials
         ? {
-          ...customFormSchemasValue?.credentials,
-          ...currentCustomConfigurationModelFixedFields,
-        }
+            ...customFormSchemasValue?.credentials,
+            ...currentCustomConfigurationModelFixedFields,
+          }
         : undefined
   }, [
     configurationMethod,
@@ -353,11 +353,11 @@ export const useModelModalHandler = () => {
     configurationMethod: ConfigurationMethodEnum,
     CustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
     extra: {
-      isModelCredential?: boolean,
-      credential?: Credential,
-      model?: CustomModel,
-      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void,
-      mode?: ModelModalModeEnum,
+      isModelCredential?: boolean
+      credential?: Credential
+      model?: CustomModel
+      onUpdate?: (newPayload: any, formValues?: Record<string, any>) => void
+      mode?: ModelModalModeEnum
     } = {},
   ) => {
     setShowModelModal({

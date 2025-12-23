@@ -1,11 +1,12 @@
-import React, { useCallback } from 'react'
-import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
-import { RETRIEVE_METHOD } from '@/types/app'
-import { useTranslation } from 'react-i18next'
-import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
+import type { ProcessRuleResponse } from '@/models/datasets'
 import Image from 'next/image'
+import React, { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { indexMethodIcon, retrievalIcon } from '@/app/components/datasets/create/icons'
+import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { FieldInfo } from '@/app/components/datasets/documents/detail/metadata'
+import { ProcessMode } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 
 type RuleDetailProps = {
   sourceData?: ProcessRuleResponse
@@ -39,7 +40,7 @@ const RuleDetail = ({
   }, [sourceData, t])
 
   return (
-    <div className='flex flex-col gap-1' data-testid='rule-detail'>
+    <div className="flex flex-col gap-1" data-testid="rule-detail">
       <FieldInfo
         label={t('datasetDocuments.embedding.mode')}
         displayedValue={getValue('mode')}
@@ -47,24 +48,24 @@ const RuleDetail = ({
       <FieldInfo
         label={t('datasetCreation.stepTwo.indexMode')}
         displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
-        valueIcon={
+        valueIcon={(
           <Image
-            className='size-4'
+            className="size-4"
             src={
               indexingType === IndexingType.ECONOMICAL
                 ? indexMethodIcon.economical
                 : indexMethodIcon.high_quality
             }
-            alt=''
+            alt=""
           />
-        }
+        )}
       />
       <FieldInfo
         label={t('datasetSettings.form.retrievalSetting.title')}
         displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
-        valueIcon={
+        valueIcon={(
           <Image
-            className='size-4'
+            className="size-4"
             src={
               retrievalMethod === RETRIEVE_METHOD.fullText
                 ? retrievalIcon.fullText
@@ -73,9 +74,9 @@ const RuleDetail = ({
                   ? retrievalIcon.hybrid
                   : retrievalIcon.vector
             }
-            alt=''
+            alt=""
           />
-        }
+        )}
       />
     </div>
   )

@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest'
-import React from 'react'
+import type { FeatureStoreState } from '@/app/components/base/features/store'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ConfigAudio from './config-audio'
-import type { FeatureStoreState } from '@/app/components/base/features/store'
+import React from 'react'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import ConfigAudio from './config-audio'
 
 const mockUseContext = vi.fn()
 vi.mock('use-context-selector', async (importOriginal) => {

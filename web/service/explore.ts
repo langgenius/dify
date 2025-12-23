@@ -1,6 +1,6 @@
-import { del, get, patch, post } from './base'
-import type { App, AppCategory } from '@/models/explore'
 import type { AccessMode } from '@/models/access-control'
+import type { App, AppCategory } from '@/models/explore'
+import { del, get, patch, post } from './base'
 
 export const fetchAppList = () => {
   return get<{

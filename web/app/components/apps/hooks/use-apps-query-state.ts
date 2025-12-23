@@ -1,4 +1,5 @@
-import { type ReadonlyURLSearchParams, usePathname, useRouter, useSearchParams } from 'next/navigation'
+import type { ReadonlyURLSearchParams } from 'next/navigation'
+import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 
 type AppsQuery = {

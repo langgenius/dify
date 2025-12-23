@@ -10,8 +10,8 @@
 
 import { render, screen, waitFor } from '@testing-library/react'
 import { ThemeProvider } from 'next-themes'
-import useTheme from '@/hooks/use-theme'
 import { useEffect, useState } from 'react'
+import useTheme from '@/hooks/use-theme'
 
 const DARK_MODE_MEDIA_QUERY = /prefers-color-scheme:\s*dark/i
 
@@ -81,9 +81,9 @@ const setupMockEnvironment = (storedTheme: string | null, systemPrefersDark = fa
 
 // Helper function to create timing page component
 const createTimingPageComponent = (
-  timingData: Array<{ phase: string; timestamp: number; styles: { backgroundColor: string; color: string } }>,
+  timingData: Array<{ phase: string, timestamp: number, styles: { backgroundColor: string, color: string } }>,
 ) => {
-  const recordTiming = (phase: string, styles: { backgroundColor: string; color: string }) => {
+  const recordTiming = (phase: string, styles: { backgroundColor: string, color: string }) => {
     timingData.push({
       phase,
       timestamp: performance.now(),
@@ -113,7 +113,17 @@ const createTimingPageComponent = (
         style={currentStyles}
       >
         <div data-testid="timing-status">
-          Phase: {mounted ? 'CSR' : 'Initial'} | Theme: {theme} | Visual: {isDark ? 'dark' : 'light'}
+          Phase:
+          {' '}
+          {mounted ? 'CSR' : 'Initial'}
+          {' '}
+          | Theme:
+          {' '}
+          {theme}
+          {' '}
+          | Visual:
+          {' '}
+          {isDark ? 'dark' : 'light'}
         </div>
       </div>
     )
@@ -124,7 +134,7 @@ const createTimingPageComponent = (
 
 // Helper function to create CSS test component
 const createCSSTestComponent = (
-  cssStates: Array<{ className: string; timestamp: number }>,
+  cssStates: Array<{ className: string, timestamp: number }>,
 ) => {
   const recordCSSState = (className: string) => {
     cssStates.push({
@@ -151,7 +161,10 @@ const createCSSTestComponent = (
         data-testid="css-component"
         className={className}
       >
-        <div data-testid="css-classes">Classes: {className}</div>
+        <div data-testid="css-classes">
+          Classes:
+          {className}
+        </div>
       </div>
     )
   }
@@ -161,7 +174,7 @@ const createCSSTestComponent = (
 
 // Helper function to create performance test component
 const createPerformanceTestComponent = (
-  performanceMarks: Array<{ event: string; timestamp: number }>,
+  performanceMarks: Array<{ event: string, timestamp: number }>,
 ) => {
   const recordPerformanceMark = (event: string) => {
     performanceMarks.push({ event, timestamp: performance.now() })
@@ -186,7 +199,13 @@ const createPerformanceTestComponent = (
 
     return (
       <div data-testid="performance-test">
-        Mounted: {mounted.toString()} | Theme: {theme || 'loading'}
+        Mounted:
+        {' '}
+        {mounted.toString()}
+        {' '}
+        | Theme:
+        {' '}
+        {theme || 'loading'}
       </div>
     )
   }
@@ -216,10 +235,14 @@ const PageComponent = () => {
           Dify Application
         </h1>
         <div data-testid="theme-indicator">
-          Current Theme: {mounted ? theme : 'unknown'}
+          Current Theme:
+          {' '}
+          {mounted ? theme : 'unknown'}
         </div>
         <div data-testid="visual-appearance">
-          Appearance: {isDark ? 'dark' : 'light'}
+          Appearance:
+          {' '}
+          {isDark ? 'dark' : 'light'}
         </div>
       </div>
     </div>
@@ -254,7 +277,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('Page Refresh Scenario Simulation', () => {
-    test('simulates complete page loading process with dark theme', async () => {
+    it('simulates complete page loading process with dark theme', async () => {
       // Setup: User previously selected dark mode
       setupMockEnvironment('dark')
 
@@ -286,7 +309,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       console.log('State change detection: Initial -> Final')
     })
 
-    test('handles light theme correctly', async () => {
+    it('handles light theme correctly', async () => {
       setupMockEnvironment('light')
 
       render(
@@ -302,7 +325,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
     })
 
-    test('handles system theme with dark preference', async () => {
+    it('handles system theme with dark preference', async () => {
       setupMockEnvironment('system', true) // system theme, dark preference
 
       render(
@@ -318,7 +341,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: dark')
     })
 
-    test('handles system theme with light preference', async () => {
+    it('handles system theme with light preference', async () => {
       setupMockEnvironment('system', false) // system theme, light preference
 
       render(
@@ -334,7 +357,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       expect(screen.getByTestId('visual-appearance')).toHaveTextContent('Appearance: light')
     })
 
-    test('handles no stored theme (defaults to system)', async () => {
+    it('handles no stored theme (defaults to system)', async () => {
       setupMockEnvironment(null, false) // no stored theme, system prefers light
 
       render(
@@ -348,10 +371,10 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       })
     })
 
-    test('measures timing window of style changes', async () => {
+    it('measures timing window of style changes', async () => {
       setupMockEnvironment('dark')
 
-      const timingData: Array<{ phase: string; timestamp: number; styles: any }> = []
+      const timingData: Array<{ phase: string, timestamp: number, styles: any }> = []
       const TimingPageComponent = createTimingPageComponent(timingData)
 
       render(
@@ -384,10 +407,10 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('CSS Application Timing Tests', () => {
-    test('checks CSS class changes causing flicker', async () => {
+    it('checks CSS class changes causing flicker', async () => {
       setupMockEnvironment('dark')
 
-      const cssStates: Array<{ className: string; timestamp: number }> = []
+      const cssStates: Array<{ className: string, timestamp: number }> = []
       const CSSTestComponent = createCSSTestComponent(cssStates)
 
       render(
@@ -420,7 +443,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('Edge Cases and Error Handling', () => {
-    test('handles localStorage access errors gracefully', async () => {
+    it('handles localStorage access errors gracefully', async () => {
       setupMockEnvironment(null)
 
       const mockStorage = {
@@ -457,7 +480,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
       }
     })
 
-    test('handles invalid theme values in localStorage', async () => {
+    it('handles invalid theme values in localStorage', async () => {
       setupMockEnvironment('invalid-theme-value')
 
       render(
@@ -477,8 +500,8 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('Performance and Regression Tests', () => {
-    test('verifies ThemeProvider position fix reduces initialization delay', async () => {
-      const performanceMarks: Array<{ event: string; timestamp: number }> = []
+    it('verifies ThemeProvider position fix reduces initialization delay', async () => {
+      const performanceMarks: Array<{ event: string, timestamp: number }> = []
 
       setupMockEnvironment('dark')
 
@@ -507,7 +530,7 @@ describe('Real Browser Environment Dark Mode Flicker Test', () => {
   })
 
   describe('Solution Requirements Definition', () => {
-    test('defines technical requirements to eliminate flicker', () => {
+    it('defines technical requirements to eliminate flicker', () => {
       const technicalRequirements = {
         ssrConsistency: 'SSR and CSR must render identical initial styles',
         synchronousDetection: 'Theme detection must complete synchronously before first render',

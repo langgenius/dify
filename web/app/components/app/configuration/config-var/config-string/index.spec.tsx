@@ -1,5 +1,6 @@
+import type { IConfigStringProps } from './index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import ConfigString, { type IConfigStringProps } from './index'
+import ConfigString from './index'
 
 const renderConfigString = (props?: Partial<IConfigStringProps>) => {
   const onChange = vi.fn()

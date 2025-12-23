@@ -1,11 +1,3 @@
-import {
-  useCallback,
-  useRef,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import { useToastContext } from '@/app/components/base/toast'
-import { useAuthService } from './use-auth-service'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -15,20 +7,28 @@ import type {
   ModelProvider,
 } from '../../declarations'
 import {
+  useCallback,
+  useRef,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
+import {
   useModelModalHandler,
   useRefreshModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useDeleteModel } from '@/service/use-models'
+import { useAuthService } from './use-auth-service'
 
 export const useAuth = (
   provider: ModelProvider,
   configurationMethod: ConfigurationMethodEnum,
   currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
   extra: {
-    isModelCredential?: boolean,
-    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void,
-    onRemove?: (credentialId: string) => void,
-    mode?: ModelModalModeEnum,
+    isModelCredential?: boolean
+    onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
+    onRemove?: (credentialId: string) => void
+    mode?: ModelModalModeEnum
   } = {},
 ) => {
   const {
