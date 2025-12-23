@@ -164,6 +164,7 @@ class DraftRagPipelineApi(Resource):
         # return workflow, if not found, return None (initiate graph by frontend)
         return workflow
 
+    @console_ns.expect(console_ns.models[DraftWorkflowSyncPayload.__name__])
     @setup_required
     @login_required
     @account_initialization_required
