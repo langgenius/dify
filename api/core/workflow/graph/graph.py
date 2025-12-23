@@ -305,7 +305,14 @@ class Graph:
         if not node_configs:
             raise ValueError("Graph must have at least one node")
 
-        node_configs = [node_config for node_config in node_configs if node_config.get("type", "") != "custom-note"]
+        # Filter out UI-only node types:
+        # - custom-note: top-level type (node_config.type == "custom-note")
+        # - group: data-level type (node_config.data.type == "group")
+        node_configs = [
+            node_config for node_config in node_configs
+            if node_config.get("type", "") != "custom-note"
+            and node_config.get("data", {}).get("type", "") != "group"
+        ]
 
         # Parse node configurations
         node_configs_map = cls._parse_node_configs(node_configs)
