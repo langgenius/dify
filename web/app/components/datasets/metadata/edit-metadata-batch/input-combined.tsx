@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { DataType } from '../types'
+import * as React from 'react'
 import Input from '@/app/components/base/input'
 import { InputNumber } from '@/app/components/base/input-number'
 import { cn } from '@/utils/classnames'
 import Datepicker from '../base/date-picker'
+import { DataType } from '../types'
 
 type Props = {
   className?: string
@@ -35,14 +35,14 @@ const InputCombined: FC<Props> = ({
 
   if (type === DataType.number) {
     return (
-      <div className='grow text-[0]'>
+      <div className="grow text-[0]">
         <InputNumber
           className={cn(className, 'rounded-l-md')}
           value={value}
           onChange={onChange}
-          size='regular'
-          controlWrapClassName='overflow-hidden'
-          controlClassName='pt-0 pb-0'
+          size="regular"
+          controlWrapClassName="overflow-hidden"
+          controlClassName="pt-0 pb-0"
           readOnly={readOnly}
         />
       </div>

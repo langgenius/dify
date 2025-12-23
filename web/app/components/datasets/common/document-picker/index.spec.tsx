@@ -1,7 +1,7 @@
-import React from 'react'
+import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
-import type { ParentMode, SimpleDocumentDetail } from '@/models/datasets'
+import * as React from 'react'
 import { ChunkingMode, DataSourceType } from '@/models/datasets'
 import DocumentPicker from './index'
 
@@ -127,8 +127,7 @@ const createMockDocumentList = (count: number): SimpleDocumentDetail[] => {
           extension: 'pdf',
         },
       },
-    }),
-  )
+    }))
 }
 
 // Factory function to create props
@@ -872,7 +871,7 @@ describe('DocumentPicker', () => {
         { mode: ChunkingMode.parentChild, label: 'dataset.chunkingMode.parentChild' },
       ]
 
-      test.each(chunkingModes)(
+      it.each(chunkingModes)(
         'should display correct label for $mode mode',
         ({ mode, label }) => {
           renderComponent({
@@ -890,12 +889,12 @@ describe('DocumentPicker', () => {
     })
 
     describe('value.parentMode variations', () => {
-      const parentModes: Array<{ mode: ParentMode; label: string }> = [
+      const parentModes: Array<{ mode: ParentMode, label: string }> = [
         { mode: 'paragraph', label: 'dataset.parentMode.paragraph' },
         { mode: 'full-doc', label: 'dataset.parentMode.fullDoc' },
       ]
 
-      test.each(parentModes)(
+      it.each(parentModes)(
         'should display correct label for $mode parentMode',
         ({ mode, label }) => {
           renderComponent({
@@ -915,7 +914,7 @@ describe('DocumentPicker', () => {
     describe('value.extension variations', () => {
       const extensions = ['txt', 'pdf', 'docx', 'xlsx', 'csv', 'md', 'html']
 
-      test.each(extensions)('should handle %s extension', (ext) => {
+      it.each(extensions)('should handle %s extension', (ext) => {
         renderComponent({
           value: {
             name: `File.${ext}`,

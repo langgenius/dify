@@ -1,19 +1,20 @@
 'use client'
-import type { PeriodParams, PeriodParamsWithTimeRange } from '@/app/components/app/overview/app-chart'
-import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
 import type { Dayjs } from 'dayjs'
-import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
-import RangeSelector from './range-selector'
-import DatePicker from './date-picker'
+import type { FC } from 'react'
+import type { PeriodParams, PeriodParamsWithTimeRange } from '@/app/components/app/overview/app-chart'
 import dayjs from 'dayjs'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
 import { useI18N } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
+import DatePicker from './date-picker'
+import RangeSelector from './range-selector'
 
 const today = dayjs()
 
 type Props = {
-  ranges: { value: number; name: string }[]
+  ranges: { value: number, name: string }[]
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
 }
@@ -44,9 +45,12 @@ const TimeRangePicker: FC<Props> = ({
 
   const handleDateChange = useCallback((type: 'start' | 'end') => {
     return (date?: Dayjs) => {
-      if (!date) return
-      if (type === 'start' && date.isSame(start)) return
-      if (type === 'end' && date.isSame(end)) return
+      if (!date)
+        return
+      if (type === 'start' && date.isSame(start))
+        return
+      if (type === 'end' && date.isSame(end))
+        return
       if (type === 'start')
         setStart(date)
       else
@@ -67,13 +71,13 @@ const TimeRangePicker: FC<Props> = ({
   }, [start, end, onSelect, locale, queryDateFormat])
 
   return (
-    <div className='flex items-center'>
+    <div className="flex items-center">
       <RangeSelector
         isCustomRange={isCustomRange}
         ranges={ranges}
         onSelect={handleRangeChange}
       />
-      <HourglassShape className='h-3.5 w-2 text-components-input-bg-normal' />
+      <HourglassShape className="h-3.5 w-2 text-components-input-bg-normal" />
       <DatePicker
         start={start}
         end={end}

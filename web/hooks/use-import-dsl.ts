@@ -1,25 +1,25 @@
+import type {
+  DSLImportMode,
+  DSLImportResponse,
+} from '@/models/app'
+import type { AppIconType } from '@/types/app'
+import { useRouter } from 'next/navigation'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
-import type {
-  DSLImportMode,
-  DSLImportResponse,
-} from '@/models/app'
+import { useToastContext } from '@/app/components/base/toast'
+import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
+import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { useSelector } from '@/context/app-context'
 import { DSLImportStatus } from '@/models/app'
 import {
   importDSL,
   importDSLConfirm,
 } from '@/service/apps'
-import type { AppIconType } from '@/types/app'
-import { useToastContext } from '@/app/components/base/toast'
-import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { getRedirection } from '@/utils/app-redirection'
-import { useSelector } from '@/context/app-context'
-import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 
 type DSLPayload = {
   mode: DSLImportMode
@@ -43,7 +43,7 @@ export const useImportDSL = () => {
   const { handleCheckPluginDependencies } = usePluginDependencies()
   const isCurrentWorkspaceEditor = useSelector(s => s.isCurrentWorkspaceEditor)
   const { push } = useRouter()
-  const [versions, setVersions] = useState<{ importedVersion: string; systemVersion: string }>()
+  const [versions, setVersions] = useState<{ importedVersion: string, systemVersion: string }>()
   const importIdRef = useRef<string>('')
 
   const handleImportDSL = useCallback(async (

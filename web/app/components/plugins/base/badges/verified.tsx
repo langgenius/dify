@@ -1,8 +1,8 @@
 import type { FC } from 'react'
-import IconWithTooltip from './icon-with-tooltip'
 import VerifiedDark from '@/app/components/base/icons/src/public/plugins/VerifiedDark'
 import VerifiedLight from '@/app/components/base/icons/src/public/plugins/VerifiedLight'
 import useTheme from '@/hooks/use-theme'
+import IconWithTooltip from './icon-with-tooltip'
 
 type VerifiedProps = {
   className?: string

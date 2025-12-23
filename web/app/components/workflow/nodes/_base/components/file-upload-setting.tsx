@@ -1,18 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
 import type { UploadFileSetting } from '../../../types'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import Field from '@/app/components/app/configuration/config-var/config-modal/field'
+import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
+import { useFileUploadConfig } from '@/service/use-common'
+import { TransferMethod } from '@/types/app'
+import { formatFileSize } from '@/utils/format'
 import { SupportUploadFileTypes } from '../../../types'
-import OptionCard from './option-card'
 import FileTypeItem from './file-type-item'
 import InputNumberWithSlider from './input-number-with-slider'
-import Field from '@/app/components/app/configuration/config-var/config-modal/field'
-import { TransferMethod } from '@/types/app'
-import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
-import { formatFileSize } from '@/utils/format'
-import { useFileUploadConfig } from '@/service/use-common'
+import OptionCard from './option-card'
 
 type Props = {
   payload: UploadFileSetting
@@ -100,7 +101,7 @@ const FileUploadSetting: FC<Props> = ({
         <Field
           title={t('appDebug.variableConfig.file.supportFileTypes')}
         >
-          <div className='space-y-1'>
+          <div className="space-y-1">
             {
               [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
                 <FileTypeItem
@@ -123,9 +124,9 @@ const FileUploadSetting: FC<Props> = ({
       )}
       <Field
         title={t('appDebug.variableConfig.uploadFileTypes')}
-        className='mt-4'
+        className="mt-4"
       >
-        <div className='grid grid-cols-3 gap-2'>
+        <div className="grid grid-cols-3 gap-2">
           <OptionCard
             title={t('appDebug.variableConfig.localUpload')}
             selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.local_file)}
@@ -145,16 +146,18 @@ const FileUploadSetting: FC<Props> = ({
       </Field>
       {isMultiple && (
         <Field
-          className='mt-4'
+          className="mt-4"
           title={t('appDebug.variableConfig.maxNumberOfUploads')!}
         >
           <div>
-            <div className='body-xs-regular mb-1.5 text-text-tertiary'>{t('appDebug.variableConfig.maxNumberTip', {
-              imgLimit: formatFileSize(imgSizeLimit),
-              docLimit: formatFileSize(docSizeLimit),
-              audioLimit: formatFileSize(audioSizeLimit),
-              videoLimit: formatFileSize(videoSizeLimit),
-            })}</div>
+            <div className="body-xs-regular mb-1.5 text-text-tertiary">
+              {t('appDebug.variableConfig.maxNumberTip', {
+                imgLimit: formatFileSize(imgSizeLimit),
+                docLimit: formatFileSize(docSizeLimit),
+                audioLimit: formatFileSize(audioSizeLimit),
+                videoLimit: formatFileSize(videoSizeLimit),
+              })}
+            </div>
 
             <InputNumberWithSlider
               value={max_length}
@@ -168,9 +171,9 @@ const FileUploadSetting: FC<Props> = ({
       {inFeaturePanel && !hideSupportFileType && (
         <Field
           title={t('appDebug.variableConfig.file.supportFileTypes')}
-          className='mt-4'
+          className="mt-4"
         >
-          <div className='space-y-1'>
+          <div className="space-y-1">
             {
               [SupportUploadFileTypes.document, SupportUploadFileTypes.image, SupportUploadFileTypes.audio, SupportUploadFileTypes.video].map((type: SupportUploadFileTypes) => (
                 <FileTypeItem

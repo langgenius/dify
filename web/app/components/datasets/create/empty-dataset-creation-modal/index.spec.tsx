@@ -1,9 +1,9 @@
 import type { MockedFunction } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import EmptyDatasetCreationModal from './index'
+import * as React from 'react'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import EmptyDatasetCreationModal from './index'
 
 // Mock Next.js router
 const mockPush = vi.fn()
@@ -38,7 +38,7 @@ const mockInvalidDatasetList = vi.fn()
 const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<typeof useInvalidDatasetList>
 
 // Test data builder for props
-const createDefaultProps = (overrides?: Partial<{ show: boolean; onHide: () => void }>) => ({
+const createDefaultProps = (overrides?: Partial<{ show: boolean, onHide: () => void }>) => ({
   show: true,
   onHide: vi.fn(),
   ...overrides,

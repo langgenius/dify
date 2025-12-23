@@ -1,8 +1,10 @@
 import { useMemo } from 'react'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { BubbleX, Env, GlobalVariable } from '@/app/components/base/icons/src/vender/line/others'
-import { Loop } from '@/app/components/base/icons/src/vender/workflow'
 import { InputField } from '@/app/components/base/icons/src/vender/pipeline'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import { Loop } from '@/app/components/base/icons/src/vender/workflow'
+import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
+import { VarInInspectType } from '@/types/workflow'
 import {
   isConversationVar,
   isENV,
@@ -10,8 +12,6 @@ import {
   isRagVariableVar,
   isSystemVar,
 } from '../utils'
-import { VarInInspectType } from '@/types/workflow'
-import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
 
 export const useVarIcon = (variables: string[], variableCategory?: VarInInspectType | string) => {
   if (variableCategory === 'loop')

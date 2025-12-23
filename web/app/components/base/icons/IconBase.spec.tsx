@@ -1,6 +1,6 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
 import type { IconData } from './IconBase'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import IconBase from './IconBase'
 import * as utils from './utils'
 

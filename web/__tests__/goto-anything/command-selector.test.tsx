@@ -1,7 +1,7 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import CommandSelector from '../../app/components/goto-anything/command-selector'
 import type { ActionItem } from '../../app/components/goto-anything/actions/types'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import CommandSelector from '../../app/components/goto-anything/command-selector'
 
 vi.mock('cmdk', () => ({
   Command: {

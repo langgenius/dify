@@ -1,10 +1,10 @@
 import type { MockedFunction } from 'vitest'
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Button from './button'
-import { SelfHostedPlan } from '../../../type'
+import * as React from 'react'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { SelfHostedPlan } from '../../../type'
+import Button from './button'
 
 vi.mock('@/hooks/use-theme')
 
@@ -16,7 +16,7 @@ beforeEach(() => {
 })
 
 describe('SelfHostedPlanButton', () => {
-  test('should invoke handler when clicked', () => {
+  it('should invoke handler when clicked', () => {
     const handleGetPayUrl = vi.fn()
     render(
       <Button
@@ -29,7 +29,7 @@ describe('SelfHostedPlanButton', () => {
     expect(handleGetPayUrl).toHaveBeenCalledTimes(1)
   })
 
-  test.each([
+  it.each([
     { label: 'light', theme: Theme.light },
     { label: 'dark', theme: Theme.dark },
   ])('should render premium button label when theme is $label', ({ theme }) => {

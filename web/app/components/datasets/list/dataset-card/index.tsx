@@ -1,27 +1,28 @@
 'use client'
-import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
-import type { DataSet } from '@/models/datasets'
-import { useSelector as useAppContextWithSelector } from '@/context/app-context'
-import { useKnowledge } from '@/hooks/use-knowledge'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import type { Tag } from '@/app/components/base/tag-management/constant'
-import TagSelector from '@/app/components/base/tag-management/selector'
-import { cn } from '@/utils/classnames'
-import { useHover } from 'ahooks'
+import type { DataSet } from '@/models/datasets'
 import { RiFileTextFill, RiMoreFill, RiRobot2Fill } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
-import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
-import RenameDatasetModal from '../../rename-modal'
-import Confirm from '@/app/components/base/confirm'
-import Toast from '@/app/components/base/toast'
-import CustomPopover from '@/app/components/base/popover'
-import Operations from './operations'
+import { useHover } from 'ahooks'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
+import Confirm from '@/app/components/base/confirm'
 import CornerLabel from '@/app/components/base/corner-label'
-import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
-import { useExportPipelineDSL } from '@/service/use-pipeline'
+import CustomPopover from '@/app/components/base/popover'
+import TagSelector from '@/app/components/base/tag-management/selector'
+import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import { useSelector as useAppContextWithSelector } from '@/context/app-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useKnowledge } from '@/hooks/use-knowledge'
+import { DOC_FORM_ICON_WITH_BG, DOC_FORM_TEXT } from '@/models/datasets'
+import { checkIsUsedInApp, deleteDataset } from '@/service/datasets'
+import { useExportPipelineDSL } from '@/service/use-pipeline'
+import { cn } from '@/utils/classnames'
+import RenameDatasetModal from '../../rename-modal'
+import Operations from './operations'
 
 const EXTERNAL_PROVIDER = 'external'
 
@@ -156,7 +157,7 @@ const DatasetCard = ({
   return (
     <>
       <div
-        className='group relative col-span-1 flex h-[190px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5'
+        className="group relative col-span-1 flex h-[190px] cursor-pointer flex-col rounded-xl border-[0.5px] border-solid border-components-card-border bg-components-card-bg shadow-xs shadow-shadow-shadow-3 transition-all duration-200 ease-in-out hover:bg-components-card-bg-alt hover:shadow-md hover:shadow-shadow-shadow-5"
         data-disable-nprogress={true}
         onClick={(e) => {
           e.preventDefault()
@@ -171,49 +172,51 @@ const DatasetCard = ({
         {!dataset.embedding_available && (
           <CornerLabel
             label={t('dataset.cornerLabel.unavailable')}
-            className='absolute right-0 top-0 z-10'
-            labelClassName='rounded-tr-xl' />
+            className="absolute right-0 top-0 z-10"
+            labelClassName="rounded-tr-xl"
+          />
         )}
         {dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline' && (
           <CornerLabel
             label={t('dataset.cornerLabel.pipeline')}
-            className='absolute right-0 top-0 z-10'
-            labelClassName='rounded-tr-xl' />
+            className="absolute right-0 top-0 z-10"
+            labelClassName="rounded-tr-xl"
+          />
         )}
         <div className={cn('flex items-center gap-x-3 px-4 pb-2 pt-4', !dataset.embedding_available && 'opacity-30')}>
-          <div className='relative shrink-0'>
+          <div className="relative shrink-0">
             <AppIcon
-              size='large'
+              size="large"
               iconType={iconInfo.icon_type}
               icon={iconInfo.icon}
               background={iconInfo.icon_type === 'image' ? undefined : iconInfo.icon_background}
               imageUrl={iconInfo.icon_type === 'image' ? iconInfo.icon_url : undefined}
             />
             {(isShowChunkingModeIcon || isExternalProvider) && (
-              <div className='absolute -bottom-1 -right-1 z-[5]'>
-                <Icon className='size-4' />
+              <div className="absolute -bottom-1 -right-1 z-[5]">
+                <Icon className="size-4" />
               </div>
             )}
           </div>
-          <div className='flex grow flex-col gap-y-1 overflow-hidden py-px'>
+          <div className="flex grow flex-col gap-y-1 overflow-hidden py-px">
             <div
-              className='system-md-semibold truncate text-text-secondary'
+              className="system-md-semibold truncate text-text-secondary"
               title={dataset.name}
             >
               {dataset.name}
             </div>
-            <div className='flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary'>
-              <div className='truncate' title={dataset.author_name}>{dataset.author_name}</div>
+            <div className="flex items-center gap-1 text-[10px] font-medium leading-[18px] text-text-tertiary">
+              <div className="truncate" title={dataset.author_name}>{dataset.author_name}</div>
               <div>·</div>
-              <div className='truncate' title={editTimeText}>{editTimeText}</div>
+              <div className="truncate" title={editTimeText}>{editTimeText}</div>
             </div>
-            <div className='system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary'>
+            <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
               {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
               {!isExternalProvider && isShowDocModeInfo && (
                 <>
                   {dataset.doc_form && (
                     <span
-                      className='min-w-0 max-w-full truncate'
+                      className="min-w-0 max-w-full truncate"
                       title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
                     >
                       {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
@@ -221,7 +224,7 @@ const DatasetCard = ({
                   )}
                   {dataset.indexing_technique && (
                     <span
-                      className='min-w-0 max-w-full truncate'
+                      className="min-w-0 max-w-full truncate"
                       title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
                     >
                       {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
@@ -229,7 +232,7 @@ const DatasetCard = ({
                   )}
                   {dataset.is_multimodal && (
                     <span
-                      className='min-w-0 max-w-full truncate'
+                      className="min-w-0 max-w-full truncate"
                       title={t('dataset.multimodal')}
                     >
                       {t('dataset.multimodal')}
@@ -261,8 +264,8 @@ const DatasetCard = ({
             )}
           >
             <TagSelector
-              position='bl'
-              type='knowledge'
+              position="bl"
+              type="knowledge"
               targetID={dataset.id}
               value={tags.map(tag => tag.id)}
               selectedTags={tags}
@@ -284,26 +287,26 @@ const DatasetCard = ({
             !dataset.embedding_available && 'opacity-30',
           )}
         >
-          <Tooltip popupContent={documentCountTooltip} >
-            <div className='flex items-center gap-x-1'>
-              <RiFileTextFill className='size-3 text-text-quaternary' />
-              <span className='system-xs-medium'>{documentCount}</span>
+          <Tooltip popupContent={documentCountTooltip}>
+            <div className="flex items-center gap-x-1">
+              <RiFileTextFill className="size-3 text-text-quaternary" />
+              <span className="system-xs-medium">{documentCount}</span>
             </div>
           </Tooltip>
           {!isExternalProvider && (
             <Tooltip popupContent={`${dataset.app_count} ${t('dataset.appCount')}`}>
-              <div className='flex items-center gap-x-1'>
-                <RiRobot2Fill className='size-3 text-text-quaternary' />
-                <span className='system-xs-medium'>{dataset.app_count}</span>
+              <div className="flex items-center gap-x-1">
+                <RiRobot2Fill className="size-3 text-text-quaternary" />
+                <span className="system-xs-medium">{dataset.app_count}</span>
               </div>
             </Tooltip>
           )}
-          <span className='system-xs-regular text-divider-deep'>/</span>
-          <span className='system-xs-regular'>{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
+          <span className="system-xs-regular text-divider-deep">/</span>
+          <span className="system-xs-regular">{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
         </div>
-        <div className='absolute right-2 top-2 z-[15] hidden group-hover:block'>
+        <div className="absolute right-2 top-2 z-[15] hidden group-hover:block">
           <CustomPopover
-            htmlContent={
+            htmlContent={(
               <Operations
                 showDelete={!isCurrentWorkspaceDatasetOperator}
                 showExportPipeline={dataset.runtime_mode === 'rag_pipeline'}
@@ -311,22 +314,21 @@ const DatasetCard = ({
                 handleExportPipeline={handleExportPipeline}
                 detectIsUsedByApp={detectIsUsedByApp}
               />
-            }
-            className={'z-20 min-w-[186px]'}
-            popupClassName={'rounded-xl bg-none shadow-none ring-0 min-w-[186px]'}
-            position='br'
-            trigger='click'
-            btnElement={
-              <div className='flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover'>
-                <RiMoreFill className='h-5 w-5 text-text-tertiary' />
+            )}
+            className="z-20 min-w-[186px]"
+            popupClassName="rounded-xl bg-none shadow-none ring-0 min-w-[186px]"
+            position="br"
+            trigger="click"
+            btnElement={(
+              <div className="flex size-8 items-center justify-center rounded-[10px] hover:bg-state-base-hover">
+                <RiMoreFill className="h-5 w-5 text-text-tertiary" />
               </div>
-            }
+            )}
             btnClassName={open =>
               cn(
                 'size-9 cursor-pointer justify-center rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0 shadow-lg shadow-shadow-shadow-5 ring-[2px] ring-inset ring-components-actionbar-bg hover:border-components-actionbar-border',
                 open ? 'border-components-actionbar-border bg-state-base-hover' : '',
-              )
-            }
+              )}
           />
         </div>
       </div>

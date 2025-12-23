@@ -1,14 +1,14 @@
+import type * as React from 'react'
 import type { MockedFunction } from 'vitest'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
 import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Item from './index'
-import type React from 'react'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission } from '@/models/datasets'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
+import Item from './index'
 
 vi.mock('../settings-modal', () => ({
   __esModule: true,

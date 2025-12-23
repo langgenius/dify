@@ -1,15 +1,16 @@
 import type { CSSProperties } from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import DebugWithMultipleModel from './index'
-import type { DebugWithMultipleModelContextType } from './context'
-import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
 import type { ModelAndParameter } from '../types'
-import type { Inputs, ModelConfig } from '@/models/debug'
-import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import type { DebugWithMultipleModelContextType } from './context'
+import type { InputForm } from '@/app/components/base/chat/chat/type'
 import type { FeatureStoreState } from '@/app/components/base/features/store'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
-import type { InputForm } from '@/app/components/base/chat/chat/type'
-import { AppModeEnum, ModelModeType, type PromptVariable, Resolution, TransferMethod } from '@/types/app'
+import type { Inputs, ModelConfig } from '@/models/debug'
+import type { PromptVariable } from '@/types/app'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
+import { AppModeEnum, ModelModeType, Resolution, TransferMethod } from '@/types/app'
+import { APP_CHAT_WITH_MULTIPLE_MODEL } from '../types'
+import DebugWithMultipleModel from './index'
 
 type PromptVariableWithMeta = Omit<PromptVariable, 'type' | 'required'> & {
   type: PromptVariable['type'] | 'api'
@@ -82,12 +83,13 @@ vi.mock('./debug-item', () => ({
     style?: CSSProperties
   }) => (
     <div
-      data-testid='debug-item'
+      data-testid="debug-item"
       data-model-id={modelAndParameter.id}
       className={className}
       style={style}
     >
-      DebugItem-{modelAndParameter.id}
+      DebugItem-
+      {modelAndParameter.id}
     </div>
   ),
 }))
@@ -97,9 +99,9 @@ vi.mock('@/app/components/base/chat/chat/chat-input-area', () => ({
   default: (props: MockChatInputAreaProps) => {
     capturedChatInputProps = props
     return (
-      <div data-testid='chat-input-area'>
-        <button type='button' onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
-        <button type='button' onClick={() => props.onFeatureBarClick?.(true)}>feature</button>
+      <div data-testid="chat-input-area">
+        <button type="button" onClick={() => props.onSend?.('test message', mockFiles)}>send</button>
+        <button type="button" onClick={() => props.onFeatureBarClick?.(true)}>feature</button>
       </div>
     )
   },
@@ -558,9 +560,12 @@ describe('DebugWithMultipleModel', () => {
       expect(singleItem.style.width).toBe('')
 
       // Change to 2 models
-      rerender(<DebugWithMultipleModel {...createProps({
-        multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
-      })} />)
+      rerender(
+        <DebugWithMultipleModel {...createProps({
+          multipleModelConfigs: [createModelAndParameter(), createModelAndParameter()],
+        })}
+        />,
+      )
 
       const twoItems = screen.getAllByTestId('debug-item')
       expect(twoItems[0].style.width).toBe('calc(50% - 28px)')

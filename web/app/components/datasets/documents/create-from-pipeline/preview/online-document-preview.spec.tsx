@@ -1,9 +1,8 @@
-import { render, screen, waitFor } from '@testing-library/react'
-import { fireEvent } from '@testing-library/react'
-import React from 'react'
-import OnlineDocumentPreview from './online-document-preview'
 import type { NotionPage } from '@/models/common'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import Toast from '@/app/components/base/toast'
+import OnlineDocumentPreview from './online-document-preview'
 
 // Uses global react-i18next mock from web/vitest.setup.ts
 
