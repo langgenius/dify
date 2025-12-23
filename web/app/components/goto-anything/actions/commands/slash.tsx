@@ -20,7 +20,8 @@ export const slashAction: ActionItem = {
   title: i18n.t('app.gotoAnything.actions.slashTitle'),
   description: i18n.t('app.gotoAnything.actions.slashDesc'),
   action: (result) => {
-    if (result.type !== 'command') return
+    if (result.type !== 'command')
+      return
     const { command, args } = result.data
     executeCommand(command, args)
   },

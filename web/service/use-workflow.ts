@@ -31,7 +31,8 @@ export const useInvalidateAppWorkflow = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'publish', appID],
-      })
+      },
+    )
   }
 }
 

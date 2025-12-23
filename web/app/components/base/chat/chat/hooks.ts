@@ -632,7 +632,8 @@ export const useChat = (
             parentId: data.parent_message_id,
           })
         },
-      })
+      },
+    )
     return true
   }, [
     t,

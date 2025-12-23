@@ -37,7 +37,8 @@ const TestApi: FC<Props> = ({
   const { operation_id: toolName, parameters } = tool
   const [parametersValue, setParametersValue] = useState<Record<string, string>>({})
   const handleTest = async () => {
-    if (testing) return
+    if (testing)
+      return
     setTesting(true)
     // clone test schema
     const credentials = JSON.parse(JSON.stringify(tempCredential)) as Credential

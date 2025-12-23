@@ -7,10 +7,14 @@ import TimePicker from './index'
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
-      if (key === 'time.defaultPlaceholder') return 'Pick a time...'
-      if (key === 'time.operation.now') return 'Now'
-      if (key === 'time.operation.ok') return 'OK'
-      if (key === 'common.operation.clear') return 'Clear'
+      if (key === 'time.defaultPlaceholder')
+        return 'Pick a time...'
+      if (key === 'time.operation.now')
+        return 'Now'
+      if (key === 'time.operation.ok')
+        return 'OK'
+      if (key === 'common.operation.clear')
+        return 'Clear'
       return key
     },
   }),

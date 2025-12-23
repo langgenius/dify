@@ -28,7 +28,8 @@ function parseArgs(argv) {
     let cursor = startIndex + 1
     while (cursor < argv.length && !argv[cursor].startsWith('--')) {
       const value = argv[cursor].trim()
-      if (value) values.push(value)
+      if (value)
+        values.push(value)
       cursor++
     }
     return { values, nextIndex: cursor - 1 }
@@ -125,8 +126,7 @@ async function getKeysFromLanguage(language) {
         const filePath = path.join(folderPath, file)
         const fileName = file.replace(/\.[^/.]+$/, '') // Remove file extension
         const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) =>
-          c.toUpperCase(),
-        ) // Convert to camel case
+          c.toUpperCase()) // Convert to camel case
 
         try {
           const content = fs.readFileSync(filePath, 'utf8')
@@ -318,8 +318,9 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
               // Check if this line ends the value (ends with quote and comma/no comma)
               if ((trimmed.endsWith('\',') || trimmed.endsWith('",') || trimmed.endsWith('`,')
                 || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
-              && !trimmed.startsWith('//'))
+              && !trimmed.startsWith('//')) {
                 break
+              }
             }
             else {
               break
@@ -440,7 +441,8 @@ async function main() {
           let totalRemoved = 0
           for (const fileName of files) {
             const removed = await removeExtraKeysFromFile(language, fileName, extraKeys)
-            if (removed) totalRemoved++
+            if (removed)
+              totalRemoved++
           }
 
           console.log(`✅ Auto-removal completed for ${language}. Modified ${totalRemoved} files.`)

@@ -21,7 +21,8 @@ const IterationLogTrigger = ({
   const { t } = useTranslation()
 
   const filterNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
+    if (!allExecutions)
+      return []
 
     const parallelNodes = allExecutions.filter(exec =>
       exec.execution_metadata?.parallel_mode_run_id === key,
@@ -118,8 +119,9 @@ const IterationLogTrigger = ({
       allExecutions.forEach((exec) => {
         if (exec.execution_metadata?.iteration_id === nodeInfo.node_id
           && exec.status === NodeRunningStatus.Failed
-          && exec.execution_metadata?.iteration_index !== undefined)
+          && exec.execution_metadata?.iteration_index !== undefined) {
           failedIterationIndices.add(exec.execution_metadata.iteration_index)
+        }
       })
     }
 

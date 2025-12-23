@@ -58,7 +58,8 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
         onSuccess() {
           handleUpdatedFromMarketplace()
         },
-      })
+      },
+    )
   }
   const { t } = useTranslation()
 

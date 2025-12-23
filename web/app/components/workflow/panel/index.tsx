@@ -44,7 +44,8 @@ const useResizeObserver = (
 
   useEffect(() => {
     const element = elementRef.current
-    if (!element) return
+    if (!element)
+      return
 
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {

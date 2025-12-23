@@ -85,7 +85,8 @@ const RunOnce: FC<IRunOnceProps> = ({
   }, [onInputsChange, inputsRef])
 
   useEffect(() => {
-    if (isInitialized) return
+    if (isInitialized)
+      return
     const newInputs: Record<string, any> = {}
     promptConfig.prompt_variables.forEach((item) => {
       if (item.type === 'select')

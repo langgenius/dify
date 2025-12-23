@@ -53,8 +53,9 @@ export const useSelectOrDelete: UseSelectOrDeleteHandler = (nodeKey: string, com
           || ($isHistoryBlockNode(nodes[0]) && command === DELETE_HISTORY_BLOCK_COMMAND)
           || ($isQueryBlockNode(nodes[0]) && command === DELETE_QUERY_BLOCK_COMMAND)
         )
-      )
+      ) {
         editor.dispatchCommand(command, undefined)
+      }
 
       if (isSelected && $isNodeSelection(selection)) {
         event.preventDefault()

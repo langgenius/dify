@@ -126,7 +126,8 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     // Remove variables that no longer exist in newData for this specific source type
     draft.variables = draft.variables.filter((v) => {
       // Keep variables from other sources
-      if (v.label !== sourceType) return true
+      if (v.label !== sourceType)
+        return true
       return newVarNames.has(v.variable)
     })
 

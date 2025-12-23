@@ -29,9 +29,7 @@ const ParameterTable: FC<ParameterTableProps> = ({
 
   // Memoize typeOptions to prevent unnecessary re-renders that cause SimpleSelect state resets
   const typeOptions = useMemo(() =>
-    createParameterTypeOptions(contentType),
-  [contentType],
-  )
+    createParameterTypeOptions(contentType), [contentType])
 
   // Define columns based on component type - matching prototype design
   const columns: ColumnConfig[] = [

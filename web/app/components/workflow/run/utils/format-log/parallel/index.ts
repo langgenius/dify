@@ -12,7 +12,9 @@ function printNodeStructure(node: NodeTracing, depth: number) {
 }
 
 function addTitle({
-  list, depth, belongParallelIndexInfo,
+  list,
+  depth,
+  belongParallelIndexInfo,
 }: {
   list: NodeTracing[]
   depth: number

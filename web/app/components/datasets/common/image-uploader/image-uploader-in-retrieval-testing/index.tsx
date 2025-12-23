@@ -9,7 +9,8 @@ import ImagePreviewer from '@/app/components/datasets/common/image-previewer'
 import { cn } from '@/utils/classnames'
 import { useUpload } from '../hooks/use-upload'
 import {
-  FileContextProvider, useFileStoreWithSelector,
+  FileContextProvider,
+  useFileStoreWithSelector,
 } from '../store'
 import ImageInput from './image-input'
 import ImageItem from './image-item'
@@ -42,7 +43,8 @@ const ImageUploaderInRetrievalTesting = ({
 
   const handleImagePreview = useCallback((fileId: string) => {
     const index = files.findIndex(item => item.id === fileId)
-    if (index === -1) return
+    if (index === -1)
+      return
     setPreviewIndex(index)
     setPreviewImages(files.map(item => ({
       url: item.base64Url || item.sourceUrl || '',

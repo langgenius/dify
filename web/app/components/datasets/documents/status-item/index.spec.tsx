@@ -831,8 +831,14 @@ describe('StatusItem', () => {
     it('should handle all status types in sequence', () => {
       // Arrange
       const statuses: DocumentDisplayStatus[] = [
-        'queuing', 'indexing', 'paused', 'error',
-        'available', 'enabled', 'disabled', 'archived',
+        'queuing',
+        'indexing',
+        'paused',
+        'error',
+        'available',
+        'enabled',
+        'disabled',
+        'archived',
       ]
 
       // Act & Assert

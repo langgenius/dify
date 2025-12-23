@@ -64,12 +64,14 @@ const Right = ({
   } = useCurrentVars()
 
   const handleValueChange = (varId: string, value: any) => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar)
+      return
     editInspectVarValue(currentNodeVar.nodeId, varId, value)
   }
 
   const resetValue = () => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar)
+      return
     resetToLastRunVar(currentNodeVar.nodeId, currentNodeVar.var.id)
   }
 
@@ -79,7 +81,8 @@ const Right = ({
   }
 
   const handleClear = () => {
-    if (!currentNodeVar) return
+    if (!currentNodeVar)
+      return
     resetConversationVar(currentNodeVar.var.id)
   }
 

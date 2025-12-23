@@ -117,9 +117,7 @@ export default function Compliance() {
         ({ open }) => (
           <>
             <MenuButton className={
-              cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover',
-                open && 'bg-state-base-hover',
-              )
+              cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')
             }
             >
               <RiVerifiedBadgeLine className="size-4 shrink-0 text-text-tertiary" />
@@ -145,9 +143,7 @@ export default function Compliance() {
                 <div className="px-1 py-1">
                   <MenuItem>
                     <div
-                      className={cn(itemClassName, 'group justify-between',
-                        'data-[active]:bg-state-base-hover',
-                      )}
+                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Soc2 className="size-7 shrink-0" />
                       <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.soc2Type1')}</div>
@@ -156,9 +152,7 @@ export default function Compliance() {
                   </MenuItem>
                   <MenuItem>
                     <div
-                      className={cn(itemClassName, 'group justify-between',
-                        'data-[active]:bg-state-base-hover',
-                      )}
+                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Soc2 className="size-7 shrink-0" />
                       <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.soc2Type2')}</div>
@@ -167,9 +161,7 @@ export default function Compliance() {
                   </MenuItem>
                   <MenuItem>
                     <div
-                      className={cn(itemClassName, 'group justify-between',
-                        'data-[active]:bg-state-base-hover',
-                      )}
+                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Iso className="size-7 shrink-0" />
                       <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.iso27001')}</div>
@@ -178,9 +170,7 @@ export default function Compliance() {
                   </MenuItem>
                   <MenuItem>
                     <div
-                      className={cn(itemClassName, 'group justify-between',
-                        'data-[active]:bg-state-base-hover',
-                      )}
+                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Gdpr className="size-7 shrink-0" />
                       <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.gdpr')}</div>

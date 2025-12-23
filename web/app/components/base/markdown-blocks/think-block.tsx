@@ -44,7 +44,8 @@ const useThinkTimer = (children: any) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    if (isComplete) return
+    if (isComplete)
+      return
 
     timerRef.current = setInterval(() => {
       setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)

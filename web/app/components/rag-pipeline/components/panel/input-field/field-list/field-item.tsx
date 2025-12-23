@@ -37,13 +37,15 @@ const FieldItem = ({
 
   const handleOnClickEdit = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    if (readonly) return
+    if (readonly)
+      return
     onClickEdit(payload.variable)
   }, [onClickEdit, payload.variable, readonly])
 
   const handleRemove = useCallback((e: React.MouseEvent) => {
     e.stopPropagation()
-    if (readonly) return
+    if (readonly)
+      return
     onRemove(index)
   }, [index, onRemove, readonly])
 

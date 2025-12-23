@@ -48,18 +48,21 @@ const ImagePreviewer = ({
   const fetchImage = useCallback(async (image: ImageInfo) => {
     const { url } = image
     // Skip if already cached
-    if (imageCache.has(url)) return
+    if (imageCache.has(url))
+      return
 
     try {
       const res = await fetch(url)
-      if (!res.ok) throw new Error(`Failed to load: ${url}`)
+      if (!res.ok)
+        throw new Error(`Failed to load: ${url}`)
       const blob = await res.blob()
       const blobUrl = URL.createObjectURL(blob)
 
       const img = new Image()
       img.src = blobUrl
       img.onload = () => {
-        if (!isMounted.current) return
+        if (!isMounted.current)
+          return
         imageCache.set(url, {
           blobUrl,
           status: 'loaded',

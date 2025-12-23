@@ -43,7 +43,8 @@ const ConditionCommonVariableSelector = ({
       <PortalToFollowElemTrigger
         asChild
         onClick={() => {
-          if (!variables.length) return
+          if (!variables.length)
+            return
           setOpen(!open)
         }}
       >

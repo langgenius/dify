@@ -172,7 +172,8 @@ const AllTools = ({
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
 
   useEffect(() => {
-    if (!enable_marketplace) return
+    if (!enable_marketplace)
+      return
     if (hasFilter) {
       fetchPlugins({
         query: searchText,

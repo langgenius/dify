@@ -808,8 +808,7 @@ describe('NotionPagePreview', () => {
     it('should handle rapid page changes', async () => {
       // Arrange
       const pages = Array.from({ length: 5 }, (_, i) =>
-        createMockNotionPage({ page_id: `page-${i}` }),
-      )
+        createMockNotionPage({ page_id: `page-${i}` }))
 
       // Act
       const { rerender } = render(

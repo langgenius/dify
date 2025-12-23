@@ -2,7 +2,8 @@ import type { FileTypesRes } from './datasets'
 import type {
   Model,
   ModelParameterRule,
-  ModelProvider, ModelTypeEnum,
+  ModelProvider,
+  ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type {
   AccountIntegrate,
@@ -11,7 +12,14 @@ import type {
   CommonResponse,
   DataSourceNotion,
   FileUploadConfigResponse,
-  ICurrentWorkspace, IWorkspace, LangGeniusVersionResponse, Member, PluginProvider, StructuredOutputRulesRequestBody, StructuredOutputRulesResponse, UserProfileResponse,
+  ICurrentWorkspace,
+  IWorkspace,
+  LangGeniusVersionResponse,
+  Member,
+  PluginProvider,
+  StructuredOutputRulesRequestBody,
+  StructuredOutputRulesResponse,
+  UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery } from '@tanstack/react-query'

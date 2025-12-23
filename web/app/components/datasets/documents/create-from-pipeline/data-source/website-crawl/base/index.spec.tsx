@@ -24,8 +24,7 @@ const createMockCrawlResultItems = (count = 3): CrawlResultItemType[] => {
     createMockCrawlResultItem({
       source_url: `https://example.com/page${i + 1}`,
       title: `Page ${i + 1}`,
-    }),
-  )
+    }))
 }
 
 // ==========================================

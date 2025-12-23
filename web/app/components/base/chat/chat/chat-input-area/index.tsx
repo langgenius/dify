@@ -130,7 +130,8 @@ const ChatInputArea = ({
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey && !e.nativeEvent.isComposing) {
       // if isComposing, exit
-      if (isComposingRef.current) return
+      if (isComposingRef.current)
+        return
       e.preventDefault()
       setQuery(query.replace(/\n$/, ''))
       historyRef.current.push(query)

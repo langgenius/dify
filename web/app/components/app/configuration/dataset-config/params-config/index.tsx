@@ -62,8 +62,9 @@ const ParamsConfig = ({
       if (tempDataSetConfigs.reranking_enable
         && tempDataSetConfigs.reranking_mode === RerankingModeEnum.RerankingModel
         && !isCurrentRerankModelValid
-      )
+      ) {
         errMsg = t('appDebug.datasetConfig.rerankModelRequired')
+      }
     }
     if (errMsg) {
       Toast.notify({

@@ -46,7 +46,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const { handleUpload } = useGitHubUpload()
 
   const handleUploadPackage = async () => {
-    if (isUploading) return
+    if (isUploading)
+      return
     setIsUploading(true)
     try {
       const repo = repoUrl.replace('https://github.com/', '')

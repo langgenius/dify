@@ -137,7 +137,8 @@ const CreateFormPipeline = () => {
   }, [datasourceType, doHandleNextStep, localFileList.length, onlineDocuments.length, selectedFileIds.length, showPlanUpgradeModal, supportBatchUpload, websitePages.length])
 
   const nextBtnDisabled = useMemo(() => {
-    if (!datasource) return true
+    if (!datasource)
+      return true
     if (datasourceType === DatasourceType.localFile)
       return isShowVectorSpaceFull || !localFileList.length || !allFileLoaded
     if (datasourceType === DatasourceType.onlineDocument)

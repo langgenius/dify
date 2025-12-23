@@ -150,7 +150,11 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.textInput || formSchema.type === FormTypeEnum.secretInput || formSchema.type === FormTypeEnum.textNumber) {
       const {
-        variable, label, placeholder, required, show_on,
+        variable,
+        label,
+        placeholder,
+        required,
+        show_on,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
 
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
@@ -188,7 +192,11 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.radio) {
       const {
-        options, variable, label, show_on, required,
+        options,
+        variable,
+        label,
+        show_on,
+        required,
       } = formSchema as CredentialFormSchemaRadio
 
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
@@ -235,7 +243,12 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.select) {
       const {
-        options, variable, label, show_on, required, placeholder,
+        options,
+        variable,
+        label,
+        show_on,
+        required,
+        placeholder,
       } = formSchema as CredentialFormSchemaSelect
 
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
@@ -273,7 +286,10 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.checkbox) {
       const {
-        variable, label, show_on, required,
+        variable,
+        label,
+        show_on,
+        required,
       } = formSchema as CredentialFormSchemaRadio
 
       if (show_on.length && !show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value))
@@ -305,7 +321,10 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.modelSelector) {
       const {
-        variable, label, required, scope,
+        variable,
+        label,
+        required,
+        scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
       return (
         <div key={variable} className={cn(itemClassName, 'py-3')}>
@@ -398,7 +417,10 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.appSelector) {
       const {
-        variable, label, required, scope,
+        variable,
+        label,
+        required,
+        scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
 
       return (
@@ -424,7 +446,10 @@ function Form<
 
     if (formSchema.type === FormTypeEnum.any) {
       const {
-        variable, label, required, scope,
+        variable,
+        label,
+        required,
+        scope,
       } = formSchema as (CredentialFormSchemaTextInput | CredentialFormSchemaSecretInput)
 
       return (
@@ -444,7 +469,8 @@ function Form<
             value={value[variable] || []}
             onChange={item => handleFormChange(variable, item as any)}
             filterVar={(varPayload) => {
-              if (!scope) return true
+              if (!scope)
+                return true
               return scope.split('&').includes(varPayload.type)
             }}
           />

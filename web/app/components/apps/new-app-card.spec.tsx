@@ -30,31 +30,23 @@ vi.mock('next/dynamic', () => {
 
       if (fnString.includes('create-app-modal') && !fnString.includes('create-from-dsl-modal')) {
         return function MockCreateAppModal({ show, onClose, onSuccess, onCreateFromTemplate }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'create-app-modal' },
-            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'),
-            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'),
-            React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'),
-          )
+          if (!show)
+            return null
+          return React.createElement('div', { 'data-testid': 'create-app-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-create-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-create-modal' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromTemplate, 'data-testid': 'to-template-modal' }, 'To Template'))
         }
       }
       if (fnString.includes('create-app-dialog')) {
         return function MockCreateAppTemplateDialog({ show, onClose, onSuccess, onCreateFromBlank }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'create-template-dialog' },
-            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'),
-            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'),
-            React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'),
-          )
+          if (!show)
+            return null
+          return React.createElement('div', { 'data-testid': 'create-template-dialog' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-template-dialog' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-template-dialog' }, 'Success'), React.createElement('button', { 'onClick': onCreateFromBlank, 'data-testid': 'to-blank-modal' }, 'To Blank'))
         }
       }
       if (fnString.includes('create-from-dsl-modal')) {
         return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
-            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
-            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'),
-          )
+          if (!show)
+            return null
+          return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
         }
       }
       return () => null

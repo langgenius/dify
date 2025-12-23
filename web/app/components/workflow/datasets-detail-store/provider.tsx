@@ -33,12 +33,14 @@ const DatasetsDetailProvider: FC<DatasetsDetailProviderProps> = ({
   }, [])
 
   useEffect(() => {
-    if (!storeRef.current) return
+    if (!storeRef.current)
+      return
     const knowledgeRetrievalNodes = nodes.filter(node => node.data.type === BlockEnum.KnowledgeRetrieval)
     const allDatasetIds = knowledgeRetrievalNodes.reduce<string[]>((acc, node) => {
       return Array.from(new Set([...acc, ...(node.data as CommonNodeType<KnowledgeRetrievalNodeType>).dataset_ids]))
     }, [])
-    if (allDatasetIds.length === 0) return
+    if (allDatasetIds.length === 0)
+      return
     updateDatasetsDetail(allDatasetIds)
   }, [])
 

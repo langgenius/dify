@@ -144,7 +144,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
 
   // Handle container resize for echarts
   useEffect(() => {
-    if (language !== 'echarts' || !chartInstanceRef.current) return
+    if (language !== 'echarts' || !chartInstanceRef.current)
+      return
 
     const handleResize = () => {
       if (chartInstanceRef.current)
@@ -163,7 +164,8 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
   // Process chart data when content changes
   useEffect(() => {
     // Only process echarts content
-    if (language !== 'echarts') return
+    if (language !== 'echarts')
+      return
 
     // Reset state when new content is detected
     if (!contentRef.current) {
@@ -174,11 +176,13 @@ const CodeBlock: any = memo(({ inline, className, children = '', ...props }: any
     const newContent = String(children).replace(/\n$/, '')
 
     // Skip if content hasn't changed
-    if (contentRef.current === newContent) return
+    if (contentRef.current === newContent)
+      return
     contentRef.current = newContent
 
     const trimmedContent = newContent.trim()
-    if (!trimmedContent) return
+    if (!trimmedContent)
+      return
 
     // Detect if this is historical data (already complete)
     // Historical data typically comes as a complete code block with complete JSON

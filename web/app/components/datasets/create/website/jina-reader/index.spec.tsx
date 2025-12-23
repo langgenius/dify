@@ -748,8 +748,7 @@ describe('JinaReader', () => {
         current: 100,
         total: 100,
         data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
-        ),
+          createCrawlResultItem({ source_url: `https://example.com/${i}` })),
       })
 
       const props = createDefaultProps({

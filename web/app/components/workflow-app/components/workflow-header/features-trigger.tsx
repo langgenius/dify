@@ -23,7 +23,8 @@ import {
   useChecklist,
   useChecklistBeforePublish,
   useIsChatMode,
-  useNodesReadOnly, useNodesSyncDraft,
+  useNodesReadOnly,
+  useNodesSyncDraft,
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
 import {

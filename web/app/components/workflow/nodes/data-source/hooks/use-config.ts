@@ -61,7 +61,8 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
 
   const outputSchema = useMemo(() => {
     const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList) return []
+    if (!nodeData?.data || !dataSourceList)
+      return []
 
     const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
     const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)
@@ -95,7 +96,8 @@ export const useConfig = (id: string, dataSourceList?: any[]) => {
 
   const hasObjectOutput = useMemo(() => {
     const nodeData = getNodeData()
-    if (!nodeData?.data || !dataSourceList) return false
+    if (!nodeData?.data || !dataSourceList)
+      return false
 
     const currentDataSource = dataSourceList.find((ds: any) => ds.plugin_id === nodeData.data.plugin_id)
     const currentDataSourceItem = currentDataSource?.tools?.find((tool: any) => tool.name === nodeData.data.datasource_name)

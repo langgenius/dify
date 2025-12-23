@@ -91,9 +91,7 @@ const StatusItem = ({
 
   return (
     <div className={
-      cn('flex items-center',
-        reverse ? 'flex-row-reverse' : '',
-        scene === 'detail' ? s.statusItemDetail : '')
+      cn('flex items-center', reverse ? 'flex-row-reverse' : '', scene === 'detail' ? s.statusItemDetail : '')
     }
     >
       <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />

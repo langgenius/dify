@@ -151,11 +151,7 @@ const ChatWrapper = () => {
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(editedQuestion ? editedQuestion.message : question.content,
-      editedQuestion ? editedQuestion.files : question.message_files,
-      true,
-      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
-    )
+    doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
@@ -178,12 +174,12 @@ const ChatWrapper = () => {
     else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  },
-  [
+  }, [
     inputsForms.length,
     isMobile,
     currentConversationId,
-    collapsed, allInputsHidden,
+    collapsed,
+    allInputsHidden,
   ])
 
   const welcome = useMemo(() => {
@@ -231,13 +227,13 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  },
-  [
+  }, [
     appData?.site.icon,
     appData?.site.icon_background,
     appData?.site.icon_type,
     appData?.site.icon_url,
-    chatList, collapsed,
+    chatList,
+    collapsed,
     currentConversationId,
     inputsForms.length,
     respondingState,

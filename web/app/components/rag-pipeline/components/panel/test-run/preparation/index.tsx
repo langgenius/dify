@@ -53,7 +53,8 @@ const Preparation = () => {
   const datasourceType = datasource?.nodeData.provider_type
 
   const nextBtnDisabled = useMemo(() => {
-    if (!datasource) return true
+    if (!datasource)
+      return true
     if (datasourceType === DatasourceType.localFile)
       return !localFileList.length || localFileList.some(file => !file.file.id)
     if (datasourceType === DatasourceType.onlineDocument)

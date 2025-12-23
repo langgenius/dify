@@ -10,7 +10,8 @@ function getItemWithExpiry(key: string): string | null {
   try {
     const item = JSON.parse(itemStr)
     localStorage.removeItem(key)
-    if (!item?.value) return null
+    if (!item?.value)
+      return null
 
     return dayjs().unix() > item.expiry ? null : item.value
   }

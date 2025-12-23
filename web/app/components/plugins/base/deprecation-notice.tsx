@@ -35,13 +35,15 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   const { t } = useMixedTranslation(locale)
 
   const deprecatedReasonKey = useMemo(() => {
-    if (!deprecatedReason) return ''
+    if (!deprecatedReason)
+      return ''
     return camelCase(deprecatedReason)
   }, [deprecatedReason])
 
   // Check if the deprecatedReasonKey exists in i18n
   const hasValidDeprecatedReason = useMemo(() => {
-    if (!deprecatedReason || !deprecatedReasonKey) return false
+    if (!deprecatedReason || !deprecatedReasonKey)
+      return false
 
     // Define valid reason keys that exist in i18n
     const validReasonKeys = ['businessAdjustments', 'ownershipTransferred', 'noMaintainer']

@@ -26,7 +26,8 @@ const SelectMetadata: FC<Props> = ({
 
   const [query, setQuery] = useState('')
   const list = useMemo(() => {
-    if (!query) return notFilteredList
+    if (!query)
+      return notFilteredList
     return notFilteredList.filter((item) => {
       return item.name.toLowerCase().includes(query.toLowerCase())
     })

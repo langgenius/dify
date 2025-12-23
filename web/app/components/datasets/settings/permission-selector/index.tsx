@@ -100,11 +100,7 @@ const PermissionSelector = ({
           onClick={() => !disabled && setOpen(v => !v)}
           className="block"
         >
-          <div className={cn('flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt',
-            open && 'bg-state-base-hover-alt',
-            disabled && '!cursor-not-allowed !bg-components-input-bg-disabled hover:!bg-components-input-bg-disabled',
-          )}
-          >
+          <div className={cn('flex cursor-pointer items-center gap-x-0.5 rounded-lg bg-components-input-bg-normal px-2 py-1 hover:bg-state-base-hover-alt', open && 'bg-state-base-hover-alt', disabled && '!cursor-not-allowed !bg-components-input-bg-disabled hover:!bg-components-input-bg-disabled')}>
             {
               isOnlyMe && (
                 <>

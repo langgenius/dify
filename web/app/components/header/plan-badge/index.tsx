@@ -19,7 +19,8 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
   const { isFetchedPlan, isEducationWorkspace } = useProviderContext()
   const { t } = useTranslation()
 
-  if (!isFetchedPlan) return null
+  if (!isFetchedPlan)
+    return null
   if (plan === Plan.sandbox && sandboxAsUpgrade) {
     return (
       <PremiumBadge className="select-none" color="blue" allowHover={allowHover} onClick={onClick}>

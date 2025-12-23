@@ -7,7 +7,8 @@ import { BlockEnum, isTriggerNode } from '../types'
  */
 export function getWorkflowEntryNode(nodes: Node[]): Node | undefined {
   const triggerNode = nodes.find(node => isTriggerNode(node.data.type))
-  if (triggerNode) return triggerNode
+  if (triggerNode)
+    return triggerNode
 
   return nodes.find(node => node.data.type === BlockEnum.Start)
 }

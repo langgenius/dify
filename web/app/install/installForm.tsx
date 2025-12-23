@@ -82,7 +82,8 @@ const InstallForm = () => {
   }
 
   const handleSetting = async () => {
-    if (isSubmitting) return
+    if (isSubmitting)
+      return
     handleSubmit(onSubmit)()
   }
 

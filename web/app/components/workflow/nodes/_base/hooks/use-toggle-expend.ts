@@ -11,7 +11,8 @@ const useToggleExpend = ({ ref, hasFooter = true, isInNode }: Params) => {
   const [wrapHeight, setWrapHeight] = useState(ref?.current?.clientHeight)
   const editorExpandHeight = isExpand ? wrapHeight! - (hasFooter ? 56 : 29) : 0
   useEffect(() => {
-    if (!ref?.current) return
+    if (!ref?.current)
+      return
     setWrapHeight(ref.current?.clientHeight)
   }, [isExpand])
 

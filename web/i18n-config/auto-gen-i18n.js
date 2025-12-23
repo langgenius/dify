@@ -42,7 +42,8 @@ function parseArgs(argv) {
     let cursor = startIndex + 1
     while (cursor < argv.length && !argv[cursor].startsWith('--')) {
       const value = argv[cursor].trim()
-      if (value) values.push(value)
+      if (value)
+        values.push(value)
       cursor++
     }
     return { values, nextIndex: cursor - 1 }

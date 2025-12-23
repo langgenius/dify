@@ -2,7 +2,8 @@ import type { FC } from 'react'
 import type { DataSourceNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import {
-  memo, useMemo,
+  memo,
+  useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'

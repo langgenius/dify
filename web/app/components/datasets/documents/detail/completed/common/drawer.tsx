@@ -32,14 +32,16 @@ const Drawer = ({
   const currChildChunk = useSegmentListContext(s => s.currChildChunk)
 
   useKeyPress('esc', (e) => {
-    if (!open) return
+    if (!open)
+      return
     e.preventDefault()
     onClose()
   }, { exactMatch: true, useCapture: true })
 
   const shouldCloseDrawer = useCallback((target: Node | null) => {
     const panelContent = panelContentRef.current
-    if (!panelContent) return false
+    if (!panelContent)
+      return false
     const chunks = document.querySelectorAll('.chunk-card')
     const childChunks = document.querySelectorAll('.child-chunk')
     const imagePreviewer = document.querySelector('.image-previewer')
@@ -56,9 +58,11 @@ const Drawer = ({
   }, [currSegment, currChildChunk, needCheckChunks])
 
   const onDownCapture = useCallback((e: PointerEvent) => {
-    if (!open || modal) return
+    if (!open || modal)
+      return
     const panelContent = panelContentRef.current
-    if (!panelContent) return
+    if (!panelContent)
+      return
     const target = e.target as Node | null
     if (shouldCloseDrawer(target))
       queueMicrotask(onClose)

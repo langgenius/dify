@@ -29,16 +29,20 @@ const MemberSelector: FC<Props> = ({
   const { data } = useMembers()
 
   const currentValue = useMemo(() => {
-    if (!data?.accounts) return null
+    if (!data?.accounts)
+      return null
     const accounts = data.accounts || []
-    if (!value) return null
+    if (!value)
+      return null
     return accounts.find(account => account.id === value)
   }, [data, value])
 
   const filteredList = useMemo(() => {
-    if (!data?.accounts) return []
+    if (!data?.accounts)
+      return []
     const accounts = data.accounts
-    if (!searchValue) return accounts.filter(account => !exclude.includes(account.id))
+    if (!searchValue)
+      return accounts.filter(account => !exclude.includes(account.id))
     return accounts.filter((account) => {
       const name = account.name || ''
       const email = account.email || ''

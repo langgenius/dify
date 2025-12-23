@@ -194,7 +194,8 @@ export const useInvalidateMCPTools = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
-      })
+      },
+    )
   }
 }
 
@@ -217,7 +218,8 @@ export const useInvalidateMCPServerDetail = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
-      })
+      },
+    )
   }
 }
 
@@ -281,7 +283,8 @@ export const useInvalidateBuiltinProviderInfo = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'builtin-provider-info', providerName],
-      })
+      },
+    )
   }
 }
 

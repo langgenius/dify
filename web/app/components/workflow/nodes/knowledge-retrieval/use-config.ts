@@ -282,8 +282,9 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
-    )
+    ) {
       setRerankModelOpen(true)
+    }
   }, [inputs, setInputs, payload.retrieval_mode, selectedDatasets, currentRerankModel, currentRerankProvider, updateDatasetsDetail])
 
   const filterStringVar = useCallback((varPayload: Var) => {

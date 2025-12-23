@@ -289,8 +289,9 @@ const Configuration: FC = () => {
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
-    )
+    ) {
       setRerankSettingModalOpen(true)
+    }
 
     const { datasets, retrieval_model, score_threshold_enabled, ...restConfigs } = datasetConfigs
     const {

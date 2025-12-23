@@ -38,7 +38,8 @@ const MoreActions: FC = () => {
   })))
 
   const crossAxisOffset = useMemo(() => {
-    if (maximizeCanvas) return 40
+    if (maximizeCanvas)
+      return 40
     return appSidebarExpand === 'expand' ? 188 : 40
   }, [appSidebarExpand, maximizeCanvas])
 
@@ -51,7 +52,8 @@ const MoreActions: FC = () => {
 
     setOpen(false)
     const flowElement = document.querySelector('.react-flow__viewport') as HTMLElement
-    if (!flowElement) return
+    if (!flowElement)
+      return
 
     try {
       let filename = appName || knowledgeName

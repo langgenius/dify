@@ -25,7 +25,8 @@ const ImageUploaderInChunk = ({
 
   const handleImagePreview = useCallback((fileId: string) => {
     const index = files.findIndex(item => item.id === fileId)
-    if (index === -1) return
+    if (index === -1)
+      return
     setPreviewIndex(index)
     setPreviewImages(files.map(item => ({
       url: item.base64Url || item.sourceUrl || '',

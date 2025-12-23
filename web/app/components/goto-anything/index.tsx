@@ -196,8 +196,7 @@ const GotoAnything: FC<Props> = ({
 
     acc[result.type].push(result)
     return acc
-  }, {} as { [key: string]: SearchResult[] }),
-  [dedupedResults])
+  }, {} as { [key: string]: SearchResult[] }), [dedupedResults])
 
   useEffect(() => {
     if (isCommandsMode)

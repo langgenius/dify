@@ -8,7 +8,8 @@ import { getNextExecutionTimes } from './utils/execution-time-calculator'
 
 const isValidTimeFormat = (time: string): boolean => {
   const timeRegex = /^(0?\d|1[0-2]):[0-5]\d (AM|PM)$/
-  if (!timeRegex.test(time)) return false
+  if (!timeRegex.test(time))
+    return false
 
   const [timePart, period] = time.split(' ')
   const [hour, minute] = timePart.split(':')
@@ -41,7 +42,8 @@ const validateDailyConfig = (config: any, t: any): string => {
 
 const validateWeeklyConfig = (config: any, t: any): string => {
   const dailyError = validateDailyConfig(config, t)
-  if (dailyError) return dailyError
+  if (dailyError)
+    return dailyError
 
   const i18nPrefix = 'workflow.errorMsg'
 
@@ -59,7 +61,8 @@ const validateWeeklyConfig = (config: any, t: any): string => {
 
 const validateMonthlyConfig = (config: any, t: any): string => {
   const dailyError = validateDailyConfig(config, t)
-  if (dailyError) return dailyError
+  if (dailyError)
+    return dailyError
 
   const i18nPrefix = 'workflow.errorMsg'
 

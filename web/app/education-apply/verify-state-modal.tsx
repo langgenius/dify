@@ -109,7 +109,8 @@ function Confirm({
           </div>
         </div>
       </div>
-    </div>, document.body,
+    </div>,
+    document.body,
   )
 }
 

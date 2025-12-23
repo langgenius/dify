@@ -45,7 +45,8 @@ const appIconVariants = cva(
       size: 'medium',
       rounded: false,
     },
-  })
+  },
+)
 const EditIconWrapperVariants = cva(
   'absolute left-0 top-0 z-10 flex items-center justify-center bg-background-overlay-alt',
   {
@@ -67,7 +68,8 @@ const EditIconWrapperVariants = cva(
       size: 'medium',
       rounded: false,
     },
-  })
+  },
+)
 const EditIconVariants = cva(
   'text-text-primary-on-surface',
   {
@@ -85,7 +87,8 @@ const EditIconVariants = cva(
     defaultVariants: {
       size: 'medium',
     },
-  })
+  },
+)
 const AppIcon: FC<AppIconProps> = ({
   size = 'medium',
   rounded = false,

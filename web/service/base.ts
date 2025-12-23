@@ -533,7 +533,8 @@ export const ssePost = async (
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
       )
-    }).catch((e) => {
+    })
+    .catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
       onError?.(e)

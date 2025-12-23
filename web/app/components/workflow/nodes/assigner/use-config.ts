@@ -74,8 +74,9 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
 
   const getToAssignedVarType = useCallback((assignedVarType: VarType, write_mode: WriteMode) => {
     if (write_mode === WriteMode.overwrite || write_mode === WriteMode.increment || write_mode === WriteMode.decrement
-      || write_mode === WriteMode.multiply || write_mode === WriteMode.divide || write_mode === WriteMode.extend)
+      || write_mode === WriteMode.multiply || write_mode === WriteMode.divide || write_mode === WriteMode.extend) {
       return assignedVarType
+    }
     if (write_mode === WriteMode.append) {
       if (assignedVarType === VarType.arrayString)
         return VarType.string

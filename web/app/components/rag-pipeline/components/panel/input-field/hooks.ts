@@ -27,7 +27,8 @@ export const useFloatingRight = (targetElementWidth: number) => {
   }, [workflowCanvasWidth, nodePanelWidth, otherPanelWidth, selectedNodeId, targetElementWidth])
 
   const floatingRightWidth = useMemo(() => {
-    if (!floatingRight) return targetElementWidth
+    if (!floatingRight)
+      return targetElementWidth
     const width = Math.min(targetElementWidth, (selectedNodeId ? nodePanelWidth : 0) + otherPanelWidth)
     return width
   }, [floatingRight, selectedNodeId, nodePanelWidth, otherPanelWidth, targetElementWidth])

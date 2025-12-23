@@ -134,9 +134,12 @@ const VolumeControlDemo = () => {
   const [volume, setVolume] = useState(70)
 
   const getVolumeIcon = (vol: number) => {
-    if (vol === 0) return '🔇'
-    if (vol < 33) return '🔈'
-    if (vol < 66) return '🔉'
+    if (vol === 0)
+      return '🔇'
+    if (vol < 33)
+      return '🔈'
+    if (vol < 66)
+      return '🔉'
     return '🔊'
   }
 
@@ -510,9 +513,12 @@ const ImageQualitySelectorDemo = () => {
   const [quality, setQuality] = useState(80)
 
   const getQualityLabel = (q: number) => {
-    if (q < 50) return 'Low'
-    if (q < 70) return 'Medium'
-    if (q < 90) return 'High'
+    if (q < 50)
+      return 'Low'
+    if (q < 70)
+      return 'Medium'
+    if (q < 90)
+      return 'High'
     return 'Maximum'
   }
 

@@ -73,7 +73,8 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
   }, [])
 
   const handleTabChange = useCallback((value: SchemaView) => {
-    if (currentTab === value) return
+    if (currentTab === value)
+      return
     if (currentTab === SchemaView.JsonSchema) {
       try {
         const schema = JSON.parse(json)

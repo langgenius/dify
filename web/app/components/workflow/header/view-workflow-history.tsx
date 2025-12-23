@@ -143,9 +143,7 @@ const ViewWorkflowHistory = () => {
           >
             <div
               className={
-                cn('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                  open && 'bg-state-accent-active text-text-accent',
-                  nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
+                cn('flex h-8 w-8 cursor-pointer items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary', open && 'bg-state-accent-active text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')
               }
               onClick={() => {
                 if (nodesReadOnly)

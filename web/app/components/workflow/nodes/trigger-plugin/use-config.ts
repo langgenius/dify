@@ -120,7 +120,8 @@ const useConfig = (id: string, payload: PluginTriggerNodeType) => {
 
   // Dynamic trigger parameters (from specific trigger.parameters)
   const triggerSpecificParameterSchema = useMemo(() => {
-    if (!currentEvent) return []
+    if (!currentEvent)
+      return []
     return toolParametersToFormSchemas(currentEvent.parameters)
   }, [currentEvent])
 

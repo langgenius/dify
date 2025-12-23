@@ -51,7 +51,8 @@ export const useTriggerAuthFlow = (provider: TriggerWithProvider): AuthFlowState
   const buildSubscription = useBuildTriggerSubscription()
 
   const startAuth = useCallback(async () => {
-    if (builderId) return // Prevent multiple calls if already started
+    if (builderId)
+      return // Prevent multiple calls if already started
 
     setIsLoading(true)
     setError(null)

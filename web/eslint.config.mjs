@@ -19,6 +19,9 @@ export default antfu(
         'test/prefer-lowercase-title': 'off',
       },
     },
+    rules: {
+      'antfu/top-level-function': 'off',
+    },
   },
   // downgrade some rules from error to warn for gradual adoption
   {
@@ -51,11 +54,6 @@ export default antfu(
   {
     // @keep-sorted
     rules: {
-      'antfu/consistent-chaining': 'off',
-      'antfu/consistent-list-newline': 'off',
-      'antfu/curly': 'off',
-      'antfu/if-newline': 'off',
-      'antfu/top-level-function': 'off',
       'no-useless-return': 'off',
       'react/no-context-provider': 'off',
       'react/no-forward-ref': 'off',

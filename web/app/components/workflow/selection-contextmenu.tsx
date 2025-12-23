@@ -55,7 +55,8 @@ const SelectionContextmenu = () => {
   const menuRef = useRef<HTMLDivElement>(null)
 
   const menuPosition = useMemo(() => {
-    if (!selectionMenu) return { left: 0, top: 0 }
+    if (!selectionMenu)
+      return { left: 0, top: 0 }
 
     let left = selectionMenu.left
     let top = selectionMenu.top
@@ -219,7 +220,8 @@ const SelectionContextmenu = () => {
       for (let i = 1; i < sortedNodes.length - 1; i++) {
         const nodeToAlign = sortedNodes[i]
         const currentNode = draft.find(n => n.id === nodeToAlign.id)
-        if (!currentNode) continue
+        if (!currentNode)
+          continue
 
         if (alignType === AlignType.DistributeHorizontal) {
           // Position = previous right edge + spacing

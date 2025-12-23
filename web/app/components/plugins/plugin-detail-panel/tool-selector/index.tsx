@@ -90,7 +90,8 @@ const ToolSelector: FC<Props> = ({
   const { t } = useTranslation()
   const [isShow, onShowChange] = useState(false)
   const handleTriggerClick = () => {
-    if (disabled) return
+    if (disabled)
+      return
     onShowChange(true)
   }
 
@@ -153,11 +154,13 @@ const ToolSelector: FC<Props> = ({
 
   // tool settings & params
   const currentToolSettings = useMemo(() => {
-    if (!currentProvider) return []
+    if (!currentProvider)
+      return []
     return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form !== 'llm') || []
   }, [currentProvider, value])
   const currentToolParams = useMemo(() => {
-    if (!currentProvider) return []
+    if (!currentProvider)
+      return []
     return currentProvider.tools.find(tool => tool.name === value?.tool_name)?.parameters.filter(param => param.form === 'llm') || []
   }, [currentProvider, value])
   const [currType, setCurrType] = useState('settings')
@@ -222,7 +225,8 @@ const ToolSelector: FC<Props> = ({
         <PortalToFollowElemTrigger
           className="w-full"
           onClick={() => {
-            if (!currentProvider || !currentTool) return
+            if (!currentProvider || !currentTool)
+              return
             handleTriggerClick()
           }}
         >

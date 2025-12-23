@@ -30,7 +30,8 @@ const DatasetNav = () => {
   const datasetItems = flatten(datasetList?.pages.map(datasetData => datasetData.data))
 
   const curNav = useMemo(() => {
-    if (!currentDataset) return
+    if (!currentDataset)
+      return
     return {
       id: currentDataset.id,
       name: currentDataset.name,

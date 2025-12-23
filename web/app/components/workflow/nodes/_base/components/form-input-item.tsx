@@ -402,10 +402,7 @@ const FormInputItem: FC<Props> = ({
         >
           <div className="group/simple-select relative h-8 grow">
             <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
-              <span className={cn('system-sm-regular block truncate text-left',
-                varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
-              )}
-              >
+              <span className={cn('system-sm-regular block truncate text-left', varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder')}>
                 {getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
               </span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
@@ -425,9 +422,7 @@ const FormInputItem: FC<Props> = ({
                   key={option.value}
                   value={option.value}
                   className={({ focus }) =>
-                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                      focus && 'bg-state-base-hover',
-                    )}
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', focus && 'bg-state-base-hover')}
                 >
                   {({ selected }) => (
                     <>
@@ -488,11 +483,9 @@ const FormInputItem: FC<Props> = ({
         >
           <div className="group/simple-select relative h-8 grow">
             <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
-              <span className={cn('system-sm-regular block truncate text-left',
-                isLoadingOptions
-                  ? 'text-components-input-text-placeholder'
-                  : varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
-              )}
+              <span className={cn('system-sm-regular block truncate text-left', isLoadingOptions
+                ? 'text-components-input-text-placeholder'
+                : varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder')}
               >
                 {isLoadingOptions
                   ? 'Loading...'
@@ -521,9 +514,7 @@ const FormInputItem: FC<Props> = ({
                   key={option.value}
                   value={option.value}
                   className={({ focus }) =>
-                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                      focus && 'bg-state-base-hover',
-                    )}
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', focus && 'bg-state-base-hover')}
                 >
                   {({ selected }) => (
                     <>

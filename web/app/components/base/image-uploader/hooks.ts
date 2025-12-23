@@ -193,8 +193,7 @@ export const useClipboardUploader = ({ visionConfig, onUpload, files }: useClipb
     !visionConfig
     || !visionConfig?.enabled
     || !allowLocalUpload
-    || files.length >= visionConfig.number_limits!,
-  [allowLocalUpload, files.length, visionConfig])
+    || files.length >= visionConfig.number_limits!, [allowLocalUpload, files.length, visionConfig])
   const limit = useMemo(() => visionConfig ? +visionConfig.image_file_size_limit! : 0, [visionConfig])
   const { handleLocalFileUpload } = useLocalFileUploader({ limit, onUpload, disabled })
 
@@ -225,8 +224,7 @@ export const useDraggableUploader = <T extends HTMLElement>({ visionConfig, onUp
     !visionConfig
     || !visionConfig?.enabled
     || !allowLocalUpload
-    || files.length >= visionConfig.number_limits!,
-  [allowLocalUpload, files.length, visionConfig])
+    || files.length >= visionConfig.number_limits!, [allowLocalUpload, files.length, visionConfig])
   const limit = useMemo(() => visionConfig ? +visionConfig.image_file_size_limit! : 0, [visionConfig])
   const { handleLocalFileUpload } = useLocalFileUploader({ disabled, onUpload, limit })
   const [isDragActive, setIsDragActive] = useState(false)

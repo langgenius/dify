@@ -130,11 +130,9 @@ const BlockIcon: FC<BlockIconProps> = ({
     >
       {
         showDefaultIcon && (
-          getIcon(type,
-            (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
-              ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
-              : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'),
-          )
+          getIcon(type, (type === BlockEnum.TriggerSchedule || type === BlockEnum.TriggerWebhook)
+            ? (size === 'xs' ? 'w-4 h-4' : 'w-4.5 h-4.5')
+            : (size === 'xs' ? 'w-3 h-3' : 'w-3.5 h-3.5'))
         )
       }
       {

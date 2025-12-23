@@ -315,10 +315,27 @@ describe('useFormatTimeFromNow', () => {
      */
     it('should handle all mapped locales', () => {
       const locales = [
-        'en-US', 'zh-Hans', 'zh-Hant', 'pt-BR', 'es-ES', 'fr-FR',
-        'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'th-TH',
-        'id-ID', 'uk-UA', 'vi-VN', 'ro-RO', 'pl-PL', 'hi-IN',
-        'tr-TR', 'fa-IR', 'sl-SI',
+        'en-US',
+        'zh-Hans',
+        'zh-Hant',
+        'pt-BR',
+        'es-ES',
+        'fr-FR',
+        'de-DE',
+        'ja-JP',
+        'ko-KR',
+        'ru-RU',
+        'it-IT',
+        'th-TH',
+        'id-ID',
+        'uk-UA',
+        'vi-VN',
+        'ro-RO',
+        'pl-PL',
+        'hi-IN',
+        'tr-TR',
+        'fa-IR',
+        'sl-SI',
       ]
 
       const now = Date.now()

@@ -51,7 +51,8 @@ const TriggerPluginActionItem: FC<Props> = ({
         key={payload.name}
         className="flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover"
         onClick={() => {
-          if (disabled) return
+          if (disabled)
+            return
           const params: Record<string, string> = {}
           if (payload.parameters) {
             payload.parameters.forEach((item: any) => {

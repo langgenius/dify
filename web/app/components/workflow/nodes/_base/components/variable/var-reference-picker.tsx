@@ -348,7 +348,10 @@ const VarReferencePicker: FC<Props> = ({
   const [dynamicOptions, setDynamicOptions] = useState<FormOption[] | null>(null)
   const [isLoading, setIsLoading] = useState(false)
   const { mutateAsync: fetchDynamicOptions } = useFetchDynamicOptions(
-    currentProvider?.plugin_id || '', currentProvider?.name || '', currentTool?.name || '', (schema as CredentialFormSchemaSelect)?.variable || '',
+    currentProvider?.plugin_id || '',
+    currentProvider?.name || '',
+    currentTool?.name || '',
+    (schema as CredentialFormSchemaSelect)?.variable || '',
     'tool',
   )
   const handleFetchDynamicOptions = async () => {
@@ -399,11 +402,16 @@ const VarReferencePicker: FC<Props> = ({
   }, [schema, dynamicOptions, isLoading, value])
 
   const variableCategory = useMemo(() => {
-    if (isEnv) return 'environment'
-    if (isChatVar) return 'conversation'
-    if (isGlobal) return 'global'
-    if (isLoopVar) return 'loop'
-    if (isRagVar) return 'rag'
+    if (isEnv)
+      return 'environment'
+    if (isChatVar)
+      return 'conversation'
+    if (isGlobal)
+      return 'global'
+    if (isLoopVar)
+      return 'loop'
+    if (isRagVar)
+      return 'rag'
     return 'system'
   }, [isEnv, isChatVar, isGlobal, isLoopVar, isRagVar])
 

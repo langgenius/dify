@@ -133,7 +133,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
             if (typeof value === 'string')
               newConfig[key] = value === 'true' || value === '1'
 
-            if (typeof value === 'number') newConfig[key] = value === 1
+            if (typeof value === 'number')
+              newConfig[key] = value === 1
           }
 
           if (schema?.type === 'number-input') {
@@ -149,7 +150,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   )
   const [notSetDefaultValue, setNotSetDefaultValue] = useState(false)
   const toolSettingValue = useMemo(() => {
-    if (notSetDefaultValue) return tool_configurations
+    if (notSetDefaultValue)
+      return tool_configurations
     return getConfiguredValue(tool_configurations, toolSettingSchema)
   }, [notSetDefaultValue, toolSettingSchema, tool_configurations])
   const setToolSettingValue = useCallback(
@@ -188,7 +190,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   }
 
   useEffect(() => {
-    if (!currTool) return
+    if (!currTool)
+      return
     const inputsWithDefaultValue = formattingParameters()
     const { setControlPromptEditorRerenderKey } = workflowStore.getState()
     setInputs(inputsWithDefaultValue)
@@ -231,7 +234,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const outputSchema = useMemo(() => {
     const res: any[] = []
     const output_schema = currTool?.output_schema
-    if (!output_schema || !output_schema.properties) return res
+    if (!output_schema || !output_schema.properties)
+      return res
 
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]
@@ -266,7 +270,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const hasObjectOutput = useMemo(() => {
     const output_schema = currTool?.output_schema
-    if (!output_schema || !output_schema.properties) return false
+    if (!output_schema || !output_schema.properties)
+      return false
     const properties = output_schema.properties
     return Object.keys(properties).some(
       key => properties[key].type === 'object',

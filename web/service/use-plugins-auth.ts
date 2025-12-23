@@ -112,7 +112,8 @@ export const useGetPluginOAuthUrl = (
           authorization_url: string
           state: string
           context_id: string
-        }>(url)
+        }
+      >(url)
     },
   })
 }

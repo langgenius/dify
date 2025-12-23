@@ -56,7 +56,8 @@ const AppPicker: FC<Props> = ({
 
   const handleIntersection = useCallback((entries: IntersectionObserverEntry[]) => {
     const target = entries[0]
-    if (!target.isIntersecting || loadingRef.current || !hasMore || isLoading) return
+    if (!target.isIntersecting || loadingRef.current || !hasMore || isLoading)
+      return
 
     loadingRef.current = true
     onLoadMore()
@@ -78,7 +79,8 @@ const AppPicker: FC<Props> = ({
     let mutationObserver: MutationObserver | null = null
 
     const setupIntersectionObserver = () => {
-      if (!observerTarget.current) return
+      if (!observerTarget.current)
+        return
 
       // Create new observer
       observerRef.current = new IntersectionObserver(handleIntersection, {
@@ -133,7 +135,8 @@ const AppPicker: FC<Props> = ({
   }
 
   const handleTriggerClick = () => {
-    if (disabled) return
+    if (disabled)
+      return
     onShowChange(true)
   }
 

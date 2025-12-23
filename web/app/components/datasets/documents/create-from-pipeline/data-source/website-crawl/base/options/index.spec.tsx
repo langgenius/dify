@@ -88,8 +88,7 @@ const createMockVariables = (count = 1): RAGPipelineVariables => {
     createMockVariable({
       variable: `variable_${i}`,
       label: `Label ${i}`,
-    }),
-  )
+    }))
 }
 
 const createMockConfiguration = (overrides?: Partial<any>): any => ({
@@ -796,8 +795,7 @@ describe('Options', () => {
     it('should handle many configurations', () => {
       // Arrange
       const manyConfigs = Array.from({ length: 10 }, (_, i) =>
-        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }),
-      )
+        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }))
       mockUseConfigurations.mockReturnValue(manyConfigs)
       const props = createDefaultProps()
 

@@ -39,7 +39,8 @@ const BaseField = ({
 
     const isAllConditionsMet = useStore(form.store, (state) => {
       const fieldValues = state.values
-      if (!showConditions.length) return true
+      if (!showConditions.length)
+        return true
       return showConditions.every((condition) => {
         const { variable, value } = condition
         const fieldValue = fieldValues[variable as keyof typeof fieldValues]

@@ -114,8 +114,9 @@ const DatasetConfig: FC = () => {
       (allInternal && (mixtureHighQualityAndEconomic || inconsistentEmbeddingModel))
       || mixtureInternalAndExternal
       || allExternal
-    )
+    ) {
       setRerankSettingModalOpen(true)
+    }
     formattingChangedDispatcher()
   }
 

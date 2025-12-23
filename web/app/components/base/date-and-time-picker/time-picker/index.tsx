@@ -82,11 +82,13 @@ const TimePicker = ({
     prevTimezoneRef.current = timezone
 
     // Skip if neither timezone changed nor value changed
-    if (!timezoneChanged && !valueChanged) return
+    if (!timezoneChanged && !valueChanged)
+      return
 
     if (value !== undefined && value !== null) {
       const dayjsValue = toDayjs(value, { timezone })
-      if (!dayjsValue) return
+      if (!dayjsValue)
+        return
 
       setSelectedTime(dayjsValue)
 
@@ -117,7 +119,8 @@ const TimePicker = ({
         || !isDayjsObject(selectedTime)
         || !dayjsValue.isSame(selectedTime, 'minute')
       )
-      if (needsUpdate) setSelectedTime(dayjsValue)
+      if (needsUpdate)
+        setSelectedTime(dayjsValue)
     }
   }
 
@@ -180,7 +183,8 @@ const TimePicker = ({
   const timeFormat = 'hh:mm A'
 
   const formatTimeValue = useCallback((timeValue: string | Dayjs | undefined): string => {
-    if (!timeValue) return ''
+    if (!timeValue)
+      return ''
 
     const dayjsValue = toDayjs(timeValue, { timezone })
     return dayjsValue?.format(timeFormat) || ''

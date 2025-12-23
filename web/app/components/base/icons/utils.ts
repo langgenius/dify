@@ -20,8 +20,9 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
       || key.startsWith('xmlns:inkscape')
       || key.startsWith('xmlns:sodipodi')
       || key.startsWith('xmlns:svg')
-      || key === 'data-name')
+      || key === 'data-name') {
       return acc
+    }
 
     const val = attrs[key]
     if (val === undefined)
@@ -34,8 +35,9 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
     if (key === 'xmlnsInkscape'
       || key === 'xmlnsSodipodi'
       || key === 'xmlnsSvg'
-      || key === 'dataName')
+      || key === 'dataName') {
       return acc
+    }
 
     switch (key) {
       case 'class':

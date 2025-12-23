@@ -705,8 +705,7 @@ describe('FilePreview', () => {
     it('should handle rapid file changes', async () => {
       // Arrange
       const files = Array.from({ length: 5 }, (_, i) =>
-        createMockFile({ id: `file-${i}` }),
-      )
+        createMockFile({ id: `file-${i}` }))
 
       // Act
       const { rerender } = render(

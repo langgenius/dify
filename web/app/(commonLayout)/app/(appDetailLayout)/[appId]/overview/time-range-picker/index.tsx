@@ -44,9 +44,12 @@ const TimeRangePicker: FC<Props> = ({
 
   const handleDateChange = useCallback((type: 'start' | 'end') => {
     return (date?: Dayjs) => {
-      if (!date) return
-      if (type === 'start' && date.isSame(start)) return
-      if (type === 'end' && date.isSame(end)) return
+      if (!date)
+        return
+      if (type === 'start' && date.isSame(start))
+        return
+      if (type === 'end' && date.isSame(end))
+        return
       if (type === 'start')
         setStart(date)
       else

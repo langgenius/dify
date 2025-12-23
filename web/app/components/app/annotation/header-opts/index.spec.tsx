@@ -45,7 +45,8 @@ vi.mock('@headlessui/react', () => {
 
   const PopoverPanel = React.forwardRef(({ children, ...props }: { children: React.ReactNode | ((props: { close: () => void }) => React.ReactNode) }, ref: React.Ref<HTMLDivElement>) => {
     const context = React.useContext(PopoverContext)
-    if (!context?.open) return null
+    if (!context?.open)
+      return null
     const content = typeof children === 'function' ? children({ close: () => context.setOpen(false) }) : children
     return (
       <div ref={ref} {...props}>
@@ -79,7 +80,8 @@ vi.mock('@headlessui/react', () => {
 
   const MenuItems = ({ children, ...props }: { children: React.ReactNode }) => {
     const context = React.useContext(MenuContext)
-    if (!context?.open) return null
+    if (!context?.open)
+      return null
     return (
       <div {...props}>
         {children}
@@ -89,7 +91,8 @@ vi.mock('@headlessui/react', () => {
 
   return {
     Dialog: ({ open, children, className }: { open?: boolean, children: React.ReactNode, className?: string }) => {
-      if (open === false) return null
+      if (open === false)
+        return null
       return (
         <div role="dialog" className={className}>
           {children}

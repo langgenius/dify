@@ -45,7 +45,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
   }, [max, min])
 
   const inc = () => {
-    if (disabled) return
+    if (disabled)
+      return
 
     if (value === undefined) {
       onChange(defaultValue ?? 0)
@@ -57,7 +58,8 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
     onChange(newValue)
   }
   const dec = () => {
-    if (disabled) return
+    if (disabled)
+      return
 
     if (value === undefined) {
       onChange(defaultValue ?? 0)
@@ -98,19 +100,13 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
         unit={unit}
         size={size}
       />
-      <div className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs',
-        disabled && 'cursor-not-allowed opacity-50',
-        controlWrapClassName)}
-      >
+      <div className={cn('flex flex-col rounded-r-md border-l border-divider-subtle bg-components-input-bg-normal text-text-tertiary focus:shadow-xs', disabled && 'cursor-not-allowed opacity-50', controlWrapClassName)}>
         <button
           type="button"
           onClick={inc}
           disabled={disabled}
           aria-label="increment"
-          className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5',
-            'px-1.5 hover:bg-components-input-bg-hover',
-            disabled && 'cursor-not-allowed hover:bg-transparent',
-            controlClassName)}
+          className={cn(size === 'regular' ? 'pt-1' : 'pt-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
         >
           <RiArrowUpSLine className="size-3" />
         </button>
@@ -119,10 +115,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
           onClick={dec}
           disabled={disabled}
           aria-label="decrement"
-          className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5',
-            'px-1.5 hover:bg-components-input-bg-hover',
-            disabled && 'cursor-not-allowed hover:bg-transparent',
-            controlClassName)}
+          className={cn(size === 'regular' ? 'pb-1' : 'pb-1.5', 'px-1.5 hover:bg-components-input-bg-hover', disabled && 'cursor-not-allowed hover:bg-transparent', controlClassName)}
         >
           <RiArrowDownSLine className="size-3" />
         </button>

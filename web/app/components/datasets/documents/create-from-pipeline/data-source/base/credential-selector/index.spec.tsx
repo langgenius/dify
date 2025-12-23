@@ -80,8 +80,7 @@ const createMockCredentials = (count: number = 3): DataSourceCredential[] =>
       name: `Credential ${i + 1}`,
       avatar_url: `https://example.com/avatar-${i + 1}.png`,
       is_default: i === 0,
-    }),
-  )
+    }))
 
 const createDefaultProps = (overrides?: Partial<CredentialSelectorProps>): CredentialSelectorProps => ({
   currentCredentialId: 'cred-1',

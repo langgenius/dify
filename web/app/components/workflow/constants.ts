@@ -109,11 +109,25 @@ export const RETRIEVAL_OUTPUT_STRUCT = `{
 }`
 
 export const SUPPORT_OUTPUT_VARS_NODE = [
-  BlockEnum.Start, BlockEnum.TriggerWebhook, BlockEnum.TriggerPlugin, BlockEnum.LLM, BlockEnum.KnowledgeRetrieval, BlockEnum.Code, BlockEnum.TemplateTransform,
-  BlockEnum.HttpRequest, BlockEnum.Tool, BlockEnum.VariableAssigner, BlockEnum.VariableAggregator, BlockEnum.QuestionClassifier,
-  BlockEnum.ParameterExtractor, BlockEnum.Iteration, BlockEnum.Loop,
-  BlockEnum.DocExtractor, BlockEnum.ListFilter,
-  BlockEnum.Agent, BlockEnum.DataSource,
+  BlockEnum.Start,
+  BlockEnum.TriggerWebhook,
+  BlockEnum.TriggerPlugin,
+  BlockEnum.LLM,
+  BlockEnum.KnowledgeRetrieval,
+  BlockEnum.Code,
+  BlockEnum.TemplateTransform,
+  BlockEnum.HttpRequest,
+  BlockEnum.Tool,
+  BlockEnum.VariableAssigner,
+  BlockEnum.VariableAggregator,
+  BlockEnum.QuestionClassifier,
+  BlockEnum.ParameterExtractor,
+  BlockEnum.Iteration,
+  BlockEnum.Loop,
+  BlockEnum.DocExtractor,
+  BlockEnum.ListFilter,
+  BlockEnum.Agent,
+  BlockEnum.DataSource,
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [

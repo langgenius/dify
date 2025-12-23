@@ -10,7 +10,8 @@ import { replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 
 // Tiny utility to judge whether a cell value is effectively present
 const isPresent = (v: unknown): boolean => {
-  if (typeof v === 'string') return v.trim() !== ''
+  if (typeof v === 'string')
+    return v.trim() !== ''
   return !(v === '' || v === null || v === undefined || v === false)
 }
 // Column configuration types for table components
@@ -102,14 +103,17 @@ const GenericTable: FC<GenericTableProps> = ({
   }, [data, emptyRowData, readonly])
 
   const removeRow = useCallback((dataIndex: number) => {
-    if (readonly) return
-    if (dataIndex < 0 || dataIndex >= data.length) return // ignore virtual rows
+    if (readonly)
+      return
+    if (dataIndex < 0 || dataIndex >= data.length)
+      return // ignore virtual rows
     const newData = data.filter((_, i) => i !== dataIndex)
     onChange(newData)
   }, [data, readonly, onChange])
 
   const updateRow = useCallback((dataIndex: number | null, key: string, value: unknown) => {
-    if (readonly) return
+    if (readonly)
+      return
 
     if (dataIndex !== null && dataIndex < data.length) {
       // Editing existing configured row

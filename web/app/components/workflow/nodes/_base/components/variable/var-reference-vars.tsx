@@ -96,7 +96,8 @@ const Item: FC<ItemProps> = ({
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
-    if (!isObj) return null
+    if (!isObj)
+      return null
     const properties: Record<string, Field> = {}
     const childrenVars = (itemData.children as Var[]) || []
     childrenVars.forEach((c) => {
@@ -161,10 +162,14 @@ const Item: FC<ItemProps> = ({
     }
   }
   const variableCategory = useMemo(() => {
-    if (isEnv) return 'environment'
-    if (isChatVar) return 'conversation'
-    if (isLoopVar) return 'loop'
-    if (isRagVariable) return 'rag'
+    if (isEnv)
+      return 'environment'
+    if (isChatVar)
+      return 'conversation'
+    if (isLoopVar)
+      return 'loop'
+    if (isRagVariable)
+      return 'rag'
     return 'system'
   }, [isEnv, isChatVar, isSys, isLoopVar, isRagVariable])
   return (

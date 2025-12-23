@@ -119,7 +119,8 @@ export const useWorkflowOrganize = () => {
 
     loopAndIterationNodes.forEach((parentNode) => {
       const childLayout = childLayoutsMap[parentNode.id]
-      if (!childLayout) return
+      if (!childLayout)
+        return
 
       const {
         bounds,

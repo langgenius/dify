@@ -38,8 +38,9 @@ const ImageList: FC<ImageListProps> = ({
       item.type === TransferMethod.remote_url
       && onImageLinkLoadSuccess
       && item.progress !== -1
-    )
+    ) {
       onImageLinkLoadSuccess(item._id)
+    }
   }
   const handleImageLinkLoadError = (item: ImageFile) => {
     if (item.type === TransferMethod.remote_url && onImageLinkLoadError)

@@ -2,7 +2,8 @@ import type { FC } from 'react'
 import type {
   DefaultModel,
   Model,
-  ModelFeatureEnum, ModelItem,
+  ModelFeatureEnum,
+  ModelItem,
 } from '../declarations'
 import { useState } from 'react'
 import {

@@ -244,17 +244,20 @@ const FileUploader = ({
       e.preventDefault()
       e.stopPropagation()
       setDragging(false)
-      if (!e.dataTransfer) return
+      if (!e.dataTransfer)
+        return
       const nested = await Promise.all(
         Array.from(e.dataTransfer.items).map((it) => {
           const entry = (it as any).webkitGetAsEntry?.()
-          if (entry) return traverseFileEntry(entry)
+          if (entry)
+            return traverseFileEntry(entry)
           const f = it.getAsFile?.()
           return f ? Promise.resolve([f]) : Promise.resolve([])
         }),
       )
       let files = nested.flat()
-      if (!supportBatchUpload) files = files.slice(0, 1)
+      if (!supportBatchUpload)
+        files = files.slice(0, 1)
       files = files.slice(0, fileUploadConfig.batch_count_limit)
       const valid = files.filter(isValid)
       initialUpload(valid)

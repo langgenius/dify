@@ -119,7 +119,8 @@ const BaseField = ({
       description,
       help,
     ].map(v => getTranslatedContent({ content: v, render: renderI18nObject }))
-    if (!results[1]) results[1] = t('common.placeholder.input')
+    if (!results[1])
+      results[1] = t('common.placeholder.input')
     return results
   }, [label, placeholder, tooltip, description, help, renderI18nObject])
 

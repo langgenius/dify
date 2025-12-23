@@ -359,7 +359,8 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   },
   PortalToFollowElemContent: ({ children }: any) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockPortalOpenState) return null
+    if (!mockPortalOpenState)
+      return null
     return <div>{children}</div>
   },
 }))

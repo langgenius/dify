@@ -51,8 +51,9 @@ const Blocks = ({
         // Filter out trigger types from Blocks tab
         if (block.metaData.type === BlockEnum.TriggerWebhook
           || block.metaData.type === BlockEnum.TriggerSchedule
-          || block.metaData.type === BlockEnum.TriggerPlugin)
+          || block.metaData.type === BlockEnum.TriggerPlugin) {
           return false
+        }
 
         return block.metaData.title.toLowerCase().includes(searchText.toLowerCase()) && availableBlocksTypes.includes(block.metaData.type)
       })

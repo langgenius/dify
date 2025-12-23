@@ -31,7 +31,8 @@ const RadioUI: FC<Props> = ({
         className,
       )}
       onClick={(event) => {
-        if (disabled) return
+        if (disabled)
+          return
         onCheck?.(event)
       }}
     />

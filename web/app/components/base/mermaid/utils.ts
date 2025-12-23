@@ -120,10 +120,8 @@ export function processSvgForTheme(
       })
 
       processedSvg = processedSvg
-        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<path stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
-        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<$1 stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
+        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<path stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
+        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<$1 stroke="${themes.dark.connectionColor}" stroke-width="1.5"`)
     }
   }
   else {
@@ -143,10 +141,8 @@ export function processSvgForTheme(
       })
 
       processedSvg = processedSvg
-        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<path stroke="${themes.light.connectionColor}"`)
-        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g,
-          `<$1 stroke="${themes.light.connectionColor}"`)
+        .replace(/<path [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<path stroke="${themes.light.connectionColor}"`)
+        .replace(/<(line|polyline) [^>]*stroke="#[a-fA-F0-9]{6}"/g, `<$1 stroke="${themes.light.connectionColor}"`)
     }
   }
 

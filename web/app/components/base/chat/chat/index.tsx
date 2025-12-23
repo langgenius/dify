@@ -205,9 +205,11 @@ const Chat: FC<ChatProps> = ({
   useEffect(() => {
     const setUserScrolled = () => {
       const container = chatContainerRef.current
-      if (!container) return
+      if (!container)
+        return
 
-      if (isAutoScrollingRef.current) return
+      if (isAutoScrollingRef.current)
+        return
 
       const distanceToBottom = container.scrollHeight - container.clientHeight - container.scrollTop
       const SCROLL_UP_THRESHOLD = 100
@@ -216,7 +218,8 @@ const Chat: FC<ChatProps> = ({
     }
 
     const container = chatContainerRef.current
-    if (!container) return
+    if (!container)
+      return
 
     container.addEventListener('scroll', setUserScrolled)
     return () => container.removeEventListener('scroll', setUserScrolled)

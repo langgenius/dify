@@ -167,12 +167,12 @@ const PluginPage = ({
       style={{ scrollbarGutter: 'stable' }}
       className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
         ? 'rounded-t-xl bg-components-panel-bg'
-        : 'bg-background-body',
-      )}
+        : 'bg-background-body')}
     >
       <div
         className={cn(
-          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4', isExploringMarketplace && 'bg-background-body',
+          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4',
+          isExploringMarketplace && 'bg-background-body',
         )}
       >
         <div className="flex w-full items-center justify-between">

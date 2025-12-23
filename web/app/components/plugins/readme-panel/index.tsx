@@ -28,7 +28,8 @@ const ReadmePanel: FC = () => {
     setCurrentPluginDetail()
   }
 
-  if (!detail) return null
+  if (!detail)
+    return null
 
   const children = (
     <div className="flex h-full w-full flex-col overflow-hidden">

@@ -75,8 +75,7 @@ const createMockPipelineNodes = (count = 3): Node<DataSourceNodeType>[] => {
         plugin_id: `plugin-${i + 1}`,
         datasource_name: `datasource-${i + 1}`,
       }),
-    }),
-  )
+    }))
 }
 
 const createMockDatasourceOption = (

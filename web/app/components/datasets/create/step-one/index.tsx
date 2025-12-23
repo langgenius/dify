@@ -149,9 +149,11 @@ const StepOne = ({
   }, [files, isShowVectorSpaceFull])
 
   const isNotionAuthed = useMemo(() => {
-    if (!authedDataSourceList) return false
+    if (!authedDataSourceList)
+      return false
     const notionSource = authedDataSourceList.find(item => item.provider === 'notion_datasource')
-    if (!notionSource) return false
+    if (!notionSource)
+      return false
     return notionSource.credentials_list.length > 0
   }, [authedDataSourceList])
 

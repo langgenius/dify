@@ -20,7 +20,8 @@ export const useReplaceDataSourceNode = (id: string) => {
     const nodes = getNodes()
     const emptyNodeIndex = nodes.findIndex(node => node.id === id)
 
-    if (emptyNodeIndex < 0) return
+    if (emptyNodeIndex < 0)
+      return
     const {
       defaultValue,
     } = nodesMetaDataMap![type]

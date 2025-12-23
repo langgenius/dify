@@ -2,7 +2,8 @@ import dayjs, {
   convertTimezoneToOffsetStr,
   getDateWithTimezone,
   isDayjsObject,
-  toDayjs } from './dayjs'
+  toDayjs,
+} from './dayjs'
 
 describe('dayjs utilities', () => {
   const timezone = 'UTC'

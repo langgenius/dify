@@ -27,7 +27,8 @@ export const useDynamicTestRunOptions = (): TestRunOptions => {
     for (const node of nodes) {
       const nodeData = node.data as CommonNodeType
 
-      if (!nodeData?.type) continue
+      if (!nodeData?.type)
+        continue
 
       if (nodeData.type === BlockEnum.Start) {
         userInput = {

@@ -90,15 +90,18 @@ const EmbeddingProcess = ({
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const isEmbeddingWaiting = useMemo(() => {
-    if (!indexingStatusBatchDetail.length) return false
+    if (!indexingStatusBatchDetail.length)
+      return false
     return indexingStatusBatchDetail.every(indexingStatusDetail => ['waiting'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbedding = useMemo(() => {
-    if (!indexingStatusBatchDetail.length) return false
+    if (!indexingStatusBatchDetail.length)
+      return false
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbeddingCompleted = useMemo(() => {
-    if (!indexingStatusBatchDetail.length) return false
+    if (!indexingStatusBatchDetail.length)
+      return false
     return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
 

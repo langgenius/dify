@@ -40,7 +40,8 @@ const ToolListTreeView: FC<Props> = ({
     return name
   }, [t])
 
-  if (!payload) return null
+  if (!payload)
+    return null
 
   return (
     <div>

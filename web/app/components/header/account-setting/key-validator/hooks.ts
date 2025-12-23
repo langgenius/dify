@@ -21,7 +21,8 @@ export const useValidate: (value: ValidateValue) => [DebouncedFunc<(validateCall
       setValidatedStatus(
         res.status === 'success'
           ? { status: ValidatedStatus.Success }
-          : { status: ValidatedStatus.Error, message: res.message })
+          : { status: ValidatedStatus.Error, message: res.message },
+      )
 
       setValidating(false)
     }

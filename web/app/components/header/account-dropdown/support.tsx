@@ -31,9 +31,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
         ({ open }) => (
           <>
             <MenuButton className={
-              cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover',
-                open && 'bg-state-base-hover',
-              )
+              cn('group flex h-9 w-full items-center gap-1 rounded-lg py-2 pl-3 pr-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')
             }
             >
               <RiQuestionLine className="size-4 shrink-0 text-text-tertiary" />
@@ -74,9 +72,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                           )
                         : (
                             <a
-                              className={cn(itemClassName, 'group justify-between',
-                                'data-[active]:bg-state-base-hover',
-                              )}
+                              className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                               href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo?.current_version)}
                               target="_blank"
                               rel="noopener noreferrer"
@@ -90,9 +86,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                   )}
                   <MenuItem>
                     <Link
-                      className={cn(itemClassName, 'group justify-between',
-                        'data-[active]:bg-state-base-hover',
-                      )}
+                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                       href="https://forum.dify.ai/"
                       target="_blank"
                       rel="noopener noreferrer"
@@ -104,9 +98,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                   </MenuItem>
                   <MenuItem>
                     <Link
-                      className={cn(itemClassName, 'group justify-between',
-                        'data-[active]:bg-state-base-hover',
-                      )}
+                      className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                       href="https://discord.gg/5AEfbxcd9k"
                       target="_blank"
                       rel="noopener noreferrer"

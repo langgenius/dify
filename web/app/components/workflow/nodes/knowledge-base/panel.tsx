@@ -54,7 +54,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   } = useConfig(id)
 
   const filterVar = useCallback((variable: Var) => {
-    if (!data.chunk_structure) return false
+    if (!data.chunk_structure)
+      return false
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:
         return variable.schemaType === 'general_structure' || variable.schemaType === 'multimodal_general_structure'
@@ -68,7 +69,8 @@ const Panel: FC<NodePanelProps<KnowledgeBaseNodeType>> = ({
   }, [data.chunk_structure])
 
   const chunkTypePlaceHolder = useMemo(() => {
-    if (!data.chunk_structure) return ''
+    if (!data.chunk_structure)
+      return ''
     let placeholder = ''
     switch (data.chunk_structure) {
       case ChunkStructureEnum.general:

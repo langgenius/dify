@@ -46,7 +46,8 @@ const useBeforeRunForm = ({
   })))
 
   const startRunBtnDisabled = useMemo(() => {
-    if (!datasourceNodeData) return false
+    if (!datasourceNodeData)
+      return false
     if (datasourceType === DatasourceType.localFile)
       return !localFileList.length || localFileList.some(file => !file.file.id)
     if (datasourceType === DatasourceType.onlineDocument)

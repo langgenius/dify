@@ -61,7 +61,8 @@ const VarPicker: FC<Props> = ({
           `
           flex h-8 cursor-pointer items-center justify-center space-x-1 rounded-lg border  px-2 text-[13px]
           font-medium  shadow-xs
-          `)}
+          `,
+        )}
         >
           <div>
             {value

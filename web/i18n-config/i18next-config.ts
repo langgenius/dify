@@ -141,7 +141,8 @@ if (!i18n.isInitialized) {
 }
 
 export const changeLanguage = async (lng?: string) => {
-  if (!lng) return
+  if (!lng)
+    return
   if (!i18n.hasResourceBundle(lng, 'translation')) {
     const resource = await loadLangResources(lng)
     i18n.addResourceBundle(lng, 'translation', resource, true, true)

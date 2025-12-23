@@ -465,8 +465,7 @@ describe('Logs Container', () => {
 
     it('should render pagination when total exceeds limit', () => {
       const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
+        createMockWorkflowLog({ id: `log-${i}` }))
 
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse(logs, APP_PAGE_LIMIT + 10),

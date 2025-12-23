@@ -47,7 +47,8 @@ const Popup: FC<PopupProps> = ({
     }
 
     const scrollContainer = scrollRef.current
-    if (!scrollContainer) return
+    if (!scrollContainer)
+      return
 
     // Use passive listener for better performance since we don't prevent default
     scrollContainer.addEventListener('scroll', handleTooltipCloseOnScroll, { passive: true })

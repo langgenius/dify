@@ -25,13 +25,15 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   // Get slash commands from registry
   // Note: pathname is included in deps because some commands (like /zen) check isAvailable based on current route
   const slashCommands = useMemo(() => {
-    if (!isSlashMode) return []
+    if (!isSlashMode)
+      return []
 
     const availableCommands = slashCommandRegistry.getAvailableCommands()
     const filter = searchFilter?.toLowerCase() || '' // searchFilter already has '/' removed
 
     return availableCommands.filter((cmd) => {
-      if (!filter) return true
+      if (!filter)
+        return true
       return cmd.name.toLowerCase().includes(filter)
     }).map(cmd => ({
       key: `/${cmd.name}`,
@@ -42,11 +44,13 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   }, [isSlashMode, searchFilter, pathname])
 
   const filteredActions = useMemo(() => {
-    if (isSlashMode) return []
+    if (isSlashMode)
+      return []
 
     return Object.values(actions).filter((action) => {
       // Exclude slash action when in @ mode
-      if (action.key === '/') return false
+      if (action.key === '/')
+        return false
       if (!searchFilter)
         return true
       const filterLower = searchFilter.toLowerCase()

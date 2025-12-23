@@ -40,9 +40,7 @@ const CardWrapperComponent = ({
 
   // Memoize tag labels to prevent recreating array on every render
   const tagLabels = useMemo(() =>
-    plugin.tags.map(tag => getTagLabel(tag.name)),
-  [plugin.tags, getTagLabel],
-  )
+    plugin.tags.map(tag => getTagLabel(tag.name)), [plugin.tags, getTagLabel])
 
   if (showInstallButton) {
     return (

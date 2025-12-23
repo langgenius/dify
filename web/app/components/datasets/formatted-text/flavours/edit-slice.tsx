@@ -67,15 +67,13 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
         {...getReferenceProps()}
       >
         <SliceLabel
-          className={cn(isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface',
-            labelClassName)}
+          className={cn(isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface', labelClassName)}
           labelInnerClassName={labelInnerClassName}
         >
           {label}
         </SliceLabel>
         <SliceContent
-          className={cn(isDestructive && '!bg-state-destructive-hover-alt',
-            contentClassName)}
+          className={cn(isDestructive && '!bg-state-destructive-hover-alt', contentClassName)}
         >
           {text}
         </SliceContent>

@@ -5,7 +5,8 @@ import formatParallelNode from '../parallel'
 export function addChildrenToIterationNode(iterationNode: NodeTracing, childrenNodes: NodeTracing[]): NodeTracing {
   const details: NodeTracing[][] = []
   childrenNodes.forEach((item, index) => {
-    if (!item.execution_metadata) return
+    if (!item.execution_metadata)
+      return
     const { iteration_index = 0 } = item.execution_metadata
     const runIndex: number = iteration_index !== undefined ? iteration_index : index
     if (!details[runIndex])

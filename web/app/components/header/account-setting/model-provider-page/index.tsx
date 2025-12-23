@@ -50,10 +50,12 @@ const ModelProviderPage = ({ searchText }: Props) => {
           provider.system_configuration.enabled === true
           && provider.system_configuration.quota_configurations.find(item => item.quota_type === provider.system_configuration.current_quota_type)
         )
-      )
+      ) {
         configuredProviders.push(provider)
-      else
+      }
+      else {
         notConfiguredProviders.push(provider)
+      }
     })
 
     configuredProviders.sort((a, b) => {

@@ -51,8 +51,9 @@ const CustomEdge = ({
         || _targetRunningStatus === NodeRunningStatus.Exception
         || _targetRunningStatus === NodeRunningStatus.Running
       )
-    )
+    ) {
       return id
+    }
   }, [_sourceRunningStatus, _targetRunningStatus, id])
 
   const stroke = useMemo(() => {

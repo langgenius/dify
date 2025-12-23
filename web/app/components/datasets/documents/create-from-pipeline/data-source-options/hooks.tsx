@@ -8,7 +8,8 @@ export const useDatasourceIcon = (data: DataSourceNodeType) => {
   const { data: dataSourceListData, isSuccess } = useDataSourceList(true)
 
   const datasourceIcon = useMemo(() => {
-    if (!isSuccess) return
+    if (!isSuccess)
+      return
     const dataSourceList = [...(dataSourceListData || [])]
     dataSourceList.forEach((item) => {
       const icon = item.declaration.identity.icon

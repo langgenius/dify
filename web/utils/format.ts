@@ -119,7 +119,8 @@ export const downloadFile = ({ data, fileName }: { data: Blob, fileName: string 
  */
 export const formatNumberAbbreviated = (num: number) => {
   // If less than 1000, return as-is
-  if (num < 1000) return num.toString()
+  if (num < 1000)
+    return num.toString()
 
   // Define thresholds and suffixes
   const units = [

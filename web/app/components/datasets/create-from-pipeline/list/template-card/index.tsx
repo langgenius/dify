@@ -102,7 +102,8 @@ const TemplateCard = ({
   const { mutateAsync: exportPipelineDSL, isPending: isExporting } = useExportTemplateDSL()
 
   const handleExportDSL = useCallback(async () => {
-    if (isExporting) return
+    if (isExporting)
+      return
     await exportPipelineDSL(pipeline.id, {
       onSuccess: (res) => {
         const blob = new Blob([res.data], { type: 'application/yaml' })

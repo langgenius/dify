@@ -9,7 +9,8 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
 import {
-  useIsChatMode, useNodesReadOnly,
+  useIsChatMode,
+  useNodesReadOnly,
   useWorkflow,
 } from '../../hooks'
 import useConfigVision from '../../hooks/use-config-vision'

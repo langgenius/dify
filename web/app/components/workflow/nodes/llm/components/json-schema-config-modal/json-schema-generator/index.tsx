@@ -125,7 +125,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
   const handleGenerate = useCallback(async () => {
     setView(GeneratorView.result)
     const output = await generateSchema()
-    if (output === undefined) return
+    if (output === undefined)
+      return
     setSchema(JSON.parse(output))
   }, [generateSchema])
 
@@ -135,7 +136,8 @@ const JsonSchemaGenerator: FC<JsonSchemaGeneratorProps> = ({
 
   const handleRegenerate = useCallback(async () => {
     const output = await generateSchema()
-    if (output === undefined) return
+    if (output === undefined)
+      return
     setSchema(JSON.parse(output))
   }, [generateSchema])
 

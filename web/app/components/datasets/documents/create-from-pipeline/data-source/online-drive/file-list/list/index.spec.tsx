@@ -1086,35 +1086,34 @@ describe('List', () => {
       { isLoading: false, fileCount: 0, keywords: '', expectedState: 'empty-folder' },
       { isLoading: false, fileCount: 0, keywords: 'search', expectedState: 'empty-search' },
       { isLoading: false, fileCount: 5, keywords: '', expectedState: 'file-list' },
-    ])('should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords',
-      ({ isLoading, fileCount, keywords, expectedState }) => {
-        // Arrange
-        const fileList = createMockFileList(fileCount)
-        const props = createDefaultProps({ fileList, isLoading, keywords })
+    ])('should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords', ({ isLoading, fileCount, keywords, expectedState }) => {
+      // Arrange
+      const fileList = createMockFileList(fileCount)
+      const props = createDefaultProps({ fileList, isLoading, keywords })
 
-        // Act
-        render(<List {...props} />)
+      // Act
+      render(<List {...props} />)
 
-        // Assert
-        switch (expectedState) {
-          case 'all-loading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
-            break
-          case 'partial-loading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
-            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-            break
-          case 'empty-folder':
-            expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
-            break
-          case 'empty-search':
-            expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
-            break
-          case 'file-list':
-            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-            break
-        }
-      })
+      // Assert
+      switch (expectedState) {
+        case 'all-loading':
+          expect(screen.getByRole('status')).toBeInTheDocument()
+          break
+        case 'partial-loading':
+          expect(screen.getByRole('status')).toBeInTheDocument()
+          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+          break
+        case 'empty-folder':
+          expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
+          break
+        case 'empty-search':
+          expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
+          break
+        case 'file-list':
+          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+          break
+      }
+    })
 
     it.each([
       { selectedCount: 0, expectedSelected: [] },

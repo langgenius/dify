@@ -39,11 +39,7 @@ const SearchBox = ({
       className={cn('z-[11] flex items-center', wrapperClassName)}
     >
       <div className={
-        cn('flex items-center',
-          usedInMarketplace && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md',
-          !usedInMarketplace && 'radius-md border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover',
-          inputClassName,
-        )
+        cn('flex items-center', usedInMarketplace && 'rounded-xl border border-components-chat-input-border bg-components-panel-bg-blur p-1.5 shadow-md', !usedInMarketplace && 'radius-md border border-transparent bg-components-input-bg-normal focus-within:border-components-input-border-active hover:border-components-input-border-hover', inputClassName)
       }
       >
         {

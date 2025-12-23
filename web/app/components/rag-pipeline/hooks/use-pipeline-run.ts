@@ -286,8 +286,7 @@ export const usePipelineRun = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
     handleWorkflowAgentLog,
-  ],
-  )
+  ])
 
   const handleStopRun = useCallback((taskId: string) => {
     const { pipelineId } = workflowStore.getState()

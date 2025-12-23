@@ -12,7 +12,8 @@ import { produce } from 'immer'
 import { uniqBy } from 'lodash-es'
 import { useCallback } from 'react'
 import {
-  useNodes, useStoreApi,
+  useNodes,
+  useStoreApi,
 } from 'reactflow'
 import {
   useIsChatMode,

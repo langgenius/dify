@@ -20,7 +20,8 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
   const router = useRouter()
 
   const handleReplay = () => {
-    if (!appDetail?.id) return
+    if (!appDetail?.id)
+      return
     router.push(`/app/${appDetail.id}/workflow?replayRunId=${runID}`)
   }
 

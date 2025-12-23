@@ -8,9 +8,12 @@ export const isEmptyRelatedOperator = (operator: ComparisonOperator) => {
 }
 
 const notTranslateKey = [
-  ComparisonOperator.equal, ComparisonOperator.notEqual,
-  ComparisonOperator.largerThan, ComparisonOperator.largerThanOrEqual,
-  ComparisonOperator.lessThan, ComparisonOperator.lessThanOrEqual,
+  ComparisonOperator.equal,
+  ComparisonOperator.notEqual,
+  ComparisonOperator.largerThan,
+  ComparisonOperator.largerThanOrEqual,
+  ComparisonOperator.lessThan,
+  ComparisonOperator.lessThanOrEqual,
 ]
 
 export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {

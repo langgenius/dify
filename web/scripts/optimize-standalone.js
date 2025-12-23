@@ -115,7 +115,8 @@ const checkForJest = (dir) => {
   const jestFiles = []
 
   function walk(currentPath) {
-    if (!fs.existsSync(currentPath)) return
+    if (!fs.existsSync(currentPath))
+      return
 
     try {
       const entries = fs.readdirSync(currentPath)

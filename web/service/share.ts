@@ -32,8 +32,15 @@ import type {
 } from '@/models/share'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import {
-  del as consoleDel, get as consoleGet, patch as consolePatch, post as consolePost,
-  delPublic as del, getPublic as get, patchPublic as patch, postPublic as post, ssePost,
+  del as consoleDel,
+  get as consoleGet,
+  patch as consolePatch,
+  post as consolePost,
+  delPublic as del,
+  getPublic as get,
+  patchPublic as patch,
+  postPublic as post,
+  ssePost,
 } from './base'
 import { getWebAppAccessToken } from './webapp-auth'
 

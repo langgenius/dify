@@ -48,8 +48,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         draft[index].isUpdated = true
         draft[index].updateType = UpdateType.changeValue
       }
-    },
-    )
+    })
     setTempleList(newTempleList)
   }, [templeList])
   const handleTempleItemRemove = useCallback((id: string) => {

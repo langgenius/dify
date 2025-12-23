@@ -48,7 +48,8 @@ const Item = ({
 
   const handleClickItem = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
-    if (disabled) return
+    if (disabled)
+      return
     if (isBucket || isFolder) {
       onOpen(file)
       return

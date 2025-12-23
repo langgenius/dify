@@ -24,7 +24,8 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
 }
 
 const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
-  if (response.status === 204) return Response.json({ result: 'success' })
+  if (response.status === 204)
+    return Response.json({ result: 'success' })
 }
 
 export type ResponseError = {
@@ -209,8 +210,9 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   if (
     contentType
     && [ContentType.download, ContentType.audio, ContentType.downloadZip].includes(contentType)
-  )
+  ) {
     return await res.blob() as T
+  }
 
   return await res.json() as T
 }

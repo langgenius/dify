@@ -29,7 +29,8 @@ export const useInvalidateEndpointList = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'list', pluginID],
-      })
+      },
+    )
   }
 }
 

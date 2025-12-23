@@ -230,11 +230,7 @@ const DocumentDetail: FC<DocumentDetailProps> = ({ datasetId, documentId }) => {
           {isDetailLoading
             ? <Loading type="app" />
             : (
-                <div className={cn('flex h-full min-w-0 grow flex-col',
-                  !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4',
-                  !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3',
-                )}
-                >
+                <div className={cn('flex h-full min-w-0 grow flex-col', !embedding && isFullDocMode && 'relative pl-11 pr-11 pt-4', !embedding && !isFullDocMode && 'relative pl-5 pr-11 pt-3')}>
                   {embedding
                     ? (
                         <Embedding

@@ -86,7 +86,8 @@ const Group = ({
       })
       return
     }
-    if (!nodeData) return
+    if (!nodeData)
+      return
     handleSelect({
       nodeId: nodeData.nodeId,
       nodeType: nodeData.nodeType,

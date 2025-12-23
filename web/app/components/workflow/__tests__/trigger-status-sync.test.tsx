@@ -276,9 +276,7 @@ describe('Trigger Status Synchronization Integration', () => {
       nodeType: string
     }> = ({ nodeId, nodeType }) => {
       const triggerStatusSelector = useCallback((state: any) =>
-        mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled',
-      [nodeId, nodeType],
-      )
+        mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses[nodeId] || 'disabled') : 'enabled', [nodeId, nodeType])
       const triggerStatus = useTriggerStatusStore(triggerStatusSelector)
 
       return (
@@ -319,9 +317,10 @@ describe('Trigger Status Synchronization Integration', () => {
       mockIsTriggerNode.mockImplementation(nodeType => nodeType === 'trigger-webhook')
 
       const TestComponent: React.FC<{ nodeType: string }> = ({ nodeType }) => {
-        const triggerStatusSelector = useCallback((state: any) =>
-          mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses['test-node'] || 'disabled') : 'enabled',
-        ['test-node', nodeType], // Dependencies should match implementation
+        const triggerStatusSelector = useCallback(
+          (state: any) =>
+            mockIsTriggerNode(nodeType as BlockEnum) ? (state.triggerStatuses['test-node'] || 'disabled') : 'enabled',
+          ['test-node', nodeType], // Dependencies should match implementation
         )
         const status = useTriggerStatusStore(triggerStatusSelector)
         return <div data-testid="test-component" data-status={status} />

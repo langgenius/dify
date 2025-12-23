@@ -72,7 +72,8 @@ const ConditionItem = ({
         ...condition,
         value: comparisonOperatorNotRequireValue(condition.comparison_operator) ? undefined : condition.value,
         comparison_operator: operator,
-      })
+      },
+    )
   }, [onUpdateCondition, condition])
 
   const valueAndValueMethod = useMemo(() => {

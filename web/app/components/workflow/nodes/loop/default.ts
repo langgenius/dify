@@ -68,8 +68,9 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
       || !Number.isInteger(Number(payload.loop_count))
       || payload.loop_count < 1
       || payload.loop_count > LOOP_NODE_MAX_COUNT
-    ))
+    )) {
       errorMessages = t('workflow.nodes.loop.loopMaxCountError', { maxCount: LOOP_NODE_MAX_COUNT })
+    }
 
     return {
       isValid: !errorMessages,

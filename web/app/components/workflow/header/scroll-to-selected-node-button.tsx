@@ -12,7 +12,8 @@ const ScrollToSelectedNodeButton: FC = () => {
   const selectedNode = nodes.find(node => node.data.selected)
 
   const handleScrollToSelectedNode = useCallback(() => {
-    if (!selectedNode) return
+    if (!selectedNode)
+      return
     scrollToWorkflowNode(selectedNode.id)
   }, [selectedNode])
 

@@ -57,7 +57,8 @@ const OptionCard = <T,>({
         disabled && 'cursor-not-allowed opacity-50',
       )}
       onClick={() => {
-        if (isActive || disabled) return
+        if (isActive || disabled)
+          return
         onClick?.(id)
       }}
     >

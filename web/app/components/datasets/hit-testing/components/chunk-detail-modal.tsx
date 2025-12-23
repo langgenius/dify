@@ -35,7 +35,8 @@ const ChunkDetailModal = ({
   const labelPrefix = isParentChildRetrieval ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
 
   const images = useMemo(() => {
-    if (!files) return []
+    if (!files)
+      return []
     return files.map(file => ({
       name: file.name,
       mimeType: file.mime_type,

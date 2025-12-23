@@ -51,7 +51,8 @@ const NoData: FC<Props> = ({
 
   const currentProvider = providerConfig[provider] || providerConfig.jinareader
 
-  if (!currentProvider) return null
+  if (!currentProvider)
+    return null
 
   return (
     <>

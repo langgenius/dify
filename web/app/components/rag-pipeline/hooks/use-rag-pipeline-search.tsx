@@ -77,7 +77,8 @@ export const useRagPipelineSearch = () => {
     desc: string
     modelInfo: { provider?: string, name?: string, mode?: string }
   }, searchTerm: string): number => {
-    if (!searchTerm) return 1
+    if (!searchTerm)
+      return 1
 
     let score = 0
     const term = searchTerm.toLowerCase()
@@ -107,7 +108,8 @@ export const useRagPipelineSearch = () => {
 
   // Create search function for RAG pipeline nodes
   const searchRagPipelineNodes = useCallback((query: string) => {
-    if (!searchableNodes.length) return []
+    if (!searchableNodes.length)
+      return []
 
     const searchTerm = query.toLowerCase().trim()
 
@@ -142,7 +144,8 @@ export const useRagPipelineSearch = () => {
       .filter((node): node is NonNullable<typeof node> => node !== null)
       .sort((a, b) => {
         // If no search term, sort alphabetically
-        if (!searchTerm) return a.title.localeCompare(b.title)
+        if (!searchTerm)
+          return a.title.localeCompare(b.title)
         // Sort by relevance score (higher score first)
         return (b.score || 0) - (a.score || 0)
       })

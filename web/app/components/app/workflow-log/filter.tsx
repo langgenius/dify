@@ -44,12 +44,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           })
         }}
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
-        items={[{ value: 'all', name: 'All' },
-          { value: 'succeeded', name: 'Success' },
-          { value: 'failed', name: 'Fail' },
-          { value: 'stopped', name: 'Stop' },
-          { value: 'partial-succeeded', name: 'Partial Success' },
-        ]}
+        items={[{ value: 'all', name: 'All' }, { value: 'succeeded', name: 'Success' }, { value: 'failed', name: 'Fail' }, { value: 'stopped', name: 'Stop' }, { value: 'partial-succeeded', name: 'Partial Success' }]}
       />
       <Chip
         className="min-w-[150px]"

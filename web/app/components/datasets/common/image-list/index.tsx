@@ -41,7 +41,8 @@ const ImageList = ({
 
   const handleImageClick = useCallback((file: FileEntity) => {
     const index = limitedImages.findIndex(image => image.sourceUrl === file.sourceUrl)
-    if (index === -1) return
+    if (index === -1)
+      return
     setPreviewIndex(index)
     setPreviewImages(limitedImages.map(image => ({
       url: image.sourceUrl,

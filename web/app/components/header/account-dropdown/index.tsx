@@ -111,9 +111,7 @@ export default function AppSelector() {
                     </MenuItem>
                     <MenuItem>
                       <Link
-                        className={cn(itemClassName, 'group',
-                          'data-[active]:bg-state-base-hover',
-                        )}
+                        className={cn(itemClassName, 'group', 'data-[active]:bg-state-base-hover')}
                         href="/account"
                         target="_self"
                         rel="noopener noreferrer"
@@ -125,9 +123,7 @@ export default function AppSelector() {
                     </MenuItem>
                     <MenuItem>
                       <div
-                        className={cn(itemClassName,
-                          'data-[active]:bg-state-base-hover',
-                        )}
+                        className={cn(itemClassName, 'data-[active]:bg-state-base-hover')}
                         onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.MEMBERS })}
                       >
                         <RiSettings3Line className="size-4 shrink-0 text-text-tertiary" />
@@ -140,9 +136,7 @@ export default function AppSelector() {
                       <div className="p-1">
                         <MenuItem>
                           <Link
-                            className={cn(itemClassName, 'group justify-between',
-                              'data-[active]:bg-state-base-hover',
-                            )}
+                            className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                             href={docLink('/introduction')}
                             target="_blank"
                             rel="noopener noreferrer"
@@ -158,9 +152,7 @@ export default function AppSelector() {
                       <div className="p-1">
                         <MenuItem>
                           <Link
-                            className={cn(itemClassName, 'group justify-between',
-                              'data-[active]:bg-state-base-hover',
-                            )}
+                            className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                             href="https://roadmap.dify.ai"
                             target="_blank"
                             rel="noopener noreferrer"
@@ -172,9 +164,7 @@ export default function AppSelector() {
                         </MenuItem>
                         <MenuItem>
                           <Link
-                            className={cn(itemClassName, 'group justify-between',
-                              'data-[active]:bg-state-base-hover',
-                            )}
+                            className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                             href="https://github.com/langgenius/dify"
                             target="_blank"
                             rel="noopener noreferrer"
@@ -191,9 +181,7 @@ export default function AppSelector() {
                           document?.body?.getAttribute('data-public-site-about') !== 'hide' && (
                             <MenuItem>
                               <div
-                                className={cn(itemClassName, 'justify-between',
-                                  'data-[active]:bg-state-base-hover',
-                                )}
+                                className={cn(itemClassName, 'justify-between', 'data-[active]:bg-state-base-hover')}
                                 onClick={() => setAboutVisible(true)}
                               >
                                 <RiInformation2Line className="size-4 shrink-0 text-text-tertiary" />
@@ -221,9 +209,7 @@ export default function AppSelector() {
                   <MenuItem>
                     <div className="p-1" onClick={() => handleLogout()}>
                       <div
-                        className={cn(itemClassName, 'group justify-between',
-                          'data-[active]:bg-state-base-hover',
-                        )}
+                        className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                       >
                         <RiLogoutBoxRLine className="size-4 shrink-0 text-text-tertiary" />
                         <div className="system-md-regular grow px-1 text-text-secondary">{t('common.userProfile.logout')}</div>

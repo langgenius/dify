@@ -101,7 +101,8 @@ const useConfig = (id: string, payload: AgentNodeType) => {
     const isVariable = currentStrategy?.parameters.some(
       param => param.name === paramName && param.type === FormTypeEnum.any,
     )
-    if (isVariable) return VarType.variable
+    if (isVariable)
+      return VarType.variable
     return VarType.constant
   }, [currentStrategy?.parameters])
 

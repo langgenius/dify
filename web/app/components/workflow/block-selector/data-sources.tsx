@@ -84,7 +84,8 @@ const DataSources = ({
   } = useMarketplacePlugins()
 
   useEffect(() => {
-    if (!enable_marketplace) return
+    if (!enable_marketplace)
+      return
     if (searchText) {
       fetchPlugins({
         query: searchText,

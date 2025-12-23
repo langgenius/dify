@@ -21,7 +21,8 @@ const LoopLogTrigger = ({
   const { t } = useTranslation()
 
   const filterNodesForInstance = (key: string): NodeTracing[] => {
-    if (!allExecutions) return []
+    if (!allExecutions)
+      return []
 
     const parallelNodes = allExecutions.filter(exec =>
       exec.execution_metadata?.parallel_mode_run_id === key,

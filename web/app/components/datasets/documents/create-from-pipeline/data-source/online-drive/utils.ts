@@ -7,7 +7,8 @@ export const isFile = (type: 'file' | 'folder'): boolean => {
 }
 
 export const isBucketListInitiation = (data: OnlineDriveData[], prefix: string[], bucket: string): boolean => {
-  if (bucket || prefix.length > 0) return false
+  if (bucket || prefix.length > 0)
+    return false
   const hasBucket = data.every(item => !!item.bucket)
   return hasBucket && (data.length > 1 || (data.length === 1 && !!data[0].bucket && data[0].files.length === 0))
 }

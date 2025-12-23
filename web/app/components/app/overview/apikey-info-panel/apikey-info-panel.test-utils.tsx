@@ -174,14 +174,16 @@ export const interactions = {
   // Click the main button
   clickMainButton: () => {
     const button = document.querySelector('button.btn-primary')
-    if (button) fireEvent.click(button)
+    if (button)
+      fireEvent.click(button)
     return button
   },
 
   // Click the close button
   clickCloseButton: (container: HTMLElement) => {
     const closeButton = container.querySelector('.absolute.right-4.top-4')
-    if (closeButton) fireEvent.click(closeButton)
+    if (closeButton)
+      fireEvent.click(closeButton)
     return closeButton
   },
 }

@@ -106,7 +106,8 @@ const OnlineDocuments = ({
   }, [dataSourceStore, datasourceNodeRunURL, nodeData.datasource_parameters])
 
   useEffect(() => {
-    if (!currentCredentialId) return
+    if (!currentCredentialId)
+      return
     getOnlineDocuments()
   }, [currentCredentialId])
 

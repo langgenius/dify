@@ -63,7 +63,8 @@ const Loaded: React.FC<LoadedProps> = ({
   }, [hasInstalled])
 
   const handleInstall = async () => {
-    if (isInstalling) return
+    if (isInstalling)
+      return
     setIsInstalling(true)
     onStartToInstall?.()
 

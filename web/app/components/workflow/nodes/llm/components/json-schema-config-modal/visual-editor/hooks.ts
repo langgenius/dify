@@ -58,7 +58,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
     const { name: oldName } = oldFields
     const { name: newName } = fields
     const newSchema = produce(jsonSchema, (draft) => {
-      if (oldName === newName) return
+      if (oldName === newName)
+        return
       const schema = findPropertyWithPath(draft, parentPath) as Field
 
       if (schema.type === Type.object) {
@@ -121,7 +122,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
     const { path, oldFields, fields } = params as ChangeEventParams
     const { type: oldType } = oldFields
     const { type: newType } = fields
-    if (oldType === newType) return
+    if (oldType === newType)
+      return
     const newSchema = produce(jsonSchema, (draft) => {
       const schema = findPropertyWithPath(draft, path) as Field
 
@@ -440,7 +442,8 @@ export const useSchemaNodeOperations = (props: VisualEditorProps) => {
         schema.enum = fields.enum
       }
     })
-    if (samePropertyNameError) return
+    if (samePropertyNameError)
+      return
     onChange(newSchema)
     emit('fieldChangeSuccess')
   })

@@ -56,7 +56,8 @@ const PluginVersionPicker: FC<Props> = ({
   const { formatDate } = useTimestamp()
 
   const handleTriggerClick = () => {
-    if (disabled) return
+    if (disabled)
+      return
     onShowChange(true)
   }
 

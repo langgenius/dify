@@ -56,7 +56,8 @@ const CrawledResult = ({
   }, [checkedList, onSelectedChange, isMultipleChoice])
 
   const handlePreview = useCallback((index: number) => {
-    if (!onPreview) return
+    if (!onPreview)
+      return
     onPreview(list[index], index)
   }, [list, onPreview])
 

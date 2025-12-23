@@ -59,7 +59,8 @@ const Header: FC<IHeaderProps> = ({
   }, [parentOrigin])
 
   useEffect(() => {
-    if (!isIframe) return
+    if (!isIframe)
+      return
 
     const listener = (event: MessageEvent) => handleMessageReceived(event)
     window.addEventListener('message', listener)
@@ -70,7 +71,8 @@ const Header: FC<IHeaderProps> = ({
   }, [isIframe, handleMessageReceived])
 
   const handleToggleExpand = useCallback(() => {
-    if (!isIframe || !showToggleExpandButton) return
+    if (!isIframe || !showToggleExpandButton)
+      return
     setExpanded(!expanded)
     window.parent.postMessage({
       type: 'dify-chatbot-expand-change',

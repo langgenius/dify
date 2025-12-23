@@ -33,8 +33,7 @@ describe('check-i18n script functionality', () => {
           const filePath = path.join(folderPath, file)
           const fileName = file.replace(/\.[^/.]+$/, '')
           const camelCaseFileName = fileName.replace(/[-_](.)/g, (_, c) =>
-            c.toUpperCase(),
-          )
+            c.toUpperCase())
 
           try {
             const content = fs.readFileSync(filePath, 'utf8')
@@ -618,8 +617,9 @@ export default translation
                 // Check if this line ends the value (ends with quote and comma/no comma)
                 if ((trimmed.endsWith('\',') || trimmed.endsWith('",') || trimmed.endsWith('`,')
                   || trimmed.endsWith('\'') || trimmed.endsWith('"') || trimmed.endsWith('`'))
-                && !trimmed.startsWith('//'))
+                && !trimmed.startsWith('//')) {
                   break
+                }
               }
               else {
                 break

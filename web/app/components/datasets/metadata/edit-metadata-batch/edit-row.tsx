@@ -49,7 +49,8 @@ const EditMetadatabatchItem: FC<Props> = ({
         className={
           cn(
             'cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive',
-            isDeleted && 'cursor-default bg-state-destructive-hover  text-text-destructive')
+            isDeleted && 'cursor-default bg-state-destructive-hover  text-text-destructive',
+          )
         }
         onClick={() => onRemove(payload.id)}
       >

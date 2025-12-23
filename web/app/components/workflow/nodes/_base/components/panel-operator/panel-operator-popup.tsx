@@ -53,7 +53,8 @@ const PanelOperatorPopup = ({
   const { data: workflowTools } = useAllWorkflowTools()
   const isWorkflowTool = data.type === BlockEnum.Tool && data.provider_type === CollectionType.workflow
   const workflowAppId = useMemo(() => {
-    if (!isWorkflowTool || !workflowTools || !data.provider_id) return undefined
+    if (!isWorkflowTool || !workflowTools || !data.provider_id)
+      return undefined
     const workflowTool = workflowTools.find(item => canFindTool(item.id, data.provider_id))
     return workflowTool?.workflow_app_id
   }, [isWorkflowTool, workflowTools, data.provider_id])

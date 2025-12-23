@@ -31,7 +31,8 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
 
   const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
     const { open } = React.useContext(PortalContext)
-    if (!open) return null
+    if (!open)
+      return null
     return (
       <div data-testid="portal-content" {...props}>
         {children}

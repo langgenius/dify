@@ -91,7 +91,8 @@ const AppOperations = ({
     for (let i = 0; i < childrens.length; i++) {
       const child = childrens[i] as HTMLElement
       const id = child.dataset.targetid
-      if (!id) break
+      if (!id)
+        break
       const childWidth = child.clientWidth
 
       if (width + gap + childWidth + moreWidth <= containerWidth) {

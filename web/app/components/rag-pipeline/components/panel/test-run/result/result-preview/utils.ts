@@ -70,7 +70,8 @@ const formatQAChunks = (outputs: any) => {
 }
 
 export const formatPreviewChunks = (outputs: any): ChunkInfo | undefined => {
-  if (!outputs) return undefined
+  if (!outputs)
+    return undefined
 
   const chunkingMode = outputs.chunk_structure
   const parentMode = outputs.parent_mode

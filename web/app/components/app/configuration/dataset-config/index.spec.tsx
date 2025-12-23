@@ -56,11 +56,13 @@ vi.mock('lodash-es', () => ({
   intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)
-    if (validArrays.length === 0) return []
+    if (validArrays.length === 0)
+      return []
 
     // Start with first array and filter down
     return validArrays[0].filter((item: any) => {
-      if (!item || !item.name) return false
+      if (!item || !item.name)
+        return false
 
       // Only return items that exist in all arrays
       return validArrays.every(array =>
@@ -1008,8 +1010,7 @@ describe('DatasetConfig', () => {
             { name: 'category', type: 'string' } as any,
             { name: 'priority', type: 'number' } as any,
           ],
-        }),
-      )
+        }))
 
       renderDatasetConfig({
         dataSets: manyDatasets,

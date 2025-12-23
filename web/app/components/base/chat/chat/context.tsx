@@ -15,8 +15,7 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'onAnnotationEdited'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'
-  | 'onFeedback'
->
+  | 'onFeedback'>
 
 const ChatContext = createContext<ChatContextValue>({
   chatList: [],

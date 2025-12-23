@@ -88,7 +88,8 @@ const Splash: FC<PropsWithChildren> = ({ children }) => {
     message,
     webAppAccessMode,
     tokenFromUrl,
-    embeddedUserId])
+    embeddedUserId,
+  ])
 
   if (message) {
     return (

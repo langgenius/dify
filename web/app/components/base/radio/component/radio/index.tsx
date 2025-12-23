@@ -48,7 +48,8 @@ export default function Radio({
         disabled ? s.disabled : '',
         isChecked ? 'bg-components-option-card-option-bg-hover shadow-xs' : '',
         divClassName,
-        className)}
+        className,
+      )}
       onClick={() => handleChange(value)}
     >
       {children && (

@@ -8,7 +8,8 @@ import { VarKindType } from '../_base/types'
 import { Type } from '../llm/types'
 
 const normalizeJsonSchemaType = (schema: any): string | undefined => {
-  if (!schema) return undefined
+  if (!schema)
+    return undefined
   const { type, properties, items, oneOf, anyOf, allOf } = schema
 
   if (Array.isArray(type))
@@ -278,8 +279,9 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
             || value === null
             || value === ''
             || (Array.isArray(value) && value.length === 0)
-          )
+          ) {
             errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+          }
         }
       })
     }

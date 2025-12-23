@@ -186,7 +186,8 @@ export default function AccountSetting({
                           key={item.key}
                           className={cn(
                             'mb-0.5 flex h-[37px] cursor-pointer items-center rounded-lg p-1 pl-3 text-sm',
-                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text')}
+                            activeMenu === item.key ? 'system-sm-semibold bg-state-base-active text-components-menu-item-text-active' : 'system-sm-medium text-components-menu-item-text',
+                          )}
                           title={item.name}
                           onClick={() => {
                             setActiveMenu(item.key)

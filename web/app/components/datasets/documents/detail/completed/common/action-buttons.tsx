@@ -40,8 +40,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
     if (loading)
       return
     handleSave()
-  },
-  { exactMatch: true, useCapture: true })
+  }, { exactMatch: true, useCapture: true })
 
   const isParentChildParagraphMode = useMemo(() => {
     return docForm === ChunkingMode.parentChild && parentMode === 'paragraph'

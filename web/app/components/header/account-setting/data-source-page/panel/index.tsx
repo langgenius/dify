@@ -42,8 +42,10 @@ const Panel: FC<Props> = ({
   const isWebsite = type === DataSourceType.website
 
   const getProviderName = (): string => {
-    if (provider === DataSourceProvider.fireCrawl) return '🔥 Firecrawl'
-    if (provider === DataSourceProvider.waterCrawl) return 'WaterCrawl'
+    if (provider === DataSourceProvider.fireCrawl)
+      return '🔥 Firecrawl'
+    if (provider === DataSourceProvider.waterCrawl)
+      return 'WaterCrawl'
     return 'Jina Reader'
   }
 

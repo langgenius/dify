@@ -75,8 +75,9 @@ const CustomEdge = ({
         || _targetRunningStatus === NodeRunningStatus.Exception
         || _targetRunningStatus === NodeRunningStatus.Running
       )
-    )
+    ) {
       return id
+    }
   }, [_sourceRunningStatus, _targetRunningStatus, id])
 
   const handleOpenChange = useCallback((v: boolean) => {

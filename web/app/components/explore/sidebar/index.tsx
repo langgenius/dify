@@ -87,8 +87,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
       <div className={cn(isDiscoverySelected ? 'text-text-accent' : 'text-text-tertiary')}>
         <Link
           href="/explore/apps"
-          className={cn(isDiscoverySelected ? ' bg-components-main-nav-nav-button-bg-active' : 'font-medium hover:bg-state-base-hover',
-            'flex h-9 items-center gap-2 rounded-lg px-3 mobile:w-fit mobile:justify-center mobile:px-2 pc:w-full pc:justify-start')}
+          className={cn(isDiscoverySelected ? ' bg-components-main-nav-nav-button-bg-active' : 'font-medium hover:bg-state-base-hover', 'flex h-9 items-center gap-2 rounded-lg px-3 mobile:w-fit mobile:justify-center mobile:px-2 pc:w-full pc:justify-start')}
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}

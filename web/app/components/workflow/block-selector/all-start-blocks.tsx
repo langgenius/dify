@@ -115,7 +115,8 @@ const AllStartBlocks = ({
   }, [enableTriggerPlugin, hasPluginContent])
 
   useEffect(() => {
-    if (!enableTriggerPlugin || !enable_marketplace) return
+    if (!enableTriggerPlugin || !enable_marketplace)
+      return
     if (hasFilter) {
       fetchPlugins({
         query: searchText,

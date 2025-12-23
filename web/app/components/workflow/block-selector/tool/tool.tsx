@@ -78,7 +78,8 @@ const Tool: FC<Props> = ({
     return normalizedIcon
   }, [theme, normalizedIcon, normalizedIconDark])
   const getIsDisabled = useCallback((tool: ToolType) => {
-    if (!selectedTools || !selectedTools.length) return false
+    if (!selectedTools || !selectedTools.length)
+      return false
     return selectedTools.some(selectedTool => (selectedTool.provider_name === payload.name || selectedTool.provider_name === payload.id) && selectedTool.tool_name === tool.name)
   }, [payload.id, payload.name, selectedTools])
 

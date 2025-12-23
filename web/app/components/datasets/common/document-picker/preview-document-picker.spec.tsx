@@ -76,8 +76,7 @@ const createMockDocumentList = (count: number): DocumentItem[] => {
       id: `doc-${index + 1}`,
       name: `Document ${index + 1}`,
       extension: index % 2 === 0 ? 'pdf' : 'txt',
-    }),
-  )
+    }))
 }
 
 // Factory function to create default props

@@ -29,14 +29,18 @@ const Actions = ({
   const { datasetId } = useParams()
 
   const indeterminate = useMemo(() => {
-    if (!showSelect) return false
-    if (selectedOptions === undefined || totalOptions === undefined) return false
+    if (!showSelect)
+      return false
+    if (selectedOptions === undefined || totalOptions === undefined)
+      return false
     return selectedOptions > 0 && selectedOptions < totalOptions
   }, [showSelect, selectedOptions, totalOptions])
 
   const checked = useMemo(() => {
-    if (!showSelect) return false
-    if (selectedOptions === undefined || totalOptions === undefined) return false
+    if (!showSelect)
+      return false
+    if (selectedOptions === undefined || totalOptions === undefined)
+      return false
     return selectedOptions > 0 && selectedOptions === totalOptions
   }, [showSelect, selectedOptions, totalOptions])
 

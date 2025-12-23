@@ -39,8 +39,9 @@ const ListWrapper = ({
       && isSuccessCollections
       && !searchPluginText
       && !filterPluginTags.length
-    )
+    ) {
       handleQueryPlugins()
+    }
   }, [handleQueryPlugins, marketplaceCollections, marketplaceCollectionsFromClient, isSuccessCollections, searchPluginText, filterPluginTags])
 
   return (

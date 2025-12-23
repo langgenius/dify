@@ -84,7 +84,8 @@ const ToolItem = ({
       {!icon && (
         <div className={cn(
           'flex h-7 w-7 items-center justify-center rounded-md border-[0.5px] border-components-panel-border-subtle bg-background-default-subtle',
-          isTransparent && 'opacity-50', isShowCanNotChooseMCPTip && 'opacity-30',
+          isTransparent && 'opacity-50',
+          isShowCanNotChooseMCPTip && 'opacity-30',
         )}
         >
           <div className="flex h-5 w-5 items-center justify-center opacity-35">

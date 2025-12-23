@@ -52,10 +52,7 @@ const EnvItem = ({
       {env.description && (
         <>
           <div className="h-[0.5px] bg-divider-subtle" />
-          <div className={cn('rounded-bl-[8px] rounded-br-[8px] bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent',
-            destructive && 'bg-state-destructive-hover hover:bg-state-destructive-hover',
-          )}
-          >
+          <div className={cn('rounded-bl-[8px] rounded-br-[8px] bg-background-default-subtle px-2.5 py-2 group-hover:bg-transparent', destructive && 'bg-state-destructive-hover hover:bg-state-destructive-hover')}>
             <div className="system-xs-regular truncate text-text-tertiary">{env.description}</div>
           </div>
         </>

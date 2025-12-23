@@ -10,7 +10,8 @@ import type {
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
-  ModelModalModeEnum, ModelProvider,
+  ModelModalModeEnum,
+  ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
 import type { UpdatePluginPayload } from '@/app/components/plugins/types'

@@ -64,14 +64,16 @@ const AppSelector: FC<Props> = ({
 
   const pages = data?.pages ?? []
   const displayedApps = useMemo(() => {
-    if (!pages.length) return []
+    if (!pages.length)
+      return []
     return pages.flatMap(({ data: apps }) => apps)
   }, [pages])
 
   const hasMore = hasNextPage ?? true
 
   const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore || isFetchingNextPage || !hasMore) return
+    if (isLoadingMore || isFetchingNextPage || !hasMore)
+      return
 
     setIsLoadingMore(true)
     try {
@@ -86,7 +88,8 @@ const AppSelector: FC<Props> = ({
   }, [isLoadingMore, isFetchingNextPage, hasMore, fetchNextPage])
 
   const handleTriggerClick = () => {
-    if (disabled) return
+    if (disabled)
+      return
     onShowChange(true)
   }
 

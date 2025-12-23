@@ -148,9 +148,7 @@ const Select: FC<ISelectProps> = ({
                 key={item.value}
                 value={item}
                 className={({ active }: { active: boolean }) =>
-                  cn('relative cursor-default select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                    active ? 'bg-state-base-hover' : '',
-                    optionClassName)}
+                  cn('relative cursor-default select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', active ? 'bg-state-base-hover' : '', optionClassName)}
               >
                 {({ /* active, */ selected }) => (
                   <>
@@ -286,8 +284,7 @@ const SimpleSelect: FC<ISelectProps> = ({
                   <ListboxOption
                     key={item.value}
                     className={
-                      cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                        optionClassName)
+                      cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', optionClassName)
                     }
                     value={item}
                     disabled={item.disabled || disabled}

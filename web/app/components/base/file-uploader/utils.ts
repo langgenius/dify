@@ -187,8 +187,9 @@ export const getProcessedFilesFromResponse = (files: FileResponse[]) => {
       if (detectedTypeFromFileName
         && detectedTypeFromMime
         && detectedTypeFromFileName === detectedTypeFromMime
-        && detectedTypeFromFileName !== fileItem.type)
+        && detectedTypeFromFileName !== fileItem.type) {
         supportFileType = detectedTypeFromFileName
+      }
     }
 
     return {

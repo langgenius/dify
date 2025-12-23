@@ -21,15 +21,7 @@ const AnswerIcon: FC<AnswerIconProps> = ({
   background,
   imageUrl,
 }) => {
-  const wrapperClassName = cn('flex',
-    'items-center',
-    'justify-center',
-    'w-full',
-    'h-full',
-    'rounded-full',
-    'border-[0.5px]',
-    'border-black/5',
-    'text-xl')
+  const wrapperClassName = cn('flex', 'items-center', 'justify-center', 'w-full', 'h-full', 'rounded-full', 'border-[0.5px]', 'border-black/5', 'text-xl')
   const isValidImageIcon = iconType === 'image' && imageUrl
   return (
     <div

@@ -7,7 +7,8 @@ import type {
   ConversationVariableResponse,
   FetchWorkflowDraftResponse,
   NodesDefaultConfigsResponse,
-  VarInInspect, WorkflowRunHistoryResponse,
+  VarInInspect,
+  WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { get, post } from './base'
 import { getFlowPrefix } from './utils'

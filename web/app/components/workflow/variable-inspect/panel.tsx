@@ -55,7 +55,8 @@ const Panel: FC = () => {
   }, [environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   const currentNodeInfo = useMemo(() => {
-    if (!currentFocusNodeId) return
+    if (!currentFocusNodeId)
+      return
     if (currentFocusNodeId === VarInInspectType.environment) {
       const currentVar = environmentVariables.find(v => v.id === currentVarId)
       const res = {
@@ -113,7 +114,8 @@ const Panel: FC = () => {
       return res
     }
     const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentFocusNodeId)
-    if (!targetNode) return
+    if (!targetNode)
+      return
     const currentVar = targetNode.vars.find(v => v.id === currentVarId)
     return {
       nodeId: targetNode.nodeId,
@@ -127,9 +129,11 @@ const Panel: FC = () => {
   }, [currentFocusNodeId, currentVarId, environmentVariables, conversationVars, systemVars, nodesWithInspectVars])
 
   const isCurrentNodeVarValueFetching = useMemo(() => {
-    if (!currentNodeInfo) return false
+    if (!currentNodeInfo)
+      return false
     const targetNode = nodesWithInspectVars.find(node => node.nodeId === currentNodeInfo.nodeId)
-    if (!targetNode) return false
+    if (!targetNode)
+      return false
     return !targetNode.isValueFetched
   }, [currentNodeInfo, nodesWithInspectVars])
 

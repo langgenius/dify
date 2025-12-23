@@ -24,8 +24,7 @@ const Panel = () => {
           name: 'conversation_id',
           value_type: 'string' as const,
           description: t('workflow.globalVar.fieldsDescription.conversationId'),
-        },
-        {
+        }, {
           name: 'dialog_count',
           value_type: 'number' as const,
           description: t('workflow.globalVar.fieldsDescription.dialogCount'),

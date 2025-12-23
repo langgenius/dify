@@ -208,7 +208,8 @@ export const useUpload = () => {
   const handleFileUpload = useCallback((newFiles: File[]) => {
     const { files } = fileStore.getState()
     const { singleChunkAttachmentLimit } = fileUploadConfig
-    if (newFiles.length === 0) return
+    if (newFiles.length === 0)
+      return
     if (files.length + newFiles.length > singleChunkAttachmentLimit) {
       Toast.notify({
         type: 'error',
@@ -231,11 +232,13 @@ export const useUpload = () => {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
-    if (!e.dataTransfer) return
+    if (!e.dataTransfer)
+      return
     const nested = await Promise.all(
       Array.from(e.dataTransfer.items).map((it) => {
         const entry = (it as any).webkitGetAsEntry?.()
-        if (entry) return traverseFileEntry(entry)
+        if (entry)
+          return traverseFileEntry(entry)
         const f = it.getAsFile?.()
         return f ? Promise.resolve([f]) : Promise.resolve([])
       }),

@@ -68,10 +68,12 @@ const PlanComp: FC<Props> = ({
   const setShowAccountSettingModal = useModalContextSelector(s => s.setShowAccountSettingModal)
   const unmountedRef = useUnmountedRef()
   const handleVerify = () => {
-    if (isPending) return
+    if (isPending)
+      return
     mutateAsync().then((res) => {
       localStorage.removeItem(EDUCATION_VERIFYING_LOCALSTORAGE_ITEM)
-      if (unmountedRef.current) return
+      if (unmountedRef.current)
+        return
       router.push(`/education-apply?token=${res.token}`)
     }).catch(() => {
       setShowModal(true)

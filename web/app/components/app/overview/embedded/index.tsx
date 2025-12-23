@@ -162,17 +162,13 @@ const Embedded = ({ siteInfo, isShow, onClose, appBaseUrl, accessToken, classNam
       </div>
       {option === 'chromePlugin' && (
         <div className="mt-6 w-full">
-          <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3',
-            'shrink-0 cursor-pointer bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}
-          >
+          <div className={cn('inline-flex w-full items-center justify-center gap-2 rounded-lg py-3', 'shrink-0 cursor-pointer bg-primary-600 text-white hover:bg-primary-600/75 hover:shadow-sm')}>
             <div className={`relative h-4 w-4 ${style.pluginInstallIcon}`}></div>
             <div className="font-['Inter'] text-sm font-medium leading-tight text-white" onClick={navigateToChromeUrl}>{t(`${prefixEmbedded}.chromePlugin`)}</div>
           </div>
         </div>
       )}
-      <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section',
-        'mt-6')}
-      >
+      <div className={cn('inline-flex w-full flex-col items-start justify-start rounded-lg border-[0.5px] border-components-panel-border bg-background-section', 'mt-6')}>
         <div className="inline-flex items-center justify-start gap-2 self-stretch rounded-t-lg bg-background-section-burn py-1  pl-3 pr-1">
           <div className="system-sm-medium shrink-0 grow text-text-secondary">
             {t(`${prefixEmbedded}.${option}`)}

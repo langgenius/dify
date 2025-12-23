@@ -200,7 +200,8 @@ export const useInvalidateInstalledPluginList = () => {
     queryClient.invalidateQueries(
       {
         queryKey: useInstalledPluginListKey,
-      })
+      },
+    )
     invalidateAllBuiltInTools()
   }
 }
@@ -456,7 +457,8 @@ export const useInvalidateReferenceSettings = () => {
     queryClient.invalidateQueries(
       {
         queryKey: useReferenceSettingKey,
-      })
+      },
+    )
   }
 }
 
@@ -678,7 +680,8 @@ export const useModelInList = (currentProvider?: ModelProvider, modelId?: string
   return useQuery({
     queryKey: ['modelInList', currentProvider?.provider, modelId],
     queryFn: async () => {
-      if (!modelId || !currentProvider) return false
+      if (!modelId || !currentProvider)
+        return false
       try {
         const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
         return !!modelId && !!modelsData.data.find(item => item.model === modelId)
@@ -695,7 +698,8 @@ export const usePluginInfo = (providerName?: string) => {
   return useQuery({
     queryKey: ['pluginInfo', providerName],
     queryFn: async () => {
-      if (!providerName) return null
+      if (!providerName)
+        return null
       const parts = providerName.split('/')
       const org = parts[0]
       const name = parts[1]

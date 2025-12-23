@@ -33,24 +33,32 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
   const author = providerNameParts[0]
   const name = providerNameParts[1]
   const icon = useMemo(() => {
-    if (!isDataReady) return ''
-    if (currentProvider) return currentProvider.icon
+    if (!isDataReady)
+      return ''
+    if (currentProvider)
+      return currentProvider.icon
     const iconFromMarketPlace = getIconFromMarketPlace(`${author}/${name}`)
     return iconFromMarketPlace
   }, [author, currentProvider, name, isDataReady])
   const status: Status = useMemo(() => {
-    if (!isDataReady) return undefined
-    if (!currentProvider) return 'not-installed'
-    if (currentProvider.is_team_authorization === false) return 'not-authorized'
+    if (!isDataReady)
+      return undefined
+    if (!currentProvider)
+      return 'not-installed'
+    if (currentProvider.is_team_authorization === false)
+      return 'not-authorized'
     return undefined
   }, [currentProvider, isDataReady])
   const indicator = status === 'not-installed' ? 'red' : status === 'not-authorized' ? 'yellow' : undefined
   const notSuccess = (['not-installed', 'not-authorized'] as Array<Status>).includes(status)
   const { t } = useTranslation()
   const tooltip = useMemo(() => {
-    if (!notSuccess) return undefined
-    if (status === 'not-installed') return t('workflow.nodes.agent.toolNotInstallTooltip', { tool: name })
-    if (status === 'not-authorized') return t('workflow.nodes.agent.toolNotAuthorizedTooltip', { tool: name })
+    if (!notSuccess)
+      return undefined
+    if (status === 'not-installed')
+      return t('workflow.nodes.agent.toolNotInstallTooltip', { tool: name })
+    if (status === 'not-authorized')
+      return t('workflow.nodes.agent.toolNotAuthorizedTooltip', { tool: name })
     throw new Error('Unknown status')
   }, [name, notSuccess, status, t])
   const [iconFetchError, setIconFetchError] = useState(false)
@@ -73,8 +81,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
                 <img
                   src={icon}
                   alt="tool icon"
-                  className={cn('size-3.5 h-full w-full object-cover',
-                    notSuccess && 'opacity-50')}
+                  className={cn('size-3.5 h-full w-full object-cover', notSuccess && 'opacity-50')}
                   onError={() => setIconFetchError(true)}
                 />
               )
@@ -82,8 +89,7 @@ export const ToolIcon = memo(({ providerName }: ToolIconProps) => {
             if (typeof icon === 'object') {
               return (
                 <AppIcon
-                  className={cn('size-3.5 h-full w-full object-cover',
-                    notSuccess && 'opacity-50')}
+                  className={cn('size-3.5 h-full w-full object-cover', notSuccess && 'opacity-50')}
                   icon={icon?.content}
                   background={icon?.background}
                 />

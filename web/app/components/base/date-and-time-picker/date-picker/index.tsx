@@ -47,7 +47,8 @@ const DatePicker = ({
 
   // Normalize the value to ensure that all subsequent uses are Day.js objects.
   const normalizedValue = useMemo(() => {
-    if (!value) return undefined
+    if (!value)
+      return undefined
     return dayjs.isDayjs(value) ? value.tz(timezone) : dayjs(value).tz(timezone)
   }, [value, timezone])
 

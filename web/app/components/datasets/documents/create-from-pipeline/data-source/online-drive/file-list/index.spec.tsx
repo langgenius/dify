@@ -544,8 +544,7 @@ describe('FileList', () => {
     it('should handle large number of files', () => {
       // Arrange
       const fileList = Array.from({ length: 50 }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
-      )
+        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }))
       const props = createDefaultProps({ fileList })
 
       // Act
@@ -598,8 +597,7 @@ describe('FileList', () => {
     ])('should handle $description correctly', ({ isLoading, fileCount }) => {
       // Arrange
       const fileList = Array.from({ length: fileCount }, (_, i) =>
-        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }),
-      )
+        createMockOnlineDriveFile({ id: `file-${i}`, name: `file-${i}.txt` }))
       const props = createDefaultProps({ isLoading, fileList })
 
       // Act

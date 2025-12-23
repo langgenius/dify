@@ -182,10 +182,7 @@ const DocumentList: FC<IDocumentListProps> = ({
       <div className="flex cursor-pointer items-center hover:text-text-secondary" onClick={() => handleSort(field)}>
         {label}
         <RiArrowDownLine
-          className={cn('ml-0.5 h-3 w-3 transition-all',
-            isActive ? 'text-text-tertiary' : 'text-text-disabled',
-            isActive && !isDesc ? 'rotate-180' : '',
-          )}
+          className={cn('ml-0.5 h-3 w-3 transition-all', isActive ? 'text-text-tertiary' : 'text-text-disabled', isActive && !isDesc ? 'rotate-180' : '')}
         />
       </div>
     )

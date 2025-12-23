@@ -129,19 +129,22 @@ const EditCard: FC<EditCardProps> = ({
   }, [])
 
   const handlePropertyNameBlur = useCallback(() => {
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyNameChange()
   }, [isAdvancedEditing, emitPropertyNameChange])
 
   const handleTypeChange = useCallback((item: TypeItem) => {
     setCurrentFields(prev => ({ ...prev, type: item.value }))
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyTypeChange(item.value)
   }, [isAdvancedEditing, emitPropertyTypeChange])
 
   const toggleRequired = useCallback(() => {
     setCurrentFields(prev => ({ ...prev, required: !prev.required }))
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyRequiredToggle()
   }, [isAdvancedEditing, emitPropertyRequiredToggle])
 
@@ -150,7 +153,8 @@ const EditCard: FC<EditCardProps> = ({
   }, [])
 
   const handleDescriptionBlur = useCallback(() => {
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyOptionsChange({ description: currentFields.description, enum: currentFields.enum })
   }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
@@ -167,7 +171,8 @@ const EditCard: FC<EditCardProps> = ({
         enumValue = stringArray
     }
     setCurrentFields(prev => ({ ...prev, enum: enumValue }))
-    if (isAdvancedEditing) return
+    if (isAdvancedEditing)
+      return
     emitPropertyOptionsChange({ description: currentFields.description, enum: enumValue })
   }, [isAdvancedEditing, emitPropertyOptionsChange, currentFields])
 
@@ -205,7 +210,8 @@ const EditCard: FC<EditCardProps> = ({
   }, [isAddingNewField, emit, setIsAddingNewField, setAdvancedEditing, backupFields])
 
   useUnmount(() => {
-    if (isAdvancedEditing || blurWithActions.current) return
+    if (isAdvancedEditing || blurWithActions.current)
+      return
     emitFieldChange()
   })
 

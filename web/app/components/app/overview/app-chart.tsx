@@ -227,9 +227,11 @@ const Chart: React.FC<IChartProps> = ({
             x2: 0,
             y2: 1,
             colorStops: [{
-              offset: 0, color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].bgColor[0],
+              offset: 0,
+              color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].bgColor[0],
             }, {
-              offset: 1, color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].bgColor[1],
+              offset: 1,
+              color: COLOR_TYPE_MAP[CHART_TYPE_CONFIG[chartType].colorType].bgColor[1],
             }],
             global: false,
           },

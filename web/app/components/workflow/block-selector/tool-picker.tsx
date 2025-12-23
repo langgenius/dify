@@ -118,7 +118,8 @@ const ToolPicker: FC<Props> = ({
   const handleAddedCustomTool = invalidateCustomTools
 
   const handleTriggerClick = () => {
-    if (disabled) return
+    if (disabled)
+      return
     onShowChange(true)
   }
 

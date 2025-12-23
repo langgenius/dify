@@ -66,7 +66,8 @@ const Installed: FC<Props> = ({
 
   const { handleRefetch } = usePluginTaskList(payload.category)
   const handleInstall = async () => {
-    if (isInstalling) return
+    if (isInstalling)
+      return
     setIsInstalling(true)
     onStartToInstall?.()
 

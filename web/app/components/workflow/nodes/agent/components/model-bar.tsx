@@ -56,7 +56,8 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
     )
   }
   const modelInstalled = modelList?.some(
-    provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model))
+    provider => provider.provider === props.provider && provider.models.some(model => model.model === props.model),
+  )
   const showWarn = modelList && !modelInstalled
   return modelList && (
     <Tooltip

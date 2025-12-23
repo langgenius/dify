@@ -17,7 +17,8 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
   const renderI18nObject = useRenderI18nObject()
   const { t } = useTranslation()
   const models = useMemo(() => {
-    if (!inputs) return []
+    if (!inputs)
+      return []
     // if selected, show in node
     // if required and not selected, show empty selector
     // if not required and not selected, show nothing

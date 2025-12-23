@@ -171,7 +171,8 @@ const PureSelect = (props: PureSelectProps) => {
                 )}
                 title={option.label}
                 onClick={() => {
-                  if (disabled) return
+                  if (disabled)
+                    return
                   if (multiple) {
                     const currentValues = value ?? []
                     const nextValues = currentValues.includes(option.value)

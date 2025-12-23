@@ -33,8 +33,7 @@ export const updateFromMarketPlace = async (body: Record<string, string>) => {
   })
 }
 
-export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string,
-  originalPlugin: string, newPlugin: string) => {
+export const updateFromGitHub = async (repoUrl: string, selectedVersion: string, selectedPackage: string, originalPlugin: string, newPlugin: string) => {
   return post<updatePackageResponse>('/workspaces/current/plugin/upgrade/github', {
     body: {
       repo: repoUrl,

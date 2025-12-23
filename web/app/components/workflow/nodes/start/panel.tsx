@@ -35,7 +35,8 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
 
   const handleAddVarConfirm = (payload: InputVar) => {
     const isValid = handleAddVariable(payload)
-    if (!isValid) return
+    if (!isValid)
+      return
     hideAddVarModal()
   }
 

@@ -24,7 +24,8 @@ const DebugInfo: FC = () => {
   // info.key likes 4580bdb7-b878-471c-a8a4-bfd760263a53 mask the middle part using *.
   const maskedKey = info?.key?.replace(/(.{8})(.*)(.{8})/, '$1********$3')
 
-  if (isLoading) return null
+  if (isLoading)
+    return null
 
   return (
     <Tooltip

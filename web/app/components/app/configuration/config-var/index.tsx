@@ -295,7 +295,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
           onClose={hideEditModal}
           onConfirm={(item) => {
             const isValid = updatePromptVariableItem(item)
-            if (!isValid) return
+            if (!isValid)
+              return
             hideEditModal()
           }}
           varKeys={promptVariables.map(v => v.key)}

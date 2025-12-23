@@ -25,8 +25,10 @@ function parseTopLevelFlow(dsl: string): string[] {
 
   for (let i = 0; i < dsl.length; i++) {
     const char = dsl[i]
-    if (char === '(') nested++
-    if (char === ')') nested--
+    if (char === '(')
+      nested++
+    if (char === ')')
+      nested--
     if (char === '-' && dsl[i + 1] === '>' && nested === 0) {
       segments.push(buffer.trim())
       buffer = ''
@@ -61,8 +63,10 @@ function parseNode(nodeStr: string, parentIterationId?: string, parentLoopId?: s
     // Split the inner content by commas, respecting nested parentheses
     for (let i = 0; i < innerContent.length; i++) {
       const char = innerContent[i]
-      if (char === '(') nested++
-      if (char === ')') nested--
+      if (char === '(')
+        nested++
+      if (char === ')')
+        nested--
 
       if (char === ',' && nested === 0) {
         parts.push(buffer.trim())

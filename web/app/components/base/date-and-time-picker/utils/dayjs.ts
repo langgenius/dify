@@ -136,9 +136,12 @@ const warnParseFailure = (value: string) => {
 }
 
 const normalizeMillisecond = (value: string | undefined) => {
-  if (!value) return 0
-  if (value.length === 3) return Number(value)
-  if (value.length > 3) return Number(value.slice(0, 3))
+  if (!value)
+    return 0
+  if (value.length === 3)
+    return Number(value)
+  if (value.length > 3)
+    return Number(value.slice(0, 3))
   return Number(value.padEnd(3, '0'))
 }
 
@@ -219,7 +222,8 @@ export const toDayjs = (value: string | Dayjs | undefined, options: ToDayjsOptio
 
 // Parse date with multiple format support
 export const parseDateWithFormat = (dateString: string, format?: string): Dayjs | null => {
-  if (!dateString) return null
+  if (!dateString)
+    return null
 
   // If format is specified, use it directly
   if (format) {
@@ -243,7 +247,8 @@ export const parseDateWithFormat = (dateString: string, format?: string): Dayjs 
 
 // Format date output with localization support
 export const formatDateForOutput = (date: Dayjs, includeTime: boolean = false, _locale: string = 'en-US'): string => {
-  if (!date || !date.isValid()) return ''
+  if (!date || !date.isValid())
+    return ''
 
   if (includeTime) {
     // Output format with time

@@ -49,7 +49,8 @@ export const useGetDataSourceOAuthUrl = (
           authorization_url: string
           state: string
           context_id: string
-        }>(`/oauth/plugin/${provider}/datasource/get-authorization-url?credential_id=${credentialId}`)
+        }
+      >(`/oauth/plugin/${provider}/datasource/get-authorization-url?credential_id=${credentialId}`)
     },
   })
 }

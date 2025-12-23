@@ -188,10 +188,9 @@ const Operations = ({
           >
             <button
               type="button"
-              className={cn('mr-2 cursor-pointer rounded-lg',
-                !isListScene
-                  ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
-                  : 'p-0.5 hover:bg-state-base-hover')}
+              className={cn('mr-2 cursor-pointer rounded-lg', !isListScene
+                ? 'border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg p-2 shadow-xs shadow-shadow-shadow-3 backdrop-blur-[5px] hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover'
+                : 'p-0.5 hover:bg-state-base-hover')}
               onClick={() => router.push(`/datasets/${datasetId}/documents/${detail.id}/settings`)}
             >
               <RiEqualizer2Line className="h-4 w-4 text-components-button-secondary-text" />

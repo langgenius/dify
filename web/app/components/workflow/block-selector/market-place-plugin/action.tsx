@@ -53,7 +53,8 @@ const OperationDropdown: FC<Props> = ({
   }), [author, name, version])
   const { data: blob, isLoading } = useDownloadPlugin(downloadInfo, needDownload)
   const handleDownload = useCallback(() => {
-    if (isLoading) return
+    if (isLoading)
+      return
     queryClient.removeQueries({
       queryKey: ['plugins', 'downloadPlugin', downloadInfo],
       exact: true,

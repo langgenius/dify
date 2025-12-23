@@ -39,7 +39,8 @@ const WorkflowProcessItem = ({
     setCollapse(!expand)
   }, [expand])
 
-  if (readonly) return null
+  if (readonly)
+    return null
 
   return (
     <div

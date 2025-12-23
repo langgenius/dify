@@ -267,8 +267,7 @@ const ModelLoadBalancingModal = ({
               <>
                 <div className="py-2">
                   <div
-                    className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
-                      draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')}
+                    className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors', draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')}
                     onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
                   >
                     <div className="flex select-none items-center gap-2 px-[15px] py-3">

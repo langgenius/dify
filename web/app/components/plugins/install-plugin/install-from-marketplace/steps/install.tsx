@@ -67,7 +67,8 @@ const Installed: FC<Props> = ({
   }
 
   const handleInstall = async () => {
-    if (isInstalling) return
+    if (isInstalling)
+      return
     onStartToInstall?.()
     setIsInstalling(true)
     try {
@@ -122,7 +123,8 @@ const Installed: FC<Props> = ({
   const { langGeniusVersionInfo } = useAppContext()
   const { data: pluginDeclaration } = usePluginDeclarationFromMarketPlace(uniqueIdentifier)
   const isDifyVersionCompatible = useMemo(() => {
-    if (!pluginDeclaration || !langGeniusVersionInfo.current_version) return true
+    if (!pluginDeclaration || !langGeniusVersionInfo.current_version)
+      return true
     return gte(langGeniusVersionInfo.current_version, pluginDeclaration?.manifest.meta.minimum_dify_version ?? '0.0.0')
   }, [langGeniusVersionInfo.current_version, pluginDeclaration])
 

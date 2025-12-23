@@ -4,7 +4,8 @@ import * as selector from 'use-context-selector'
 
 const createCreateCtxFunction = (
   useContextImpl: typeof useContext,
-  createContextImpl: typeof createContext) => {
+  createContextImpl: typeof createContext,
+) => {
   return function<T>({ name, defaultValue }: CreateCtxOptions<T> = {}): CreateCtxReturn<T> {
     const emptySymbol = Symbol(`empty ${name}`)
     // @ts-expect-error it's ok here

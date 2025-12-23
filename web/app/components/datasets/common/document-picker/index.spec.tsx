@@ -127,8 +127,7 @@ const createMockDocumentList = (count: number): SimpleDocumentDetail[] => {
           extension: 'pdf',
         },
       },
-    }),
-  )
+    }))
 }
 
 // Factory function to create props

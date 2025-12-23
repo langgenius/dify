@@ -184,11 +184,9 @@ vi.mock('next/dynamic', () => {
       }
       if (fnString.includes('create-from-dsl-modal')) {
         return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'create-dsl-modal' },
-            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'),
-            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'),
-          )
+          if (!show)
+            return null
+          return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
         }
       }
       return () => null

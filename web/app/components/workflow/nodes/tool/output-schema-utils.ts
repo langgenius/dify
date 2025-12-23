@@ -7,7 +7,8 @@ import { getMatchedSchemaType } from '../_base/components/variable/use-match-sch
  * Handles complex schemas with oneOf, anyOf, allOf.
  */
 export const normalizeJsonSchemaType = (schema: any): string | undefined => {
-  if (!schema) return undefined
+  if (!schema)
+    return undefined
   const { type, properties, items, oneOf, anyOf, allOf } = schema
 
   if (Array.isArray(type))

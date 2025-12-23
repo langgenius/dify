@@ -83,14 +83,16 @@ export const InstallPluginButton = (props: InstallPluginButtonProps) => {
       },
     })
   }
-  if (!manifest.data) return null
+  if (!manifest.data)
+    return null
   const identifierSet = new Set(identifiers)
   const isInstalled = manifest.data.plugins.some(plugin => (
     identifierSet.has(plugin.id)
     || (plugin.plugin_unique_identifier && identifierSet.has(plugin.plugin_unique_identifier))
     || (plugin.plugin_id && identifierSet.has(plugin.plugin_id))
   ))
-  if (isInstalled) return null
+  if (isInstalled)
+    return null
   return (
     <Button
       variant="secondary"

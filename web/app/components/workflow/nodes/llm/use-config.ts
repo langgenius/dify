@@ -285,8 +285,10 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
   const isModelSupportStructuredOutput = modelList
     ?.find(provideItem => provideItem.provider === model?.provider)
-    ?.models.find(modelItem => modelItem.model === model?.name)
-    ?.features?.includes(ModelFeatureEnum.StructuredOutput)
+    ?.models
+    .find(modelItem => modelItem.model === model?.name)
+    ?.features
+    ?.includes(ModelFeatureEnum.StructuredOutput)
 
   const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
   const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {

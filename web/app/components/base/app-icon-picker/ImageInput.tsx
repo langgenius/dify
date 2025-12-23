@@ -93,8 +93,7 @@ const ImageInput: FC<UploaderProps> = ({
   return (
     <div className={cn(className, 'w-full px-3 py-1.5')}>
       <div
-        className={cn(isDragActive && 'border-primary-600',
-          'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
+        className={cn(isDragActive && 'border-primary-600', 'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}

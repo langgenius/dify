@@ -62,13 +62,15 @@ const Annotation: FC<Props> = (props) => {
   }
 
   useEffect(() => {
-    if (isChatApp) fetchAnnotationConfig()
+    if (isChatApp)
+      fetchAnnotationConfig()
   }, [])
 
   const ensureJobCompleted = async (jobId: string, status: AnnotationEnableStatus) => {
     while (true) {
       const res: any = await queryAnnotationJobStatus(appDetail.id, status, jobId)
-      if (res.job_status === JobStatus.completed) break
+      if (res.job_status === JobStatus.completed)
+        break
       await sleep(2000)
     }
   }
@@ -126,7 +128,8 @@ const Annotation: FC<Props> = (props) => {
   }
 
   const handleSave = async (question: string, answer: string) => {
-    if (!currItem) return
+    if (!currItem)
+      return
     await editAnnotation(appDetail.id, currItem.id, { question, answer })
     Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
@@ -134,7 +137,8 @@ const Annotation: FC<Props> = (props) => {
   }
 
   useEffect(() => {
-    if (!isShowEdit) setControlRefreshSwitch(Date.now())
+    if (!isShowEdit)
+      setControlRefreshSwitch(Date.now())
   }, [isShowEdit])
 
   return (

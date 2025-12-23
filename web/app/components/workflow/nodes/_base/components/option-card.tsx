@@ -17,8 +17,7 @@ const variants = cva([], {
   defaultVariants: {
     align: 'center',
   },
-},
-)
+})
 
 type Props = {
   className?: string

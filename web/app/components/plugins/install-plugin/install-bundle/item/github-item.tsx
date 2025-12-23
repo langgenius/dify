@@ -46,7 +46,8 @@ const Item: FC<Props> = ({
     if (error)
       onFetchError()
   }, [error])
-  if (!payload) return <Loading />
+  if (!payload)
+    return <Loading />
   return (
     <LoadedItem
       payload={payload}

@@ -106,7 +106,8 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   const { getIconUrl } = useGetIcon()
   const list = stra.data ? formatStrategy(stra.data, getIconUrl) : undefined
   const filteredTools = useMemo(() => {
-    if (!list) return []
+    if (!list)
+      return []
     return list.filter(tool => tool.name.toLowerCase().includes(query.toLowerCase()))
   }, [query, list])
   const { strategyStatus, refetch: refetchStrategyInfo } = useStrategyInfo(
@@ -139,7 +140,8 @@ export const AgentStrategySelector = memo((props: AgentStrategySelectorProps) =>
   } = useMarketplacePlugins()
 
   useEffect(() => {
-    if (!enable_marketplace) return
+    if (!enable_marketplace)
+      return
     if (query) {
       fetchPlugins({
         query,

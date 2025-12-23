@@ -86,8 +86,7 @@ const createMockDocuments = (count: number): InitialDocumentDetail[] =>
       id: `doc-${index + 1}`,
       name: `document-${index + 1}.txt`,
       position: index,
-    }),
-  )
+    }))
 
 // ==========================================
 // Test Suite
