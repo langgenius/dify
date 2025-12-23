@@ -1,31 +1,32 @@
 'use client'
-import React, { useCallback, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { v4 as uuid } from 'uuid'
-import { getDomain } from 'tldts'
-import { RiCloseLine, RiEditLine } from '@remixicon/react'
-import { Mcp } from '@/app/components/base/icons/src/vender/other'
-import AppIconPicker from '@/app/components/base/app-icon-picker'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
-import AppIcon from '@/app/components/base/app-icon'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/base/input'
-import HeadersInput from './headers-input'
 import type { HeaderItem } from './headers-input'
-import type { AppIconType } from '@/types/app'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { AppIconType } from '@/types/app'
+import { RiCloseLine, RiEditLine } from '@remixicon/react'
+import { useHover } from 'ahooks'
 import { noop } from 'lodash-es'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { getDomain } from 'tldts'
+import { v4 as uuid } from 'uuid'
+import AppIcon from '@/app/components/base/app-icon'
+import AppIconPicker from '@/app/components/base/app-icon-picker'
+import Button from '@/app/components/base/button'
+import { Mcp } from '@/app/components/base/icons/src/vender/other'
+import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
+import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
+import Switch from '@/app/components/base/switch'
+import TabSlider from '@/app/components/base/tab-slider'
 import Toast from '@/app/components/base/toast'
+import { MCPAuthMethod } from '@/app/components/tools/types'
+import { API_PREFIX } from '@/config'
 import { uploadRemoteFileInfo } from '@/service/common'
 import { cn } from '@/utils/classnames'
-import { useHover } from 'ahooks'
 import { shouldUseMcpIconForAppIcon } from '@/utils/mcp'
-import TabSlider from '@/app/components/base/tab-slider'
-import { MCPAuthMethod } from '@/app/components/tools/types'
-import Switch from '@/app/components/base/switch'
-import AlertTriangle from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback/AlertTriangle'
-import { API_PREFIX } from '@/config'
+import HeadersInput from './headers-input'
 
 export type DuplicateAppModalProps = {
   data?: ToolWithProvider
@@ -212,7 +213,7 @@ const MCPModal = ({
         sse_read_timeout: sseReadTimeout || 300,
       },
     })
-    if(isCreate)
+    if (isCreate)
       onHide()
   }
 
@@ -227,14 +228,14 @@ const MCPModal = ({
         onClose={noop}
         className={cn('relative !max-w-[520px]', 'p-6')}
       >
-        <div className='absolute right-5 top-5 z-10 cursor-pointer p-1.5' onClick={onHide}>
-          <RiCloseLine className='h-5 w-5 text-text-tertiary' />
+        <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
+          <RiCloseLine className="h-5 w-5 text-text-tertiary" />
         </div>
-        <div className='title-2xl-semi-bold relative pb-3 text-xl text-text-primary'>{!isCreate ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
-        <div className='space-y-5 py-3'>
+        <div className="title-2xl-semi-bold relative pb-3 text-xl text-text-primary">{!isCreate ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
+        <div className="space-y-5 py-3">
           <div>
-            <div className='mb-1 flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.serverUrl')}</span>
+            <div className="mb-1 flex h-6 items-center">
+              <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.serverUrl')}</span>
             </div>
             <Input
               value={url}
@@ -243,15 +244,15 @@ const MCPModal = ({
               placeholder={t('tools.mcp.modal.serverUrlPlaceholder')}
             />
             {originalServerUrl && originalServerUrl !== url && (
-              <div className='mt-1 flex h-5 items-center'>
-                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.serverUrlWarning')}</span>
+              <div className="mt-1 flex h-5 items-center">
+                <span className="body-xs-regular text-text-warning">{t('tools.mcp.modal.serverUrlWarning')}</span>
               </div>
             )}
           </div>
-          <div className='flex space-x-3'>
-            <div className='grow pb-1'>
-              <div className='mb-1 flex h-6 items-center'>
-                <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.name')}</span>
+          <div className="flex space-x-3">
+            <div className="grow pb-1">
+              <div className="mb-1 flex h-6 items-center">
+                <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.name')}</span>
               </div>
               <Input
                 value={name}
@@ -259,43 +260,46 @@ const MCPModal = ({
                 placeholder={t('tools.mcp.modal.namePlaceholder')}
               />
             </div>
-            <div className='pt-2' ref={appIconRef}>
+            <div className="pt-2" ref={appIconRef}>
               <AppIcon
                 iconType={appIcon.type}
                 icon={appIcon.type === 'emoji' ? appIcon.icon : appIcon.fileId}
                 background={appIcon.type === 'emoji' ? appIcon.background : undefined}
                 imageUrl={appIcon.type === 'image' ? appIcon.url : undefined}
-                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className='h-8 w-8 text-text-primary-on-surface' /> : undefined}
-                size='xxl'
-                className='relative cursor-pointer rounded-2xl'
+                innerIcon={shouldUseMcpIconForAppIcon(appIcon.type, appIcon.type === 'emoji' ? appIcon.icon : '') ? <Mcp className="h-8 w-8 text-text-primary-on-surface" /> : undefined}
+                size="xxl"
+                className="relative cursor-pointer rounded-2xl"
                 coverElement={
                   isHovering
-                    ? (<div className='absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt'>
-                      <RiEditLine className='size-6 text-text-primary-on-surface' />
-                    </div>) : null
+                    ? (
+                        <div className="absolute inset-0 flex items-center justify-center overflow-hidden rounded-2xl bg-background-overlay-alt">
+                          <RiEditLine className="size-6 text-text-primary-on-surface" />
+                        </div>
+                      )
+                    : null
                 }
                 onClick={() => { setShowAppIconPicker(true) }}
               />
             </div>
           </div>
           <div>
-            <div className='flex h-6 items-center'>
-              <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.serverIdentifier')}</span>
+            <div className="flex h-6 items-center">
+              <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.serverIdentifier')}</span>
             </div>
-            <div className='body-xs-regular mb-1 text-text-tertiary'>{t('tools.mcp.modal.serverIdentifierTip')}</div>
+            <div className="body-xs-regular mb-1 text-text-tertiary">{t('tools.mcp.modal.serverIdentifierTip')}</div>
             <Input
               value={serverIdentifier}
               onChange={e => setServerIdentifier(e.target.value)}
               placeholder={t('tools.mcp.modal.serverIdentifierPlaceholder')}
             />
             {originalServerID && originalServerID !== serverIdentifier && (
-              <div className='mt-1 flex h-5 items-center'>
-                <span className='body-xs-regular text-text-warning'>{t('tools.mcp.modal.serverIdentifierWarning')}</span>
+              <div className="mt-1 flex h-5 items-center">
+                <span className="body-xs-regular text-text-warning">{t('tools.mcp.modal.serverIdentifierWarning')}</span>
               </div>
             )}
           </div>
           <TabSlider
-            className='w-full'
+            className="w-full"
             itemClassName={(isActive) => {
               return `flex-1 ${isActive && 'text-text-accent-light-mode-only'}`
             }}
@@ -307,20 +311,20 @@ const MCPModal = ({
             authMethod === MCPAuthMethod.authentication && (
               <>
                 <div>
-                  <div className='mb-1 flex h-6 items-center'>
+                  <div className="mb-1 flex h-6 items-center">
                     <Switch
-                      className='mr-2'
+                      className="mr-2"
                       defaultValue={isDynamicRegistration}
                       onChange={setIsDynamicRegistration}
                     />
-                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
                   </div>
                   {!isDynamicRegistration && (
-                    <div className='mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3'>
-                      <AlertTriangle className='mt-0.5 h-4 w-4 shrink-0 text-text-warning' />
-                      <div className='system-xs-regular text-text-secondary'>
-                        <div className='mb-1'>{t('tools.mcp.modal.redirectUrlWarning')}</div>
-                        <code className='system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary'>
+                    <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
+                      <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
+                      <div className="system-xs-regular text-text-secondary">
+                        <div className="mb-1">{t('tools.mcp.modal.redirectUrlWarning')}</div>
+                        <code className="system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary">
                           {`${API_PREFIX}/mcp/oauth/callback`}
                         </code>
                       </div>
@@ -329,7 +333,7 @@ const MCPModal = ({
                 </div>
                 <div>
                   <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientID')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.clientID')}</span>
                   </div>
                   <Input
                     value={clientID}
@@ -341,7 +345,7 @@ const MCPModal = ({
                 </div>
                 <div>
                   <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.clientSecret')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.clientSecret')}</span>
                   </div>
                   <Input
                     value={credentials}
@@ -357,10 +361,10 @@ const MCPModal = ({
           {
             authMethod === MCPAuthMethod.headers && (
               <div>
-                <div className='mb-1 flex h-6 items-center'>
-                  <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.headers')}</span>
+                <div className="mb-1 flex h-6 items-center">
+                  <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.headers')}</span>
                 </div>
-                <div className='body-xs-regular mb-2 text-text-tertiary'>{t('tools.mcp.modal.headersTip')}</div>
+                <div className="body-xs-regular mb-2 text-text-tertiary">{t('tools.mcp.modal.headersTip')}</div>
                 <HeadersInput
                   headersItems={headers}
                   onChange={setHeaders}
@@ -374,11 +378,11 @@ const MCPModal = ({
             authMethod === MCPAuthMethod.configurations && (
               <>
                 <div>
-                  <div className='mb-1 flex h-6 items-center'>
-                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.timeout')}</span>
+                  <div className="mb-1 flex h-6 items-center">
+                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.timeout')}</span>
                   </div>
                   <Input
-                    type='number'
+                    type="number"
                     value={timeout}
                     onChange={e => setMcpTimeout(Number(e.target.value))}
                     onBlur={e => handleBlur(e.target.value.trim())}
@@ -386,11 +390,11 @@ const MCPModal = ({
                   />
                 </div>
                 <div>
-                  <div className='mb-1 flex h-6 items-center'>
-                    <span className='system-sm-medium text-text-secondary'>{t('tools.mcp.modal.sseReadTimeout')}</span>
+                  <div className="mb-1 flex h-6 items-center">
+                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.sseReadTimeout')}</span>
                   </div>
                   <Input
-                    type='number'
+                    type="number"
                     value={sseReadTimeout}
                     onChange={e => setSseReadTimeout(Number(e.target.value))}
                     onBlur={e => handleBlur(e.target.value.trim())}
@@ -401,21 +405,23 @@ const MCPModal = ({
             )
           }
         </div>
-        <div className='flex flex-row-reverse pt-5'>
-          <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className='ml-2' variant='primary' onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
+        <div className="flex flex-row-reverse pt-5">
+          <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className="ml-2" variant="primary" onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
           <Button onClick={onHide}>{t('tools.mcp.modal.cancel')}</Button>
         </div>
       </Modal>
-      {showAppIconPicker && <AppIconPicker
-        onSelect={(payload) => {
-          setAppIcon(payload)
-          setShowAppIconPicker(false)
-        }}
-        onClose={() => {
-          setAppIcon(getIcon(data))
-          setShowAppIconPicker(false)
-        }}
-      />}
+      {showAppIconPicker && (
+        <AppIconPicker
+          onSelect={(payload) => {
+            setAppIcon(payload)
+            setShowAppIconPicker(false)
+          }}
+          onClose={() => {
+            setAppIcon(getIcon(data))
+            setShowAppIconPicker(false)
+          }}
+        />
+      )}
     </>
 
   )

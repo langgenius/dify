@@ -1,35 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Item } from '@/app/components/base/select'
+import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import type { ChildChunkDetail, SegmentDetailModel, SegmentUpdater } from '@/models/datasets'
 import { useDebounceFn } from 'ahooks'
+import { noop } from 'lodash-es'
+import { usePathname } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { usePathname } from 'next/navigation'
-import { useDocumentContext } from '../context'
-import { ProcessStatus } from '../segment-add'
-import s from './style.module.css'
-import SegmentList from './segment-list'
-import DisplayToggle from './display-toggle'
-import BatchAction from './common/batch-action'
-import SegmentDetail from './segment-detail'
-import SegmentCard from './segment-card'
-import ChildSegmentList from './child-segment-list'
-import NewChildSegment from './new-child-segment'
-import FullScreenDrawer from './common/full-screen-drawer'
-import ChildSegmentDetail from './child-segment-detail'
-import StatusItem from './status-item'
-import Pagination from '@/app/components/base/pagination'
-import { cn } from '@/utils/classnames'
-import { formatNumber } from '@/utils/format'
+import Checkbox from '@/app/components/base/checkbox'
 import Divider from '@/app/components/base/divider'
 import Input from '@/app/components/base/input'
-import { ToastContext } from '@/app/components/base/toast'
-import type { Item } from '@/app/components/base/select'
+import Pagination from '@/app/components/base/pagination'
 import { SimpleSelect } from '@/app/components/base/select'
-import { type ChildChunkDetail, ChunkingMode, type SegmentDetailModel, type SegmentUpdater } from '@/models/datasets'
+import { ToastContext } from '@/app/components/base/toast'
 import NewSegment from '@/app/components/datasets/documents/detail/new-segment'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import Checkbox from '@/app/components/base/checkbox'
+import { ChunkingMode } from '@/models/datasets'
 import {
   useChildSegmentList,
   useChildSegmentListKey,
@@ -46,8 +35,21 @@ import {
   useUpdateSegment,
 } from '@/service/knowledge/use-segment'
 import { useInvalid } from '@/service/use-base'
-import { noop } from 'lodash-es'
-import type { FileEntity } from '@/app/components/datasets/common/image-uploader/types'
+import { cn } from '@/utils/classnames'
+import { formatNumber } from '@/utils/format'
+import { useDocumentContext } from '../context'
+import { ProcessStatus } from '../segment-add'
+import ChildSegmentDetail from './child-segment-detail'
+import ChildSegmentList from './child-segment-list'
+import BatchAction from './common/batch-action'
+import FullScreenDrawer from './common/full-screen-drawer'
+import DisplayToggle from './display-toggle'
+import NewChildSegment from './new-child-segment'
+import SegmentCard from './segment-card'
+import SegmentDetail from './segment-detail'
+import SegmentList from './segment-list'
+import StatusItem from './status-item'
+import s from './style.module.css'
 
 const DEFAULT_LIMIT = 10
 
@@ -583,88 +585,96 @@ const Completed: FC<ICompletedProps> = ({
       toggleFullScreen,
       currSegment,
       currChildChunk,
-    }}>
+    }}
+    >
       {/* Menu Bar */}
-      {!isFullDocMode && <div className={s.docSearchWrapper}>
-        <Checkbox
-          className='shrink-0'
-          checked={isAllSelected}
-          indeterminate={!isAllSelected && isSomeSelected}
-          onCheck={onSelectedAll}
-          disabled={isLoadingSegmentList}
-        />
-        <div className={'system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary'}>{totalText}</div>
-        <SimpleSelect
-          onSelect={onChangeStatus}
-          items={statusList.current}
-          defaultValue={selectDefaultValue}
-          className={s.select}
-          wrapperClassName='h-fit mr-2'
-          optionWrapClassName='w-[160px]'
-          optionClassName='p-0'
-          renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
-          notClearable
-        />
-        <Input
-          showLeftIcon
-          showClearIcon
-          wrapperClassName='!w-52'
-          value={inputValue}
-          onChange={e => handleInputChange(e.target.value)}
-          onClear={() => handleInputChange('')}
-        />
-        <Divider type='vertical' className='mx-3 h-3.5' />
-        <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
-      </div>}
+      {!isFullDocMode && (
+        <div className={s.docSearchWrapper}>
+          <Checkbox
+            className="shrink-0"
+            checked={isAllSelected}
+            indeterminate={!isAllSelected && isSomeSelected}
+            onCheck={onSelectedAll}
+            disabled={isLoadingSegmentList}
+          />
+          <div className="system-sm-semibold-uppercase flex-1 pl-5 text-text-secondary">{totalText}</div>
+          <SimpleSelect
+            onSelect={onChangeStatus}
+            items={statusList.current}
+            defaultValue={selectDefaultValue}
+            className={s.select}
+            wrapperClassName="h-fit mr-2"
+            optionWrapClassName="w-[160px]"
+            optionClassName="p-0"
+            renderOption={({ item, selected }) => <StatusItem item={item} selected={selected} />}
+            notClearable
+          />
+          <Input
+            showLeftIcon
+            showClearIcon
+            wrapperClassName="!w-52"
+            value={inputValue}
+            onChange={e => handleInputChange(e.target.value)}
+            onClear={() => handleInputChange('')}
+          />
+          <Divider type="vertical" className="mx-3 h-3.5" />
+          <DisplayToggle isCollapsed={isCollapsed} toggleCollapsed={() => setIsCollapsed(!isCollapsed)} />
+        </div>
+      )}
       {/* Segment list */}
       {
         isFullDocMode
-          ? <div className={cn(
-            'flex grow flex-col overflow-x-hidden',
-            (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
-          )}>
-            <SegmentCard
-              detail={segments[0]}
-              onClick={() => onClickCard(segments[0])}
-              loading={isLoadingSegmentList}
-              focused={{
-                segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
-                segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
-              }}
-            />
-            <ChildSegmentList
-              parentChunkId={segments[0]?.id}
-              onDelete={onDeleteChildChunk}
-              childChunks={childSegments}
-              handleInputChange={handleInputChange}
-              handleAddNewChildChunk={handleAddNewChildChunk}
-              onClickSlice={onClickSlice}
-              enabled={!archived}
-              total={childChunkListData?.total || 0}
-              inputValue={inputValue}
-              onClearFilter={onClearFilter}
-              isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
-            />
-          </div>
-          : <SegmentList
-            ref={segmentListRef}
-            embeddingAvailable={embeddingAvailable}
-            isLoading={isLoadingSegmentList}
-            items={segments}
-            selectedSegmentIds={selectedSegmentIds}
-            onSelected={onSelected}
-            onChangeSwitch={onChangeSwitch}
-            onDelete={onDelete}
-            onClick={onClickCard}
-            archived={archived}
-            onDeleteChildChunk={onDeleteChildChunk}
-            handleAddNewChildChunk={handleAddNewChildChunk}
-            onClickSlice={onClickSlice}
-            onClearFilter={onClearFilter}
-          />
+          ? (
+              <div className={cn(
+                'flex grow flex-col overflow-x-hidden',
+                (isLoadingSegmentList || isLoadingChildSegmentList) ? 'overflow-y-hidden' : 'overflow-y-auto',
+              )}
+              >
+                <SegmentCard
+                  detail={segments[0]}
+                  onClick={() => onClickCard(segments[0])}
+                  loading={isLoadingSegmentList}
+                  focused={{
+                    segmentIndex: currSegment?.segInfo?.id === segments[0]?.id,
+                    segmentContent: currSegment?.segInfo?.id === segments[0]?.id,
+                  }}
+                />
+                <ChildSegmentList
+                  parentChunkId={segments[0]?.id}
+                  onDelete={onDeleteChildChunk}
+                  childChunks={childSegments}
+                  handleInputChange={handleInputChange}
+                  handleAddNewChildChunk={handleAddNewChildChunk}
+                  onClickSlice={onClickSlice}
+                  enabled={!archived}
+                  total={childChunkListData?.total || 0}
+                  inputValue={inputValue}
+                  onClearFilter={onClearFilter}
+                  isLoading={isLoadingSegmentList || isLoadingChildSegmentList}
+                />
+              </div>
+            )
+          : (
+              <SegmentList
+                ref={segmentListRef}
+                embeddingAvailable={embeddingAvailable}
+                isLoading={isLoadingSegmentList}
+                items={segments}
+                selectedSegmentIds={selectedSegmentIds}
+                onSelected={onSelected}
+                onChangeSwitch={onChangeSwitch}
+                onDelete={onDelete}
+                onClick={onClickCard}
+                archived={archived}
+                onDeleteChildChunk={onDeleteChildChunk}
+                handleAddNewChildChunk={handleAddNewChildChunk}
+                onClickSlice={onClickSlice}
+                onClearFilter={onClearFilter}
+              />
+            )
       }
       {/* Pagination */}
-      <Divider type='horizontal' className='mx-6 my-0 h-px w-auto bg-divider-subtle' />
+      <Divider type="horizontal" className="mx-6 my-0 h-px w-auto bg-divider-subtle" />
       <Pagination
         current={currentPage - 1}
         onChange={cur => setCurrentPage(cur + 1)}
@@ -740,7 +750,7 @@ const Completed: FC<ICompletedProps> = ({
       {/* Batch Action Buttons */}
       {selectedSegmentIds.length > 0 && (
         <BatchAction
-          className='absolute bottom-16 left-0 z-20'
+          className="absolute bottom-16 left-0 z-20"
           selectedIds={selectedSegmentIds}
           onBatchEnable={onChangeSwitch.bind(null, true, '')}
           onBatchDisable={onChangeSwitch.bind(null, false, '')}

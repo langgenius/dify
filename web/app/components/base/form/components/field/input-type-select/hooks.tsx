@@ -1,6 +1,3 @@
-import { InputTypeEnum } from './types'
-import { PipelineInputVarType } from '@/models/pipeline'
-import { useTranslation } from 'react-i18next'
 import {
   RiAlignLeft,
   RiCheckboxLine,
@@ -10,6 +7,9 @@ import {
   RiListCheck3,
   RiTextSnippet,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import { PipelineInputVarType } from '@/models/pipeline'
+import { InputTypeEnum } from './types'
 
 const i18nFileTypeMap: Record<string, string> = {
   'number': 'number',

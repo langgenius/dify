@@ -1,4 +1,5 @@
-import { VarType, type Variable } from '@/app/components/workflow/types'
+import type { Variable } from '@/app/components/workflow/types'
+import { VarType } from '@/app/components/workflow/types'
 
 export const WEBHOOK_RAW_VARIABLE_NAME = '_webhook_raw'
 export const WEBHOOK_RAW_VARIABLE_LABEL = 'raw'

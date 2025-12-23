@@ -9,28 +9,28 @@
  * - Loading states
  */
 
+import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WorkflowAppLogList from './list'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { APP_PAGE_LIMIT } from '@/config'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
+import WorkflowAppLogList from './list'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-const mockRouterPush = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockRouterPush = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockRouterPush,
   }),
 }))
 
 // Mock useTimestamp hook
-jest.mock('@/hooks/use-timestamp', () => ({
+vi.mock('@/hooks/use-timestamp', () => ({
   __esModule: true,
   default: () => ({
     formatTime: (timestamp: number, _format: string) => `formatted-${timestamp}`,
@@ -38,7 +38,7 @@ jest.mock('@/hooks/use-timestamp', () => ({
 }))
 
 // Mock useBreakpoints hook
-jest.mock('@/hooks/use-breakpoints', () => ({
+vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   default: () => 'pc', // Return desktop by default
   MediaType: {
@@ -48,9 +48,9 @@ jest.mock('@/hooks/use-breakpoints', () => ({
 }))
 
 // Mock the Run component
-jest.mock('@/app/components/workflow/run', () => ({
+vi.mock('@/app/components/workflow/run', () => ({
   __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -59,34 +59,33 @@ jest.mock('@/app/components/workflow/run', () => ({
 }))
 
 // Mock WorkflowContextProvider
-jest.mock('@/app/components/workflow/context', () => ({
+vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-context-provider">{children}</div>
   ),
 }))
 
 // Mock BlockIcon
-jest.mock('@/app/components/workflow/block-icon', () => ({
+vi.mock('@/app/components/workflow/block-icon', () => ({
   __esModule: true,
   default: () => <div data-testid="block-icon">BlockIcon</div>,
 }))
 
 // Mock useTheme
-jest.mock('@/hooks/use-theme', () => ({
+vi.mock('@/hooks/use-theme', () => ({
   __esModule: true,
   default: () => {
-    const { Theme } = require('@/types/app')
-    return { theme: Theme.light }
+    return { theme: 'light' }
   },
 }))
 
 // Mock ahooks
-jest.mock('ahooks', () => ({
+vi.mock('ahooks', () => ({
   useBoolean: (initial: boolean) => {
     const setters = {
-      setTrue: jest.fn(),
-      setFalse: jest.fn(),
-      toggle: jest.fn(),
+      setTrue: vi.fn(),
+      setFalse: vi.fn(),
+      toggle: vi.fn(),
     }
     return [initial, setters] as const
   },
@@ -170,10 +169,10 @@ const createMockLogsResponse = (
 // ============================================================================
 
 describe('WorkflowAppLogList', () => {
-  const defaultOnRefresh = jest.fn()
+  const defaultOnRefresh = vi.fn()
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     useAppStore.setState({ appDetail: createMockApp() })
   })
 
@@ -454,7 +453,7 @@ describe('WorkflowAppLogList', () => {
 
     it('should close drawer and call onRefresh when closing', async () => {
       const user = userEvent.setup()
-      const onRefresh = jest.fn()
+      const onRefresh = vi.fn()
       useAppStore.setState({ appDetail: createMockApp() })
       const logs = createMockLogsResponse([createMockWorkflowLog()])
 
