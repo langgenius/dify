@@ -231,7 +231,7 @@ class BaseIndexProcessor(ABC):
 
             if not filename:
                 parsed_url = urlparse(image_url)
-                # unquote process the Chinese of the URL
+                # Decode percent-encoded characters in the URL path.
                 path = unquote(parsed_url.path)
                 filename = os.path.basename(path)
 
