@@ -48,13 +48,21 @@ class NotionExtractor(BaseExtractor):
         if notion_access_token:
             self._notion_access_token = notion_access_token
         else:
-            self._notion_access_token = self._get_access_token(tenant_id, self._credential_id)
-            if not self._notion_access_token:
+            try:
+                self._notion_access_token = self._get_access_token(tenant_id, self._credential_id)
+            except Exception as e:
+                logger.warning(
+                    (
+                        "Failed to get Notion access token from datasource credentials: %s, "
+                        "falling back to environment variable NOTION_INTEGRATION_TOKEN"
+                    ),
+                    e,
+                )
                 integration_token = dify_config.NOTION_INTEGRATION_TOKEN
                 if integration_token is None:
                     raise ValueError(
                         "Must specify `integration_token` or set environment variable `NOTION_INTEGRATION_TOKEN`."
-                    )
+                    ) from e
 
                 self._notion_access_token = integration_token
 
@@ -369,7 +377,7 @@ class NotionExtractor(BaseExtractor):
         return cast(str, data["last_edited_time"])
 
     @classmethod
-    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str:
+    def _get_access_token(cls, tenant_id: str, credential_id: str | None) -> str | None:
         # get credential from tenant_id and credential_id
         if not credential_id:
             raise Exception(f"No credential id found for tenant {tenant_id}")
