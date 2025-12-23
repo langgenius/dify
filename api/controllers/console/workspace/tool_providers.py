@@ -902,9 +902,7 @@ class ToolOAuthCustomClient(Resource):
             tenant_id=tenant_id,
             provider=provider,
             client_params=payload.client_params or {},
-            enable_oauth_custom_client=payload.enable_oauth_custom_client
-            if payload.enable_oauth_custom_client is not None
-            else True,
+            enable_oauth_custom_client=payload.enable_oauth_custom_client,
         )
 
     @setup_required
