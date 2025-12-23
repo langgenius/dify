@@ -12,7 +12,16 @@ const typeCheckedRules =
 
 export default [
   {
-    ignores: ["dist", "node_modules"],
+    ignores: [
+      "dist",
+      "node_modules",
+      "scripts",
+      "tests",
+      "**/*.test.js",
+      "**/*.spec.js",
+      "**/*.test.jsx",
+      "**/*.spec.jsx",
+    ],
   },
   js.configs.recommended,
   {
@@ -47,6 +56,19 @@ export default [
   },
   {
     files: ["**/*.js"],
+    ignores: [
+      "**/*.test.js",
+      "**/*.spec.js",
+      "**/*.test.jsx",
+      "**/*.spec.jsx",
+      "**/*.test.ts",
+      "**/*.spec.ts",
+      "**/*.test.tsx",
+      "**/*.spec.tsx",
+      "**/*.jsx",
+      "**/*.ts",
+      "**/*.tsx"
+    ],
     languageOptions: {
       ecmaVersion: "latest",
       sourceType: "module",

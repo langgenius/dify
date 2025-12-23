@@ -41,9 +41,9 @@
   "homepage": "https://dify.ai",
   "license": "MIT",
   "scripts": {
-    "build": "tsc -p tsconfig.json && node scripts/ensure-js-extensions.mjs",
-    "lint": "eslint \"src/**/*.ts\"",
-    "lint:fix": "npm run lint -- --fix",
+    "build": "tsup",
+    "lint": "eslint",
+    "lint:fix": "eslint --fix",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
     "publish:check": "./scripts/publish.sh --dry-run",
@@ -53,11 +53,12 @@
     "axios": "^1.3.5"
   },
   "devDependencies": {
+    "@eslint/js": "^9.2.0",
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^8.50.1",
     "@typescript-eslint/parser": "^8.50.1",
-    "@eslint/js": "^9.2.0",
     "eslint": "^9.2.0",
+    "tsup": "^8.5.1",
     "typescript": "^5.4.5",
     "vitest": "^1.5.0"
   }
