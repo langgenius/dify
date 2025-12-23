@@ -290,7 +290,7 @@ class OracleVector(BaseVector):
                 current_entity = ""
                 for word, pos in words:
                     # `nr`: Person, `ns`: Location, `nt`: Organization
-                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}: 
+                    if pos in {"nr", "Ng", "eng", "nz", "n", "ORG", "v"}:
                         current_entity += word
                     else:
                         if current_entity:
