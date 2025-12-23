@@ -1,3 +1,4 @@
+import type { MockedFunction } from 'vitest'
 /**
  * Logs Container Component Tests
  *
@@ -14,50 +15,51 @@
  * - trigger-by-display.spec.tsx
  */
 
+import type { ILogsProps } from './index'
+import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import useSWR from 'swr'
-import Logs, { type ILogsProps } from './index'
-import { TIME_PERIOD_MAPPING } from './filter'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { APP_PAGE_LIMIT } from '@/config'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
+import { TIME_PERIOD_MAPPING } from './filter'
+import Logs from './index'
 
 // ============================================================================
 // Mocks
 // ============================================================================
 
-jest.mock('swr')
+vi.mock('swr')
 
-jest.mock('ahooks', () => ({
+vi.mock('ahooks', () => ({
   useDebounce: <T,>(value: T) => value,
   useDebounceFn: (fn: (value: string) => void) => ({ run: fn }),
   useBoolean: (initial: boolean) => {
     const setters = {
-      setTrue: jest.fn(),
-      setFalse: jest.fn(),
-      toggle: jest.fn(),
+      setTrue: vi.fn(),
+      setFalse: vi.fn(),
+      toggle: vi.fn(),
     }
     return [initial, setters] as const
   },
 }))
 
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
-    push: jest.fn(),
+    push: vi.fn(),
   }),
 }))
 
-jest.mock('next/link', () => ({
+vi.mock('next/link', () => ({
   __esModule: true,
-  default: ({ children, href }: { children: React.ReactNode; href: string }) => <a href={href}>{children}</a>,
+  default: ({ children, href }: { children: React.ReactNode, href: string }) => <a href={href}>{children}</a>,
 }))
 
 // Mock the Run component to avoid complex dependencies
-jest.mock('@/app/components/workflow/run', () => ({
+vi.mock('@/app/components/workflow/run', () => ({
   __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -65,31 +67,30 @@ jest.mock('@/app/components/workflow/run', () => ({
   ),
 }))
 
-const mockTrackEvent = jest.fn()
-jest.mock('@/app/components/base/amplitude/utils', () => ({
+const mockTrackEvent = vi.fn()
+vi.mock('@/app/components/base/amplitude/utils', () => ({
   trackEvent: (...args: unknown[]) => mockTrackEvent(...args),
 }))
 
-jest.mock('@/service/log', () => ({
-  fetchWorkflowLogs: jest.fn(),
+vi.mock('@/service/log', () => ({
+  fetchWorkflowLogs: vi.fn(),
 }))
 
-jest.mock('@/hooks/use-theme', () => ({
+vi.mock('@/hooks/use-theme', () => ({
   __esModule: true,
   default: () => {
-    const { Theme } = require('@/types/app')
-    return { theme: Theme.light }
+    return { theme: 'light' }
   },
 }))
 
-jest.mock('@/context/app-context', () => ({
+vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     userProfile: { timezone: 'UTC' },
   }),
 }))
 
 // Mock useTimestamp
-jest.mock('@/hooks/use-timestamp', () => ({
+vi.mock('@/hooks/use-timestamp', () => ({
   __esModule: true,
   default: () => ({
     formatTime: (timestamp: number, _format: string) => `formatted-${timestamp}`,
@@ -97,7 +98,7 @@ jest.mock('@/hooks/use-timestamp', () => ({
 }))
 
 // Mock useBreakpoints
-jest.mock('@/hooks/use-breakpoints', () => ({
+vi.mock('@/hooks/use-breakpoints', () => ({
   __esModule: true,
   default: () => 'pc',
   MediaType: {
@@ -107,19 +108,19 @@ jest.mock('@/hooks/use-breakpoints', () => ({
 }))
 
 // Mock BlockIcon
-jest.mock('@/app/components/workflow/block-icon', () => ({
+vi.mock('@/app/components/workflow/block-icon', () => ({
   __esModule: true,
   default: () => <div data-testid="block-icon">BlockIcon</div>,
 }))
 
 // Mock WorkflowContextProvider
-jest.mock('@/app/components/workflow/context', () => ({
+vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
     <div data-testid="workflow-context-provider">{children}</div>
   ),
 }))
 
-const mockedUseSWR = useSWR as jest.MockedFunction<typeof useSWR>
+const mockedUseSWR = useSWR as unknown as MockedFunction<typeof useSWR>
 
 // ============================================================================
 // Test Data Factories
@@ -204,7 +205,7 @@ describe('Logs Container', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // --------------------------------------------------------------------------
@@ -214,7 +215,7 @@ describe('Logs Container', () => {
     it('should render without crashing', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -228,7 +229,7 @@ describe('Logs Container', () => {
     it('should render title and subtitle', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -243,7 +244,7 @@ describe('Logs Container', () => {
     it('should render Filter component', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -262,7 +263,7 @@ describe('Logs Container', () => {
     it('should show loading spinner when data is undefined', () => {
       mockedUseSWR.mockReturnValue({
         data: undefined,
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: true,
         isLoading: true,
         error: undefined,
@@ -276,7 +277,7 @@ describe('Logs Container', () => {
     it('should not show loading spinner when data is available', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -295,7 +296,7 @@ describe('Logs Container', () => {
     it('should render empty element when total is 0', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -315,7 +316,7 @@ describe('Logs Container', () => {
     it('should call useSWR with correct URL and default params', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -323,7 +324,7 @@ describe('Logs Container', () => {
 
       render(<Logs {...defaultProps} />)
 
-      const keyArg = mockedUseSWR.mock.calls.at(-1)?.[0] as { url: string; params: Record<string, unknown> }
+      const keyArg = mockedUseSWR.mock.calls.at(-1)?.[0] as { url: string, params: Record<string, unknown> }
       expect(keyArg).toMatchObject({
         url: `/apps/${defaultProps.appDetail.id}/workflow-app-logs`,
         params: expect.objectContaining({
@@ -337,7 +338,7 @@ describe('Logs Container', () => {
     it('should include date filters for non-allTime periods', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -353,7 +354,7 @@ describe('Logs Container', () => {
     it('should not include status param when status is all', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -374,7 +375,7 @@ describe('Logs Container', () => {
       const user = userEvent.setup()
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -399,7 +400,7 @@ describe('Logs Container', () => {
       const user = userEvent.setup()
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -423,7 +424,7 @@ describe('Logs Container', () => {
       const user = userEvent.setup()
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -450,7 +451,7 @@ describe('Logs Container', () => {
     it('should not render pagination when total is less than limit', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -464,12 +465,11 @@ describe('Logs Container', () => {
 
     it('should render pagination when total exceeds limit', () => {
       const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
-        createMockWorkflowLog({ id: `log-${i}` }),
-      )
+        createMockWorkflowLog({ id: `log-${i}` }))
 
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse(logs, APP_PAGE_LIMIT + 10),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -490,7 +490,7 @@ describe('Logs Container', () => {
     it('should render List component when data is available', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -511,7 +511,7 @@ describe('Logs Container', () => {
             }),
           }),
         ], 1),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -543,7 +543,7 @@ describe('Logs Container', () => {
     it('should handle different app modes', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,
@@ -560,7 +560,7 @@ describe('Logs Container', () => {
     it('should handle error state from useSWR', () => {
       mockedUseSWR.mockReturnValue({
         data: undefined,
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: new Error('Failed to fetch'),
@@ -575,7 +575,7 @@ describe('Logs Container', () => {
     it('should handle app with different ID', () => {
       mockedUseSWR.mockReturnValue({
         data: createMockLogsResponse([], 0),
-        mutate: jest.fn(),
+        mutate: vi.fn(),
         isValidating: false,
         isLoading: false,
         error: undefined,

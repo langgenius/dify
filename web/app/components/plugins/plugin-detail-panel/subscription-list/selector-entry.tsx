@@ -1,15 +1,15 @@
 'use client'
+import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { SubscriptionList, SubscriptionListMode } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { cn } from '@/utils/classnames'
-import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { useSubscriptionList } from './use-subscription-list'
 
 type SubscriptionTriggerButtonProps = {
@@ -90,37 +90,39 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
 }
 
 export const SubscriptionSelectorEntry = ({ selectedId, onSelect }: {
-  selectedId?: string,
+  selectedId?: string
   onSelect: (v: SimpleSubscription, callback?: () => void) => void
 }) => {
   const [isOpen, setIsOpen] = useState(false)
 
-  return <PortalToFollowElem
-    placement='bottom-start'
-    offset={4}
-    open={isOpen}
-    onOpenChange={setIsOpen}
-  >
-    <PortalToFollowElemTrigger asChild>
-      <div>
-        <SubscriptionTriggerButton
-          selectedId={selectedId}
-          onClick={() => setIsOpen(!isOpen)}
-          isOpen={isOpen}
-        />
-      </div>
-    </PortalToFollowElemTrigger>
-    <PortalToFollowElemContent className='z-[11]'>
-      <div className='rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg'>
-        <SubscriptionList
-          mode={SubscriptionListMode.SELECTOR}
-          selectedId={selectedId}
-          onSelect={(...args) => {
-            onSelect(...args)
-            setIsOpen(false)
-          }}
-        />
-      </div>
-    </PortalToFollowElemContent>
-  </PortalToFollowElem>
+  return (
+    <PortalToFollowElem
+      placement="bottom-start"
+      offset={4}
+      open={isOpen}
+      onOpenChange={setIsOpen}
+    >
+      <PortalToFollowElemTrigger asChild>
+        <div>
+          <SubscriptionTriggerButton
+            selectedId={selectedId}
+            onClick={() => setIsOpen(!isOpen)}
+            isOpen={isOpen}
+          />
+        </div>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-[11]">
+        <div className="rounded-xl border border-components-panel-border bg-components-panel-bg shadow-lg">
+          <SubscriptionList
+            mode={SubscriptionListMode.SELECTOR}
+            selectedId={selectedId}
+            onSelect={(...args) => {
+              onSelect(...args)
+              setIsOpen(false)
+            }}
+          />
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
+  )
 }

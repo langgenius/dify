@@ -1,19 +1,19 @@
-import { useCallback } from 'react'
-import { produce } from 'immer'
 import type {
   EdgeMouseHandler,
   OnEdgesChange,
 } from 'reactflow'
-import {
-  useStoreApi,
-} from 'reactflow'
 import type {
   Node,
 } from '../types'
+import { produce } from 'immer'
+import { useCallback } from 'react'
+import {
+  useStoreApi,
+} from 'reactflow'
 import { getNodesConnectedSourceOrTargetHandleIdsMap } from '../utils'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
-import { WorkflowHistoryEvent, useWorkflowHistory } from './use-workflow-history'
+import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
 
 export const useEdgesInteractions = () => {
   const store = useStoreApi()

@@ -1,46 +1,47 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiBookmark3Line,
-  RiErrorWarningFill,
-} from '@remixicon/react'
-import { useBoolean } from 'ahooks'
-import { useSearchParams } from 'next/navigation'
-import TabHeader from '../../base/tab-header'
-import MenuDropdown from './menu-dropdown'
-import RunBatch from './run-batch'
-import ResDownload from './run-batch/res-download'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import RunOnce from '@/app/components/share/text-generation/run-once'
-import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
-import type { SiteInfo } from '@/models/share'
 import type {
   MoreLikeThisConfig,
   PromptConfig,
   SavedMessage,
   TextToSpeechConfig,
 } from '@/models/debug'
+import type { InstalledApp } from '@/models/explore'
+import type { SiteInfo } from '@/models/share'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import {
+  RiBookmark3Line,
+  RiErrorWarningFill,
+} from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import { useSearchParams } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import SavedItems from '@/app/components/app/text-generate/saved-items'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
-import { changeLanguage } from '@/i18n-config/i18next-config'
 import Loading from '@/app/components/base/loading'
-import { userInputsFormToPromptVariables } from '@/utils/model-config'
-import Res from '@/app/components/share/text-generation/result'
-import SavedItems from '@/app/components/app/text-generate/saved-items'
-import type { InstalledApp } from '@/models/explore'
-import { DEFAULT_VALUE_MAX_LEN, appDefaultIconBackground } from '@/config'
-import Toast from '@/app/components/base/toast'
-import type { VisionFile, VisionSettings } from '@/types/app'
-import { Resolution, TransferMethod } from '@/types/app'
-import { useAppFavicon } from '@/hooks/use-app-favicon'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import { cn } from '@/utils/classnames'
-import { AccessMode } from '@/models/access-control'
+import Toast from '@/app/components/base/toast'
+import Res from '@/app/components/share/text-generation/result'
+import RunOnce from '@/app/components/share/text-generation/run-once'
+import { appDefaultIconBackground, DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useWebAppStore } from '@/context/web-app-context'
+import { useAppFavicon } from '@/hooks/use-app-favicon'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { changeLanguage } from '@/i18n-config/i18next-config'
+import { AccessMode } from '@/models/access-control'
+import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
+import { Resolution, TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { userInputsFormToPromptVariables } from '@/utils/model-config'
+import TabHeader from '../../base/tab-header'
+import MenuDropdown from './menu-dropdown'
+import RunBatch from './run-batch'
+import ResDownload from './run-batch/res-download'
 
 const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
@@ -125,7 +126,7 @@ const TextGeneration: FC<IMainProps> = ({
     transfer_methods: [TransferMethod.local_file],
   })
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
-  const [runControl, setRunControl] = useState<{ onStop: () => Promise<void> | void; isStopping: boolean } | null>(null)
+  const [runControl, setRunControl] = useState<{ onStop: () => Promise<void> | void, isStopping: boolean } | null>(null)
 
   useEffect(() => {
     if (isCallBatchAPI)
@@ -416,34 +417,36 @@ const TextGeneration: FC<IMainProps> = ({
   }
   const [resultExisted, setResultExisted] = useState(false)
 
-  const renderRes = (task?: Task) => (<Res
-    key={task?.id}
-    isWorkflow={isWorkflow}
-    isCallBatchAPI={isCallBatchAPI}
-    isPC={isPC}
-    isMobile={!isPC}
-    isInstalledApp={isInstalledApp}
-    appId={appId}
-    installedAppInfo={installedAppInfo}
-    isError={task?.status === TaskStatus.failed}
-    promptConfig={promptConfig}
-    moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
-    inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
-    controlSend={controlSend}
-    controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
-    controlStopResponding={controlStopResponding}
-    onShowRes={showResultPanel}
-    handleSaveMessage={handleSaveMessage}
-    taskId={task?.id}
-    onCompleted={handleCompleted}
-    visionConfig={visionConfig}
-    completionFiles={completionFiles}
-    isShowTextToSpeech={!!textToSpeechConfig?.enabled}
-    siteInfo={siteInfo}
-    onRunStart={() => setResultExisted(true)}
-    onRunControlChange={!isCallBatchAPI ? setRunControl : undefined}
-    hideInlineStopButton={!isCallBatchAPI}
-  />)
+  const renderRes = (task?: Task) => (
+    <Res
+      key={task?.id}
+      isWorkflow={isWorkflow}
+      isCallBatchAPI={isCallBatchAPI}
+      isPC={isPC}
+      isMobile={!isPC}
+      isInstalledApp={isInstalledApp}
+      appId={appId}
+      installedAppInfo={installedAppInfo}
+      isError={task?.status === TaskStatus.failed}
+      promptConfig={promptConfig}
+      moreLikeThisEnabled={!!moreLikeThisConfig?.enabled}
+      inputs={isCallBatchAPI ? (task as Task).params.inputs : inputs}
+      controlSend={controlSend}
+      controlRetry={task?.status === TaskStatus.failed ? controlRetry : 0}
+      controlStopResponding={controlStopResponding}
+      onShowRes={showResultPanel}
+      handleSaveMessage={handleSaveMessage}
+      taskId={task?.id}
+      onCompleted={handleCompleted}
+      visionConfig={visionConfig}
+      completionFiles={completionFiles}
+      isShowTextToSpeech={!!textToSpeechConfig?.enabled}
+      siteInfo={siteInfo}
+      onRunStart={() => setResultExisted(true)}
+      onRunControlChange={!isCallBatchAPI ? setRunControl : undefined}
+      hideInlineStopButton={!isCallBatchAPI}
+    />
+  )
 
   const renderBatchRes = () => {
     return (showTaskList.map(task => renderRes(task)))
@@ -465,8 +468,9 @@ const TextGeneration: FC<IMainProps> = ({
         <div className={cn(
           'flex shrink-0 items-center justify-between px-14 pb-2 pt-9',
           !isPC && 'px-4 pb-1 pt-3',
-        )}>
-          <div className='system-md-semibold-uppercase text-text-primary'>{t('share.generation.executions', { num: allTaskList.length })}</div>
+        )}
+        >
+          <div className="system-md-semibold-uppercase text-text-primary">{t('share.generation.executions', { num: allTaskList.length })}</div>
           {allSuccessTaskList.length > 0 && (
             <ResDownload
               isMobile={!isPC}
@@ -480,20 +484,21 @@ const TextGeneration: FC<IMainProps> = ({
         isPC && 'px-14 py-8',
         isPC && isCallBatchAPI && 'pt-0',
         !isPC && 'p-0 pb-2',
-      )}>
+      )}
+      >
         {!isCallBatchAPI ? renderRes() : renderBatchRes()}
         {!noPendingTask && (
-          <div className='mt-4'>
-            <Loading type='area' />
+          <div className="mt-4">
+            <Loading type="area" />
           </div>
         )}
       </div>
       {isCallBatchAPI && allFailedTaskList.length > 0 && (
-        <div className='absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm'>
-          <RiErrorWarningFill className='h-4 w-4 text-text-destructive' />
-          <div className='system-sm-medium text-text-secondary'>{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
-          <div className='h-3.5 w-px bg-divider-regular'></div>
-          <div onClick={handleRetryAllFailedTask} className='system-sm-semibold-uppercase cursor-pointer text-text-accent'>{t('share.generation.batchFailed.retry')}</div>
+        <div className="absolute bottom-6 left-1/2 z-10 flex -translate-x-1/2 items-center gap-2 rounded-xl border border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-sm">
+          <RiErrorWarningFill className="h-4 w-4 text-text-destructive" />
+          <div className="system-sm-medium text-text-secondary">{t('share.generation.batchFailed.info', { num: allFailedTaskList.length })}</div>
+          <div className="h-3.5 w-px bg-divider-regular"></div>
+          <div onClick={handleRetryAllFailedTask} className="system-sm-semibold-uppercase cursor-pointer text-text-accent">{t('share.generation.batchFailed.retry')}</div>
         </div>
       )}
     </div>
@@ -501,9 +506,10 @@ const TextGeneration: FC<IMainProps> = ({
 
   if (!appId || !siteInfo || !promptConfig) {
     return (
-      <div className='flex h-screen items-center'>
-        <Loading type='app' />
-      </div>)
+      <div className="flex h-screen items-center">
+        <Loading type="app" />
+      </div>
+    )
   }
   return (
     <div className={cn(
@@ -511,16 +517,18 @@ const TextGeneration: FC<IMainProps> = ({
       isPC && 'flex',
       !isPC && 'flex-col',
       isInstalledApp ? 'h-full rounded-2xl shadow-md' : 'h-screen',
-    )}>
+    )}
+    >
       {/* Left */}
       <div className={cn(
         'relative flex h-full shrink-0 flex-col',
         isPC ? 'w-[600px] max-w-[50%]' : resultExisted ? 'h-[calc(100%_-_64px)]' : '',
         isInstalledApp && 'rounded-l-2xl',
-      )}>
+      )}
+      >
         {/* header */}
         <div className={cn('shrink-0 space-y-4 border-b border-divider-subtle', isPC ? 'bg-components-panel-bg p-8 pb-0' : 'p-4 pb-0')}>
-          <div className='flex items-center gap-3'>
+          <div className="flex items-center gap-3">
             <AppIcon
               size={isPC ? 'large' : 'small'}
               iconType={siteInfo.icon_type}
@@ -528,11 +536,11 @@ const TextGeneration: FC<IMainProps> = ({
               background={siteInfo.icon_background || appDefaultIconBackground}
               imageUrl={siteInfo.icon_url}
             />
-            <div className='system-md-semibold grow truncate text-text-secondary'>{siteInfo.title}</div>
+            <div className="system-md-semibold grow truncate text-text-secondary">{siteInfo.title}</div>
             <MenuDropdown hideLogout={isInstalledApp || accessMode === AccessMode.PUBLIC} data={siteInfo} />
           </div>
           {siteInfo.description && (
-            <div className='system-xs-regular text-text-tertiary'>{siteInfo.description}</div>
+            <div className="system-xs-regular text-text-tertiary">{siteInfo.description}</div>
           )}
           <TabHeader
             items={[
@@ -540,18 +548,18 @@ const TextGeneration: FC<IMainProps> = ({
               { id: 'batch', name: t('share.generation.tabs.batch') },
               ...(!isWorkflow
                 ? [{
-                  id: 'saved',
-                  name: t('share.generation.tabs.saved'),
-                  isRight: true,
-                  icon: <RiBookmark3Line className='h-4 w-4' />,
-                  extra: savedMessages.length > 0
-                    ? (
-                      <Badge className='ml-1'>
-                        {savedMessages.length}
-                      </Badge>
-                    )
-                    : null,
-                }]
+                    id: 'saved',
+                    name: t('share.generation.tabs.saved'),
+                    isRight: true,
+                    icon: <RiBookmark3Line className="h-4 w-4" />,
+                    extra: savedMessages.length > 0
+                      ? (
+                          <Badge className="ml-1">
+                            {savedMessages.length}
+                          </Badge>
+                        )
+                      : null,
+                  }]
                 : []),
             ]}
             value={currentTab}
@@ -563,7 +571,8 @@ const TextGeneration: FC<IMainProps> = ({
           'h-0 grow overflow-y-auto bg-components-panel-bg',
           isPC ? 'px-8' : 'px-4',
           !isPC && resultExisted && customConfig?.remove_webapp_brand && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
-        )}>
+        )}
+        >
           <div className={cn(currentTab === 'create' ? 'block' : 'hidden')}>
             <RunOnce
               siteInfo={siteInfo}
@@ -600,14 +609,15 @@ const TextGeneration: FC<IMainProps> = ({
             'flex shrink-0 items-center gap-1.5 bg-components-panel-bg py-3',
             isPC ? 'px-8' : 'px-4',
             !isPC && resultExisted && 'rounded-b-2xl border-b-[0.5px] border-divider-regular',
-          )}>
-            <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
+          )}
+          >
+            <div className="system-2xs-medium-uppercase text-text-tertiary">{t('share.chat.poweredBy')}</div>
             {
               systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
                 : customConfig?.replace_webapp_logo
-                  ? <img src={`${customConfig?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
-                  : <DifyLogo size='small' />
+                  ? <img src={`${customConfig?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
+                  : <DifyLogo size="small" />
             }
           </div>
         )}
@@ -621,7 +631,8 @@ const TextGeneration: FC<IMainProps> = ({
             : resultExisted
               ? 'relative h-16 shrink-0 overflow-hidden bg-background-default-burn pt-2.5'
               : '',
-      )}>
+      )}
+      >
         {!isPC && (
           <div
             className={cn(
@@ -636,7 +647,7 @@ const TextGeneration: FC<IMainProps> = ({
                 showResultPanel()
             }}
           >
-            <div className='h-1 w-8 cursor-grab rounded bg-divider-solid' />
+            <div className="h-1 w-8 cursor-grab rounded bg-divider-solid" />
           </div>
         )}
         {renderResWrap}

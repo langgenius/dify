@@ -40,9 +40,9 @@ const Collapse = ({
   }, [collapsedMerged, disabled])
   return (
     <>
-      <div className='group/collapse flex items-center'>
+      <div className="group/collapse flex items-center">
         <div
-          className='ml-4 flex grow items-center'
+          className="ml-4 flex grow items-center"
           onClick={() => {
             if (!disabled) {
               setCollapsedLocal(!collapsedMerged)
@@ -52,7 +52,7 @@ const Collapse = ({
         >
           {typeof trigger === 'function' ? trigger(collapseIcon) : trigger}
           {!hideCollapseIcon && (
-            <div className='h-4 w-4 shrink-0'>
+            <div className="h-4 w-4 shrink-0">
               {collapseIcon}
             </div>
           )}

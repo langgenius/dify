@@ -1,8 +1,8 @@
+import type { Plugin, PluginsFromMarketplaceResponse } from '../../plugins/types'
 import type { ActionItem, PluginSearchResult } from './types'
 import { renderI18nObject } from '@/i18n-config'
-import Icon from '../../plugins/card/base/card-icon'
 import { postMarketplace } from '@/service/base'
-import type { Plugin, PluginsFromMarketplaceResponse } from '../../plugins/types'
+import Icon from '../../plugins/card/base/card-icon'
 import { getPluginIconInMarketplace } from '../../plugins/marketplace/utils'
 
 const parser = (plugins: Plugin[], locale: string): PluginSearchResult[] => {

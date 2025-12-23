@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
-
 import type { PopupProps } from './config-popup'
-import ConfigPopup from './config-popup'
-import { cn } from '@/utils/classnames'
+
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
+import ConfigPopup from './config-popup'
 
 type Props = {
   readOnly: boolean
@@ -42,7 +43,7 @@ const ConfigBtn: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={12}
     >
       <PortalToFollowElemTrigger onClick={handleTrigger}>
@@ -50,7 +51,7 @@ const ConfigBtn: FC<Props> = ({
           {children}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[11]'>
+      <PortalToFollowElemContent className="z-[11]">
         <ConfigPopup {...popupProps} />
       </PortalToFollowElemContent>
     </PortalToFollowElem>

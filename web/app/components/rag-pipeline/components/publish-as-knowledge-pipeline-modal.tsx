@@ -1,17 +1,17 @@
 'use client'
+import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
+import type { IconInfo } from '@/models/datasets'
+import { RiCloseLine } from '@remixicon/react'
+import { noop } from 'lodash-es'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiCloseLine } from '@remixicon/react'
+import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
-import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
-import AppIcon from '@/app/components/base/app-icon'
-import { noop } from 'lodash-es'
 import { useStore } from '@/app/components/workflow/store'
-import type { IconInfo } from '@/models/datasets'
 
 type PublishAsKnowledgePipelineModalProps = {
   confirmDisabled?: boolean
@@ -81,18 +81,18 @@ const PublishAsKnowledgePipelineModal = ({
       <Modal
         isShow
         onClose={noop}
-        className='relative !w-[520px] !p-0'
+        className="relative !w-[520px] !p-0"
       >
-        <div className='title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary'>
+        <div className="title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary">
           {t('pipeline.common.publishAs')}
-          <div className='absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center' onClick={onCancel}>
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+          <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
-        <div className='px-6 py-3'>
-          <div className='mb-5 flex'>
-            <div className='mr-3 grow'>
-              <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary'>
+        <div className="px-6 py-3">
+          <div className="mb-5 flex">
+            <div className="mr-3 grow">
+              <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
                 {t('pipeline.common.publishAsPipeline.name')}
               </div>
               <Input
@@ -102,9 +102,9 @@ const PublishAsKnowledgePipelineModal = ({
               />
             </div>
             <AppIcon
-              size='xxl'
+              size="xxl"
               onClick={() => { setShowAppIconPicker(true) }}
-              className='mt-2 shrink-0 cursor-pointer'
+              className="mt-2 shrink-0 cursor-pointer"
               iconType={pipelineIcon?.icon_type}
               icon={pipelineIcon?.icon}
               background={pipelineIcon?.icon_background}
@@ -112,37 +112,39 @@ const PublishAsKnowledgePipelineModal = ({
             />
           </div>
           <div>
-            <div className='system-sm-medium mb-1 flex h-6 items-center text-text-secondary '>
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary ">
               {t('pipeline.common.publishAsPipeline.description')}
             </div>
             <Textarea
-              className='resize-none'
+              className="resize-none"
               placeholder={t('pipeline.common.publishAsPipeline.descriptionPlaceholder') || ''}
               value={description}
               onChange={e => setDescription(e.target.value)}
             />
           </div>
         </div>
-        <div className='flex items-center justify-end px-6 py-5'>
+        <div className="flex items-center justify-end px-6 py-5">
           <Button
-            className='mr-2'
+            className="mr-2"
             onClick={onCancel}
           >
             {t('common.operation.cancel')}
           </Button>
           <Button
             disabled={!pipelineName?.trim() || confirmDisabled}
-            variant='primary'
+            variant="primary"
             onClick={() => handleConfirm()}
           >
             {t('workflow.common.publish')}
           </Button>
         </div>
       </Modal>
-      {showAppIconPicker && <AppIconPicker
-        onSelect={handleSelectIcon}
-        onClose={handleCloseIconPicker}
-      />}
+      {showAppIconPicker && (
+        <AppIconPicker
+          onSelect={handleSelectIcon}
+          onClose={handleCloseIconPicker}
+        />
+      )}
     </>
   )
 }

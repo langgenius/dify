@@ -1,35 +1,35 @@
 'use client'
 import type { FC } from 'react'
-import { useEffect, useMemo, useState } from 'react'
-import { type ResourceVarInputs, VarKindType } from '../types'
+import type { ResourceVarInputs } from '../types'
 import type { CredentialFormSchema, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import type { Event, Tool } from '@/app/components/tools/types'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
+import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
+import { ChevronDownIcon } from '@heroicons/react/20/solid'
+
+import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
+import { useEffect, useMemo, useState } from 'react'
+import CheckboxList from '@/app/components/base/checkbox-list'
+import Input from '@/app/components/base/input'
+import { SimpleSelect } from '@/app/components/base/select'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
+import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
 import { VarType } from '@/app/components/workflow/types'
 import { useFetchDynamicOptions } from '@/service/use-plugins'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
-
-import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
-import type { Tool } from '@/app/components/tools/types'
-import FormInputTypeSwitch from './form-input-type-switch'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import Input from '@/app/components/base/input'
-import { SimpleSelect } from '@/app/components/base/select'
-import MixedVariableTextInput from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input'
-import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
-import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { cn } from '@/utils/classnames'
-import { Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
-import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
-import type { Event } from '@/app/components/tools/types'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
-import CheckboxList from '@/app/components/base/checkbox-list'
+import { VarKindType } from '../types'
 import FormInputBoolean from './form-input-boolean'
+import FormInputTypeSwitch from './form-input-type-switch'
 
 type Props = {
   readOnly: boolean
@@ -284,7 +284,7 @@ const FormInputItem: FC<Props> = ({
   }
 
   const availableCheckboxOptions = useMemo(() => (
-    (options || []).filter((option: { show_on?: Array<{ variable: string; value: any }> }) => {
+    (options || []).filter((option: { show_on?: Array<{ variable: string, value: any }> }) => {
       if (option.show_on?.length)
         return option.show_on.every(showOnItem => value[showOnItem.variable]?.value === showOnItem.value || value[showOnItem.variable] === showOnItem.value)
       return true
@@ -292,7 +292,7 @@ const FormInputItem: FC<Props> = ({
   ), [options, value])
 
   const checkboxListOptions = useMemo(() => (
-    availableCheckboxOptions.map((option: { value: string; label: Record<string, string> }) => ({
+    availableCheckboxOptions.map((option: { value: string, label: Record<string, string> }) => ({
       value: option.value,
       label: option.label?.[language] || option.label?.en_US || option.value,
     }))
@@ -341,8 +341,8 @@ const FormInputItem: FC<Props> = ({
       )}
       {isNumber && isConstant && (
         <Input
-          className='h-8 grow'
-          type='number'
+          className="h-8 grow"
+          type="number"
           value={Number.isNaN(varInput?.value) ? '' : varInput?.value}
           onChange={e => handleValueChange(e.target.value)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
@@ -355,7 +355,7 @@ const FormInputItem: FC<Props> = ({
           onChange={handleCheckboxListChange}
           options={checkboxListOptions}
           disabled={readOnly}
-          maxHeight='200px'
+          maxHeight="200px"
         />
       )}
       {isBoolean && isConstant && (
@@ -366,7 +366,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isSelect && isConstant && !isMultipleSelect && (
         <SimpleSelect
-          wrapperClassName='h-8 grow'
+          wrapperClassName="h-8 grow"
           disabled={readOnly}
           defaultValue={varInput?.value}
           items={options.filter((option: { show_on: any[] }) => {
@@ -374,21 +374,23 @@ const FormInputItem: FC<Props> = ({
               return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
 
             return true
-          }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => ({
+          }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => ({
             value: option.value,
             name: option.label[language] || option.label.en_US,
             icon: option.icon,
           }))}
           onSelect={item => handleValueChange(item.value as string)}
           placeholder={placeholder?.[language] || placeholder?.en_US}
-          renderOption={options.some((opt: any) => opt.icon) ? ({ item }) => (
-            <div className="flex items-center">
-              {item.icon && (
-                <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
-              )}
-              <span>{item.name}</span>
-            </div>
-          ) : undefined}
+          renderOption={options.some((opt: any) => opt.icon)
+            ? ({ item }) => (
+                <div className="flex items-center">
+                  {item.icon && (
+                    <img src={item.icon} alt="" className="mr-2 h-4 w-4" />
+                  )}
+                  <span>{item.name}</span>
+                </div>
+              )
+            : undefined}
         />
       )}
       {isSelect && isConstant && isMultipleSelect && (
@@ -400,9 +402,7 @@ const FormInputItem: FC<Props> = ({
         >
           <div className="group/simple-select relative h-8 grow">
             <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
-              <span className={cn('system-sm-regular block truncate text-left',
-                varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
-              )}>
+              <span className={cn('system-sm-regular block truncate text-left', varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder')}>
                 {getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
               </span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
@@ -417,15 +417,12 @@ const FormInputItem: FC<Props> = ({
                 if (option.show_on?.length)
                   return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
                 return true
-              }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => (
+              }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => (
                 <ListboxOption
                   key={option.value}
                   value={option.value}
                   className={({ focus }) =>
-                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                      focus && 'bg-state-base-hover',
-                    )
-                  }
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', focus && 'bg-state-base-hover')}
                 >
                   {({ selected }) => (
                     <>
@@ -452,7 +449,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isDynamicSelect && !isMultipleSelect && (
         <SimpleSelect
-          wrapperClassName='h-8 grow'
+          wrapperClassName="h-8 grow"
           disabled={readOnly || isLoadingOptions}
           defaultValue={varInput?.value}
           items={(dynamicOptions || options || []).filter((option: { show_on?: any[] }) => {
@@ -460,7 +457,7 @@ const FormInputItem: FC<Props> = ({
               return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
 
             return true
-          }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => ({
+          }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => ({
             value: option.value,
             name: option.label[language] || option.label.en_US,
             icon: option.icon,
@@ -486,23 +483,25 @@ const FormInputItem: FC<Props> = ({
         >
           <div className="group/simple-select relative h-8 grow">
             <ListboxButton className="flex h-full w-full cursor-pointer items-center rounded-lg border-0 bg-components-input-bg-normal pl-3 pr-10 focus-visible:bg-state-base-hover-alt focus-visible:outline-none group-hover/simple-select:bg-state-base-hover-alt sm:text-sm sm:leading-6">
-              <span className={cn('system-sm-regular block truncate text-left',
-                isLoadingOptions ? 'text-components-input-text-placeholder'
-                  : varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder',
-              )}>
+              <span className={cn('system-sm-regular block truncate text-left', isLoadingOptions
+                ? 'text-components-input-text-placeholder'
+                : varInput?.value?.length > 0 ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder')}
+              >
                 {isLoadingOptions
                   ? 'Loading...'
                   : getSelectedLabels(varInput?.value) || placeholder?.[language] || placeholder?.en_US || 'Select options'}
               </span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2">
-                {isLoadingOptions ? (
-                  <RiLoader4Line className='h-3.5 w-3.5 animate-spin text-text-secondary' />
-                ) : (
-                  <ChevronDownIcon
-                    className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
-                    aria-hidden="true"
-                  />
-                )}
+                {isLoadingOptions
+                  ? (
+                      <RiLoader4Line className="h-3.5 w-3.5 animate-spin text-text-secondary" />
+                    )
+                  : (
+                      <ChevronDownIcon
+                        className="h-4 w-4 text-text-quaternary group-hover/simple-select:text-text-secondary"
+                        aria-hidden="true"
+                      />
+                    )}
               </span>
             </ListboxButton>
             <ListboxOptions className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur px-1 py-1 text-base shadow-lg backdrop-blur-sm focus:outline-none sm:text-sm">
@@ -510,15 +509,12 @@ const FormInputItem: FC<Props> = ({
                 if (option.show_on?.length)
                   return option.show_on.every(showOnItem => value[showOnItem.variable] === showOnItem.value)
                 return true
-              }).map((option: { value: any; label: { [x: string]: any; en_US: any }; icon?: string }) => (
+              }).map((option: { value: any, label: { [x: string]: any, en_US: any }, icon?: string }) => (
                 <ListboxOption
                   key={option.value}
                   value={option.value}
                   className={({ focus }) =>
-                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover',
-                      focus && 'bg-state-base-hover',
-                    )
-                  }
+                    cn('relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover', focus && 'bg-state-base-hover')}
                 >
                   {({ selected }) => (
                     <>
@@ -544,16 +540,16 @@ const FormInputItem: FC<Props> = ({
         </Listbox>
       )}
       {isShowJSONEditor && isConstant && (
-        <div className='mt-1 w-full'>
+        <div className="mt-1 w-full">
           <CodeEditor
-            title='JSON'
+            title="JSON"
             value={varInput?.value as any}
             isExpand
             isInNode
             language={CodeLanguage.json}
             onChange={handleValueChange}
-            className='w-full'
-            placeholder={<div className='whitespace-pre'>{placeholder?.[language] || placeholder?.en_US}</div>}
+            className="w-full"
+            placeholder={<div className="whitespace-pre">{placeholder?.[language] || placeholder?.en_US}</div>}
           />
         </div>
       )}
@@ -567,7 +563,7 @@ const FormInputItem: FC<Props> = ({
       )}
       {isModelSelector && isConstant && (
         <ModelParameterModal
-          popupClassName='!w-[387px]'
+          popupClassName="!w-[387px]"
           isAdvancedMode
           isInWorkflow
           value={varInput?.value}
@@ -579,7 +575,7 @@ const FormInputItem: FC<Props> = ({
       {showVariableSelector && (
         <VarReferencePicker
           zIndex={inPanel ? 1000 : undefined}
-          className='h-8 grow'
+          className="h-8 grow"
           readonly={readOnly}
           isShowNodeName
           nodeId={nodeId}

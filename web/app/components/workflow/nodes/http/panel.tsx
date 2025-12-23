@@ -1,22 +1,22 @@
 import type { FC } from 'react'
+import type { HttpNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import useConfig from './use-config'
-import ApiInput from './components/api-input'
-import KeyValue from './components/key-value'
-import EditBody from './components/edit-body'
-import AuthorizationModal from './components/authorization'
-import type { HttpNodeType } from './types'
-import Timeout from './components/timeout'
-import CurlPanel from './components/curl-panel'
-import { cn } from '@/utils/classnames'
+import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
+import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { cn } from '@/utils/classnames'
+import ApiInput from './components/api-input'
+import AuthorizationModal from './components/authorization'
+import CurlPanel from './components/curl-panel'
+import EditBody from './components/edit-body'
+import KeyValue from './components/key-value'
+import Timeout from './components/timeout'
+import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.http'
 
@@ -55,34 +55,34 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     return null
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.api`)}
           required
-          operations={
-            <div className='flex'>
+          operations={(
+            <div className="flex">
               <div
                 onClick={showAuthorization}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <Settings01 className='h-3 w-3 text-text-tertiary' />}
-                <div className='text-xs font-medium text-text-tertiary'>
+                {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
+                <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.authorization.authorization`)}
-                  <span className='ml-1 text-text-secondary'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
+                  <span className="ml-1 text-text-secondary">{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
                 </div>
               </div>
               <div
                 onClick={showCurlPanel}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <FileArrow01 className='h-3 w-3 text-text-tertiary' />}
-                <div className='text-xs font-medium text-text-tertiary'>
+                {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
+                <div className="text-xs font-medium text-text-tertiary">
                   {t(`${i18nPrefix}.curl.title`)}
                 </div>
               </div>
             </div>
-          }
+          )}
         >
           <ApiInput
             nodeId={id}
@@ -129,14 +129,15 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         <Field
           title={t(`${i18nPrefix}.verifySSL.title`)}
           tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`)}
-          operations={
+          operations={(
             <Switch
               defaultValue={!!inputs.ssl_verify}
               onChange={handleSSLVerifyChange}
-              size='md'
+              size="md"
               disabled={readOnly}
             />
-          }>
+          )}
+        >
         </Field>
       </div>
       <Split />
@@ -156,27 +157,27 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         />
       )}
       <Split />
-      <div className=''>
+      <div className="">
         <OutputVars>
           <>
             <VarItem
-              name='body'
-              type='string'
+              name="body"
+              type="string"
               description={t(`${i18nPrefix}.outputVars.body`)}
             />
             <VarItem
-              name='status_code'
-              type='number'
+              name="status_code"
+              type="number"
               description={t(`${i18nPrefix}.outputVars.statusCode`)}
             />
             <VarItem
-              name='headers'
-              type='object'
+              name="headers"
+              type="object"
               description={t(`${i18nPrefix}.outputVars.headers`)}
             />
             <VarItem
-              name='files'
-              type='Array[File]'
+              name="files"
+              type="Array[File]"
               description={t(`${i18nPrefix}.outputVars.files`)}
             />
           </>

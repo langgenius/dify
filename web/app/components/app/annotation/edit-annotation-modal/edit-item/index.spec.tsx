@@ -36,11 +36,11 @@ describe('EditItem', () => {
   const defaultProps = {
     type: EditItemType.Query,
     content: 'Test content',
-    onSave: jest.fn(),
+    onSave: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering tests (REQUIRED)
@@ -167,7 +167,7 @@ describe('EditItem', () => {
 
     it('should save new content when save button is clicked', async () => {
       // Arrange
-      const mockSave = jest.fn().mockResolvedValue(undefined)
+      const mockSave = vi.fn().mockResolvedValue(undefined)
       const props = {
         ...defaultProps,
         onSave: mockSave,
@@ -223,7 +223,7 @@ describe('EditItem', () => {
 
     it('should call onSave with correct content when saving', async () => {
       // Arrange
-      const mockSave = jest.fn().mockResolvedValue(undefined)
+      const mockSave = vi.fn().mockResolvedValue(undefined)
       const props = {
         ...defaultProps,
         onSave: mockSave,
@@ -247,7 +247,7 @@ describe('EditItem', () => {
 
     it('should show delete option and restore original content when delete is clicked', async () => {
       // Arrange
-      const mockSave = jest.fn().mockResolvedValue(undefined)
+      const mockSave = vi.fn().mockResolvedValue(undefined)
       const props = {
         ...defaultProps,
         onSave: mockSave,
@@ -402,7 +402,7 @@ describe('EditItem', () => {
 
     it('should handle save failure gracefully in edit mode', async () => {
       // Arrange
-      const mockSave = jest.fn().mockRejectedValueOnce(new Error('Save failed'))
+      const mockSave = vi.fn().mockRejectedValueOnce(new Error('Save failed'))
       const props = {
         ...defaultProps,
         onSave: mockSave,
@@ -428,7 +428,7 @@ describe('EditItem', () => {
 
     it('should handle delete action failure gracefully', async () => {
       // Arrange
-      const mockSave = jest.fn()
+      const mockSave = vi.fn()
         .mockResolvedValueOnce(undefined) // First save succeeds
         .mockRejectedValueOnce(new Error('Delete failed')) // Delete fails
       const props = {

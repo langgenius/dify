@@ -1,12 +1,14 @@
-import { VarType } from '../../types'
 import type { NodeDefault } from '../../types'
-import { ComparisonOperator, LogicalOperator, type LoopNodeType } from './types'
-import { isEmptyRelatedOperator } from './utils'
-import { TransferMethod } from '@/types/app'
-import { LOOP_NODE_MAX_COUNT } from '@/config'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
+import type { LoopNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { LOOP_NODE_MAX_COUNT } from '@/config'
+import { TransferMethod } from '@/types/app'
+import { VarType } from '../../types'
+import { ComparisonOperator, LogicalOperator } from './types'
+import { isEmptyRelatedOperator } from './utils'
+
 const i18nPrefix = 'workflow.errorMsg'
 
 const metaData = genNodeMetaData({
@@ -66,8 +68,9 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
       || !Number.isInteger(Number(payload.loop_count))
       || payload.loop_count < 1
       || payload.loop_count > LOOP_NODE_MAX_COUNT
-    ))
+    )) {
       errorMessages = t('workflow.nodes.loop.loopMaxCountError', { maxCount: LOOP_NODE_MAX_COUNT })
+    }
 
     return {
       isValid: !errorMessages,

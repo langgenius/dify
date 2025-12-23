@@ -1,5 +1,5 @@
 import { render } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import Sandbox from './sandbox'
 
 describe('Sandbox Icon Component', () => {
@@ -110,7 +110,10 @@ describe('Sandbox Icon Component', () => {
   describe('CSS Variables', () => {
     it('should use CSS custom properties for colors', () => {
       const { container } = render(<Sandbox />)
-      const elementsWithCSSVars = container.querySelectorAll('[fill*="var("]')
+      const allFillElements = container.querySelectorAll('[fill]')
+      const elementsWithCSSVars = Array.from(allFillElements).filter(el =>
+        el.getAttribute('fill')?.startsWith('var('),
+      )
 
       // All fill attributes should use CSS variables
       expect(elementsWithCSSVars.length).toBeGreaterThan(0)

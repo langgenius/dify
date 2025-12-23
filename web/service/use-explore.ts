@@ -1,6 +1,6 @@
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 import { fetchAppMeta, fetchAppParams } from './share'
 
@@ -30,7 +30,7 @@ export const useUpdateAppPinStatus = () => {
   const client = useQueryClient()
   return useMutation({
     mutationKey: [NAME_SPACE, 'updateAppPinStatus'],
-    mutationFn: ({ appId, isPinned }: { appId: string; isPinned: boolean }) => updatePinStatus(appId, isPinned),
+    mutationFn: ({ appId, isPinned }: { appId: string, isPinned: boolean }) => updatePinStatus(appId, isPinned),
     onSuccess: () => {
       client.invalidateQueries({ queryKey: [NAME_SPACE, 'installedApps'] })
     },
