@@ -1,12 +1,12 @@
-import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WorkflowOnboardingModal from './index'
+import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import WorkflowOnboardingModal from './index'
 
 // Mock Modal component
-jest.mock('@/app/components/base/modal', () => {
-  return function MockModal({
+vi.mock('@/app/components/base/modal', () => ({
+  default: function MockModal({
     isShow,
     onClose,
     children,
@@ -25,18 +25,18 @@ jest.mock('@/app/components/base/modal', () => {
         {children}
       </div>
     )
-  }
-})
+  },
+}))
 
 // Mock useDocLink hook
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path: string) => `https://docs.example.com${path}`,
 }))
 
 // Mock StartNodeSelectionPanel (using real component would be better for integration,
 // but for this test we'll mock to control behavior)
-jest.mock('./start-node-selection-panel', () => {
-  return function MockStartNodeSelectionPanel({
+vi.mock('./start-node-selection-panel', () => ({
+  default: function MockStartNodeSelectionPanel({
     onSelectUserInput,
     onSelectTrigger,
   }: any) {
@@ -59,12 +59,12 @@ jest.mock('./start-node-selection-panel', () => {
         </button>
       </div>
     )
-  }
-})
+  },
+}))
 
 describe('WorkflowOnboardingModal', () => {
-  const mockOnClose = jest.fn()
-  const mockOnSelectStartNode = jest.fn()
+  const mockOnClose = vi.fn()
+  const mockOnSelectStartNode = vi.fn()
 
   const defaultProps = {
     isShow: true,
@@ -73,7 +73,7 @@ describe('WorkflowOnboardingModal', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Helper function to render component
@@ -201,7 +201,7 @@ describe('WorkflowOnboardingModal', () => {
 
     it('should accept onClose prop', () => {
       // Arrange
-      const customOnClose = jest.fn()
+      const customOnClose = vi.fn()
 
       // Act
       renderComponent({ onClose: customOnClose })
@@ -212,7 +212,7 @@ describe('WorkflowOnboardingModal', () => {
 
     it('should accept onSelectStartNode prop', () => {
       // Arrange
-      const customHandler = jest.fn()
+      const customHandler = vi.fn()
 
       // Act
       renderComponent({ onSelectStartNode: customHandler })
@@ -484,8 +484,8 @@ describe('WorkflowOnboardingModal', () => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
 
       // Act - Update props
-      const newOnClose = jest.fn()
-      const newOnSelectStartNode = jest.fn()
+      const newOnClose = vi.fn()
+      const newOnSelectStartNode = vi.fn()
       rerender(
         <WorkflowOnboardingModal
           isShow={true}
@@ -519,7 +519,7 @@ describe('WorkflowOnboardingModal', () => {
       expect(screen.getByTestId('modal')).toBeInTheDocument()
 
       // Act - Change onClose handler
-      const newOnClose = jest.fn()
+      const newOnClose = vi.fn()
       rerender(<WorkflowOnboardingModal {...defaultProps} isShow={true} onClose={newOnClose} />)
 
       // Assert - Modal should still be visible

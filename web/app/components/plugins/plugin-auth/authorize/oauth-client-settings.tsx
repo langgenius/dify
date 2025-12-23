@@ -1,30 +1,30 @@
+import type { PluginPayload } from '../types'
+import type {
+  FormRefObject,
+  FormSchema,
+} from '@/app/components/base/form/types'
+import {
+  useForm,
+  useStore,
+} from '@tanstack/react-form'
 import {
   memo,
   useCallback,
   useRef,
   useState,
 } from 'react'
-import {
-  useForm,
-  useStore,
-} from '@tanstack/react-form'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import AuthForm from '@/app/components/base/form/form-scenarios/auth'
 import Modal from '@/app/components/base/modal/modal'
+import { useToastContext } from '@/app/components/base/toast'
+import { ReadmeEntrance } from '../../readme-panel/entrance'
+import { ReadmeShowType } from '../../readme-panel/store'
 import {
   useDeletePluginOAuthCustomClientHook,
   useInvalidPluginOAuthClientSchemaHook,
   useSetPluginOAuthCustomClientHook,
 } from '../hooks/use-credential'
-import type { PluginPayload } from '../types'
-import AuthForm from '@/app/components/base/form/form-scenarios/auth'
-import type {
-  FormRefObject,
-  FormSchema,
-} from '@/app/components/base/form/types'
-import { useToastContext } from '@/app/components/base/toast'
-import Button from '@/app/components/base/button'
-import { ReadmeEntrance } from '../../readme-panel/entrance'
-import { ReadmeShowType } from '../../readme-panel/store'
 
 type OAuthClientSettingsProps = {
   pluginPayload: PluginPayload
@@ -136,7 +136,7 @@ const OAuthClientSettings = ({
       cancelButtonText={t('plugin.auth.saveOnly')}
       extraButtonText={t('common.operation.cancel')}
       showExtraButton
-      extraButtonVariant='secondary'
+      extraButtonVariant="secondary"
       onExtraButtonClick={onClose}
       onClose={onClose}
       onCancel={handleConfirm}
@@ -144,10 +144,10 @@ const OAuthClientSettings = ({
       disabled={disabled || doingAction}
       footerSlot={
         __oauth_client__ === 'custom' && hasOriginalClientParams && (
-          <div className='grow'>
+          <div className="grow">
             <Button
-              variant='secondary'
-              className='text-components-button-destructive-secondary-text'
+              variant="secondary"
+              className="text-components-button-destructive-secondary-text"
               disabled={disabled || doingAction || !editValues}
               onClick={handleRemove}
             >
@@ -156,8 +156,8 @@ const OAuthClientSettings = ({
           </div>
         )
       }
-      containerClassName='pt-0'
-      wrapperClassName='!z-[101]'
+      containerClassName="pt-0"
+      wrapperClassName="!z-[101]"
       clickOutsideNotClose={true}
     >
       {pluginPayload.detail && (

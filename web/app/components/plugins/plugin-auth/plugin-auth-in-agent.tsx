@@ -1,20 +1,20 @@
+import type {
+  Credential,
+  PluginPayload,
+} from './types'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
-import { RiArrowDownSLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import Authorize from './authorize'
-import Authorized from './authorized'
-import type {
-  Credential,
-  PluginPayload,
-} from './types'
-import { usePluginAuth } from './hooks/use-plugin-auth'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
+import Authorize from './authorize'
+import Authorized from './authorized'
+import { usePluginAuth } from './hooks/use-plugin-auth'
 
 type PluginAuthInAgentProps = {
   pluginPayload: PluginPayload
@@ -80,16 +80,17 @@ const PluginAuthInAgent = ({
           'w-full',
           isOpen && 'bg-components-button-secondary-bg-hover',
           removed && 'text-text-destructive',
-        )}>
+        )}
+      >
         <Indicator
-          className='mr-2'
+          className="mr-2"
           color={color as any}
         />
         {label}
         {
           unavailable && t('plugin.auth.unavailable')
         }
-        <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
+        <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
       </Button>
     )
   }, [credentialId, credentials, t])

@@ -1,23 +1,26 @@
-import React from 'react'
+import type { Mock } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import AddAnnotationModal from './index'
+import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
+import AddAnnotationModal from './index'
 
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
 }))
 
-const mockToastNotify = jest.fn()
-jest.mock('@/app/components/base/toast', () => ({
+const mockToastNotify = vi.fn()
+vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
   default: {
-    notify: jest.fn(args => mockToastNotify(args)),
+    notify: vi.fn(args => mockToastNotify(args)),
   },
 }))
 
-jest.mock('@/app/components/billing/annotation-full', () => () => <div data-testid="annotation-full" />)
+vi.mock('@/app/components/billing/annotation-full', () => ({
+  default: () => <div data-testid="annotation-full" />,
+}))
 
-const mockUseProviderContext = useProviderContext as jest.Mock
+const mockUseProviderContext = useProviderContext as Mock
 
 const getProviderContext = ({ usage = 0, total = 10, enableBilling = false } = {}) => ({
   plan: {
@@ -30,12 +33,12 @@ const getProviderContext = ({ usage = 0, total = 10, enableBilling = false } = {
 describe('AddAnnotationModal', () => {
   const baseProps = {
     isShow: true,
-    onHide: jest.fn(),
-    onAdd: jest.fn(),
+    onHide: vi.fn(),
+    onAdd: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseProviderContext.mockReturnValue(getProviderContext())
   })
 
@@ -51,25 +54,25 @@ describe('AddAnnotationModal', () => {
     })
   }
 
-  test('should render modal title when drawer is visible', () => {
+  it('should render modal title when drawer is visible', () => {
     render(<AddAnnotationModal {...baseProps} />)
 
     expect(screen.getByText('appAnnotation.addModal.title')).toBeInTheDocument()
   })
 
-  test('should capture query input text when typing', () => {
+  it('should capture query input text when typing', () => {
     render(<AddAnnotationModal {...baseProps} />)
     typeQuestion('Sample question')
     expect(screen.getByPlaceholderText('appAnnotation.addModal.queryPlaceholder')).toHaveValue('Sample question')
   })
 
-  test('should capture answer input text when typing', () => {
+  it('should capture answer input text when typing', () => {
     render(<AddAnnotationModal {...baseProps} />)
     typeAnswer('Sample answer')
     expect(screen.getByPlaceholderText('appAnnotation.addModal.answerPlaceholder')).toHaveValue('Sample answer')
   })
 
-  test('should show annotation full notice and disable submit when quota exceeded', () => {
+  it('should show annotation full notice and disable submit when quota exceeded', () => {
     mockUseProviderContext.mockReturnValue(getProviderContext({ usage: 10, total: 10, enableBilling: true }))
     render(<AddAnnotationModal {...baseProps} />)
 
@@ -77,8 +80,8 @@ describe('AddAnnotationModal', () => {
     expect(screen.getByRole('button', { name: 'common.operation.add' })).toBeDisabled()
   })
 
-  test('should call onAdd with form values when create next enabled', async () => {
-    const onAdd = jest.fn().mockResolvedValue(undefined)
+  it('should call onAdd with form values when create next enabled', async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
     typeQuestion('Question value')
@@ -92,8 +95,8 @@ describe('AddAnnotationModal', () => {
     expect(onAdd).toHaveBeenCalledWith({ question: 'Question value', answer: 'Answer value' })
   })
 
-  test('should reset fields after saving when create next enabled', async () => {
-    const onAdd = jest.fn().mockResolvedValue(undefined)
+  it('should reset fields after saving when create next enabled', async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
     typeQuestion('Question value')
@@ -111,7 +114,7 @@ describe('AddAnnotationModal', () => {
     })
   })
 
-  test('should show toast when validation fails for missing question', () => {
+  it('should show toast when validation fails for missing question', () => {
     render(<AddAnnotationModal {...baseProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
@@ -121,7 +124,7 @@ describe('AddAnnotationModal', () => {
     }))
   })
 
-  test('should show toast when validation fails for missing answer', () => {
+  it('should show toast when validation fails for missing answer', () => {
     render(<AddAnnotationModal {...baseProps} />)
     typeQuestion('Filled question')
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.add' }))
@@ -132,8 +135,8 @@ describe('AddAnnotationModal', () => {
     }))
   })
 
-  test('should close modal when save completes and create next unchecked', async () => {
-    const onAdd = jest.fn().mockResolvedValue(undefined)
+  it('should close modal when save completes and create next unchecked', async () => {
+    const onAdd = vi.fn().mockResolvedValue(undefined)
     render(<AddAnnotationModal {...baseProps} onAdd={onAdd} />)
 
     typeQuestion('Q')
@@ -146,7 +149,7 @@ describe('AddAnnotationModal', () => {
     expect(baseProps.onHide).toHaveBeenCalled()
   })
 
-  test('should allow cancel button to close the drawer', () => {
+  it('should allow cancel button to close the drawer', () => {
     render(<AddAnnotationModal {...baseProps} />)
 
     fireEvent.click(screen.getByRole('button', { name: 'common.operation.cancel' }))

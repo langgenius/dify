@@ -1,10 +1,10 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
-import List from './index'
+import * as React from 'react'
 import { Plan } from '../../../../type'
+import List from './index'
 
 describe('CloudPlanItem/List', () => {
-  test('should show sandbox specific quotas', () => {
+  it('should show sandbox specific quotas', () => {
     render(<List plan={Plan.sandbox} />)
 
     expect(screen.getByText('billing.plansCommon.messageRequest.title:{"count":200}')).toBeInTheDocument()
@@ -12,7 +12,7 @@ describe('CloudPlanItem/List', () => {
     expect(screen.getByText('billing.plansCommon.startNodes.limited:{"count":2}')).toBeInTheDocument()
   })
 
-  test('should show professional monthly quotas and tooltips', () => {
+  it('should show professional monthly quotas and tooltips', () => {
     render(<List plan={Plan.professional} />)
 
     expect(screen.getByText('billing.plansCommon.messageRequest.titlePerMonth:{"count":5000}')).toBeInTheDocument()
@@ -20,7 +20,7 @@ describe('CloudPlanItem/List', () => {
     expect(screen.getByText('billing.plansCommon.workflowExecution.faster')).toBeInTheDocument()
   })
 
-  test('should show unlimited messaging details for team plan', () => {
+  it('should show unlimited messaging details for team plan', () => {
     render(<List plan={Plan.team} />)
 
     expect(screen.getByText('billing.plansCommon.triggerEvents.unlimited')).toBeInTheDocument()

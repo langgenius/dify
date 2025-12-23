@@ -1,11 +1,11 @@
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { NodeDefault, ToolWithProvider, Var } from '../../types'
 import type { ToolNodeType } from './types'
-import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
-import { TOOL_OUTPUT_STRUCT } from '../../constants'
 import { CollectionType } from '@/app/components/tools/types'
+import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { canFindTool } from '@/utils'
+import { TOOL_OUTPUT_STRUCT } from '../../constants'
 import { Type } from '../llm/types'
 import { resolveVarType } from './output-schema-utils'
 
@@ -104,13 +104,15 @@ const nodeDefault: NodeDefault<ToolNodeType> = {
           type,
           des: output.description,
           schemaType,
-          children: output.type === 'object' ? {
-            schema: {
-              type: Type.object,
-              properties: output.properties,
-              additionalProperties: false,
-            },
-          } : undefined,
+          children: output.type === 'object'
+            ? {
+                schema: {
+                  type: Type.object,
+                  properties: output.properties,
+                  additionalProperties: false,
+                },
+              }
+            : undefined,
         })
       })
       res = [

@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import Tooltip from './tooltip'
 
 type ItemProps = {
@@ -11,8 +11,8 @@ const Item = ({
   tooltip,
 }: ItemProps) => {
   return (
-    <div className='flex items-center'>
-      <span className='system-sm-regular grow text-text-secondary'>{label}</span>
+    <div className="flex items-center">
+      <span className="system-sm-regular grow text-text-secondary">{label}</span>
       {tooltip && (
         <Tooltip
           content={tooltip}

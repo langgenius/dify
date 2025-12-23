@@ -1,16 +1,16 @@
+import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import Connect from './index'
-import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useToolIcon - hook has complex dependencies (API calls, stores)
-const mockUseToolIcon = jest.fn()
-jest.mock('@/app/components/workflow/hooks', () => ({
+const mockUseToolIcon = vi.fn()
+vi.mock('@/app/components/workflow/hooks', () => ({
   useToolIcon: (data: any) => mockUseToolIcon(data),
 }))
 
@@ -33,7 +33,7 @@ type ConnectProps = React.ComponentProps<typeof Connect>
 
 const createDefaultProps = (overrides?: Partial<ConnectProps>): ConnectProps => ({
   nodeData: createMockNodeData(),
-  onSetting: jest.fn(),
+  onSetting: vi.fn(),
   ...overrides,
 })
 
@@ -42,7 +42,7 @@ const createDefaultProps = (overrides?: Partial<ConnectProps>): ConnectProps => 
 // ==========================================
 describe('Connect', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Default mock return values
     mockUseToolIcon.mockReturnValue('https://example.com/icon.png')
@@ -216,7 +216,7 @@ describe('Connect', () => {
     describe('onSetting prop', () => {
       it('should call onSetting when connect button is clicked', () => {
         // Arrange
-        const mockOnSetting = jest.fn()
+        const mockOnSetting = vi.fn()
         const props = createDefaultProps({ onSetting: mockOnSetting })
 
         // Act
@@ -229,7 +229,7 @@ describe('Connect', () => {
 
       it('should call onSetting when button clicked', () => {
         // Arrange
-        const mockOnSetting = jest.fn()
+        const mockOnSetting = vi.fn()
         const props = createDefaultProps({ onSetting: mockOnSetting })
 
         // Act
@@ -243,7 +243,7 @@ describe('Connect', () => {
 
       it('should call onSetting on each button click', () => {
         // Arrange
-        const mockOnSetting = jest.fn()
+        const mockOnSetting = vi.fn()
         const props = createDefaultProps({ onSetting: mockOnSetting })
 
         // Act
@@ -266,7 +266,7 @@ describe('Connect', () => {
     describe('Connect Button', () => {
       it('should trigger onSetting callback on click', () => {
         // Arrange
-        const mockOnSetting = jest.fn()
+        const mockOnSetting = vi.fn()
         const props = createDefaultProps({ onSetting: mockOnSetting })
         render(<Connect {...props} />)
 
@@ -291,7 +291,7 @@ describe('Connect', () => {
 
       it('should handle keyboard interaction (Enter key)', () => {
         // Arrange
-        const mockOnSetting = jest.fn()
+        const mockOnSetting = vi.fn()
         const props = createDefaultProps({ onSetting: mockOnSetting })
         render(<Connect {...props} />)
 

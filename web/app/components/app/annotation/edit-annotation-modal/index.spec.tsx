@@ -1,15 +1,21 @@
+import type { IToastProps, ToastHandle } from '@/app/components/base/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Toast, { type IToastProps, type ToastHandle } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
 import EditAnnotationModal from './index'
 
-// Mock only external dependencies
-jest.mock('@/service/annotation', () => ({
-  addAnnotation: jest.fn(),
-  editAnnotation: jest.fn(),
+const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({
+  mockAddAnnotation: vi.fn(),
+  mockEditAnnotation: vi.fn(),
 }))
 
-jest.mock('@/context/provider-context', () => ({
+// Mock only external dependencies
+vi.mock('@/service/annotation', () => ({
+  addAnnotation: mockAddAnnotation,
+  editAnnotation: mockEditAnnotation,
+}))
+
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: {
       usage: { annotatedResponse: 5 },
@@ -19,16 +25,16 @@ jest.mock('@/context/provider-context', () => ({
   }),
 }))
 
-jest.mock('@/hooks/use-timestamp', () => ({
+vi.mock('@/hooks/use-timestamp', () => ({
   __esModule: true,
   default: () => ({
     formatTime: () => '2023-12-01 10:30:00',
   }),
 }))
 
-// Note: i18n is automatically mocked by Jest via __mocks__/react-i18next.ts
+// Note: i18n is automatically mocked by Vitest via web/vitest.setup.ts
 
-jest.mock('@/app/components/billing/annotation-full', () => ({
+vi.mock('@/app/components/billing/annotation-full', () => ({
   __esModule: true,
   default: () => <div data-testid="annotation-full" />,
 }))
@@ -36,23 +42,18 @@ jest.mock('@/app/components/billing/annotation-full', () => ({
 type ToastNotifyProps = Pick<IToastProps, 'type' | 'size' | 'message' | 'duration' | 'className' | 'customComponent' | 'onClose'>
 type ToastWithNotify = typeof Toast & { notify: (props: ToastNotifyProps) => ToastHandle }
 const toastWithNotify = Toast as unknown as ToastWithNotify
-const toastNotifySpy = jest.spyOn(toastWithNotify, 'notify').mockReturnValue({ clear: jest.fn() })
-
-const { addAnnotation: mockAddAnnotation, editAnnotation: mockEditAnnotation } = jest.requireMock('@/service/annotation') as {
-  addAnnotation: jest.Mock
-  editAnnotation: jest.Mock
-}
+const toastNotifySpy = vi.spyOn(toastWithNotify, 'notify').mockReturnValue({ clear: vi.fn() })
 
 describe('EditAnnotationModal', () => {
   const defaultProps = {
     isShow: true,
-    onHide: jest.fn(),
+    onHide: vi.fn(),
     appId: 'test-app-id',
     query: 'Test query',
     answer: 'Test answer',
-    onEdited: jest.fn(),
-    onAdded: jest.fn(),
-    onRemove: jest.fn(),
+    onEdited: vi.fn(),
+    onAdded: vi.fn(),
+    onRemove: vi.fn(),
   }
 
   afterAll(() => {
@@ -60,7 +61,7 @@ describe('EditAnnotationModal', () => {
   })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockAddAnnotation.mockResolvedValue({
       id: 'test-id',
       account: { name: 'Test User' },
@@ -168,7 +169,7 @@ describe('EditAnnotationModal', () => {
 
     it('should save content when edited', async () => {
       // Arrange
-      const mockOnAdded = jest.fn()
+      const mockOnAdded = vi.fn()
       const props = {
         ...defaultProps,
         onAdded: mockOnAdded,
@@ -210,7 +211,7 @@ describe('EditAnnotationModal', () => {
   describe('API Calls', () => {
     it('should call addAnnotation when saving new annotation', async () => {
       // Arrange
-      const mockOnAdded = jest.fn()
+      const mockOnAdded = vi.fn()
       const props = {
         ...defaultProps,
         onAdded: mockOnAdded,
@@ -247,7 +248,7 @@ describe('EditAnnotationModal', () => {
 
     it('should call editAnnotation when updating existing annotation', async () => {
       // Arrange
-      const mockOnEdited = jest.fn()
+      const mockOnEdited = vi.fn()
       const props = {
         ...defaultProps,
         annotationId: 'test-annotation-id',
@@ -314,7 +315,7 @@ describe('EditAnnotationModal', () => {
 
     it('should call onRemove when removal is confirmed', async () => {
       // Arrange
-      const mockOnRemove = jest.fn()
+      const mockOnRemove = vi.fn()
       const props = {
         ...defaultProps,
         annotationId: 'test-annotation-id',
@@ -410,7 +411,7 @@ describe('EditAnnotationModal', () => {
   describe('Error Handling', () => {
     it('should show error toast and skip callbacks when addAnnotation fails', async () => {
       // Arrange
-      const mockOnAdded = jest.fn()
+      const mockOnAdded = vi.fn()
       const props = {
         ...defaultProps,
         onAdded: mockOnAdded,
@@ -452,7 +453,7 @@ describe('EditAnnotationModal', () => {
 
     it('should show fallback error message when addAnnotation error has no message', async () => {
       // Arrange
-      const mockOnAdded = jest.fn()
+      const mockOnAdded = vi.fn()
       const props = {
         ...defaultProps,
         onAdded: mockOnAdded,
@@ -490,7 +491,7 @@ describe('EditAnnotationModal', () => {
 
     it('should show error toast and skip callbacks when editAnnotation fails', async () => {
       // Arrange
-      const mockOnEdited = jest.fn()
+      const mockOnEdited = vi.fn()
       const props = {
         ...defaultProps,
         annotationId: 'test-annotation-id',
@@ -532,7 +533,7 @@ describe('EditAnnotationModal', () => {
 
     it('should show fallback error message when editAnnotation error is not an Error instance', async () => {
       // Arrange
-      const mockOnEdited = jest.fn()
+      const mockOnEdited = vi.fn()
       const props = {
         ...defaultProps,
         annotationId: 'test-annotation-id',

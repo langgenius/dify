@@ -1,14 +1,14 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useFileUploadConfig } from '@/service/use-common'
 import type { FileEntity, FileUploadConfig } from '../types'
-import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
-import Toast from '@/app/components/base/toast'
+import { produce } from 'immer'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
+import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
+import Toast from '@/app/components/base/toast'
+import { useFileUploadConfig } from '@/service/use-common'
 import { ACCEPT_TYPES } from '../constants'
 import { useFileStore } from '../store'
-import { produce } from 'immer'
-import { fileUpload, getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import { v4 as uuid4 } from 'uuid'
+import { getFileType, getFileUploadConfig, traverseFileEntry } from '../utils'
 
 export const useUpload = () => {
   const { t } = useTranslation()
@@ -208,7 +208,8 @@ export const useUpload = () => {
   const handleFileUpload = useCallback((newFiles: File[]) => {
     const { files } = fileStore.getState()
     const { singleChunkAttachmentLimit } = fileUploadConfig
-    if (newFiles.length === 0) return
+    if (newFiles.length === 0)
+      return
     if (files.length + newFiles.length > singleChunkAttachmentLimit) {
       Toast.notify({
         type: 'error',
@@ -231,11 +232,13 @@ export const useUpload = () => {
     e.preventDefault()
     e.stopPropagation()
     setDragging(false)
-    if (!e.dataTransfer) return
+    if (!e.dataTransfer)
+      return
     const nested = await Promise.all(
       Array.from(e.dataTransfer.items).map((it) => {
         const entry = (it as any).webkitGetAsEntry?.()
-        if (entry) return traverseFileEntry(entry)
+        if (entry)
+          return traverseFileEntry(entry)
         const f = it.getAsFile?.()
         return f ? Promise.resolve([f]) : Promise.resolve([])
       }),

@@ -74,9 +74,9 @@ Use this checklist when generating or reviewing tests for Dify frontend componen
 ### Mocks
 
 - [ ] **DO NOT mock base components** (`@/app/components/base/*`)
-- [ ] `jest.clearAllMocks()` in `beforeEach` (not `afterEach`)
+- [ ] `vi.clearAllMocks()` in `beforeEach` (not `afterEach`)
 - [ ] Shared mock state reset in `beforeEach`
-- [ ] i18n uses shared mock (auto-loaded); only override locally for custom translations
+- [ ] i18n uses global mock (auto-loaded in `web/vitest.setup.ts`); only override locally for custom translations
 - [ ] Router mocks match actual Next.js API
 - [ ] Mocks reflect actual component conditional behavior
 - [ ] Only mock: API services, complex context providers, third-party libs
@@ -132,10 +132,10 @@ For the current file being tested:
 
 ```typescript
 // ❌ Mock doesn't match actual behavior
-jest.mock('./Component', () => () => <div>Mocked</div>)
+vi.mock('./Component', () => () => <div>Mocked</div>)
 
 // ✅ Mock matches actual conditional logic
-jest.mock('./Component', () => ({ isOpen }: any) =>
+vi.mock('./Component', () => ({ isOpen }: any) =>
   isOpen ? <div>Content</div> : null
 )
 ```
@@ -145,7 +145,7 @@ jest.mock('./Component', () => ({ isOpen }: any) =>
 ```typescript
 // ❌ Shared state not reset
 let mockState = false
-jest.mock('./useHook', () => () => mockState)
+vi.mock('./useHook', () => () => mockState)
 
 // ✅ Reset in beforeEach
 beforeEach(() => {
@@ -192,7 +192,7 @@ pnpm test -- path/to/file.spec.tsx
 pnpm test -- --coverage path/to/file.spec.tsx
 
 # Watch mode
-pnpm test -- --watch path/to/file.spec.tsx
+pnpm test:watch -- path/to/file.spec.tsx
 
 # Update snapshots (use sparingly)
 pnpm test -- -u path/to/file.spec.tsx

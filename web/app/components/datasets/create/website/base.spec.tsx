@@ -1,10 +1,10 @@
+import type { CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Input from './base/input'
-import Header from './base/header'
 import CrawledResult from './base/crawled-result'
 import CrawledResultItem from './base/crawled-result-item'
-import type { CrawlResultItem } from '@/models/datasets'
+import Header from './base/header'
+import Input from './base/input'
 
 // ============================================================================
 // Test Data Factories
@@ -24,12 +24,12 @@ const createCrawlResultItem = (overrides: Partial<CrawlResultItem> = {}): CrawlR
 
 describe('Input', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   const createInputProps = (overrides: Partial<Parameters<typeof Input>[0]> = {}) => ({
     value: '',
-    onChange: jest.fn(),
+    onChange: vi.fn(),
     ...overrides,
   })
 
@@ -70,7 +70,7 @@ describe('Input', () => {
 
   describe('Text Input Behavior', () => {
     it('should call onChange with string value for text input', async () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = createInputProps({ onChange })
 
       render(<Input {...props} />)
@@ -88,7 +88,7 @@ describe('Input', () => {
 
   describe('Number Input Behavior', () => {
     it('should call onChange with parsed integer for number input', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = createInputProps({ isNumber: true, onChange, value: 0 })
 
       render(<Input {...props} />)
@@ -100,7 +100,7 @@ describe('Input', () => {
     })
 
     it('should call onChange with empty string when input is NaN', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = createInputProps({ isNumber: true, onChange, value: 0 })
 
       render(<Input {...props} />)
@@ -112,7 +112,7 @@ describe('Input', () => {
     })
 
     it('should call onChange with empty string when input is empty', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = createInputProps({ isNumber: true, onChange, value: 5 })
 
       render(<Input {...props} />)
@@ -124,7 +124,7 @@ describe('Input', () => {
     })
 
     it('should clamp negative values to MIN_VALUE (0)', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = createInputProps({ isNumber: true, onChange, value: 0 })
 
       render(<Input {...props} />)
@@ -136,7 +136,7 @@ describe('Input', () => {
     })
 
     it('should handle decimal input by parsing as integer', () => {
-      const onChange = jest.fn()
+      const onChange = vi.fn()
       const props = createInputProps({ isNumber: true, onChange, value: 0 })
 
       render(<Input {...props} />)
@@ -237,7 +237,7 @@ describe('Header', () => {
 
   describe('User Interactions', () => {
     it('should call onClickConfiguration when button is clicked', async () => {
-      const onClickConfiguration = jest.fn()
+      const onClickConfiguration = vi.fn()
       const props = createHeaderProps({ onClickConfiguration })
 
       render(<Header {...props} />)
@@ -263,8 +263,8 @@ describe('CrawledResultItem', () => {
     payload: createCrawlResultItem(),
     isChecked: false,
     isPreview: false,
-    onCheckChange: jest.fn(),
-    onPreview: jest.fn(),
+    onCheckChange: vi.fn(),
+    onPreview: vi.fn(),
     testId: 'test-item',
     ...overrides,
   })
@@ -302,7 +302,7 @@ describe('CrawledResultItem', () => {
 
   describe('Checkbox Behavior', () => {
     it('should call onCheckChange with true when unchecked item is clicked', async () => {
-      const onCheckChange = jest.fn()
+      const onCheckChange = vi.fn()
       const props = createItemProps({ isChecked: false, onCheckChange })
 
       render(<CrawledResultItem {...props} />)
@@ -313,7 +313,7 @@ describe('CrawledResultItem', () => {
     })
 
     it('should call onCheckChange with false when checked item is clicked', async () => {
-      const onCheckChange = jest.fn()
+      const onCheckChange = vi.fn()
       const props = createItemProps({ isChecked: true, onCheckChange })
 
       render(<CrawledResultItem {...props} />)
@@ -326,7 +326,7 @@ describe('CrawledResultItem', () => {
 
   describe('Preview Behavior', () => {
     it('should call onPreview when preview button is clicked', async () => {
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
       const props = createItemProps({ onPreview })
 
       render(<CrawledResultItem {...props} />)
@@ -371,8 +371,8 @@ describe('CrawledResult', () => {
       createCrawlResultItem({ source_url: 'https://page3.com', title: 'Page 3' }),
     ],
     checkedList: [],
-    onSelectedChange: jest.fn(),
-    onPreview: jest.fn(),
+    onSelectedChange: vi.fn(),
+    onPreview: vi.fn(),
     usedTime: 2.5,
     ...overrides,
   })
@@ -420,7 +420,7 @@ describe('CrawledResult', () => {
 
   describe('Select All / Deselect All', () => {
     it('should call onSelectedChange with all items when select all is clicked', async () => {
-      const onSelectedChange = jest.fn()
+      const onSelectedChange = vi.fn()
       const list = [
         createCrawlResultItem({ source_url: 'https://page1.com' }),
         createCrawlResultItem({ source_url: 'https://page2.com' }),
@@ -434,7 +434,7 @@ describe('CrawledResult', () => {
     })
 
     it('should call onSelectedChange with empty array when reset all is clicked', async () => {
-      const onSelectedChange = jest.fn()
+      const onSelectedChange = vi.fn()
       const list = [
         createCrawlResultItem({ source_url: 'https://page1.com' }),
         createCrawlResultItem({ source_url: 'https://page2.com' }),
@@ -450,7 +450,7 @@ describe('CrawledResult', () => {
 
   describe('Individual Item Selection', () => {
     it('should add item to checkedList when unchecked item is checked', async () => {
-      const onSelectedChange = jest.fn()
+      const onSelectedChange = vi.fn()
       const list = [
         createCrawlResultItem({ source_url: 'https://page1.com', title: 'Page 1' }),
         createCrawlResultItem({ source_url: 'https://page2.com', title: 'Page 2' }),
@@ -464,7 +464,7 @@ describe('CrawledResult', () => {
     })
 
     it('should remove item from checkedList when checked item is unchecked', async () => {
-      const onSelectedChange = jest.fn()
+      const onSelectedChange = vi.fn()
       const list = [
         createCrawlResultItem({ source_url: 'https://page1.com', title: 'Page 1' }),
         createCrawlResultItem({ source_url: 'https://page2.com', title: 'Page 2' }),
@@ -478,7 +478,7 @@ describe('CrawledResult', () => {
     })
 
     it('should preserve other checked items when unchecking one item', async () => {
-      const onSelectedChange = jest.fn()
+      const onSelectedChange = vi.fn()
       const list = [
         createCrawlResultItem({ source_url: 'https://page1.com', title: 'Page 1' }),
         createCrawlResultItem({ source_url: 'https://page2.com', title: 'Page 2' }),
@@ -496,7 +496,7 @@ describe('CrawledResult', () => {
 
   describe('Preview Behavior', () => {
     it('should call onPreview with correct item when preview is clicked', async () => {
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
       const list = [
         createCrawlResultItem({ source_url: 'https://page1.com', title: 'Page 1' }),
         createCrawlResultItem({ source_url: 'https://page2.com', title: 'Page 2' }),
@@ -513,7 +513,7 @@ describe('CrawledResult', () => {
     })
 
     it('should track preview index correctly', async () => {
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
       const list = [
         createCrawlResultItem({ source_url: 'https://page1.com', title: 'Page 1' }),
         createCrawlResultItem({ source_url: 'https://page2.com', title: 'Page 2' }),

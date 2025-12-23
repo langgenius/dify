@@ -1,23 +1,24 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { RiDeleteBinLine, RiErrorWarningFill, RiUploadCloud2Line } from '@remixicon/react'
-import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
-import { cn } from '@/utils/classnames'
 import type { CustomFile as File, FileItem } from '@/models/datasets'
-import { ToastContext } from '@/app/components/base/toast'
-import { upload } from '@/service/base'
-import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
-import { IS_CE_EDITION } from '@/config'
-import { Theme } from '@/types/app'
-import useTheme from '@/hooks/use-theme'
-import { useFileUploadConfig } from '@/service/use-common'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
+import { RiDeleteBinLine, RiErrorWarningFill, RiUploadCloud2Line } from '@remixicon/react'
 import { produce } from 'immer'
 import dynamic from 'next/dynamic'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/utils'
+import { ToastContext } from '@/app/components/base/toast'
+import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
+import { IS_CE_EDITION } from '@/config'
+import I18n from '@/context/i18n'
+import useTheme from '@/hooks/use-theme'
+import { LanguagesSupported } from '@/i18n-config/language'
+import { upload } from '@/service/base'
+import { useFileUploadConfig } from '@/service/use-common'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from '../store'
 
 const SimplePieChart = dynamic(() => import('@/app/components/base/simple-pie-chart'), { ssr: false })
 
@@ -273,13 +274,13 @@ const LocalFile = ({
   }, [handleDrop])
 
   return (
-    <div className='flex flex-col'>
+    <div className="flex flex-col">
       {!hideUpload && (
         <input
           ref={fileUploader}
-          id='fileUploader'
-          className='hidden'
-          type='file'
+          id="fileUploader"
+          className="hidden"
+          type="file"
           multiple={supportBatchUpload}
           accept={ACCEPTS.join(',')}
           onChange={fileChangeHandle}
@@ -291,28 +292,31 @@ const LocalFile = ({
           className={cn(
             'relative box-border flex min-h-20 flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-xs leading-4 text-text-tertiary',
             dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent',
-          )}>
-          <div className='flex min-h-5 items-center justify-center text-sm leading-4 text-text-secondary'>
-            <RiUploadCloud2Line className='mr-2 size-5' />
+          )}
+        >
+          <div className="flex min-h-5 items-center justify-center text-sm leading-4 text-text-secondary">
+            <RiUploadCloud2Line className="mr-2 size-5" />
 
             <span>
               {supportBatchUpload ? t('datasetCreation.stepOne.uploader.button') : t('datasetCreation.stepOne.uploader.buttonSingleFile')}
               {allowedExtensions.length > 0 && (
-                <label className='ml-1 cursor-pointer text-text-accent' onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+                <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
               )}
             </span>
           </div>
-          <div>{t('datasetCreation.stepOne.uploader.tip', {
-            size: fileUploadConfig.file_size_limit,
-            supportTypes: supportTypesShowNames,
-            batchCount: fileUploadConfig.batch_count_limit,
-            totalCount: fileUploadConfig.file_upload_limit,
-          })}</div>
-          {dragging && <div ref={dragRef} className='absolute left-0 top-0 h-full w-full' />}
+          <div>
+            {t('datasetCreation.stepOne.uploader.tip', {
+              size: fileUploadConfig.file_size_limit,
+              supportTypes: supportTypesShowNames,
+              batchCount: fileUploadConfig.batch_count_limit,
+              totalCount: fileUploadConfig.file_upload_limit,
+            })}
+          </div>
+          {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
         </div>
       )}
       {localFileList.length > 0 && (
-        <div className='mt-1 flex flex-col gap-y-1'>
+        <div className="mt-1 flex flex-col gap-y-1">
           {localFileList.map((fileItem, index) => {
             const isUploading = fileItem.progress >= 0 && fileItem.progress < 100
             const isError = fileItem.progress === -2
@@ -325,38 +329,41 @@ const LocalFile = ({
                   isError && 'border-state-destructive-border bg-state-destructive-hover',
                 )}
               >
-                <div className='flex w-12 shrink-0 items-center justify-center'>
+                <div className="flex w-12 shrink-0 items-center justify-center">
                   <DocumentFileIcon
-                    size='lg'
-                    className='shrink-0'
+                    size="lg"
+                    className="shrink-0"
                     name={fileItem.file.name}
                     extension={getFileType(fileItem.file)}
                   />
                 </div>
-                <div className='flex shrink grow flex-col gap-0.5'>
-                  <div className='flex w-full'>
-                    <div className='w-0 grow truncate text-xs text-text-secondary'>{fileItem.file.name}</div>
+                <div className="flex shrink grow flex-col gap-0.5">
+                  <div className="flex w-full">
+                    <div className="w-0 grow truncate text-xs text-text-secondary">{fileItem.file.name}</div>
                   </div>
-                  <div className='w-full truncate text-2xs leading-3 text-text-tertiary'>
-                    <span className='uppercase'>{getFileType(fileItem.file)}</span>
-                    <span className='px-1 text-text-quaternary'>·</span>
+                  <div className="w-full truncate text-2xs leading-3 text-text-tertiary">
+                    <span className="uppercase">{getFileType(fileItem.file)}</span>
+                    <span className="px-1 text-text-quaternary">·</span>
                     <span>{getFileSize(fileItem.file.size)}</span>
                   </div>
                 </div>
-                <div className='flex w-16 shrink-0 items-center justify-end gap-1 pr-3'>
+                <div className="flex w-16 shrink-0 items-center justify-end gap-1 pr-3">
                   {isUploading && (
                     <SimplePieChart percentage={fileItem.progress} stroke={chartColor} fill={chartColor} animationDuration={0} />
                   )}
                   {
                     isError && (
-                      <RiErrorWarningFill className='size-4 text-text-destructive' />
+                      <RiErrorWarningFill className="size-4 text-text-destructive" />
                     )
                   }
-                  <span className='flex h-6 w-6 cursor-pointer items-center justify-center' onClick={(e) => {
-                    e.stopPropagation()
-                    removeFile(fileItem.fileID)
-                  }}>
-                    <RiDeleteBinLine className='size-4 text-text-tertiary' />
+                  <span
+                    className="flex h-6 w-6 cursor-pointer items-center justify-center"
+                    onClick={(e) => {
+                      e.stopPropagation()
+                      removeFile(fileItem.fileID)
+                    }}
+                  >
+                    <RiDeleteBinLine className="size-4 text-text-tertiary" />
                   </span>
                 </div>
               </div>

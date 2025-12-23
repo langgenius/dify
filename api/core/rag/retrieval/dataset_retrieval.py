@@ -151,20 +151,14 @@ class DatasetRetrieval:
             if ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = []
-        for dataset_id in dataset_ids:
-            # get dataset from dataset id
-            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.scalar(dataset_stmt)
 
-            # pass if dataset is not available
-            if not dataset:
+        dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+        datasets: list[Dataset] = db.session.execute(dataset_stmt).scalars().all()  # type: ignore
+        for dataset in datasets:
+            if dataset.available_document_count == 0 and dataset.provider != "external":
                 continue
-
-            # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0 and dataset.provider != "external":
-                continue
-
             available_datasets.append(dataset)
+
         if inputs:
             inputs = {key: str(value) for key, value in inputs.items()}
         else:
@@ -282,26 +276,35 @@ class DatasetRetrieval:
                                 )
                                 context_files.append(attachment_info)
                 if show_retrieve_source:
+                    dataset_ids = [record.segment.dataset_id for record in records]
+                    document_ids = [record.segment.document_id for record in records]
+                    dataset_document_stmt = select(DatasetDocument).where(
+                        DatasetDocument.id.in_(document_ids),
+                        DatasetDocument.enabled == True,
+                        DatasetDocument.archived == False,
+                    )
+                    documents = db.session.execute(dataset_document_stmt).scalars().all()  # type: ignore
+                    dataset_stmt = select(Dataset).where(
+                        Dataset.id.in_(dataset_ids),
+                    )
+                    datasets = db.session.execute(dataset_stmt).scalars().all()  # type: ignore
+                    dataset_map = {i.id: i for i in datasets}
+                    document_map = {i.id: i for i in documents}
                     for record in records:
                         segment = record.segment
-                        dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                        dataset_document_stmt = select(DatasetDocument).where(
-                            DatasetDocument.id == segment.document_id,
-                            DatasetDocument.enabled == True,
-                            DatasetDocument.archived == False,
-                        )
-                        document = db.session.scalar(dataset_document_stmt)
-                        if dataset and document:
+                        dataset_item = dataset_map.get(segment.dataset_id)
+                        document_item = document_map.get(segment.document_id)
+                        if dataset_item and document_item:
                             source = RetrievalSourceMetadata(
-                                dataset_id=dataset.id,
-                                dataset_name=dataset.name,
-                                document_id=document.id,
-                                document_name=document.name,
-                                data_source_type=document.data_source_type,
+                                dataset_id=dataset_item.id,
+                                dataset_name=dataset_item.name,
+                                document_id=document_item.id,
+                                document_name=document_item.name,
+                                data_source_type=document_item.data_source_type,
                                 segment_id=segment.id,
                                 retriever_from=invoke_from.to_source(),
                                 score=record.score or 0.0,
-                                doc_metadata=document.doc_metadata,
+                                doc_metadata=document_item.doc_metadata,
                             )
 
                             if invoke_from.to_source() == "dev":
