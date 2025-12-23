@@ -1,10 +1,10 @@
-import React from 'react'
-import { useFieldContext } from '../..'
-import type { LabelProps } from '../label'
-import Label from '../label'
-import { cn } from '@/utils/classnames'
 import type { InputNumberProps } from '../../../input-number'
+import type { LabelProps } from '../label'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
+import { useFieldContext } from '../..'
 import { InputNumber } from '../../../input-number'
+import Label from '../label'
 
 type TextFieldProps = {
   label: string

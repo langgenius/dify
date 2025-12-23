@@ -1,5 +1,5 @@
-import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 
 let pathnameMock = '/'
@@ -16,7 +16,9 @@ const ContextConsumer = () => {
   const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
   return (
     <div data-testid="status">
-      {String(isWorkflowPage)}|{String(isRagPipelinePage)}
+      {String(isWorkflowPage)}
+      |
+      {String(isRagPipelinePage)}
     </div>
   )
 }
@@ -27,7 +29,7 @@ describe('GotoAnythingProvider', () => {
     pathnameMock = '/'
   })
 
-  test('should set workflow page flag when workflow path detected', async () => {
+  it('should set workflow page flag when workflow path detected', async () => {
     isWorkflowPageMock = true
     pathnameMock = '/app/123/workflow'
 
@@ -42,7 +44,7 @@ describe('GotoAnythingProvider', () => {
     })
   })
 
-  test('should detect RAG pipeline path based on pathname', async () => {
+  it('should detect RAG pipeline path based on pathname', async () => {
     pathnameMock = '/datasets/abc/pipeline'
 
     render(

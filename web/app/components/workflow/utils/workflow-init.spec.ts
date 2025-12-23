@@ -1,9 +1,9 @@
-import { preprocessNodesAndEdges } from './workflow-init'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type {
   Node,
 } from '@/app/components/workflow/types'
 import { CUSTOM_ITERATION_START_NODE } from '@/app/components/workflow/nodes/iteration-start/constants'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { preprocessNodesAndEdges } from './workflow-init'
 
 describe('preprocessNodesAndEdges', () => {
   it('process nodes without iteration node or loop node should return origin nodes and edges.', () => {

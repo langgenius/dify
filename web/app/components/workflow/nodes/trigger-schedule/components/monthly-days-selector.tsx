@@ -1,6 +1,6 @@
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiQuestionLine } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 
 type MonthlyDaysSelectorProps = {
@@ -53,18 +53,20 @@ const MonthlyDaysSelector = ({ selectedDays, onChange }: MonthlyDaysSelectorProp
                     : 'border-divider-subtle text-text-tertiary hover:border-divider-regular hover:text-text-secondary'
                 }`}
               >
-                {day === 'last' ? (
-                  <div className="flex items-center justify-center gap-1">
-                    <span>{t('workflow.nodes.triggerSchedule.lastDay')}</span>
-                    <Tooltip
-                      popupContent={t('workflow.nodes.triggerSchedule.lastDayTooltip')}
-                    >
-                      <RiQuestionLine className="h-3 w-3 text-text-quaternary" />
-                    </Tooltip>
-                  </div>
-                ) : (
-                  day
-                )}
+                {day === 'last'
+                  ? (
+                      <div className="flex items-center justify-center gap-1">
+                        <span>{t('workflow.nodes.triggerSchedule.lastDay')}</span>
+                        <Tooltip
+                          popupContent={t('workflow.nodes.triggerSchedule.lastDayTooltip')}
+                        >
+                          <RiQuestionLine className="h-3 w-3 text-text-quaternary" />
+                        </Tooltip>
+                      </div>
+                    )
+                  : (
+                      day
+                    )}
               </button>
             ))}
             {/* Fill empty cells in the last row (Last day takes 2 cols, so need 1 less) */}

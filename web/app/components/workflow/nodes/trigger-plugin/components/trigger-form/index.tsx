@@ -1,10 +1,10 @@
 'use client'
+import type { FC } from 'react'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Event } from '@/app/components/tools/types'
-import type { FC } from 'react'
+import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { PluginTriggerVarInputs } from '@/app/components/workflow/nodes/trigger-plugin/types'
 import TriggerFormItem from './item'
-import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 
 type Props = {
   readOnly: boolean
@@ -33,7 +33,7 @@ const TriggerForm: FC<Props> = ({
   disableVariableInsertion = false,
 }) => {
   return (
-    <div className='space-y-1'>
+    <div className="space-y-1">
       {
         schema.map((schema, index) => (
           <TriggerFormItem

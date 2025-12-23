@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { ChunkingMode, ParentMode } from '@/models/datasets'
 import { useRouter } from 'next/navigation'
-import DocumentPicker from '../../common/document-picker'
 import { cn } from '@/utils/classnames'
+import DocumentPicker from '../../common/document-picker'
 
 type DocumentTitleProps = {
   datasetId: string

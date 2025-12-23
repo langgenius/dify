@@ -1,11 +1,11 @@
-import React from 'react'
+import type { Mock } from 'vitest'
+import type { IBatchModalProps } from './index'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import BatchModal, { ProcessStatus } from './index'
+import * as React from 'react'
+import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
-import type { IBatchModalProps } from './index'
-import Toast from '@/app/components/base/toast'
-import type { Mock } from 'vitest'
+import BatchModal, { ProcessStatus } from './index'
 
 vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
@@ -32,7 +32,7 @@ let lastUploadedFile: File | undefined
 
 vi.mock('./csv-uploader', () => ({
   __esModule: true,
-  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
+  default: ({ file, updateFile }: { file?: File, updateFile: (file?: File) => void }) => (
     <div>
       <button
         data-testid="mock-uploader"

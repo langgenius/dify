@@ -1,12 +1,12 @@
-import { cookies, headers } from 'next/headers'
-import Negotiator from 'negotiator'
+import type { Locale } from '.'
 import { match } from '@formatjs/intl-localematcher'
-
 import { createInstance } from 'i18next'
+
 import resourcesToBackend from 'i18next-resources-to-backend'
+import Negotiator from 'negotiator'
+import { cookies, headers } from 'next/headers'
 import { initReactI18next } from 'react-i18next/initReactI18next'
 import { i18n } from '.'
-import type { Locale } from '.'
 
 // https://locize.com/blog/next-13-app-dir-i18n/
 const initI18next = async (lng: Locale, ns: string) => {

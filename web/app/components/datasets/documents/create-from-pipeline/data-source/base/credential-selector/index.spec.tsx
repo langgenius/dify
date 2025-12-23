@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import React from 'react'
-import CredentialSelector from './index'
 import type { CredentialSelectorProps } from './index'
 import type { DataSourceCredential } from '@/types/pipeline'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import * as React from 'react'
+import CredentialSelector from './index'
 
 // Mock CredentialTypeEnum to avoid deep import chain issues
 enum MockCredentialTypeEnum {
@@ -80,8 +80,7 @@ const createMockCredentials = (count: number = 3): DataSourceCredential[] =>
       name: `Credential ${i + 1}`,
       avatar_url: `https://example.com/avatar-${i + 1}.png`,
       is_default: i === 0,
-    }),
-  )
+    }))
 
 const createDefaultProps = (overrides?: Partial<CredentialSelectorProps>): CredentialSelectorProps => ({
   currentCredentialId: 'cred-1',

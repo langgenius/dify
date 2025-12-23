@@ -10,8 +10,8 @@ import type { MockedFunction } from 'vitest'
  */
 
 import { Actions, searchAnything } from '@/app/components/goto-anything/actions'
-import { postMarketplace } from '@/service/base'
 import { fetchAppList } from '@/service/apps'
+import { postMarketplace } from '@/service/base'
 import { fetchDatasets } from '@/service/datasets'
 
 // Mock API functions

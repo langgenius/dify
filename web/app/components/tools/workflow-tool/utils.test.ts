@@ -1,5 +1,5 @@
-import { VarType } from '@/app/components/workflow/types'
 import type { WorkflowToolProviderOutputParameter, WorkflowToolProviderOutputSchema } from '../types'
+import { VarType } from '@/app/components/workflow/types'
 import { buildWorkflowOutputParameters } from './utils'
 
 describe('buildWorkflowOutputParameters', () => {

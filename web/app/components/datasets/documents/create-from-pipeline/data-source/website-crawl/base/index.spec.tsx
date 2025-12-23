@@ -1,11 +1,11 @@
+import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import CheckboxWithLabel from './checkbox-with-label'
-import CrawledResultItem from './crawled-result-item'
 import CrawledResult from './crawled-result'
+import CrawledResultItem from './crawled-result-item'
 import Crawling from './crawling'
 import ErrorMessage from './error-message'
-import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 
 // ==========================================
 // Test Data Builders
@@ -24,8 +24,7 @@ const createMockCrawlResultItems = (count = 3): CrawlResultItemType[] => {
     createMockCrawlResultItem({
       source_url: `https://example.com/page${i + 1}`,
       title: `Page ${i + 1}`,
-    }),
-  )
+    }))
 }
 
 // ==========================================

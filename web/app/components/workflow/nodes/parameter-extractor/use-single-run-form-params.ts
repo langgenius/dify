@@ -1,21 +1,21 @@
 import type { RefObject } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ParameterExtractorNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar, Var, Variable } from '@/app/components/workflow/types'
-import { InputVarType, VarType } from '@/app/components/workflow/types'
-import type { ParameterExtractorNodeType } from './types'
-import useNodeCrud from '../_base/hooks/use-node-crud'
-import { useCallback } from 'react'
-import useConfigVision from '../../hooks/use-config-vision'
 import { noop } from 'lodash-es'
-import { findVariableWhenOnLLMVision } from '../utils'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { InputVarType, VarType } from '@/app/components/workflow/types'
+import useConfigVision from '../../hooks/use-config-vision'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
+import useNodeCrud from '../_base/hooks/use-node-crud'
+import { findVariableWhenOnLLMVision } from '../utils'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
 type Params = {
-  id: string,
-  payload: ParameterExtractorNodeType,
+  id: string
+  payload: ParameterExtractorNodeType
   runInputData: Record<string, any>
   runInputDataRef: RefObject<Record<string, any>>
   getInputVars: (textList: string[]) => InputVar[]
@@ -136,9 +136,9 @@ const useSingleRunFormParams = ({
   }
 
   const getDependentVar = (variable: string) => {
-    if(variable === 'query')
+    if (variable === 'query')
       return payload.query
-    if(variable === '#files#')
+    if (variable === '#files#')
       return payload.vision.configs?.variable_selector
 
     return false

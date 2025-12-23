@@ -1,14 +1,14 @@
 import type { Mock } from 'vitest'
-import React from 'react'
+import type { FeatureStoreState } from '@/app/components/base/features/store'
+import type { FileUpload } from '@/app/components/base/features/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { Resolution, TransferMethod } from '@/types/app'
 import ConfigVision from './index'
 import ParamConfig from './param-config'
 import ParamConfigContent from './param-config-content'
-import type { FeatureStoreState } from '@/app/components/base/features/store'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { Resolution, TransferMethod } from '@/types/app'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
 const mockUseContext = vi.fn()
 vi.mock('use-context-selector', async (importOriginal) => {

@@ -7,9 +7,9 @@ from controllers.console import console_ns
 from controllers.console.error import AlreadyActivateError
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
-from libs.helper import EmailStr, extract_remote_ip, timezone
+from libs.helper import EmailStr, timezone
 from models import AccountStatus
-from services.account_service import AccountService, RegisterService
+from services.account_service import RegisterService
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -93,7 +93,6 @@ class ActivateApi(Resource):
             "ActivationResponse",
             {
                 "result": fields.String(description="Operation result"),
-                "data": fields.Raw(description="Login token data"),
             },
         ),
     )
@@ -117,6 +116,4 @@ class ActivateApi(Resource):
         account.initialized_at = naive_utc_now()
         db.session.commit()
 
-        token_pair = AccountService.login(account, ip_address=extract_remote_ip(request))
-
-        return {"result": "success", "data": token_pair.model_dump()}
+        return {"result": "success"}

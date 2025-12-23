@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import ProgressBar from '../progress-bar'
-import { NUM_INFINITE } from '../config'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
+import { NUM_INFINITE } from '../config'
+import ProgressBar from '../progress-bar'
 
 type Props = {
   className?: string
@@ -50,37 +50,37 @@ const UsageInfo: FC<Props> = ({
   const resetText = resetHint ?? (typeof resetInDays === 'number' ? t('billing.usagePage.resetsIn', { count: resetInDays }) : undefined)
   const rightInfo = resetText
     ? (
-      <div className='system-xs-regular ml-auto flex-1 text-right text-text-tertiary'>
-        {resetText}
-      </div>
-    )
+        <div className="system-xs-regular ml-auto flex-1 text-right text-text-tertiary">
+          {resetText}
+        </div>
+      )
     : (showUnit && (
-      <div className='system-xs-medium ml-auto text-text-tertiary'>
-        {unit}
-      </div>
-    ))
+        <div className="system-xs-medium ml-auto text-text-tertiary">
+          {unit}
+        </div>
+      ))
 
   return (
     <div className={cn('flex flex-col gap-2 rounded-xl bg-components-panel-bg p-4', className)}>
       {!hideIcon && Icon && (
-        <Icon className='h-4 w-4 text-text-tertiary' />
+        <Icon className="h-4 w-4 text-text-tertiary" />
       )}
-      <div className='flex items-center gap-1'>
-        <div className='system-xs-medium text-text-tertiary'>{name}</div>
+      <div className="flex items-center gap-1">
+        <div className="system-xs-medium text-text-tertiary">{name}</div>
         {tooltip && (
           <Tooltip
-            popupContent={
-              <div className='w-[180px]'>
+            popupContent={(
+              <div className="w-[180px]">
                 {tooltip}
               </div>
-            }
+            )}
           />
         )}
       </div>
-      <div className='system-md-semibold flex items-center gap-1 text-text-primary'>
-        <div className='flex items-center gap-1'>
+      <div className="system-md-semibold flex items-center gap-1 text-text-primary">
+        <div className="flex items-center gap-1">
           {usage}
-          <div className='system-md-regular text-text-quaternary'>/</div>
+          <div className="system-md-regular text-text-quaternary">/</div>
           <div>{totalDisplay}</div>
         </div>
         {rightInfo}

@@ -1,17 +1,19 @@
 'use client'
-import React, { type Reducer, useReducer } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Reducer } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import Input from '../components/base/input'
+import * as React from 'react'
+import { useReducer } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
 import { SimpleSelect } from '@/app/components/base/select'
-import { timezones } from '@/utils/timezone'
-import { LanguagesSupported, languages } from '@/i18n-config/language'
 import Toast from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import { useDocLink } from '@/context/i18n'
+import { languages, LanguagesSupported } from '@/i18n-config/language'
 import { useOneMoreStep } from '@/service/use-common'
+import { timezones } from '@/utils/timezone'
+import Input from '../components/base/input'
 
 type IState = {
   invitation_code: string
@@ -21,9 +23,9 @@ type IState = {
 
 type IAction
   = | { type: 'failed', payload: null }
-  | { type: 'invitation_code', value: string }
-  | { type: 'interface_language', value: string }
-  | { type: 'timezone', value: string }
+    | { type: 'invitation_code', value: string }
+    | { type: 'interface_language', value: string }
+    | { type: 'timezone', value: string }
 
 const reducer: Reducer<IState, IAction> = (state: IState, action: IAction) => {
   switch (action.type) {
@@ -79,7 +81,7 @@ const OneMoreStep = () => {
     <>
       <div className="mx-auto w-full">
         <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className='body-md-regular mt-1 text-text-tertiary'>{t('login.createSample')}</p>
+        <p className="body-md-regular mt-1 text-text-tertiary">{t('login.createSample')}</p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
@@ -88,16 +90,16 @@ const OneMoreStep = () => {
             <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
               {t('login.invitationCode')}
               <Tooltip
-                popupContent={
-                  <div className='w-[256px] text-xs font-medium'>
-                    <div className='font-medium'>{t('login.sendUsMail')}</div>
-                    <div className='cursor-pointer text-xs font-medium text-text-accent-secondary'>
+                popupContent={(
+                  <div className="w-[256px] text-xs font-medium">
+                    <div className="font-medium">{t('login.sendUsMail')}</div>
+                    <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
-                }
+                )}
               >
-                <span className='cursor-pointer text-text-accent-secondary'>{t('login.dontHave')}</span>
+                <span className="cursor-pointer text-text-accent-secondary">{t('login.dontHave')}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
@@ -112,7 +114,7 @@ const OneMoreStep = () => {
               />
             </div>
           </div>
-          <div className='mb-5'>
+          <div className="mb-5">
             <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
               {t('login.interfaceLanguage')}
             </label>
@@ -126,7 +128,7 @@ const OneMoreStep = () => {
               />
             </div>
           </div>
-          <div className='mb-4'>
+          <div className="mb-4">
             <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
               {t('login.timezone')}
             </label>
@@ -142,8 +144,8 @@ const OneMoreStep = () => {
           </div>
           <div>
             <Button
-              variant='primary'
-              className='w-full'
+              variant="primary"
+              className="w-full"
               disabled={isPending}
               onClick={handleSubmit}
             >
@@ -154,10 +156,13 @@ const OneMoreStep = () => {
             {t('login.license.tip')}
             &nbsp;
             <Link
-              className='system-xs-medium text-text-accent-secondary'
-              target='_blank' rel='noopener noreferrer'
+              className="system-xs-medium text-text-accent-secondary"
+              target="_blank"
+              rel="noopener noreferrer"
               href={docLink('/policies/agreement/README')}
-            >{t('login.license.link')}</Link>
+            >
+              {t('login.license.link')}
+            </Link>
           </div>
         </div>
       </div>

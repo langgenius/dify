@@ -1,6 +1,6 @@
 import type { InputForm } from './type'
-import { InputVarType } from '@/app/components/workflow/types'
 import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import { InputVarType } from '@/app/components/workflow/types'
 
 export const processOpeningStatement = (openingStatement: string, inputs: Record<string, any>, inputsForm: InputForm[]) => {
   if (!openingStatement)
@@ -32,7 +32,7 @@ export const getProcessedInputs = (inputs: Record<string, any>, inputsForm: Inpu
   inputsForm.forEach((item) => {
     const inputValue = inputs[item.variable]
     // set boolean type default value
-    if(item.type === InputVarType.checkbox) {
+    if (item.type === InputVarType.checkbox) {
       processedInputs[item.variable] = !!inputValue
       return
     }

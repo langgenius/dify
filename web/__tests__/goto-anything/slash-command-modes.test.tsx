@@ -1,5 +1,5 @@
-import { slashCommandRegistry } from '../../app/components/goto-anything/actions/commands/registry'
 import type { SlashCommandHandler } from '../../app/components/goto-anything/actions/commands/types'
+import { slashCommandRegistry } from '../../app/components/goto-anything/actions/commands/registry'
 
 // Mock the registry
 vi.mock('../../app/components/goto-anything/actions/commands/registry')
@@ -50,8 +50,10 @@ describe('Slash Command Dual-Mode System', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     ;(slashCommandRegistry as any).findCommand = vi.fn((name: string) => {
-      if (name === 'docs') return mockDirectCommand
-      if (name === 'theme') return mockSubmenuCommand
+      if (name === 'docs')
+        return mockDirectCommand
+      if (name === 'theme')
+        return mockSubmenuCommand
       return null
     })
     ;(slashCommandRegistry as any).getAllCommands = vi.fn(() => [

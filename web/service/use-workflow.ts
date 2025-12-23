@@ -1,5 +1,5 @@
-import { del, get, patch, post, put } from './base'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { CommonResponse } from '@/models/common'
+import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -10,9 +10,9 @@ import type {
   VarInInspect,
   WorkflowConfigResponse,
 } from '@/types/workflow'
-import type { CommonResponse } from '@/models/common'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { del, get, patch, post, put } from './base'
 import { useInvalid, useReset } from './use-base'
-import type { FlowType } from '@/types/common'
 import { getFlowPrefix } from './utils'
 
 const NAME_SPACE = 'workflow'
@@ -31,7 +31,8 @@ export const useInvalidateAppWorkflow = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'publish', appID],
-      })
+      },
+    )
   }
 }
 

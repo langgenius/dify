@@ -1,11 +1,12 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
+import * as React from 'react'
 import TimezoneLabel from '../index'
 
 // Mock the convertTimezoneToOffsetStr function
 vi.mock('@/app/components/base/date-and-time-picker/utils/dayjs', () => ({
   convertTimezoneToOffsetStr: (timezone?: string) => {
-    if (!timezone) return 'UTC+0'
+    if (!timezone)
+      return 'UTC+0'
 
     // Mock implementation matching the actual timezone conversions
     const timezoneOffsets: Record<string, string> = {
