@@ -32,6 +32,7 @@ export default antfu(
     },
   },
   // downgrade some rules from error to warn for gradual adoption
+  // we should fix these in following pull requests
   {
     // @keep-sorted
     rules: {
