@@ -58,14 +58,6 @@ export default antfu(
       'unused-imports/no-unused-vars': 'warn',
     },
   },
-  // disable some rules causing too much diff
-  {
-    // @keep-sorted
-    rules: {
-      'no-useless-return': 'off',
-      'unicorn/prefer-node-protocol': 'off',
-    },
-  },
   storybook.configs['flat/recommended'],
   // sonar
   {

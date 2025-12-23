@@ -145,7 +145,7 @@ const checkForJest = (dir) => {
     }
     catch (err) {
       // Skip directories that can't be read
-      return
+
     }
   }
 
