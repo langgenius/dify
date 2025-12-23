@@ -1024,7 +1024,7 @@ class ToolProviderMCPApi(Resource):
                 name=payload.name,
                 icon=payload.icon,
                 icon_type=payload.icon_type,
-                icon_background=payload.icon_background,
+                icon_background=payload.icon_background or "",
                 server_identifier=payload.server_identifier,
                 headers=payload.headers or {},
                 configuration=configuration,
