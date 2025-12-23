@@ -46,6 +46,7 @@
     "lint:fix": "eslint --fix",
     "type-check": "tsc -p tsconfig.json --noEmit",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "publish:check": "./scripts/publish.sh --dry-run",
     "publish:npm": "./scripts/publish.sh"
   },
@@ -57,6 +58,7 @@
     "@types/node": "^20.11.30",
     "@typescript-eslint/eslint-plugin": "^8.50.1",
     "@typescript-eslint/parser": "^8.50.1",
+    "@vitest/coverage-v8": "1.6.1",
     "eslint": "^9.2.0",
     "tsup": "^8.5.1",
     "typescript": "^5.4.5",
