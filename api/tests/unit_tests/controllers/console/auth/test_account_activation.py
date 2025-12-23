@@ -433,21 +433,17 @@ class TestActivateApi:
     @patch("controllers.console.auth.activate.RegisterService.get_invitation_with_case_fallback")
     @patch("controllers.console.auth.activate.RegisterService.revoke_token")
     @patch("controllers.console.auth.activate.db")
-    @patch("controllers.console.auth.activate.AccountService.login")
     def test_activation_normalizes_email_before_lookup(
         self,
-        mock_login,
         mock_db,
         mock_revoke_token,
         mock_get_invitation,
         app,
         mock_invitation,
         mock_account,
-        mock_token_pair,
     ):
         """Ensure uppercase emails are normalized before lookup and revocation."""
         mock_get_invitation.return_value = mock_invitation
-        mock_login.return_value = mock_token_pair
 
         with app.test_request_context(
             "/activate",
