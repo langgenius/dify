@@ -72,8 +72,7 @@ export default antfu(
       'sonarjs/no-small-switch': 'off',
       'sonarjs/no-nested-template-literals': 'warn',
       'sonarjs/redundant-type-aliases': 'off',
-      // should be warn
-      'sonarjs/regex-complexity': 'off',
+      'sonarjs/regex-complexity': 'warn',
       // maintainability
       'sonarjs/no-ignored-exceptions': 'off',
       'sonarjs/no-commented-code': 'warn',
@@ -93,8 +92,7 @@ export default antfu(
       'sonarjs/no-hardcoded-secrets': 'off',
       'sonarjs/pseudo-random': 'off',
       // performance
-      // should be warn
-      'sonarjs/slow-regex': 'off',
+      'sonarjs/slow-regex': 'warn',
       // others
       'sonarjs/todo-tag': 'warn',
       'sonarjs/table-header': 'off',
