@@ -199,7 +199,7 @@ class BuiltinProviderDefaultCredentialPayload(BaseModel):
 
 class ToolOAuthCustomClientPayload(BaseModel):
     client_params: dict[str, Any] | None = None
-    enable_oauth_custom_client: bool | None = True
+    enable_oauth_custom_client: bool = True
 
 
 class MCPProviderBasePayload(BaseModel):
