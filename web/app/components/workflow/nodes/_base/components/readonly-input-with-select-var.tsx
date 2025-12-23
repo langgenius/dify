@@ -30,7 +30,7 @@ const ReadonlyInputWithSelectVar: FC<Props> = ({
 
   const res = (() => {
     const vars: string[] = []
-    const strWithVarPlaceholder = value.replaceAll(/{{#([^#]*)#}}/g, (_match, p1) => {
+    const strWithVarPlaceholder = value.replaceAll(/\{\{#([^#]*)#\}\}/g, (_match, p1) => {
       vars.push(p1)
       return VAR_PLACEHOLDER
     })

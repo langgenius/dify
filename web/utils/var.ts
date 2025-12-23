@@ -97,7 +97,7 @@ export const hasDuplicateStr = (strArr: string[]) => {
   return !!Object.keys(strObj).find(key => strObj[key] > 1)
 }
 
-const varRegex = /\{\{([a-zA-Z_]\w*)\}\}/g
+const varRegex = /\{\{([a-z_]\w*)\}\}/gi
 export const getVars = (value: string) => {
   if (!value)
     return []

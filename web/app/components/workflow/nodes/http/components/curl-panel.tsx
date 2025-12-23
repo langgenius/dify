@@ -30,7 +30,7 @@ const parseCurl = (curlCommand: string): { node: HttpNodeType | null, error: str
     params: '',
     body: { type: BodyType.none, data: '' },
   }
-  const args = curlCommand.match(/(?:[^\s"']+|"[^"]*"|'[^']*')+/g) || []
+  const args = curlCommand.match(/(?:[^\s"']|"[^"]*"|'[^']*')+/g) || []
   let hasData = false
 
   for (let i = 1; i < args.length; i++) {

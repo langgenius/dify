@@ -116,7 +116,7 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
   }
 
   const isValidEmail = (email: string): boolean => {
-    const rfc5322emailRegex = /^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/
+    const rfc5322emailRegex = /^[\w.!#$%&'*+/=?^`{|}~-]+@[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?(?:\.[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])?)*$/i
     return rfc5322emailRegex.test(email) && email.length <= 254
   }
 

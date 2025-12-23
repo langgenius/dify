@@ -68,7 +68,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
 
   const result: OutputVar = {}
 
-  const keyRegex = /['"]?(\w+)['"]?\s*:(?![^{]*})/g
+  const keyRegex = /['"]?(\w+)['"]?\s*:(?![^{]*\})/g
   const matches = returnContent.matchAll(keyRegex)
 
   for (const match of matches) {

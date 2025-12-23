@@ -31,7 +31,7 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
       message: t('appDebug.varKeyError.tooLong', { key: t('appDebug.variableConfig.varName') }),
     }).regex(/^(?!\d)\w+/, {
       message: t('appDebug.varKeyError.notStartWithNumber', { key: t('appDebug.variableConfig.varName') }),
-    }).regex(/^[a-zA-Z_]\w{0,29}$/, {
+    }).regex(/^[a-z_]\w{0,29}$/i, {
       message: t('appDebug.varKeyError.notValid', { key: t('appDebug.variableConfig.varName') }),
     }),
     label: z.string().nonempty({

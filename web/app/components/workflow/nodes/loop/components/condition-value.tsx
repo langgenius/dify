@@ -36,7 +36,7 @@ const ConditionValue = ({
     if (Array.isArray(value)) // transfer method
       return value[0]
 
-    return value.replace(/{{#([^#]*)#}}/g, (a, b) => {
+    return value.replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
       const arr: string[] = b.split('.')
       if (isSystemVar(arr))
         return `{{${b}}}`
@@ -50,7 +50,7 @@ const ConditionValue = ({
     if (isSelect) {
       const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === (Array.isArray(value) ? value[0] : value))[0]
       return name
-        ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/{{#([^#]*)#}}/g, (a, b) => {
+        ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
             const arr: string[] = b.split('.')
             if (isSystemVar(arr))
               return `{{${b}}}`

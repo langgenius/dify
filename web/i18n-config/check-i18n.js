@@ -257,7 +257,7 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
           const trimmedLine = line.trim()
 
           // Track current object path
-          const keyMatch = trimmedLine.match(/^(\w+)\s*:\s*{/)
+          const keyMatch = trimmedLine.match(/^(\w+)\s*:\s*\{/)
           if (keyMatch) {
             currentPath.push(keyMatch[1])
             braceDepth++

@@ -28,8 +28,8 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
     if (val === undefined)
       return acc
 
-    key = key.replace(/([-]\w)/g, (g: string) => g[1].toUpperCase())
-    key = key.replace(/([:]\w)/g, (g: string) => g[1].toUpperCase())
+    key = key.replace(/(-\w)/g, (g: string) => g[1].toUpperCase())
+    key = key.replace(/(:\w)/g, (g: string) => g[1].toUpperCase())
 
     // Additional filter after camelCase conversion
     if (key === 'xmlnsInkscape'
@@ -49,7 +49,7 @@ export function normalizeAttrs(attrs: Attrs = {}): Attrs {
           const pairs = next?.split(':')
 
           if (pairs[0] && pairs[1]) {
-            const k = pairs[0].replace(/([-]\w)/g, (g: string) => g[1].toUpperCase())
+            const k = pairs[0].replace(/(-\w)/g, (g: string) => g[1].toUpperCase())
             prev[k] = pairs[1]
           }
 

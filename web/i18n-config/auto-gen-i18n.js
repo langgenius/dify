@@ -128,7 +128,7 @@ function protectPlaceholders(text) {
   const patterns = [
     /\{\{[^{}]+\}\}/g, // mustache
     /\$\{[^{}]+\}/g, // template expressions
-    /<[^>]+?>/g, // html-like tags
+    /<[^>]+>/g, // html-like tags
   ]
 
   patterns.forEach((pattern) => {

@@ -332,7 +332,7 @@ Thought: {{agent_scratchpad}}
 }
 
 export const VAR_REGEX
-  = /\{\{(#[a-zA-Z0-9_-]{1,50}(\.\d+)?(\.[a-zA-Z_]\w{0,29}){1,10}#)\}\}/gi
+  = /\{\{(#[\w-]{1,50}(\.\d+)?(\.[a-z_]\w{0,29}){1,10}#)\}\}/gi
 
 export const resetReg = () => (VAR_REGEX.lastIndex = 0)
 
@@ -406,7 +406,7 @@ export const ENABLE_SINGLE_DOLLAR_LATEX = getBooleanConfig(
 
 export const VALUE_SELECTOR_DELIMITER = '@@@'
 
-export const validPassword = /^(?=.*[a-zA-Z])(?=.*\d)\S{8,}$/
+export const validPassword = /^(?=.*[a-z])(?=.*\d)\S{8,}$/i
 
 export const ZENDESK_WIDGET_KEY = getStringConfig(
   process.env.NEXT_PUBLIC_ZENDESK_WIDGET_KEY,

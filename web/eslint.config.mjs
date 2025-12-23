@@ -63,15 +63,6 @@ export default antfu(
     // @keep-sorted
     rules: {
       'no-useless-return': 'off',
-      'regexp/no-dupe-characters-character-class': 'off',
-      'regexp/no-trivially-nested-quantifier': 'off',
-      'regexp/no-useless-character-class': 'off',
-      'regexp/no-useless-lazy': 'off',
-      'regexp/no-useless-non-capturing-group': 'off',
-      'regexp/no-useless-quantifier': 'off',
-      'regexp/prefer-w': 'off',
-      'regexp/strict': 'off',
-      'regexp/use-ignore-case': 'off',
       'unicorn/prefer-node-protocol': 'off',
     },
   },

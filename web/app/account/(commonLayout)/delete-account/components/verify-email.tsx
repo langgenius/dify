@@ -7,7 +7,7 @@ import Input from '@/app/components/base/input'
 import Countdown from '@/app/components/signin/countdown'
 import { useAccountDeleteStore, useConfirmDeleteAccount, useSendDeleteAccountEmail } from '../state'
 
-const CODE_EXP = /[A-Za-z\d]{6}/gi
+const CODE_EXP = /[A-Z\d]{6}/gi
 
 type DeleteAccountProps = {
   onCancel: () => void

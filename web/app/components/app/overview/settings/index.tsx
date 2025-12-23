@@ -155,7 +155,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
       if (hex === null || hex?.length === 0)
         return true
 
-      const regex = /#([A-Fa-f0-9]{6})/
+      const regex = /#([A-F0-9]{6})/i
       const check = regex.test(hex)
       return check
     }

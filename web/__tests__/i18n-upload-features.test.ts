@@ -27,11 +27,11 @@ const loadTranslationContent = (locale: string): string => {
 // Helper function to check if upload features exist
 const hasUploadFeatures = (content: string): { [key: string]: boolean } => {
   return {
-    fileUpload: /fileUpload\s*:\s*{/.test(content),
-    imageUpload: /imageUpload\s*:\s*{/.test(content),
-    documentUpload: /documentUpload\s*:\s*{/.test(content),
-    audioUpload: /audioUpload\s*:\s*{/.test(content),
-    featureBar: /bar\s*:\s*{/.test(content),
+    fileUpload: /fileUpload\s*:\s*\{/.test(content),
+    imageUpload: /imageUpload\s*:\s*\{/.test(content),
+    documentUpload: /documentUpload\s*:\s*\{/.test(content),
+    audioUpload: /audioUpload\s*:\s*\{/.test(content),
+    featureBar: /bar\s*:\s*\{/.test(content),
   }
 }
 
@@ -77,7 +77,7 @@ describe('Upload Features i18n Translations - Issue #23062', () => {
       const content = loadTranslationContent(locale)
 
       // Verify audioUpload exists
-      expect(/audioUpload\s*:\s*{/.test(content)).toBe(true)
+      expect(/audioUpload\s*:\s*\{/.test(content)).toBe(true)
 
       // Verify it has title and description
       expect(/audioUpload[^}]*title\s*:/.test(content)).toBe(true)
@@ -92,25 +92,25 @@ describe('Upload Features i18n Translations - Issue #23062', () => {
       const content = loadTranslationContent(locale)
 
       // Check fileUpload has required properties
-      if (/fileUpload\s*:\s*{/.test(content)) {
+      if (/fileUpload\s*:\s*\{/.test(content)) {
         expect(/fileUpload[^}]*title\s*:/.test(content)).toBe(true)
         expect(/fileUpload[^}]*description\s*:/.test(content)).toBe(true)
       }
 
       // Check imageUpload has required properties
-      if (/imageUpload\s*:\s*{/.test(content)) {
+      if (/imageUpload\s*:\s*\{/.test(content)) {
         expect(/imageUpload[^}]*title\s*:/.test(content)).toBe(true)
         expect(/imageUpload[^}]*description\s*:/.test(content)).toBe(true)
       }
 
       // Check documentUpload has required properties
-      if (/documentUpload\s*:\s*{/.test(content)) {
+      if (/documentUpload\s*:\s*\{/.test(content)) {
         expect(/documentUpload[^}]*title\s*:/.test(content)).toBe(true)
         expect(/documentUpload[^}]*description\s*:/.test(content)).toBe(true)
       }
 
       // Check audioUpload has required properties
-      if (/audioUpload\s*:\s*{/.test(content)) {
+      if (/audioUpload\s*:\s*\{/.test(content)) {
         expect(/audioUpload[^}]*title\s*:/.test(content)).toBe(true)
         expect(/audioUpload[^}]*description\s*:/.test(content)).toBe(true)
       }
