@@ -6,7 +6,13 @@ import tailwind from 'eslint-plugin-tailwindcss'
 
 export default antfu(
   {
-    react: true,
+    react: {
+      overrides: {
+        'react/no-context-provider': 'off',
+        'react/no-forward-ref': 'off',
+        'react/no-use-context': 'off',
+      },
+    },
     nextjs: true,
     ignores: ['public'],
     typescript: {
@@ -57,9 +63,6 @@ export default antfu(
     // @keep-sorted
     rules: {
       'no-useless-return': 'off',
-      'react/no-context-provider': 'off',
-      'react/no-forward-ref': 'off',
-      'react/no-use-context': 'off',
       'regexp/no-dupe-characters-character-class': 'off',
       'regexp/no-trivially-nested-quantifier': 'off',
       'regexp/no-useless-character-class': 'off',
