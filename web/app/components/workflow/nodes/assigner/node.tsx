@@ -73,7 +73,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         nodeType={node?.data.type}
         nodeTitle={node?.data.title}
         rightSlot={
-          writeMode && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any)} />
+          writeMode && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any) as string} />
         }
       />
     </div>

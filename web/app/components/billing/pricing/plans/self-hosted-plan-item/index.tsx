@@ -85,16 +85,16 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
         <div className=" flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-[104px] flex-col gap-y-2">
-            <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name` as any)}</div>
-            <div className="system-md-regular line-clamp-2 text-text-secondary">{t(`${i18nPrefix}.description` as any)}</div>
+            <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name` as any) as string}</div>
+            <div className="system-md-regular line-clamp-2 text-text-secondary">{t(`${i18nPrefix}.description` as any) as string}</div>
           </div>
         </div>
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
-          <div className="title-4xl-semi-bold shrink-0 text-text-primary">{t(`${i18nPrefix}.price` as any)}</div>
+          <div className="title-4xl-semi-bold shrink-0 text-text-primary">{t(`${i18nPrefix}.price` as any) as string}</div>
           {!isFreePlan && (
             <span className="system-md-regular pb-0.5 text-text-tertiary">
-              {t(`${i18nPrefix}.priceTip` as any)}
+              {t(`${i18nPrefix}.priceTip` as any) as string}
             </span>
           )}
         </div>

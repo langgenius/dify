@@ -104,7 +104,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
     notify({
       type,
-      message: t(`common.actionMsg.${message}` as any),
+      message: t(`common.actionMsg.${message}` as any) as string,
     })
   }
 

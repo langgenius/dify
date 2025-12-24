@@ -217,9 +217,9 @@ const DatasetCard = ({
                   {dataset.doc_form && (
                     <span
                       className="min-w-0 max-w-full truncate"
-                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}` as any)}
+                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}` as any) as string}
                     >
-                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}` as any)}
+                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}` as any) as string}
                     </span>
                   )}
                   {dataset.indexing_technique && (

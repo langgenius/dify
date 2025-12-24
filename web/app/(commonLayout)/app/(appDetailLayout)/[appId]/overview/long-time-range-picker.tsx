@@ -53,7 +53,7 @@ const LongTimeRangePicker: FC<Props> = ({
 
   return (
     <SimpleSelect
-      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}` as any) }))}
+      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}` as any) as string }))}
       className="mt-0 !w-40"
       notClearable={true}
       onSelect={handleSelect}

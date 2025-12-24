@@ -66,13 +66,13 @@ const FilterCondition: FC<Props> = ({
     if (isSelect) {
       if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}` as any),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}` as any) as string,
           value: item.value,
         }))
       }
       if (condition.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}` as any),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}` as any) as string,
           value: item.value,
         }))
       }

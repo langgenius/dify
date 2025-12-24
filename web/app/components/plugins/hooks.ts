@@ -20,7 +20,7 @@ export const useTags = (translateFromOut?: TFunction) => {
     return tagKeys.map((tag) => {
       return {
         name: tag,
-        label: t(`pluginTags.tags.${tag}` as any),
+        label: t(`pluginTags.tags.${tag}` as any) as string,
       }
     })
   }, [t])
@@ -66,7 +66,7 @@ export const useCategories = (translateFromOut?: TFunction, isSingle?: boolean) 
       }
       return {
         name: category,
-        label: isSingle ? t(`plugin.categorySingle.${category}` as any) : t(`plugin.category.${category}s` as any),
+        label: isSingle ? t(`plugin.categorySingle.${category}` as any) as string : t(`plugin.category.${category}s` as any) as string,
       }
     })
   }, [t, isSingle])

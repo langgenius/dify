@@ -82,7 +82,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   ),
                 }}
                 values={{
-                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any),
+                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string,
                   alternativePluginId,
                 }}
               />
@@ -91,7 +91,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           {
             hasValidDeprecatedReason && !alternativePluginId && (
               <span>
-                {t(`${i18nPrefix}.onlyReason` as any, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) })}
+                {t(`${i18nPrefix}.onlyReason` as any, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string }) as string}
               </span>
             )
           }

@@ -43,7 +43,7 @@ const StartBlocks = ({
       if (blockType === BlockEnumValues.TriggerWebhook)
         return t('workflow.customWebhook')
 
-      return t(`workflow.blocks.${blockType}` as any)
+      return t(`workflow.blocks.${blockType}` as any) as string
     }
 
     return START_BLOCKS.filter((block) => {
@@ -83,10 +83,10 @@ const StartBlocks = ({
           <div className="system-md-medium mb-1 text-text-primary">
             {block.type === BlockEnumValues.TriggerWebhook
               ? t('workflow.customWebhook')
-              : t(`workflow.blocks.${block.type}` as any)}
+              : t(`workflow.blocks.${block.type}` as any) as string}
           </div>
           <div className="system-xs-regular text-text-secondary">
-            {t(`workflow.blocksAbout.${block.type}` as any)}
+            {t(`workflow.blocksAbout.${block.type}` as any) as string}
           </div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className="system-xs-regular mb-1 mt-1 text-text-tertiary">
@@ -107,7 +107,7 @@ const StartBlocks = ({
           type={block.type}
         />
         <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
-          <span className="truncate">{t(`workflow.blocks.${block.type}` as any)}</span>
+          <span className="truncate">{t(`workflow.blocks.${block.type}` as any) as string}</span>
           {block.type === BlockEnumValues.Start && (
             <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{t('workflow.blocks.originalStartNode')}</span>
           )}

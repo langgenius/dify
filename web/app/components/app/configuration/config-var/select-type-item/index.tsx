@@ -23,7 +23,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation()
-  const typeName = t(`appDebug.variableConfig.${i18nFileTypeMap[type] || type}` as any)
+  const typeName = t(`appDebug.variableConfig.${i18nFileTypeMap[type] || type}` as any) as string
 
   return (
     <div
