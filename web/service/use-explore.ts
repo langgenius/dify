@@ -1,10 +1,35 @@
+import type { App, AppCategory } from '@/models/explore'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { AccessMode } from '@/models/access-control'
-import { fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
+import { fetchAppList, fetchInstalledAppList, getAppAccessModeByAppId, uninstallApp, updatePinStatus } from './explore'
 import { fetchAppMeta, fetchAppParams } from './share'
 
 const NAME_SPACE = 'explore'
+
+type ExploreAppListData = {
+  categories: AppCategory[]
+  allList: App[]
+}
+
+export const exploreAppListInitialData: ExploreAppListData = {
+  categories: [],
+  allList: [],
+}
+
+export const useExploreAppList = () => {
+  return useQuery<ExploreAppListData>({
+    queryKey: [NAME_SPACE, 'appList'],
+    queryFn: async () => {
+      const { categories, recommended_apps } = await fetchAppList()
+      return {
+        categories,
+        allList: [...recommended_apps].sort((a, b) => a.position - b.position),
+      }
+    },
+    placeholderData: exploreAppListInitialData,
+  })
+}
 
 export const useGetInstalledApps = () => {
   return useQuery({
