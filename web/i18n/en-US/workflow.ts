@@ -1156,7 +1156,6 @@ const translation = {
         useConstantInstead: 'Use Constant Instead',
       },
       editor: {
-        notes: 'notes',
         previewTip: 'In preview mode, action buttons are not functional.',
       },
       errorMsg: {

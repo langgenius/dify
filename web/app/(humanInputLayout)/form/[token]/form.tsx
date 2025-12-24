@@ -13,7 +13,7 @@ import Button from '@/app/components/base/button'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { getHumanInputForm, submitHumanInputForm } from '@/service/share'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
@@ -21,7 +21,7 @@ import { cn } from '@/utils/classnames'
 export type FormData = {
   site: any
   form_content: string
-  inputs: GeneratedFormInputItem[]
+  inputs: FormInputItem[]
   user_actions: UserAction[]
   timeout: number
   timeout_unit: 'hour' | 'day'
@@ -61,7 +61,7 @@ const FormContent = () => {
     return parts.filter(part => part.length > 0)
   }
 
-  const initializeInputs = (formInputs: GeneratedFormInputItem[]) => {
+  const initializeInputs = (formInputs: FormInputItem[]) => {
     const initialInputs: Record<string, any> = {}
     formInputs.forEach((item) => {
       if (item.type === 'text-input' || item.type === 'paragraph')

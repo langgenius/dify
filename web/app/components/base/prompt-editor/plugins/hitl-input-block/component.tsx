@@ -28,6 +28,7 @@ const HITLInputComponent: FC<Props> = ({
 }) => {
   const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
   const payload = formInputs.find(item => item.output_variable_name === varName)
+
   const handleChange = useCallback((newPayload: FormInputItem) => {
     if(!payload) {
       onChange([...formInputs, newPayload])
@@ -40,7 +41,8 @@ const HITLInputComponent: FC<Props> = ({
       return
     }
     onChange(formInputs.map(item => item.output_variable_name === varName ? newPayload : item))
-  }, [onChange])
+  }, [formInputs, onChange, payload, varName])
+
   return (
     <div
       ref={ref}

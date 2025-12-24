@@ -1,4 +1,4 @@
-import type { GeneratedFormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
 
 export type ExecutedAction = {
@@ -27,7 +27,7 @@ export type HumanInputFormProps = {
 
 export type ContentItemProps = {
   content: string
-  formInputFields: GeneratedFormInputItem[]
+  formInputFields: FormInputItem[]
   inputs: Record<string, string>
   resolvedPlaceholderValues?: Record<string, string>
   onInputChange: (name: string, value: any) => void

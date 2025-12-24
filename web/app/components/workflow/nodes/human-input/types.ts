@@ -1,4 +1,9 @@
-import type { CommonNodeType, InputVarType, ValueSelector, Variable } from '@/app/components/workflow/types'
+import type {
+  CommonNodeType,
+  InputVarType,
+  ValueSelector,
+  Variable,
+} from '@/app/components/workflow/types'
 
 export type HumanInputNodeType = CommonNodeType & {
   delivery_methods: DeliveryMethod[]
@@ -43,24 +48,6 @@ export type DeliveryMethod = {
   config?: EmailConfig | {} | null
 }
 
-export type FormInputItemPlaceholder = {
-  type: 'variable' | 'constant',
-  selector: ValueSelector
-  value: string
-}
-
-export type FormInputItem = {
-  type: InputVarType
-  output_variable_name: string
-  // only text-input and paragraph support placeholder
-  placeholder?: FormInputItemPlaceholder
-  options?: any[]
-  max_length?: number
-  allowed_file_extensions?: string[]
-  allowed_file_types?: string[]
-  allowed_file_upload_methods?: string[]
-}
-
 export enum UserActionButtonType {
   Primary = 'primary',
   Default = 'default',
@@ -74,12 +61,14 @@ export type UserAction = {
   button_style: UserActionButtonType
 }
 
-export type GeneratedFormInputItem = {
+export type FormInputItemPlaceholder = {
+  selector: ValueSelector
+  type: 'variable' | 'constant'
+  value: string
+}
+
+export type FormInputItem = {
   type: InputVarType
   output_variable_name: string
-  placeholder: {
-    selector: ValueSelector
-    type: 'variable' | 'constant'
-    value: string
-  }
+  placeholder: FormInputItemPlaceholder
 }

@@ -34,7 +34,7 @@ import type {
 } from '@/models/share'
 import type { ChatConfig } from '@/app/components/base/chat/types'
 import type { AccessMode } from '@/models/access-control'
-import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
 import { getWebAppAccessToken } from './webapp-auth'
 
@@ -324,7 +324,7 @@ export const getHumanInputForm = (token: string) => {
   return get<{
     site: any
     form_content: string
-    inputs: GeneratedFormInputItem[]
+    inputs: FormInputItem[]
     user_actions: UserAction[]
     timeout: number
     timeout_unit: 'hour' | 'day'

@@ -5,7 +5,6 @@ import { VariableX } from '../../../icons/src/vender/workflow'
 import { VarBlockIcon } from '@/app/components/workflow/block-icon'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import { Variable02 } from '../../../icons/src/vender/solid/development'
-import { useTranslation } from 'react-i18next'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import ActionButton from '../../../action-button'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
@@ -42,7 +41,6 @@ const ComponentUI: FC<Props> = ({
   onRename,
   onRemove,
 }) => {
-  const { t } = useTranslation()
   const [isShowEditModal, {
     setTrue: showEditModal,
     setFalse: hideEditModal,
@@ -89,7 +87,7 @@ const ComponentUI: FC<Props> = ({
         <div className='absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle'></div>
         <div className='relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only'>
           <VariableX className='size-3' />
-          <div className='system-xs-medium'>{t('workflow.nodes.humanInput.editor.notes')}</div>
+          <div className='system-xs-medium'>{varName}</div>
         </div>
       </div>
 

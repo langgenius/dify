@@ -6,12 +6,12 @@ import { RiArrowLeftLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 
 type Props = {
   nodeName: string
   formContent: string
-  inputFields: GeneratedFormInputItem[]
+  inputFields: FormInputItem[]
   userActions: UserAction[]
   showBackButton?: boolean
   handleBack?: () => void
@@ -33,7 +33,7 @@ const FormContent = ({
     return parts.filter(part => part.length > 0)
   }
 
-  const initializeInputs = (formInputs: GeneratedFormInputItem[]) => {
+  const initializeInputs = (formInputs: FormInputItem[]) => {
     const initialInputs: Record<string, any> = {}
     formInputs.forEach((item) => {
       if (item.type === 'text-input' || item.type === 'paragraph')

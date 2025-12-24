@@ -1,4 +1,4 @@
-import type { GeneratedFormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 
 export const getButtonStyle = (style: UserActionButtonType) => {
@@ -18,7 +18,7 @@ export const splitByOutputVar = (content: string): string[] => {
   return parts.filter(part => part.length > 0)
 }
 
-export const initializeInputs = (formInputs: GeneratedFormInputItem[]) => {
+export const initializeInputs = (formInputs: FormInputItem[]) => {
   const initialInputs: Record<string, any> = {}
   formInputs.forEach((item) => {
     if (item.type === 'text-input' || item.type === 'paragraph')

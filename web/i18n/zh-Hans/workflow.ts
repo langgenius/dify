@@ -1112,7 +1112,6 @@ const translation = {
         useConstantInstead: '使用常量代替',
       },
       editor: {
-        notes: ' 笔记',
         previewTip: '在预览模式下，操作按钮无法使用。',
       },
       errorMsg: {
