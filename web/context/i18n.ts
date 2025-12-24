@@ -24,7 +24,7 @@ export const useI18N = () => useContext(I18NContext)
 export const useGetLanguage = () => {
   const { locale } = useI18N()
 
-  return getLanguage(locale)
+  return getLanguage(locale) as Locale
 }
 export const useGetPricingPageLanguage = () => {
   const { locale } = useI18N()
