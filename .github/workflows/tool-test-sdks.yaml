@@ -25,7 +25,7 @@ jobs:
         working-directory: sdks/nodejs-client
 
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           persist-credentials: false
 
