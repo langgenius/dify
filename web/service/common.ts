@@ -136,8 +136,7 @@ export const fetchFilePreview = ({ fileID }: { fileID: string }): Promise<{ cont
 }
 
 export const fetchCurrentWorkspace = ({ url, params }: { url: string; params: Record<string, any> }): Promise<ICurrentWorkspace> => {
-  // return post<ICurrentWorkspace>(url, { body: params })
-  return get<ICurrentWorkspace>(url, { params })
+  return post<ICurrentWorkspace>(url, { body: params })
 }
 
 export const updateCurrentWorkspace = ({ url, body }: { url: string; body: Record<string, any> }): Promise<ICurrentWorkspace> => {

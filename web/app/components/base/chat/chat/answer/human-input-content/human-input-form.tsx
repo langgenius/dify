@@ -1,32 +1,18 @@
 'use client'
-import React, { useState } from 'react'
+import React, { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import ContentItem from './content-item'
-import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from './utils'
-
-export type FormData = {
-  form_id: string
-  site: any
-  form_content: string
-  inputs: GeneratedFormInputItem[]
-  user_actions: UserAction[]
-  timeout: number
-  timeout_unit: 'hour' | 'day'
-}
-
-export type Props = {
-  formData: FormData
-  showTimeout?: boolean
-  onSubmit?: (formID: string, data: any) => void
-}
+import type { HumanInputFormProps } from './type'
 
 const HumanInputForm = ({
   formData,
   showTimeout,
+  timeout,
+  timeoutUnit,
   onSubmit,
-}: Props) => {
+}: HumanInputFormProps) => {
   const { t } = useTranslation()
 
   const formID = formData.form_id
@@ -35,12 +21,12 @@ const HumanInputForm = ({
   const [inputs, setInputs] = useState(defaultInputs)
   const [isSubmitting, setIsSubmitting] = useState(false)
 
-  const handleInputsChange = (name: string, value: any) => {
+  const handleInputsChange = useCallback((name: string, value: any) => {
     setInputs(prev => ({
       ...prev,
       [name]: value,
     }))
-  }
+  }, [])
 
   const submit = async (formID: string, actionID: string, inputs: Record<string, any>) => {
     setIsSubmitting(true)
@@ -55,12 +41,13 @@ const HumanInputForm = ({
           key={index}
           content={content}
           formInputFields={formData.inputs}
+          resolvedPlaceholderValues={formData.resolved_placeholder_values || {}}
           inputs={inputs}
           onInputChange={handleInputsChange}
         />
       ))}
       <div className='flex flex-wrap gap-1 py-1'>
-        {formData.user_actions.map((action: any) => (
+        {formData.actions.map((action: any) => (
           <Button
             key={action.id}
             disabled={isSubmitting}
@@ -73,7 +60,7 @@ const HumanInputForm = ({
       </div>
       {showTimeout && (
         <div className='system-xs-regular mt-1 text-text-tertiary'>
-          {formData.timeout_unit === 'day' ? t('share.humanInput.timeoutDay', { count: formData.timeout }) : t('share.humanInput.timeoutHour', { count: formData.timeout })}
+          {timeoutUnit === 'day' ? t('share.humanInput.timeoutDay', { count: timeout }) : t('share.humanInput.timeoutHour', { count: timeout })}
         </div>
       )}
     </>

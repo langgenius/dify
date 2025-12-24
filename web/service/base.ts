@@ -321,7 +321,7 @@ export const handleStream = (
             else if (bufferObj.event === 'human_input_required') {
               onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
             }
-            else if (bufferObj.event === 'workflow_suspended') {
+            else if (bufferObj.event === 'workflow_paused') {
               onWorkflowSuspended?.(bufferObj as WorkflowSuspendedResponse)
             }
             else if (bufferObj.event === 'datasource_processing') {
@@ -656,44 +656,46 @@ export const sseGet = async (
         }
         return
       }
-      return handleStream(res, (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
-        if (moreInfo.errorMessage) {
-          onError?.(moreInfo.errorMessage, moreInfo.errorCode)
-          // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
-          if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
-            Toast.notify({ type: 'error', message: moreInfo.errorMessage })
-          return
-        }
-        onData?.(str, isFirstMessage, moreInfo)
-      },
-      onCompleted,
-      onThought,
-      onMessageEnd,
-      onMessageReplace,
-      onFile,
-      onWorkflowStarted,
-      onWorkflowFinished,
-      onNodeStarted,
-      onNodeFinished,
-      onIterationStart,
-      onIterationNext,
-      onIterationFinish,
-      onLoopStart,
-      onLoopNext,
-      onLoopFinish,
-      onNodeRetry,
-      onParallelBranchStarted,
-      onParallelBranchFinished,
-      onTextChunk,
-      onTTSChunk,
-      onTTSEnd,
-      onTextReplace,
-      onAgentLog,
-      onHumanInputRequired,
-      onWorkflowSuspended,
-      onDataSourceNodeProcessing,
-      onDataSourceNodeCompleted,
-      onDataSourceNodeError,
+      return handleStream(
+        res,
+        (str: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => {
+          if (moreInfo.errorMessage) {
+            onError?.(moreInfo.errorMessage, moreInfo.errorCode)
+            // TypeError: Cannot assign to read only property ... will happen in page leave, so it should be ignored.
+            if (moreInfo.errorMessage !== 'AbortError: The user aborted a request.' && !moreInfo.errorMessage.includes('TypeError: Cannot assign to read only property'))
+              Toast.notify({ type: 'error', message: moreInfo.errorMessage })
+            return
+          }
+          onData?.(str, isFirstMessage, moreInfo)
+        },
+        onCompleted,
+        onThought,
+        onMessageEnd,
+        onMessageReplace,
+        onFile,
+        onWorkflowStarted,
+        onWorkflowFinished,
+        onNodeStarted,
+        onNodeFinished,
+        onIterationStart,
+        onIterationNext,
+        onIterationFinish,
+        onLoopStart,
+        onLoopNext,
+        onLoopFinish,
+        onNodeRetry,
+        onParallelBranchStarted,
+        onParallelBranchFinished,
+        onTextChunk,
+        onTTSChunk,
+        onTTSEnd,
+        onTextReplace,
+        onAgentLog,
+        onHumanInputRequired,
+        onWorkflowSuspended,
+        onDataSourceNodeProcessing,
+        onDataSourceNodeCompleted,
+        onDataSourceNodeError,
       )
     }).catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))

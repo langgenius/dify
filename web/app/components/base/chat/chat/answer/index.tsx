@@ -2,7 +2,7 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { memo, useCallback, useEffect, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import type {
   ChatConfig,
@@ -23,6 +23,9 @@ import { cn } from '@/utils/classnames'
 import { FileList } from '@/app/components/base/file-uploader'
 import ContentSwitch from '../content-switch'
 import HumanInputContent from './human-input-content'
+import { useChatContext } from '../context'
+import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
+import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 
 type AnswerProps = {
   item: ChatItem
@@ -38,7 +41,7 @@ type AnswerProps = {
   noChatInput?: boolean
   switchSibling?: (siblingMessageId: string) => void
   hideAvatar?: boolean
-  onHumanInputFormSubmit?: (formID: string, formData: any) => void
+  onHumanInputFormSubmit?: (formID: string, formData: any) => Promise<void>
 }
 const Answer: FC<AnswerProps> = ({
   item,
@@ -74,6 +77,26 @@ const Answer: FC<AnswerProps> = ({
   const [contentWidth, setContentWidth] = useState(0)
   const containerRef = useRef<HTMLDivElement>(null)
   const contentRef = useRef<HTMLDivElement>(null)
+
+  const {
+    getHumanInputNodeData,
+  } = useChatContext()
+
+  const deliveryMethodsConfig = useMemo(() => {
+    const deliveryMethodsConfig = getHumanInputNodeData?.(humanInputFormData?.node_id as any)?.data.delivery_methods || []
+    if (!deliveryMethodsConfig.length) {
+      return {
+        showEmailTip: false,
+        showDebugModeTip: false,
+      }
+    }
+    const isWebappEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.WebApp && method.enabled)
+    const isEmailEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.Email && method.enabled)
+    return {
+      showEmailTip: isEmailEnabled,
+      showDebugModeTip: !isWebappEnabled,
+    }
+  }, [getHumanInputNodeData, humanInputFormData?.node_id])
 
   const getContainerWidth = () => {
     if (containerRef.current)
@@ -176,7 +199,9 @@ const Answer: FC<AnswerProps> = ({
             }
             {humanInputFormData && (
               <HumanInputContent
-                formData={humanInputFormData as any} // TODO type
+                formData={humanInputFormData}
+                showEmailTip={deliveryMethodsConfig.showEmailTip}
+                showDebugModeTip={deliveryMethodsConfig.showDebugModeTip}
                 onSubmit={onHumanInputFormSubmit}
               />
             )}

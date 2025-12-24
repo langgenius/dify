@@ -105,7 +105,8 @@ export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: b
 export const useCurrentWorkspace = () => {
   return useQuery<ICurrentWorkspace>({
     queryKey: commonQueryKeys.currentWorkspace,
-    queryFn: () => post<ICurrentWorkspace>('/workspaces/current', { body: {} }),
+    // queryFn: () => post<ICurrentWorkspace>('/workspaces/current', { body: {} }),
+    queryFn: () => get<ICurrentWorkspace>('/workspaces/current'), // todo: Need to check later, POST or GET
   })
 }
 
@@ -220,7 +221,7 @@ export const useIsLogin = () => {
         })
       }
       catch (e: any) {
-        if(e.status === 401)
+        if (e.status === 401)
           return { logged_in: false }
         return { logged_in: true }
       }

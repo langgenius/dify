@@ -5,7 +5,7 @@ import type { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/
 import type { RAGPipelineVariables } from '@/models/pipeline'
 import type { BeforeRunFormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import type { GeneratedFormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { GeneratedFormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import type { RefObject } from 'react'
 
 export type AgentLogItem = {
@@ -312,13 +312,14 @@ export type AgentLogResponse = {
 }
 
 export type HumanInputFormData = {
-  id: string
-  workflow_id: string
   form_id: string
   node_id: string
+  node_title: string
   form_content: string
   inputs: GeneratedFormInputItem[]
-  web_app_form_token: string
+  actions: UserAction[]
+  web_app_form_token: string // For WebApp
+  resolved_placeholder_values: Record<string, string> // For human input placeholder when its type is variable
 }
 
 export type HumanInputRequiredResponse = {

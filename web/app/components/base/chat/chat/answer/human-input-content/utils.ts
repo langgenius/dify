@@ -1,5 +1,5 @@
-import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 import type { GeneratedFormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
 
 export const getButtonStyle = (style: UserActionButtonType) => {
   if (style === UserActionButtonType.Primary)
