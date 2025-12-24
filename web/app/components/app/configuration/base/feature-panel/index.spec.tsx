@@ -50,8 +50,9 @@ describe('FeaturePanel', () => {
       const root = container.firstElementChild as HTMLElement
       expect(root).toHaveClass('custom-panel')
       expect(root).toHaveClass('pb-0')
-      const body = screen.getByText('Body').parentElement as HTMLElement
-      expect(body.className).not.toContain('mt-1')
+      const body = screen.getByTestId('feature-panel-body')
+      expect(body).not.toHaveClass('mt-1')
+      expect(body).not.toHaveClass('px-3')
     })
   })
 
@@ -64,6 +65,7 @@ describe('FeaturePanel', () => {
       // Assert
       expect(screen.queryByText('No Body')).toBeInTheDocument()
       expect(screen.queryByText('Panel Body')).not.toBeInTheDocument()
+      expect(screen.queryByTestId('feature-panel-body')).not.toBeInTheDocument()
     })
   })
 })

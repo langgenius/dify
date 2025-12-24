@@ -116,7 +116,7 @@ describe('AppsFull', () => {
   // Rendering behavior for non-team plans.
   describe('Rendering', () => {
     it('should render the sandbox messaging and upgrade button', () => {
-      // Arrange
+      // Act
       render(<AppsFull loc="billing_dialog" />)
 
       // Assert
@@ -149,9 +149,57 @@ describe('AppsFull', () => {
       expect(screen.getByText('billing.apps.fullTip2')).toBeInTheDocument()
       expect(screen.getByText('billing.apps.fullTip2des')).toBeInTheDocument()
       expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
-      const contactLink = screen.getByText('billing.apps.contactUs').closest('a') as HTMLAnchorElement
-      expect(contactLink).toHaveAttribute('href', 'mailto:support@example.com')
+      expect(screen.getByRole('link', { name: 'billing.apps.contactUs' })).toHaveAttribute('href', 'mailto:support@example.com')
       expect(mailToSupport).toHaveBeenCalledWith('user@example.com', Plan.team, '1.0.0')
+    })
+
+    it('should render upgrade button for professional plans', () => {
+      // Arrange
+      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.professional,
+          usage: buildUsage({ buildApps: 4 }),
+          total: buildUsage({ buildApps: 10 }),
+          reset: {
+            apiRateLimit: null,
+            triggerEvents: null,
+          },
+        },
+      }))
+
+      // Act
+      render(<AppsFull loc="billing_dialog" />)
+
+      // Assert
+      expect(screen.getByText('billing.apps.fullTip1')).toBeInTheDocument()
+      expect(screen.getByText('billing.upgradeBtn.encourageShort')).toBeInTheDocument()
+      expect(screen.queryByText('billing.apps.contactUs')).not.toBeInTheDocument()
+    })
+
+    it('should render contact button for enterprise plans', () => {
+      // Arrange
+      ;(useProviderContext as Mock).mockReturnValue(buildProviderContext({
+        plan: {
+          ...baseProviderContextValue.plan,
+          type: Plan.enterprise,
+          usage: buildUsage({ buildApps: 9 }),
+          total: buildUsage({ buildApps: 10 }),
+          reset: {
+            apiRateLimit: null,
+            triggerEvents: null,
+          },
+        },
+      }))
+
+      // Act
+      render(<AppsFull loc="billing_dialog" />)
+
+      // Assert
+      expect(screen.getByText('billing.apps.fullTip1')).toBeInTheDocument()
+      expect(screen.queryByText('billing.upgradeBtn.encourageShort')).not.toBeInTheDocument()
+      expect(screen.getByRole('link', { name: 'billing.apps.contactUs' })).toHaveAttribute('href', 'mailto:support@example.com')
+      expect(mailToSupport).toHaveBeenCalledWith('user@example.com', Plan.enterprise, '1.0.0')
     })
   })
 

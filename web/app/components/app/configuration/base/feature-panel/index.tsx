@@ -38,7 +38,7 @@ const FeaturePanel: FC<IFeaturePanelProps> = ({
       </div>
       {/* Body */}
       {children && (
-        <div className={cn(!noBodySpacing && 'mt-1 px-3')}>
+        <div className={cn(!noBodySpacing && 'mt-1 px-3')} data-testid="feature-panel-body">
           {children}
         </div>
       )}
