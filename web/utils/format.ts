@@ -1,5 +1,6 @@
 import type { Dayjs } from 'dayjs'
 import type { Locale } from '@/i18n-config'
+import { localeMap } from '@/i18n-config/language'
 import 'dayjs/locale/de'
 import 'dayjs/locale/es'
 import 'dayjs/locale/fa'
@@ -20,30 +21,6 @@ import 'dayjs/locale/uk'
 import 'dayjs/locale/vi'
 import 'dayjs/locale/zh-cn'
 import 'dayjs/locale/zh-tw'
-
-const localeMap: Record<Locale, string> = {
-  'en-US': 'en',
-  'zh-Hans': 'zh-cn',
-  'zh-Hant': 'zh-tw',
-  'pt-BR': 'pt-br',
-  'es-ES': 'es',
-  'fr-FR': 'fr',
-  'de-DE': 'de',
-  'ja-JP': 'ja',
-  'ko-KR': 'ko',
-  'ru-RU': 'ru',
-  'it-IT': 'it',
-  'th-TH': 'th',
-  'id-ID': 'id',
-  'uk-UA': 'uk',
-  'vi-VN': 'vi',
-  'ro-RO': 'ro',
-  'pl-PL': 'pl',
-  'hi-IN': 'hi',
-  'tr-TR': 'tr',
-  'fa-IR': 'fa',
-  'sl-SI': 'sl',
-}
 
 /**
  * Formats a number with comma separators.
@@ -149,6 +126,6 @@ export const formatNumberAbbreviated = (num: number) => {
   }
 }
 
-export const formatToLocalTime = (time: Dayjs, local: string, format: string) => {
+export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {
   return time.locale(localeMap[local] ?? 'en').format(format)
 }

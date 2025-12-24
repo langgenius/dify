@@ -1,10 +1,10 @@
 'use client'
+import type { Locale } from '.'
 import i18n from 'i18next'
-import { camelCase } from 'lodash-es'
-import { initReactI18next } from 'react-i18next'
+import { camelCase, kebabCase } from 'lodash-es'
 
+import { initReactI18next } from 'react-i18next'
 import app from '../i18n/en-US/app'
-// Static imports for en-US (fallback language)
 import appAnnotation from '../i18n/en-US/app-annotation'
 import appApi from '../i18n/en-US/app-api'
 import appDebug from '../i18n/en-US/app-debug'
@@ -35,7 +35,56 @@ import time from '../i18n/en-US/time'
 import tools from '../i18n/en-US/tools'
 import workflow from '../i18n/en-US/workflow'
 
-const requireSilent = async (lang: string, namespace: string) => {
+// @keep-sorted
+export const messagesEN = {
+  app,
+  appAnnotation,
+  appApi,
+  appDebug,
+  appLog,
+  appOverview,
+  billing,
+  common,
+  custom,
+  dataset,
+  datasetCreation,
+  datasetDocuments,
+  datasetHitTesting,
+  datasetPipeline,
+  datasetSettings,
+  education,
+  explore,
+  layout,
+  login,
+  oauth,
+  pipeline,
+  plugin,
+  pluginTags,
+  pluginTrigger,
+  register,
+  runLog,
+  share,
+  time,
+  tools,
+  workflow,
+}
+
+// pluginTrigger -> plugin-trigger
+
+export type KebabCase<S extends string> = S extends `${infer T}${infer U}`
+  ? T extends Lowercase<T>
+    ? `${T}${KebabCase<U>}`
+    : `-${Lowercase<T>}${KebabCase<U>}`
+  : S
+
+export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
+  ? `${T}${Capitalize<CamelCase<U>>}`
+  : S
+
+export type KeyPrefix = keyof typeof messagesEN
+export type Namespace = KebabCase<KeyPrefix>
+
+const requireSilent = async (lang: Locale, namespace: Namespace) => {
   let res
   try {
     res = (await import(`../i18n/${lang}/${namespace}`)).default
@@ -47,40 +96,9 @@ const requireSilent = async (lang: string, namespace: string) => {
   return res
 }
 
-const NAMESPACES = [
-  'app-annotation',
-  'app-api',
-  'app-debug',
-  'app-log',
-  'app-overview',
-  'app',
-  'billing',
-  'common',
-  'custom',
-  'dataset-creation',
-  'dataset-documents',
-  'dataset-hit-testing',
-  'dataset-pipeline',
-  'dataset-settings',
-  'dataset',
-  'education',
-  'explore',
-  'layout',
-  'login',
-  'oauth',
-  'pipeline',
-  'plugin-tags',
-  'plugin-trigger',
-  'plugin',
-  'register',
-  'run-log',
-  'share',
-  'time',
-  'tools',
-  'workflow',
-]
+const NAMESPACES = Object.keys(messagesEN).map(kebabCase) as Namespace[]
 
-export const loadLangResources = async (lang: string) => {
+export const loadLangResources = async (lang: Locale) => {
   const modules = await Promise.all(
     NAMESPACES.map(ns => requireSilent(lang, ns)),
   )
@@ -93,41 +111,9 @@ export const loadLangResources = async (lang: string) => {
 
 // Load en-US resources first to make sure fallback works
 const getInitialTranslations = () => {
-  const en_USResources: Record<string, any> = {
-    appAnnotation,
-    appApi,
-    appDebug,
-    appLog,
-    appOverview,
-    app,
-    billing,
-    common,
-    custom,
-    datasetCreation,
-    datasetDocuments,
-    datasetHitTesting,
-    datasetPipeline,
-    datasetSettings,
-    dataset,
-    education,
-    explore,
-    layout,
-    login,
-    oauth,
-    pipeline,
-    pluginTags,
-    pluginTrigger,
-    plugin,
-    register,
-    runLog,
-    share,
-    time,
-    tools,
-    workflow,
-  }
   return {
     'en-US': {
-      translation: en_USResources,
+      translation: messagesEN,
     },
   }
 }
@@ -140,7 +126,7 @@ if (!i18n.isInitialized) {
   })
 }
 
-export const changeLanguage = async (lng?: string) => {
+export const changeLanguage = async (lng?: Locale) => {
   if (!lng)
     return
   if (!i18n.hasResourceBundle(lng, 'translation')) {
