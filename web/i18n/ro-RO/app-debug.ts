@@ -359,9 +359,7 @@ const translation = {
     visionSettings: {
       title: 'Setări Viziune',
       resolution: 'Rezoluție',
-      resolutionTooltip: `rezoluția joasă va permite modelului să primească o versiune de 512 x 512 pixeli a imaginii și să o reprezinte cu un buget de 65 de tokenuri. Acest lucru permite API-ului să returneze răspunsuri mai rapide și să consume mai puține tokenuri de intrare pentru cazurile de utilizare care nu necesită detalii ridicate.
-      \n
-      rezoluția ridicată va permite în primul rând modelului să vadă imaginea la rezoluție scăzută și apoi va crea decupaje detaliate ale imaginilor de intrare ca pătrate de 512 pixeli, în funcție de dimensiunea imaginii de intrare. Fiecare decupaj detaliat utilizează un buget de token dublu, pentru un total de 129 de tokenuri.`,
+      resolutionTooltip: 'rezoluția joasă va permite modelului să primească o versiune de 512 x 512 pixeli a imaginii și să o reprezinte cu un buget de 65 de tokenuri. Acest lucru permite API-ului să returneze răspunsuri mai rapide și să consume mai puține tokenuri de intrare pentru cazurile de utilizare care nu necesită detalii ridicate.\nrezoluția ridicată va permite în primul rând modelului să vadă imaginea la rezoluție scăzută și apoi va crea decupaje detaliate ale imaginilor de intrare ca pătrate de 512 pixeli, în funcție de dimensiunea imaginii de intrare. Fiecare decupaj detaliat utilizează un buget de token dublu, pentru un total de 129 de tokenuri.',
       high: 'Ridicat',
       low: 'Scăzut',
       uploadMethod: 'Metodă de încărcare',
