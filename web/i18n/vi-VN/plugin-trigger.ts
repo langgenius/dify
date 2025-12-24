@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Nhập "{{name}}" để xác nhận.',
             confirmInputTip: 'Vui lòng nhập “{{name}}” để xác nhận.',
           },
+          edit: {
+            title: 'Chỉnh sửa đăng ký',
+            success: 'Đã cập nhật đăng ký thành công',
+            error: 'Cập nhật đăng ký thất bại',
+          },
         },
         status: {
           active: 'Hoạt động',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Xác minh thông tin đăng nhập thất bại',
       authFailed: 'Ủy quyền thất bại',
       networkError: 'Lỗi mạng, vui lòng thử lại',
+      updateFailed: 'Cập nhật đăng ký thất bại',
     },
   },
   events: {

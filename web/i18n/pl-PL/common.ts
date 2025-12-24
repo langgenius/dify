@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Znajdź {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Teraz',
+    saving: 'Zapisywanie...',
+    back: 'Wstecz',
+    imageDownloaded: 'Obraz pobrany',
   },
   placeholder: {
     input: 'Proszę wprowadzić',
@@ -260,6 +263,7 @@ const translation = {
       authTip: 'Gdy twoje e-mail zostanie zmienione, konta Google lub GitHub powiązane z twoim starym e-mailem nie będą mogły już logować się do tego konta.',
       unAvailableEmail: 'Ten email jest tymczasowo niedostępny.',
     },
+    workspaceNamePlaceholder: 'Wprowadź nazwę przestrzeni roboczej',
   },
   members: {
     team: 'Zespół',
@@ -527,6 +531,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Poświadczenie jest w użyciu i nie można go usunąć',
       selectModelCredential: 'Wybieranie poświadczeń modelu',
       editModelCredential: 'Edytowanie poświadczeń modelu',
+      credentialRemoved: 'Poświadczenie usunięte',
     },
     parametersInvalidRemoved: 'Niektóre parametry są nieprawidłowe i zostały usunięte.',
     installDataSourceProvider: 'Zainstaluj dostawców źródeł danych',
@@ -805,6 +810,8 @@ const translation = {
     loading: 'Ładowanie opcji...',
     selected: '{{count}} wybrano',
   },
+  loading: 'Ładowanie',
+  error: 'Błąd',
 }
 
 export default translation

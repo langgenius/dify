@@ -72,6 +72,9 @@ const translation = {
     searchCount: '{{count}} {{content}} bul',
     noSearchCount: '0 {{content}}',
     now: 'Şimdi',
+    saving: 'Kaydediliyor...',
+    back: 'Geri',
+    imageDownloaded: 'Resim indirildi',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -258,6 +261,7 @@ const translation = {
       authTip: 'E-posta adresiniz değiştiğinde, eski e-posta adresinize bağlı Google veya GitHub hesapları bu hesaba giriş yapamayacak.',
       unAvailableEmail: 'Bu e-posta geçici olarak kullanılamıyor.',
     },
+    workspaceNamePlaceholder: 'Çalışma alanı adını girin',
   },
   members: {
     team: 'Takım',
@@ -518,6 +522,7 @@ const translation = {
       selectModelCredential: 'Bir model kimlik bilgisi seçin',
       addNewModelCredential: 'Yeni model kimlik bilgisi ekleme',
       customModelCredentialsDeleteTip: 'Kimlik bilgisi kullanımda ve silinemiyor',
+      credentialRemoved: 'Kimlik bilgisi kaldırıldı',
     },
     parametersInvalidRemoved: 'Bazı parametreler geçersizdir ve kaldırılmıştır.',
     installDataSourceProvider: 'Veri kaynağı sağlayıcılarını yükle',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'Seçenekler yükleniyor...',
     selected: '{{count}} seçildi',
   },
+  loading: 'Yükleniyor',
+  error: 'Hata',
 }
 
 export default translation

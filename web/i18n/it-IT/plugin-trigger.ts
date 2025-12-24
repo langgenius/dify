@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Inserisci "{{name}}" per confermare.',
             confirmInputTip: 'Per favore inserisci “{{name}}” per confermare.',
           },
+          edit: {
+            title: 'Modifica abbonamento',
+            success: 'Abbonamento aggiornato con successo',
+            error: 'Impossibile aggiornare l\'abbonamento',
+          },
         },
         status: {
           active: 'Attivo',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Impossibile verificare le credenziali',
       authFailed: 'Autorizzazione fallita',
       networkError: 'Errore di rete, riprova',
+      updateFailed: 'Impossibile aggiornare l\'abbonamento',
     },
   },
   events: {

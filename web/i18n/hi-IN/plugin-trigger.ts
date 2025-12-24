@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'पुष्टि करने के लिए "{{name}}" दर्ज करें।',
             confirmInputTip: 'कृपया पुष्टि करने के लिए “{{name}}” दर्ज करें।',
           },
+          edit: {
+            title: 'सदस्यता संपादित करें',
+            success: 'सब्सक्रिप्शन सफलतापूर्वक अपडेट किया गया',
+            error: 'सब्सक्रिप्शन अपडेट करने में विफल',
+          },
         },
         status: {
           active: 'सक्रिय',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'प्रमाणीकरण सत्यापित करने में विफल',
       authFailed: 'प्राधिकरण असफल',
       networkError: 'नेटवर्क त्रुटि, कृपया फिर से प्रयास करें',
+      updateFailed: 'सब्सक्रिप्शन अपडेट करने में विफल',
     },
   },
   events: {

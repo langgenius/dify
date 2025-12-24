@@ -82,6 +82,7 @@ const translation = {
     selectCount: '{{count}}件選択済み',
     searchCount: '{{count}}件の{{content}}が見つかりました',
     noSearchCount: '0件の{{content}}',
+    saving: '保存中…',
   },
   errorMsg: {
     fieldRequired: '{{field}}は必要です',

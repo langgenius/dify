@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Najdi {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Zdaj',
+    saving: 'Shranjevanje...',
+    back: 'Nazaj',
+    imageDownloaded: 'Slika prenesena',
   },
   errorMsg: {
     fieldRequired: '{{field}} je obvezno',
@@ -258,6 +261,7 @@ const translation = {
       authTip: 'Ko bo vaš e-poštni naslov spremenjen, se računi Google ali GitHub, povezani z vašim starim e-poštnim naslovom, ne bodo mogli več prijaviti v ta račun.',
       unAvailableEmail: 'Ta e-pošta trenutno ni na voljo.',
     },
+    workspaceNamePlaceholder: 'Vnesite ime delovnega prostora',
   },
   members: {
     team: 'Ekipa',
@@ -518,6 +522,7 @@ const translation = {
       addNewModelCredential: 'Dodajanje poverilnic novega modela',
       customModelCredentialsDeleteTip: 'Poverilnice so v uporabi in jih ni mogoče izbrisati',
       customModelCredentials: 'Poverilnice modela po meri',
+      credentialRemoved: 'Poverilnica odstranjena',
     },
     parametersInvalidRemoved: 'Nekateri parametri so neveljavni in so bili odstranjeni.',
     installDataSourceProvider: 'Namestite ponudnike podatkovnih virov',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'Nalaganje možnosti...',
     selected: '{{count}} izbrano',
   },
+  loading: 'Nalaganje',
+  error: 'Napaka',
 }
 
 export default translation

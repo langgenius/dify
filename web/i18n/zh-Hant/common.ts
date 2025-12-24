@@ -72,6 +72,9 @@ const translation = {
     searchCount: '找到 {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: '現在',
+    saving: '儲存中…',
+    back: '返回',
+    imageDownloaded: '圖片已下載',
   },
   placeholder: {
     input: '請輸入',
@@ -254,6 +257,7 @@ const translation = {
       resendTip: '沒有收到代碼嗎？',
       unAvailableEmail: '此郵件暫時無法使用。',
     },
+    workspaceNamePlaceholder: '輸入工作區名稱',
   },
   members: {
     team: '團隊',
@@ -514,6 +518,7 @@ const translation = {
       customModelCredentials: '自訂模型認證',
       addNewModelCredential: '新增模型認證',
       selectModelCredential: '選取模型認證',
+      credentialRemoved: '憑證已移除',
     },
     parametersInvalidRemoved: '一些參數無效，已被移除',
     installDataSourceProvider: '安裝資料來源提供者',
@@ -787,6 +792,8 @@ const translation = {
     loading: '正在載入選項...',
     selected: '{{count}} 已選擇',
   },
+  loading: '載入中',
+  error: '錯誤',
 }
 
 export default translation

@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Encontre {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Agora',
+    saving: 'Salvando...',
+    back: 'Voltar',
+    imageDownloaded: 'Imagem baixada',
   },
   placeholder: {
     input: 'Por favor, insira',
@@ -254,6 +257,7 @@ const translation = {
       content1: 'Se você continuar, enviaremos um código de verificação para <email>{{email}}</email> para reautenticação.',
       unAvailableEmail: 'Este e-mail está temporariamente indisponível.',
     },
+    workspaceNamePlaceholder: 'Digite o nome do espaço de trabalho',
   },
   members: {
     team: 'Equipe',
@@ -514,6 +518,7 @@ const translation = {
       selectModelCredential: 'Selecione uma credencial de modelo',
       customModelCredentialsDeleteTip: 'A credencial está em uso e não pode ser excluída',
       addNewModelCredential: 'Adicionar nova credencial de modelo',
+      credentialRemoved: 'Credencial removida',
     },
     parametersInvalidRemoved: 'Alguns parâmetros são inválidos e foram removidos',
     installDataSourceProvider: 'Instalar provedores de fontes de dados',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'Carregando opções...',
     selected: '{{count}} selecionado',
   },
+  loading: 'Carregando',
+  error: 'Erro',
 }
 
 export default translation

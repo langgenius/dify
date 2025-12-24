@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Vnesite "{{name}}" za potrditev.',
             confirmInputTip: 'Prosimo vnesite “{{name}}”, da potrdite.',
           },
+          edit: {
+            title: 'Uredi naročnino',
+            success: 'Naročnina je bila uspešno posodobljena',
+            error: 'Posodobitev naročnine ni uspela',
+          },
         },
         status: {
           active: 'Aktiven',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Neuspešno preverjanje poverilnic',
       authFailed: 'Avtorizacija ni uspela',
       networkError: 'Napaka v omrežju, poskusite znova',
+      updateFailed: 'Posodobitev naročnine ni uspela',
     },
   },
   events: {

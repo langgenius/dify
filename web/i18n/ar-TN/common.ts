@@ -78,6 +78,9 @@ const translation = {
     more: 'المزيد',
     selectAll: 'تحديد الكل',
     deSelectAll: 'إلغاء تحديد الكل',
+    saving: 'جارٍ الحفظ...',
+    back: 'عودة',
+    imageDownloaded: 'تم تنزيل الصورة',
   },
   errorMsg: {
     fieldRequired: '{{field}} مطلوب',
@@ -276,6 +279,7 @@ const translation = {
       resendCount: 'إعادة إرسال في {{count}} ثانية',
       resend: 'إعادة إرسال',
     },
+    workspaceNamePlaceholder: 'أدخل اسم مساحة العمل',
   },
   members: {
     team: 'الفريق',
@@ -543,6 +547,7 @@ const translation = {
       removeModel: 'إزالة النموذج',
       selectModelCredential: 'تحديد بيانات اعتماد النموذج',
       customModelCredentialsDeleteTip: 'بيانات الاعتماد قيد الاستخدام ولا يمكن حذفها',
+      credentialRemoved: 'تمت إزالة بيانات الاعتماد',
     },
     parametersInvalidRemoved: 'بعض المعلمات غير صالحة وتمت إزالتها',
   },
@@ -787,6 +792,8 @@ const translation = {
     loading: 'تحميل الخيارات...',
     selected: '{{count}} محدد',
   },
+  loading: 'جارٍ التحميل',
+  error: 'خطأ',
 }
 
 export default translation

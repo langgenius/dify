@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Найти {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Сейчас',
+    saving: 'Сохранение...',
+    back: 'Назад',
+    imageDownloaded: 'Изображение загружено',
   },
   errorMsg: {
     fieldRequired: '{{field}} обязательно',
@@ -258,6 +261,7 @@ const translation = {
       authTip: 'После изменения вашего адреса электронной почты учетные записи Google или GitHub, связанные с вашим старым адресом, больше не смогут войти в эту учетную запись.',
       unAvailableEmail: 'Этот email временно недоступен.',
     },
+    workspaceNamePlaceholder: 'Введите название рабочей области',
   },
   members: {
     team: 'Команда',
@@ -518,6 +522,7 @@ const translation = {
       customModelCredentials: 'Учетные данные пользовательской модели',
       manageCredentials: 'Управление учетными данными',
       customModelCredentialsDeleteTip: 'Учетные данные используются и не могут быть удалены',
+      credentialRemoved: 'Учётные данные удалены',
     },
     parametersInvalidRemoved: 'Некоторые параметры недействительны и были удалены',
     installDataSourceProvider: 'Установить поставщиков источников данных',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'Загрузка параметров...',
     selected: '{{count}} выбрано',
   },
+  loading: 'Загрузка',
+  error: 'Ошибка',
 }
 
 export default translation

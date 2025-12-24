@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: '输入 "{{name}}" 确认',
             confirmInputTip: '请输入 “{{name}}” 确认：',
           },
+          edit: {
+            title: '编辑订阅',
+            success: '订阅更新成功',
+            error: '更新订阅失败',
+          },
         },
         status: {
           active: '活跃',

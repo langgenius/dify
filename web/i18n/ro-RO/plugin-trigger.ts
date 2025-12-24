@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Introduceți "{{name}}" pentru a confirma.',
             confirmInputTip: 'Vă rugăm să introduceți „{{name}}” pentru a confirma.',
           },
+          edit: {
+            title: 'Modifică abonamentul',
+            success: 'Abonamentul a fost actualizat cu succes',
+            error: 'Actualizarea abonamentului a eșuat',
+          },
         },
         status: {
           active: 'Activ',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Nu s-au putut verifica acreditările',
       authFailed: 'Autorizare eșuată',
       networkError: 'Eroare de rețea, vă rugăm să încercați din nou',
+      updateFailed: 'Actualizarea abonamentului a eșuat',
     },
   },
   events: {

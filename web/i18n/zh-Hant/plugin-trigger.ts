@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: '輸入「{{name}}」以確認。',
             confirmInputTip: '請輸入「{{name}}」以確認。',
           },
+          edit: {
+            title: '編輯訂閱',
+            success: '訂閱更新成功',
+            error: '更新訂閱失敗',
+          },
         },
         status: {
           active: '活躍',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: '驗證憑證失敗',
       authFailed: '授權失敗',
       networkError: '網絡錯誤，請再試一次',
+      updateFailed: '更新訂閱失敗',
     },
   },
   events: {

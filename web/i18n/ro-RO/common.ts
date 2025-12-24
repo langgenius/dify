@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Găsește {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Acum',
+    saving: 'Se salvează...',
+    back: 'Înapoi',
+    imageDownloaded: 'Imagine descărcată',
   },
   placeholder: {
     input: 'Vă rugăm să introduceți',
@@ -254,6 +257,7 @@ const translation = {
       emailLabel: 'Email nou',
       unAvailableEmail: 'Acest email este temporar indisponibil.',
     },
+    workspaceNamePlaceholder: 'Introduceți numele spațiului de lucru',
   },
   members: {
     team: 'Echipă',
@@ -514,6 +518,7 @@ const translation = {
       customModelCredentials: 'Acreditări model personalizate',
       manageCredentials: 'Gestionați acreditările',
       customModelCredentialsDeleteTip: 'Acreditarea este în uz și nu poate fi ștearsă',
+      credentialRemoved: 'Acreditiv eliminat',
     },
     parametersInvalidRemoved: 'Unele parametrii sunt invalizi și au fost eliminați.',
     installDataSourceProvider: 'Instalați furnizorii de surse de date',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'Se încarcă opțiuni...',
     selected: '{{count}} selectat',
   },
+  loading: 'Se încarcă',
+  error: 'Eroare',
 }
 
 export default translation

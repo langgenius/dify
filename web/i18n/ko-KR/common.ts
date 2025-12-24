@@ -72,6 +72,9 @@ const translation = {
     searchCount: '{{count}} {{content}} 찾기',
     noSearchCount: '0 {{content}}',
     now: '지금',
+    saving: '저장 중...',
+    back: '뒤로',
+    imageDownloaded: '이미지 다운로드됨',
   },
   placeholder: {
     input: '입력해주세요',
@@ -250,6 +253,7 @@ const translation = {
       authTip: '이메일이 변경되면, 이전 이메일에 연결된 Google 또는 GitHub 계정은 더 이상 이 계정에 로그인할 수 없습니다.',
       unAvailableEmail: '이 이메일은 일시적으로 사용할 수 없습니다.',
     },
+    workspaceNamePlaceholder: '워크스페이스 이름 입력',
   },
   members: {
     team: '팀',
@@ -510,6 +514,7 @@ const translation = {
       editModelCredential: '모델 자격 증명 편집',
       customModelCredentials: '사용자 지정 모델 자격 증명',
       customModelCredentialsDeleteTip: '자격 증명이 사용 중이며 삭제할 수 없습니다.',
+      credentialRemoved: '자격 증명이 제거되었습니다',
     },
     parametersInvalidRemoved: '일부 매개변수가 유효하지 않아 제거되었습니다.',
     installDataSourceProvider: '데이터 소스 공급자 설치',
@@ -783,6 +788,8 @@ const translation = {
     loading: '옵션 불러오는 중...',
     selected: '{{count}} 선택됨',
   },
+  loading: '로딩 중',
+  error: '오류',
 }
 
 export default translation

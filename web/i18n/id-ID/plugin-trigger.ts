@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Masukkan "{{name}}" untuk konfirmasi.',
             confirmInputTip: 'Silakan masukkan “{{name}}” untuk mengonfirmasi.',
           },
+          edit: {
+            title: 'Ubah Langganan',
+            success: 'Langganan berhasil diperbarui',
+            error: 'Gagal memperbarui langganan',
+          },
         },
         status: {
           active: 'Aktif',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Gagal memverifikasi kredensial',
       authFailed: 'Otorisasi gagal',
       networkError: 'Kesalahan jaringan, silakan coba lagi',
+      updateFailed: 'Gagal memperbarui langganan',
     },
   },
   events: {

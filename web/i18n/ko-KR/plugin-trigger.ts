@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: '"{{name}}"를 입력하여 확인하세요.',
             confirmInputTip: '확인을 위해 “{{name}}”를 입력해 주세요.',
           },
+          edit: {
+            title: '구독 편집',
+            success: '구독이 성공적으로 업데이트되었습니다',
+            error: '구독 업데이트에 실패했습니다',
+          },
         },
         status: {
           active: '활성',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: '인증 정보를 확인하지 못했습니다',
       authFailed: '인증 실패',
       networkError: '네트워크 오류가 발생했습니다. 다시 시도해주세요.',
+      updateFailed: '구독 업데이트에 실패했습니다',
     },
   },
   events: {

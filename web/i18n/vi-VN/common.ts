@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Tìm {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Bây giờ',
+    saving: 'Đang lưu...',
+    back: 'Quay lại',
+    imageDownloaded: 'Hình ảnh đã được tải xuống',
   },
   placeholder: {
     input: 'Vui lòng nhập',
@@ -254,6 +257,7 @@ const translation = {
       authTip: 'Khi email của bạn được thay đổi, các tài khoản Google hoặc GitHub liên kết với email cũ của bạn sẽ không còn có thể đăng nhập vào tài khoản này.',
       unAvailableEmail: 'Email này hiện không khả dụng tạm thời.',
     },
+    workspaceNamePlaceholder: 'Nhập tên không gian làm việc',
   },
   members: {
     team: 'Nhóm',
@@ -514,6 +518,7 @@ const translation = {
       customModelCredentialsDeleteTip: 'Thông tin đăng nhập đang được sử dụng và không thể xóa',
       addNewModelCredential: 'Thêm thông tin xác thực mô hình mới',
       selectModelCredential: 'Chọn thông tin xác thực mô hình',
+      credentialRemoved: 'Thông tin xác thực đã bị xóa',
     },
     parametersInvalidRemoved: 'Một số tham số không hợp lệ và đã được loại bỏ',
     installDataSourceProvider: 'Cài đặt các nhà cung cấp nguồn dữ liệu',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'Đang tải tùy chọn...',
     selected: '{{count}} đã chọn',
   },
+  loading: 'Đang tải',
+  error: 'Lỗi',
 }
 
 export default translation

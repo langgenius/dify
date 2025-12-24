@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Знайти {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Зараз',
+    saving: 'Збереження...',
+    back: 'Назад',
+    imageDownloaded: 'Зображення завантажено',
   },
   placeholder: {
     input: 'Будь ласка, введіть текст',
@@ -254,6 +257,7 @@ const translation = {
       content1: 'Якщо ви продовжите, ми надішлемо код підтвердження на <email>{{email}}</email> для повторної аутентифікації.',
       unAvailableEmail: 'Цей електронний лист тимчасово недоступний.',
     },
+    workspaceNamePlaceholder: 'Введіть назву робочого простору',
   },
   members: {
     team: 'Команда',
@@ -515,6 +519,7 @@ const translation = {
       customModelCredentials: 'Облікові дані користувацької моделі',
       editModelCredential: 'Редагувати облікові дані моделі',
       customModelCredentialsDeleteTip: 'Облікові дані використовуються і не можуть бути видалені',
+      credentialRemoved: 'Облікові дані видалено',
     },
     parametersInvalidRemoved: 'Деякі параметри є недійсними і були видалені',
     installDataSourceProvider: 'Встановіть постачальників джерел даних',
@@ -788,6 +793,8 @@ const translation = {
     loading: 'Завантаження параметрів...',
     selected: '{{count}} вибрано',
   },
+  loading: 'Завантаження',
+  error: 'Помилка',
 }
 
 export default translation

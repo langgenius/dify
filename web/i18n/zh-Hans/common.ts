@@ -82,6 +82,7 @@ const translation = {
     now: '现在',
     back: '返回',
     imageDownloaded: '图片已下载',
+    saving: '正在保存...',
   },
   errorMsg: {
     fieldRequired: '{{field}} 为必填项',

@@ -72,6 +72,9 @@ const translation = {
     searchCount: '{{count}} {{content}} खोजें',
     noSearchCount: '0 {{content}}',
     now: 'अब',
+    saving: 'सेव हो रहा है...',
+    back: 'वापस',
+    imageDownloaded: 'छवि डाउनलोड की गई',
   },
   errorMsg: {
     fieldRequired: '{{field}} आवश्यक है',
@@ -264,6 +267,7 @@ const translation = {
       content1: 'अगर आप जारी रखते हैं, तो हम सत्यापन के लिए <email>{{email}}</email> पर एक सत्यापन कोड भेजेंगे।',
       unAvailableEmail: 'यह ईमेल अस्थायी रूप से अनुपलब्ध है।',
     },
+    workspaceNamePlaceholder: 'वर्कस्पेस का नाम दर्ज करें',
   },
   members: {
     team: 'टीम',
@@ -534,6 +538,7 @@ const translation = {
       manageCredentials: 'क्रेडेंशियल्स प्रबंधित करें',
       customModelCredentials: 'कस्टम मॉडल क्रेडेंशियल्स',
       editModelCredential: 'मॉडल की क्रेडेंशियल संपादित करें',
+      credentialRemoved: 'क्रेडेंशियल हटा दिया गया',
     },
     parametersInvalidRemoved: 'कुछ पैरामीटर अमान्य हैं और हटा दिए गए हैं',
     installDataSourceProvider: 'डेटा स्रोत प्रदाताओं को स्थापित करें',
@@ -809,6 +814,8 @@ const translation = {
     loading: 'विकल्प लोड हो रहे हैं...',
     selected: '{{count}} चयनित',
   },
+  loading: 'लोड हो रहा है',
+  error: 'त्रुटि',
 }
 
 export default translation

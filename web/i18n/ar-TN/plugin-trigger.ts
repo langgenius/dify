@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'أدخل "{{name}}" للتأكيد.',
             confirmInputTip: 'يرجى إدخال "{{name}}" للتأكيد.',
           },
+          edit: {
+            title: 'تعديل الاشتراك',
+            success: 'تم تحديث الاشتراك بنجاح',
+            error: 'فشل في تحديث الاشتراك',
+          },
         },
         status: {
           active: 'نشط',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'فشل التحقق من بيانات الاعتماد',
       authFailed: 'فشل التفويض',
       networkError: 'خطأ في الشبكة، يرجى المحاولة مرة أخرى',
+      updateFailed: 'فشل في تحديث الاشتراك',
     },
   },
   events: {

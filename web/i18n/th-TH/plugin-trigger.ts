@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'ใส่ "{{name}}" เพื่อยืนยัน',
             confirmInputTip: 'โปรดใส่ “{{name}}” เพื่อยืนยัน',
           },
+          edit: {
+            title: 'แก้ไขการสมัครสมาชิก',
+            success: 'การสมัครสมาชิกอัปเดตเรียบร้อยแล้ว',
+            error: 'ไม่สามารถอัปเดตการสมัครสมาชิกได้',
+          },
         },
         status: {
           active: 'ใช้งานอยู่',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'ไม่สามารถตรวจสอบข้อมูลประจำตัวได้',
       authFailed: 'การอนุญาตล้มเหลว',
       networkError: 'เกิดข้อผิดพลาดของเครือข่าย กรุณาลองใหม่',
+      updateFailed: 'ไม่สามารถอัปเดตการสมัครสมาชิกได้',
     },
   },
   events: {

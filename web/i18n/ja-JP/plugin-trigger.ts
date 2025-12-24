@@ -37,6 +37,11 @@ const translation = {
             confirmInputPlaceholder: '確認するには「{{name}}」と入力してください。',
             confirmInputTip: '確認のため「{{name}}」を入力してください。',
           },
+          edit: {
+            title: 'サブスクリプションを編集',
+            success: 'サブスクリプションが正常に更新されました',
+            error: 'サブスクリプションの更新に失敗しました',
+          },
         },
         status: {
           active: 'アクティブ',

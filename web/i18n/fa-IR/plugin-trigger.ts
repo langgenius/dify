@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'برای تأیید «{{name}}» را وارد کنید.',
             confirmInputTip: 'لطفاً برای تأیید «{{name}}» را وارد کنید.',
           },
+          edit: {
+            title: 'ویرایش اشتراک',
+            success: 'اشتراک با موفقیت به‌روزرسانی شد',
+            error: 'به‌روزرسانی اشتراک ناموفق بود',
+          },
         },
         status: {
           active: 'فعال',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'تأیید اطلاعات ورود ناموفق بود',
       authFailed: 'مجوز ناموفق بود',
       networkError: 'خطای شبکه، لطفاً دوباره تلاش کنید',
+      updateFailed: 'به‌روزرسانی اشتراک ناموفق بود',
     },
   },
   events: {

@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Введіть "{{name}}", щоб підтвердити.',
             confirmInputTip: 'Будь ласка, введіть «{{name}}», щоб підтвердити.',
           },
+          edit: {
+            title: 'Редагувати підписку',
+            success: 'Підписку успішно оновлено',
+            error: 'Не вдалося оновити підписку',
+          },
         },
         status: {
           active: 'Активний',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Не вдалося перевірити облікові дані',
       authFailed: 'Авторизація не вдалася',
       networkError: 'Помилка мережі, будь ласка, спробуйте ще раз',
+      updateFailed: 'Не вдалося оновити підписку',
     },
   },
   events: {

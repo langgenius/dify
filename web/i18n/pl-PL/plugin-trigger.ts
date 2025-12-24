@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Wprowadź "{{name}}", aby potwierdzić.',
             confirmInputTip: 'Proszę wpisać „{{name}}”, aby potwierdzić.',
           },
+          edit: {
+            title: 'Edytuj subskrypcję',
+            success: 'Subskrypcja została pomyślnie zaktualizowana',
+            error: 'Nie udało się zaktualizować subskrypcji',
+          },
         },
         status: {
           active: 'Aktywny',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Nie udało się zweryfikować danych uwierzytelniających',
       authFailed: 'Autoryzacja nie powiodła się',
       networkError: 'Błąd sieci, spróbuj ponownie',
+      updateFailed: 'Nie udało się zaktualizować subskrypcji',
     },
   },
   events: {

@@ -78,6 +78,9 @@ const translation = {
     searchCount: 'Temukan {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Sekarang',
+    saving: 'Menyimpan...',
+    back: 'Kembali',
+    imageDownloaded: 'Gambar diunduh',
   },
   errorMsg: {
     urlError: 'URL harus dimulai dengan http:// atau https://',
@@ -267,6 +270,7 @@ const translation = {
     deleteTip: 'Harap dicatat, setelah dikonfirmasi, sebagai Pemilik Ruang Kerja apa pun, ruang kerja Anda akan dijadwalkan dalam antrean untuk penghapusan permanen, dan semua data pengguna Anda akan diantri untuk penghapusan permanen.',
     workspaceIcon: 'Ikon Ruang Kerja',
     showAppLength: 'Tampilkan {{length}} aplikasi',
+    workspaceNamePlaceholder: 'Masukkan nama ruang kerja',
   },
   members: {
     transferModal: {
@@ -479,6 +483,7 @@ const translation = {
       editModelCredential: 'Mengedit kredensial model',
       customModelCredentials: 'Kredensial Model Kustom',
       customModelCredentialsDeleteTip: 'Kredensial sedang digunakan dan tidak dapat dihapus',
+      credentialRemoved: 'Kredensial dihapus',
     },
     systemModelSettingsLink: 'Mengapa perlu menyiapkan model sistem?',
     apiKey: 'API-KUNCI',
@@ -782,6 +787,8 @@ const translation = {
     loading: 'Memuat opsi...',
     selected: '{{count}} dipilih',
   },
+  loading: 'Memuat',
+  error: 'Kesalahan',
 }
 
 export default translation

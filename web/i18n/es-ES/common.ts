@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Encuentra {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Ahora',
+    saving: 'Guardando...',
+    back: 'Atrás',
+    imageDownloaded: 'Imagen descargada',
   },
   errorMsg: {
     fieldRequired: '{{field}} es requerido',
@@ -258,6 +261,7 @@ const translation = {
       authTip: 'Una vez que tu correo electrónico sea cambiado, las cuentas de Google o GitHub vinculadas a tu antiguo correo electrónico ya no podrán iniciar sesión en esta cuenta.',
       unAvailableEmail: 'Este correo electrónico no está disponible temporalmente.',
     },
+    workspaceNamePlaceholder: 'Ingrese el nombre del espacio de trabajo',
   },
   members: {
     team: 'Equipo',
@@ -518,6 +522,7 @@ const translation = {
       manageCredentials: 'Administrar credenciales',
       customModelCredentialsDeleteTip: 'La credencial está en uso y no se puede eliminar',
       editModelCredential: 'Editar credencial de modelo',
+      credentialRemoved: 'Credencial eliminada',
     },
     parametersInvalidRemoved: 'Algunos parámetros son inválidos y han sido eliminados',
     installDataSourceProvider: 'Instalar proveedores de fuentes de datos',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'Cargando opciones...',
     selected: '{{count}} seleccionado',
   },
+  loading: 'Cargando',
+  error: 'Error',
 }
 
 export default translation

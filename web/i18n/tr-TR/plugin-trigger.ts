@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: '"{{name}}" yazın ve onaylayın.',
             confirmInputTip: 'Lütfen onaylamak için “{{name}}” girin.',
           },
+          edit: {
+            title: 'Aboneliği Düzenle',
+            success: 'Abonelik başarıyla güncellendi',
+            error: 'Abonelik güncellenemedi',
+          },
         },
         status: {
           active: 'Aktif',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Kimlik bilgileri doğrulanamadı',
       authFailed: 'Yetkilendirme başarısız',
       networkError: 'Ağ hatası, lütfen tekrar deneyin',
+      updateFailed: 'Abonelik güncellenemedi',
     },
   },
   events: {

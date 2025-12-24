@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'Trova {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'Adesso',
+    saving: 'Salvataggio...',
+    back: 'Indietro',
+    imageDownloaded: 'Immagine scaricata',
   },
   errorMsg: {
     fieldRequired: '{{field}} è obbligatorio',
@@ -265,6 +268,7 @@ const translation = {
       sendVerifyCode: 'Invia codice di verifica',
       unAvailableEmail: 'Questa email è temporaneamente non disponibile.',
     },
+    workspaceNamePlaceholder: 'Inserisci il nome dello spazio di lavoro',
   },
   members: {
     team: 'Team',
@@ -540,6 +544,7 @@ const translation = {
       modelCredential: 'Credenziale del modello',
       removeModel: 'Rimuovi modello',
       editModelCredential: 'Modificare le credenziali del modello',
+      credentialRemoved: 'Credenziale rimossa',
     },
     parametersInvalidRemoved: 'Alcuni parametri non sono validi e sono stati rimossi.',
     installDataSourceProvider: 'Installa i fornitori di sorgenti dati',
@@ -817,6 +822,8 @@ const translation = {
     loading: 'Caricamento opzioni...',
     selected: '{{count}} selezionato',
   },
+  loading: 'Caricamento',
+  error: 'Errore',
 }
 
 export default translation

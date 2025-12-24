@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Digite "{{name}}" para confirmar.',
             confirmInputTip: 'Por favor, digite “{{name}}” para confirmar.',
           },
+          edit: {
+            title: 'Editar Assinatura',
+            success: 'Assinatura atualizada com sucesso',
+            error: 'Falha ao atualizar a assinatura',
+          },
         },
         status: {
           active: 'Ativo',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Falha ao verificar as credenciais',
       authFailed: 'Autorização falhou',
       networkError: 'Erro de rede, por favor tente novamente',
+      updateFailed: 'Falha ao atualizar a assinatura',
     },
   },
   events: {

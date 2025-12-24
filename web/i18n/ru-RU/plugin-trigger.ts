@@ -43,6 +43,11 @@ const translation = {
             confirmInputPlaceholder: 'Введите "{{name}}", чтобы подтвердить.',
             confirmInputTip: 'Пожалуйста, введите «{{name}}», чтобы подтвердить.',
           },
+          edit: {
+            title: 'Изменить подписку',
+            success: 'Подписка успешно обновлена',
+            error: 'Не удалось обновить подписку',
+          },
         },
         status: {
           active: 'Активный',
@@ -161,6 +166,7 @@ const translation = {
       verifyFailed: 'Не удалось проверить учетные данные',
       authFailed: 'Авторизация не удалась',
       networkError: 'Ошибка сети, пожалуйста, попробуйте ещё раз',
+      updateFailed: 'Не удалось обновить подписку',
     },
   },
   events: {

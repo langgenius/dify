@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'ค้นหา {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'ตอนนี้',
+    saving: 'กำลังบันทึก...',
+    back: 'ย้อนกลับ',
+    imageDownloaded: 'ดาวน์โหลดรูปภาพแล้ว',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -253,6 +256,7 @@ const translation = {
       title: 'เปลี่ยนอีเมล',
       unAvailableEmail: 'อีเมลนี้ไม่สามารถใช้งานได้ชั่วคราว.',
     },
+    workspaceNamePlaceholder: 'ใส่ชื่อพื้นที่ทำงาน',
   },
   members: {
     team: 'ทีม',
@@ -513,6 +517,7 @@ const translation = {
       selectModelCredential: 'เลือกข้อมูลประจําตัวของโมเดล',
       customModelCredentials: 'ข้อมูลประจําตัวของโมเดลแบบกําหนดเอง',
       addNewModelCredential: 'เพิ่มข้อมูลประจําตัวของโมเดลใหม่',
+      credentialRemoved: 'ข้อมูลรับรองถูกลบแล้ว',
     },
     parametersInvalidRemoved: 'บางพารามิเตอร์ไม่ถูกต้องและถูกนำออก',
     installDataSourceProvider: 'ติดตั้งผู้ให้บริการแหล่งข้อมูล',
@@ -782,6 +787,8 @@ const translation = {
     loading: 'กำลังโหลดตัวเลือก...',
     selected: '{{count}} ที่ถูกเลือก',
   },
+  loading: 'กำลังโหลด',
+  error: 'ข้อผิดพลาด',
 }
 
 export default translation

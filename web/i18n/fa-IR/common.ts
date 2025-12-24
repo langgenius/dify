@@ -72,6 +72,9 @@ const translation = {
     searchCount: 'یافتن {{count}} {{content}}',
     noSearchCount: '0 {{content}}',
     now: 'الان',
+    saving: 'در حال ذخیره‌سازی...',
+    back: 'بازگشت',
+    imageDownloaded: 'تصویر دانلود شد',
   },
   errorMsg: {
     fieldRequired: '{{field}} الزامی است',
@@ -258,6 +261,7 @@ const translation = {
       authTip: 'زمانی که ایمیل شما تغییر کند، حساب‌های گوگل یا گیت‌هاب مرتبط با ایمیل قدیمی شما دیگر قادر به ورود به این حساب نخواهند بود.',
       unAvailableEmail: 'این ایمیل به طور موقت در دسترس نیست.',
     },
+    workspaceNamePlaceholder: 'نام فضای کاری را وارد کنید',
   },
   members: {
     team: 'تیم',
@@ -518,6 +522,7 @@ const translation = {
       addNewModelCredential: 'افزودن اعتبار مدل جدید',
       customModelCredentials: 'اعتبار مدل سفارشی',
       customModelCredentialsDeleteTip: 'اعتبار در حال استفاده است و قابل حذف نیست',
+      credentialRemoved: 'مدرک حذف شد',
     },
     parametersInvalidRemoved: 'برخی پارامترها نامعتبر هستند و حذف شده‌اند',
     installDataSourceProvider: 'نصب ارائه‌دهندگان منبع داده',
@@ -787,6 +792,8 @@ const translation = {
     loading: 'در حال بارگذاری گزینه‌ها...',
     selected: '{{count}} انتخاب شد',
   },
+  loading: 'در حال بارگذاری',
+  error: 'خطا',
 }
 
 export default translation
