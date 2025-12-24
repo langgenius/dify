@@ -118,6 +118,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 loop_count = 0
 
             for i in range(loop_count):
+                if i > 0:
+                    self._cleanup_sub_graph_variables_from_previous_iteration()
                 graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
 
                 loop_start_time = naive_utc_now()
@@ -256,7 +258,6 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             segment = self.graph_runtime_state.variable_pool.get(sel)
             self.node_data.outputs[key] = segment.value if segment else None
         self.node_data.outputs["loop_round"] = current_index + 1
-
         return reach_break_node
 
     def _append_loop_info_to_event(
@@ -437,3 +438,18 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         )
 
         return graph_engine
+
+    def _cleanup_sub_graph_variables_from_previous_iteration(self) -> None:
+        if not self.graph_config:
+            return
+
+        sub_graph_node_ids = self._extract_loop_node_ids_from_config(
+            graph_config=self.graph_config, loop_node_id=self._node_id
+        )
+        sub_graph_node_ids.discard(self._node_id)
+
+        for node_id in sub_graph_node_ids:
+            try:
+                self.graph_runtime_state.variable_pool.remove([node_id])
+            except Exception as e:
+                logger.warning("Failed to remove variables for node %s: %s", node_id, e)
