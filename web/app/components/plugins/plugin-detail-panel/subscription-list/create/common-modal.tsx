@@ -191,7 +191,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
             console.error('Failed to update subscription builder:', error)
             Toast.notify({
               type: 'error',
-              message: error?.message || t('pluginTrigger.modal.errors.updateFailed' as any),
+              message: error?.message || t('pluginTrigger.modal.errors.updateFailed'),
             })
           },
         },

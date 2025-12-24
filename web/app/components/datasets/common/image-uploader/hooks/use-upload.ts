@@ -54,9 +54,9 @@ export const useUpload = () => {
 
   const showErrorMessage = useCallback((type: 'type' | 'size') => {
     if (type === 'type')
-      Toast.notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport' as any) })
+      Toast.notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
     else
-      Toast.notify({ type: 'error', message: t('dataset.imageUploader.fileSizeLimitExceeded' as any, { size: fileUploadConfig.imageFileSizeLimit }) })
+      Toast.notify({ type: 'error', message: t('dataset.imageUploader.fileSizeLimitExceeded', { size: fileUploadConfig.imageFileSizeLimit }) })
   }, [fileUploadConfig, t])
 
   const getValidFiles = useCallback((files: File[]) => {

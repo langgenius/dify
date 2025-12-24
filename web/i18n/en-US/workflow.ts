@@ -1105,7 +1105,12 @@ const translation = {
       days: 'Days',
       lastDay: 'Last day',
       lastDayTooltip: 'Not all months have 31 days. Use the \'last day\' option to select each month\'s final day.',
-      mode: 'Mode',
+      mode: {
+        label: 'Mode',
+        visual: 'Visual',
+        cron: 'Cron',
+      },
+      selectTime: 'Select time',
       timezone: 'Timezone',
       visualConfig: 'Visual Configuration',
       monthlyDay: 'Monthly Day',

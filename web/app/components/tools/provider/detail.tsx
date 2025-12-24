@@ -334,7 +334,7 @@ const ProviderDetail = ({
                       }}
                       disabled={!isCurrentWorkspaceManager}
                     >
-                      {t('tools.auth.unauthorized' as any)}
+                      {t('tools.auth.unauthorized')}
                     </Button>
                   </>
                 )}

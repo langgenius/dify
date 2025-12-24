@@ -52,7 +52,7 @@ const EditWorkspaceModal = ({
           <Input
             className="mb-2"
             value={name}
-            placeholder={t('common.account.workspaceNamePlaceholder' as any)}
+            placeholder={t('common.account.workspaceNamePlaceholder')}
             onChange={(e) => {
               setName(e.target.value)
             }}

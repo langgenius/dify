@@ -185,7 +185,7 @@ const Doc = ({ appDetail }: IDocProps) => {
                   {toc.length === 0
                     ? (
                         <div className="px-2 py-8 text-center text-xs text-text-quaternary">
-                          {t('appApi.develop.noContent' as any)}
+                          {t('appApi.develop.noContent')}
                         </div>
                       )
                     : (

@@ -98,7 +98,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       Toast.notify({
         type: 'error',
         message: t('common.errorMsg.fieldRequired', {
-          field: t('appDebug.code.instruction' as any),
+          field: t('appDebug.code.instruction'),
         }),
       })
       return false

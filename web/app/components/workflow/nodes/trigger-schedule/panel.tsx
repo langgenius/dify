@@ -85,7 +85,7 @@ const Panel: FC<NodePanelProps<ScheduleTriggerNodeType>> = ({
                               onClear={() => {
                                 handleTimeChange('12:00 AM')
                               }}
-                              placeholder={t('workflow.nodes.triggerSchedule.selectTime' as any)}
+                              placeholder={t('workflow.nodes.triggerSchedule.selectTime')}
                               showTimezone={true}
                             />
                           </>

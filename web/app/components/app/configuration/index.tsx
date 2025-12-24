@@ -494,7 +494,7 @@ const Configuration: FC = () => {
       setCompletionParams(filtered)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('common.error' as any) })
+      Toast.notify({ type: 'error', message: t('common.error') })
       setCompletionParams({})
     }
   }
