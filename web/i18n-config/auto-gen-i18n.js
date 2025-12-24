@@ -1,16 +1,10 @@
 import fs from 'node:fs'
-import { createRequire } from 'node:module'
 import path from 'node:path'
-import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import { translate } from 'bing-translate-api'
 import { generateCode, loadFile, parseModule } from 'magicast'
 import { transpile } from 'typescript'
-
-const require = createRequire(import.meta.url)
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = path.dirname(__filename)
-const data = require('./languages.json')
+import data from './languages'
 
 const targetLanguage = 'en-US'
 const i18nFolder = '../i18n' // Path to i18n folder relative to this script
