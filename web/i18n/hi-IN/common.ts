@@ -5,6 +5,7 @@ const translation = {
     saved: 'सहेजा गया',
     create: 'बनाया गया',
     remove: 'हटाया गया',
+    actionFailed: 'क्रिया विफल',
   },
   operation: {
     create: 'बनाएं',

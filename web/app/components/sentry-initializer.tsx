@@ -1,7 +1,7 @@
 'use client'
 
-import { useEffect } from 'react'
 import * as Sentry from '@sentry/react'
+import { useEffect } from 'react'
 
 const isDevelopment = process.env.NODE_ENV === 'development'
 

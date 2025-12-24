@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '../../../base/switch'
 
@@ -21,15 +21,15 @@ const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center justify-end gap-x-3 pr-5'>
+    <div className="flex items-center justify-end gap-x-3 pr-5">
       <Switch
-        size='l'
+        size="l"
         defaultValue={value === PlanRange.yearly}
         onChange={(v) => {
           onChange(v ? PlanRange.yearly : PlanRange.monthly)
         }}
       />
-      <span className='system-md-regular text-text-tertiary'>
+      <span className="system-md-regular text-text-tertiary">
         {t('billing.plansCommon.annualBilling', { percent: 17 })}
       </span>
     </div>

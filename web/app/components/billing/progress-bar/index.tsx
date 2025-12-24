@@ -1,4 +1,4 @@
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type ProgressBarProps = {
   percent: number
@@ -10,7 +10,7 @@ const ProgressBar = ({
   color = '#2970FF',
 }: ProgressBarProps) => {
   return (
-    <div className='overflow-hidden rounded-[6px] bg-components-progress-bar-bg'>
+    <div className="overflow-hidden rounded-[6px] bg-components-progress-bar-bg">
       <div
         className={cn('h-1 rounded-[6px]', color)}
         style={{

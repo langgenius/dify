@@ -1,6 +1,6 @@
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import type { WorkflowRunningData } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Tab from './tab'
 
 type TabsProps = {
@@ -16,25 +16,25 @@ const Tabs = ({
 }: TabsProps) => {
   const { t } = useTranslation()
   return (
-    <div className='flex shrink-0 items-center gap-x-6 border-b-[0.5px] border-divider-subtle px-4'>
+    <div className="flex shrink-0 items-center gap-x-6 border-b-[0.5px] border-divider-subtle px-4">
       <Tab
         isActive={currentTab === 'RESULT'}
         label={t('runLog.result')}
-        value='RESULT'
+        value="RESULT"
         workflowRunningData={workflowRunningData}
         onClick={switchTab}
       />
       <Tab
         isActive={currentTab === 'DETAIL'}
         label={t('runLog.detail')}
-        value='DETAIL'
+        value="DETAIL"
         workflowRunningData={workflowRunningData}
         onClick={switchTab}
       />
       <Tab
         isActive={currentTab === 'TRACING'}
         label={t('runLog.tracing')}
-        value='TRACING'
+        value="TRACING"
         workflowRunningData={workflowRunningData}
         onClick={switchTab}
       />

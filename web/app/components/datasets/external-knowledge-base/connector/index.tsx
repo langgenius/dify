@@ -1,12 +1,13 @@
 'use client'
 
-import React, { useState } from 'react'
+import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useState } from 'react'
+import { trackEvent } from '@/app/components/base/amplitude'
 import { useToastContext } from '@/app/components/base/toast'
 import ExternalKnowledgeBaseCreate from '@/app/components/datasets/external-knowledge-base/create'
-import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
 import { createExternalKnowledgeBase } from '@/service/datasets'
-import { trackEvent } from '@/app/components/base/amplitude'
 
 const ExternalKnowledgeBaseConnector = () => {
   const { notify } = useToastContext()
