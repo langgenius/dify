@@ -10,20 +10,14 @@ import type {
   CompletionConversationFullDetailResponse,
   CompletionConversationsRequest,
   CompletionConversationsResponse,
-  ConversationListResponse,
   LogMessageAnnotationsRequest,
   LogMessageAnnotationsResponse,
   LogMessageFeedbacksRequest,
   LogMessageFeedbacksResponse,
-  WorkflowLogsResponse,
   WorkflowRunDetailResponse,
 } from '@/models/log'
 import type { NodeTracingListResponse } from '@/types/workflow'
 import { get, post } from './base'
-
-export const fetchConversationList = ({ appId, params }: { name?: string, appId: string, params?: Record<string, any> }): Promise<ConversationListResponse> => {
-  return get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)
-}
 
 // (Text Generation Application) Session List
 export const fetchCompletionConversations = ({ url, params }: { url: string, params?: CompletionConversationsRequest }): Promise<CompletionConversationsResponse> => {
@@ -60,10 +54,6 @@ export const updateLogMessageAnnotations = ({ url, body }: { url: string, body: 
 
 export const fetchAnnotationsCount = ({ url }: { url: string }): Promise<AnnotationsCountResponse> => {
   return get<AnnotationsCountResponse>(url)
-}
-
-export const fetchWorkflowLogs = ({ url, params }: { url: string, params: Record<string, any> }): Promise<WorkflowLogsResponse> => {
-  return get<WorkflowLogsResponse>(url, { params })
 }
 
 export const fetchRunDetail = (url: string): Promise<WorkflowRunDetailResponse> => {
