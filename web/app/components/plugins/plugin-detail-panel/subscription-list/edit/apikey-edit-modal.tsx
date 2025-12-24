@@ -1,21 +1,21 @@
 'use client'
-import { BaseForm } from '@/app/components/base/form/components/base'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import { FormTypeEnum } from '@/app/components/base/form/types'
-import Modal from '@/app/components/base/modal/modal'
-import Toast from '@/app/components/base/toast'
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
-import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
-import { parsePluginErrorMessage } from '@/utils/error-parser'
 import { isEqual } from 'lodash-es'
 import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
+import { BaseForm } from '@/app/components/base/form/components/base'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import Modal from '@/app/components/base/modal/modal'
+import Toast from '@/app/components/base/toast'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { useUpdateTriggerSubscription, useVerifyTriggerSubscription } from '@/service/use-triggers'
+import { parsePluginErrorMessage } from '@/utils/error-parser'
+import { ReadmeShowType } from '../../../readme-panel/store'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
-import { ReadmeShowType } from '../../../readme-panel/store'
-import { EncryptedBottom } from '@/app/components/base/encrypted-bottom'
 
 type Props = {
   onClose: () => void
@@ -71,24 +71,24 @@ const StatusStep = ({ isActive, text, onClick, clickable }: {
       onClick={clickable ? onClick : undefined}
     >
       {isActive && (
-        <div className='h-1 w-1 rounded-full bg-state-accent-solid'></div>
+        <div className="h-1 w-1 rounded-full bg-state-accent-solid"></div>
       )}
       {text}
     </div>
   )
 }
 
-const MultiSteps = ({ currentStep, onStepClick }: { currentStep: EditStep; onStepClick?: (step: EditStep) => void }) => {
+const MultiSteps = ({ currentStep, onStepClick }: { currentStep: EditStep, onStepClick?: (step: EditStep) => void }) => {
   const { t } = useTranslation()
   return (
-    <div className='mb-6 flex w-1/3 items-center gap-2'>
+    <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
         isActive={currentStep === EditStep.EditCredentials}
         text={t('pluginTrigger.modal.steps.verify')}
         onClick={() => onStepClick?.(EditStep.EditCredentials)}
         clickable={currentStep === EditStep.EditConfiguration}
       />
-      <div className='h-px w-3 shrink-0 bg-divider-deep'></div>
+      <div className="h-px w-3 shrink-0 bg-divider-deep"></div>
       <StatusStep
         isActive={currentStep === EditStep.EditConfiguration}
         text={t('pluginTrigger.modal.steps.configuration')}
@@ -257,13 +257,13 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         default: subscription.parameters?.[schema.name] || schema.default,
         dynamicSelectParams: normalizedType === FormTypeEnum.dynamicSelect
           ? {
-            plugin_id: detail?.plugin_id || '',
-            provider: detail?.provider || '',
-            action: 'provider',
-            parameter: schema.name,
-            credential_id: subscription.id,
-            credentials: verifiedCredentials || undefined,
-          }
+              plugin_id: detail?.plugin_id || '',
+              provider: detail?.provider || '',
+              action: 'provider',
+              parameter: schema.name,
+              credential_id: subscription.id,
+              credentials: verifiedCredentials || undefined,
+            }
           : undefined,
         fieldClassName: schema.type === FormTypeEnum.boolean ? 'flex items-center justify-between' : undefined,
         labelClassName: schema.type === FormTypeEnum.boolean ? 'mb-0' : undefined,
@@ -293,10 +293,10 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       disabled={isUpdating || isVerifying}
       showExtraButton={currentStep === EditStep.EditConfiguration}
       extraButtonText={t('pluginTrigger.modal.common.back')}
-      extraButtonVariant='secondary'
+      extraButtonVariant="secondary"
       onExtraButtonClick={handleBack}
       clickOutsideNotClose
-      wrapperClassName='!z-[101]'
+      wrapperClassName="!z-[101]"
       bottomSlot={currentStep === EditStep.EditCredentials ? <EncryptedBottom /> : null}
     >
       {pluginDetail && (
@@ -308,13 +308,13 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
       {/* Step 1: Edit Credentials */}
       {currentStep === EditStep.EditCredentials && (
-        <div className='mb-4'>
+        <div className="mb-4">
           {credentialsFormSchemas.length > 0 && (
             <BaseForm
               formSchemas={credentialsFormSchemas}
               ref={credentialsFormRef}
-              labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
-              formClassName='space-y-4'
+              labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+              formClassName="space-y-4"
               preventDefaultSubmit={true}
             />
           )}
@@ -323,13 +323,13 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
       {/* Step 2: Edit Configuration */}
       {currentStep === EditStep.EditConfiguration && (
-        <div className='max-h-[70vh]'>
+        <div className="max-h-[70vh]">
           {/* Basic form: subscription name and callback URL */}
           <BaseForm
             formSchemas={basicFormSchemas}
             ref={basicFormRef}
-            labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
-            formClassName='space-y-4 mb-4'
+            labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+            formClassName="space-y-4 mb-4"
           />
 
           {/* Parameters */}
@@ -337,8 +337,8 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
             <BaseForm
               formSchemas={parametersFormSchemas}
               ref={parametersFormRef}
-              labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
-              formClassName='space-y-4'
+              labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+              formClassName="space-y-4"
             />
           )}
         </div>
