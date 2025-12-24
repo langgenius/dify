@@ -98,7 +98,7 @@ class ApiToolSchemaPayload(BaseModel):
 
 class ApiToolTestPayload(BaseModel):
     tool_name: str
-    provider_name: str | None = None
+    provider_name: str = ""
     credentials: dict[str, Any]
     parameters: dict[str, Any]
     schema_type: ApiProviderSchemaType
@@ -204,6 +204,8 @@ register_schema_models(
     MCPProviderUpdatePayload,
     MCPProviderDeletePayload,
     MCPAuthPayload,
+    MCPConfiguration,
+    MCPAuthentication,
 )
 
 
@@ -500,7 +502,7 @@ class ToolApiProviderPreviousTestApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
         return ApiToolManageService.test_api_tool_preview(
             current_tenant_id,
-            payload.provider_name or "",
+            payload.provider_name,
             payload.tool_name,
             payload.credentials,
             payload.parameters,
