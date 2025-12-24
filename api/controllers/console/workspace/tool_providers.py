@@ -158,9 +158,9 @@ class MCPProviderBasePayload(BaseModel):
     icon_type: str
     icon_background: str = ""
     server_identifier: str
-    configuration: dict[str, Any] | None = Field(default_factory=dict)
-    headers: dict[str, Any] | None = Field(default_factory=dict)
-    authentication: dict[str, Any] | None = Field(default_factory=dict)
+    configuration: MCPConfiguration
+    headers: dict[str, Any] = {}
+    authentication: MCPAuthentication | None = None
 
 
 class MCPProviderCreatePayload(MCPProviderBasePayload):
@@ -870,11 +870,6 @@ class ToolProviderMCPApi(Resource):
     def post(self):
         payload = MCPProviderCreatePayload.model_validate(console_ns.payload or {})
         user, tenant_id = current_account_with_tenant()
-
-        # Parse and validate models
-        configuration = MCPConfiguration.model_validate(payload.configuration or {})
-        authentication = MCPAuthentication.model_validate(payload.authentication) if payload.authentication else None
-
         # Create provider in transaction
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
@@ -885,11 +880,11 @@ class ToolProviderMCPApi(Resource):
                 name=payload.name,
                 icon=payload.icon,
                 icon_type=payload.icon_type,
-                icon_background=payload.icon_background or "",
+                icon_background=payload.icon_background,
                 server_identifier=payload.server_identifier,
-                headers=payload.headers or {},
-                configuration=configuration,
-                authentication=authentication,
+                headers=payload.headers,
+                configuration=payload.configuration,
+                authentication=payload.authentication,
             )
 
         # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
@@ -933,9 +928,9 @@ class ToolProviderMCPApi(Resource):
                 name=payload.name,
                 icon=payload.icon,
                 icon_type=payload.icon_type,
-                icon_background=payload.icon_background or "",
+                icon_background=payload.icon_background,
                 server_identifier=payload.server_identifier,
-                headers=payload.headers or {},
+                headers=payload.headers,
                 configuration=configuration,
                 authentication=authentication,
                 validation_result=validation_result,
