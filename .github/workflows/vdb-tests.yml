@@ -24,7 +24,7 @@ jobs:
           persist-credentials: false
 
       - name: Free Disk Space
-        uses: endersonmenezes/free-disk-space@v2
+        uses: endersonmenezes/free-disk-space@v3
         with:
           remove_dotnet: true
           remove_haskell: true
