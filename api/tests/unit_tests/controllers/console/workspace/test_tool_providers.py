@@ -12,22 +12,21 @@ import pytest
 from flask import Flask
 from flask.views import MethodView
 
-
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
 
 
-@pytest.fixture()
+@pytest.fixture
 def app() -> Flask:
     flask_app = Flask(__name__)
     flask_app.config["TESTING"] = True
     return flask_app
 
 
-@pytest.fixture()
+@pytest.fixture
 def controller_module(monkeypatch: pytest.MonkeyPatch):
-    from libs import login
     from controllers.console import wraps as console_wraps
+    from libs import login
 
     def _noop(func):
         return func
