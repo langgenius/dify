@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+import { noop } from 'es-toolkit/compat'
 import { t } from 'i18next'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'

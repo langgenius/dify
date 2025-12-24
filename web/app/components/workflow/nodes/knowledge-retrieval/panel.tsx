@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { intersectionBy } from 'lodash-es'
+import { intersectionBy } from 'es-toolkit/compat'
 import {
   memo,
   useMemo,

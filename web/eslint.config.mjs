@@ -41,6 +41,18 @@ export default antfu(
       'next/inline-script-id': 'warn',
       'no-console': 'warn',
       'no-irregular-whitespace': 'warn',
+      'no-restricted-imports': [
+        'error',
+        {
+          paths: [
+            { name: 'lodash', message: 'Use es-toolkit/compat instead.' },
+            { name: 'lodash-es', message: 'Use es-toolkit/compat instead.' },
+          ],
+          patterns: [
+            { group: ['lodash/*', 'lodash-es/*'], message: 'Use es-toolkit/compat instead.' },
+          ],
+        },
+      ],
       'node/prefer-global/buffer': 'warn',
       'node/prefer-global/process': 'warn',
       'react/no-create-ref': 'warn',

@@ -2,7 +2,7 @@
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { isEqual } from 'lodash-es'
+import { isEqual } from 'es-toolkit/compat'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BaseForm } from '@/app/components/base/form/components/base'

@@ -8,7 +8,7 @@ import type {
 import type {
   DatasetConfigs,
 } from '@/models/debug'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'

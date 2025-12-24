@@ -2,7 +2,7 @@ import { access, appendFile, mkdir, open, readdir, rm, writeFile } from 'node:fs
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseXml } from '@rgrove/parse-xml'
-import { camelCase, template } from 'lodash-es'
+import { camelCase, template } from 'es-toolkit/compat'
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url))
 

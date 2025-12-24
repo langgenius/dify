@@ -1,5 +1,5 @@
 import type { ChatItemInTree } from '../types'
-import { get } from 'lodash-es'
+import { get } from 'es-toolkit/compat'
 import { buildChatItemTree, getThreadMessages } from '../utils'
 import branchedTestMessages from './branchedTestMessages.json'
 import legacyTestMessages from './legacyTestMessages.json'
