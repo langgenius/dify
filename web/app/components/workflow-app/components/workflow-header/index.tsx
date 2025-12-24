@@ -8,9 +8,6 @@ import { useShallow } from 'zustand/react/shallow'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Header from '@/app/components/workflow/header'
 import { useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import {
-  fetchWorkflowRunHistory,
-} from '@/service/workflow'
 import { useIsChatMode } from '../../hooks'
 import ChatVariableTrigger from './chat-variable-trigger'
 import FeaturesTrigger from './features-trigger'
@@ -33,7 +30,6 @@ const WorkflowHeader = () => {
     return {
       onClearLogAndMessageModal: handleClearLogAndMessageModal,
       historyUrl: isChatMode ? `/apps/${appDetail!.id}/advanced-chat/workflow-runs` : `/apps/${appDetail!.id}/workflow-runs`,
-      historyFetcher: fetchWorkflowRunHistory,
     }
   }, [appDetail, isChatMode, handleClearLogAndMessageModal])
 

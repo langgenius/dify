@@ -20,17 +20,12 @@ import {
   DSLImportMode,
 } from '@/models/app'
 import { fetchAppDetail } from '@/service/explore'
-import { exploreAppListInitialData, useExploreAppList } from '@/service/use-explore'
+import { useExploreAppList } from '@/service/use-explore'
 import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
 type AppsProps = {
   onSuccess?: () => void
-}
-
-export enum PageType {
-  EXPLORE = 'explore',
-  CREATE = 'create',
 }
 
 const Apps = ({
@@ -58,10 +53,16 @@ const Apps = ({
   })
 
   const {
-    data: { categories, allList } = exploreAppListInitialData,
+    data,
+    isLoading,
+    isError,
   } = useExploreAppList()
 
-  const filteredList = allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
+  const filteredList = useMemo(() => {
+    if (!data)
+      return []
+    return data.allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
+  }, [data, currCategory, allCategoriesEn])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -119,13 +120,18 @@ const Apps = ({
     })
   }, [handleImportDSLConfirm, onSuccess])
 
-  if (!categories || categories.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex h-full items-center">
         <Loading type="area" />
       </div>
     )
   }
+
+  if (isError || !data)
+    return null
+
+  const { categories } = data
 
   return (
     <div className={cn(
