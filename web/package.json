@@ -36,6 +36,7 @@
     "check-i18n": "tsx ./i18n-config/check-i18n.js",
     "auto-gen-i18n": "tsx ./i18n-config/auto-gen-i18n.js",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "analyze-component": "node testing/analyze-component.js",
     "storybook": "storybook dev -p 6006",

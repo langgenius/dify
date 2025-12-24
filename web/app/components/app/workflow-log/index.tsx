@@ -9,13 +9,12 @@ import { omit } from 'lodash-es'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { fetchWorkflowLogs } from '@/service/log'
+import { useWorkflowLogs } from '@/service/use-log'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
@@ -55,10 +54,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(debouncedQueryParams, ['period', 'status']),
   }
 
-  const { data: workflowLogs, mutate } = useSWR({
-    url: `/apps/${appDetail.id}/workflow-app-logs`,
+  const { data: workflowLogs, refetch: mutate } = useWorkflowLogs({
+    appId: appDetail.id,
     params: query,
-  }, fetchWorkflowLogs)
+  })
   const total = workflowLogs?.total
 
   return (
