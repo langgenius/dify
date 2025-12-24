@@ -188,7 +188,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                 )
 
             assistant_message = AssistantPromptMessage(content=response, tool_calls=[])
-
             if tool_calls:
                 assistant_message.tool_calls = [
                     AssistantPromptMessage.ToolCall(
@@ -200,8 +199,6 @@ class FunctionCallAgentRunner(BaseAgentRunner):
                     )
                     for tool_call in tool_calls
                 ]
-
-            logger.debug(f"FunctionCallAgentRunner: assistant_message: {assistant_message.model_dump()}")
 
             self._current_thoughts.append(assistant_message)
 
