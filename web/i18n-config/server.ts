@@ -14,7 +14,7 @@ const initI18next = async (lng: Locale, ns: Namespace) => {
   const i18nInstance = createInstance()
   await i18nInstance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: Locale, namespace: Namespace) => import(`../i18n/${language}/${namespace}.ts`)))
+    .use(resourcesToBackend((language: Locale, namespace: Namespace) => import(`../i18n/${language}/${namespace}.json`)))
     .init({
       lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
       ns,

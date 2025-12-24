@@ -4,36 +4,36 @@ import i18n from 'i18next'
 import { camelCase, kebabCase } from 'lodash-es'
 
 import { initReactI18next } from 'react-i18next'
-import app from '../i18n/en-US/app'
-import appAnnotation from '../i18n/en-US/app-annotation'
-import appApi from '../i18n/en-US/app-api'
-import appDebug from '../i18n/en-US/app-debug'
-import appLog from '../i18n/en-US/app-log'
-import appOverview from '../i18n/en-US/app-overview'
-import billing from '../i18n/en-US/billing'
-import common from '../i18n/en-US/common'
-import custom from '../i18n/en-US/custom'
-import dataset from '../i18n/en-US/dataset'
-import datasetCreation from '../i18n/en-US/dataset-creation'
-import datasetDocuments from '../i18n/en-US/dataset-documents'
-import datasetHitTesting from '../i18n/en-US/dataset-hit-testing'
-import datasetPipeline from '../i18n/en-US/dataset-pipeline'
-import datasetSettings from '../i18n/en-US/dataset-settings'
-import education from '../i18n/en-US/education'
-import explore from '../i18n/en-US/explore'
-import layout from '../i18n/en-US/layout'
-import login from '../i18n/en-US/login'
-import oauth from '../i18n/en-US/oauth'
-import pipeline from '../i18n/en-US/pipeline'
-import plugin from '../i18n/en-US/plugin'
-import pluginTags from '../i18n/en-US/plugin-tags'
-import pluginTrigger from '../i18n/en-US/plugin-trigger'
-import register from '../i18n/en-US/register'
-import runLog from '../i18n/en-US/run-log'
-import share from '../i18n/en-US/share'
-import time from '../i18n/en-US/time'
-import tools from '../i18n/en-US/tools'
-import workflow from '../i18n/en-US/workflow'
+import appAnnotation from '../i18n/en-US/app-annotation.json'
+import appApi from '../i18n/en-US/app-api.json'
+import appDebug from '../i18n/en-US/app-debug.json'
+import appLog from '../i18n/en-US/app-log.json'
+import appOverview from '../i18n/en-US/app-overview.json'
+import app from '../i18n/en-US/app.json'
+import billing from '../i18n/en-US/billing.json'
+import common from '../i18n/en-US/common.json'
+import custom from '../i18n/en-US/custom.json'
+import datasetCreation from '../i18n/en-US/dataset-creation.json'
+import datasetDocuments from '../i18n/en-US/dataset-documents.json'
+import datasetHitTesting from '../i18n/en-US/dataset-hit-testing.json'
+import datasetPipeline from '../i18n/en-US/dataset-pipeline.json'
+import datasetSettings from '../i18n/en-US/dataset-settings.json'
+import dataset from '../i18n/en-US/dataset.json'
+import education from '../i18n/en-US/education.json'
+import explore from '../i18n/en-US/explore.json'
+import layout from '../i18n/en-US/layout.json'
+import login from '../i18n/en-US/login.json'
+import oauth from '../i18n/en-US/oauth.json'
+import pipeline from '../i18n/en-US/pipeline.json'
+import pluginTags from '../i18n/en-US/plugin-tags.json'
+import pluginTrigger from '../i18n/en-US/plugin-trigger.json'
+import plugin from '../i18n/en-US/plugin.json'
+import register from '../i18n/en-US/register.json'
+import runLog from '../i18n/en-US/run-log.json'
+import share from '../i18n/en-US/share.json'
+import time from '../i18n/en-US/time.json'
+import tools from '../i18n/en-US/tools.json'
+import workflow from '../i18n/en-US/workflow.json'
 
 // @keep-sorted
 export const messagesEN = {
@@ -87,10 +87,10 @@ export type Namespace = KebabCase<KeyPrefix>
 const requireSilent = async (lang: Locale, namespace: Namespace) => {
   let res
   try {
-    res = (await import(`../i18n/${lang}/${namespace}`)).default
+    res = (await import(`../i18n/${lang}/${namespace}.json`)).default
   }
   catch {
-    res = (await import(`../i18n/en-US/${namespace}`)).default
+    res = (await import(`../i18n/en-US/${namespace}.json`)).default
   }
 
   return res

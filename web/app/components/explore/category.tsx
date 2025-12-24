@@ -4,7 +4,7 @@ import type { AppCategory } from '@/models/explore'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ThumbsUp } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import exploreI18n from '@/i18n/en-US/explore'
+import exploreI18n from '@/i18n/en-US/explore.json'
 import { cn } from '@/utils/classnames'
 
 const categoryI18n = exploreI18n.category

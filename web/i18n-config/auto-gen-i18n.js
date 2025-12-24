@@ -1,14 +1,9 @@
 import fs from 'node:fs'
-import { createRequire } from 'node:module'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
-import vm from 'node:vm'
 import { translate } from 'bing-translate-api'
-import { generateCode, loadFile, parseModule } from 'magicast'
-import { transpile } from 'typescript'
 import data from './languages'
 
-const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
@@ -255,45 +250,22 @@ async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
   return { skipped: skippedKeys, translated: translatedKeys }
 }
 async function autoGenTrans(fileName, toGenLanguage, isDryRun = false) {
-  const fullKeyFilePath = path.resolve(__dirname, i18nFolder, targetLanguage, `${fileName}.ts`)
-  const toGenLanguageFilePath = path.resolve(__dirname, i18nFolder, toGenLanguage, `${fileName}.ts`)
+  const fullKeyFilePath = path.resolve(__dirname, i18nFolder, targetLanguage, `${fileName}.json`)
+  const toGenLanguageFilePath = path.resolve(__dirname, i18nFolder, toGenLanguage, `${fileName}.json`)
 
   try {
     const content = fs.readFileSync(fullKeyFilePath, 'utf8')
-
-    // Create a safer module environment for vm
-    const moduleExports = {}
-    const context = {
-      exports: moduleExports,
-      module: { exports: moduleExports },
-      require,
-      console,
-      __filename: fullKeyFilePath,
-      __dirname: path.dirname(fullKeyFilePath),
-    }
-
-    // Use vm.runInNewContext instead of eval for better security
-    vm.runInNewContext(transpile(content), context)
-
-    const fullKeyContent = moduleExports.default || moduleExports
+    const fullKeyContent = JSON.parse(content)
 
     if (!fullKeyContent || typeof fullKeyContent !== 'object')
       throw new Error(`Failed to extract translation object from ${fullKeyFilePath}`)
 
-    // if toGenLanguageFilePath is not exist, create it
-    if (!fs.existsSync(toGenLanguageFilePath)) {
-      fs.writeFileSync(toGenLanguageFilePath, `const translation = {
-}
-
-export default translation
-`)
+    // if toGenLanguageFilePath does not exist, create it with empty object
+    let toGenOutPut = {}
+    if (fs.existsSync(toGenLanguageFilePath)) {
+      const existingContent = fs.readFileSync(toGenLanguageFilePath, 'utf8')
+      toGenOutPut = JSON.parse(existingContent)
     }
-    // To keep object format and format it for magicast to work: const translation = { ... } => export default {...}
-    const readContent = await loadFile(toGenLanguageFilePath)
-    const { code: toGenContent } = generateCode(readContent)
-
-    const mod = await parseModule(`export default ${toGenContent.replace('export default translation', '').replace('const translation = ', '')}`)
-    const toGenOutPut = mod.exports.default
 
     console.log(`\n🌍 Processing ${fileName} for ${toGenLanguage}...`)
     const result = await translateMissingKeyDeeply(fullKeyContent, toGenOutPut, toGenLanguage)
@@ -310,11 +282,7 @@ export default translation
         console.log(`    ... and ${result.skipped.length - 5} more`)
     }
 
-    const { code } = generateCode(mod)
-    const res = `const translation =${code.replace('export default', '')}
-
-export default translation
-`.replace(/,\n\n/g, ',\n').replace('};', '}')
+    const res = `${JSON.stringify(toGenOutPut, null, 2)}\n`
 
     if (!isDryRun) {
       fs.writeFileSync(toGenLanguageFilePath, res)
@@ -361,8 +329,8 @@ async function main() {
 
   const filesInEn = fs
     .readdirSync(path.resolve(__dirname, i18nFolder, targetLanguage))
-    .filter(file => /\.ts$/.test(file)) // Only process .ts files
-    .map(file => file.replace(/\.ts$/, ''))
+    .filter(file => /\.json$/.test(file)) // Only process .json files
+    .map(file => file.replace(/\.json$/, ''))
 
   // Filter by target files if specified
   const filesToProcess = targetFiles.length > 0 ? filesInEn.filter(f => targetFiles.includes(f)) : filesInEn
