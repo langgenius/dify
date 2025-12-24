@@ -79,7 +79,7 @@ const ComponentUI: FC<Props> = ({
     else
       onRename(newPayload, varName)
     hideEditModal()
-  }, [onChange, varName])
+  }, [hideEditModal, onChange, onRename, varName])
 
   return (
     <div

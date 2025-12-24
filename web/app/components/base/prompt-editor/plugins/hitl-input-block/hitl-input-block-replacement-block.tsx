@@ -45,7 +45,7 @@ const HITLInputReplacementBlock = ({
       onFormInputItemRename,
       onFormInputItemRemove!,
     ))
-  }, [nodeTitle, formInputs, onFormInputsChange, onFormInputItemRemove])
+  }, [nodeId, nodeTitle, formInputs, onFormInputsChange, onFormInputItemRename, onFormInputItemRemove])
 
   const getMatch = useCallback((text: string) => {
     const matchArr = REGEX.exec(text)
