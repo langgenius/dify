@@ -3,16 +3,13 @@ import type {
   ChatConversationFullDetailResponse,
   ChatConversationsRequest,
   ChatConversationsResponse,
-  ChatMessagesRequest,
-  ChatMessagesResponse,
   CompletionConversationFullDetailResponse,
   CompletionConversationsRequest,
   CompletionConversationsResponse,
   WorkflowLogsResponse,
 } from '@/models/log'
-import { useQuery, useQueryClient } from '@tanstack/react-query'
+import { useQuery } from '@tanstack/react-query'
 import { get } from './base'
-import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'log'
 
@@ -24,15 +21,6 @@ export const useAnnotationsCount = (appId: string) => {
     queryFn: () => get<AnnotationsCountResponse>(`/apps/${appId}/annotations/count`),
     enabled: !!appId,
   })
-}
-
-export const useInvalidateAnnotationsCount = () => {
-  const queryClient = useQueryClient()
-  return (appId: string) => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'annotations-count', appId],
-    })
-  }
 }
 
 // ============ Chat Conversations ============
@@ -50,15 +38,6 @@ export const useChatConversations = ({ appId, params }: ChatConversationsParams)
   })
 }
 
-export const useInvalidateChatConversations = () => {
-  const queryClient = useQueryClient()
-  return (appId: string) => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'chat-conversations', appId],
-    })
-  }
-}
-
 // ============ Completion Conversations ============
 
 type CompletionConversationsParams = {
@@ -74,15 +53,6 @@ export const useCompletionConversations = ({ appId, params }: CompletionConversa
   })
 }
 
-export const useInvalidateCompletionConversations = () => {
-  const queryClient = useQueryClient()
-  return (appId: string) => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'completion-conversations', appId],
-    })
-  }
-}
-
 // ============ Chat Conversation Detail ============
 
 export const useChatConversationDetail = (appId?: string, conversationId?: string) => {
@@ -93,10 +63,6 @@ export const useChatConversationDetail = (appId?: string, conversationId?: strin
   })
 }
 
-export const useInvalidateChatConversationDetail = () => {
-  return useInvalid([NAME_SPACE, 'chat-conversation-detail'])
-}
-
 // ============ Completion Conversation Detail ============
 
 export const useCompletionConversationDetail = (appId?: string, conversationId?: string) => {
@@ -104,25 +70,6 @@ export const useCompletionConversationDetail = (appId?: string, conversationId?:
     queryKey: [NAME_SPACE, 'completion-conversation-detail', appId, conversationId],
     queryFn: () => get<CompletionConversationFullDetailResponse>(`/apps/${appId}/completion-conversations/${conversationId}`),
     enabled: !!appId && !!conversationId,
-  })
-}
-
-export const useInvalidateCompletionConversationDetail = () => {
-  const queryClient = useQueryClient()
-  return (appId: string, conversationId: string) => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'completion-conversation-detail', appId, conversationId],
-    })
-  }
-}
-
-// ============ Chat Messages ============
-
-export const useChatMessages = (appId?: string, params?: ChatMessagesRequest) => {
-  return useQuery<ChatMessagesResponse>({
-    queryKey: [NAME_SPACE, 'chat-messages', appId, params],
-    queryFn: () => get<ChatMessagesResponse>(`/apps/${appId}/chat-messages`, { params }),
-    enabled: !!appId && !!params?.conversation_id,
   })
 }
 
@@ -139,13 +86,4 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
     queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-app-logs`, { params }),
     enabled: !!appId,
   })
-}
-
-export const useInvalidateWorkflowLogs = () => {
-  const queryClient = useQueryClient()
-  return (appId: string) => {
-    queryClient.invalidateQueries({
-      queryKey: [NAME_SPACE, 'workflow-logs', appId],
-    })
-  }
 }
