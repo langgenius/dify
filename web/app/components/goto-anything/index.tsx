@@ -12,6 +12,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
+import { VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
@@ -158,6 +159,13 @@ const GotoAnything: FC<Props> = ({
 
     switch (result.type) {
       case 'command': {
+        if (result.data.command === 'workflow.vibe') {
+          if (typeof document !== 'undefined') {
+            document.dispatchEvent(new CustomEvent(VIBE_COMMAND_EVENT, { detail: { dsl: result.data.args?.dsl } }))
+          }
+          break
+        }
+
         // Execute slash commands
         const action = Actions.slash
         action?.action?.(result)

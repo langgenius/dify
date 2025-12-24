@@ -165,6 +165,7 @@
 
 import type { ActionItem, SearchResult } from './types'
 import { appAction } from './app'
+import { bananaAction } from './banana'
 import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
 import { knowledgeAction } from './knowledge'
@@ -191,6 +192,7 @@ export const createActions = (isWorkflowPage: boolean, isRagPipelinePage: boolea
   else if (isWorkflowPage) {
     return {
       ...baseActions,
+      banana: bananaAction,
       node: workflowNodesAction,
     }
   }
@@ -205,6 +207,7 @@ export const Actions = {
   app: appAction,
   knowledge: knowledgeAction,
   plugin: pluginAction,
+  banana: bananaAction,
   node: workflowNodesAction,
 }
 
@@ -296,4 +299,4 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
 
 export * from './commands'
 export * from './types'
-export { appAction, knowledgeAction, pluginAction, workflowNodesAction }
+export { appAction, bananaAction, knowledgeAction, pluginAction, workflowNodesAction }
