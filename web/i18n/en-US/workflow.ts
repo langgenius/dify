@@ -560,6 +560,9 @@ const translation = {
           saveSchema: 'Please finish editing the current field before saving the schema',
         },
       },
+      tools: {
+        title: 'Tools',
+      },
     },
     knowledgeRetrieval: {
       queryVariable: 'Query Variable',
