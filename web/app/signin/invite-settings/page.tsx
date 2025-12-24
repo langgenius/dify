@@ -1,4 +1,5 @@
 'use client'
+import type { Locale } from '@/i18n-config'
 import { RiAccountCircleLine } from '@remixicon/react'
 import { noop } from 'lodash-es'
 import Link from 'next/link'
@@ -123,7 +124,7 @@ export default function InviteSettingsPage() {
               defaultValue={LanguagesSupported[0]}
               items={languages.filter(item => item.supported)}
               onSelect={(item) => {
-                setLanguage(item.value as string)
+                setLanguage(item.value as Locale)
               }}
             />
           </div>

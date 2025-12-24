@@ -36,13 +36,13 @@ const buildThemeCommands = (query: string, locale?: string): CommandSearchResult
   const q = query.toLowerCase()
   const list = THEME_ITEMS.filter(item =>
     !q
-    || i18n.t(item.titleKey, { lng: locale }).toLowerCase().includes(q)
+    || i18n.t(item.titleKey as any, { lng: locale }).toLowerCase().includes(q)
     || item.id.includes(q),
   )
   return list.map(item => ({
     id: item.id,
-    title: i18n.t(item.titleKey, { lng: locale }),
-    description: i18n.t(item.descKey, { lng: locale }),
+    title: i18n.t(item.titleKey as any, { lng: locale }),
+    description: i18n.t(item.descKey as any, { lng: locale }),
     type: 'command' as const,
     icon: (
       <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

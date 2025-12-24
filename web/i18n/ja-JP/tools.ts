@@ -15,6 +15,7 @@ const translation = {
   author: '著者：',
   auth: {
     authorized: '認証済み',
+    unauthorized: '未認証',
     setup: '使用するための認証を設定する',
     setupModalTitle: '認証の設定',
     setupModalTitleDescription: '資格情報を構成した後、ワークスペース内のすべてのメンバーがアプリケーションのオーケストレーション時にこのツールを使用できます。',

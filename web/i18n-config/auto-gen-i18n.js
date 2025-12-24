@@ -6,11 +6,11 @@ import vm from 'node:vm'
 import { translate } from 'bing-translate-api'
 import { generateCode, loadFile, parseModule } from 'magicast'
 import { transpile } from 'typescript'
+import data from './languages'
 
 const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
-const data = require('./languages.json')
 
 const targetLanguage = 'en-US'
 const i18nFolder = '../i18n' // Path to i18n folder relative to this script
@@ -117,8 +117,8 @@ Options:
   -h, --help        Show help
 
 Examples:
-  pnpm run auto-gen-i18n -- --file app common --lang zh-Hans ja-JP
-  pnpm run auto-gen-i18n -- --dry-run
+  pnpm run auto-gen-i18n --file app common --lang zh-Hans ja-JP
+  pnpm run auto-gen-i18n --dry-run
 `)
 }
 
