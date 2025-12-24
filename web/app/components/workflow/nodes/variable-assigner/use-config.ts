@@ -1,18 +1,18 @@
-import { useCallback, useRef, useState } from 'react'
-import { produce } from 'immer'
-import { useBoolean, useDebounceFn } from 'ahooks'
-import { v4 as uuid4 } from 'uuid'
 import type { ValueSelector, Var } from '../../types'
-import { VarType } from '../../types'
 import type { VarGroupItem, VariableAssignerNodeType } from './types'
-import { useGetAvailableVars } from './hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-
+import { useBoolean, useDebounceFn } from 'ahooks'
+import { produce } from 'immer'
+import { useCallback, useRef, useState } from 'react'
+import { v4 as uuid4 } from 'uuid'
 import {
   useNodesReadOnly,
   useWorkflow,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useInspectVarsCrud from '../../hooks/use-inspect-vars-crud'
+
+import { VarType } from '../../types'
+import { useGetAvailableVars } from './hooks'
 
 const useConfig = (id: string, payload: VariableAssignerNodeType) => {
   const {
@@ -165,7 +165,7 @@ const useConfig = (id: string, payload: VariableAssignerNodeType) => {
       })
       handleOutVarRenameChange(id, [id, inputs.advanced_settings.groups[index].group_name, 'output'], [id, name, 'output'])
       setInputs(newInputs)
-      if(!(id in oldNameRecord.current))
+      if (!(id in oldNameRecord.current))
         oldNameRecord.current[id] = inputs.advanced_settings.groups[index].group_name
       renameInspectNameWithDebounce(id, name)
     }

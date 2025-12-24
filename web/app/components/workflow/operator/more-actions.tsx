@@ -1,26 +1,26 @@
 import type { FC } from 'react'
+import { RiExportLine, RiMoreFill } from '@remixicon/react'
+import { toJpeg, toPng, toSvg } from 'html-to-image'
 import {
   memo,
   useCallback,
   useMemo,
   useState,
 } from 'react'
-import { useShallow } from 'zustand/react/shallow'
 import { useTranslation } from 'react-i18next'
-import { RiExportLine, RiMoreFill } from '@remixicon/react'
-import { toJpeg, toPng, toSvg } from 'html-to-image'
-import { useNodesReadOnly } from '../hooks'
-import TipPopup from './tip-popup'
-import { cn } from '@/utils/classnames'
+import { getNodesBounds, useReactFlow } from 'reactflow'
+import { useShallow } from 'zustand/react/shallow'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { getNodesBounds, useReactFlow } from 'reactflow'
-import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { useStore } from '@/app/components/workflow/store'
-import { useStore as useAppStore } from '@/app/components/app/store'
+import { cn } from '@/utils/classnames'
+import { useNodesReadOnly } from '../hooks'
+import TipPopup from './tip-popup'
 
 const MoreActions: FC = () => {
   const { t } = useTranslation()
@@ -38,7 +38,8 @@ const MoreActions: FC = () => {
   })))
 
   const crossAxisOffset = useMemo(() => {
-    if (maximizeCanvas) return 40
+    if (maximizeCanvas)
+      return 40
     return appSidebarExpand === 'expand' ? 188 : 40
   }, [appSidebarExpand, maximizeCanvas])
 
@@ -51,7 +52,8 @@ const MoreActions: FC = () => {
 
     setOpen(false)
     const flowElement = document.querySelector('.react-flow__viewport') as HTMLElement
-    if (!flowElement) return
+    if (!flowElement)
+      return
 
     try {
       let filename = appName || knowledgeName
@@ -197,58 +199,58 @@ const MoreActions: FC = () => {
               )}
               onClick={handleTrigger}
             >
-              <RiMoreFill className='h-4 w-4' />
+              <RiMoreFill className="h-4 w-4" />
             </div>
           </TipPopup>
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-10'>
-          <div className='min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg'>
-            <div className='p-1'>
-              <div className='flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary'>
-                <RiExportLine className='h-3 w-3' />
+        <PortalToFollowElemContent className="z-10">
+          <div className="min-w-[180px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur text-text-secondary shadow-lg">
+            <div className="p-1">
+              <div className="flex items-center gap-2 px-2 py-1 text-xs font-medium text-text-tertiary">
+                <RiExportLine className="h-3 w-3" />
                 {t('workflow.common.exportImage')}
               </div>
-              <div className='px-2 py-1 text-xs font-medium text-text-tertiary'>
+              <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
                 {t('workflow.common.currentView')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png')}
               >
                 {t('workflow.common.exportPNG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg')}
               >
                 {t('workflow.common.exportJPEG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg')}
               >
                 {t('workflow.common.exportSVG')}
               </div>
 
-              <div className='border-border-divider mx-2 my-1 border-t' />
+              <div className="border-border-divider mx-2 my-1 border-t" />
 
-              <div className='px-2 py-1 text-xs font-medium text-text-tertiary'>
+              <div className="px-2 py-1 text-xs font-medium text-text-tertiary">
                 {t('workflow.common.currentWorkflow')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('png', true)}
               >
                 {t('workflow.common.exportPNG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('jpeg', true)}
               >
                 {t('workflow.common.exportJPEG')}
               </div>
               <div
-                className='system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover'
+                className="system-md-regular flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
                 onClick={() => handleExportImage('svg', true)}
               >
                 {t('workflow.common.exportSVG')}

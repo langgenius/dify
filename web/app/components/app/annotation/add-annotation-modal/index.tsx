@@ -1,15 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { AnnotationItemBasic } from '../type'
-import EditItem, { EditItemType } from './edit-item'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
 import Drawer from '@/app/components/base/drawer-plus'
-import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
-import { useProviderContext } from '@/context/provider-context'
 import AnnotationFull from '@/app/components/billing/annotation-full'
+import { useProviderContext } from '@/context/provider-context'
+import EditItem, { EditItemType } from './edit-item'
+
 type Props = {
   isShow: boolean
   onHide: () => void
@@ -73,10 +75,10 @@ const AddAnnotationModal: FC<Props> = ({
       <Drawer
         isShow={isShow}
         onHide={onHide}
-        maxWidthClassName='!max-w-[480px]'
+        maxWidthClassName="!max-w-[480px]"
         title={t('appAnnotation.addModal.title') as string}
         body={(
-          <div className='space-y-6 p-6 pb-4'>
+          <div className="space-y-6 p-6 pb-4">
             <EditItem
               type={EditItemType.Query}
               content={question}
@@ -93,20 +95,20 @@ const AddAnnotationModal: FC<Props> = ({
           (
             <div>
               {isAnnotationFull && (
-                <div className='mb-4 mt-6 px-6'>
+                <div className="mb-4 mt-6 px-6">
                   <AnnotationFull />
                 </div>
               )}
-              <div className='system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary'>
+              <div className="system-sm-medium flex h-16 items-center justify-between rounded-bl-xl rounded-br-xl border-t border-divider-subtle bg-background-section-burn px-4 text-text-tertiary">
                 <div
-                  className='flex items-center space-x-2'
+                  className="flex items-center space-x-2"
                 >
-                  <Checkbox id='create-next-checkbox' checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
+                  <Checkbox id="create-next-checkbox" checked={isCreateNext} onCheck={() => setIsCreateNext(!isCreateNext)} />
                   <div>{t('appAnnotation.addModal.createNext')}</div>
                 </div>
-                <div className='mt-2 flex space-x-2'>
-                  <Button className='h-7 text-xs' onClick={onHide}>{t('common.operation.cancel')}</Button>
-                  <Button className='h-7 text-xs' variant='primary' onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('common.operation.add')}</Button>
+                <div className="mt-2 flex space-x-2">
+                  <Button className="h-7 text-xs" onClick={onHide}>{t('common.operation.cancel')}</Button>
+                  <Button className="h-7 text-xs" variant="primary" onClick={handleSave} loading={isSaving} disabled={isAnnotationFull}>{t('common.operation.add')}</Button>
                 </div>
               </div>
             </div>

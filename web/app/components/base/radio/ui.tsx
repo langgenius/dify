@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -31,7 +31,8 @@ const RadioUI: FC<Props> = ({
         className,
       )}
       onClick={(event) => {
-        if (disabled) return
+        if (disabled)
+          return
         onCheck?.(event)
       }}
     />

@@ -3,31 +3,31 @@ import i18n from 'i18next'
 import { camelCase } from 'lodash-es'
 import { initReactI18next } from 'react-i18next'
 
+import app from '../i18n/en-US/app'
 // Static imports for en-US (fallback language)
 import appAnnotation from '../i18n/en-US/app-annotation'
 import appApi from '../i18n/en-US/app-api'
 import appDebug from '../i18n/en-US/app-debug'
 import appLog from '../i18n/en-US/app-log'
 import appOverview from '../i18n/en-US/app-overview'
-import app from '../i18n/en-US/app'
 import billing from '../i18n/en-US/billing'
 import common from '../i18n/en-US/common'
 import custom from '../i18n/en-US/custom'
+import dataset from '../i18n/en-US/dataset'
 import datasetCreation from '../i18n/en-US/dataset-creation'
 import datasetDocuments from '../i18n/en-US/dataset-documents'
 import datasetHitTesting from '../i18n/en-US/dataset-hit-testing'
 import datasetPipeline from '../i18n/en-US/dataset-pipeline'
 import datasetSettings from '../i18n/en-US/dataset-settings'
-import dataset from '../i18n/en-US/dataset'
 import education from '../i18n/en-US/education'
 import explore from '../i18n/en-US/explore'
 import layout from '../i18n/en-US/layout'
 import login from '../i18n/en-US/login'
 import oauth from '../i18n/en-US/oauth'
 import pipeline from '../i18n/en-US/pipeline'
+import plugin from '../i18n/en-US/plugin'
 import pluginTags from '../i18n/en-US/plugin-tags'
 import pluginTrigger from '../i18n/en-US/plugin-trigger'
-import plugin from '../i18n/en-US/plugin'
 import register from '../i18n/en-US/register'
 import runLog from '../i18n/en-US/run-log'
 import share from '../i18n/en-US/share'
@@ -141,7 +141,8 @@ if (!i18n.isInitialized) {
 }
 
 export const changeLanguage = async (lng?: string) => {
-  if (!lng) return
+  if (!lng)
+    return
   if (!i18n.hasResourceBundle(lng, 'translation')) {
     const resource = await loadLangResources(lng)
     i18n.addResourceBundle(lng, 'translation', resource, true, true)

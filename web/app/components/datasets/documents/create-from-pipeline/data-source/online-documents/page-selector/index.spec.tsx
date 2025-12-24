@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import PageSelector from './index'
 import type { NotionPageTreeItem, NotionPageTreeMap } from './index'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import PageSelector from './index'
 import { recursivePushInParentDescendants } from './utils'
 
 // ==========================================

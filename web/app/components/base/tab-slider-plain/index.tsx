@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 type Option = {
@@ -35,7 +35,7 @@ const Item: FC<ItemProps> = ({
     >
       <div className={cn(isActive ? 'text-text-primary' : 'text-text-tertiary')}>{option.text}</div>
       {isActive && (
-        <div className='absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600'></div>
+        <div className="absolute bottom-0 left-0 right-0 h-0.5 bg-util-colors-blue-brand-blue-brand-600"></div>
       )}
     </div>
   )

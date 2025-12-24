@@ -6,7 +6,7 @@
  */
 
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 
 // Mock environment variables before importing constants
 const originalEnv = process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
@@ -35,11 +35,16 @@ function restoreEnvironment() {
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => {
-      if (key.includes('MaxParallelismTitle')) return 'Max Parallelism'
-      if (key.includes('MaxParallelismDesc')) return 'Maximum number of parallel executions'
-      if (key.includes('parallelMode')) return 'Parallel Mode'
-      if (key.includes('parallelPanelDesc')) return 'Enable parallel execution'
-      if (key.includes('errorResponseMethod')) return 'Error Response Method'
+      if (key.includes('MaxParallelismTitle'))
+        return 'Max Parallelism'
+      if (key.includes('MaxParallelismDesc'))
+        return 'Maximum number of parallel executions'
+      if (key.includes('parallelMode'))
+        return 'Parallel Mode'
+      if (key.includes('parallelPanelDesc'))
+        return 'Enable parallel execution'
+      if (key.includes('errorResponseMethod'))
+        return 'Error Response Method'
       return key
     },
   }),

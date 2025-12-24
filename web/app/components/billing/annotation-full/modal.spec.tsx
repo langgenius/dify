@@ -5,7 +5,7 @@ vi.mock('./usage', () => ({
   __esModule: true,
   default: (props: { className?: string }) => {
     return (
-      <div data-testid='usage-component' data-classname={props.className ?? ''}>
+      <div data-testid="usage-component" data-classname={props.className ?? ''}>
         usage
       </div>
     )
@@ -18,7 +18,7 @@ vi.mock('../upgrade-btn', () => ({
   default: (props: { loc?: string }) => {
     mockUpgradeBtnProps = props
     return (
-      <button type='button' data-testid='upgrade-btn'>
+      <button type="button" data-testid="upgrade-btn">
         {props.loc}
       </button>
     )
@@ -33,7 +33,7 @@ type ModalSnapshot = {
 let mockModalProps: ModalSnapshot | null = null
 vi.mock('../../base/modal', () => ({
   __esModule: true,
-  default: ({ isShow, children, onClose, closable, className }: { isShow: boolean; children: React.ReactNode; onClose: () => void; closable?: boolean; className?: string }) => {
+  default: ({ isShow, children, onClose, closable, className }: { isShow: boolean, children: React.ReactNode, onClose: () => void, closable?: boolean, className?: string }) => {
     mockModalProps = {
       isShow,
       closable,
@@ -42,9 +42,9 @@ vi.mock('../../base/modal', () => ({
     if (!isShow)
       return null
     return (
-      <div data-testid='annotation-full-modal' data-classname={className ?? ''}>
+      <div data-testid="annotation-full-modal" data-classname={className ?? ''}>
         {closable && (
-          <button type='button' data-testid='mock-modal-close' onClick={onClose}>
+          <button type="button" data-testid="mock-modal-close" onClick={onClose}>
             close
           </button>
         )}

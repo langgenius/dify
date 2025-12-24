@@ -1,24 +1,25 @@
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-
 import type { HttpMethod, WebhookTriggerNodeType } from './types'
-import useConfig from './use-config'
-import ParameterTable from './components/parameter-table'
-import HeaderTable from './components/header-table'
-import ParagraphInput from './components/paragraph-input'
-import { OutputVariablesContent } from './utils/render-output-vars'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import InputWithCopy from '@/app/components/base/input-with-copy'
+
+import copy from 'copy-to-clipboard'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { InputNumber } from '@/app/components/base/input-number'
+import InputWithCopy from '@/app/components/base/input-with-copy'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
-import copy from 'copy-to-clipboard'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import OutputVars from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 import { isPrivateOrLocalAddress } from '@/utils/urlValidation'
+import HeaderTable from './components/header-table'
+import ParagraphInput from './components/paragraph-input'
+import ParameterTable from './components/parameter-table'
+import useConfig from './use-config'
+import { OutputVariablesContent } from './utils/render-output-vars'
 
 const i18nPrefix = 'workflow.nodes.triggerWebhook'
 
@@ -70,8 +71,8 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
   }, [readOnly, inputs.webhook_url, generateWebhookUrl])
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-3 pt-2'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-3 pt-2">
         {/* Webhook URL Section */}
         <Field title={t(`${i18nPrefix}.webhookUrl`)}>
           <div className="space-y-1">
@@ -225,7 +226,7 @@ const Panel: FC<NodePanelProps<WebhookTriggerNodeType>> = ({
 
       <Split />
 
-      <div className=''>
+      <div className="">
         <OutputVars
           collapsed={outputVarsCollapsed}
           onCollapse={setOutputVarsCollapsed}

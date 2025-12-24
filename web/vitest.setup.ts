@@ -1,6 +1,6 @@
-import '@testing-library/jest-dom/vitest'
 import { cleanup } from '@testing-library/react'
 import { mockAnimationsApi, mockResizeObserver } from 'jsdom-testing-mocks'
+import '@testing-library/jest-dom/vitest'
 
 mockResizeObserver()
 

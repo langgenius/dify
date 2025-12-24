@@ -1,7 +1,7 @@
-import { BlockEnum } from '../../types'
 import type { NodeDefault } from '../../types'
-import { genNodeMetaData } from '../../utils'
 import type { WebhookTriggerNodeType } from './types'
+import { BlockEnum } from '../../types'
+import { genNodeMetaData } from '../../utils'
 import { isValidParameterType } from './utils/parameter-type-utils'
 import { createWebhookRawVariable } from './utils/raw-variable'
 

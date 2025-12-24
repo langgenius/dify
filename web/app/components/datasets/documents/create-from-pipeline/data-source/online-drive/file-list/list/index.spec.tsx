@@ -1,9 +1,9 @@
 import type { Mock } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import List from './index'
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { OnlineDriveFileType } from '@/models/pipeline'
+import List from './index'
 
 // ==========================================
 // Mock Modules
@@ -1086,35 +1086,34 @@ describe('List', () => {
       { isLoading: false, fileCount: 0, keywords: '', expectedState: 'empty-folder' },
       { isLoading: false, fileCount: 0, keywords: 'search', expectedState: 'empty-search' },
       { isLoading: false, fileCount: 5, keywords: '', expectedState: 'file-list' },
-    ])('should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords',
-      ({ isLoading, fileCount, keywords, expectedState }) => {
-        // Arrange
-        const fileList = createMockFileList(fileCount)
-        const props = createDefaultProps({ fileList, isLoading, keywords })
+    ])('should render $expectedState when isLoading=$isLoading, fileCount=$fileCount, keywords=$keywords', ({ isLoading, fileCount, keywords, expectedState }) => {
+      // Arrange
+      const fileList = createMockFileList(fileCount)
+      const props = createDefaultProps({ fileList, isLoading, keywords })
 
-        // Act
-        render(<List {...props} />)
+      // Act
+      render(<List {...props} />)
 
-        // Assert
-        switch (expectedState) {
-          case 'all-loading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
-            break
-          case 'partial-loading':
-            expect(screen.getByRole('status')).toBeInTheDocument()
-            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-            break
-          case 'empty-folder':
-            expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
-            break
-          case 'empty-search':
-            expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
-            break
-          case 'file-list':
-            expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
-            break
-        }
-      })
+      // Assert
+      switch (expectedState) {
+        case 'all-loading':
+          expect(screen.getByRole('status')).toBeInTheDocument()
+          break
+        case 'partial-loading':
+          expect(screen.getByRole('status')).toBeInTheDocument()
+          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+          break
+        case 'empty-folder':
+          expect(screen.getByTestId('empty-folder')).toBeInTheDocument()
+          break
+        case 'empty-search':
+          expect(screen.getByTestId('empty-search-result')).toBeInTheDocument()
+          break
+        case 'file-list':
+          expect(screen.getByTestId('item-file-1')).toBeInTheDocument()
+          break
+      }
+    })
 
     it.each([
       { selectedCount: 0, expectedSelected: [] },
@@ -1298,7 +1297,7 @@ describe('EmptySearchResult', () => {
 // ==========================================
 describe('FileIcon', () => {
   // Get real component for testing
-  type FileIconProps = { type: OnlineDriveFileType; fileName: string; size?: 'sm' | 'md' | 'lg' | 'xl'; className?: string }
+  type FileIconProps = { type: OnlineDriveFileType, fileName: string, size?: 'sm' | 'md' | 'lg' | 'xl', className?: string }
   let ActualFileIcon: React.ComponentType<FileIconProps>
 
   beforeAll(async () => {
@@ -1757,7 +1756,7 @@ describe('utils', () => {
   let FileAppearanceTypeEnum: Record<string, string>
 
   beforeAll(async () => {
-    const utils = await vi.importActual<{ getFileExtension: typeof getFileExtension; getFileType: typeof getFileType }>('./utils')
+    const utils = await vi.importActual<{ getFileExtension: typeof getFileExtension, getFileType: typeof getFileType }>('./utils')
     const types = await vi.importActual<{ FileAppearanceTypeEnum: typeof FileAppearanceTypeEnum }>('@/app/components/base/file-uploader/types')
     getFileExtension = utils.getFileExtension
     getFileType = utils.getFileType

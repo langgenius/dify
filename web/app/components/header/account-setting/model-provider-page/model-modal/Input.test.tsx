@@ -1,7 +1,7 @@
 import { render } from '@testing-library/react'
 import Input from './Input'
 
-test('Input renders correctly as password type with no autocomplete', () => {
+it('Input renders correctly as password type with no autocomplete', () => {
   const { asFragment, getByPlaceholderText } = render(
     <Input
       type="password"

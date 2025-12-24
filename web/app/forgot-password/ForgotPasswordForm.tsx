@@ -1,23 +1,24 @@
 'use client'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { InitValidateStatusResponse } from '@/models/common'
+import { zodResolver } from '@hookform/resolvers/zod'
 
 import { useRouter } from 'next/navigation'
 
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useForm } from 'react-hook-form'
+import { useTranslation } from 'react-i18next'
 import { z } from 'zod'
-import { zodResolver } from '@hookform/resolvers/zod'
-import Loading from '../components/base/loading'
-import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
-import { basePath } from '@/utils/var'
-
 import {
   fetchInitValidateStatus,
   fetchSetupStatus,
   sendForgotPasswordEmail,
 } from '@/service/common'
-import type { InitValidateStatusResponse } from '@/models/common'
+import { basePath } from '@/utils/var'
+
+import Input from '../components/base/input'
+import Loading from '../components/base/loading'
 
 const accountFormSchema = z.object({
   email: z
@@ -81,42 +82,46 @@ const ForgotPasswordForm = () => {
   return (
     loading
       ? <Loading />
-      : <>
-        <div className="sm:mx-auto sm:w-full sm:max-w-md">
-          <h2 className="text-[32px] font-bold text-text-primary">
-            {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
-          </h2>
-          <p className='mt-1 text-sm text-text-secondary'>
-            {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
-          </p>
-        </div>
-        <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
-          <div className="relative">
-            <form>
-              {!isEmailSent && (
-                <div className='mb-5'>
-                  <label htmlFor="email"
-                    className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                    {t('login.email')}
-                  </label>
-                  <div className="mt-1">
-                    <Input
-                      {...register('email')}
-                      placeholder={t('login.emailPlaceholder') || ''}
-                    />
-                    {errors.email && <span className='text-sm text-red-400'>{t(`${errors.email?.message}`)}</span>}
+      : (
+          <>
+            <div className="sm:mx-auto sm:w-full sm:max-w-md">
+              <h2 className="text-[32px] font-bold text-text-primary">
+                {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
+              </h2>
+              <p className="mt-1 text-sm text-text-secondary">
+                {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
+              </p>
+            </div>
+            <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
+              <div className="relative">
+                <form>
+                  {!isEmailSent && (
+                    <div className="mb-5">
+                      <label
+                        htmlFor="email"
+                        className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
+                      >
+                        {t('login.email')}
+                      </label>
+                      <div className="mt-1">
+                        <Input
+                          {...register('email')}
+                          placeholder={t('login.emailPlaceholder') || ''}
+                        />
+                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}`)}</span>}
+                      </div>
+                    </div>
+                  )}
+                  <div>
+                    <Button variant="primary" className="w-full" onClick={handleSendResetPasswordClick}>
+                      {isEmailSent ? t('login.backToSignIn') : t('login.sendResetLink')}
+                    </Button>
                   </div>
-                </div>
-              )}
-              <div>
-                <Button variant='primary' className='w-full' onClick={handleSendResetPasswordClick}>
-                  {isEmailSent ? t('login.backToSignIn') : t('login.sendResetLink')}
-                </Button>
+                </form>
               </div>
-            </form>
-          </div>
-        </div>
-      </>
+            </div>
+          </>
+        )
   )
 }
 

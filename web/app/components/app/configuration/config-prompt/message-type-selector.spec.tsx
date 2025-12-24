@@ -1,7 +1,7 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import MessageTypeSelector from './message-type-selector'
+import * as React from 'react'
 import { PromptRole } from '@/models/debug'
+import MessageTypeSelector from './message-type-selector'
 
 describe('MessageTypeSelector', () => {
   beforeEach(() => {

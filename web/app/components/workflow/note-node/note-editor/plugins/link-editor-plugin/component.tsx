@@ -1,27 +1,27 @@
 import {
-  memo,
-  useEffect,
-  useState,
-} from 'react'
-import { escape } from 'lodash-es'
-import {
-  FloatingPortal,
   flip,
+  FloatingPortal,
   offset,
   shift,
   useFloating,
 } from '@floating-ui/react'
-import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
 import {
   RiEditLine,
   RiExternalLinkLine,
   RiLinkUnlinkM,
 } from '@remixicon/react'
+import { useClickAway } from 'ahooks'
+import { escape } from 'lodash-es'
+import {
+  memo,
+  useEffect,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { cn } from '@/utils/classnames'
 import { useStore } from '../../store'
 import { useLink } from './hooks'
-import { cn } from '@/utils/classnames'
-import Button from '@/app/components/base/button'
 
 type LinkEditorComponentProps = {
   containerElement: HTMLDivElement | null
@@ -80,15 +80,15 @@ const LinkEditorComponent = ({
                 !linkOperatorShow && (
                   <>
                     <input
-                      className='mr-0.5 h-6 w-[196px] appearance-none rounded-sm bg-transparent p-1 text-[13px] text-components-input-text-filled outline-none'
+                      className="mr-0.5 h-6 w-[196px] appearance-none rounded-sm bg-transparent p-1 text-[13px] text-components-input-text-filled outline-none"
                       value={url}
                       onChange={e => setUrl(e.target.value)}
                       placeholder={t('workflow.nodes.note.editor.enterUrl') || ''}
                       autoFocus
                     />
                     <Button
-                      variant='primary'
-                      size='small'
+                      variant="primary"
+                      size="small"
                       disabled={!url}
                       onClick={() => handleSaveLink(url)}
                     >
@@ -101,38 +101,38 @@ const LinkEditorComponent = ({
                 linkOperatorShow && (
                   <>
                     <a
-                      className='flex h-6 items-center rounded-md px-2 hover:bg-state-base-hover'
+                      className="flex h-6 items-center rounded-md px-2 hover:bg-state-base-hover"
                       href={escape(url)}
-                      target='_blank'
-                      rel='noreferrer'
+                      target="_blank"
+                      rel="noreferrer"
                     >
-                      <RiExternalLinkLine className='mr-1 h-3 w-3' />
-                      <div className='mr-1'>
+                      <RiExternalLinkLine className="mr-1 h-3 w-3" />
+                      <div className="mr-1">
                         {t('workflow.nodes.note.editor.openLink')}
                       </div>
                       <div
                         title={escape(url)}
-                        className='max-w-[140px] truncate text-text-accent'
+                        className="max-w-[140px] truncate text-text-accent"
                       >
                         {escape(url)}
                       </div>
                     </a>
-                    <div className='mx-1 h-3.5 w-[1px] bg-divider-regular'></div>
+                    <div className="mx-1 h-3.5 w-[1px] bg-divider-regular"></div>
                     <div
-                      className='mr-0.5 flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover'
+                      className="mr-0.5 flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={(e) => {
                         e.stopPropagation()
                         setLinkOperatorShow(false)
                       }}
                     >
-                      <RiEditLine className='mr-1 h-3 w-3' />
+                      <RiEditLine className="mr-1 h-3 w-3" />
                       {t('common.operation.edit')}
                     </div>
                     <div
-                      className='flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover'
+                      className="flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={handleUnlink}
                     >
-                      <RiLinkUnlinkM className='mr-1 h-3 w-3' />
+                      <RiLinkUnlinkM className="mr-1 h-3 w-3" />
                       {t('workflow.nodes.note.editor.unlink')}
                     </div>
                   </>

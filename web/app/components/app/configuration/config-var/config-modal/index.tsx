@@ -1,35 +1,36 @@
 'use client'
 import type { ChangeEvent, FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import type { Item as SelectItem } from './type-select'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { produce } from 'immer'
-import ModalFoot from '../modal-foot'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Checkbox from '@/app/components/base/checkbox'
+import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
+import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
+import { SimpleSelect } from '@/app/components/base/select'
+import Textarea from '@/app/components/base/textarea'
+import Toast from '@/app/components/base/toast'
+import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
+import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
+import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { DEFAULT_VALUE_MAX_LEN } from '@/config'
+import ConfigContext from '@/context/debug-configuration'
+import { AppModeEnum, TransferMethod } from '@/types/app'
+import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
 import ConfigSelect from '../config-select'
 import ConfigString from '../config-string'
-import Field from './field'
-import Input from '@/app/components/base/input'
-import Toast from '@/app/components/base/toast'
-import { checkKeys, getNewVarInWorkflow, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var'
-import ConfigContext from '@/context/debug-configuration'
-import type { InputVar, MoreInfo, UploadFileSetting } from '@/app/components/workflow/types'
-import Modal from '@/app/components/base/modal'
-import { ChangeType, InputVarType, SupportUploadFileTypes } from '@/app/components/workflow/types'
-import FileUploadSetting from '@/app/components/workflow/nodes/_base/components/file-upload-setting'
-import Checkbox from '@/app/components/base/checkbox'
-import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
-import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import type { Item as SelectItem } from './type-select'
-import TypeSelector from './type-select'
-import { SimpleSelect } from '@/app/components/base/select'
-import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import ModalFoot from '../modal-foot'
 import { jsonConfigPlaceHolder, jsonObjectWrap } from './config'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import Textarea from '@/app/components/base/textarea'
-import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
-import { AppModeEnum, TransferMethod } from '@/types/app'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import Field from './field'
+import TypeSelector from './type-select'
 
 const TEXT_MAX_LENGTH = 256
 const CHECKBOX_DEFAULT_TRUE_VALUE = 'true'
@@ -156,20 +157,24 @@ const ConfigModal: FC<IConfigModalProps> = ({
       name: t('appDebug.variableConfig.checkbox'),
       value: InputVarType.checkbox,
     },
-    ...(supportFile ? [
-      {
-        name: t('appDebug.variableConfig.single-file'),
-        value: InputVarType.singleFile,
-      },
-      {
-        name: t('appDebug.variableConfig.multi-files'),
-        value: InputVarType.multiFiles,
-      },
-    ] : []),
-    ...((!isBasicApp && isSupportJSON) ? [{
-      name: t('appDebug.variableConfig.json'),
-      value: InputVarType.jsonObject,
-    }] : []),
+    ...(supportFile
+      ? [
+          {
+            name: t('appDebug.variableConfig.single-file'),
+            value: InputVarType.singleFile,
+          },
+          {
+            name: t('appDebug.variableConfig.multi-files'),
+            value: InputVarType.multiFiles,
+          },
+        ]
+      : []),
+    ...((!isBasicApp && isSupportJSON)
+      ? [{
+          name: t('appDebug.variableConfig.json'),
+          value: InputVarType.jsonObject,
+        }]
+      : []),
   ]
 
   const handleTypeChange = useCallback((item: SelectItem) => {
@@ -224,9 +229,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const moreInfo = tempPayload.variable === payload?.variable
       ? undefined
       : {
-        type: ChangeType.changeVarName,
-        payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
-      }
+          type: ChangeType.changeVarName,
+          payload: { beforeKey: payload?.variable || '', afterKey: tempPayload.variable },
+        }
 
     const isVariableNameValid = checkVariableName(tempPayload.variable)
     if (!isVariableNameValid)
@@ -283,8 +288,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
       isShow={isShow}
       onClose={onClose}
     >
-      <div className='mb-8' ref={modalRef} tabIndex={-1}>
-        <div className='space-y-2'>
+      <div className="mb-8" ref={modalRef} tabIndex={-1}>
+        <div className="space-y-2">
           <Field title={t('appDebug.variableConfig.fieldType')}>
             <TypeSelector value={type} items={selectOptions} onSelect={handleTypeChange} />
           </Field>
@@ -425,22 +430,22 @@ const ConfigModal: FC<IConfigModalProps> = ({
                 value={jsonSchemaStr}
                 onChange={handleJSONSchemaChange}
                 noWrapper
-                className='bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1'
+                className="bg h-[80px] overflow-y-auto rounded-[10px] bg-components-input-bg-normal p-1"
                 placeholder={
-                  <div className='whitespace-pre'>{jsonConfigPlaceHolder}</div>
+                  <div className="whitespace-pre">{jsonConfigPlaceHolder}</div>
                 }
               />
             </Field>
           )}
 
-          <div className='!mt-5 flex h-6 items-center space-x-2'>
+          <div className="!mt-5 flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
-            <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.required')}</span>
+            <span className="system-sm-semibold text-text-secondary">{t('appDebug.variableConfig.required')}</span>
           </div>
 
-          <div className='!mt-5 flex h-6 items-center space-x-2'>
+          <div className="!mt-5 flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => handlePayloadChange('hide')(!tempPayload.hide)} />
-            <span className='system-sm-semibold text-text-secondary'>{t('appDebug.variableConfig.hide')}</span>
+            <span className="system-sm-semibold text-text-secondary">{t('appDebug.variableConfig.hide')}</span>
           </div>
         </div>
       </div>

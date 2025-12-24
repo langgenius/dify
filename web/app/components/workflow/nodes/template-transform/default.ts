@@ -1,8 +1,9 @@
 import type { NodeDefault } from '../../types'
 import type { TemplateTransformNodeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+
 const i18nPrefix = 'workflow.errorMsg'
 
 const metaData = genNodeMetaData({

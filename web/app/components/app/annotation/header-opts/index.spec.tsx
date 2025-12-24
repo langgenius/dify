@@ -1,16 +1,16 @@
-import * as React from 'react'
+import type { ComponentProps } from 'react'
+import type { AnnotationItemBasic } from '../type'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ComponentProps } from 'react'
-import HeaderOptions from './index'
+import * as React from 'react'
 import I18NContext from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
-import type { AnnotationItemBasic } from '../type'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
+import HeaderOptions from './index'
 
 vi.mock('@headlessui/react', () => {
-  type PopoverContextValue = { open: boolean; setOpen: (open: boolean) => void }
-  type MenuContextValue = { open: boolean; setOpen: (open: boolean) => void }
+  type PopoverContextValue = { open: boolean, setOpen: (open: boolean) => void }
+  type MenuContextValue = { open: boolean, setOpen: (open: boolean) => void }
   const PopoverContext = React.createContext<PopoverContextValue | null>(null)
   const MenuContext = React.createContext<MenuContextValue | null>(null)
 
@@ -24,7 +24,7 @@ vi.mock('@headlessui/react', () => {
     )
   }
 
-  const PopoverButton = React.forwardRef(({ onClick, children, ...props }: { onClick?: () => void; children?: React.ReactNode }, ref: React.Ref<HTMLButtonElement>) => {
+  const PopoverButton = React.forwardRef(({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }, ref: React.Ref<HTMLButtonElement>) => {
     const context = React.useContext(PopoverContext)
     const handleClick = () => {
       context?.setOpen(!context.open)
@@ -45,7 +45,8 @@ vi.mock('@headlessui/react', () => {
 
   const PopoverPanel = React.forwardRef(({ children, ...props }: { children: React.ReactNode | ((props: { close: () => void }) => React.ReactNode) }, ref: React.Ref<HTMLDivElement>) => {
     const context = React.useContext(PopoverContext)
-    if (!context?.open) return null
+    if (!context?.open)
+      return null
     const content = typeof children === 'function' ? children({ close: () => context.setOpen(false) }) : children
     return (
       <div ref={ref} {...props}>
@@ -64,7 +65,7 @@ vi.mock('@headlessui/react', () => {
     )
   }
 
-  const MenuButton = ({ onClick, children, ...props }: { onClick?: () => void; children?: React.ReactNode }) => {
+  const MenuButton = ({ onClick, children, ...props }: { onClick?: () => void, children?: React.ReactNode }) => {
     const context = React.useContext(MenuContext)
     const handleClick = () => {
       context?.setOpen(!context.open)
@@ -79,7 +80,8 @@ vi.mock('@headlessui/react', () => {
 
   const MenuItems = ({ children, ...props }: { children: React.ReactNode }) => {
     const context = React.useContext(MenuContext)
-    if (!context?.open) return null
+    if (!context?.open)
+      return null
     return (
       <div {...props}>
         {children}
@@ -88,25 +90,26 @@ vi.mock('@headlessui/react', () => {
   }
 
   return {
-    Dialog: ({ open, children, className }: { open?: boolean; children: React.ReactNode; className?: string }) => {
-      if (open === false) return null
+    Dialog: ({ open, children, className }: { open?: boolean, children: React.ReactNode, className?: string }) => {
+      if (open === false)
+        return null
       return (
         <div role="dialog" className={className}>
           {children}
         </div>
       )
     },
-    DialogBackdrop: ({ children, className, onClick }: { children?: React.ReactNode; className?: string; onClick?: () => void }) => (
+    DialogBackdrop: ({ children, className, onClick }: { children?: React.ReactNode, className?: string, onClick?: () => void }) => (
       <div className={className} onClick={onClick}>
         {children}
       </div>
     ),
-    DialogPanel: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+    DialogPanel: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
       <div className={className} {...props}>
         {children}
       </div>
     ),
-    DialogTitle: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+    DialogTitle: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
       <div className={className} {...props}>
         {children}
       </div>
@@ -117,7 +120,7 @@ vi.mock('@headlessui/react', () => {
     Menu,
     MenuButton,
     MenuItems,
-    Transition: ({ show = true, children }: { show?: boolean; children: React.ReactNode }) => (show ? <>{children}</> : null),
+    Transition: ({ show = true, children }: { show?: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
     TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
   }
 })

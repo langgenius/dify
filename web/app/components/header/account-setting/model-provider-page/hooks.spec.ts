@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import { renderHook } from '@testing-library/react'
-import { useLanguage } from './hooks'
 import { useContext } from 'use-context-selector'
+import { useLanguage } from './hooks'
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),

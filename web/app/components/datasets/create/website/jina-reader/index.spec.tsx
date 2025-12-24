@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import JinaReader from './index'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { checkJinaReaderTaskStatus, createJinaReaderTask } from '@/service/datasets'
 import { sleep } from '@/utils'
+import JinaReader from './index'
 
 // Mock external dependencies
 vi.mock('@/service/datasets', () => ({
@@ -748,8 +748,7 @@ describe('JinaReader', () => {
         current: 100,
         total: 100,
         data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
-        ),
+          createCrawlResultItem({ source_url: `https://example.com/${i}` })),
       })
 
       const props = createDefaultProps({
