@@ -67,11 +67,6 @@ jobs:
         working-directory: ./web
         run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
 
-      - name: Generate i18n type definitions
-        if: env.FILES_CHANGED == 'true'
-        working-directory: ./web
-        run: pnpm run gen:i18n-types
-
       - name: Create Pull Request
         if: env.FILES_CHANGED == 'true'
         uses: peter-evans/create-pull-request@v6

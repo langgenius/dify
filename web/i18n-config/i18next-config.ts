@@ -1,10 +1,9 @@
 'use client'
 import i18n from 'i18next'
-import { camelCase } from 'lodash-es'
+import { kebabCase } from 'lodash-es'
 import { initReactI18next } from 'react-i18next'
 
 import app from '../i18n/en-US/app'
-// Static imports for en-US (fallback language)
 import appAnnotation from '../i18n/en-US/app-annotation'
 import appApi from '../i18n/en-US/app-api'
 import appDebug from '../i18n/en-US/app-debug'
@@ -35,6 +34,40 @@ import time from '../i18n/en-US/time'
 import tools from '../i18n/en-US/tools'
 import workflow from '../i18n/en-US/workflow'
 
+// @keep-sorted
+export const messagesEN = {
+  app,
+  appAnnotation,
+  appApi,
+  appDebug,
+  appLog,
+  appOverview,
+  billing,
+  common,
+  custom,
+  dataset,
+  datasetCreation,
+  datasetDocuments,
+  datasetHitTesting,
+  datasetPipeline,
+  datasetSettings,
+  education,
+  explore,
+  layout,
+  login,
+  oauth,
+  pipeline,
+  plugin,
+  pluginTags,
+  pluginTrigger,
+  register,
+  runLog,
+  share,
+  time,
+  tools,
+  workflow,
+}
+
 const requireSilent = async (lang: string, namespace: string) => {
   let res
   try {
@@ -47,45 +80,14 @@ const requireSilent = async (lang: string, namespace: string) => {
   return res
 }
 
-const NAMESPACES = [
-  'app-annotation',
-  'app-api',
-  'app-debug',
-  'app-log',
-  'app-overview',
-  'app',
-  'billing',
-  'common',
-  'custom',
-  'dataset-creation',
-  'dataset-documents',
-  'dataset-hit-testing',
-  'dataset-pipeline',
-  'dataset-settings',
-  'dataset',
-  'education',
-  'explore',
-  'layout',
-  'login',
-  'oauth',
-  'pipeline',
-  'plugin-tags',
-  'plugin-trigger',
-  'plugin',
-  'register',
-  'run-log',
-  'share',
-  'time',
-  'tools',
-  'workflow',
-]
+const NAMESPACES = Object.keys(messagesEN) as Array<keyof typeof messagesEN>
 
 export const loadLangResources = async (lang: string) => {
   const modules = await Promise.all(
-    NAMESPACES.map(ns => requireSilent(lang, ns)),
+    NAMESPACES.map(kebabCase).map(ns => requireSilent(lang, ns)),
   )
   const resources = modules.reduce((acc, mod, index) => {
-    acc[camelCase(NAMESPACES[index])] = mod
+    acc[NAMESPACES[index]] = mod
     return acc
   }, {} as Record<string, any>)
   return resources
@@ -93,41 +95,9 @@ export const loadLangResources = async (lang: string) => {
 
 // Load en-US resources first to make sure fallback works
 const getInitialTranslations = () => {
-  const en_USResources: Record<string, any> = {
-    appAnnotation,
-    appApi,
-    appDebug,
-    appLog,
-    appOverview,
-    app,
-    billing,
-    common,
-    custom,
-    datasetCreation,
-    datasetDocuments,
-    datasetHitTesting,
-    datasetPipeline,
-    datasetSettings,
-    dataset,
-    education,
-    explore,
-    layout,
-    login,
-    oauth,
-    pipeline,
-    pluginTags,
-    pluginTrigger,
-    plugin,
-    register,
-    runLog,
-    share,
-    time,
-    tools,
-    workflow,
-  }
   return {
     'en-US': {
-      translation: en_USResources,
+      translation: messagesEN,
     },
   }
 }

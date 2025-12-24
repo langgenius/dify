@@ -38,9 +38,6 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile
 
-      - name: Check i18n types synchronization
-        run: pnpm run check:i18n-types
-
       - name: Run tests
         run: pnpm test --coverage
 
