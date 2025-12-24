@@ -1,26 +1,25 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties, FC } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
-const dividerVariants = cva('',
-  {
-    variants: {
-      type: {
-        horizontal: 'w-full h-[0.5px] my-2 ',
-        vertical: 'w-[1px] h-full mx-2',
-      },
-      bgStyle: {
-        gradient: 'bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent',
-        solid: 'bg-divider-regular',
-      },
+const dividerVariants = cva('', {
+  variants: {
+    type: {
+      horizontal: 'w-full h-[0.5px] my-2 ',
+      vertical: 'w-[1px] h-full mx-2',
     },
-    defaultVariants: {
-      type: 'horizontal',
-      bgStyle: 'solid',
+    bgStyle: {
+      gradient: 'bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent',
+      solid: 'bg-divider-regular',
     },
   },
-)
+  defaultVariants: {
+    type: 'horizontal',
+    bgStyle: 'solid',
+  },
+})
 
 export type DividerProps = {
   className?: string

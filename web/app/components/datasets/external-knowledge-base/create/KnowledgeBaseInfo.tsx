@@ -1,11 +1,11 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 
 type KnowledgeBaseInfoProps = {
   name: string
   description?: string
-  onChange: (data: { name?: string; description?: string }) => void
+  onChange: (data: { name?: string, description?: string }) => void
 }
 
 const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description, onChange }) => {
@@ -20,11 +20,11 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
   }
 
   return (
-    <form className='flex flex-col gap-4 self-stretch'>
-      <div className='flex flex-col gap-4 self-stretch'>
-        <div className='flex flex-col gap-1 self-stretch'>
-          <div className='flex flex-col justify-center self-stretch'>
-            <label className='system-sm-semibold text-text-secondary'>{t('dataset.externalKnowledgeName')}</label>
+    <form className="flex flex-col gap-4 self-stretch">
+      <div className="flex flex-col gap-4 self-stretch">
+        <div className="flex flex-col gap-1 self-stretch">
+          <div className="flex flex-col justify-center self-stretch">
+            <label className="system-sm-semibold text-text-secondary">{t('dataset.externalKnowledgeName')}</label>
           </div>
           <Input
             value={name}
@@ -32,14 +32,14 @@ const KnowledgeBaseInfo: React.FC<KnowledgeBaseInfoProps> = ({ name, description
             placeholder={t('dataset.externalKnowledgeNamePlaceholder') ?? ''}
           />
         </div>
-        <div className='flex flex-col gap-1 self-stretch'>
-          <div className='flex flex-col justify-center self-stretch'>
-            <label className='system-sm-semibold text-text-secondary'>{t('dataset.externalKnowledgeDescription')}</label>
+        <div className="flex flex-col gap-1 self-stretch">
+          <div className="flex flex-col justify-center self-stretch">
+            <label className="system-sm-semibold text-text-secondary">{t('dataset.externalKnowledgeDescription')}</label>
           </div>
-          <div className='flex flex-col gap-1 self-stretch'>
+          <div className="flex flex-col gap-1 self-stretch">
             <textarea
               value={description}
-              onChange={ e => handleDescriptionChange(e)}
+              onChange={e => handleDescriptionChange(e)}
               placeholder={t('dataset.externalKnowledgeDescriptionPlaceholder') ?? ''}
               className={`flex h-20 items-start self-stretch rounded-lg bg-components-input-bg-normal p-3 py-2 ${description ? 'text-components-input-text-filled' : 'text-components-input-text-placeholder'} system-sm-regular`}
             />

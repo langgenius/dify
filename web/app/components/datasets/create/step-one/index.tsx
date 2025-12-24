@@ -1,29 +1,30 @@
 'use client'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DataSourceProvider, NotionPage } from '@/models/common'
+import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
 import { RiArrowRightLine, RiFolder6Line } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import NotionConnector from '@/app/components/base/notion-connector'
+import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
+import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
+import { Plan } from '@/app/components/billing/type'
+import VectorSpaceFull from '@/app/components/billing/vector-space-full'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useProviderContext } from '@/context/provider-context'
+import { DataSourceType } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
+import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import FilePreview from '../file-preview'
 import FileUploader from '../file-uploader'
 import NotionPagePreview from '../notion-page-preview'
-import EmptyDatasetCreationModal from '../empty-dataset-creation-modal'
 import Website from '../website'
 import WebsitePreview from '../website/preview'
 import s from './index.module.css'
-import type { CrawlOptions, CrawlResultItem, FileItem } from '@/models/datasets'
-import type { DataSourceProvider, NotionPage } from '@/models/common'
-import { DataSourceType } from '@/models/datasets'
-import Button from '@/app/components/base/button'
-import { NotionPageSelector } from '@/app/components/base/notion-page-selector'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import { useProviderContext } from '@/context/provider-context'
-import VectorSpaceFull from '@/app/components/billing/vector-space-full'
-import { cn } from '@/utils/classnames'
-import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
-import NotionConnector from '@/app/components/base/notion-connector'
-import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
-import PlanUpgradeModal from '@/app/components/billing/plan-upgrade-modal'
-import { useBoolean } from 'ahooks'
-import { Plan } from '@/app/components/billing/type'
 import UpgradeCard from './upgrade-card'
 
 type IStepOneProps = {
@@ -149,9 +150,11 @@ const StepOne = ({
   }, [files, isShowVectorSpaceFull])
 
   const isNotionAuthed = useMemo(() => {
-    if (!authedDataSourceList) return false
+    if (!authedDataSourceList)
+      return false
     const notionSource = authedDataSourceList.find(item => item.provider === 'notion_datasource')
-    if (!notionSource) return false
+    if (!notionSource)
+      return false
     return notionSource.credentials_list.length > 0
   }, [authedDataSourceList])
 
@@ -160,10 +163,10 @@ const StepOne = ({
   }, [authedDataSourceList])
 
   return (
-    <div className='h-full w-full overflow-x-auto'>
-      <div className='flex h-full w-full min-w-[1440px]'>
-        <div className='relative h-full w-1/2 overflow-y-auto'>
-          <div className='flex justify-end'>
+    <div className="h-full w-full overflow-x-auto">
+      <div className="flex h-full w-full min-w-[1440px]">
+        <div className="relative h-full w-1/2 overflow-y-auto">
+          <div className="flex justify-end">
             <div className={cn(s.form)}>
               {
                 shouldShowDataSourceTypeList && (
@@ -174,7 +177,7 @@ const StepOne = ({
               }
               {
                 shouldShowDataSourceTypeList && (
-                  <div className='mb-8 grid grid-cols-3 gap-4'>
+                  <div className="mb-8 grid grid-cols-3 gap-4">
                     <div
                       className={cn(
                         s.dataSourceItem,
@@ -193,7 +196,7 @@ const StepOne = ({
                       <span className={cn(s.datasetIcon)} />
                       <span
                         title={t('datasetCreation.stepOne.dataSourceType.file')!}
-                        className='truncate'
+                        className="truncate"
                       >
                         {t('datasetCreation.stepOne.dataSourceType.file')}
                       </span>
@@ -216,7 +219,7 @@ const StepOne = ({
                       <span className={cn(s.datasetIcon, s.notion)} />
                       <span
                         title={t('datasetCreation.stepOne.dataSourceType.notion')!}
-                        className='truncate'
+                        className="truncate"
                       >
                         {t('datasetCreation.stepOne.dataSourceType.notion')}
                       </span>
@@ -240,7 +243,7 @@ const StepOne = ({
                         <span className={cn(s.datasetIcon, s.web)} />
                         <span
                           title={t('datasetCreation.stepOne.dataSourceType.web')!}
-                          className='truncate'
+                          className="truncate"
                         >
                           {t('datasetCreation.stepOne.dataSourceType.web')}
                         </span>
@@ -261,12 +264,12 @@ const StepOne = ({
                     supportBatchUpload={supportBatchUpload}
                   />
                   {isShowVectorSpaceFull && (
-                    <div className='mb-4 max-w-[640px]'>
+                    <div className="mb-4 max-w-[640px]">
                       <VectorSpaceFull />
                     </div>
                   )}
                   <div className="flex max-w-[640px] justify-end gap-2">
-                    <Button disabled={nextDisabled} variant='primary' onClick={onStepChange}>
+                    <Button disabled={nextDisabled} variant="primary" onClick={onStepChange}>
                       <span className="flex gap-0.5 px-[10px]">
                         <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
                         <RiArrowRightLine className="size-4" />
@@ -275,8 +278,8 @@ const StepOne = ({
                   </div>
                   {
                     enableBilling && plan.type === Plan.sandbox && files.length > 0 && (
-                      <div className='mt-5'>
-                        <div className='mb-4 h-px bg-divider-subtle'></div>
+                      <div className="mt-5">
+                        <div className="mb-4 h-px bg-divider-subtle"></div>
                         <UpgradeCard />
                       </div>
                     )
@@ -288,7 +291,7 @@ const StepOne = ({
                   {!isNotionAuthed && <NotionConnector onSetting={onSetting} />}
                   {isNotionAuthed && (
                     <>
-                      <div className='mb-8 w-[640px]'>
+                      <div className="mb-8 w-[640px]">
                         <NotionPageSelector
                           value={notionPages.map(page => page.page_id)}
                           onSelect={updateNotionPages}
@@ -299,12 +302,12 @@ const StepOne = ({
                         />
                       </div>
                       {isShowVectorSpaceFull && (
-                        <div className='mb-4 max-w-[640px]'>
+                        <div className="mb-4 max-w-[640px]">
                           <VectorSpaceFull />
                         </div>
                       )}
                       <div className="flex max-w-[640px] justify-end gap-2">
-                        <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant='primary' onClick={onStepChange}>
+                        <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant="primary" onClick={onStepChange}>
                           <span className="flex gap-0.5 px-[10px]">
                             <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
                             <RiArrowRightLine className="size-4" />
@@ -330,12 +333,12 @@ const StepOne = ({
                     />
                   </div>
                   {isShowVectorSpaceFull && (
-                    <div className='mb-4 max-w-[640px]'>
+                    <div className="mb-4 max-w-[640px]">
                       <VectorSpaceFull />
                     </div>
                   )}
                   <div className="flex max-w-[640px] justify-end gap-2">
-                    <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant='primary' onClick={onStepChange}>
+                    <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant="primary" onClick={onStepChange}>
                       <span className="flex gap-0.5 px-[10px]">
                         <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
                         <RiArrowRightLine className="size-4" />
@@ -346,7 +349,7 @@ const StepOne = ({
               )}
               {!datasetId && (
                 <>
-                  <div className='my-8 h-px max-w-[640px] bg-divider-regular' />
+                  <div className="my-8 h-px max-w-[640px] bg-divider-regular" />
                   <span className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
                     <RiFolder6Line className="mr-1 size-4" />
                     {t('datasetCreation.stepOne.emptyDatasetCreation')}
@@ -357,7 +360,7 @@ const StepOne = ({
             <EmptyDatasetCreationModal show={showModal} onHide={modalCloseHandle} />
           </div>
         </div>
-        <div className='h-full w-1/2 overflow-y-auto'>
+        <div className="h-full w-1/2 overflow-y-auto">
           {currentFile && <FilePreview file={currentFile} hidePreview={hideFilePreview} />}
           {currentNotionPage && (
             <NotionPagePreview

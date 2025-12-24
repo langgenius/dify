@@ -5,7 +5,7 @@ vi.mock('./usage', () => ({
   __esModule: true,
   default: (props: { className?: string }) => {
     return (
-      <div data-testid='usage-component' data-classname={props.className ?? ''}>
+      <div data-testid="usage-component" data-classname={props.className ?? ''}>
         usage
       </div>
     )
@@ -16,7 +16,7 @@ vi.mock('../upgrade-btn', () => ({
   __esModule: true,
   default: (props: { loc?: string }) => {
     return (
-      <button type='button' data-testid='upgrade-btn'>
+      <button type="button" data-testid="upgrade-btn">
         {props.loc}
       </button>
     )

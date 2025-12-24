@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiCloseLine } from '@remixicon/react'
-import CSVUploader from './csv-uploader'
-import CSVDownloader from './csv-downloader'
+import { noop } from 'lodash-es'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import Toast from '@/app/components/base/toast'
-import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
-import { useProviderContext } from '@/context/provider-context'
 import AnnotationFull from '@/app/components/billing/annotation-full'
-import { noop } from 'lodash-es'
+import { useProviderContext } from '@/context/provider-context'
+import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
+import CSVDownloader from './csv-downloader'
+import CSVUploader from './csv-uploader'
 
 export enum ProcessStatus {
   WAITING = 'waiting',
@@ -88,10 +89,10 @@ const BatchModal: FC<IBatchModalProps> = ({
   }
 
   return (
-    <Modal isShow={isShow} onClose={noop} className='!max-w-[520px] !rounded-xl px-8 py-6'>
-      <div className='system-xl-medium relative pb-1 text-text-primary'>{t('appAnnotation.batchModal.title')}</div>
-      <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onCancel}>
-        <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+    <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
+      <div className="system-xl-medium relative pb-1 text-text-primary">{t('appAnnotation.batchModal.title')}</div>
+      <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
+        <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </div>
       <CSVUploader
         file={currentCSV}
@@ -100,13 +101,13 @@ const BatchModal: FC<IBatchModalProps> = ({
       <CSVDownloader />
 
       {isAnnotationFull && (
-        <div className='mt-4'>
+        <div className="mt-4">
           <AnnotationFull />
         </div>
       )}
 
-      <div className='mt-[28px] flex justify-end pt-6'>
-        <Button className='system-sm-medium mr-2 text-text-tertiary' onClick={onCancel}>
+      <div className="mt-[28px] flex justify-end pt-6">
+        <Button className="system-sm-medium mr-2 text-text-tertiary" onClick={onCancel}>
           {t('appAnnotation.batchModal.cancel')}
         </Button>
         <Button

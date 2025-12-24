@@ -1,19 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import dayjs from 'dayjs'
-import { RiCalendarLine } from '@remixicon/react'
-import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import type { QueryParam } from './index'
+import { RiCalendarLine } from '@remixicon/react'
+import dayjs from 'dayjs'
+import quarterOfYear from 'dayjs/plugin/quarterOfYear'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
-import { trackEvent } from '@/app/components/base/amplitude/utils'
+
 dayjs.extend(quarterOfYear)
 
 const today = dayjs()
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number; name: string } } = {
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: string } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
@@ -33,7 +34,7 @@ type IFilterProps = {
 const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
   const { t } = useTranslation()
   return (
-    <div className='mb-2 flex flex-row flex-wrap gap-2'>
+    <div className="mb-2 flex flex-row flex-wrap gap-2">
       <Chip
         value={queryParams.status || 'all'}
         onSelect={(item) => {
@@ -43,17 +44,12 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           })
         }}
         onClear={() => setQueryParams({ ...queryParams, status: 'all' })}
-        items={[{ value: 'all', name: 'All' },
-          { value: 'succeeded', name: 'Success' },
-          { value: 'failed', name: 'Fail' },
-          { value: 'stopped', name: 'Stop' },
-          { value: 'partial-succeeded', name: 'Partial Success' },
-        ]}
+        items={[{ value: 'all', name: 'All' }, { value: 'succeeded', name: 'Success' }, { value: 'failed', name: 'Fail' }, { value: 'stopped', name: 'Stop' }, { value: 'partial-succeeded', name: 'Partial Success' }]}
       />
       <Chip
-        className='min-w-[150px]'
-        panelClassName='w-[270px]'
-        leftIcon={<RiCalendarLine className='h-4 w-4 text-text-secondary' />}
+        className="min-w-[150px]"
+        panelClassName="w-[270px]"
+        leftIcon={<RiCalendarLine className="h-4 w-4 text-text-secondary" />}
         value={queryParams.period}
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
@@ -62,7 +58,7 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
       />
       <Input
-        wrapperClassName='w-[200px]'
+        wrapperClassName="w-[200px]"
         showLeftIcon
         showClearIcon
         value={queryParams.keyword ?? ''}

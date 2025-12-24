@@ -1,12 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import type { ToolWithProvider } from '../../../types'
-import type { BlockEnum } from '../../../types'
+import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
-import Tool from '../tool'
-import { ViewType } from '../../view-type-select'
+import * as React from 'react'
 import { useMemo } from 'react'
+import { ViewType } from '../../view-type-select'
+import Tool from '../tool'
 
 type Props = {
   payload: ToolWithProvider[]
@@ -45,8 +44,8 @@ const ToolViewFlatView: FC<Props> = ({
     return res
   }, [payload, letters])
   return (
-    <div className='flex w-full'>
-      <div className='mr-1 grow'>
+    <div className="flex w-full">
+      <div className="mr-1 grow">
         {payload.map(tool => (
           <div
             key={tool.id}

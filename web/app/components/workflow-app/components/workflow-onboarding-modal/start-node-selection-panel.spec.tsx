@@ -1,8 +1,8 @@
-import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import StartNodeSelectionPanel from './start-node-selection-panel'
+import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import StartNodeSelectionPanel from './start-node-selection-panel'
 
 // Mock NodeSelector component
 vi.mock('@/app/components/workflow/block-selector', () => ({

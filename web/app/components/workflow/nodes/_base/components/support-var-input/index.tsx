@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
 import VarHighlight from '@/app/components/app/configuration/base/var-highlight'
+import { cn } from '@/utils/classnames'
+
 type Props = {
   isFocus?: boolean
   onFocus?: () => void
@@ -46,20 +47,21 @@ const SupportVarInput: FC<Props> = ({
     <div
       className={
         cn(wrapClassName, 'flex h-full w-full')
-      } onClick={onFocus}
+      }
+      onClick={onFocus}
     >
       {(isFocus && !readonly && children)
         ? (
-          children
-        )
+            children
+          )
         : (
-          <div
-            className={cn(textClassName, 'h-full w-0 grow truncate whitespace-nowrap')}
-            title={value}
-          >
-            {renderSafeContent(value || '')}
-          </div>
-        )}
+            <div
+              className={cn(textClassName, 'h-full w-0 grow truncate whitespace-nowrap')}
+              title={value}
+            >
+              {renderSafeContent(value || '')}
+            </div>
+          )}
     </div>
   )
 }

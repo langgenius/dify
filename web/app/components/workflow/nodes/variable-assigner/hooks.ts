@@ -1,27 +1,27 @@
-import { useCallback } from 'react'
-import {
-  useStoreApi,
-} from 'reactflow'
-import { useNodes } from 'reactflow'
+import type {
+  Node,
+  ValueSelector,
+  Var,
+} from '../../types'
+import type {
+  VarGroupItem,
+  VariableAssignerNodeType,
+} from './types'
+import { produce } from 'immer'
 
 import { uniqBy } from 'lodash-es'
-import { produce } from 'immer'
+import { useCallback } from 'react'
+import {
+  useNodes,
+  useStoreApi,
+} from 'reactflow'
 import {
   useIsChatMode,
   useNodeDataUpdate,
   useWorkflow,
   useWorkflowVariables,
 } from '../../hooks'
-import type {
-  Node,
-  ValueSelector,
-  Var,
-} from '../../types'
 import { useWorkflowStore } from '../../store'
-import type {
-  VarGroupItem,
-  VariableAssignerNodeType,
-} from './types'
 
 export const useVariableAssigner = () => {
   const store = useStoreApi()

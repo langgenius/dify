@@ -1,5 +1,4 @@
 import type { Fetcher } from 'swr'
-import { get, post } from './base'
 import type {
   AgentLogDetailRequest,
   AgentLogDetailResponse,
@@ -21,13 +20,14 @@ import type {
   WorkflowRunDetailResponse,
 } from '@/models/log'
 import type { NodeTracingListResponse } from '@/types/workflow'
+import { get, post } from './base'
 
-export const fetchConversationList: Fetcher<ConversationListResponse, { name: string; appId: string; params?: Record<string, any> }> = ({ appId, params }) => {
+export const fetchConversationList: Fetcher<ConversationListResponse, { name: string, appId: string, params?: Record<string, any> }> = ({ appId, params }) => {
   return get<ConversationListResponse>(`/console/api/apps/${appId}/messages`, params)
 }
 
 // (Text Generation Application) Session List
-export const fetchCompletionConversations: Fetcher<CompletionConversationsResponse, { url: string; params?: CompletionConversationsRequest }> = ({ url, params }) => {
+export const fetchCompletionConversations: Fetcher<CompletionConversationsResponse, { url: string, params?: CompletionConversationsRequest }> = ({ url, params }) => {
   return get<CompletionConversationsResponse>(url, { params })
 }
 
@@ -37,7 +37,7 @@ export const fetchCompletionConversationDetail: Fetcher<CompletionConversationFu
 }
 
 // (Chat Application) Session List
-export const fetchChatConversations: Fetcher<ChatConversationsResponse, { url: string; params?: ChatConversationsRequest }> = ({ url, params }) => {
+export const fetchChatConversations: Fetcher<ChatConversationsResponse, { url: string, params?: ChatConversationsRequest }> = ({ url, params }) => {
   return get<ChatConversationsResponse>(url, { params })
 }
 
@@ -47,15 +47,15 @@ export const fetchChatConversationDetail: Fetcher<ChatConversationFullDetailResp
 }
 
 // (Chat Application) Message list in one session
-export const fetchChatMessages: Fetcher<ChatMessagesResponse, { url: string; params: ChatMessagesRequest }> = ({ url, params }) => {
+export const fetchChatMessages: Fetcher<ChatMessagesResponse, { url: string, params: ChatMessagesRequest }> = ({ url, params }) => {
   return get<ChatMessagesResponse>(url, { params })
 }
 
-export const updateLogMessageFeedbacks: Fetcher<LogMessageFeedbacksResponse, { url: string; body: LogMessageFeedbacksRequest }> = ({ url, body }) => {
+export const updateLogMessageFeedbacks: Fetcher<LogMessageFeedbacksResponse, { url: string, body: LogMessageFeedbacksRequest }> = ({ url, body }) => {
   return post<LogMessageFeedbacksResponse>(url, { body })
 }
 
-export const updateLogMessageAnnotations: Fetcher<LogMessageAnnotationsResponse, { url: string; body: LogMessageAnnotationsRequest }> = ({ url, body }) => {
+export const updateLogMessageAnnotations: Fetcher<LogMessageAnnotationsResponse, { url: string, body: LogMessageAnnotationsRequest }> = ({ url, body }) => {
   return post<LogMessageAnnotationsResponse>(url, { body })
 }
 
@@ -63,7 +63,7 @@ export const fetchAnnotationsCount: Fetcher<AnnotationsCountResponse, { url: str
   return get<AnnotationsCountResponse>(url)
 }
 
-export const fetchWorkflowLogs: Fetcher<WorkflowLogsResponse, { url: string; params: Record<string, any> }> = ({ url, params }) => {
+export const fetchWorkflowLogs: Fetcher<WorkflowLogsResponse, { url: string, params: Record<string, any> }> = ({ url, params }) => {
   return get<WorkflowLogsResponse>(url, { params })
 }
 
@@ -75,6 +75,6 @@ export const fetchTracingList: Fetcher<NodeTracingListResponse, { url: string }>
   return get<NodeTracingListResponse>(url)
 }
 
-export const fetchAgentLogDetail = ({ appID, params }: { appID: string; params: AgentLogDetailRequest }) => {
+export const fetchAgentLogDetail = ({ appID, params }: { appID: string, params: AgentLogDetailRequest }) => {
   return get<AgentLogDetailResponse>(`/apps/${appID}/agent/logs`, { params })
 }

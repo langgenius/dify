@@ -1,5 +1,3 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, post } from './base'
 import type {
   TriggerLogEntity,
   TriggerOAuthClientParams,
@@ -9,7 +7,9 @@ import type {
   TriggerSubscriptionBuilder,
   TriggerWithProvider,
 } from '@/app/components/workflow/block-selector/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
+import { del, get, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'
@@ -184,9 +184,9 @@ export const useVerifyTriggerSubscription = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'verify-subscription'],
     mutationFn: (payload: {
-      provider: string;
-      subscriptionId: string;
-      credentials?: Record<string, any>;
+      provider: string
+      subscriptionId: string
+      credentials?: Record<string, any>
     }) => {
       const { provider, subscriptionId, ...body } = payload
       return post<{ verified: boolean }>(
@@ -242,7 +242,7 @@ export const useUpdateTriggerSubscription = () => {
     mutationKey: [NAME_SPACE, 'update-subscription'],
     mutationFn: (payload: UpdateTriggerSubscriptionPayload) => {
       const { subscriptionId, ...body } = payload
-      return post<{ result: string; id: string }>(
+      return post<{ result: string, id: string }>(
         `/workspaces/current/trigger-provider/${subscriptionId}/subscriptions/update`,
         { body },
       )
@@ -313,7 +313,7 @@ export const useInitiateTriggerOAuth = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'initiate-oauth'],
     mutationFn: (provider: string) => {
-      return get<{ authorization_url: string; subscription_builder: TriggerSubscriptionBuilder }>(
+      return get<{ authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
         {},
         { silent: true },
@@ -332,12 +332,12 @@ export const useTriggerPluginDynamicOptions = (payload: {
   credentials?: Record<string, any>
   extra?: Record<string, any>
 }, enabled = true) => {
-  return useQuery<{ options: Array<{ value: string; label: any }> }>({
+  return useQuery<{ options: Array<{ value: string, label: any }> }>({
     queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.credentials, payload.extra],
     queryFn: () => {
       // Use new endpoint with POST when credentials provided (for edit mode)
       if (payload.credentials) {
-        return post<{ options: Array<{ value: string; label: any }> }>(
+        return post<{ options: Array<{ value: string, label: any }> }>(
           '/workspaces/current/plugin/parameters/dynamic-options-with-credentials',
           {
             body: {
@@ -353,7 +353,7 @@ export const useTriggerPluginDynamicOptions = (payload: {
         )
       }
       // Use original GET endpoint for normal cases
-      return get<{ options: Array<{ value: string; label: any }> }>(
+      return get<{ options: Array<{ value: string, label: any }> }>(
         '/workspaces/current/plugin/parameters/dynamic-options',
         {
           params: {

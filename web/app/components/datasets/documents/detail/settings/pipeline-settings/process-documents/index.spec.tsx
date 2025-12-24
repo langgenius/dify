@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import ProcessDocuments from './index'
-import { PipelineInputVarType } from '@/models/pipeline'
 import type { RAGPipelineVariable } from '@/models/pipeline'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { PipelineInputVarType } from '@/models/pipeline'
+import ProcessDocuments from './index'
 
 // Mock dataset detail context - required for useInputVariables hook
 const mockPipelineId = 'pipeline-123'
@@ -33,7 +33,7 @@ vi.mock('../../../../create-from-pipeline/process-documents/form', () => ({
   }: {
     ref: React.RefObject<{ submit: () => void }>
     initialData: Record<string, unknown>
-    configurations: Array<{ variable: string; label: string; type: string }>
+    configurations: Array<{ variable: string, label: string, type: string }>
     schema: unknown
     onSubmit: (data: Record<string, unknown>) => void
     onPreview: () => void

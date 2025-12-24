@@ -11,6 +11,9 @@
  */
 import { act, renderHook } from '@testing-library/react'
 
+// Import the hook after mocks are set up
+import useAppsQueryState from './use-apps-query-state'
+
 // Mock Next.js navigation hooks
 const mockPush = vi.fn()
 const mockPathname = '/apps'
@@ -23,9 +26,6 @@ vi.mock('next/navigation', () => ({
   })),
   useSearchParams: vi.fn(() => mockSearchParams),
 }))
-
-// Import the hook after mocks are set up
-import useAppsQueryState from './use-apps-query-state'
 
 describe('useAppsQueryState', () => {
   beforeEach(() => {

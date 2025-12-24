@@ -1,11 +1,11 @@
 import type { Mock } from 'vitest'
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import Config from './index'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
-import * as useContextSelector from 'use-context-selector'
 import type { ToolItem } from '@/types/app'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import * as useContextSelector from 'use-context-selector'
 import { AgentStrategy, AppModeEnum, ModelModeType } from '@/types/app'
+import Config from './index'
 
 vi.mock('use-context-selector', async (importOriginal) => {
   const actual = await importOriginal<typeof import('use-context-selector')>()

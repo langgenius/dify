@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Plan } from '@/app/components/billing/type'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import { ToastContext } from '@/app/components/base/toast'
+import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import FeaturesTrigger from './features-trigger'
 
@@ -96,7 +96,7 @@ vi.mock('@/app/components/app/app-publisher', () => ({
     const inputs = props.inputs ?? []
     return (
       <div
-        data-testid='app-publisher'
+        data-testid="app-publisher"
         data-disabled={String(Boolean(props.disabled))}
         data-publish-disabled={String(Boolean(props.publishDisabled))}
         data-start-node-limit-exceeded={String(Boolean(props.startNodeLimitExceeded))}
@@ -147,7 +147,7 @@ vi.mock('@/hooks/use-theme', () => ({
 
 vi.mock('@/app/components/app/store', () => ({
   __esModule: true,
-  useStore: (selector: (state: { appDetail?: { id: string }; setAppDetail: typeof mockSetAppDetail }) => unknown) => mockUseAppStoreSelector(selector),
+  useStore: (selector: (state: { appDetail?: { id: string }, setAppDetail: typeof mockSetAppDetail }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
 const createProviderContext = ({

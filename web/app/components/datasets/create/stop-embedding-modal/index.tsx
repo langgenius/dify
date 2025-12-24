@@ -1,10 +1,10 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import s from './index.module.css'
-import { cn } from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+import { cn } from '@/utils/classnames'
+import s from './index.module.css'
 
 type IProps = {
   show: boolean
@@ -34,9 +34,9 @@ const StopEmbeddingModal = ({
       <span className={s.close} onClick={onHide} />
       <div className={s.title}>{t('datasetCreation.stepThree.modelTitle')}</div>
       <div className={s.content}>{t('datasetCreation.stepThree.modelContent')}</div>
-      <div className='flex flex-row-reverse'>
-        <Button className='ml-2 w-24' variant='primary' onClick={submit}>{t('datasetCreation.stepThree.modelButtonConfirm')}</Button>
-        <Button className='w-24' onClick={onHide}>{t('datasetCreation.stepThree.modelButtonCancel')}</Button>
+      <div className="flex flex-row-reverse">
+        <Button className="ml-2 w-24" variant="primary" onClick={submit}>{t('datasetCreation.stepThree.modelButtonConfirm')}</Button>
+        <Button className="w-24" onClick={onHide}>{t('datasetCreation.stepThree.modelButtonCancel')}</Button>
       </div>
     </Modal>
   )

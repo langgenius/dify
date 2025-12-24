@@ -1,6 +1,6 @@
+import type { PluginDetail } from '@/app/components/plugins/types'
 import { withErrorBoundary } from '@/app/components/base/error-boundary'
 import Loading from '@/app/components/base/loading'
-import type { PluginDetail } from '@/app/components/plugins/types'
 import { SubscriptionListView } from './list-view'
 import { SubscriptionSelectorView } from './selector-view'
 import { useSubscriptionList } from './use-subscription-list'
@@ -11,7 +11,7 @@ export enum SubscriptionListMode {
 }
 
 export type SimpleSubscription = {
-  id: string,
+  id: string
   name: string
 }
 
@@ -33,7 +33,7 @@ export const SubscriptionList = withErrorBoundary(({
   const { isLoading, refetch } = useSubscriptionList()
   if (isLoading) {
     return (
-      <div className='flex items-center justify-center py-4'>
+      <div className="flex items-center justify-center py-4">
         <Loading />
       </div>
     )

@@ -1,5 +1,5 @@
-import { useState } from 'react'
 import { ChevronDownIcon, ChevronRightIcon } from '@heroicons/react/24/outline'
+import { useState } from 'react'
 import { cn } from '@/utils/classnames'
 
 export type IItem = {
@@ -26,17 +26,17 @@ const Collapse = ({
 
   return (
     <div className={cn('overflow-hidden rounded-xl bg-background-section-burn', wrapperClassName)}>
-      <div className='flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium leading-[18px] text-text-secondary' onClick={toggle}>
+      <div className="flex cursor-pointer items-center justify-between px-3 py-2 text-xs font-medium leading-[18px] text-text-secondary" onClick={toggle}>
         {title}
         {
           open
-            ? <ChevronDownIcon className='h-3 w-3 text-components-button-tertiary-text' />
-            : <ChevronRightIcon className='h-3 w-3 text-components-button-tertiary-text' />
+            ? <ChevronDownIcon className="h-3 w-3 text-components-button-tertiary-text" />
+            : <ChevronRightIcon className="h-3 w-3 text-components-button-tertiary-text" />
         }
       </div>
       {
         open && (
-          <div className='mx-1 mb-1 rounded-lg border-t border-divider-subtle bg-components-panel-on-panel-item-bg py-1'>
+          <div className="mx-1 mb-1 rounded-lg border-t border-divider-subtle bg-components-panel-on-panel-item-bg py-1">
             {
               items.map(item => (
                 <div key={item.key} onClick={() => onSelect?.(item)}>

@@ -1,4 +1,4 @@
-import { ZodError, z } from 'zod'
+import { z, ZodError } from 'zod'
 
 describe('Zod Features', () => {
   it('should support string', () => {

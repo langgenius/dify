@@ -1,16 +1,16 @@
-import { useTranslation } from 'react-i18next'
-import { useCallback, useMemo } from 'react'
-import type { InputFieldConfiguration } from '@/app/components/base/form/form-scenarios/input-field/types'
-import { InputFieldType } from '@/app/components/base/form/form-scenarios/input-field/types'
 import type { DeepKeys } from '@tanstack/react-form'
-import { useFileUploadConfig } from '@/service/use-common'
+import type { FormData } from './types'
+import type { InputFieldConfiguration } from '@/app/components/base/form/form-scenarios/input-field/types'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
-import { formatFileSize } from '@/utils/format'
+import { InputFieldType } from '@/app/components/base/form/form-scenarios/input-field/types'
 import { DEFAULT_FILE_UPLOAD_SETTING } from '@/app/components/workflow/constants'
 import { DEFAULT_VALUE_MAX_LEN } from '@/config'
-import type { FormData } from './types'
-import { TEXT_MAX_LENGTH } from './schema'
 import { PipelineInputVarType } from '@/models/pipeline'
+import { useFileUploadConfig } from '@/service/use-common'
+import { formatFileSize } from '@/utils/format'
+import { TEXT_MAX_LENGTH } from './schema'
 
 export const useHiddenFieldNames = (type: PipelineInputVarType) => {
   const { t } = useTranslation()
@@ -70,8 +70,8 @@ export const useHiddenFieldNames = (type: PipelineInputVarType) => {
 }
 
 export const useConfigurations = (props: {
-  getFieldValue: (fieldName: DeepKeys<FormData>) => any,
-  setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void,
+  getFieldValue: (fieldName: DeepKeys<FormData>) => any
+  setFieldValue: (fieldName: DeepKeys<FormData>, value: any) => void
   supportFile: boolean
 }) => {
   const { t } = useTranslation()
@@ -186,7 +186,7 @@ export const useConfigurations = (props: {
 }
 
 export const useHiddenConfigurations = (props: {
-  options: string[] | undefined,
+  options: string[] | undefined
 }) => {
   const { t } = useTranslation()
 

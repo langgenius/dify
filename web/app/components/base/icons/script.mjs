@@ -1,5 +1,5 @@
-import path from 'node:path'
 import { access, appendFile, mkdir, open, readdir, rm, writeFile } from 'node:fs/promises'
+import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { parseXml } from '@rgrove/parse-xml'
 import { camelCase, template } from 'lodash-es'
@@ -155,10 +155,10 @@ const walk = async (entry, pathList, replaceFillOrStrokeColor) => {
         await walk(file, [...pathList, entry], replaceFillOrStrokeColor)
     }
 
-    if (stat.isFile() && /.+\.svg$/g.test(entry))
+    if (stat.isFile() && /.+\.svg$/.test(entry))
       await generateSvgComponent(fileHandle, entry, pathList, replaceFillOrStrokeColor)
 
-    if (stat.isFile() && /.+\.png$/g.test(entry))
+    if (stat.isFile() && /.+\.png$/.test(entry))
       await generateImageComponent(entry, pathList)
   }
   finally {
