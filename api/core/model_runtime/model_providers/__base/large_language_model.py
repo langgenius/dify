@@ -164,8 +164,11 @@ class LargeLanguageModel(AIModel):
                 usage = LLMUsage.empty_usage()
                 system_fingerprint = None
                 tools_calls: list[AssistantPromptMessage.ToolCall] = []
+                provider_response_id = None
 
                 for chunk in result:
+                    if provider_response_id is None:
+                        provider_response_id = chunk.id
                     if isinstance(chunk.delta.message.content, str):
                         content += chunk.delta.message.content
                     elif isinstance(chunk.delta.message.content, list):
@@ -178,6 +181,7 @@ class LargeLanguageModel(AIModel):
                     break
 
                 result = LLMResult(
+                    id=provider_response_id,
                     model=model,
                     prompt_messages=prompt_messages,
                     message=AssistantPromptMessage(
