@@ -83,7 +83,7 @@ class ToolFileApi(Resource):
             response,
             mime_type=tool_file.mimetype,
             filename=tool_file.name,
-            extension=None,
+            extension=extension,
         )
 
         return response
