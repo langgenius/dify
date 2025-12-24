@@ -77,7 +77,7 @@ const Apps = ({
   const filteredList = useMemo(() => {
     if (!data)
       return []
-    const { categories: _, allList } = data
+    const { allList } = data
     const filteredByCategory = allList.filter((item) => {
       if (currCategory === allCategoriesEn)
         return true

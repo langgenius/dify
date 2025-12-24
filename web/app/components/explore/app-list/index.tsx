@@ -55,6 +55,7 @@ const Apps = ({
   const {
     data,
     isLoading,
+    isError,
   } = useExploreAppList()
 
   const filteredList = useMemo(() => {
@@ -119,13 +120,16 @@ const Apps = ({
     })
   }, [handleImportDSLConfirm, onSuccess])
 
-  if (isLoading || !data) {
+  if (isLoading) {
     return (
       <div className="flex h-full items-center">
         <Loading type="area" />
       </div>
     )
   }
+
+  if (isError || !data)
+    return null
 
   const { categories } = data
 
