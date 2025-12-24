@@ -572,7 +572,7 @@ class DocumentBatchIndexingEstimateApi(DocumentResource):
                     datasource_type=DatasourceType.NOTION,
                     notion_info=NotionInfo.model_validate(
                         {
-                            "credential_id": data_source_info["credential_id"],
+                            "credential_id": data_source_info.get("credential_id"),
                             "notion_workspace_id": data_source_info["notion_workspace_id"],
                             "notion_obj_id": data_source_info["notion_page_id"],
                             "notion_page_type": data_source_info["type"],
