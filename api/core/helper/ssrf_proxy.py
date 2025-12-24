@@ -118,13 +118,11 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             # Build the request manually to preserve the Host header
             # httpx may override the Host header when using a proxy, so we use
             # the request API to explicitly set headers before sending
-            request = client.build_request(method=method, url=url, **kwargs)
-
-            # If user explicitly provided a Host header, ensure it's preserved
+            headers = {k: v for k, v in headers.items() if k.lower() != "host"}
             if user_provided_host is not None:
-                request.headers["Host"] = user_provided_host
-
-            response = client.send(request)
+                headers["host"] = user_provided_host
+            kwargs["headers"] = headers
+            response = client.request(method=method, url=url, **kwargs)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
