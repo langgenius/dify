@@ -142,7 +142,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const handleChooseTemplate = useCallback((key: string) => {
     return () => {
       const template = t(`appDebug.generate.template.${key}.instruction` as any) as string
-      setInstruction(template as string)
+      setInstruction(template)
       setEditorKey(`${flowId}-${Date.now()}`)
     }
   }, [t])

@@ -178,7 +178,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   item.indexing_technique && (
                     <Badge
                       className="shrink-0"
-                      text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method) as any}
+                      text={formatIndexingTechniqueAndMethod(item.indexing_technique, item.retrieval_model_dict?.search_method)}
                     />
                   )
                 }
