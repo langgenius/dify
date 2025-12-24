@@ -1,19 +1,19 @@
 'use client'
-import { BaseForm } from '@/app/components/base/form/components/base'
 import type { FormRefObject, FormSchema } from '@/app/components/base/form/types'
-import { FormTypeEnum } from '@/app/components/base/form/types'
-import Modal from '@/app/components/base/modal/modal'
-import Toast from '@/app/components/base/toast'
 import type { ParametersSchema, PluginDetail } from '@/app/components/plugins/types'
-import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
-import { useUpdateTriggerSubscription } from '@/service/use-triggers'
 import { isEqual } from 'lodash-es'
 import { useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { BaseForm } from '@/app/components/base/form/components/base'
+import { FormTypeEnum } from '@/app/components/base/form/types'
+import Modal from '@/app/components/base/modal/modal'
+import Toast from '@/app/components/base/toast'
+import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
+import { useUpdateTriggerSubscription } from '@/service/use-triggers'
+import { ReadmeShowType } from '../../../readme-panel/store'
 import { usePluginStore } from '../../store'
 import { useSubscriptionList } from '../use-subscription-list'
-import { ReadmeShowType } from '../../../readme-panel/store'
 
 type Props = {
   onClose: () => void
@@ -137,7 +137,7 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       onConfirm={handleConfirm}
       disabled={isUpdating}
       clickOutsideNotClose
-      wrapperClassName='!z-[101]'
+      wrapperClassName="!z-[101]"
     >
       {pluginDetail && (
         <ReadmeEntrance pluginDetail={pluginDetail} showType={ReadmeShowType.modal} />
@@ -145,8 +145,8 @@ export const ManualEditModal = ({ onClose, subscription, pluginDetail }: Props) 
       <BaseForm
         formSchemas={formSchemas}
         ref={formRef}
-        labelClassName='system-sm-medium mb-2 flex items-center gap-1 text-text-primary'
-        formClassName='space-y-4'
+        labelClassName="system-sm-medium mb-2 flex items-center gap-1 text-text-primary"
+        formClassName="space-y-4"
       />
     </Modal>
   )

@@ -2,9 +2,9 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { TriggerCredentialTypeEnum } from '@/app/components/workflow/block-selector/types'
+import { ApiKeyEditModal } from './apikey-edit-modal'
 import { ManualEditModal } from './manual-edit-modal'
 import { OAuthEditModal } from './oauth-edit-modal'
-import { ApiKeyEditModal } from './apikey-edit-modal'
 
 type Props = {
   onClose: () => void
