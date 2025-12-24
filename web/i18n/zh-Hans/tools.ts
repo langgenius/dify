@@ -15,6 +15,7 @@ const translation = {
   author: '作者',
   auth: {
     authorized: '已授权',
+    unauthorized: '未授权',
     setup: '要使用请先授权',
     setupModalTitle: '设置授权',
     setupModalTitleDescription: '配置凭据后，工作区中的所有成员都可以在编排应用程序时使用此工具。',
