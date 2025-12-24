@@ -42,7 +42,7 @@ jobs:
         run: pnpm run check:i18n-types
 
       - name: Run tests
-        run: pnpm test --coverage
+        run: pnpm test:coverage
 
       - name: Coverage Summary
         if: always()
