@@ -1,4 +1,4 @@
-import type { MockedFunction } from 'vitest'
+import type { UseQueryResult } from '@tanstack/react-query'
 /**
  * Logs Container Component Tests
  *
@@ -15,6 +15,7 @@ import type { MockedFunction } from 'vitest'
  * - trigger-by-display.spec.tsx
  */
 
+import type { MockedFunction } from 'vitest'
 import type { ILogsProps } from './index'
 import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
@@ -86,38 +87,18 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-// Mock useTimestamp
-vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
-  default: () => ({
-    formatTime: (timestamp: number, _format: string) => `formatted-${timestamp}`,
-  }),
-}))
-
-// Mock useBreakpoints
-vi.mock('@/hooks/use-breakpoints', () => ({
-  __esModule: true,
-  default: () => 'pc',
-  MediaType: {
-    mobile: 'mobile',
-    pc: 'pc',
-  },
-}))
-
-// Mock BlockIcon
-vi.mock('@/app/components/workflow/block-icon', () => ({
-  __esModule: true,
-  default: () => <div data-testid="block-icon">BlockIcon</div>,
-}))
-
 // Mock WorkflowContextProvider
 vi.mock('@/app/components/workflow/context', () => ({
   WorkflowContextProvider: ({ children }: { children: React.ReactNode }) => (
-    <div data-testid="workflow-context-provider">{children}</div>
+    <>{children}</>
   ),
 }))
 
 const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<typeof useLogModule.useWorkflowLogs>
+
+// ============================================================================
+// Test Utilities
+// ============================================================================
 
 const createQueryClient = () => new QueryClient({
   defaultOptions: {
@@ -134,6 +115,47 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
       {ui}
     </QueryClientProvider>,
   )
+}
+
+// ============================================================================
+// Mock Return Value Factory
+// ============================================================================
+
+const createMockQueryResult = <T,>(
+  overrides: { data?: T, isLoading?: boolean, error?: Error | null } = {},
+): UseQueryResult<T, Error> => {
+  const isLoading = overrides.isLoading ?? false
+  const error = overrides.error ?? null
+  const data = overrides.data
+
+  return {
+    data,
+    isLoading,
+    error,
+    refetch: vi.fn(),
+    isError: !!error,
+    isPending: isLoading,
+    isSuccess: !isLoading && !error && data !== undefined,
+    isFetching: isLoading,
+    isRefetching: false,
+    isLoadingError: false,
+    isRefetchError: false,
+    isInitialLoading: isLoading,
+    isPaused: false,
+    isEnabled: true,
+    status: isLoading ? 'pending' : error ? 'error' : 'success',
+    fetchStatus: isLoading ? 'fetching' : 'idle',
+    dataUpdatedAt: Date.now(),
+    errorUpdatedAt: 0,
+    failureCount: 0,
+    failureReason: null,
+    errorUpdateCount: 0,
+    isFetched: !isLoading,
+    isFetchedAfterMount: !isLoading,
+    isPlaceholderData: false,
+    isStale: false,
+    promise: Promise.resolve(data as T),
+  } as UseQueryResult<T, Error>
 }
 
 // ============================================================================
@@ -210,6 +232,20 @@ const createMockLogsResponse = (
 })
 
 // ============================================================================
+// Type-safe Mock Helper
+// ============================================================================
+
+type WorkflowLogsParams = {
+  appId: string
+  params?: Record<string, string | number | boolean | undefined>
+}
+
+const getMockCallParams = (): WorkflowLogsParams | undefined => {
+  const lastCall = mockedUseWorkflowLogs.mock.calls.at(-1)
+  return lastCall?.[0]
+}
+
+// ============================================================================
 // Tests
 // ============================================================================
 
@@ -227,42 +263,48 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('Rendering', () => {
     it('should render without crashing', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
     })
 
     it('should render title and subtitle', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(screen.getByText('appLog.workflowTitle')).toBeInTheDocument()
       expect(screen.getByText('appLog.workflowSubtitle')).toBeInTheDocument()
     })
 
     it('should render Filter component', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(screen.getByPlaceholderText('common.operation.search')).toBeInTheDocument()
     })
   })
@@ -272,28 +314,33 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('Loading State', () => {
     it('should show loading spinner when data is undefined', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: undefined,
-        refetch: vi.fn(),
-        isLoading: true,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: undefined,
+          isLoading: true,
+        }),
+      )
 
+      // Act
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(container.querySelector('.spin-animation')).toBeInTheDocument()
     })
 
     it('should not show loading spinner when data is available', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([createMockWorkflowLog()], 1),
+        }),
+      )
 
+      // Act
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(container.querySelector('.spin-animation')).not.toBeInTheDocument()
     })
   })
@@ -303,15 +350,17 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('Empty State', () => {
     it('should render empty element when total is 0', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(screen.getByText('appLog.table.empty.element.title')).toBeInTheDocument()
       expect(screen.queryByRole('table')).not.toBeInTheDocument()
     })
@@ -322,16 +371,18 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('Data Fetching', () => {
     it('should call useWorkflowLogs with correct appId and default params', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      const callArg = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0] as { appId: string, params: Record<string, unknown> }
+      // Assert
+      const callArg = getMockCallParams()
       expect(callArg).toMatchObject({
         appId: defaultProps.appDetail.id,
         params: expect.objectContaining({
@@ -343,31 +394,35 @@ describe('Logs Container', () => {
     })
 
     it('should include date filters for non-allTime periods', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      const callArg = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0] as { params?: Record<string, unknown> }
+      // Assert
+      const callArg = getMockCallParams()
       expect(callArg?.params).toHaveProperty('created_at__after')
       expect(callArg?.params).toHaveProperty('created_at__before')
     })
 
     it('should not include status param when status is all', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      const callArg = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0] as { params?: Record<string, unknown> }
+      // Assert
+      const callArg = getMockCallParams()
       expect(callArg?.params).not.toHaveProperty('status')
     })
   })
@@ -377,23 +432,23 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('Filter Integration', () => {
     it('should update query when selecting status filter', async () => {
+      // Arrange
       const user = userEvent.setup()
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      // Click status filter
+      // Act
       await user.click(screen.getByText('All'))
       await user.click(await screen.findByText('Success'))
 
-      // Check that useWorkflowLogs was called with updated params
+      // Assert
       await waitFor(() => {
-        const lastCall = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0] as { params?: Record<string, unknown> }
+        const lastCall = getMockCallParams()
         expect(lastCall?.params).toMatchObject({
           status: 'succeeded',
         })
@@ -401,44 +456,46 @@ describe('Logs Container', () => {
     })
 
     it('should update query when selecting period filter', async () => {
+      // Arrange
       const user = userEvent.setup()
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      // Click period filter
+      // Act
       await user.click(screen.getByText('appLog.filter.period.last7days'))
       await user.click(await screen.findByText('appLog.filter.period.allTime'))
 
-      // When period is allTime (9), date filters should be removed
+      // Assert
       await waitFor(() => {
-        const lastCall = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0] as { params?: Record<string, unknown> }
+        const lastCall = getMockCallParams()
         expect(lastCall?.params).not.toHaveProperty('created_at__after')
         expect(lastCall?.params).not.toHaveProperty('created_at__before')
       })
     })
 
     it('should update query when typing keyword', async () => {
+      // Arrange
       const user = userEvent.setup()
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
       renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Act
       const searchInput = screen.getByPlaceholderText('common.operation.search')
       await user.type(searchInput, 'test-keyword')
 
+      // Assert
       await waitFor(() => {
-        const lastCall = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0] as { params?: Record<string, unknown> }
+        const lastCall = getMockCallParams()
         expect(lastCall?.params).toMatchObject({
           keyword: 'test-keyword',
         })
@@ -451,34 +508,35 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('Pagination', () => {
     it('should not render pagination when total is less than limit', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([createMockWorkflowLog()], 1),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      // Pagination component should not be rendered
+      // Assert
       expect(screen.queryByRole('navigation')).not.toBeInTheDocument()
     })
 
     it('should render pagination when total exceeds limit', () => {
+      // Arrange
       const logs = Array.from({ length: APP_PAGE_LIMIT }, (_, i) =>
         createMockWorkflowLog({ id: `log-${i}` }))
 
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse(logs, APP_PAGE_LIMIT + 10),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse(logs, APP_PAGE_LIMIT + 10),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
-      // Should show pagination - checking for any pagination-related element
-      // The Pagination component renders page controls
+      // Assert
       expect(screen.getByRole('table')).toBeInTheDocument()
     })
   })
@@ -488,35 +546,39 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('List Rendering', () => {
     it('should render List component when data is available', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([createMockWorkflowLog()], 1),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(screen.getByRole('table')).toBeInTheDocument()
     })
 
     it('should display log data in table', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([
-          createMockWorkflowLog({
-            workflow_run: createMockWorkflowRun({
-              status: 'succeeded',
-              total_tokens: 500,
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([
+            createMockWorkflowLog({
+              workflow_run: createMockWorkflowRun({
+                status: 'succeeded',
+                total_tokens: 500,
+              }),
             }),
-          }),
-        ], 1),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+          ], 1),
+        }),
+      )
 
+      // Act
       renderWithQueryClient(<Logs {...defaultProps} />)
 
+      // Assert
       expect(screen.getByText('Success')).toBeInTheDocument()
       expect(screen.getByText('500')).toBeInTheDocument()
     })
@@ -539,48 +601,53 @@ describe('Logs Container', () => {
   // --------------------------------------------------------------------------
   describe('Edge Cases', () => {
     it('should handle different app modes', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([createMockWorkflowLog()], 1),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([createMockWorkflowLog()], 1),
+        }),
+      )
 
       const chatApp = createMockApp({ mode: 'advanced-chat' as AppModeEnum })
 
+      // Act
       renderWithQueryClient(<Logs appDetail={chatApp} />)
 
-      // Should render without trigger column
+      // Assert
       expect(screen.queryByText('appLog.table.header.triggered_from')).not.toBeInTheDocument()
     })
 
     it('should handle error state from useWorkflowLogs', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: undefined,
-        refetch: vi.fn(),
-        isLoading: false,
-        error: new Error('Failed to fetch'),
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: undefined,
+          error: new Error('Failed to fetch'),
+        }),
+      )
 
+      // Act
       const { container } = renderWithQueryClient(<Logs {...defaultProps} />)
 
-      // Should show loading state when data is undefined
+      // Assert - should show loading state when data is undefined
       expect(container.querySelector('.spin-animation')).toBeInTheDocument()
     })
 
     it('should handle app with different ID', () => {
-      mockedUseWorkflowLogs.mockReturnValue({
-        data: createMockLogsResponse([], 0),
-        refetch: vi.fn(),
-        isLoading: false,
-        error: null,
-      } as any)
+      // Arrange
+      mockedUseWorkflowLogs.mockReturnValue(
+        createMockQueryResult<WorkflowLogsResponse>({
+          data: createMockLogsResponse([], 0),
+        }),
+      )
 
       const customApp = createMockApp({ id: 'custom-app-123' })
 
+      // Act
       renderWithQueryClient(<Logs appDetail={customApp} />)
 
-      const callArg = mockedUseWorkflowLogs.mock.calls.at(-1)?.[0] as { appId: string }
+      // Assert
+      const callArg = getMockCallParams()
       expect(callArg?.appId).toBe('custom-app-123')
     })
   })
