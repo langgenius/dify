@@ -85,7 +85,7 @@ describe('AppNavItem', () => {
 
   // Edge cases: hide delete when uninstallable or selected.
   describe('Edge Cases', () => {
-    it('should not render delete action when uninstallable', () => {
+    it('should not render delete action when app is uninstallable', () => {
       // Arrange
       const { container } = render(<AppNavItem {...baseProps} uninstallable />)
 
