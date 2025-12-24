@@ -96,7 +96,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('appDebug.variableConfig.varName') }),
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('appDebug.variableConfig.varName') }) as string,
       })
       return false
     }
@@ -216,7 +216,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }),
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }) as string,
       })
       return
     }

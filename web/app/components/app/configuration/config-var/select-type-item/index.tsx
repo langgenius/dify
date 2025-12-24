@@ -36,7 +36,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
       <div className="shrink-0">
         <InputVarTypeIcon type={type} className="h-5 w-5" />
       </div>
-      <span>{typeName as string}</span>
+      <span>{typeName}</span>
     </div>
   )
 }
