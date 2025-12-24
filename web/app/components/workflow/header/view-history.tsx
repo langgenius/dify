@@ -1,17 +1,13 @@
-import type { Fetcher } from 'swr'
-import type { WorkflowRunHistoryResponse } from '@/types/workflow'
 import {
   RiCheckboxCircleLine,
   RiCloseLine,
   RiErrorWarningLine,
 } from '@remixicon/react'
-import { noop } from 'lodash-es'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
   ClockPlay,
@@ -30,6 +26,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useWorkflowRunHistory } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
 import {
   useIsChatMode,
@@ -44,13 +41,11 @@ export type ViewHistoryProps = {
   withText?: boolean
   onClearLogAndMessageModal?: () => void
   historyUrl?: string
-  historyFetcher?: Fetcher<WorkflowRunHistoryResponse, string>
 }
 const ViewHistory = ({
   withText,
   onClearLogAndMessageModal,
   historyUrl,
-  historyFetcher,
 }: ViewHistoryProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
@@ -68,11 +63,11 @@ const ViewHistory = ({
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
-  const fetcher = historyFetcher ?? (noop as Fetcher<WorkflowRunHistoryResponse, string>)
+  const shouldFetchHistory = open && !!historyUrl
   const {
     data,
     isLoading,
-  } = useSWR((open && historyUrl && historyFetcher) ? historyUrl : null, fetcher)
+  } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
 
   return (
     (
