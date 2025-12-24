@@ -224,23 +224,31 @@ export const Workflow: FC<WorkflowProps> = memo(({
     return () => {
       handleSyncWorkflowDraft(true, true)
     }
-  }, [])
+  }, [handleSyncWorkflowDraft])
 
   const { handleRefreshWorkflowDraft } = useWorkflowRefreshDraft()
   const handleSyncWorkflowDraftWhenPageClose = useCallback(() => {
     if (document.visibilityState === 'hidden')
       syncWorkflowDraftWhenPageClose()
+
     else if (document.visibilityState === 'visible')
       setTimeout(() => handleRefreshWorkflowDraft(), 500)
-  }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft])
+  }, [syncWorkflowDraftWhenPageClose, handleRefreshWorkflowDraft, workflowStore])
+
+  // Also add beforeunload handler as additional safety net for tab close
+  const handleBeforeUnload = useCallback(() => {
+    syncWorkflowDraftWhenPageClose()
+  }, [syncWorkflowDraftWhenPageClose])
 
   useEffect(() => {
     document.addEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
+    window.addEventListener('beforeunload', handleBeforeUnload)
 
     return () => {
       document.removeEventListener('visibilitychange', handleSyncWorkflowDraftWhenPageClose)
+      window.removeEventListener('beforeunload', handleBeforeUnload)
     }
-  }, [handleSyncWorkflowDraftWhenPageClose])
+  }, [handleSyncWorkflowDraftWhenPageClose, handleBeforeUnload])
 
   useEventListener('keydown', (e) => {
     if ((e.key === 'd' || e.key === 'D') && (e.ctrlKey || e.metaKey))
@@ -419,7 +427,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
         onPaneContextMenu={handlePaneContextMenu}
         onSelectionContextMenu={handleSelectionContextMenu}
         connectionLineComponent={CustomConnectionLine}
-        // TODO: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
+        // NOTE: For LOOP node, how to distinguish between ITERATION and LOOP here? Maybe both are the same?
         connectionLineContainerStyle={{ zIndex: ITERATION_CHILDREN_Z_INDEX }}
         defaultViewport={viewport}
         multiSelectionKeyCode={null}
