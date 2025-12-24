@@ -228,7 +228,7 @@ const QueryInput = ({
                   className="flex h-7 cursor-pointer items-center space-x-0.5 rounded-lg border-[0.5px] border-components-button-secondary-bg bg-components-button-secondary-bg px-1.5 shadow-xs backdrop-blur-[5px] hover:bg-components-button-secondary-bg-hover"
                 >
                   {icon}
-                  <div className="text-xs font-medium uppercase text-text-secondary">{t(`dataset.retrieval.${retrievalMethod}.title`)}</div>
+                  <div className="text-xs font-medium uppercase text-text-secondary">{t(`dataset.retrieval.${retrievalMethod}.title` as any) as string}</div>
                   <RiEqualizer2Line className="size-4 text-components-menu-item-text"></RiEqualizer2Line>
                 </div>
               )}

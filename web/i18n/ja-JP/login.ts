@@ -57,6 +57,7 @@ const translation = {
     passwordInvalid: 'パスワードは文字と数字を含み、長さは 8 以上である必要があります',
     registrationNotAllowed: 'アカウントが見つかりません。登録するためにシステム管理者に連絡してください。',
     invalidEmailOrPassword: '無効なメールアドレスまたはパスワードです。',
+    redirectUrlMissing: 'リダイレクト URL が見つかりません',
   },
   license: {
     tip: 'GitHub のオープンソースライセンスを確認してから、Dify Community Edition を開始してください。',
