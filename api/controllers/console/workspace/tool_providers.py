@@ -147,7 +147,7 @@ class BuiltinProviderDefaultCredentialPayload(BaseModel):
 
 
 class ToolOAuthCustomClientPayload(BaseModel):
-    client_params: dict[str, Any] | None = None
+    client_params: dict[str, Any] = {}
     enable_oauth_custom_client: bool = True
 
 
@@ -743,7 +743,7 @@ class ToolOAuthCallback(Resource):
         tool_provider = ToolProviderID(provider)
         plugin_id = tool_provider.plugin_id
         provider_name = tool_provider.provider_name
-        user_id, tenant_id = context.get("user.id"), context.get("tenant_id")
+        user_id, tenant_id = context.get("user_id"), context.get("tenant_id")
 
         oauth_handler = OAuthHandler()
         oauth_client_params = BuiltinToolManageService.get_oauth_client(tenant_id, provider)
@@ -808,7 +808,7 @@ class ToolOAuthCustomClient(Resource):
         return BuiltinToolManageService.save_custom_oauth_client_params(
             tenant_id=tenant_id,
             provider=provider,
-            client_params=payload.client_params or {},
+            client_params=payload.client_params,
             enable_oauth_custom_client=payload.enable_oauth_custom_client,
         )
 
