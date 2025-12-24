@@ -357,9 +357,7 @@ const translation = {
     visionSettings: {
       title: 'Vision-Einstellungen',
       resolution: 'Auflösung',
-      resolutionTooltip: `Niedrige Auflösung ermöglicht es dem Modell, eine Bildversion mit niedriger Auflösung von 512 x 512 zu erhalten und das Bild mit einem Budget von 65 Tokens darzustellen. Dies ermöglicht schnellere Antworten des API und verbraucht weniger Eingabetokens für Anwendungsfälle, die kein hohes Detail benötigen.
-      \n
-      Hohe Auflösung ermöglicht zunächst, dass das Modell das Bild mit niedriger Auflösung sieht und dann detaillierte Ausschnitte von Eingabebildern als 512px Quadrate basierend auf der Größe des Eingabebildes erstellt. Jeder der detaillierten Ausschnitte verwendet das doppelte Token-Budget für insgesamt 129 Tokens.`,
+      resolutionTooltip: 'Niedrige Auflösung ermöglicht es dem Modell, eine Bildversion mit niedriger Auflösung von 512 x 512 zu erhalten und das Bild mit einem Budget von 65 Tokens darzustellen. Dies ermöglicht schnellere Antworten des API und verbraucht weniger Eingabetokens für Anwendungsfälle, die kein hohes Detail benötigen.\nHohe Auflösung ermöglicht zunächst, dass das Modell das Bild mit niedriger Auflösung sieht und dann detaillierte Ausschnitte von Eingabebildern als 512px Quadrate basierend auf der Größe des Eingabebildes erstellt. Jeder der detaillierten Ausschnitte verwendet das doppelte Token-Budget für insgesamt 129 Tokens.',
       high: 'Hoch',
       low: 'Niedrig',
       uploadMethod: 'Upload-Methode',

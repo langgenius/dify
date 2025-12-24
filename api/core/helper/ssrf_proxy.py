@@ -122,13 +122,11 @@ def _inject_trace_headers(headers: dict | None) -> dict:
 
 
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
+    # Convert requests-style allow_redirects to httpx-style follow_redirects
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
         if "follow_redirects" not in kwargs:
             kwargs["follow_redirects"] = allow_redirects
-
-    # Extract follow_redirects - it's a send() parameter, not build_request() parameter
-    follow_redirects = kwargs.pop("follow_redirects", False)
 
     if "timeout" not in kwargs:
         kwargs["timeout"] = httpx.Timeout(
@@ -155,16 +153,13 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     retries = 0
     while retries <= max_retries:
         try:
-            # Build the request manually to preserve the Host header
-            # httpx may override the Host header when using a proxy, so we use
-            # the request API to explicitly set headers before sending
-            request = client.build_request(method=method, url=url, **kwargs)
-
-            # If user explicitly provided a Host header, ensure it's preserved
+            # Preserve the user-provided Host header
+            # httpx may override the Host header when using a proxy
+            headers = {k: v for k, v in headers.items() if k.lower() != "host"}
             if user_provided_host is not None:
-                request.headers["Host"] = user_provided_host
-
-            response = client.send(request, follow_redirects=follow_redirects)
+                headers["host"] = user_provided_host
+            kwargs["headers"] = headers
+            response = client.request(method=method, url=url, **kwargs)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
