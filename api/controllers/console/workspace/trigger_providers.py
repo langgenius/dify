@@ -378,22 +378,13 @@ class TriggerSubscriptionUpdateApi(Resource):
                     else:
                         new_credentials = subscription.credentials
 
-                    # Handle hidden values in parameters (for secret-type parameters)
-                    if args.parameters:
-                        new_parameters: dict[str, Any] = {
-                            key: value if value != HIDDEN_VALUE else subscription.parameters.get(key, UNKNOWN_VALUE)
-                            for key, value in args.parameters.items()
-                        }
-                    else:
-                        new_parameters = subscription.parameters
-
                     TriggerProviderService.rebuild_trigger_subscription(
                         tenant_id=user.current_tenant_id,
                         name=args.name,
                         provider_id=provider_id,
                         subscription_id=subscription_id,
                         credentials=new_credentials,
-                        parameters=new_parameters,
+                        parameters=args.parameters or subscription.parameters,
                     )
                     return 200
                 case _:
