@@ -19,16 +19,12 @@ vi.mock('@/app/components/app/store', () => ({
 vi.mock('@/app/components/workflow/header', () => ({
   __esModule: true,
   default: (props: HeaderProps) => {
-    const historyFetcher = props.normal?.runAndHistoryProps?.viewHistoryProps?.historyFetcher
-    const hasHistoryFetcher = typeof historyFetcher === 'function'
-
     return (
       <div
         data-testid="workflow-header"
         data-show-run={String(Boolean(props.normal?.runAndHistoryProps?.showRunButton))}
         data-show-preview={String(Boolean(props.normal?.runAndHistoryProps?.showPreviewButton))}
         data-history-url={props.normal?.runAndHistoryProps?.viewHistoryProps?.historyUrl ?? ''}
-        data-has-history-fetcher={String(hasHistoryFetcher)}
       >
         <button
           type="button"
@@ -45,11 +41,6 @@ vi.mock('@/app/components/workflow/header', () => ({
       </div>
     )
   },
-}))
-
-vi.mock('@/service/workflow', () => ({
-  __esModule: true,
-  fetchWorkflowRunHistory: vi.fn(),
 }))
 
 vi.mock('@/service/use-workflow', () => ({
@@ -99,7 +90,6 @@ describe('WorkflowHeader', () => {
       expect(header).toHaveAttribute('data-show-run', 'false')
       expect(header).toHaveAttribute('data-show-preview', 'true')
       expect(header).toHaveAttribute('data-history-url', '/apps/app-id/advanced-chat/workflow-runs')
-      expect(header).toHaveAttribute('data-has-history-fetcher', 'true')
     })
 
     it('should configure run mode when app is not in advanced chat mode', () => {
@@ -119,7 +109,6 @@ describe('WorkflowHeader', () => {
       expect(header).toHaveAttribute('data-show-run', 'true')
       expect(header).toHaveAttribute('data-show-preview', 'false')
       expect(header).toHaveAttribute('data-history-url', '/apps/app-id/workflow-runs')
-      expect(header).toHaveAttribute('data-has-history-fetcher', 'true')
     })
   })
 
