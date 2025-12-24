@@ -29,7 +29,7 @@ from core.workflow.node_events import (
 )
 from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.loop.entities import LoopNodeData, LoopVariableData
+from core.workflow.nodes.loop.entities import LoopCompletedReason, LoopNodeData, LoopVariableData
 from core.workflow.utils.condition.processor import ConditionProcessor
 from factories.variable_factory import TypeMismatchError, build_segment_with_type, segment_to_variable
 from libs.datetime_utils import naive_utc_now
@@ -180,7 +180,11 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                     WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS: loop_usage.total_tokens,
                     WorkflowNodeExecutionMetadataKey.TOTAL_PRICE: loop_usage.total_price,
                     WorkflowNodeExecutionMetadataKey.CURRENCY: loop_usage.currency,
-                    "completed_reason": "loop_break" if reach_break_condition else "loop_completed",
+                    WorkflowNodeExecutionMetadataKey.COMPLETED_REASON: (
+                        LoopCompletedReason.LOOP_BREAK
+                        if reach_break_condition
+                        else LoopCompletedReason.LOOP_COMPLETED.value
+                    ),
                     WorkflowNodeExecutionMetadataKey.LOOP_DURATION_MAP: loop_duration_map,
                     WorkflowNodeExecutionMetadataKey.LOOP_VARIABLE_MAP: single_loop_variable_map,
                 },
