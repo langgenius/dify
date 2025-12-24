@@ -595,12 +595,10 @@ class ToolWorkflowProviderDeleteApi(Resource):
     def post(self):
         user, tenant_id = current_account_with_tenant()
 
-        user_id = user.id
-
         payload = WorkflowToolDeletePayload.model_validate(console_ns.payload or {})
 
         return WorkflowToolManageService.delete_workflow_tool(
-            user_id,
+            user.id,
             tenant_id,
             payload.workflow_tool_id,
         )
@@ -616,9 +614,8 @@ class ToolWorkflowProviderGetApi(Resource):
 
         user_id = user.id
 
-        raw_args = request.args.to_dict()
-        query = WorkflowToolGetQuery.model_validate(raw_args)
-
+        query = WorkflowToolGetQuery.model_validate(request.args.to_dict())
+        tool = {}
         if query.workflow_tool_id:
             tool = WorkflowToolManageService.get_workflow_tool_by_tool_id(
                 user_id,
@@ -631,7 +628,6 @@ class ToolWorkflowProviderGetApi(Resource):
                 tenant_id,
                 query.workflow_app_id,
             )
-
         return jsonable_encoder(tool)
 
 
@@ -642,15 +638,11 @@ class ToolWorkflowProviderListToolApi(Resource):
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
-        raw_args = request.args.to_dict()
-        query = WorkflowToolListQuery.model_validate(raw_args)
+        query = WorkflowToolListQuery.model_validate(request.args.to_dict())
 
         return jsonable_encoder(
             WorkflowToolManageService.list_single_workflow_tools(
-                user_id,
+                user.id,
                 tenant_id,
                 query.workflow_tool_id,
             )
@@ -664,14 +656,11 @@ class ToolBuiltinListApi(Resource):
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in BuiltinToolManageService.list_builtin_tools(
-                    user_id,
+                    user.id,
                     tenant_id,
                 )
             ]
@@ -703,14 +692,11 @@ class ToolWorkflowListApi(Resource):
     @account_initialization_required
     def get(self):
         user, tenant_id = current_account_with_tenant()
-
-        user_id = user.id
-
         return jsonable_encoder(
             [
                 provider.to_dict()
                 for provider in WorkflowToolManageService.list_tenant_workflow_tools(
-                    user_id,
+                    user.id,
                     tenant_id,
                 )
             ]
@@ -952,14 +938,14 @@ class ToolProviderMCPApi(Resource):
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
             validation_data = service.get_provider_for_url_validation(
-                tenant_id=current_tenant_id, provider_id=args.provider_id
+                tenant_id=current_tenant_id, provider_id=payload.provider_id
             )
 
         # Step 2: Perform URL validation with network I/O OUTSIDE of any database session
         # This prevents holding database locks during potentially slow network operations
         validation_result = MCPToolManageService.validate_server_url_standalone(
             tenant_id=current_tenant_id,
-            new_server_url=args["server_url"],
+            new_server_url=payload.server_url,
             validation_data=validation_data,
         )
 
@@ -996,7 +982,7 @@ class ToolProviderMCPApi(Resource):
 
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
-            service.delete_provider(tenant_id=current_tenant_id, provider_id=args.provider_id)
+            service.delete_provider(tenant_id=current_tenant_id, provider_id=payload.provider_id)
 
         # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
         ToolProviderListCache.invalidate_cache(current_tenant_id)
