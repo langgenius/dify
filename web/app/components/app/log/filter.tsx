@@ -6,11 +6,10 @@ import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
 import Sort from '@/app/components/base/sort'
-import { fetchAnnotationsCount } from '@/service/log'
+import { useAnnotationsCount } from '@/service/use-log'
 
 dayjs.extend(quarterOfYear)
 
@@ -36,9 +35,9 @@ type IFilterProps = {
 }
 
 const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryParams }: IFilterProps) => {
-  const { data } = useSWR({ url: `/apps/${appId}/annotations/count` }, fetchAnnotationsCount)
+  const { data, isLoading } = useAnnotationsCount(appId)
   const { t } = useTranslation()
-  if (!data)
+  if (isLoading || !data)
     return null
   return (
     <div className="mb-2 flex flex-row flex-wrap items-center gap-2">
@@ -51,7 +50,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}` as any) as string }))}
       />
       <Chip
         className="min-w-[150px]"

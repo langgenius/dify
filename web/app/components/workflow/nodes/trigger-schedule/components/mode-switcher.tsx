@@ -15,12 +15,12 @@ const ModeSwitcher = ({ mode, onChange }: ModeSwitcherProps) => {
   const options = [
     {
       Icon: RiCalendarLine,
-      text: t('workflow.nodes.triggerSchedule.mode.visual'),
+      text: t('workflow.nodes.triggerSchedule.modeVisual'),
       value: 'visual' as const,
     },
     {
       Icon: RiCodeLine,
-      text: t('workflow.nodes.triggerSchedule.mode.cron'),
+      text: t('workflow.nodes.triggerSchedule.modeCron'),
       value: 'cron' as const,
     },
   ]

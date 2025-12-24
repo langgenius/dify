@@ -295,7 +295,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isExternal
                 rowClass={rowClass}
                 labelClass={labelClass}
-                t={t}
+                t={t as any}
                 topK={topK}
                 scoreThreshold={scoreThreshold}
                 scoreThresholdEnabled={scoreThresholdEnabled}
@@ -308,7 +308,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isExternal={false}
                 rowClass={rowClass}
                 labelClass={labelClass}
-                t={t}
+                t={t as any}
                 indexMethod={indexMethod}
                 retrievalConfig={retrievalConfig}
                 showMultiModalTip={showMultiModalTip}
