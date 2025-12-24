@@ -39,8 +39,7 @@ def client():
 
 
 @patch(
-    "controllers.console.workspace.tool_providers.current_account_with_tenant",
-    return_value=(MagicMock(id="u1"), "t1")
+    "controllers.console.workspace.tool_providers.current_account_with_tenant", return_value=(MagicMock(id="u1"), "t1")
 )
 @patch("controllers.console.workspace.tool_providers.ToolProviderListCache.invalidate_cache", return_value=None)
 @patch("controllers.console.workspace.tool_providers.Session")
@@ -52,9 +51,9 @@ def test_create_mcp_provider_populates_tools(
     # Arrange: reconnect returns tools immediately
     mock_reconnect.return_value = ReconnectResult(
         authed=True,
-        tools=json.dumps([
-            {"name": "ping", "description": "ok", "inputSchema": {"type": "object"}, "outputSchema": {}}
-        ]),
+        tools=json.dumps(
+            [{"name": "ping", "description": "ok", "inputSchema": {"type": "object"}, "outputSchema": {}}]
+        ),
         encrypted_credentials="{}",
     )
 
