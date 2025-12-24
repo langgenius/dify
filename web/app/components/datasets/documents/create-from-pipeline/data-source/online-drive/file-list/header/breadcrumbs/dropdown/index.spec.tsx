@@ -1,9 +1,9 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import Dropdown from './index'
 
 // ==========================================
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 // ==========================================
 
 // ==========================================
@@ -14,7 +14,7 @@ type DropdownProps = React.ComponentProps<typeof Dropdown>
 const createDefaultProps = (overrides?: Partial<DropdownProps>): DropdownProps => ({
   startIndex: 0,
   breadcrumbs: ['folder1', 'folder2'],
-  onBreadcrumbClick: jest.fn(),
+  onBreadcrumbClick: vi.fn(),
   ...overrides,
 })
 
@@ -23,7 +23,7 @@ const createDefaultProps = (overrides?: Partial<DropdownProps>): DropdownProps =
 // ==========================================
 describe('Dropdown', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -115,7 +115,7 @@ describe('Dropdown', () => {
     describe('startIndex prop', () => {
       it('should pass startIndex to Menu component', async () => {
         // Arrange
-        const mockOnBreadcrumbClick = jest.fn()
+        const mockOnBreadcrumbClick = vi.fn()
         const props = createDefaultProps({
           startIndex: 5,
           breadcrumbs: ['folder1'],
@@ -138,7 +138,7 @@ describe('Dropdown', () => {
 
       it('should calculate correct index for second item', async () => {
         // Arrange
-        const mockOnBreadcrumbClick = jest.fn()
+        const mockOnBreadcrumbClick = vi.fn()
         const props = createDefaultProps({
           startIndex: 3,
           breadcrumbs: ['folder1', 'folder2'],
@@ -252,7 +252,7 @@ describe('Dropdown', () => {
     describe('onBreadcrumbClick prop', () => {
       it('should call onBreadcrumbClick with correct index when item clicked', async () => {
         // Arrange
-        const mockOnBreadcrumbClick = jest.fn()
+        const mockOnBreadcrumbClick = vi.fn()
         const props = createDefaultProps({
           startIndex: 0,
           breadcrumbs: ['folder1'],
@@ -327,7 +327,7 @@ describe('Dropdown', () => {
 
       it('should close when breadcrumb item is clicked', async () => {
         // Arrange
-        const mockOnBreadcrumbClick = jest.fn()
+        const mockOnBreadcrumbClick = vi.fn()
         const props = createDefaultProps({
           breadcrumbs: ['test-folder'],
           onBreadcrumbClick: mockOnBreadcrumbClick,
@@ -422,7 +422,7 @@ describe('Dropdown', () => {
     describe('handleBreadCrumbClick', () => {
       it('should call onBreadcrumbClick and close menu', async () => {
         // Arrange
-        const mockOnBreadcrumbClick = jest.fn()
+        const mockOnBreadcrumbClick = vi.fn()
         const props = createDefaultProps({
           breadcrumbs: ['folder1'],
           onBreadcrumbClick: mockOnBreadcrumbClick,
@@ -450,7 +450,7 @@ describe('Dropdown', () => {
 
       it('should pass correct index to onBreadcrumbClick for each item', async () => {
         // Arrange
-        const mockOnBreadcrumbClick = jest.fn()
+        const mockOnBreadcrumbClick = vi.fn()
         const props = createDefaultProps({
           startIndex: 2,
           breadcrumbs: ['folder1', 'folder2', 'folder3'],
@@ -484,7 +484,7 @@ describe('Dropdown', () => {
 
     it('should maintain stable callback after rerender with same props', async () => {
       // Arrange
-      const mockOnBreadcrumbClick = jest.fn()
+      const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
         breadcrumbs: ['folder'],
         onBreadcrumbClick: mockOnBreadcrumbClick,
@@ -512,8 +512,8 @@ describe('Dropdown', () => {
 
     it('should update callback when onBreadcrumbClick prop changes', async () => {
       // Arrange
-      const mockOnBreadcrumbClick1 = jest.fn()
-      const mockOnBreadcrumbClick2 = jest.fn()
+      const mockOnBreadcrumbClick1 = vi.fn()
+      const mockOnBreadcrumbClick2 = vi.fn()
       const props = createDefaultProps({
         breadcrumbs: ['folder'],
         onBreadcrumbClick: mockOnBreadcrumbClick1,
@@ -528,10 +528,13 @@ describe('Dropdown', () => {
       fireEvent.click(screen.getByText('folder'))
 
       // Rerender with different callback
-      rerender(<Dropdown {...createDefaultProps({
-        breadcrumbs: ['folder'],
-        onBreadcrumbClick: mockOnBreadcrumbClick2,
-      })} />)
+      rerender(
+        <Dropdown {...createDefaultProps({
+          breadcrumbs: ['folder'],
+          onBreadcrumbClick: mockOnBreadcrumbClick2,
+        })}
+        />,
+      )
 
       // Open and click with second callback
       fireEvent.click(screen.getByRole('button'))
@@ -616,7 +619,7 @@ describe('Dropdown', () => {
 
     it('should handle startIndex of 0', async () => {
       // Arrange
-      const mockOnBreadcrumbClick = jest.fn()
+      const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
         startIndex: 0,
         breadcrumbs: ['folder'],
@@ -637,7 +640,7 @@ describe('Dropdown', () => {
 
     it('should handle large startIndex values', async () => {
       // Arrange
-      const mockOnBreadcrumbClick = jest.fn()
+      const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
         startIndex: 999,
         breadcrumbs: ['folder'],
@@ -700,7 +703,7 @@ describe('Dropdown', () => {
       { startIndex: 10, breadcrumbs: ['a', 'b'], expectedIndex: 10 },
     ])('should handle startIndex=$startIndex correctly', async ({ startIndex, breadcrumbs, expectedIndex }) => {
       // Arrange
-      const mockOnBreadcrumbClick = jest.fn()
+      const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
         startIndex,
         breadcrumbs,
@@ -764,7 +767,7 @@ describe('Dropdown', () => {
 
     it('should handle click on any menu item', async () => {
       // Arrange
-      const mockOnBreadcrumbClick = jest.fn()
+      const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
         startIndex: 0,
         breadcrumbs: ['first', 'second', 'third'],
@@ -785,7 +788,7 @@ describe('Dropdown', () => {
 
     it('should close menu after any item click', async () => {
       // Arrange
-      const mockOnBreadcrumbClick = jest.fn()
+      const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
         breadcrumbs: ['item1', 'item2', 'item3'],
         onBreadcrumbClick: mockOnBreadcrumbClick,
@@ -809,7 +812,7 @@ describe('Dropdown', () => {
 
     it('should correctly calculate index for each item based on startIndex', async () => {
       // Arrange
-      const mockOnBreadcrumbClick = jest.fn()
+      const mockOnBreadcrumbClick = vi.fn()
       const props = createDefaultProps({
         startIndex: 3,
         breadcrumbs: ['folder-a', 'folder-b', 'folder-c'],

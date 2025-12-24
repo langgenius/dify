@@ -1,15 +1,15 @@
 'use client'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/utils/classnames'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { changeWebAppPasswordWithToken } from '@/service/common'
-import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
 import { validPassword } from '@/config'
+import { changeWebAppPasswordWithToken } from '@/service/common'
+import { cn } from '@/utils/classnames'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -86,14 +86,15 @@ const ChangePasswordForm = () => {
         'px-6',
         'md:px-[108px]',
       )
-    }>
+    }
+    >
       {!showSuccess && (
-        <div className='flex flex-col md:w-[400px]'>
+        <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <h2 className="title-4xl-semi-bold text-text-primary">
               {t('login.changePassword')}
             </h2>
-            <p className='body-md-regular mt-2 text-text-secondary'>
+            <p className="body-md-regular mt-2 text-text-secondary">
               {t('login.changePasswordTip')}
             </p>
           </div>
@@ -101,13 +102,14 @@ const ChangePasswordForm = () => {
           <div className="mx-auto mt-6 w-full">
             <div className="bg-white">
               {/* Password */}
-              <div className='mb-5'>
+              <div className="mb-5">
                 <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
                   {t('common.account.newPassword')}
                 </label>
-                <div className='relative mt-1'>
+                <div className="relative mt-1">
                   <Input
-                    id="password" type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
                     placeholder={t('login.passwordPlaceholder') || ''}
@@ -116,21 +118,21 @@ const ChangePasswordForm = () => {
                   <div className="absolute inset-y-0 right-0 flex items-center">
                     <Button
                       type="button"
-                      variant='ghost'
+                      variant="ghost"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? '👀' : '😝'}
                     </Button>
                   </div>
                 </div>
-                <div className='body-xs-regular mt-1 text-text-secondary'>{t('login.error.passwordInvalid')}</div>
+                <div className="body-xs-regular mt-1 text-text-secondary">{t('login.error.passwordInvalid')}</div>
               </div>
               {/* Confirm Password */}
-              <div className='mb-5'>
+              <div className="mb-5">
                 <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
                   {t('common.account.confirmPassword')}
                 </label>
-                <div className='relative mt-1'>
+                <div className="relative mt-1">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
@@ -141,7 +143,7 @@ const ChangePasswordForm = () => {
                   <div className="absolute inset-y-0 right-0 flex items-center">
                     <Button
                       type="button"
-                      variant='ghost'
+                      variant="ghost"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? '👀' : '😝'}
@@ -151,8 +153,8 @@ const ChangePasswordForm = () => {
               </div>
               <div>
                 <Button
-                  variant='primary'
-                  className='w-full'
+                  variant="primary"
+                  className="w-full"
                   onClick={handleChangePassword}
                 >
                   {t('login.changePasswordBtn')}
@@ -166,17 +168,28 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill className='h-6 w-6 text-text-success' />
+              <RiCheckboxCircleFill className="h-6 w-6 text-text-success" />
             </div>
             <h2 className="title-4xl-semi-bold text-text-primary">
               {t('login.passwordChangedTip')}
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant='primary' className='w-full' onClick={() => {
-              setLeftTime(undefined)
-              router.replace(getSignInUrl())
-            }}>{t('login.passwordChanged')} ({Math.round(countdown / 1000)}) </Button>
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                setLeftTime(undefined)
+                router.replace(getSignInUrl())
+              }}
+            >
+              {t('login.passwordChanged')}
+              {' '}
+              (
+              {Math.round(countdown / 1000)}
+              )
+              {' '}
+            </Button>
           </div>
         </div>
       )}

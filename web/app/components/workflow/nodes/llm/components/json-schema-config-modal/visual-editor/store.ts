@@ -1,6 +1,6 @@
+import type { SchemaRoot } from '../../../types'
 import { useContext } from 'react'
 import { createStore, useStore } from 'zustand'
-import type { SchemaRoot } from '../../../types'
 import { VisualEditorContext } from './context'
 
 type VisualEditorStore = {

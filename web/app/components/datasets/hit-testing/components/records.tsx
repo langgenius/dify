@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo, useState } from 'react'
-import useTimestamp from '@/hooks/use-timestamp'
 import type { Attachment, HitTestingRecord, Query } from '@/models/datasets'
 import { RiApps2Line, RiArrowDownLine, RiFocus2Line } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import ImageList from '../../common/image-list'
+import useTimestamp from '@/hooks/use-timestamp'
 import { cn } from '@/utils/classnames'
+import ImageList from '../../common/image-list'
 
 type RecordsProps = {
   records: HitTestingRecord[]
@@ -45,15 +46,15 @@ const Records = ({
   }
 
   return (
-    <div className='grow overflow-y-auto'>
-      <table className={'w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary '}>
-        <thead className='sticky top-0 h-7 text-xs  font-medium uppercase leading-7 text-text-tertiary backdrop-blur-[5px]'>
+    <div className="grow overflow-y-auto">
+      <table className="w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary ">
+        <thead className="sticky top-0 h-7 text-xs  font-medium uppercase leading-7 text-text-tertiary backdrop-blur-[5px]">
           <tr>
-            <td className='rounded-l-lg bg-background-section-burn pl-3'>{t('datasetHitTesting.table.header.queryContent')}</td>
-            <td className='w-[128px]  bg-background-section-burn pl-3'>{t('datasetHitTesting.table.header.source')}</td>
-            <td className='w-48 rounded-r-lg bg-background-section-burn pl-3'>
+            <td className="rounded-l-lg bg-background-section-burn pl-3">{t('datasetHitTesting.table.header.queryContent')}</td>
+            <td className="w-[128px]  bg-background-section-burn pl-3">{t('datasetHitTesting.table.header.source')}</td>
+            <td className="w-48 rounded-r-lg bg-background-section-burn pl-3">
               <div
-                className='flex cursor-pointer items-center'
+                className="flex cursor-pointer items-center"
                 onClick={handleSortTime}
               >
                 {t('datasetHitTesting.table.header.time')}
@@ -76,33 +77,33 @@ const Records = ({
             return (
               <tr
                 key={id}
-                className='group cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover'
+                className="group cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover"
                 onClick={() => onClickRecord(record)}
               >
-                <td className='max-w-xs p-3 pr-2'>
-                  <div className='flex flex-col gap-y-1'>
+                <td className="max-w-xs p-3 pr-2">
+                  <div className="flex flex-col gap-y-1">
                     {content && (
-                      <div className='line-clamp-2'>
+                      <div className="line-clamp-2">
                         {content}
                       </div>
                     )}
                     {images.length > 0 && (
                       <ImageList
                         images={images}
-                        size='md'
-                        className='py-1'
+                        size="md"
+                        className="py-1"
                         limit={5}
                       />
                     )}
                   </div>
                 </td>
-                <td className='w-[128px] p-3 pr-2'>
-                  <div className='flex items-center'>
-                    <SourceIcon className='mr-1 size-4 text-text-tertiary' />
-                    <span className='capitalize'>{source.replace('_', ' ').replace('hit testing', 'retrieval test')}</span>
+                <td className="w-[128px] p-3 pr-2">
+                  <div className="flex items-center">
+                    <SourceIcon className="mr-1 size-4 text-text-tertiary" />
+                    <span className="capitalize">{source.replace('_', ' ').replace('hit testing', 'retrieval test')}</span>
                   </div>
                 </td>
-                <td className='w-48 p-3 pr-2'>
+                <td className="w-48 p-3 pr-2">
                   {formatTime(created_at, t('datasetHitTesting.dateTimeFormat') as string)}
                 </td>
               </tr>

@@ -1,25 +1,27 @@
-import React from 'react'
+import type { Mock } from 'vitest'
+import type { QueryParam } from './filter'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Filter, { type QueryParam } from './filter'
+import * as React from 'react'
 import useSWR from 'swr'
+import Filter from './filter'
 
-jest.mock('swr', () => ({
+vi.mock('swr', () => ({
   __esModule: true,
-  default: jest.fn(),
+  default: vi.fn(),
 }))
 
-jest.mock('@/service/log', () => ({
-  fetchAnnotationsCount: jest.fn(),
+vi.mock('@/service/log', () => ({
+  fetchAnnotationsCount: vi.fn(),
 }))
 
-const mockUseSWR = useSWR as unknown as jest.Mock
+const mockUseSWR = useSWR as unknown as Mock
 
 describe('Filter', () => {
   const appId = 'app-1'
   const childContent = 'child-content'
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should render nothing until annotation count is fetched', () => {
@@ -29,7 +31,7 @@ describe('Filter', () => {
       <Filter
         appId={appId}
         queryParams={{ keyword: '' }}
-        setQueryParams={jest.fn()}
+        setQueryParams={vi.fn()}
       >
         <div>{childContent}</div>
       </Filter>,
@@ -45,7 +47,7 @@ describe('Filter', () => {
   it('should propagate keyword changes and clearing behavior', () => {
     mockUseSWR.mockReturnValue({ data: { total: 20 } })
     const queryParams: QueryParam = { keyword: 'prefill' }
-    const setQueryParams = jest.fn()
+    const setQueryParams = vi.fn()
 
     const { container } = render(
       <Filter

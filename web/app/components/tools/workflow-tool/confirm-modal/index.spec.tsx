@@ -1,13 +1,13 @@
-import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import ConfirmModal from './index'
 
 // Test utilities
 const defaultProps = {
   show: true,
-  onClose: jest.fn(),
-  onConfirm: jest.fn(),
+  onClose: vi.fn(),
+  onConfirm: vi.fn(),
 }
 
 const renderComponent = (props: Partial<React.ComponentProps<typeof ConfirmModal>> = {}) => {
@@ -17,7 +17,7 @@ const renderComponent = (props: Partial<React.ComponentProps<typeof ConfirmModal
 
 describe('ConfirmModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Rendering tests (REQUIRED)
@@ -108,7 +108,7 @@ describe('ConfirmModal', () => {
     it('should call onClose when close button is clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderComponent({ onClose })
 
       // Act - Find the close button and click it
@@ -123,7 +123,7 @@ describe('ConfirmModal', () => {
     it('should call onClose when cancel button is clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderComponent({ onClose })
 
       // Act
@@ -137,7 +137,7 @@ describe('ConfirmModal', () => {
     it('should call onConfirm when confirm button is clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onConfirm = jest.fn()
+      const onConfirm = vi.fn()
       renderComponent({ onConfirm })
 
       // Act
@@ -199,7 +199,7 @@ describe('ConfirmModal', () => {
     it('should handle multiple quick clicks on close button', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderComponent({ onClose })
 
       const closeButton = document.querySelector('.cursor-pointer')
@@ -217,7 +217,7 @@ describe('ConfirmModal', () => {
     it('should handle multiple quick clicks on confirm button', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onConfirm = jest.fn()
+      const onConfirm = vi.fn()
       renderComponent({ onConfirm })
 
       // Act
@@ -233,7 +233,7 @@ describe('ConfirmModal', () => {
     it('should handle multiple quick clicks on cancel button', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onClose = jest.fn()
+      const onClose = vi.fn()
       renderComponent({ onClose })
 
       // Act - Click cancel button twice

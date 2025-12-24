@@ -1,29 +1,29 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import ChunkPreview from './chunk-preview'
-import { ChunkingMode } from '@/models/datasets'
-import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { NotionPage } from '@/models/common'
+import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { ChunkingMode } from '@/models/datasets'
 import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import ChunkPreview from './chunk-preview'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Mock dataset-detail context - needs mock to control return values
-const mockDocForm = jest.fn()
-jest.mock('@/context/dataset-detail', () => ({
+const mockDocForm = vi.fn()
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (_selector: (s: { dataset: { doc_form: ChunkingMode } }) => ChunkingMode) => {
     return mockDocForm()
   },
 }))
 
 // Mock document picker - needs mock for simplified interaction testing
-jest.mock('../../../common/document-picker/preview-document-picker', () => ({
+vi.mock('../../../common/document-picker/preview-document-picker', () => ({
   __esModule: true,
   default: ({ files, onChange, value }: {
-    files: Array<{ id: string; name: string; extension: string }>
-    onChange: (selected: { id: string; name: string; extension: string }) => void
-    value: { id: string; name: string; extension: string }
+    files: Array<{ id: string, name: string, extension: string }>
+    onChange: (selected: { id: string, name: string, extension: string }) => void
+    value: { id: string, name: string, extension: string }
   }) => (
     <div data-testid="document-picker">
       <span data-testid="picker-value">{value?.name || 'No selection'}</span>
@@ -53,11 +53,11 @@ const createMockLocalFile = (overrides?: Partial<CustomFile>): CustomFile => ({
   extension: 'pdf',
   lastModified: Date.now(),
   webkitRelativePath: '',
-  arrayBuffer: jest.fn() as () => Promise<ArrayBuffer>,
-  bytes: jest.fn() as () => Promise<Uint8Array>,
-  slice: jest.fn() as (start?: number, end?: number, contentType?: string) => Blob,
-  stream: jest.fn() as () => ReadableStream<Uint8Array>,
-  text: jest.fn() as () => Promise<string>,
+  arrayBuffer: vi.fn() as () => Promise<ArrayBuffer>,
+  bytes: vi.fn() as () => Promise<Uint8Array>,
+  slice: vi.fn() as (start?: number, end?: number, contentType?: string) => Blob,
+  stream: vi.fn() as () => ReadableStream<Uint8Array>,
+  text: vi.fn() as () => Promise<string>,
   ...overrides,
 } as CustomFile)
 
@@ -114,16 +114,16 @@ const defaultProps = {
   isIdle: false,
   isPending: false,
   estimateData: undefined,
-  onPreview: jest.fn(),
-  handlePreviewFileChange: jest.fn(),
-  handlePreviewOnlineDocumentChange: jest.fn(),
-  handlePreviewWebsitePageChange: jest.fn(),
-  handlePreviewOnlineDriveFileChange: jest.fn(),
+  onPreview: vi.fn(),
+  handlePreviewFileChange: vi.fn(),
+  handlePreviewOnlineDocumentChange: vi.fn(),
+  handlePreviewWebsitePageChange: vi.fn(),
+  handlePreviewOnlineDriveFileChange: vi.fn(),
 }
 
 describe('ChunkPreview', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockDocForm.mockReturnValue(ChunkingMode.text)
   })
 
@@ -190,7 +190,7 @@ describe('ChunkPreview', () => {
     })
 
     it('should call onPreview when preview button is clicked', () => {
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
 
       render(<ChunkPreview {...defaultProps} isIdle={true} onPreview={onPreview} />)
 
@@ -271,7 +271,7 @@ describe('ChunkPreview', () => {
 
   describe('Document Selection', () => {
     it('should handle local file selection change', () => {
-      const handlePreviewFileChange = jest.fn()
+      const handlePreviewFileChange = vi.fn()
       const localFiles = [
         createMockLocalFile({ id: 'file-1', name: 'file1.pdf' }),
         createMockLocalFile({ id: 'file-2', name: 'file2.pdf' }),
@@ -293,7 +293,7 @@ describe('ChunkPreview', () => {
     })
 
     it('should handle online document selection change', () => {
-      const handlePreviewOnlineDocumentChange = jest.fn()
+      const handlePreviewOnlineDocumentChange = vi.fn()
       const onlineDocuments = [
         createMockNotionPage({ page_id: 'page-1', page_name: 'Page 1' }),
         createMockNotionPage({ page_id: 'page-2', page_name: 'Page 2' }),
@@ -315,7 +315,7 @@ describe('ChunkPreview', () => {
     })
 
     it('should handle website page selection change', () => {
-      const handlePreviewWebsitePageChange = jest.fn()
+      const handlePreviewWebsitePageChange = vi.fn()
       const websitePages = [
         createMockCrawlResult({ source_url: 'https://example1.com', title: 'Site 1' }),
         createMockCrawlResult({ source_url: 'https://example2.com', title: 'Site 2' }),
@@ -337,7 +337,7 @@ describe('ChunkPreview', () => {
     })
 
     it('should handle online drive file selection change', () => {
-      const handlePreviewOnlineDriveFileChange = jest.fn()
+      const handlePreviewOnlineDriveFileChange = vi.fn()
       const onlineDriveFiles = [
         createMockOnlineDriveFile({ id: 'drive-1', name: 'file1.docx' }),
         createMockOnlineDriveFile({ id: 'drive-2', name: 'file2.docx' }),

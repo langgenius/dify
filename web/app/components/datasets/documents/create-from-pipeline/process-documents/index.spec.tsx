@@ -1,8 +1,10 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import ProcessDocuments from './index'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import { useConfigurations, useInitialData } from '@/app/components/rag-pipeline/hooks/use-input-fields'
+import { useInputVariables } from './hooks'
+import ProcessDocuments from './index'
 
 // ==========================================
 // Mock External Dependencies
@@ -11,8 +13,8 @@ import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/ty
 // Mock useInputVariables hook
 let mockIsFetchingParams = false
 let mockParamsConfig: { variables: unknown[] } | undefined = { variables: [] }
-jest.mock('./hooks', () => ({
-  useInputVariables: jest.fn(() => ({
+vi.mock('./hooks', () => ({
+  useInputVariables: vi.fn(() => ({
     isFetchingParams: mockIsFetchingParams,
     paramsConfig: mockParamsConfig,
   })),
@@ -23,9 +25,9 @@ let mockConfigurations: BaseConfiguration[] = []
 
 // Mock useInitialData hook
 let mockInitialData: Record<string, unknown> = {}
-jest.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
-  useInitialData: jest.fn(() => mockInitialData),
-  useConfigurations: jest.fn(() => mockConfigurations),
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
+  useInitialData: vi.fn(() => mockInitialData),
+  useConfigurations: vi.fn(() => mockConfigurations),
 }))
 
 // ==========================================
@@ -55,10 +57,10 @@ const createDefaultProps = (overrides: Partial<React.ComponentProps<typeof Proce
   dataSourceNodeId: 'test-node-id',
   ref: { current: null } as React.RefObject<unknown>,
   isRunning: false,
-  onProcess: jest.fn(),
-  onPreview: jest.fn(),
-  onSubmit: jest.fn(),
-  onBack: jest.fn(),
+  onProcess: vi.fn(),
+  onPreview: vi.fn(),
+  onSubmit: vi.fn(),
+  onBack: vi.fn(),
   ...overrides,
 })
 
@@ -68,7 +70,7 @@ const createDefaultProps = (overrides: Partial<React.ComponentProps<typeof Proce
 
 describe('ProcessDocuments', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Reset mock values
     mockIsFetchingParams = false
     mockParamsConfig = { variables: [] }
@@ -125,14 +127,13 @@ describe('ProcessDocuments', () => {
     describe('dataSourceNodeId prop', () => {
       it('should pass dataSourceNodeId to useInputVariables hook', () => {
         // Arrange
-        const { useInputVariables } = require('./hooks')
         const props = createDefaultProps({ dataSourceNodeId: 'custom-node-id' })
 
         // Act
         render(<ProcessDocuments {...props} />)
 
         // Assert
-        expect(useInputVariables).toHaveBeenCalledWith('custom-node-id')
+        expect(vi.mocked(useInputVariables)).toHaveBeenCalledWith('custom-node-id')
       })
 
       it('should handle empty dataSourceNodeId', () => {
@@ -208,7 +209,7 @@ describe('ProcessDocuments', () => {
   describe('User Interactions', () => {
     it('should call onProcess when Actions process button is clicked', () => {
       // Arrange
-      const onProcess = jest.fn()
+      const onProcess = vi.fn()
       const props = createDefaultProps({ onProcess })
 
       render(<ProcessDocuments {...props} />)
@@ -222,7 +223,7 @@ describe('ProcessDocuments', () => {
 
     it('should call onBack when Actions back button is clicked', () => {
       // Arrange
-      const onBack = jest.fn()
+      const onBack = vi.fn()
       const props = createDefaultProps({ onBack })
 
       render(<ProcessDocuments {...props} />)
@@ -236,7 +237,7 @@ describe('ProcessDocuments', () => {
 
     it('should call onPreview when preview button is clicked', () => {
       // Arrange
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
       const props = createDefaultProps({ onPreview })
 
       render(<ProcessDocuments {...props} />)
@@ -250,7 +251,7 @@ describe('ProcessDocuments', () => {
 
     it('should call onSubmit when form is submitted', async () => {
       // Arrange
-      const onSubmit = jest.fn()
+      const onSubmit = vi.fn()
       const props = createDefaultProps({ onSubmit })
       const { container } = render(<ProcessDocuments {...props} />)
 
@@ -273,56 +274,52 @@ describe('ProcessDocuments', () => {
       // Arrange
       const mockVariables = [{ variable: 'testVar', type: 'text', label: 'Test' }]
       mockParamsConfig = { variables: mockVariables }
-      const { useInitialData } = require('@/app/components/rag-pipeline/hooks/use-input-fields')
       const props = createDefaultProps()
 
       // Act
       render(<ProcessDocuments {...props} />)
 
       // Assert
-      expect(useInitialData).toHaveBeenCalledWith(mockVariables)
+      expect(vi.mocked(useInitialData)).toHaveBeenCalledWith(mockVariables)
     })
 
     it('should pass variables from useInputVariables to useConfigurations', () => {
       // Arrange
       const mockVariables = [{ variable: 'testVar', type: 'text', label: 'Test' }]
       mockParamsConfig = { variables: mockVariables }
-      const { useConfigurations } = require('@/app/components/rag-pipeline/hooks/use-input-fields')
       const props = createDefaultProps()
 
       // Act
       render(<ProcessDocuments {...props} />)
 
       // Assert
-      expect(useConfigurations).toHaveBeenCalledWith(mockVariables)
+      expect(vi.mocked(useConfigurations)).toHaveBeenCalledWith(mockVariables)
     })
 
     it('should use empty array when paramsConfig.variables is undefined', () => {
       // Arrange
       mockParamsConfig = { variables: undefined as unknown as unknown[] }
-      const { useInitialData, useConfigurations } = require('@/app/components/rag-pipeline/hooks/use-input-fields')
       const props = createDefaultProps()
 
       // Act
       render(<ProcessDocuments {...props} />)
 
       // Assert
-      expect(useInitialData).toHaveBeenCalledWith([])
-      expect(useConfigurations).toHaveBeenCalledWith([])
+      expect(vi.mocked(useInitialData)).toHaveBeenCalledWith([])
+      expect(vi.mocked(useConfigurations)).toHaveBeenCalledWith([])
     })
 
     it('should use empty array when paramsConfig is undefined', () => {
       // Arrange
       mockParamsConfig = undefined
-      const { useInitialData, useConfigurations } = require('@/app/components/rag-pipeline/hooks/use-input-fields')
       const props = createDefaultProps()
 
       // Act
       render(<ProcessDocuments {...props} />)
 
       // Assert
-      expect(useInitialData).toHaveBeenCalledWith([])
-      expect(useConfigurations).toHaveBeenCalledWith([])
+      expect(vi.mocked(useInitialData)).toHaveBeenCalledWith([])
+      expect(vi.mocked(useConfigurations)).toHaveBeenCalledWith([])
     })
   })
 
@@ -406,17 +403,16 @@ describe('ProcessDocuments', () => {
 
     it('should update when dataSourceNodeId prop changes', () => {
       // Arrange
-      const { useInputVariables } = require('./hooks')
       const props = createDefaultProps({ dataSourceNodeId: 'node-1' })
 
       // Act
       const { rerender } = render(<ProcessDocuments {...props} />)
-      expect(useInputVariables).toHaveBeenLastCalledWith('node-1')
+      expect(vi.mocked(useInputVariables)).toHaveBeenLastCalledWith('node-1')
 
       rerender(<ProcessDocuments {...props} dataSourceNodeId="node-2" />)
 
       // Assert
-      expect(useInputVariables).toHaveBeenLastCalledWith('node-2')
+      expect(vi.mocked(useInputVariables)).toHaveBeenLastCalledWith('node-2')
     })
   })
 
@@ -451,19 +447,17 @@ describe('ProcessDocuments', () => {
 
     it('should handle special characters in dataSourceNodeId', () => {
       // Arrange
-      const { useInputVariables } = require('./hooks')
       const props = createDefaultProps({ dataSourceNodeId: 'node-id-with-special_chars:123' })
 
       // Act
       render(<ProcessDocuments {...props} />)
 
       // Assert
-      expect(useInputVariables).toHaveBeenCalledWith('node-id-with-special_chars:123')
+      expect(vi.mocked(useInputVariables)).toHaveBeenCalledWith('node-id-with-special_chars:123')
     })
 
     it('should handle long dataSourceNodeId', () => {
       // Arrange
-      const { useInputVariables } = require('./hooks')
       const longId = 'a'.repeat(1000)
       const props = createDefaultProps({ dataSourceNodeId: longId })
 
@@ -471,14 +465,14 @@ describe('ProcessDocuments', () => {
       render(<ProcessDocuments {...props} />)
 
       // Assert
-      expect(useInputVariables).toHaveBeenCalledWith(longId)
+      expect(vi.mocked(useInputVariables)).toHaveBeenCalledWith(longId)
     })
 
     it('should handle multiple callbacks without interference', () => {
       // Arrange
-      const onProcess = jest.fn()
-      const onBack = jest.fn()
-      const onPreview = jest.fn()
+      const onProcess = vi.fn()
+      const onBack = vi.fn()
+      const onPreview = vi.fn()
       const props = createDefaultProps({ onProcess, onBack, onPreview })
 
       render(<ProcessDocuments {...props} />)
@@ -581,10 +575,10 @@ describe('ProcessDocuments', () => {
         dataSourceNodeId: 'full-test-node',
         ref: mockRef,
         isRunning: false,
-        onProcess: jest.fn(),
-        onPreview: jest.fn(),
-        onSubmit: jest.fn(),
-        onBack: jest.fn(),
+        onProcess: vi.fn(),
+        onPreview: vi.fn(),
+        onSubmit: vi.fn(),
+        onBack: vi.fn(),
       }
 
       // Act

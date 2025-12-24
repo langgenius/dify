@@ -1,48 +1,46 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import Link from 'next/link'
+import type { Dependency, PluginDeclaration, PluginManifestInMarket } from '../types'
 import {
   RiBookOpenLine,
   RiDragDropLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
-import {
-  PluginPageContextProvider,
-  usePluginPageContext,
-} from './context'
-import InstallPluginDropdown from './install-plugin-dropdown'
-import { useUploader } from './use-uploader'
-import useReferenceSetting from './use-reference-setting'
-import DebugInfo from './debug-info'
-import PluginTasks from './plugin-tasks'
-import Button from '@/app/components/base/button'
-import TabSlider from '@/app/components/base/tab-slider'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
-import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
-import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
+import { noop } from 'lodash-es'
+import Link from 'next/link'
 import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
-import type { Dependency } from '../types'
-import type { PluginDeclaration, PluginManifestInMarket } from '../types'
-import { sleep } from '@/utils'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import Button from '@/app/components/base/button'
+import TabSlider from '@/app/components/base/tab-slider'
+import Tooltip from '@/app/components/base/tooltip'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
 import { getDocsUrl } from '@/app/components/plugins/utils'
-import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
-import { MARKETPLACE_API_PREFIX } from '@/config'
-import { SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
-import I18n from '@/context/i18n'
-import { noop } from 'lodash-es'
-import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
-import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
+import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import I18n from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
+import { sleep } from '@/utils'
+import { cn } from '@/utils/classnames'
+import { PLUGIN_PAGE_TABS_MAP } from '../hooks'
+import InstallFromLocalPackage from '../install-plugin/install-from-local-package'
+import InstallFromMarketplace from '../install-plugin/install-from-marketplace'
+import { PLUGIN_TYPE_SEARCH_MAP } from '../marketplace/plugin-type-switch'
+import {
+  PluginPageContextProvider,
+  usePluginPageContext,
+} from './context'
+import DebugInfo from './debug-info'
+import InstallPluginDropdown from './install-plugin-dropdown'
+import PluginTasks from './plugin-tasks'
+import useReferenceSetting from './use-reference-setting'
+import { useUploader } from './use-uploader'
 
 const PACKAGE_IDS_KEY = 'package-ids'
 const BUNDLE_INFO_KEY = 'bundle-info'
@@ -164,55 +162,55 @@ const PluginPage = ({
   const { dragging, fileUploader, fileChangeHandle, removeFile } = uploaderProps
   return (
     <div
-      id='marketplace-container'
+      id="marketplace-container"
       ref={containerRef}
       style={{ scrollbarGutter: 'stable' }}
       className={cn('relative flex grow flex-col overflow-y-auto border-t border-divider-subtle', isPluginsTab
         ? 'rounded-t-xl bg-components-panel-bg'
-        : 'bg-background-body',
-      )}
+        : 'bg-background-body')}
     >
       <div
         className={cn(
-          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4', isExploringMarketplace && 'bg-background-body',
+          'sticky top-0 z-10 flex min-h-[60px] items-center gap-1 self-stretch bg-components-panel-bg px-12 pb-2 pt-4',
+          isExploringMarketplace && 'bg-background-body',
         )}
       >
-        <div className='flex w-full items-center justify-between'>
-          <div className='flex-1'>
+        <div className="flex w-full items-center justify-between">
+          <div className="flex-1">
             <TabSlider
               value={isPluginsTab ? PLUGIN_PAGE_TABS_MAP.plugins : PLUGIN_PAGE_TABS_MAP.marketplace}
               onChange={setActiveTab}
               options={options}
             />
           </div>
-          <div className='flex shrink-0 items-center gap-1'>
+          <div className="flex shrink-0 items-center gap-1">
             {
               isExploringMarketplace && (
                 <>
                   <Link
-                    href='https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml'
-                    target='_blank'
+                    href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
+                    target="_blank"
                   >
                     <Button
-                      variant='ghost'
-                      className='text-text-tertiary'
+                      variant="ghost"
+                      className="text-text-tertiary"
                     >
                       {t('plugin.requestAPlugin')}
                     </Button>
                   </Link>
                   <Link
                     href={getDocsUrl(locale, '/plugins/publish-plugins/publish-to-dify-marketplace/README')}
-                    target='_blank'
+                    target="_blank"
                   >
                     <Button
-                      className='px-3'
-                      variant='secondary-accent'
+                      className="px-3"
+                      variant="secondary-accent"
                     >
-                      <RiBookOpenLine className='mr-1 h-4 w-4' />
+                      <RiBookOpenLine className="mr-1 h-4 w-4" />
                       {t('plugin.publishPlugins')}
                     </Button>
                   </Link>
-                  <div className='mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular'></div>
+                  <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
                 </>
               )
             }
@@ -233,10 +231,10 @@ const PluginPage = ({
                   popupContent={t('plugin.privilege.title')}
                 >
                   <Button
-                    className='group h-full w-full p-2 text-components-button-secondary-text'
+                    className="group h-full w-full p-2 text-components-button-secondary-text"
                     onClick={setShowPluginSettingModal}
                   >
-                    <RiEqualizer2Line className='h-4 w-4' />
+                    <RiEqualizer2Line className="h-4 w-4" />
                   </Button>
                 </Tooltip>
               )
@@ -250,7 +248,8 @@ const PluginPage = ({
           {dragging && (
             <div
               className="absolute inset-0 m-0.5 rounded-2xl border-2 border-dashed border-components-dropzone-border-accent
-                  bg-[rgba(21,90,239,0.14)] p-2">
+                  bg-[rgba(21,90,239,0.14)] p-2"
+            >
             </div>
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>

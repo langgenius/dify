@@ -1,27 +1,28 @@
 'use client'
 
-import React, { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import useSWR from 'swr'
-import { useDebounceFn } from 'ahooks'
-import s from './style.module.css'
-import { cn } from '@/utils/classnames'
-import ExploreContext from '@/context/explore-context'
-import type { App } from '@/models/explore'
-import Category from '@/app/components/explore/category'
-import AppCard from '@/app/components/explore/app-card'
-import { fetchAppDetail, fetchAppList } from '@/service/explore'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
-import CreateAppModal from '@/app/components/explore/create-app-modal'
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
-import Loading from '@/app/components/base/loading'
+import type { App } from '@/models/explore'
+import { useDebounceFn } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import useSWR from 'swr'
+import { useContext } from 'use-context-selector'
+import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import Input from '@/app/components/base/input'
+import Loading from '@/app/components/base/loading'
+import AppCard from '@/app/components/explore/app-card'
+import Category from '@/app/components/explore/category'
+import CreateAppModal from '@/app/components/explore/create-app-modal'
+import ExploreContext from '@/context/explore-context'
+import { useImportDSL } from '@/hooks/use-import-dsl'
+import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import {
   DSLImportMode,
 } from '@/models/app'
-import { useImportDSL } from '@/hooks/use-import-dsl'
-import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
+import { fetchAppDetail, fetchAppList } from '@/service/explore'
+import { cn } from '@/utils/classnames'
+import s from './style.module.css'
 
 type AppsProps = {
   onSuccess?: () => void
@@ -142,16 +143,18 @@ const Apps = ({
   return (
     <div className={cn(
       'flex h-full flex-col border-l-[0.5px] border-divider-regular',
-    )}>
+    )}
+    >
 
-      <div className='shrink-0 px-12 pt-6'>
+      <div className="shrink-0 px-12 pt-6">
         <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className='text-sm text-text-tertiary'>{t('explore.apps.description')}</div>
+        <div className="text-sm text-text-tertiary">{t('explore.apps.description')}</div>
       </div>
 
       <div className={cn(
         'mt-6 flex items-center justify-between px-12',
-      )}>
+      )}
+      >
         <Category
           list={categories}
           value={currCategory}
@@ -161,7 +164,7 @@ const Apps = ({
         <Input
           showLeftIcon
           showClearIcon
-          wrapperClassName='w-[200px] self-start'
+          wrapperClassName="w-[200px] self-start"
           value={keywords}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
@@ -170,12 +173,14 @@ const Apps = ({
 
       <div className={cn(
         'relative mt-4 flex flex-1 shrink-0 grow flex-col overflow-auto pb-6',
-      )}>
+      )}
+      >
         <nav
           className={cn(
             s.appList,
             'grid shrink-0 content-start gap-4 px-6 sm:px-12',
-          )}>
+          )}
+        >
           {searchFilteredList.map(app => (
             <AppCard
               key={app.app_id}

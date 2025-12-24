@@ -1,10 +1,10 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import StartNodeOption from './start-node-option'
 
 describe('StartNodeOption', () => {
-  const mockOnClick = jest.fn()
+  const mockOnClick = vi.fn()
   const defaultProps = {
     icon: <div data-testid="test-icon">Icon</div>,
     title: 'Test Title',
@@ -13,7 +13,7 @@ describe('StartNodeOption', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Helper function to render component

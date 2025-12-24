@@ -1,8 +1,8 @@
 import type { Preview } from '@storybook/react'
 import { withThemeByDataAttribute } from '@storybook/addon-themes'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import I18N from '../app/components/i18n'
 import { ToastProvider } from '../app/components/base/toast'
+import I18N from '../app/components/i18n'
 
 import '../app/styles/globals.css'
 import '../app/styles/markdown.scss'

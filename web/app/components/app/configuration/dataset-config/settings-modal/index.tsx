@@ -1,30 +1,31 @@
 import type { FC } from 'react'
+import type { Member } from '@/models/common'
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
+import { RiCloseLine } from '@remixicon/react'
+import { isEqual } from 'lodash-es'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { isEqual } from 'lodash-es'
-import { RiCloseLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import IndexMethod from '@/app/components/datasets/settings/index-method'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { type DataSet, DatasetPermission } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
-import { updateDatasetSetting } from '@/service/datasets'
-import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import type { RetrievalConfig } from '@/types/app'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Member } from '@/models/common'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { useDocLink } from '@/context/i18n'
-import { useMembers } from '@/service/use-common'
+import IndexMethod from '@/app/components/datasets/settings/index-method'
+import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
+import { useModalContext } from '@/context/modal-context'
+import { DatasetPermission } from '@/models/datasets'
+import { updateDatasetSetting } from '@/service/datasets'
+import { useMembers } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
 import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
@@ -74,7 +75,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [isHideChangedTip, setIsHideChangedTip] = useState(false)
   const isRetrievalChanged = !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) || indexMethod !== localeCurrentDataset?.indexing_technique
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+  const handleSettingsChange = (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
@@ -186,56 +187,56 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className='flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+      className="flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5'>
-        <div className='flex flex-col text-base font-semibold text-text-primary'>
-          <div className='leading-6'>{t('datasetSettings.title')}</div>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+        <div className="flex flex-col text-base font-semibold text-text-primary">
+          <div className="leading-6">{t('datasetSettings.title')}</div>
         </div>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           <div
             onClick={onCancel}
-            className='flex h-6 w-6 cursor-pointer items-center justify-center'
+            className="flex h-6 w-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>
       {/* Body */}
-      <div className='overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5'>
+      <div className="overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.name')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.name')}</div>
           </div>
           <Input
             value={localeCurrentDataset.name}
             onChange={e => handleValueChange('name', e.target.value)}
-            className='block h-9'
+            className="block h-9"
             placeholder={t('datasetSettings.form.namePlaceholder') || ''}
           />
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.desc')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.desc')}</div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <Textarea
               value={localeCurrentDataset.description || ''}
               onChange={e => handleValueChange('description', e.target.value)}
-              className='resize-none'
+              className="resize-none"
               placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
           </div>
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.permissions')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.permissions')}</div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <PermissionSelector
               disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
               permission={localeCurrentDataset.permission}
@@ -249,9 +250,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {currentDataset && currentDataset.indexing_technique && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.indexMethod')}</div>
             </div>
-            <div className='grow'>
+            <div className="grow">
               <IndexMethod
                 disabled={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
@@ -266,10 +267,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.embeddingModel')}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('datasetSettings.form.embeddingModel')}</div>
             </div>
-            <div className='w-full'>
-              <div className='h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60'>
+            <div className="w-full">
+              <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
                 <ModelSelector
                   readonly
                   defaultModel={{
@@ -279,40 +280,42 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingModelList}
                 />
               </div>
-              <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
+              <div className="mt-2 w-full text-xs leading-6 text-text-tertiary">
                 {t('datasetSettings.form.embeddingModelTip')}
-                <span className='cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+                <span className="cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Retrieval Method Config */}
-        {isExternal ? (
-          <RetrievalSection
-            isExternal
-            rowClass={rowClass}
-            labelClass={labelClass}
-            t={t}
-            topK={topK}
-            scoreThreshold={scoreThreshold}
-            scoreThresholdEnabled={scoreThresholdEnabled}
-            onExternalSettingChange={handleSettingsChange}
-            currentDataset={currentDataset}
-          />
-        ) : (
-          <RetrievalSection
-            isExternal={false}
-            rowClass={rowClass}
-            labelClass={labelClass}
-            t={t}
-            indexMethod={indexMethod}
-            retrievalConfig={retrievalConfig}
-            showMultiModalTip={showMultiModalTip}
-            onRetrievalConfigChange={setRetrievalConfig}
-            docLink={docLink}
-          />
-        )}
+        {isExternal
+          ? (
+              <RetrievalSection
+                isExternal
+                rowClass={rowClass}
+                labelClass={labelClass}
+                t={t}
+                topK={topK}
+                scoreThreshold={scoreThreshold}
+                scoreThresholdEnabled={scoreThresholdEnabled}
+                onExternalSettingChange={handleSettingsChange}
+                currentDataset={currentDataset}
+              />
+            )
+          : (
+              <RetrievalSection
+                isExternal={false}
+                rowClass={rowClass}
+                labelClass={labelClass}
+                t={t}
+                indexMethod={indexMethod}
+                retrievalConfig={retrievalConfig}
+                showMultiModalTip={showMultiModalTip}
+                onRetrievalConfigChange={setRetrievalConfig}
+                docLink={docLink}
+              />
+            )}
       </div>
       <RetrievalChangeTip
         visible={isRetrievalChanged && !isHideChangedTip}
@@ -321,16 +324,16 @@ const SettingsModal: FC<SettingsModalProps> = ({
       />
 
       <div
-        className='sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4'
+        className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
       >
         <Button
           onClick={onCancel}
-          className='mr-2'
+          className="mr-2"
         >
           {t('common.operation.cancel')}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           disabled={loading}
           onClick={handleSave}
         >

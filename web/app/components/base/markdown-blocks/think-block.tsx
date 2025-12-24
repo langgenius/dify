@@ -1,7 +1,8 @@
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useChatContext } from '../chat/chat/context'
 import { cn } from '@/utils/classnames'
+import { useChatContext } from '../chat/chat/context'
 
 const hasEndThink = (children: any): boolean => {
   if (typeof children === 'string')
@@ -44,7 +45,8 @@ const useThinkTimer = (children: any) => {
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
   useEffect(() => {
-    if (isComplete) return
+    if (isComplete)
+      return
 
     timerRef.current = setInterval(() => {
       setElapsedTime(Math.floor((Date.now() - startTime) / 100) / 10)

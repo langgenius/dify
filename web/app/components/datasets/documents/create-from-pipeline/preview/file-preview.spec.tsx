@@ -1,13 +1,13 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import FilePreview from './file-preview'
 import type { CustomFile as File } from '@/models/datasets'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import FilePreview from './file-preview'
 
-// Uses __mocks__/react-i18next.ts automatically
+// Uses global react-i18next mock from web/vitest.setup.ts
 
 // Mock useFilePreview hook - needs to be mocked to control return values
-const mockUseFilePreview = jest.fn()
-jest.mock('@/service/use-common', () => ({
+const mockUseFilePreview = vi.fn()
+vi.mock('@/service/use-common', () => ({
   useFilePreview: (fileID: string) => mockUseFilePreview(fileID),
 }))
 
@@ -20,11 +20,11 @@ const createMockFile = (overrides?: Partial<File>): File => ({
   extension: 'pdf',
   lastModified: Date.now(),
   webkitRelativePath: '',
-  arrayBuffer: jest.fn() as () => Promise<ArrayBuffer>,
-  bytes: jest.fn() as () => Promise<Uint8Array>,
-  slice: jest.fn() as (start?: number, end?: number, contentType?: string) => Blob,
-  stream: jest.fn() as () => ReadableStream<Uint8Array>,
-  text: jest.fn() as () => Promise<string>,
+  arrayBuffer: vi.fn() as () => Promise<ArrayBuffer>,
+  bytes: vi.fn() as () => Promise<Uint8Array>,
+  slice: vi.fn() as (start?: number, end?: number, contentType?: string) => Blob,
+  stream: vi.fn() as () => ReadableStream<Uint8Array>,
+  text: vi.fn() as () => Promise<string>,
   ...overrides,
 } as File)
 
@@ -34,12 +34,12 @@ const createMockFilePreviewData = (content: string = 'This is the file content')
 
 const defaultProps = {
   file: createMockFile(),
-  hidePreview: jest.fn(),
+  hidePreview: vi.fn(),
 }
 
 describe('FilePreview', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseFilePreview.mockReturnValue({
       data: undefined,
       isFetching: false,
@@ -202,7 +202,7 @@ describe('FilePreview', () => {
 
   describe('User Interactions', () => {
     it('should call hidePreview when close button is clicked', () => {
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
 
       render(<FilePreview {...defaultProps} hidePreview={hidePreview} />)
 

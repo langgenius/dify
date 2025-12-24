@@ -1,15 +1,15 @@
+import type {
+  BlockEnum,
+  OnSelectBlock,
+} from '../../types'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { cn } from '@/utils/classnames'
-import { useNodesInteractions } from '../../hooks'
-import type {
-  BlockEnum,
-  OnSelectBlock,
-} from '../../types'
 import BlockSelector from '../../block-selector'
+import { useNodesInteractions } from '../../hooks'
 
 type InsertBlockProps = {
   startNodeId: string
