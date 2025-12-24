@@ -127,6 +127,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                         '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
                         '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
                         '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
+                        '@banana': 'app.gotoAnything.actions.vibeDesc',
                       }
                       return t(keyMap[item.key] as any) as string
                     })()
