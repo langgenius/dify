@@ -1,4 +1,5 @@
 import os
+from email.message import Message
 from urllib.parse import quote
 
 from flask import Response
@@ -10,7 +11,9 @@ HTML_EXTENSIONS = frozenset({"html", "htm"})
 def _normalize_mime_type(mime_type: str | None) -> str:
     if not mime_type:
         return ""
-    return mime_type.split(";", 1)[0].strip().lower()
+    message = Message()
+    message["Content-Type"] = mime_type
+    return message.get_content_type().strip().lower()
 
 
 def _is_html_extension(extension: str | None) -> bool:
