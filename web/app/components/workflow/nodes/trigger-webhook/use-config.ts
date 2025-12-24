@@ -105,7 +105,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
           type: 'error',
           message: t(`appDebug.varKeyError.${errorMessageKey}` as any, {
             key: t('appDebug.variableConfig.varName'),
-          }),
+          }) as string,
         })
         return false
       }

@@ -30,7 +30,7 @@ const Item = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('workflow.env.modal.name') }),
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('workflow.env.modal.name') }) as string,
       })
       return false
     }

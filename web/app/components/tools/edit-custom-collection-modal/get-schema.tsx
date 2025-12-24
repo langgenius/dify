@@ -111,7 +111,7 @@ const GetSchema: FC<Props> = ({
                 }}
                 className="system-sm-regular cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
               >
-                {t(`tools.createTool.exampleOptions.${item.key}` as any)}
+                {t(`tools.createTool.exampleOptions.${item.key}` as any) as string}
               </div>
             ))}
           </div>
