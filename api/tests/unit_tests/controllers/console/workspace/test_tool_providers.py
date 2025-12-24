@@ -72,7 +72,7 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
 
 
 def _mock_account(user_id: str = "user-123") -> SimpleNamespace:
-    return SimpleNamespace(id=user_id, status="active")
+    return SimpleNamespace(id=user_id, status="active", is_authenticated=True, current_tenant_id=None)
 
 
 def _set_current_account(
@@ -84,9 +84,14 @@ def _set_current_account(
     def _getter():
         return user, tenant_id
 
+    user.current_tenant_id = tenant_id
+
     monkeypatch.setattr(controller_module, "current_account_with_tenant", _getter)
     if _WRAPS_MODULE is not None:
         monkeypatch.setattr(_WRAPS_MODULE, "current_account_with_tenant", _getter)
+
+    login_module = importlib.import_module("libs.login")
+    monkeypatch.setattr(login_module, "_get_user", lambda: user)
 
 
 def test_tool_provider_list_calls_service_with_query(
