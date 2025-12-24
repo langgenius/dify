@@ -38,6 +38,7 @@
     "gen:i18n-types": "node ./i18n-config/generate-i18n-types.js",
     "check:i18n-types": "node ./i18n-config/check-i18n-sync.js",
     "test": "vitest run",
+    "test:coverage": "vitest run --coverage",
     "test:watch": "vitest --watch",
     "analyze-component": "node testing/analyze-component.js",
     "storybook": "storybook dev -p 6006",

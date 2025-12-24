@@ -36,7 +36,8 @@ export const SkeletonPoint: FC<SkeletonProps> = (props) => {
     <div className={cn('text-xs font-medium text-text-quaternary', className)} {...rest}>·</div>
   )
 }
-/** Usage
+/**
+ * Usage
  * <SkeletonContainer>
  *  <SkeletonRow>
  *    <SkeletonRectangle className="w-96" />
