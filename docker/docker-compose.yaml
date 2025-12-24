@@ -693,6 +693,7 @@ services:
   # API service
   api:
     image: langgenius/dify-api:1.11.1
+    user: root
     restart: always
     environment:
       # Use the shared environment variables.
@@ -735,6 +736,7 @@ services:
   # The Celery worker for processing all queues (dataset, workflow, mail, etc.)
   worker:
     image: langgenius/dify-api:1.11.1
+    user: root
     restart: always
     environment:
       # Use the shared environment variables.
