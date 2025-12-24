@@ -1,4 +1,4 @@
-"""empty message
+"""add workflow_run_created_at_id_idx
 
 Revision ID: 905527cc8fd3
 Revises: 03ea244985ce
