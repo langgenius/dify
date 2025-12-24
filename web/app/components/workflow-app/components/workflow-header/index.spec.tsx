@@ -1,6 +1,6 @@
 import type { HeaderProps } from '@/app/components/workflow/header'
 import type { App } from '@/types/app'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen } from '@testing-library/react'
 import { AppModeEnum } from '@/types/app'
 import WorkflowHeader from './index'
 
@@ -9,7 +9,46 @@ const mockSetCurrentLogItem = vi.fn()
 const mockSetShowMessageLogModal = vi.fn()
 const mockResetWorkflowVersionHistory = vi.fn()
 
+const createMockApp = (overrides: Partial<App> = {}): App => ({
+  id: 'app-id',
+  name: 'Workflow App',
+  description: 'Workflow app description',
+  author_name: 'Workflow app author',
+  icon_type: 'emoji',
+  icon: 'app-icon',
+  icon_background: '#FFFFFF',
+  icon_url: null,
+  use_icon_as_answer_icon: false,
+  mode: AppModeEnum.COMPLETION,
+  enable_site: true,
+  enable_api: true,
+  api_rpm: 60,
+  api_rph: 3600,
+  is_demo: false,
+  model_config: {} as App['model_config'],
+  app_model_config: {} as App['app_model_config'],
+  created_at: 0,
+  updated_at: 0,
+  site: {
+    access_token: 'token',
+    app_base_url: 'https://example.com',
+  } as App['site'],
+  api_base_url: 'https://api.example.com',
+  tags: [],
+  access_mode: 'public_access' as App['access_mode'],
+  ...overrides,
+})
+
 let appDetail: App
+
+const mockAppStore = (overrides: Partial<App> = {}) => {
+  appDetail = createMockApp(overrides)
+  mockUseAppStoreSelector.mockImplementation(selector => selector({
+    appDetail,
+    setCurrentLogItem: mockSetCurrentLogItem,
+    setShowMessageLogModal: mockSetShowMessageLogModal,
+  }))
+}
 
 vi.mock('@/app/components/app/store', () => ({
   __esModule: true,
@@ -51,13 +90,7 @@ vi.mock('@/service/use-workflow', () => ({
 describe('WorkflowHeader', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    appDetail = { id: 'app-id', mode: AppModeEnum.COMPLETION } as unknown as App
-
-    mockUseAppStoreSelector.mockImplementation(selector => selector({
-      appDetail,
-      setCurrentLogItem: mockSetCurrentLogItem,
-      setShowMessageLogModal: mockSetShowMessageLogModal,
-    }))
+    mockAppStore()
   })
 
   // Verifies the wrapper renders the workflow header shell.
@@ -75,12 +108,7 @@ describe('WorkflowHeader', () => {
   describe('Props', () => {
     it('should configure preview mode when app is in advanced chat mode', () => {
       // Arrange
-      appDetail = { id: 'app-id', mode: AppModeEnum.ADVANCED_CHAT } as unknown as App
-      mockUseAppStoreSelector.mockImplementation(selector => selector({
-        appDetail,
-        setCurrentLogItem: mockSetCurrentLogItem,
-        setShowMessageLogModal: mockSetShowMessageLogModal,
-      }))
+      mockAppStore({ mode: AppModeEnum.ADVANCED_CHAT })
 
       // Act
       render(<WorkflowHeader />)
@@ -94,12 +122,7 @@ describe('WorkflowHeader', () => {
 
     it('should configure run mode when app is not in advanced chat mode', () => {
       // Arrange
-      appDetail = { id: 'app-id', mode: AppModeEnum.COMPLETION } as unknown as App
-      mockUseAppStoreSelector.mockImplementation(selector => selector({
-        appDetail,
-        setCurrentLogItem: mockSetCurrentLogItem,
-        setShowMessageLogModal: mockSetShowMessageLogModal,
-      }))
+      mockAppStore({ mode: AppModeEnum.COMPLETION })
 
       // Act
       render(<WorkflowHeader />)
@@ -119,7 +142,7 @@ describe('WorkflowHeader', () => {
       render(<WorkflowHeader />)
 
       // Act
-      screen.getByRole('button', { name: 'clear-history' }).click()
+      fireEvent.click(screen.getByRole('button', { name: /clear-history/i }))
 
       // Assert
       expect(mockSetCurrentLogItem).toHaveBeenCalledWith()
@@ -134,7 +157,7 @@ describe('WorkflowHeader', () => {
       render(<WorkflowHeader />)
 
       // Assert
-      screen.getByRole('button', { name: 'restore-settled' }).click()
+      fireEvent.click(screen.getByRole('button', { name: /restore-settled/i }))
       expect(mockResetWorkflowVersionHistory).toHaveBeenCalled()
     })
   })

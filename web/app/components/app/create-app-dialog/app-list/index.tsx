@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -24,7 +23,8 @@ import ExploreContext from '@/context/explore-context'
 import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
-import { fetchAppDetail, fetchAppList } from '@/service/explore'
+import { fetchAppDetail } from '@/service/explore'
+import { exploreAppListInitialData, useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
@@ -70,21 +70,8 @@ const Apps = ({
   })
 
   const {
-    data: { categories, allList },
-  } = useSWR(
-    ['/explore/apps'],
-    () =>
-      fetchAppList().then(({ categories, recommended_apps }) => ({
-        categories,
-        allList: recommended_apps.sort((a, b) => a.position - b.position),
-      })),
-    {
-      fallbackData: {
-        categories: [],
-        allList: [],
-      },
-    },
-  )
+    data: { categories, allList } = exploreAppListInitialData,
+  } = useExploreAppList()
 
   const filteredList = useMemo(() => {
     const filteredByCategory = allList.filter((item) => {
