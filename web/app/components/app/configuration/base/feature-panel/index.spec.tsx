@@ -34,7 +34,7 @@ describe('FeaturePanel', () => {
       // Assert
       expect(screen.getByText('Icon')).toBeInTheDocument()
       expect(screen.getByText('Action')).toBeInTheDocument()
-      const header = screen.getByText('Feature').parentElement?.parentElement?.parentElement
+      const header = screen.getByTestId('feature-panel-header')
       expect(header).toHaveClass('border-b')
     })
 
