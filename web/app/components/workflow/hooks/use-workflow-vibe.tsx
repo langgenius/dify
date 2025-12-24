@@ -344,6 +344,7 @@ export const useWorkflowVibe = () => {
             tool_name: tool.name,
             tool_label: tool.label[language] || tool.name,
             tool_description: toolDescription || '',
+            title: tool.label[language] || tool.name,
             is_team_authorization: provider.is_team_authorization,
             paramSchemas: tool.parameters,
             params,
