@@ -24,7 +24,7 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
-import { exploreAppListInitialData, useExploreAppList } from '@/service/use-explore'
+import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
@@ -70,10 +70,14 @@ const Apps = ({
   })
 
   const {
-    data: { categories, allList } = exploreAppListInitialData,
+    data,
+    isLoading,
   } = useExploreAppList()
 
   const filteredList = useMemo(() => {
+    if (!data)
+      return []
+    const { categories: _, allList } = data
     const filteredByCategory = allList.filter((item) => {
       if (currCategory === allCategoriesEn)
         return true
@@ -94,7 +98,7 @@ const Apps = ({
         return true
       return false
     })
-  }, [currentType, currCategory, allCategoriesEn, allList])
+  }, [currentType, currCategory, allCategoriesEn, data])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -156,7 +160,7 @@ const Apps = ({
     }
   }
 
-  if (!categories || categories.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex h-full items-center">
         <Loading type="area" />
@@ -190,7 +194,7 @@ const Apps = ({
       <div className="relative flex flex-1 overflow-y-auto">
         {!searchKeywords && (
           <div className="h-full w-[200px] p-4">
-            <Sidebar current={currCategory as AppCategories} categories={categories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+            <Sidebar current={currCategory as AppCategories} categories={data?.categories || []} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
           </div>
         )}
         <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">
