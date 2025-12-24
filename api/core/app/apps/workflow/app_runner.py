@@ -10,7 +10,10 @@ from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerat
 from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
-from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
+from core.workflow.graph_engine.layers.persistence import (
+    PersistenceWorkflowInfo,
+    WorkflowPersistenceLayer,
+)
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -133,20 +136,21 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
             command_channel=command_channel,
         )
 
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=self._workflow.id,
-                workflow_type=WorkflowType(self._workflow.type),
-                version=self._workflow.version,
-                graph_data=self._workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
-        )
+        if not self.application_generate_entity.is_single_stepping_container_nodes():
+            persistence_layer = WorkflowPersistenceLayer(
+                application_generate_entity=self.application_generate_entity,
+                workflow_info=PersistenceWorkflowInfo(
+                    workflow_id=self._workflow.id,
+                    workflow_type=WorkflowType(self._workflow.type),
+                    version=self._workflow.version,
+                    graph_data=self._workflow.graph_dict,
+                ),
+                workflow_execution_repository=self._workflow_execution_repository,
+                workflow_node_execution_repository=self._workflow_node_execution_repository,
+                trace_manager=self.application_generate_entity.trace_manager,
+            )
 
-        workflow_entry.graph_engine.layer(persistence_layer)
+            workflow_entry.graph_engine.layer(persistence_layer)
         for layer in self._graph_engine_layers:
             workflow_entry.graph_engine.layer(layer)
 

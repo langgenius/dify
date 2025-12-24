@@ -228,6 +228,9 @@ class AdvancedChatAppGenerateEntity(ConversationAppGenerateEntity):
 
     single_loop_run: SingleLoopRunEntity | None = None
 
+    def is_single_stepping_container_nodes(self) -> bool:
+        return self.single_iteration_run is not None or self.single_loop_run is not None
+
 
 class WorkflowAppGenerateEntity(AppGenerateEntity):
     """
@@ -257,6 +260,9 @@ class WorkflowAppGenerateEntity(AppGenerateEntity):
         inputs: dict
 
     single_loop_run: SingleLoopRunEntity | None = None
+
+    def is_single_stepping_container_nodes(self) -> bool:
+        return self.single_iteration_run is not None or self.single_loop_run is not None
 
 
 class RagPipelineGenerateEntity(WorkflowAppGenerateEntity):

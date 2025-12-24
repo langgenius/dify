@@ -172,21 +172,21 @@ class PipelineRunner(WorkflowBasedAppRunner):
         )
 
         self._queue_manager.graph_runtime_state = graph_runtime_state
+        if not self.application_generate_entity.is_single_stepping_container_nodes():
+            persistence_layer = WorkflowPersistenceLayer(
+                application_generate_entity=self.application_generate_entity,
+                workflow_info=PersistenceWorkflowInfo(
+                    workflow_id=workflow.id,
+                    workflow_type=WorkflowType(workflow.type),
+                    version=workflow.version,
+                    graph_data=workflow.graph_dict,
+                ),
+                workflow_execution_repository=self._workflow_execution_repository,
+                workflow_node_execution_repository=self._workflow_node_execution_repository,
+                trace_manager=self.application_generate_entity.trace_manager,
+            )
 
-        persistence_layer = WorkflowPersistenceLayer(
-            application_generate_entity=self.application_generate_entity,
-            workflow_info=PersistenceWorkflowInfo(
-                workflow_id=workflow.id,
-                workflow_type=WorkflowType(workflow.type),
-                version=workflow.version,
-                graph_data=workflow.graph_dict,
-            ),
-            workflow_execution_repository=self._workflow_execution_repository,
-            workflow_node_execution_repository=self._workflow_node_execution_repository,
-            trace_manager=self.application_generate_entity.trace_manager,
-        )
-
-        workflow_entry.graph_engine.layer(persistence_layer)
+            workflow_entry.graph_engine.layer(persistence_layer)
 
         generator = workflow_entry.run()
 
