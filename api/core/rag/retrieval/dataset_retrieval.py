@@ -515,6 +515,7 @@ class DatasetRetrieval:
                         0
                     ].embedding_model_provider
                     weights["vector_setting"]["embedding_model_name"] = available_datasets[0].embedding_model
+        dataset_count = len(available_datasets)
         with measure_time() as timer:
             if query:
                 query_thread = threading.Thread(
@@ -534,6 +535,7 @@ class DatasetRetrieval:
                         "score_threshold": score_threshold,
                         "query": query,
                         "attachment_id": None,
+                        "dataset_count": dataset_count,
                     },
                 )
                 all_threads.append(query_thread)
@@ -557,6 +559,7 @@ class DatasetRetrieval:
                             "score_threshold": score_threshold,
                             "query": None,
                             "attachment_id": attachment_id,
+                            "dataset_count": dataset_count,
                         },
                     )
                     all_threads.append(attachment_thread)
@@ -1389,6 +1392,7 @@ class DatasetRetrieval:
         score_threshold: float,
         query: str | None,
         attachment_id: str | None,
+        dataset_count: int,
     ):
         with flask_app.app_context():
             threads = []
@@ -1424,7 +1428,8 @@ class DatasetRetrieval:
             for thread in threads:
                 thread.join()
 
-            if reranking_enable:
+            # Skip second reranking when there is only one dataset
+            if reranking_enable and dataset_count > 1:
                 # do rerank for searched documents
                 data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
                 if query:
