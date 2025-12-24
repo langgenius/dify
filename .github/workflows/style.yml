@@ -76,7 +76,9 @@ jobs:
         id: changed-files
         uses: tj-actions/changed-files@v47
         with:
-          files: web/**
+          files: |
+            web/**
+            .github/workflows/style.yml
 
       - name: Install pnpm
         uses: pnpm/action-setup@v4
