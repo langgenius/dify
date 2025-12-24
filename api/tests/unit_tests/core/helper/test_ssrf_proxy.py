@@ -107,3 +107,24 @@ def test_host_header_preservation_with_user_header(mock_get_client):
     response = make_request("GET", "http://example.com", headers={"Host": custom_host})
 
     assert response.status_code == 200
+    # Verify build_request was called
+    mock_client.build_request.assert_called_once()
+    # Verify the Host header was set on the request object
+    assert mock_request.headers.get("Host") == custom_host
+    mock_client.send.assert_called_once_with(mock_request, follow_redirects=True)
+
+
+@patch("core.helper.ssrf_proxy._get_ssrf_client")
+@pytest.mark.parametrize("host_key", ["host", "HOST"])
+def test_host_header_preservation_case_insensitive(mock_get_client, host_key):
+    """Test that Host header is preserved regardless of case."""
+    mock_client = MagicMock()
+    mock_request = MagicMock()
+    mock_request.headers = {}
+    mock_response = MagicMock()
+    mock_response.status_code = 200
+    mock_client.send.return_value = mock_response
+    mock_client.build_request.return_value = mock_request
+    mock_get_client.return_value = mock_client
+    response = make_request("GET", "http://example.com", headers={host_key: "api.example.com"})
+    assert mock_request.headers.get("Host") == "api.example.com"

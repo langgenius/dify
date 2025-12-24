@@ -106,6 +106,9 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
     client = _get_ssrf_client(verify_option)
 
+    # Extract follow_redirects for client.send() - it's not a build_request parameter
+    follow_redirects = kwargs.pop("follow_redirects", True)
+
     # Preserve user-provided Host header
     # When using a forward proxy, httpx may override the Host header based on the URL.
     # We extract and preserve any explicitly set Host header to support virtual hosting.
@@ -120,9 +123,9 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             # the request API to explicitly set headers before sending
             headers = {k: v for k, v in headers.items() if k.lower() != "host"}
             if user_provided_host is not None:
-                headers["host"] = user_provided_host
-            kwargs["headers"] = headers
-            response = client.request(method=method, url=url, **kwargs)
+                request.headers["Host"] = user_provided_host
+
+            response = client.send(request, follow_redirects=follow_redirects)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):
