@@ -32,6 +32,9 @@ const translation = {
     cancelDisagree: 'Cancel dislike',
     userAction: 'User ',
   },
+  code: {
+    instruction: 'Instruction',
+  },
   notSetAPIKey: {
     title: 'LLM provider key has not been set',
     trailFinished: 'Trail finished',

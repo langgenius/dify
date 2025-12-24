@@ -237,8 +237,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         list.push({
           id: `${type}-need-added`,
           type,
-          title: t(`workflow.blocks.${type}`),
-          errorMessage: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }),
+          title: t(`workflow.blocks.${type}` as any) as string,
+          errorMessage: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}` as any) as string }),
           canNavigate: false,
         })
       }
@@ -409,7 +409,7 @@ export const useChecklistBeforePublish = () => {
       const type = isRequiredNodesType[i]
 
       if (!filteredNodes.find(node => node.data.type === type)) {
-        notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })
+        notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}` as any) as string }) })
         return false
       }
     }

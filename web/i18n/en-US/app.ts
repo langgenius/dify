@@ -1,4 +1,9 @@
 const translation = {
+  theme: {
+    switchDark: 'Switch to dark theme',
+    switchLight: 'Switch to light theme',
+  },
+  appNamePlaceholder: 'Give your app a name',
   createApp: 'CREATE APP',
   types: {
     all: 'All',
@@ -298,6 +303,7 @@ const translation = {
     commandHint: 'Type @ to browse by category',
     slashHint: 'Type / to see all available commands',
     actions: {
+      slashTitle: 'Commands',
       searchApplications: 'Search Applications',
       searchApplicationsDesc: 'Search and navigate to your applications',
       searchPlugins: 'Search Plugins',

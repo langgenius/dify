@@ -6,7 +6,6 @@ import { useDebounceFn } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import DSLConfirmModal from '@/app/components/app/create-from-dsl-modal/dsl-confirm-modal'
 import Input from '@/app/components/base/input'
@@ -20,7 +19,8 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import {
   DSLImportMode,
 } from '@/models/app'
-import { fetchAppDetail, fetchAppList } from '@/service/explore'
+import { fetchAppDetail } from '@/service/explore'
+import { exploreAppListInitialData, useExploreAppList } from '@/service/use-explore'
 import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
@@ -58,21 +58,8 @@ const Apps = ({
   })
 
   const {
-    data: { categories, allList },
-  } = useSWR(
-    ['/explore/apps'],
-    () =>
-      fetchAppList().then(({ categories, recommended_apps }) => ({
-        categories,
-        allList: recommended_apps.sort((a, b) => a.position - b.position),
-      })),
-    {
-      fallbackData: {
-        categories: [],
-        allList: [],
-      },
-    },
-  )
+    data: { categories, allList } = exploreAppListInitialData,
+  } = useExploreAppList()
 
   const filteredList = allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
 
