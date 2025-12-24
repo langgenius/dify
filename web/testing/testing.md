@@ -21,10 +21,10 @@ pnpm test
 pnpm test:watch
 
 # Generate coverage report
-pnpm test -- --coverage
+pnpm test:coverage
 
 # Run specific file
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 ```
 
 ## Project Test Setup
