@@ -201,13 +201,13 @@ const StepOne = ({
         <div className="relative h-full w-1/2 overflow-y-auto">
           <div className="flex justify-end">
             <div className={cn(s.form)}>
-              {shouldShowDataSourceTypeList && (
+              {shouldShowDataSourceTypeList && dataSourceType && (
                 <>
                   <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
                     {t('datasetCreation.steps.one')}
                   </div>
                   <DataSourceSelector
-                    dataSourceType={dataSourceType!}
+                    dataSourceType={dataSourceType}
                     dataSourceTypeDisable={dataSourceTypeDisable}
                     changeType={changeType}
                     onHideFilePreview={hideFilePreview}

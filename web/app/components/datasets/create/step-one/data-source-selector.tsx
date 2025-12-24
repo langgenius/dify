@@ -1,10 +1,18 @@
 'use client'
 import type { DataSourceSelectorProps } from './types'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceType } from '@/models/datasets'
 import { cn } from '@/utils/classnames'
 import s from './index.module.css'
+
+type DataSourceConfig = {
+  type: DataSourceType
+  iconClassName?: string
+  labelKey: string
+  isEnabled: boolean
+}
 
 /**
  * Data source type selector component
@@ -21,90 +29,67 @@ const DataSourceSelector = ({
   const { t } = useTranslation()
   const isWebEnabled = ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL
 
-  const handleFileClick = () => {
-    if (dataSourceTypeDisable)
-      return
-    changeType(DataSourceType.FILE)
-    onHideNotionPreview()
-    onHideWebsitePreview()
-  }
+  // Configuration for all data source types
+  const dataSourceConfigs: DataSourceConfig[] = useMemo(() => [
+    {
+      type: DataSourceType.FILE,
+      labelKey: 'datasetCreation.stepOne.dataSourceType.file',
+      isEnabled: true,
+    },
+    {
+      type: DataSourceType.NOTION,
+      iconClassName: s.notion,
+      labelKey: 'datasetCreation.stepOne.dataSourceType.notion',
+      isEnabled: true,
+    },
+    {
+      type: DataSourceType.WEB,
+      iconClassName: s.web,
+      labelKey: 'datasetCreation.stepOne.dataSourceType.web',
+      isEnabled: isWebEnabled,
+    },
+  ], [isWebEnabled])
 
-  const handleNotionClick = () => {
-    if (dataSourceTypeDisable)
-      return
-    changeType(DataSourceType.NOTION)
-    onHideFilePreview()
-    onHideWebsitePreview()
-  }
+  // Map of hide preview functions for each data source type
+  const hidePreviewMap = useMemo(() => ({
+    [DataSourceType.FILE]: onHideFilePreview,
+    [DataSourceType.NOTION]: onHideNotionPreview,
+    [DataSourceType.WEB]: onHideWebsitePreview,
+  }), [onHideFilePreview, onHideNotionPreview, onHideWebsitePreview])
 
-  const handleWebClick = () => {
+  // Generic click handler for all data source types
+  const handleClick = (type: DataSourceType) => {
     if (dataSourceTypeDisable)
       return
-    changeType(DataSourceType.WEB)
-    onHideFilePreview()
-    onHideNotionPreview()
+    changeType(type)
+    // Hide previews for other data source types
+    Object.entries(hidePreviewMap).forEach(([key, hideFn]) => {
+      if (key !== type)
+        hideFn()
+    })
   }
 
   return (
     <div className="mb-8 grid grid-cols-3 gap-4">
-      {/* File data source */}
-      <div
-        className={cn(
-          s.dataSourceItem,
-          'system-sm-medium',
-          dataSourceType === DataSourceType.FILE && s.active,
-          dataSourceTypeDisable && dataSourceType !== DataSourceType.FILE && s.disabled,
-        )}
-        onClick={handleFileClick}
-      >
-        <span className={cn(s.datasetIcon)} />
-        <span
-          title={t('datasetCreation.stepOne.dataSourceType.file')!}
-          className="truncate"
-        >
-          {t('datasetCreation.stepOne.dataSourceType.file')}
-        </span>
-      </div>
-
-      {/* Notion data source */}
-      <div
-        className={cn(
-          s.dataSourceItem,
-          'system-sm-medium',
-          dataSourceType === DataSourceType.NOTION && s.active,
-          dataSourceTypeDisable && dataSourceType !== DataSourceType.NOTION && s.disabled,
-        )}
-        onClick={handleNotionClick}
-      >
-        <span className={cn(s.datasetIcon, s.notion)} />
-        <span
-          title={t('datasetCreation.stepOne.dataSourceType.notion')!}
-          className="truncate"
-        >
-          {t('datasetCreation.stepOne.dataSourceType.notion')}
-        </span>
-      </div>
-
-      {/* Web data source */}
-      {isWebEnabled && (
-        <div
-          className={cn(
-            s.dataSourceItem,
-            'system-sm-medium',
-            dataSourceType === DataSourceType.WEB && s.active,
-            dataSourceTypeDisable && dataSourceType !== DataSourceType.WEB && s.disabled,
-          )}
-          onClick={handleWebClick}
-        >
-          <span className={cn(s.datasetIcon, s.web)} />
-          <span
-            title={t('datasetCreation.stepOne.dataSourceType.web')!}
-            className="truncate"
+      {dataSourceConfigs
+        .filter(config => config.isEnabled)
+        .map(config => (
+          <div
+            key={config.type}
+            className={cn(
+              s.dataSourceItem,
+              'system-sm-medium',
+              dataSourceType === config.type && s.active,
+              dataSourceTypeDisable && dataSourceType !== config.type && s.disabled,
+            )}
+            onClick={() => handleClick(config.type)}
           >
-            {t('datasetCreation.stepOne.dataSourceType.web')}
-          </span>
-        </div>
-      )}
+            <span className={cn(s.datasetIcon, config.iconClassName)} />
+            <span title={t(config.labelKey)!} className="truncate">
+              {t(config.labelKey)}
+            </span>
+          </div>
+        ))}
     </div>
   )
 }
