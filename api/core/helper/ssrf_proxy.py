@@ -88,11 +88,47 @@ def _get_user_provided_host_header(headers: dict | None) -> str | None:
     return None
 
 
+def _inject_trace_headers(headers: dict | None) -> dict:
+    """
+    Inject W3C traceparent header for distributed tracing.
+
+    When OTEL is enabled, HTTPXClientInstrumentor handles trace propagation automatically.
+    When OTEL is disabled, we manually inject the traceparent header.
+    """
+    if headers is None:
+        headers = {}
+
+    # Skip if already present (case-insensitive check)
+    for key in headers:
+        if key.lower() == "traceparent":
+            return headers
+
+    # Skip if OTEL is enabled - HTTPXClientInstrumentor handles this automatically
+    if dify_config.ENABLE_OTEL:
+        return headers
+
+    # Generate and inject traceparent for non-OTEL scenarios
+    try:
+        from core.helper.trace_id_helper import generate_traceparent_header
+
+        traceparent = generate_traceparent_header()
+        if traceparent:
+            headers["traceparent"] = traceparent
+    except Exception:
+        # Silently ignore errors to avoid breaking requests
+        logger.debug("Failed to generate traceparent header", exc_info=True)
+
+    return headers
+
+
 def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     if "allow_redirects" in kwargs:
         allow_redirects = kwargs.pop("allow_redirects")
         if "follow_redirects" not in kwargs:
             kwargs["follow_redirects"] = allow_redirects
+
+    # Extract follow_redirects - it's a send() parameter, not build_request() parameter
+    follow_redirects = kwargs.pop("follow_redirects", False)
 
     if "timeout" not in kwargs:
         kwargs["timeout"] = httpx.Timeout(
@@ -106,10 +142,14 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
     verify_option = kwargs.pop("ssl_verify", dify_config.HTTP_REQUEST_NODE_SSL_VERIFY)
     client = _get_ssrf_client(verify_option)
 
+    # Inject traceparent header for distributed tracing (when OTEL is not enabled)
+    headers = kwargs.get("headers") or {}
+    headers = _inject_trace_headers(headers)
+    kwargs["headers"] = headers
+
     # Preserve user-provided Host header
     # When using a forward proxy, httpx may override the Host header based on the URL.
     # We extract and preserve any explicitly set Host header to support virtual hosting.
-    headers = kwargs.get("headers", {})
     user_provided_host = _get_user_provided_host_header(headers)
 
     retries = 0
@@ -124,7 +164,7 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             if user_provided_host is not None:
                 request.headers["Host"] = user_provided_host
 
-            response = client.send(request)
+            response = client.send(request, follow_redirects=follow_redirects)
 
             # Check for SSRF protection by Squid proxy
             if response.status_code in (401, 403):

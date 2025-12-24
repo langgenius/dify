@@ -143,7 +143,7 @@ def test_host_header_preservation_with_user_header(mock_get_client):
     mock_client.build_request.assert_called_once()
     # Verify the Host header was set on the request object
     assert mock_request.headers.get("Host") == custom_host
-    mock_client.send.assert_called_once_with(mock_request)
+    mock_client.send.assert_called_once_with(mock_request, follow_redirects=False)
 
 
 @patch("core.helper.ssrf_proxy._get_ssrf_client")
@@ -160,3 +160,101 @@ def test_host_header_preservation_case_insensitive(mock_get_client, host_key):
     mock_get_client.return_value = mock_client
     response = make_request("GET", "http://example.com", headers={host_key: "api.example.com"})
     assert mock_request.headers.get("Host") == "api.example.com"
+
+
+class TestFollowRedirectsParameter:
+    """Tests for follow_redirects parameter handling.
+
+    These tests verify that follow_redirects is passed to send(), not build_request().
+    This is critical because httpx.Client.build_request() does not accept follow_redirects.
+    """
+
+    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    def test_follow_redirects_not_passed_to_build_request(self, mock_get_client):
+        """Verify follow_redirects is NOT passed to build_request()."""
+        mock_client = MagicMock()
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client.send.return_value = mock_response
+        mock_client.build_request.return_value = mock_request
+        mock_get_client.return_value = mock_client
+
+        make_request("GET", "http://example.com", follow_redirects=True)
+
+        # Verify follow_redirects was NOT passed to build_request
+        call_kwargs = mock_client.build_request.call_args.kwargs
+        assert "follow_redirects" not in call_kwargs, "follow_redirects should not be passed to build_request()"
+
+    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    def test_follow_redirects_passed_to_send(self, mock_get_client):
+        """Verify follow_redirects IS passed to send()."""
+        mock_client = MagicMock()
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client.send.return_value = mock_response
+        mock_client.build_request.return_value = mock_request
+        mock_get_client.return_value = mock_client
+
+        make_request("GET", "http://example.com", follow_redirects=True)
+
+        # Verify follow_redirects WAS passed to send
+        mock_client.send.assert_called_once_with(mock_request, follow_redirects=True)
+
+    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    def test_allow_redirects_converted_to_follow_redirects(self, mock_get_client):
+        """Verify allow_redirects (requests-style) is converted to follow_redirects (httpx-style)."""
+        mock_client = MagicMock()
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client.send.return_value = mock_response
+        mock_client.build_request.return_value = mock_request
+        mock_get_client.return_value = mock_client
+
+        # Use allow_redirects (requests-style parameter)
+        make_request("GET", "http://example.com", allow_redirects=True)
+
+        # Verify it was converted to follow_redirects for send()
+        mock_client.send.assert_called_once_with(mock_request, follow_redirects=True)
+        # Verify allow_redirects was NOT passed to build_request
+        call_kwargs = mock_client.build_request.call_args.kwargs
+        assert "allow_redirects" not in call_kwargs
+
+    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    def test_follow_redirects_default_is_false(self, mock_get_client):
+        """Verify follow_redirects defaults to False when not specified."""
+        mock_client = MagicMock()
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client.send.return_value = mock_response
+        mock_client.build_request.return_value = mock_request
+        mock_get_client.return_value = mock_client
+
+        make_request("GET", "http://example.com")
+
+        # Verify default is False
+        mock_client.send.assert_called_once_with(mock_request, follow_redirects=False)
+
+    @patch("core.helper.ssrf_proxy._get_ssrf_client")
+    def test_follow_redirects_takes_precedence_over_allow_redirects(self, mock_get_client):
+        """Verify follow_redirects takes precedence when both are specified."""
+        mock_client = MagicMock()
+        mock_request = MagicMock()
+        mock_request.headers = {}
+        mock_response = MagicMock()
+        mock_response.status_code = 200
+        mock_client.send.return_value = mock_response
+        mock_client.build_request.return_value = mock_request
+        mock_get_client.return_value = mock_client
+
+        # Both specified - follow_redirects should take precedence
+        make_request("GET", "http://example.com", allow_redirects=False, follow_redirects=True)
+
+        mock_client.send.assert_called_once_with(mock_request, follow_redirects=True)
