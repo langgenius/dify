@@ -96,6 +96,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         loop_duration_map: dict[str, float] = {}
         single_loop_variable_map: dict[str, dict[str, Any]] = {}  # single loop variable output
         loop_usage = LLMUsage.empty_usage()
+        loop_node_ids = self._extract_loop_node_ids_from_config(self.graph_config, self._node_id)
 
         # Start Loop event
         yield LoopStartedEvent(
@@ -118,6 +119,8 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
                 loop_count = 0
 
             for i in range(loop_count):
+                # Clear stale variables from previous loop iterations to avoid streaming old values
+                self._clear_loop_subgraph_variables(loop_node_ids)
                 graph_engine = self._create_graph_engine(start_at=start_at, root_node_id=root_node_id)
 
                 loop_start_time = naive_utc_now()
@@ -273,6 +276,17 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
         current_metadata = event.node_run_result.metadata
         if WorkflowNodeExecutionMetadataKey.LOOP_ID not in current_metadata:
             event.node_run_result.metadata = {**current_metadata, **loop_metadata}
+
+    def _clear_loop_subgraph_variables(self, loop_node_ids: set[str]) -> None:
+        """
+        Remove variables produced by loop sub-graph nodes from previous iterations.
+
+        Keeping stale variables causes a freshly created response coordinator in the
+        next iteration to fall back to outdated values when no stream chunks exist.
+        """
+        variable_pool = self.graph_runtime_state.variable_pool
+        for node_id in loop_node_ids:
+            variable_pool.remove([node_id])
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
