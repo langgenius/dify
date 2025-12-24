@@ -4,13 +4,13 @@ import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import vm from 'node:vm'
 import { transpile } from 'typescript'
-import data from './languages'
 
 const require = createRequire(import.meta.url)
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 const targetLanguage = 'en-US'
+const data = require('./languages.json')
 
 const languages = data.languages.filter(language => language.supported).map(language => language.value)
 
