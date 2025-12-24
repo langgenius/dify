@@ -1,3 +1,4 @@
+import type { FormOption } from '@/app/components/base/form/types'
 import type {
   TriggerLogEntity,
   TriggerOAuthClientParams,
@@ -149,9 +150,9 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
       provider: string
       subscriptionBuilderId: string
       name?: string
-      properties?: Record<string, any>
-      parameters?: Record<string, any>
-      credentials?: Record<string, any>
+      properties?: Record<string, unknown>
+      parameters?: Record<string, unknown>
+      credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post<TriggerSubscriptionBuilder>(
@@ -168,7 +169,7 @@ export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
-      credentials?: Record<string, any>
+      credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post<{ verified: boolean }>(
@@ -186,7 +187,7 @@ export const useVerifyTriggerSubscription = () => {
     mutationFn: (payload: {
       provider: string
       subscriptionId: string
-      credentials?: Record<string, any>
+      credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionId, ...body } = payload
       return post<{ verified: boolean }>(
@@ -202,7 +203,7 @@ export type BuildTriggerSubscriptionPayload = {
   provider: string
   subscriptionBuilderId: string
   name?: string
-  parameters?: Record<string, any>
+  parameters?: Record<string, unknown>
 }
 
 export const useBuildTriggerSubscription = () => {
@@ -232,9 +233,9 @@ export const useDeleteTriggerSubscription = () => {
 export type UpdateTriggerSubscriptionPayload = {
   subscriptionId: string
   name?: string
-  properties?: Record<string, any>
-  parameters?: Record<string, any>
-  credentials?: Record<string, any>
+  properties?: Record<string, unknown>
+  parameters?: Record<string, unknown>
+  credentials?: Record<string, unknown>
 }
 
 export const useUpdateTriggerSubscription = () => {
@@ -329,15 +330,15 @@ export const useTriggerPluginDynamicOptions = (payload: {
   action: string
   parameter: string
   credential_id: string
-  credentials?: Record<string, any>
-  extra?: Record<string, any>
+  credentials?: Record<string, unknown>
+  extra?: Record<string, unknown>
 }, enabled = true) => {
-  return useQuery<{ options: Array<{ value: string, label: any }> }>({
+  return useQuery<{ options: FormOption[] }>({
     queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.credentials, payload.extra],
     queryFn: () => {
       // Use new endpoint with POST when credentials provided (for edit mode)
       if (payload.credentials) {
-        return post<{ options: Array<{ value: string, label: any }> }>(
+        return post<{ options: FormOption[] }>(
           '/workspaces/current/plugin/parameters/dynamic-options-with-credentials',
           {
             body: {
@@ -353,7 +354,7 @@ export const useTriggerPluginDynamicOptions = (payload: {
         )
       }
       // Use original GET endpoint for normal cases
-      return get<{ options: Array<{ value: string, label: any }> }>(
+      return get<{ options: FormOption[] }>(
         '/workspaces/current/plugin/parameters/dynamic-options',
         {
           params: {

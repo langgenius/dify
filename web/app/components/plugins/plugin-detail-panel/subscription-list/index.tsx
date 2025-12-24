@@ -1,19 +1,11 @@
+import type { SimpleSubscription } from './types'
 import type { PluginDetail } from '@/app/components/plugins/types'
 import { withErrorBoundary } from '@/app/components/base/error-boundary'
 import Loading from '@/app/components/base/loading'
 import { SubscriptionListView } from './list-view'
 import { SubscriptionSelectorView } from './selector-view'
+import { SubscriptionListMode } from './types'
 import { useSubscriptionList } from './use-subscription-list'
-
-export enum SubscriptionListMode {
-  PANEL = 'panel',
-  SELECTOR = 'selector',
-}
-
-export type SimpleSubscription = {
-  id: string
-  name: string
-}
 
 type SubscriptionListProps = {
   mode?: SubscriptionListMode
@@ -23,6 +15,7 @@ type SubscriptionListProps = {
 }
 
 export { SubscriptionSelectorEntry } from './selector-entry'
+export type { SimpleSubscription } from './types'
 
 export const SubscriptionList = withErrorBoundary(({
   mode = SubscriptionListMode.PANEL,

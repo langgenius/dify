@@ -46,7 +46,7 @@ const PluginDetailPanel: FC<Props> = ({
           name: detail.name,
           id: detail.id,
         })
-  }, [detail])
+  }, [detail, setDetail])
 
   if (!detail)
     return null

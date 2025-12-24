@@ -53,7 +53,7 @@ const normalizeFormType = (type: string): FormTypeEnum => {
 const HIDDEN_SECRET_VALUE = '[__HIDDEN__]'
 
 // Check if all credential values are hidden (meaning nothing was changed)
-const areAllCredentialsHidden = (credentials: Record<string, any>): boolean => {
+const areAllCredentialsHidden = (credentials: Record<string, unknown>): boolean => {
   return Object.values(credentials).every(value => value === HIDDEN_SECRET_VALUE)
 }
 
@@ -103,7 +103,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const { refetch } = useSubscriptionList()
 
   const [currentStep, setCurrentStep] = useState<EditStep>(EditStep.EditCredentials)
-  const [verifiedCredentials, setVerifiedCredentials] = useState<Record<string, any> | null>(null)
+  const [verifiedCredentials, setVerifiedCredentials] = useState<Record<string, unknown> | null>(null)
 
   const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
   const { mutate: verifyCredentials, isPending: isVerifying } = useVerifyTriggerSubscription()
@@ -113,13 +113,13 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
     [detail?.declaration?.trigger?.subscription_constructor?.parameters],
   )
 
-  const rawApiKeyCredentialsSchema = detail?.declaration.trigger?.subscription_constructor?.credentials_schema || []
   const apiKeyCredentialsSchema = useMemo(() => {
-    return rawApiKeyCredentialsSchema.map(schema => ({
+    const rawSchema = detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
+    return rawSchema.map(schema => ({
       ...schema,
       tooltip: schema.help,
     }))
-  }, [rawApiKeyCredentialsSchema])
+  }, [detail?.declaration?.trigger?.subscription_constructor?.credentials_schema])
 
   const basicFormRef = useRef<FormRefObject>(null)
   const parametersFormRef = useRef<FormRefObject>(null)
@@ -151,7 +151,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
-        onError: async (error: any) => {
+        onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.apiKey.verify.error')
           Toast.notify({
             type: 'error',
@@ -169,7 +169,7 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
     const name = basicFormValues.values.subscription_name as string
 
-    let parameters: Record<string, any> | undefined
+    let parameters: Record<string, unknown> | undefined
 
     if (parametersSchema.length > 0) {
       const paramsFormValues = parametersFormRef.current?.getFormValues({
@@ -199,10 +199,11 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
           refetch?.()
           onClose()
         },
-        onError: (error: any) => {
+        onError: async (error: unknown) => {
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.list.item.actions.edit.error')
           Toast.notify({
             type: 'error',
-            message: error?.message || t('pluginTrigger.subscription.list.item.actions.edit.error'),
+            message: errorMessage,
           })
         },
       },

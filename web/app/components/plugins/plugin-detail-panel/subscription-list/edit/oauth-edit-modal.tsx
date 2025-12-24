@@ -50,6 +50,17 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
 
   const { mutate: updateSubscription, isPending: isUpdating } = useUpdateTriggerSubscription()
 
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message)
+      return error.message
+    if (typeof error === 'object' && error && 'message' in error) {
+      const message = (error as { message?: string }).message
+      if (typeof message === 'string' && message)
+        return message
+    }
+    return fallback
+  }
+
   const parametersSchema = useMemo<ParametersSchema[]>(
     () => detail?.declaration?.trigger?.subscription_constructor?.parameters || [],
     [detail?.declaration?.trigger?.subscription_constructor?.parameters],
@@ -90,10 +101,10 @@ export const OAuthEditModal = ({ onClose, subscription, pluginDetail }: Props) =
           refetch?.()
           onClose()
         },
-        onError: (error: any) => {
+        onError: (error: unknown) => {
           Toast.notify({
             type: 'error',
-            message: error?.message || t('pluginTrigger.subscription.list.item.actions.edit.error'),
+            message: getErrorMessage(error, t('pluginTrigger.subscription.list.item.actions.edit.error')),
           })
         },
       },

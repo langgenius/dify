@@ -40,6 +40,15 @@ const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTyp
   [SupportedCreationMethods.MANUAL]: TriggerCredentialTypeEnum.Unauthorized,
 }
 
+const MODAL_TITLE_KEY_MAP: Record<
+  SupportedCreationMethods,
+  'pluginTrigger.modal.apiKey.title' | 'pluginTrigger.modal.oauth.title' | 'pluginTrigger.modal.manual.title'
+> = {
+  [SupportedCreationMethods.APIKEY]: 'pluginTrigger.modal.apiKey.title',
+  [SupportedCreationMethods.OAUTH]: 'pluginTrigger.modal.oauth.title',
+  [SupportedCreationMethods.MANUAL]: 'pluginTrigger.modal.manual.title',
+}
+
 enum ApiKeyStep {
   Verify = 'verify',
   Configuration = 'configuration',
@@ -117,13 +126,13 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   const autoCommonParametersSchema = detail?.declaration.trigger?.subscription_constructor?.parameters || [] // apikey and oauth
   const autoCommonParametersFormRef = React.useRef<FormRefObject>(null)
 
-  const rawApiKeyCredentialsSchema = detail?.declaration.trigger?.subscription_constructor?.credentials_schema || []
   const apiKeyCredentialsSchema = useMemo(() => {
-    return rawApiKeyCredentialsSchema.map(schema => ({
+    const rawSchema = detail?.declaration?.trigger?.subscription_constructor?.credentials_schema || []
+    return rawSchema.map(schema => ({
       ...schema,
       tooltip: schema.help,
     }))
-  }, [rawApiKeyCredentialsSchema])
+  }, [detail?.declaration?.trigger?.subscription_constructor?.credentials_schema])
   const apiKeyCredentialsFormRef = React.useRef<FormRefObject>(null)
 
   const { data: logData } = useTriggerSubscriptionBuilderLogs(
@@ -163,7 +172,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
       if (form)
         form.setFieldValue('callback_url', subscriptionBuilder.endpoint)
       if (isPrivateOrLocalAddress(subscriptionBuilder.endpoint)) {
-        console.log('isPrivateOrLocalAddress', isPrivateOrLocalAddress(subscriptionBuilder.endpoint))
+        console.warn('callback_url is private or local address', subscriptionBuilder.endpoint)
         subscriptionFormRef.current?.setFields([{
           name: 'callback_url',
           warnings: [t('pluginTrigger.modal.form.callbackUrl.privateAddressWarning')],
@@ -179,7 +188,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
   }, [subscriptionBuilder?.endpoint, currentStep, t])
 
   const debouncedUpdate = useMemo(
-    () => debounce((provider: string, builderId: string, properties: Record<string, any>) => {
+    () => debounce((provider: string, builderId: string, properties: Record<string, unknown>) => {
       updateBuilder(
         {
           provider,
@@ -187,11 +196,12 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           properties,
         },
         {
-          onError: (error: any) => {
+          onError: async (error: unknown) => {
+            const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.errors.updateFailed')
             console.error('Failed to update subscription builder:', error)
             Toast.notify({
               type: 'error',
-              message: error?.message || t('pluginTrigger.modal.errors.updateFailed'),
+              message: errorMessage,
             })
           },
         },
@@ -246,7 +256,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           })
           setCurrentStep(ApiKeyStep.Configuration)
         },
-        onError: async (error: any) => {
+        onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.apiKey.verify.error')
           apiKeyCredentialsFormRef.current?.setFields([{
             name: Object.keys(credentials)[0],
@@ -303,7 +313,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
           onClose()
           refetch?.()
         },
-        onError: async (error: any) => {
+        onError: async (error: unknown) => {
           const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.createFailed')
           Toast.notify({
             type: 'error',
@@ -328,14 +338,17 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
     }])
   }
 
+  const confirmButtonText = useMemo(() => {
+    if (currentStep === ApiKeyStep.Verify)
+      return isVerifyingCredentials ? t('pluginTrigger.modal.common.verifying') : t('pluginTrigger.modal.common.verify')
+
+    return isBuilding ? t('pluginTrigger.modal.common.creating') : t('pluginTrigger.modal.common.create')
+  }, [currentStep, isVerifyingCredentials, isBuilding, t])
+
   return (
     <Modal
-      title={t(`pluginTrigger.modal.${createType === SupportedCreationMethods.APIKEY ? 'apiKey' : createType.toLowerCase()}.title` as any)}
-      confirmButtonText={
-        currentStep === ApiKeyStep.Verify
-          ? isVerifyingCredentials ? t('pluginTrigger.modal.common.verifying') : t('pluginTrigger.modal.common.verify')
-          : isBuilding ? t('pluginTrigger.modal.common.creating') : t('pluginTrigger.modal.common.create')
-      }
+      title={t(MODAL_TITLE_KEY_MAP[createType])}
+      confirmButtonText={confirmButtonText}
       onClose={onClose}
       onCancel={onClose}
       onConfirm={handleConfirm}
