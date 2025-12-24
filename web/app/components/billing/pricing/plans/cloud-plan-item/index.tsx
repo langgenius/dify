@@ -106,7 +106,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
           {ICON_MAP[plan]}
           <div className="flex min-h-[104px] flex-col gap-y-2">
             <div className="flex items-center gap-x-2.5">
-              <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`)}</div>
+              <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name` as any)}</div>
               {
                 isMostPopularPlan && (
                   <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
@@ -117,7 +117,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
                 )
               }
             </div>
-            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.description`)}</div>
+            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.description` as any)}</div>
           </div>
         </div>
         {/* Price */}

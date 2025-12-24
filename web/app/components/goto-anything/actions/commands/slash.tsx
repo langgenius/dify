@@ -17,8 +17,8 @@ import { zenCommand } from './zen'
 export const slashAction: ActionItem = {
   key: '/',
   shortcut: '/',
-  title: i18n.t('app.gotoAnything.actions.slashTitle'),
-  description: i18n.t('app.gotoAnything.actions.slashDesc'),
+  title: i18n.t('app.gotoAnything.actions.slashTitle' as any),
+  description: i18n.t('app.gotoAnything.actions.slashDesc' as any),
   action: (result) => {
     if (result.type !== 'command')
       return

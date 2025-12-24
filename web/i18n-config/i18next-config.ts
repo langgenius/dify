@@ -1,8 +1,9 @@
 'use client'
+import type { Locale } from '.'
 import i18n from 'i18next'
-import { kebabCase } from 'lodash-es'
-import { initReactI18next } from 'react-i18next'
+import { camelCase, kebabCase } from 'lodash-es'
 
+import { initReactI18next } from 'react-i18next'
 import app from '../i18n/en-US/app'
 import appAnnotation from '../i18n/en-US/app-annotation'
 import appApi from '../i18n/en-US/app-api'
@@ -68,7 +69,22 @@ export const messagesEN = {
   workflow,
 }
 
-const requireSilent = async (lang: string, namespace: string) => {
+// pluginTrigger -> plugin-trigger
+
+export type KebabCase<S extends string> = S extends `${infer T}${infer U}`
+  ? T extends Lowercase<T>
+    ? `${T}${KebabCase<U>}`
+    : `-${Lowercase<T>}${KebabCase<U>}`
+  : S
+
+export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
+  ? `${T}${Capitalize<CamelCase<U>>}`
+  : S
+
+export type KeyPrefix = keyof typeof messagesEN
+export type Namespace = KebabCase<KeyPrefix>
+
+const requireSilent = async (lang: Locale, namespace: Namespace) => {
   let res
   try {
     res = (await import(`../i18n/${lang}/${namespace}`)).default
@@ -80,14 +96,14 @@ const requireSilent = async (lang: string, namespace: string) => {
   return res
 }
 
-const NAMESPACES = Object.keys(messagesEN) as Array<keyof typeof messagesEN>
+const NAMESPACES = Object.keys(messagesEN).map(kebabCase) as Namespace[]
 
-export const loadLangResources = async (lang: string) => {
+export const loadLangResources = async (lang: Locale) => {
   const modules = await Promise.all(
-    NAMESPACES.map(kebabCase).map(ns => requireSilent(lang, ns)),
+    NAMESPACES.map(ns => requireSilent(lang, ns)),
   )
   const resources = modules.reduce((acc, mod, index) => {
-    acc[NAMESPACES[index]] = mod
+    acc[camelCase(NAMESPACES[index])] = mod
     return acc
   }, {} as Record<string, any>)
   return resources
@@ -110,7 +126,7 @@ if (!i18n.isInitialized) {
   })
 }
 
-export const changeLanguage = async (lng?: string) => {
+export const changeLanguage = async (lng?: Locale) => {
   if (!lng)
     return
   if (!i18n.hasResourceBundle(lng, 'translation')) {

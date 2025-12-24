@@ -191,7 +191,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
             console.error('Failed to update subscription builder:', error)
             Toast.notify({
               type: 'error',
-              message: error?.message || t('pluginTrigger.modal.errors.updateFailed'),
+              message: error?.message || t('pluginTrigger.modal.errors.updateFailed' as any),
             })
           },
         },
@@ -330,7 +330,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
   return (
     <Modal
-      title={t(`pluginTrigger.modal.${createType === SupportedCreationMethods.APIKEY ? 'apiKey' : createType.toLowerCase()}.title`)}
+      title={t(`pluginTrigger.modal.${createType === SupportedCreationMethods.APIKEY ? 'apiKey' : createType.toLowerCase()}.title` as any)}
       confirmButtonText={
         currentStep === ApiKeyStep.Verify
           ? isVerifyingCredentials ? t('pluginTrigger.modal.common.verifying') : t('pluginTrigger.modal.common.verify')

@@ -82,7 +82,7 @@ export const useImageFiles = () => {
           setFiles(newFiles)
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t)
+          const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t as any)
           notify({ type: 'error', message: errorMessage })
           const newFiles = [...files.slice(0, index), { ...currentImageFile, progress: -1 }, ...files.slice(index + 1)]
           filesRef.current = newFiles
@@ -160,7 +160,7 @@ export const useLocalFileUploader = ({ limit, disabled = false, onUpload }: useL
             onUpload({ ...imageFile, fileId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t)
+            const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t as any)
             notify({ type: 'error', message: errorMessage })
             onUpload({ ...imageFile, progress: -1 })
           },

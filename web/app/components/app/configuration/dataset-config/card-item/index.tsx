@@ -94,7 +94,7 @@ const Item: FC<ItemProps> = ({
         config.indexing_technique && (
           <Badge
             className="shrink-0 group-hover:hidden"
-            text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method)}
+            text={formatIndexingTechniqueAndMethod(config.indexing_technique, config.retrieval_model_dict?.search_method) as any}
           />
         )
       }

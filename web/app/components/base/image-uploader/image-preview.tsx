@@ -144,7 +144,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
         Toast.notify({
           type: 'info',
-          message: t('common.operation.imageDownloaded'),
+          message: t('common.operation.imageDownloaded' as any),
         })
       }
     }

@@ -243,7 +243,7 @@ const GotoAnything: FC<Props> = ({
                     knowledge: 'app.gotoAnything.emptyState.noKnowledgeBasesFound',
                     node: 'app.gotoAnything.emptyState.noWorkflowNodesFound',
                   }
-                  return t(keyMap[commandType] || 'app.gotoAnything.noResults')
+                  return t((keyMap[commandType] || 'app.gotoAnything.noResults') as any)
                 })()
               : t('app.gotoAnything.noResults')}
           </div>
@@ -410,7 +410,7 @@ const GotoAnything: FC<Props> = ({
                                 'workflow-node': 'app.gotoAnything.groups.workflowNodes',
                                 'command': 'app.gotoAnything.groups.commands',
                               }
-                              return t(typeMap[type] || `${type}s`)
+                              return t((typeMap[type] || `${type}s`) as any)
                             })()}
                             className="p-2 capitalize text-text-secondary"
                           >

@@ -6,7 +6,7 @@ const YEAR_RANGE = 100
 
 export const useDaysOfWeek = () => {
   const { t } = useTranslation()
-  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => t(`time.daysInWeek.${day}`))
+  const daysOfWeek = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'].map(day => t(`time.daysInWeek.${day}` as any))
 
   return daysOfWeek
 }
@@ -26,7 +26,7 @@ export const useMonths = () => {
     'October',
     'November',
     'December',
-  ].map(month => t(`time.months.${month}`))
+  ].map(month => t(`time.months.${month}` as any))
 
   return months
 }

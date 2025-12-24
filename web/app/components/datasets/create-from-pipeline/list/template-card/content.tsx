@@ -44,7 +44,7 @@ const Content = ({
             {name}
           </div>
           <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t(`dataset.chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`)}
+            {t(`dataset.chunkingMode.${DOC_FORM_TEXT[chunkStructure]}` as any)}
           </div>
         </div>
       </div>

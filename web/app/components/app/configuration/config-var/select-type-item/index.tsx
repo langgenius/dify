@@ -23,7 +23,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation()
-  const typeName = t(`appDebug.variableConfig.${i18nFileTypeMap[type] || type}`)
+  const typeName = t(`appDebug.variableConfig.${i18nFileTypeMap[type] || type}` as any)
 
   return (
     <div
@@ -36,7 +36,7 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
       <div className="shrink-0">
         <InputVarTypeIcon type={type} className="h-5 w-5" />
       </div>
-      <span>{typeName}</span>
+      <span>{typeName as string}</span>
     </div>
   )
 }

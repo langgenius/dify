@@ -1,4 +1,5 @@
-import data from './languages.json'
+import type { Locale } from '.'
+import data from './languages'
 
 export type Item = {
   value: number | string
@@ -35,11 +36,11 @@ export const languages = data.languages
 
 export const LanguagesSupported = languages.filter(item => item.supported).map(item => item.value)
 
-export const getLanguage = (locale: string) => {
+export const getLanguage = (locale: Locale): Locale => {
   if (['zh-Hans', 'ja-JP'].includes(locale))
-    return locale.replace('-', '_')
+    return locale
 
-  return LanguagesSupported[0].replace('-', '_')
+  return LanguagesSupported[0]
 }
 
 const DOC_LANGUAGE: Record<string, string> = {

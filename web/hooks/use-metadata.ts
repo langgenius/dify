@@ -86,7 +86,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'volume/issue/page_numbers': { label: t(`${fieldPrefix}.paper.volumeIssuePage`) },
         'doi': { label: t(`${fieldPrefix}.paper.DOI`) },
-        'topic/keywords': { label: t(`${fieldPrefix}.paper.topicKeywords`) },
+        'topic/keywords': { label: t(`${fieldPrefix}.paper.topicKeywords` as any) },
         'abstract': {
           label: t(`${fieldPrefix}.paper.abstract`),
           inputType: 'textarea',
@@ -160,7 +160,7 @@ export const useMetadataMap = (): MetadataMap => {
         'end_date': { label: t(`${fieldPrefix}.IMChat.endDate`) },
         'participants': { label: t(`${fieldPrefix}.IMChat.participants`) },
         'topicKeywords': {
-          label: t(`${fieldPrefix}.IMChat.topicKeywords`),
+          label: t(`${fieldPrefix}.IMChat.topicKeywords` as any),
           inputType: 'textarea',
         },
         'fileType': { label: t(`${fieldPrefix}.IMChat.fileType`) },
@@ -193,7 +193,7 @@ export const useMetadataMap = (): MetadataMap => {
       allowEdit: false,
       subFieldsMap: {
         'title': { label: t(`${fieldPrefix}.notion.title`) },
-        'language': { label: t(`${fieldPrefix}.notion.lang`), inputType: 'select' },
+        'language': { label: t(`${fieldPrefix}.notion.lang` as any), inputType: 'select' },
         'author/creator': { label: t(`${fieldPrefix}.notion.author`) },
         'creation_date': { label: t(`${fieldPrefix}.notion.createdTime`) },
         'last_modified_date': {
@@ -201,7 +201,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'notion_page_link': { label: t(`${fieldPrefix}.notion.url`) },
         'category/tags': { label: t(`${fieldPrefix}.notion.tag`) },
-        'description': { label: t(`${fieldPrefix}.notion.desc`) },
+        'description': { label: t(`${fieldPrefix}.notion.desc` as any) },
       },
     },
     synced_from_github: {
@@ -241,7 +241,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'data_source_type': {
           label: t(`${fieldPrefix}.originInfo.source`),
-          render: value => t(`datasetDocuments.metadata.source.${value === 'notion_import' ? 'notion' : value}`),
+          render: value => t(`datasetDocuments.metadata.source.${value === 'notion_import' ? 'notion' : value}` as any),
         },
       },
     },
@@ -323,7 +323,7 @@ export const useLanguages = () => {
     cs: t(`${langPrefix}cs`),
     th: t(`${langPrefix}th`),
     id: t(`${langPrefix}id`),
-    ro: t(`${langPrefix}ro`),
+    ro: t(`${langPrefix}ro` as any),
   }
 }
 

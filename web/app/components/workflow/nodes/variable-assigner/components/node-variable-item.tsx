@@ -120,7 +120,7 @@ const NodeVariableItem = ({
         {VariableIcon}
         {VariableName}
       </div>
-      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
+      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any)} />}
     </div>
   )
 }

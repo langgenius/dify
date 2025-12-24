@@ -48,6 +48,7 @@ const localeMap: Record<Locale, string> = {
   'tr-TR': 'tr',
   'fa-IR': 'fa',
   'sl-SI': 'sl',
+  'ar-TN': 'ar',
 }
 
 export const useFormatTimeFromNow = () => {

@@ -39,7 +39,7 @@ const ConditionOperator = ({
   const options = useMemo(() => {
     return getOperators(varType, file).map((o) => {
       return {
-        label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`) : o,
+        label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}` as any) : o,
         value: o,
       }
     })
@@ -65,7 +65,7 @@ const ConditionOperator = ({
           {
             selectedOption
               ? selectedOption.label
-              : t(`${i18nPrefix}.select`)
+              : t(`${i18nPrefix}.select` as any)
           }
           <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
         </Button>

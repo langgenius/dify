@@ -5,14 +5,14 @@ export const useKnowledge = () => {
   const { t } = useTranslation()
 
   const formatIndexingTechnique = useCallback((indexingTechnique: string) => {
-    return t(`dataset.indexingTechnique.${indexingTechnique}`)
+    return t(`dataset.indexingTechnique.${indexingTechnique}` as any)
   }, [t])
 
   const formatIndexingMethod = useCallback((indexingMethod: string, isEco?: boolean) => {
     if (isEco)
       return t('dataset.indexingMethod.invertedIndex')
 
-    return t(`dataset.indexingMethod.${indexingMethod}`)
+    return t(`dataset.indexingMethod.${indexingMethod}` as any)
   }, [t])
 
   const formatIndexingTechniqueAndMethod = useCallback((indexingTechnique: string, indexingMethod: string) => {

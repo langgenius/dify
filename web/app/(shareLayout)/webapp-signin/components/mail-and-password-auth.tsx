@@ -64,7 +64,7 @@ export default function MailAndPasswordAuth({ isEmailSetup }: MailAndPasswordAut
     if (!redirectUrl || !appCode) {
       Toast.notify({
         type: 'error',
-        message: t('login.error.redirectUrlMissing'),
+        message: t('login.error.redirectUrlMissing' as any),
       })
       return
     }

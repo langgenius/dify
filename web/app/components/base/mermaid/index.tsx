@@ -555,7 +555,7 @@ const Flowchart = (props: FlowchartProps) => {
                 toggleTheme()
               }}
               className={themeClasses.themeToggle}
-              title={(currentTheme === Theme.light ? t('app.theme.switchDark') : t('app.theme.switchLight')) || ''}
+              title={(currentTheme === Theme.light ? t('app.theme.switchDark' as any) : t('app.theme.switchLight' as any)) || ''}
               style={{ transform: 'translate3d(0, 0, 0)' }}
             >
               {currentTheme === Theme.light ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}

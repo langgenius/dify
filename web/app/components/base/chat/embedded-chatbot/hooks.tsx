@@ -3,6 +3,7 @@ import type {
   ChatItem,
   Feedback,
 } from '../types'
+import type { Locale } from '@/i18n-config'
 import type {
   // AppData,
   ConversationItem,
@@ -93,7 +94,7 @@ export const useEmbeddedChatbot = () => {
 
       if (localeParam) {
         // If locale parameter exists in URL, use it instead of default
-        await changeLanguage(localeParam)
+        await changeLanguage(localeParam as Locale)
       }
       else if (localeFromSysVar) {
         // If locale is set as a system variable, use that

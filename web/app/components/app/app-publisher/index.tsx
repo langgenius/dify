@@ -84,7 +84,7 @@ const AccessModeDisplay: React.FC<{ mode?: AccessMode }> = ({ mode }) => {
     <>
       <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
       <div className="grow truncate">
-        <span className="system-sm-medium text-text-secondary">{t(`app.accessControlDialog.accessItems.${label}`)}</span>
+        <span className="system-sm-medium text-text-secondary">{t(`app.accessControlDialog.accessItems.${label}` as any)}</span>
       </div>
     </>
   )

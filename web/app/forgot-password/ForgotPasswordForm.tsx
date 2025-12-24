@@ -108,7 +108,7 @@ const ForgotPasswordForm = () => {
                           {...register('email')}
                           placeholder={t('login.emailPlaceholder') || ''}
                         />
-                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}`)}</span>}
+                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}` as any)}</span>}
                       </div>
                     </div>
                   )}

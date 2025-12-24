@@ -85,7 +85,7 @@ const Blocks = ({
         {
           classification !== '-' && !!filteredList.length && (
             <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
-              {t(`workflow.tabs.${classification}`)}
+              {t(`workflow.tabs.${classification}` as any)}
             </div>
           )
         }

@@ -57,7 +57,7 @@ const VarList: FC<Props> = ({
     if (!isValid) {
       setToastHandle(Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }),
       }))
       return
     }

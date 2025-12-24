@@ -22,11 +22,11 @@ const Options: FC<YearAndMonthPickerOptionsProps> = ({
             const isSelected = selectedMonth === index
             return (
               <OptionListItem
-                key={month}
+                key={month as string}
                 isSelected={isSelected}
                 onClick={handleMonthSelect.bind(null, index)}
               >
-                {month}
+                {month as string}
               </OptionListItem>
             )
           })

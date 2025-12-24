@@ -42,7 +42,7 @@ const Button = ({
       onClick={handleGetPayUrl}
     >
       <div className="flex grow items-center gap-x-2">
-        <span>{t(`${i18nPrefix}.btnText`)}</span>
+        <span>{t(`${i18nPrefix}.btnText` as any)}</span>
         {isPremiumPlan && (
           <span className="pb-px pt-[7px]">
             <AwsMarketplace className="h-6" />

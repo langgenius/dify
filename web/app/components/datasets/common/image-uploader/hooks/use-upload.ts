@@ -54,9 +54,9 @@ export const useUpload = () => {
 
   const showErrorMessage = useCallback((type: 'type' | 'size') => {
     if (type === 'type')
-      Toast.notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport') })
+      Toast.notify({ type: 'error', message: t('common.fileUploader.fileExtensionNotSupport' as any) })
     else
-      Toast.notify({ type: 'error', message: t('dataset.imageUploader.fileSizeLimitExceeded', { size: fileUploadConfig.imageFileSizeLimit }) })
+      Toast.notify({ type: 'error', message: t('dataset.imageUploader.fileSizeLimitExceeded' as any, { size: fileUploadConfig.imageFileSizeLimit }) })
   }, [fileUploadConfig, t])
 
   const getValidFiles = useCallback((files: File[]) => {
@@ -145,7 +145,7 @@ export const useUpload = () => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
           Toast.notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
@@ -187,7 +187,7 @@ export const useUpload = () => {
             })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
             Toast.notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },

@@ -43,6 +43,7 @@ const localeMap: Record<Locale, string> = {
   'tr-TR': 'tr',
   'fa-IR': 'fa',
   'sl-SI': 'sl',
+  'ar-TN': 'ar',
 }
 
 /**
@@ -149,6 +150,6 @@ export const formatNumberAbbreviated = (num: number) => {
   }
 }
 
-export const formatToLocalTime = (time: Dayjs, local: string, format: string) => {
+export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {
   return time.locale(localeMap[local] ?? 'en').format(format)
 }

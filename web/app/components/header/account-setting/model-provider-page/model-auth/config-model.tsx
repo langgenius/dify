@@ -48,7 +48,7 @@ const ConfigModel = ({
       {
         credentialRemoved && (
           <>
-            {t('common.modelProvider.auth.credentialRemoved')}
+            {t('common.modelProvider.auth.credentialRemoved' as any)}
             <Indicator color="red" className="ml-2" />
           </>
         )

@@ -50,7 +50,7 @@ const Category: FC<ICategoryProps> = ({
           className={itemClassName(name === value)}
           onClick={() => onChange(name)}
         >
-          {(categoryI18n as any)[name] ? t(`explore.category.${name}`) : name}
+          {(categoryI18n as any)[name] ? t(`explore.category.${name}` as any) : name}
         </div>
       ))}
     </div>

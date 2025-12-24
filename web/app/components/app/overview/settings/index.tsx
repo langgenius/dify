@@ -262,7 +262,7 @@ const SettingsModal: FC<ISettingsModalProps> = ({
                 className="w-full"
                 value={inputInfo.title}
                 onChange={onChange('title')}
-                placeholder={t('app.appNamePlaceholder') || ''}
+                placeholder={t('app.appNamePlaceholder' as any) || ''}
               />
             </div>
             <AppIcon
