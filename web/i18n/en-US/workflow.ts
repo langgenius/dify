@@ -132,6 +132,8 @@ const translation = {
     invalidFlowchart: 'The generated flowchart could not be parsed.',
     nodeTypeUnavailable: 'Node type "{{type}}" is not available in this workflow.',
     toolUnavailable: 'Tool "{{tool}}" is not available in this workspace.',
+    unknownNodeId: 'Node "{{id}}" is used before it is defined.',
+    unsupportedEdgeLabel: 'Unsupported edge label "{{label}}". Only true/false are allowed for if/else.',
   },
   publishLimit: {
     startNodeTitlePrefix: 'Upgrade to',

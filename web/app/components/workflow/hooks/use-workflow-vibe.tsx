@@ -64,7 +64,7 @@ type ParsedEdge = {
 }
 
 type ParseError = {
-  error: 'invalidMermaid' | 'missingNodeType' | 'unknownNodeType' | 'unknownTool' | 'missingNodeDefinition'
+  error: 'invalidMermaid' | 'missingNodeType' | 'unknownNodeType' | 'unknownTool' | 'missingNodeDefinition' | 'unknownNodeId' | 'unsupportedEdgeLabel'
   detail?: string
 }
 
@@ -111,6 +111,9 @@ const parseNodeLabel = (label: string) => {
     info.type = tokens[0]
   }
 
+  if (!info.tool && info.tool_key)
+    info.tool = info.tool_key
+
   return info
 }
 
@@ -125,6 +128,17 @@ const parseNodeToken = (token: string) => {
   return null
 }
 
+const normalizeBranchLabel = (label?: string) => {
+  if (!label)
+    return ''
+  const normalized = label.trim().toLowerCase()
+  if (['true', 'yes', 'y', '1'].includes(normalized))
+    return 'true'
+  if (['false', 'no', 'n', '0'].includes(normalized))
+    return 'false'
+  return ''
+}
+
 const parseMermaidFlowchart = (
   raw: string,
   nodeTypeLookup: Map<string, BlockEnum>,
@@ -137,6 +151,7 @@ const parseMermaidFlowchart = (
   }).filter(Boolean)
 
   const nodesMap = new Map<string, ParsedNodeDraft>()
+  const declaredNodeIds = new Set<string>()
   const edges: ParsedEdge[] = []
 
   const registerNode = (id: string, label?: string): ParseError | null => {
@@ -172,6 +187,7 @@ const parseMermaidFlowchart = (
     }
 
     nodesMap.set(id, { ...(existing || {}), ...nodeData })
+    declaredNodeIds.add(id)
     return null
   }
 
@@ -188,6 +204,11 @@ const parseMermaidFlowchart = (
       const targetToken = parseNodeToken(edgeMatch[3])
       if (!sourceToken || !targetToken)
         return { error: 'invalidMermaid', detail: line }
+
+      if (!sourceToken.label && !declaredNodeIds.has(sourceToken.id))
+        return { error: 'unknownNodeId', detail: sourceToken.id }
+      if (!targetToken.label && !declaredNodeIds.has(targetToken.id))
+        return { error: 'unknownNodeId', detail: targetToken.id }
 
       const sourceError = registerNode(sourceToken.id, sourceToken.label)
       if (sourceError)
@@ -213,14 +234,25 @@ const parseMermaidFlowchart = (
   }
 
   const parsedNodes: ParsedNode[] = []
+  const nodeTypeById = new Map<string, BlockEnum>()
   for (const node of nodesMap.values()) {
     if (!node.type)
       return { error: 'missingNodeDefinition', detail: node.id }
     parsedNodes.push(node as ParsedNode)
+    nodeTypeById.set(node.id, node.type)
   }
 
   if (!parsedNodes.length)
     return { error: 'invalidMermaid', detail: '' }
+
+  for (const edge of edges) {
+    if (!edge.label)
+      continue
+    const sourceType = nodeTypeById.get(edge.sourceId)
+    const branchLabel = normalizeBranchLabel(edge.label)
+    if (sourceType !== BlockEnum.IfElse || !branchLabel)
+      return { error: 'unsupportedEdgeLabel', detail: edge.label }
+  }
 
   return { nodes: parsedNodes, edges }
 }
@@ -229,17 +261,6 @@ const dedupeHandles = (handles?: string[]) => {
   if (!handles)
     return handles
   return Array.from(new Set(handles))
-}
-
-const normalizeBranchLabel = (label?: string) => {
-  if (!label)
-    return ''
-  const normalized = label.trim().toLowerCase()
-  if (['true', 'yes', 'y', '1'].includes(normalized))
-    return 'true'
-  if (['false', 'no', 'n', '0'].includes(normalized))
-    return 'false'
-  return ''
 }
 
 const buildToolParams = (parameters?: Tool['parameters']) => {
@@ -426,6 +447,7 @@ export const useWorkflowVibe = () => {
       const toolsPayload = toolOptions.map(tool => ({
         provider_id: tool.provider_id,
         provider_name: tool.provider_name,
+        provider_type: tool.provider_type,
         tool_name: tool.tool_name,
         tool_label: tool.tool_label,
         tool_key: `${tool.provider_id}/${tool.tool_name}`,
@@ -467,11 +489,17 @@ export const useWorkflowVibe = () => {
           case 'missingNodeDefinition':
             Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
             return
+          case 'unknownNodeId':
+            Toast.notify({ type: 'error', message: t('workflow.vibe.unknownNodeId', { id: parseResult.detail }) })
+            return
           case 'unknownNodeType':
             Toast.notify({ type: 'error', message: t('workflow.vibe.nodeTypeUnavailable', { type: parseResult.detail }) })
             return
           case 'unknownTool':
             Toast.notify({ type: 'error', message: t('workflow.vibe.toolUnavailable', { tool: parseResult.detail }) })
+            return
+          case 'unsupportedEdgeLabel':
+            Toast.notify({ type: 'error', message: t('workflow.vibe.unsupportedEdgeLabel', { label: parseResult.detail }) })
             return
           default:
             Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
@@ -547,11 +575,11 @@ export const useWorkflowVibe = () => {
       })
 
       const newEdges: Edge[] = []
-      parseResult.edges.forEach((edgeSpec) => {
+      for (const edgeSpec of parseResult.edges) {
         const sourceNode = nodeIdMap.get(edgeSpec.sourceId)
         const targetNode = nodeIdMap.get(edgeSpec.targetId)
         if (!sourceNode || !targetNode)
-          return
+          continue
 
         let sourceHandle = 'source'
         if (sourceNode.data.type === BlockEnum.IfElse) {
@@ -565,7 +593,7 @@ export const useWorkflowVibe = () => {
         }
 
         newEdges.push(buildEdge(sourceNode, targetNode, sourceHandle))
-      })
+      }
 
       const bounds = nodes.reduce(
         (acc, node) => {
