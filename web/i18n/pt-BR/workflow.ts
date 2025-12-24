@@ -437,6 +437,7 @@ const translation = {
         input: 'Valor de entrada',
       },
       inputVars: 'Variáveis de entrada',
+      pluginNotInstalled: 'O plugin não está instalado',
     },
     start: {
       required: 'requerido',
@@ -543,6 +544,7 @@ const translation = {
         icon: 'Ícone segmentado',
         url: 'URL segmentado',
         metadata: 'Outros metadados',
+        files: 'Arquivos recuperados',
       },
       metadata: {
         options: {
@@ -572,6 +574,8 @@ const translation = {
         title: 'Filtragem de Metadados',
         tip: 'A filtragem de metadados é o processo de usar atributos de metadados (como etiquetas, categorias ou permissões de acesso) para refinar e controlar a recuperação de informações relevantes dentro de um sistema.',
       },
+      queryText: 'Texto da Consulta',
+      queryAttachment: 'Imagens de Consulta',
     },
     http: {
       inputVars: 'Variáveis de entrada',

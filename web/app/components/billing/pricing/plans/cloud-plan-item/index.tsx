@@ -1,17 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { BasicPlan } from '../../../type'
-import { Plan } from '../../../type'
-import { ALL_PLANS } from '../../../config'
-import Toast from '../../../../base/toast'
-import { PlanRange } from '../../plan-switcher/plan-range-switcher'
+import * as React from 'react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useAppContext } from '@/context/app-context'
-import { fetchSubscriptionUrls } from '@/service/billing'
-import List from './list'
-import Button from './button'
+import { useAsyncWindowOpen } from '@/hooks/use-async-window-open'
+import { fetchBillingUrl, fetchSubscriptionUrls } from '@/service/billing'
+import Toast from '../../../../base/toast'
+import { ALL_PLANS } from '../../../config'
+import { Plan } from '../../../type'
 import { Professional, Sandbox, Team } from '../../assets'
+import { PlanRange } from '../../plan-switcher/plan-range-switcher'
+import Button from './button'
+import List from './list'
 
 const ICON_MAP = {
   [Plan.sandbox]: <Sandbox />,
@@ -39,8 +41,10 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
   const planInfo = ALL_PLANS[plan]
   const isYear = planRange === PlanRange.yearly
   const isCurrent = plan === currentPlan
-  const isPlanDisabled = planInfo.level <= ALL_PLANS[currentPlan].level
+  const isCurrentPaidPlan = isCurrent && !isFreePlan
+  const isPlanDisabled = isCurrentPaidPlan ? false : planInfo.level <= ALL_PLANS[currentPlan].level
   const { isCurrentWorkspaceManager } = useAppContext()
+  const openAsyncWindow = useAsyncWindowOpen()
 
   const btnText = useMemo(() => {
     if (isCurrent)
@@ -60,10 +64,6 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     if (isPlanDisabled)
       return
 
-    if (isFreePlan)
-      return
-
-    // Only workspace manager can buy plan
     if (!isCurrentWorkspaceManager) {
       Toast.notify({
         type: 'error',
@@ -74,6 +74,23 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     }
     setLoading(true)
     try {
+      if (isCurrentPaidPlan) {
+        await openAsyncWindow(async () => {
+          const res = await fetchBillingUrl()
+          if (res.url)
+            return res.url
+          throw new Error('Failed to open billing page')
+        }, {
+          onError: (err) => {
+            Toast.notify({ type: 'error', message: err.message || String(err) })
+          },
+        })
+        return
+      }
+
+      if (isFreePlan)
+        return
+
       const res = await fetchSubscriptionUrls(plan, isYear ? 'year' : 'month')
       // Adb Block additional tracking block the gtag, so we need to redirect directly
       window.location.href = res.url
@@ -83,36 +100,44 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     }
   }
   return (
-    <div className='flex min-w-0 flex-1 flex-col pb-3'>
-      <div className='flex flex-col px-5 py-4'>
-        <div className='flex flex-col gap-y-6 px-1 pt-10'>
+    <div className="flex min-w-0 flex-1 flex-col pb-3">
+      <div className="flex flex-col px-5 py-4">
+        <div className="flex flex-col gap-y-6 px-1 pt-10">
           {ICON_MAP[plan]}
-          <div className='flex min-h-[104px] flex-col gap-y-2'>
-            <div className='flex items-center gap-x-2.5'>
-              <div className='text-[30px] font-medium leading-[1.2] text-text-primary'>{t(`${i18nPrefix}.name`)}</div>
+          <div className="flex min-h-[104px] flex-col gap-y-2">
+            <div className="flex items-center gap-x-2.5">
+              <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`)}</div>
               {
                 isMostPopularPlan && (
-                  <div className='flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1'>
-                    <span className='system-2xs-semibold-uppercase text-text-primary-on-surface'>
+                  <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
+                    <span className="system-2xs-semibold-uppercase text-text-primary-on-surface">
                       {t('billing.plansCommon.mostPopular')}
                     </span>
                   </div>
                 )
               }
             </div>
-            <div className='system-sm-regular text-text-secondary'>{t(`${i18nPrefix}.description`)}</div>
+            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.description`)}</div>
           </div>
         </div>
         {/* Price */}
-        <div className='flex items-end gap-x-2 px-1 pb-8 pt-4'>
+        <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
           {isFreePlan && (
-            <span className='title-4xl-semi-bold text-text-primary'>{t('billing.plansCommon.free')}</span>
+            <span className="title-4xl-semi-bold text-text-primary">{t('billing.plansCommon.free')}</span>
           )}
           {!isFreePlan && (
             <>
-              {isYear && <span className='title-4xl-semi-bold text-text-quaternary line-through'>${planInfo.price * 12}</span>}
-              <span className='title-4xl-semi-bold text-text-primary'>${isYear ? planInfo.price * 10 : planInfo.price}</span>
-              <span className='system-md-regular pb-0.5 text-text-tertiary'>
+              {isYear && (
+                <span className="title-4xl-semi-bold text-text-quaternary line-through">
+                  $
+                  {planInfo.price * 12}
+                </span>
+              )}
+              <span className="title-4xl-semi-bold text-text-primary">
+                $
+                {isYear ? planInfo.price * 10 : planInfo.price}
+              </span>
+              <span className="system-md-regular pb-0.5 text-text-tertiary">
                 {t('billing.plansCommon.priceTip')}
                 {t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}
               </span>

@@ -70,6 +70,8 @@ export type I18nText = {
   'uk-UA': string
   'id-ID': string
   'tr-TR': string
+  'fa-IR': string
+  'ar-TN': string
   'YOUR_LANGUAGE_CODE': string
 }
 ```
@@ -77,7 +79,6 @@ export type I18nText = {
 4. Add the new language to the `language.json` file.
 
 ```typescript
-
 export const languages = [
   {
     value: 'en-US',
@@ -157,8 +158,20 @@ export const languages = [
     example: 'Привет, Dify!',
     supported: true,
   },
+  {
+    value: 'fa-IR',
+    name: 'Farsi (Iran)',
+    example: 'سلام, دیفای!',
+    supported: true,
+  },
+  {
+    value: 'ar-TN',
+    name: 'العربية (تونس)',
+    example: 'مرحبا، Dify!',
+    supported: true,
+  },
   // Add your language here 👇
-  ...
+  // ...
   // Add your language here 👆
 ]
 ```

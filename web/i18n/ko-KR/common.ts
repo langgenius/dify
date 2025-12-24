@@ -5,6 +5,7 @@ const translation = {
     saved: '저장됨',
     create: '생성됨',
     remove: '삭제됨',
+    actionFailed: '작업 실패',
   },
   operation: {
     create: '생성',
@@ -99,6 +100,8 @@ const translation = {
       hiIN: '힌디어',
       trTR: '터키어',
       faIR: '페르시아어',
+      slSI: '슬로베니아어',
+      arTN: '튀니지 아랍어',
     },
   },
   unit: {
@@ -730,6 +733,7 @@ const translation = {
     uploadFromComputerLimit: '업로드 파일은 {{size}}를 초과할 수 없습니다.',
     uploadFromComputerUploadError: '파일 업로드에 실패했습니다. 다시 업로드하십시오.',
     fileExtensionBlocked: '보안상의 이유로 이 파일 형식은 차단되었습니다',
+    uploadDisabled: '파일 업로드가 비활성화되었습니다',
   },
   license: {
     expiring_plural: '{{count}}일 후에 만료',

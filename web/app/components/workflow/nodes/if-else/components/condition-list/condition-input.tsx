@@ -1,11 +1,11 @@
-import { useTranslation } from 'react-i18next'
-import { useStore } from '@/app/components/workflow/store'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { useTranslation } from 'react-i18next'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 type ConditionInputProps = {
   disabled?: boolean

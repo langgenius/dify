@@ -1,10 +1,14 @@
 import logging
+from typing import Any, Literal
+from uuid import UUID
 
 from flask import request
-from flask_restx import Resource, reqparse
+from flask_restx import Resource
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
     AppUnavailableError,
@@ -26,7 +30,6 @@ from core.errors.error import (
 from core.helper.trace_id_helper import get_external_trace_id
 from core.model_runtime.errors.invoke import InvokeError
 from libs import helper
-from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
@@ -36,40 +39,46 @@ from services.errors.llm import InvokeRateLimitError
 logger = logging.getLogger(__name__)
 
 
-# Define parser for completion API
-completion_parser = (
-    reqparse.RequestParser()
-    .add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for completion")
-    .add_argument("query", type=str, location="json", default="", help="The query string")
-    .add_argument("files", type=list, required=False, location="json", help="List of file attachments")
-    .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode")
-    .add_argument("retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source")
-)
+class CompletionRequestPayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str = Field(default="")
+    files: list[dict[str, Any]] | None = None
+    response_mode: Literal["blocking", "streaming"] | None = None
+    retriever_from: str = Field(default="dev")
 
-# Define parser for chat API
-chat_parser = (
-    reqparse.RequestParser()
-    .add_argument("inputs", type=dict, required=True, location="json", help="Input parameters for chat")
-    .add_argument("query", type=str, required=True, location="json", help="The chat query")
-    .add_argument("files", type=list, required=False, location="json", help="List of file attachments")
-    .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json", help="Response mode")
-    .add_argument("conversation_id", type=uuid_value, location="json", help="Existing conversation ID")
-    .add_argument("retriever_from", type=str, required=False, default="dev", location="json", help="Retriever source")
-    .add_argument(
-        "auto_generate_name",
-        type=bool,
-        required=False,
-        default=True,
-        location="json",
-        help="Auto generate conversation name",
-    )
-    .add_argument("workflow_id", type=str, required=False, location="json", help="Workflow ID for advanced chat")
-)
+
+class ChatRequestPayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str
+    files: list[dict[str, Any]] | None = None
+    response_mode: Literal["blocking", "streaming"] | None = None
+    conversation_id: str | None = Field(default=None, description="Conversation UUID")
+    retriever_from: str = Field(default="dev")
+    auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
+    workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
+
+    @field_validator("conversation_id", mode="before")
+    @classmethod
+    def normalize_conversation_id(cls, value: str | UUID | None) -> str | None:
+        """Allow missing or blank conversation IDs; enforce UUID format when provided."""
+        if isinstance(value, str):
+            value = value.strip()
+
+        if not value:
+            return None
+
+        try:
+            return helper.uuid_value(value)
+        except ValueError as exc:
+            raise ValueError("conversation_id must be a valid UUID") from exc
+
+
+register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
 
 
 @service_api_ns.route("/completion-messages")
 class CompletionApi(Resource):
-    @service_api_ns.expect(completion_parser)
+    @service_api_ns.expect(service_api_ns.models[CompletionRequestPayload.__name__])
     @service_api_ns.doc("create_completion")
     @service_api_ns.doc(description="Create a completion for the given prompt")
     @service_api_ns.doc(
@@ -91,12 +100,13 @@ class CompletionApi(Resource):
         if app_model.mode != AppMode.COMPLETION:
             raise AppUnavailableError()
 
-        args = completion_parser.parse_args()
+        payload = CompletionRequestPayload.model_validate(service_api_ns.payload or {})
         external_trace_id = get_external_trace_id(request)
+        args = payload.model_dump(exclude_none=True)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
-        streaming = args["response_mode"] == "streaming"
+        streaming = payload.response_mode == "streaming"
 
         args["auto_generate_name"] = False
 
@@ -162,7 +172,7 @@ class CompletionStopApi(Resource):
 
 @service_api_ns.route("/chat-messages")
 class ChatApi(Resource):
-    @service_api_ns.expect(chat_parser)
+    @service_api_ns.expect(service_api_ns.models[ChatRequestPayload.__name__])
     @service_api_ns.doc("create_chat_message")
     @service_api_ns.doc(description="Send a message in a chat conversation")
     @service_api_ns.doc(
@@ -186,13 +196,14 @@ class ChatApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        args = chat_parser.parse_args()
+        payload = ChatRequestPayload.model_validate(service_api_ns.payload or {})
 
         external_trace_id = get_external_trace_id(request)
+        args = payload.model_dump(exclude_none=True)
         if external_trace_id:
             args["external_trace_id"] = external_trace_id
 
-        streaming = args["response_mode"] == "streaming"
+        streaming = payload.response_mode == "streaming"
 
         try:
             response = AppGenerateService.generate(

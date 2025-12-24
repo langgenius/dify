@@ -1,4 +1,5 @@
 import logging
+import os
 import sys
 from typing import Union
 
@@ -11,6 +12,7 @@ from opentelemetry.propagators.composite import CompositePropagator
 from opentelemetry.trace.propagation.tracecontext import TraceContextTextMapPropagator
 
 from configs import dify_config
+from extensions.otel.semconv import DifySpanAttributes, GenAIAttributes
 from libs.helper import extract_tenant_id
 from models import Account, EndUser
 
@@ -51,8 +53,8 @@ def on_user_loaded(_sender, user: Union["Account", "EndUser"]):
                 if not tenant_id:
                     return
                 if current_span:
-                    current_span.set_attribute("service.tenant.id", tenant_id)
-                    current_span.set_attribute("service.user.id", user.id)
+                    current_span.set_attribute(DifySpanAttributes.TENANT_ID, tenant_id)
+                    current_span.set_attribute(GenAIAttributes.USER_ID, user.id)
             except Exception:
                 logger.exception("Error setting tenant and user attributes")
                 pass
@@ -70,3 +72,13 @@ def init_celery_worker(*args, **kwargs):
         if dify_config.DEBUG:
             logger.info("Initializing OpenTelemetry for Celery worker")
         CeleryInstrumentor(tracer_provider=tracer_provider, meter_provider=metric_provider).instrument()
+
+
+def is_instrument_flag_enabled() -> bool:
+    """
+    Check if external instrumentation is enabled via environment variable.
+
+    Third-party non-invasive instrumentation agents set this flag to coordinate
+    with Dify's manual OpenTelemetry instrumentation.
+    """
+    return os.getenv("ENABLE_OTEL_FOR_INSTRUMENT", "").strip().lower() == "true"

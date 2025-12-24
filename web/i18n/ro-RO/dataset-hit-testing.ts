@@ -5,8 +5,8 @@ const translation = {
   table: {
     header: {
       source: 'Sursă',
-      text: 'Text',
       time: 'Timp',
+      queryContent: 'Conținutul cererii',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   open: 'Deschide',
   hitChunks: 'Accesează {{num}} bucăți copil',
   records: 'Înregistrări',
+  imageUploader: {
+    tip: 'Încarcă sau plasează imagini (Maxim {{batchCount}}, {{size}}MB fiecare)',
+    tooltip: 'Încarcă imagini (Max {{batchCount}}, {{size}}MB fiecare)',
+    dropZoneTip: 'Trage fișierul aici pentru a încărca',
+    singleChunkAttachmentLimitTooltip: 'Numărul de atașamente într-un singur pachet nu poate depăși {{limit}}',
+  },
 }
 
 export default translation

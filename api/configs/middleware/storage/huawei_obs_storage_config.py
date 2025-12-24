@@ -26,3 +26,8 @@ class HuaweiCloudOBSStorageConfig(BaseSettings):
         description="Endpoint URL for Huawei Cloud OBS (e.g., 'https://obs.cn-north-4.myhuaweicloud.com')",
         default=None,
     )
+
+    HUAWEI_OBS_PATH_STYLE: bool = Field(
+        description="Flag to indicate whether to use path-style URLs for OBS requests",
+        default=False,
+    )

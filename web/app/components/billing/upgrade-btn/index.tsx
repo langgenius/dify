@@ -1,17 +1,17 @@
 'use client'
 import type { CSSProperties, FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import PremiumBadge from '../../base/premium-badge'
 import Button from '@/app/components/base/button'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContext } from '@/context/modal-context'
+import PremiumBadge from '../../base/premium-badge'
 
 type Props = {
   className?: string
   style?: CSSProperties
   isFull?: boolean
-  size?: 'md' | 'lg'
+  size?: 's' | 'm' | 'custom'
   isPlain?: boolean
   isShort?: boolean
   onClick?: () => void
@@ -21,6 +21,7 @@ type Props = {
 
 const UpgradeBtn: FC<Props> = ({
   className,
+  size = 'm',
   style,
   isPlain = false,
   isShort = false,
@@ -62,16 +63,16 @@ const UpgradeBtn: FC<Props> = ({
 
   return (
     <PremiumBadge
-      size='m'
-      color='blue'
+      size={size}
+      color="blue"
       allowHover={true}
       onClick={onClick}
       className={className}
       style={style}
     >
-      <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
-      <div className='system-xs-medium'>
-        <span className='p-1'>
+      <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+      <div className="system-xs-medium">
+        <span className="p-1">
           {label}
         </span>
       </div>

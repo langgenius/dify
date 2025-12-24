@@ -86,6 +86,11 @@ class Executor:
             node_data.authorization.config.api_key = variable_pool.convert_template(
                 node_data.authorization.config.api_key
             ).text
+            # Validate that API key is not empty after template conversion
+            if not node_data.authorization.config.api_key or not node_data.authorization.config.api_key.strip():
+                raise AuthorizationConfigError(
+                    "API key is required for authorization but was empty. Please provide a valid API key."
+                )
 
         self.url = node_data.url
         self.method = node_data.method
@@ -412,16 +417,20 @@ class Executor:
                 body_string += f"--{boundary}\r\n"
                 body_string += f'Content-Disposition: form-data; name="{key}"\r\n\r\n'
                 # decode content safely
-                try:
-                    body_string += content.decode("utf-8")
-                except UnicodeDecodeError:
-                    body_string += content.decode("utf-8", errors="replace")
-                body_string += "\r\n"
+                # Do not decode binary content; use a placeholder with file metadata instead.
+                # Includes filename, size, and MIME type for better logging context.
+                body_string += (
+                    f"<file_content_binary: '{file_entry[1][0] or 'unknown'}', "
+                    f"type='{file_entry[1][2] if len(file_entry[1]) > 2 else 'unknown'}', "
+                    f"size={len(content)} bytes>\r\n"
+                )
             body_string += f"--{boundary}--\r\n"
         elif self.node_data.body:
             if self.content:
+                # If content is bytes, do not decode it; show a placeholder with size.
+                # Provides content size information for binary data without exposing the raw bytes.
                 if isinstance(self.content, bytes):
-                    body_string = self.content.decode("utf-8", errors="replace")
+                    body_string = f"<binary_content: size={len(self.content)} bytes>"
                 else:
                     body_string = self.content
             elif self.data and self.node_data.body.type == "x-www-form-urlencoded":

@@ -1,14 +1,15 @@
-import { useMemo } from 'react'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { basePath } from '@/utils/var'
-import { useDataSourceList } from '@/service/use-pipeline'
+import { useMemo } from 'react'
 import { transformDataSourceToTool } from '@/app/components/workflow/block-selector/utils'
+import { useDataSourceList } from '@/service/use-pipeline'
+import { basePath } from '@/utils/var'
 
 export const useDatasourceIcon = (data: DataSourceNodeType) => {
   const { data: dataSourceListData, isSuccess } = useDataSourceList(true)
 
   const datasourceIcon = useMemo(() => {
-    if (!isSuccess) return
+    if (!isSuccess)
+      return
     const dataSourceList = [...(dataSourceListData || [])]
     dataSourceList.forEach((item) => {
       const icon = item.declaration.identity.icon

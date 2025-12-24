@@ -1,19 +1,19 @@
+import type { QueryBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import { $applyNodeReplacement } from 'lexical'
 import {
   memo,
   useCallback,
   useEffect,
 } from 'react'
-import { $applyNodeReplacement } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../../utils'
 import { QUERY_PLACEHOLDER_TEXT } from '../../constants'
-import type { QueryBlockType } from '../../types'
+import { decoratorTransform } from '../../utils'
+import { CustomTextNode } from '../custom-text/node'
 import {
   $createQueryBlockNode,
   QueryBlockNode,
 } from '../query-block/node'
-import { CustomTextNode } from '../custom-text/node'
 
 const REGEX = new RegExp(QUERY_PLACEHOLDER_TEXT)
 

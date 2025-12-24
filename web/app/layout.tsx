@@ -1,18 +1,18 @@
-import { ReactScan } from './components/react-scan'
-import RoutePrefixHandle from './routePrefixHandle'
 import type { Viewport } from 'next'
-import I18nServer from './components/i18n-server'
-import BrowserInitializer from './components/browser-initializer'
-import SentryInitializer from './components/sentry-initializer'
-import { getLocaleOnServer } from '@/i18n-config/server'
-import { TanstackQueryInitializer } from '@/context/query-client'
 import { ThemeProvider } from 'next-themes'
+import { Instrument_Serif } from 'next/font/google'
+import GlobalPublicStoreProvider from '@/context/global-public-context'
+import { TanstackQueryInitializer } from '@/context/query-client'
+import { getLocaleOnServer } from '@/i18n-config/server'
+import { DatasetAttr } from '@/types/feature'
+import { cn } from '@/utils/classnames'
+import BrowserInitializer from './components/browser-initializer'
+import I18nServer from './components/i18n-server'
+import { ReactScan } from './components/react-scan'
+import SentryInitializer from './components/sentry-initializer'
+import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
 import './styles/markdown.scss'
-import GlobalPublicStoreProvider from '@/context/global-public-context'
-import { DatasetAttr } from '@/types/feature'
-import { Instrument_Serif } from 'next/font/google'
-import cn from '@/utils/classnames'
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -42,6 +42,7 @@ const LocaleLayout = async ({
     [DatasetAttr.DATA_MARKETPLACE_API_PREFIX]: process.env.NEXT_PUBLIC_MARKETPLACE_API_PREFIX,
     [DatasetAttr.DATA_MARKETPLACE_URL_PREFIX]: process.env.NEXT_PUBLIC_MARKETPLACE_URL_PREFIX,
     [DatasetAttr.DATA_PUBLIC_EDITION]: process.env.NEXT_PUBLIC_EDITION,
+    [DatasetAttr.DATA_PUBLIC_AMPLITUDE_API_KEY]: process.env.NEXT_PUBLIC_AMPLITUDE_API_KEY,
     [DatasetAttr.DATA_PUBLIC_COOKIE_DOMAIN]: process.env.NEXT_PUBLIC_COOKIE_DOMAIN,
     [DatasetAttr.DATA_PUBLIC_SUPPORT_MAIL_LOGIN]: process.env.NEXT_PUBLIC_SUPPORT_MAIL_LOGIN,
     [DatasetAttr.DATA_PUBLIC_SENTRY_DSN]: process.env.NEXT_PUBLIC_SENTRY_DSN,
@@ -84,13 +85,13 @@ const LocaleLayout = async ({
         <meta name="msapplication-config" content="/browserconfig.xml" />
       </head>
       <body
-        className='color-scheme h-full select-auto'
+        className="color-scheme h-full select-auto"
         {...datasetMap}
       >
         <ReactScan />
         <ThemeProvider
-          attribute='data-theme'
-          defaultTheme='system'
+          attribute="data-theme"
+          defaultTheme="system"
           enableSystem
           disableTransitionOnChange
           enableColorScheme={false}

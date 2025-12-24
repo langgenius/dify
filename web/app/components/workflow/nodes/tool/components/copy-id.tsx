@@ -1,9 +1,10 @@
 'use client'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiFileCopyLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { debounce } from 'lodash-es'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 
 type Props = {
@@ -26,7 +27,7 @@ const CopyFeedbackNew = ({ content }: Props) => {
   }, 100)
 
   return (
-    <div className='inline-flex w-full pb-0.5' onClick={e => e.stopPropagation()} onMouseLeave={onMouseLeave}>
+    <div className="inline-flex w-full pb-0.5" onClick={e => e.stopPropagation()} onMouseLeave={onMouseLeave}>
       <Tooltip
         popupContent={
           (isCopied
@@ -35,13 +36,15 @@ const CopyFeedbackNew = ({ content }: Props) => {
         }
       >
         <div
-          className='group/copy flex w-full items-center gap-0.5 '
+          className="group/copy flex w-full items-center gap-0.5 "
           onClick={onClickCopy}
         >
           <div
-            className='system-2xs-regular w-0 grow cursor-pointer truncate text-text-quaternary group-hover:text-text-tertiary'
-          >{content}</div>
-          <RiFileCopyLine className='h-3 w-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100' />
+            className="system-2xs-regular w-0 grow cursor-pointer truncate text-text-quaternary group-hover:text-text-tertiary"
+          >
+            {content}
+          </div>
+          <RiFileCopyLine className="h-3 w-3 shrink-0 text-text-tertiary opacity-0 group-hover/copy:opacity-100" />
         </div>
       </Tooltip>
     </div>
