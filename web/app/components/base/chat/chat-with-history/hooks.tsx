@@ -1,3 +1,17 @@
+import type {
+  Callback,
+  ChatConfig,
+  ChatItem,
+  Feedback,
+} from '../types'
+import type { InstalledApp } from '@/models/explore'
+import type {
+  AppData,
+  ConversationItem,
+} from '@/models/share'
+import { useLocalStorageState } from 'ahooks'
+import { produce } from 'immer'
+import { noop } from 'lodash-es'
 import {
   useCallback,
   useEffect,
@@ -7,18 +21,12 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import useSWR from 'swr'
-import { useLocalStorageState } from 'ahooks'
-import { produce } from 'immer'
-import type {
-  Callback,
-  ChatConfig,
-  ChatItem,
-  Feedback,
-} from '../types'
-import { CONVERSATION_ID_INFO } from '../constants'
-import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
-import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
+import { useToastContext } from '@/app/components/base/toast'
+import { InputVarType } from '@/app/components/workflow/types'
+import { useWebAppStore } from '@/context/web-app-context'
+import { useAppFavicon } from '@/hooks/use-app-favicon'
+import { changeLanguage } from '@/i18n-config/i18next-config'
 import {
   delConversation,
   fetchChatList,
@@ -29,18 +37,10 @@ import {
   unpinConversation,
   updateFeedback,
 } from '@/service/share'
-import type { InstalledApp } from '@/models/explore'
-import type {
-  AppData,
-  ConversationItem,
-} from '@/models/share'
-import { useToastContext } from '@/app/components/base/toast'
-import { changeLanguage } from '@/i18n-config/i18next-config'
-import { useAppFavicon } from '@/hooks/use-app-favicon'
-import { InputVarType } from '@/app/components/workflow/types'
 import { TransferMethod } from '@/types/app'
-import { noop } from 'lodash-es'
-import { useWebAppStore } from '@/context/web-app-context'
+import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
+import { CONVERSATION_ID_INFO } from '../constants'
+import { buildChatItemTree, getProcessedSystemVariablesFromUrlParams, getRawInputsFromUrlParams, getRawUserVariablesFromUrlParams } from '../utils'
 
 function getFormattedChatList(messages: any[]) {
   const newChatList: ChatItem[] = []

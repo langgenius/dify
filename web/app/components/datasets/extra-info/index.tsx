@@ -1,9 +1,9 @@
-import React from 'react'
 import type { RelatedAppResponse } from '@/models/datasets'
-import Statistics from './statistics'
-import ServiceApi from './service-api'
-import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import * as React from 'react'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useDatasetApiBaseUrl } from '@/service/knowledge/use-dataset'
+import ServiceApi from './service-api'
+import Statistics from './statistics'
 
 type IExtraInfoProps = {
   relatedApps?: RelatedAppResponse

@@ -1,5 +1,5 @@
-import { create } from 'zustand'
 import type { PluginDetail } from '@/app/components/plugins/types'
+import { create } from 'zustand'
 
 export enum ReadmeShowType {
   drawer = 'drawer',
@@ -17,9 +17,11 @@ type Shape = {
 export const useReadmePanelStore = create<Shape>(set => ({
   currentPluginDetail: undefined,
   setCurrentPluginDetail: (detail?: PluginDetail, showType?: ReadmeShowType) => set({
-    currentPluginDetail: !detail ? undefined : {
-      detail,
-      showType: showType ?? ReadmeShowType.drawer,
-    },
+    currentPluginDetail: !detail
+      ? undefined
+      : {
+          detail,
+          showType: showType ?? ReadmeShowType.drawer,
+        },
   }),
 }))

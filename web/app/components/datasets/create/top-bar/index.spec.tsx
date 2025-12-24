@@ -1,14 +1,15 @@
+import type { TopBarProps } from './index'
 import { render, screen } from '@testing-library/react'
-import { TopBar, type TopBarProps } from './index'
+import { TopBar } from './index'
 
 // Mock next/link to capture href values
-jest.mock('next/link', () => {
-  return ({ children, href, replace, className }: { children: React.ReactNode; href: string; replace?: boolean; className?: string }) => (
+vi.mock('next/link', () => ({
+  default: ({ children, href, replace, className }: { children: React.ReactNode, href: string, replace?: boolean, className?: string }) => (
     <a href={href} data-replace={replace} className={className} data-testid="back-link">
       {children}
     </a>
-  )
-})
+  ),
+}))
 
 // Helper to render TopBar with default props
 const renderTopBar = (props: Partial<TopBarProps> = {}) => {
@@ -27,7 +28,7 @@ const renderTopBar = (props: Partial<TopBarProps> = {}) => {
 // ============================================================================
 describe('TopBar', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // --------------------------------------------------------------------------
