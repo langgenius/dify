@@ -609,6 +609,9 @@ const translation = {
     timeoutExceeded: 'I risultati non vengono visualizzati a causa del timeout. Si prega di fare riferimento ai registri per raccogliere risultati completi.',
   },
   noResult: 'L\'output verrà visualizzato qui.',
+  code: {
+    instruction: 'Istruzione',
+  },
 }
 
 export default translation

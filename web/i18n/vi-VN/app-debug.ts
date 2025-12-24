@@ -561,6 +561,9 @@ const translation = {
     timeoutExceeded: 'Kết quả không được hiển thị do hết thời gian chờ. Vui lòng tham khảo nhật ký để thu thập kết quả đầy đủ.',
   },
   noResult: 'Đầu ra sẽ được hiển thị ở đây.',
+  code: {
+    instruction: 'Hướng dẫn',
+  },
 }
 
 export default translation

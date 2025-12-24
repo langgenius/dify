@@ -566,6 +566,9 @@ const translation = {
     timeoutExceeded: 'Zaman aşımı nedeniyle sonuçlar görüntülenmez. Tam sonuçları almak için lütfen günlüklere bakın.',
   },
   noResult: 'Çıktı burada görüntülenecektir.',
+  code: {
+    instruction: 'Talimat',
+  },
 }
 
 export default translation

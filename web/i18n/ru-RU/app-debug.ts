@@ -568,6 +568,9 @@ const translation = {
     timeoutExceeded: 'Результаты не отображаются из-за тайм-аута. Пожалуйста, обратитесь к журналам для получения полных результатов.',
   },
   noResult: 'Вывод будет отображаться здесь.',
+  code: {
+    instruction: 'Инструкция',
+  },
 }
 
 export default translation

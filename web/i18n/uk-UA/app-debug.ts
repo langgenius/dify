@@ -592,6 +592,9 @@ const translation = {
     timeoutExceeded: 'Результати не відображаються через тайм-аут. Будь ласка, зверніться до журналів, щоб отримати повні результати.',
   },
   noResult: 'Тут буде відображено вихідні дані.',
+  code: {
+    instruction: 'Інструкція',
+  },
 }
 
 export default translation

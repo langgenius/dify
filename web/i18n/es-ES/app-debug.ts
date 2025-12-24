@@ -561,6 +561,9 @@ const translation = {
     timeoutExceeded: 'Los resultados no se muestran debido al tiempo de espera. Consulte los registros para obtener resultados completos.',
   },
   noResult: 'La salida se mostrará aquí.',
+  code: {
+    instruction: 'Instrucción',
+  },
 }
 
 export default translation

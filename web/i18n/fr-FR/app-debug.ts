@@ -568,6 +568,9 @@ const translation = {
     timeoutExceeded: 'Les résultats ne s’affichent pas en raison d’un délai d’expiration. Veuillez vous référer aux journaux pour rassembler les résultats complets.',
   },
   noResult: 'La sortie sera affichée ici.',
+  code: {
+    instruction: 'Instruction',
+  },
 }
 
 export default translation

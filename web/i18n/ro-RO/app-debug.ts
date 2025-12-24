@@ -570,6 +570,9 @@ const translation = {
     timeoutExceeded: 'Rezultatele nu sunt afișate din cauza expirării. Vă rugăm să consultați jurnalele pentru a colecta rezultatele complete.',
   },
   noResult: 'Ieșirea va fi afișată aici.',
+  code: {
+    instruction: 'Instrucțiune',
+  },
 }
 
 export default translation

@@ -562,6 +562,9 @@ const translation = {
     timeoutExceeded: '由於超時，不顯示結果。請參閱日誌以收集完整結果。',
   },
   noResult: '輸出將顯示在此處。',
+  code: {
+    instruction: '指示',
+  },
 }
 
 export default translation

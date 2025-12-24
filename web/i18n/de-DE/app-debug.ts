@@ -568,6 +568,9 @@ const translation = {
     timeoutExceeded: 'Die Ergebnisse werden aufgrund einer Zeitüberschreitung nicht angezeigt. Bitte beziehen Sie sich auf die Protokolle, um die vollständigen Ergebnisse zu erhalten.',
   },
   noResult: 'Hier wird die Ausgabe angezeigt.',
+  code: {
+    instruction: 'Anleitung',
+  },
 }
 
 export default translation

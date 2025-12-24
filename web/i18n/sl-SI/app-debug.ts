@@ -581,6 +581,9 @@ const translation = {
   variableTip: 'Uporabniki izpolnijo spremenljivke v obrazcu in samodejno zamenjajo spremenljivke v pozivu.',
   promptTip: 'Pozivi usmerjajo odgovore umetne inteligence z navodili in omejitvami. Vstavite spremenljivke, kot je {{input}}. Ta poziv ne bo viden uporabnikom.',
   notSetVar: 'Spremenljivke uporabnikom omogočajo, da pri izpolnjevanju obrazcev vnesejo začetne besede ali uvodne opombe. Poskusite vnesti "{{input}}" v začetne besede.',
+  code: {
+    instruction: 'Navodilo',
+  },
 }
 
 export default translation

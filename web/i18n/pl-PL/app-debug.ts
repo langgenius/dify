@@ -604,6 +604,9 @@ const translation = {
     timeoutExceeded: 'Wyniki nie są wyświetlane z powodu przekroczenia limitu czasu. Zapoznaj się z dziennikami, aby zebrać pełne wyniki.',
   },
   noResult: 'W tym miejscu zostaną wyświetlone dane wyjściowe.',
+  code: {
+    instruction: 'Instrukcja',
+  },
 }
 
 export default translation

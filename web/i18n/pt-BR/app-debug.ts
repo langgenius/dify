@@ -570,6 +570,9 @@ const translation = {
   debugAsMultipleModel: 'Depurar como vários modelos',
   publishAs: 'Publicar como',
   duplicateModel: 'Duplicar',
+  code: {
+    instruction: 'Instrução',
+  },
 }
 
 export default translation

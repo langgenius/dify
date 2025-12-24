@@ -619,6 +619,9 @@ const translation = {
     timeoutExceeded: 'परिणाम टाइमआउट के कारण प्रदर्शित नहीं किए गए हैं। कृपया संपूर्ण परिणामों को इकट्ठा करने के लिए लॉग्स का संदर्भ लें।',
   },
   noResult: 'प्रदर्शन यहाँ होगा।',
+  code: {
+    instruction: 'निर्देश',
+  },
 }
 
 export default translation

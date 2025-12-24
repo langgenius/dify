@@ -561,6 +561,9 @@ const translation = {
     timeoutExceeded: '시간 초과로 인해 결과가 표시되지 않습니다. 전체 결과를 수집하려면 로그를 참조하십시오.',
   },
   noResult: '출력이 여기에 표시됩니다.',
+  code: {
+    instruction: '지침',
+  },
 }
 
 export default translation

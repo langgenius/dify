@@ -559,6 +559,9 @@ const translation = {
   noResult: 'Output akan ditampilkan di sini.',
   promptTip: 'Prompts membimbing respons AI dengan instruksi dan batasan. Masukkan variabel seperti {{input}}. Prompt ini tidak akan terlihat oleh pengguna.',
   notSetVar: 'Variabel memungkinkan pengguna untuk memasukkan kata pemicu atau ucapan pembuka saat mengisi formulir. Anda dapat mencoba memasukkan "{{input}}" pada kata pemicu.',
+  code: {
+    instruction: 'Instruksi',
+  },
 }
 
 export default translation

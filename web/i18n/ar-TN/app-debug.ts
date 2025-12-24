@@ -566,6 +566,9 @@ const translation = {
       enabled: 'ممكن',
     },
   },
+  code: {
+    instruction: 'تعليمات',
+  },
 }
 
 export default translation
