@@ -30,6 +30,11 @@ const translation = {
           unauthorized: 'Manual',
         },
         actions: {
+          edit: {
+            title: 'Edit Subscription',
+            success: 'Subscription updated successfully',
+            error: 'Failed to update subscription',
+          },
           delete: 'Delete',
           deleteConfirm: {
             title: 'Delete {{name}}?',

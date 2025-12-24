@@ -46,7 +46,7 @@ const PluginDetailPanel: FC<Props> = ({
           name: detail.name,
           id: detail.id,
         })
-  }, [detail])
+  }, [detail, setDetail])
 
   if (!detail)
     return null
@@ -69,7 +69,7 @@ const PluginDetailPanel: FC<Props> = ({
               <div className="flex-1">
                 {detail.declaration.category === PluginCategoryEnum.trigger && (
                   <>
-                    <SubscriptionList />
+                    <SubscriptionList pluginDetail={detail} />
                     <TriggerEventsList />
                   </>
                 )}
