@@ -38,6 +38,7 @@ jobs:
               - '.github/workflows/api-tests.yml'
             web:
               - 'web/**'
+              - '.github/workflows/web-tests.yml'
             vdb:
               - 'api/core/rag/datasource/**'
               - 'docker/**'
