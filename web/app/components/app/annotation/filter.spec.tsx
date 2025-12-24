@@ -1,20 +1,31 @@
 import type { Mock } from 'vitest'
 import type { QueryParam } from './filter'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
-import useSWR from 'swr'
+import * as useLogModule from '@/service/use-log'
 import Filter from './filter'
 
-vi.mock('swr', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
+vi.mock('@/service/use-log')
 
-vi.mock('@/service/log', () => ({
-  fetchAnnotationsCount: vi.fn(),
-}))
+const mockUseAnnotationsCount = useLogModule.useAnnotationsCount as Mock
 
-const mockUseSWR = useSWR as unknown as Mock
+const createQueryClient = () => new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false,
+    },
+  },
+})
+
+const renderWithQueryClient = (ui: React.ReactElement) => {
+  const queryClient = createQueryClient()
+  return render(
+    <QueryClientProvider client={queryClient}>
+      {ui}
+    </QueryClientProvider>,
+  )
+}
 
 describe('Filter', () => {
   const appId = 'app-1'
@@ -25,9 +36,9 @@ describe('Filter', () => {
   })
 
   it('should render nothing until annotation count is fetched', () => {
-    mockUseSWR.mockReturnValue({ data: undefined })
+    mockUseAnnotationsCount.mockReturnValue({ data: undefined, isLoading: true })
 
-    const { container } = render(
+    const { container } = renderWithQueryClient(
       <Filter
         appId={appId}
         queryParams={{ keyword: '' }}
@@ -38,18 +49,15 @@ describe('Filter', () => {
     )
 
     expect(container.firstChild).toBeNull()
-    expect(mockUseSWR).toHaveBeenCalledWith(
-      { url: `/apps/${appId}/annotations/count` },
-      expect.any(Function),
-    )
+    expect(mockUseAnnotationsCount).toHaveBeenCalledWith(appId)
   })
 
   it('should propagate keyword changes and clearing behavior', () => {
-    mockUseSWR.mockReturnValue({ data: { total: 20 } })
+    mockUseAnnotationsCount.mockReturnValue({ data: { count: 20 }, isLoading: false })
     const queryParams: QueryParam = { keyword: 'prefill' }
     const setQueryParams = vi.fn()
 
-    const { container } = render(
+    const { container } = renderWithQueryClient(
       <Filter
         appId={appId}
         queryParams={queryParams}
