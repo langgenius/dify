@@ -68,6 +68,9 @@ def controller_module(monkeypatch: pytest.MonkeyPatch):
     _WRAPS_MODULE = wraps_module
     monkeypatch.setattr(module.dify_config, "EDITION", "CLOUD")
     monkeypatch.setattr(wraps_module.dify_config, "EDITION", "CLOUD")
+
+    login_module = importlib.import_module("libs.login")
+    monkeypatch.setattr(login_module, "check_csrf_token", lambda *args, **kwargs: None)
     return module
 
 
