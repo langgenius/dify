@@ -618,6 +618,15 @@ class WorkflowRun(Base):
     created_at: Mapped[datetime] = mapped_column(DateTime, nullable=False, server_default=func.current_timestamp())
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
+    is_archived: Mapped[bool] = mapped_column(
+        sa.Boolean,
+        nullable=False,
+        default=False,
+        server_default=sa.text("false"),
+        comment=(
+            "Indicates whether the current workflow run has been archived. "
+        ),
+    )
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
         "WorkflowPause",
