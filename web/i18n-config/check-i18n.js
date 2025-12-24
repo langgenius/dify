@@ -103,8 +103,8 @@ Options:
   -h, --help        Show help
 
 Examples:
-  pnpm run check-i18n -- --file app billing --lang zh-Hans ja-JP
-  pnpm run check-i18n -- --auto-remove
+  pnpm run check-i18n --file app billing --lang zh-Hans ja-JP
+  pnpm run check-i18n --auto-remove
 `)
 }
 
