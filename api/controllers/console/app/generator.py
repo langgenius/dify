@@ -55,6 +55,14 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
+class FlowchartGeneratePayload(BaseModel):
+    instruction: str = Field(..., description="Workflow flowchart generation instruction")
+    model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
+    available_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Available node types")
+    existing_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Existing workflow nodes")
+    available_tools: list[dict[str, Any]] = Field(default_factory=list, description="Available tools")
+
+
 def reg(cls: type[BaseModel]):
     console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
@@ -64,6 +72,7 @@ reg(RuleCodeGeneratePayload)
 reg(RuleStructuredOutputPayload)
 reg(InstructionGeneratePayload)
 reg(InstructionTemplatePayload)
+reg(FlowchartGeneratePayload)
 
 
 @console_ns.route("/rule-generate")
@@ -253,6 +262,42 @@ class InstructionGenerateApi(Resource):
             raise ProviderModelCurrentlyNotSupportError()
         except InvokeError as e:
             raise CompletionRequestError(e.description)
+
+
+@console_ns.route("/flowchart-generate")
+class FlowchartGenerateApi(Resource):
+    @console_ns.doc("generate_workflow_flowchart")
+    @console_ns.doc(description="Generate workflow flowchart using LLM")
+    @console_ns.expect(console_ns.models[FlowchartGeneratePayload.__name__])
+    @console_ns.response(200, "Flowchart generated successfully")
+    @console_ns.response(400, "Invalid request parameters")
+    @console_ns.response(402, "Provider quota exceeded")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def post(self):
+        args = FlowchartGeneratePayload.model_validate(console_ns.payload)
+        _, current_tenant_id = current_account_with_tenant()
+
+        try:
+            result = LLMGenerator.generate_workflow_flowchart(
+                tenant_id=current_tenant_id,
+                instruction=args.instruction,
+                model_config=args.model_config_data,
+                available_nodes=args.available_nodes,
+                existing_nodes=args.existing_nodes,
+                available_tools=args.available_tools,
+            )
+        except ProviderTokenNotInitError as ex:
+            raise ProviderNotInitializeError(ex.description)
+        except QuotaExceededError:
+            raise ProviderQuotaExceededError()
+        except ModelCurrentlyNotSupportError:
+            raise ProviderModelCurrentlyNotSupportError()
+        except InvokeError as e:
+            raise CompletionRequestError(e.description)
+
+        return result
 
 
 @console_ns.route("/instruction-generate/template")
