@@ -175,7 +175,7 @@ Constraints:
 <available_tools>
 {{AVAILABLE_TOOLS}}
 </available_tools>
-"""  # noqa: E501
+"""
 
 RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
