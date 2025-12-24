@@ -8,7 +8,7 @@ from models.tools import WorkflowToolProvider
 from models.workflow import Workflow as WorkflowModel
 from services.account_service import AccountService, TenantService
 from services.app_service import AppService
-from services.tools.workflow_tools_manage_service import WorkflowToolManageService, WorkflowToolProviderController
+from services.tools.workflow_tools_manage_service import WorkflowToolManageService
 
 
 class TestWorkflowToolManageService:
