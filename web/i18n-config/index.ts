@@ -1,5 +1,6 @@
-import Cookies from 'js-cookie'
+import type { Locale } from '@/i18n-config/language'
 
+import Cookies from 'js-cookie'
 import { LOCALE_COOKIE_NAME } from '@/config'
 import { changeLanguage } from '@/i18n-config/i18next-config'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -9,7 +10,7 @@ export const i18n = {
   locales: LanguagesSupported,
 } as const
 
-export type Locale = typeof i18n['locales'][number]
+export { Locale }
 
 export const setLocaleOnClient = async (locale: Locale, reloadPage = true) => {
   Cookies.set(LOCALE_COOKIE_NAME, locale, { expires: 365 })

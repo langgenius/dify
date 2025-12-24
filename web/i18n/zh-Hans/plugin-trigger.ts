@@ -161,6 +161,7 @@ const translation = {
       verifyFailed: '验证凭据失败',
       authFailed: '授权失败',
       networkError: '网络错误，请重试',
+      updateFailed: '更新订阅失败',
     },
   },
   events: {
