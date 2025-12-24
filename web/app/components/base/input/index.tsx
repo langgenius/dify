@@ -110,7 +110,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         {...props}
       />
       {showClearIcon && value && !disabled && !destructive && (
-        <div className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')} onClick={onClear}>
+        <div
+          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
+          onClick={onClear}
+          data-testid="input-clear"
+        >
           <RiCloseCircleFill className="h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
         </div>
       )}

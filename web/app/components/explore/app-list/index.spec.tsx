@@ -255,12 +255,11 @@ describe('AppList', () => {
       // Act
       const input = screen.getByPlaceholderText('common.operation.search')
       fireEvent.change(input, { target: { value: 'gam' } })
-      const wrapper = input.parentElement as HTMLElement
       await waitFor(() => {
         expect(screen.queryByText('Alpha')).not.toBeInTheDocument()
       })
 
-      fireEvent.click(wrapper.querySelector('div.group') as HTMLElement)
+      fireEvent.click(screen.getByTestId('input-clear'))
 
       // Assert
       await waitFor(() => {
