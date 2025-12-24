@@ -49,10 +49,10 @@ pnpm test
 pnpm test:watch
 
 # Run specific file
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 
 # Generate coverage report
-pnpm test -- --coverage
+pnpm test:coverage
 
 # Analyze component complexity
 pnpm analyze-component <path>
@@ -155,7 +155,7 @@ describe('ComponentName', () => {
 For each file:
   ┌────────────────────────────────────────┐
   │ 1. Write test                          │
-  │ 2. Run: pnpm test -- <file>.spec.tsx   │
+  │ 2. Run: pnpm test <file>.spec.tsx      │
   │ 3. PASS? → Mark complete, next file    │
   │    FAIL? → Fix first, then continue    │
   └────────────────────────────────────────┘

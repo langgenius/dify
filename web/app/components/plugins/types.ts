@@ -260,9 +260,9 @@ export type Plugin = {
   icon: string
   icon_dark?: string
   verified: boolean
-  label: Record<Locale, string>
-  brief: Record<Locale, string>
-  description: Record<Locale, string>
+  label: Partial<Record<Locale, string>>
+  brief: Partial<Record<Locale, string>>
+  description: Partial<Record<Locale, string>>
   // Repo readme.md content
   introduction: string
   repository: string
