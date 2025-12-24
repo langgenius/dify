@@ -252,7 +252,6 @@ class AssistantPromptMessage(PromptMessage):
         return super().is_empty() and not self.tool_calls
 
 
-
 class SystemPromptMessage(PromptMessage):
     """
     Model class for system prompt message.
