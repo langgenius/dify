@@ -4,9 +4,9 @@ from __future__ import annotations
 
 import builtins
 import importlib
-import sys
-from types import SimpleNamespace
-from unittest.mock import MagicMock
+from contextlib import contextmanager
+from types import ModuleType, SimpleNamespace
+from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
@@ -14,6 +14,18 @@ from flask.views import MethodView
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
+
+
+_CONTROLLER_MODULE: ModuleType | None = None
+_WRAPS_MODULE: ModuleType | None = None
+_CONTROLLER_PATCHERS: list[patch] = []
+
+
+@contextmanager
+def _mock_db():
+    mock_session = SimpleNamespace(query=lambda *args, **kwargs: SimpleNamespace(first=lambda: True))
+    with patch("extensions.ext_database.db.session", mock_session):
+        yield
 
 
 @pytest.fixture
@@ -25,32 +37,63 @@ def app() -> Flask:
 
 @pytest.fixture
 def controller_module(monkeypatch: pytest.MonkeyPatch):
-    from controllers.console import wraps as console_wraps
-    from libs import login
-
-    def _noop(func):
-        return func
-
-    monkeypatch.setattr(login, "login_required", _noop)
-    monkeypatch.setattr(console_wraps, "setup_required", _noop)
-    monkeypatch.setattr(console_wraps, "account_initialization_required", _noop)
-    monkeypatch.setattr(console_wraps, "is_admin_or_owner_required", _noop)
-    monkeypatch.setattr(console_wraps, "enterprise_license_required", _noop)
-
     module_name = "controllers.console.workspace.tool_providers"
-    sys.modules.pop(module_name, None)
-    module = importlib.import_module(module_name)
+    global _CONTROLLER_MODULE
+    if _CONTROLLER_MODULE is None:
+
+        def _noop(func):
+            return func
+
+        patch_targets = [
+            ("libs.login.login_required", _noop),
+            ("controllers.console.wraps.setup_required", _noop),
+            ("controllers.console.wraps.account_initialization_required", _noop),
+            ("controllers.console.wraps.is_admin_or_owner_required", _noop),
+            ("controllers.console.wraps.enterprise_license_required", _noop),
+        ]
+        for target, value in patch_targets:
+            patcher = patch(target, value)
+            patcher.start()
+            _CONTROLLER_PATCHERS.append(patcher)
+        monkeypatch.setenv("DIFY_SETUP_READY", "true")
+        with _mock_db():
+            _CONTROLLER_MODULE = importlib.import_module(module_name)
+
+    module = _CONTROLLER_MODULE
     monkeypatch.setattr(module, "jsonable_encoder", lambda payload: payload)
+
+    # Ensure decorators that consult deployment edition do not reach the database.
+    global _WRAPS_MODULE
+    wraps_module = importlib.import_module("controllers.console.wraps")
+    _WRAPS_MODULE = wraps_module
+    monkeypatch.setattr(module.dify_config, "EDITION", "CLOUD")
+    monkeypatch.setattr(wraps_module.dify_config, "EDITION", "CLOUD")
     return module
 
 
-def _mock_account() -> SimpleNamespace:
-    return SimpleNamespace(id="user-123")
+def _mock_account(user_id: str = "user-123") -> SimpleNamespace:
+    return SimpleNamespace(id=user_id, status="active")
 
 
-def test_tool_provider_list_calls_service_with_query(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
+def _set_current_account(
+    monkeypatch: pytest.MonkeyPatch,
+    controller_module: ModuleType,
+    user: SimpleNamespace,
+    tenant_id: str,
+) -> None:
+    def _getter():
+        return user, tenant_id
+
+    monkeypatch.setattr(controller_module, "current_account_with_tenant", _getter)
+    if _WRAPS_MODULE is not None:
+        monkeypatch.setattr(_WRAPS_MODULE, "current_account_with_tenant", _getter)
+
+
+def test_tool_provider_list_calls_service_with_query(
+    app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-456"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-456")
 
     service_mock = MagicMock(return_value=[{"provider": "builtin"}])
     monkeypatch.setattr(controller_module.ToolCommonService, "list_tool_providers", service_mock)
@@ -62,9 +105,11 @@ def test_tool_provider_list_calls_service_with_query(app: Flask, controller_modu
     service_mock.assert_called_once_with(user.id, "tenant-456", "builtin")
 
 
-def test_builtin_provider_add_passes_payload(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
+def test_builtin_provider_add_passes_payload(
+    app: Flask, controller_module: ModuleType, monkeypatch: pytest.MonkeyPatch
+):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-456"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-456")
 
     service_mock = MagicMock(return_value={"status": "ok"})
     monkeypatch.setattr(controller_module.BuiltinToolManageService, "add_builtin_tool_provider", service_mock)
@@ -94,7 +139,8 @@ def test_builtin_provider_add_passes_payload(app: Flask, controller_module, monk
 
 
 def test_builtin_provider_tools_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-789"))
+    user = _mock_account("user-tenant-789")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-789")
 
     service_mock = MagicMock(return_value=[{"name": "tool-a"}])
     monkeypatch.setattr(controller_module.BuiltinToolManageService, "list_builtin_tool_provider_tools", service_mock)
@@ -111,7 +157,8 @@ def test_builtin_provider_tools_get(app: Flask, controller_module, monkeypatch: 
 
 
 def test_builtin_provider_info_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-9"))
+    user = _mock_account("user-tenant-9")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-9")
     service_mock = MagicMock(return_value={"info": True})
     monkeypatch.setattr(controller_module.BuiltinToolManageService, "get_builtin_tool_provider_info", service_mock)
 
@@ -123,7 +170,8 @@ def test_builtin_provider_info_get(app: Flask, controller_module, monkeypatch: p
 
 
 def test_builtin_provider_credentials_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-cred"))
+    user = _mock_account("user-tenant-cred")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-cred")
     service_mock = MagicMock(return_value=[{"cred": 1}])
     monkeypatch.setattr(
         controller_module.BuiltinToolManageService,
@@ -140,7 +188,7 @@ def test_builtin_provider_credentials_get(app: Flask, controller_module, monkeyp
 
 def test_api_provider_remote_schema_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-10"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-10")
     service_mock = MagicMock(return_value={"schema": "ok"})
     monkeypatch.setattr(controller_module.ApiToolManageService, "get_api_tool_provider_remote_schema", service_mock)
 
@@ -153,7 +201,7 @@ def test_api_provider_remote_schema_get(app: Flask, controller_module, monkeypat
 
 def test_api_provider_list_tools_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-11"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-11")
     service_mock = MagicMock(return_value=[{"tool": "t"}])
     monkeypatch.setattr(controller_module.ApiToolManageService, "list_api_tool_provider_tools", service_mock)
 
@@ -166,7 +214,7 @@ def test_api_provider_list_tools_get(app: Flask, controller_module, monkeypatch:
 
 def test_api_provider_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-12"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-12")
     service_mock = MagicMock(return_value={"provider": "foo"})
     monkeypatch.setattr(controller_module.ApiToolManageService, "get_api_tool_provider", service_mock)
 
@@ -178,7 +226,8 @@ def test_api_provider_get(app: Flask, controller_module, monkeypatch: pytest.Mon
 
 
 def test_builtin_provider_credentials_schema_get(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-13"))
+    user = _mock_account("user-tenant-13")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-13")
     service_mock = MagicMock(return_value={"schema": True})
     monkeypatch.setattr(
         controller_module.BuiltinToolManageService,
@@ -197,7 +246,7 @@ def test_builtin_provider_credentials_schema_get(app: Flask, controller_module, 
 
 def test_workflow_provider_get_by_tool(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-wf"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-wf")
     tool_service = MagicMock(return_value={"wf": 1})
     monkeypatch.setattr(
         controller_module.WorkflowToolManageService,
@@ -215,7 +264,7 @@ def test_workflow_provider_get_by_tool(app: Flask, controller_module, monkeypatc
 
 def test_workflow_provider_get_by_app(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-wf2"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-wf2")
     service_mock = MagicMock(return_value={"app": 1})
     monkeypatch.setattr(
         controller_module.WorkflowToolManageService,
@@ -233,7 +282,7 @@ def test_workflow_provider_get_by_app(app: Flask, controller_module, monkeypatch
 
 def test_workflow_provider_list_tools(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-wf3"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-wf3")
     service_mock = MagicMock(return_value=[{"id": 1}])
     monkeypatch.setattr(controller_module.WorkflowToolManageService, "list_single_workflow_tools", service_mock)
 
@@ -247,7 +296,7 @@ def test_workflow_provider_list_tools(app: Flask, controller_module, monkeypatch
 
 def test_builtin_tools_list(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-bt"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-bt")
 
     provider = SimpleNamespace(to_dict=lambda: {"name": "builtin"})
     monkeypatch.setattr(
@@ -263,7 +312,8 @@ def test_builtin_tools_list(app: Flask, controller_module, monkeypatch: pytest.M
 
 
 def test_api_tools_list(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (SimpleNamespace(), "tenant-api"))
+    user = _mock_account("user-tenant-api")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-api")
 
     provider = SimpleNamespace(to_dict=lambda: {"name": "api"})
     monkeypatch.setattr(
@@ -280,7 +330,7 @@ def test_api_tools_list(app: Flask, controller_module, monkeypatch: pytest.Monke
 
 def test_workflow_tools_list(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
     user = _mock_account()
-    monkeypatch.setattr(controller_module, "current_account_with_tenant", lambda: (user, "tenant-wf4"))
+    _set_current_account(monkeypatch, controller_module, user, "tenant-wf4")
 
     provider = SimpleNamespace(to_dict=lambda: {"name": "wf"})
     monkeypatch.setattr(
@@ -295,12 +345,12 @@ def test_workflow_tools_list(app: Flask, controller_module, monkeypatch: pytest.
     assert resp == [{"name": "wf"}]
 
 
-def test_tool_labels_list(app: Flask, controller_module):
-    monkeypatch = pytest.MonkeyPatch()
+def test_tool_labels_list(app: Flask, controller_module, monkeypatch: pytest.MonkeyPatch):
+    user = _mock_account("user-label")
+    _set_current_account(monkeypatch, controller_module, user, "tenant-labels")
     monkeypatch.setattr(controller_module.ToolLabelsService, "list_tool_labels", lambda: ["a", "b"])
-    try:
-        with app.test_request_context("/tool-labels"):
-            resp = controller_module.ToolLabelsApi().get()
-        assert resp == ["a", "b"]
-    finally:
-        monkeypatch.undo()
+
+    with app.test_request_context("/tool-labels"):
+        resp = controller_module.ToolLabelsApi().get()
+
+    assert resp == ["a", "b"]
