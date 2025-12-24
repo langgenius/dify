@@ -23,6 +23,10 @@ Welcome to the new `docker` directory for deploying Dify using Docker Compose. T
    - Navigate to the `docker` directory.
    - Copy the `.env.example` file to a new file named `.env` by running `cp .env.example .env`.
    - Customize the `.env` file as needed. Refer to the `.env.example` file for detailed configuration options.
+   - **Optional (Recommended for upgrades)**:
+     You may use the environment synchronization tool to help keep your `.env` file aligned with the latest `.env.example` updates, while preserving your custom settings.
+     This is especially useful when upgrading Dify or managing a large, customized `.env` file.
+     See the [Environment Variables Synchronization](#environment-variables-synchronization) section below.
 1. **Running the Services**:
    - Execute `docker compose up` from the `docker` directory to start the services.
    - To specify a vector database, set the `VECTOR_STORE` variable in your `.env` file to your desired vector database service, such as `milvus`, `weaviate`, or `opensearch`.
@@ -110,6 +114,47 @@ The `.env.example` file provided in the Docker setup is extensive and covers a w
 1. **Other Service-Specific Environment Variables**:
 
    - Each service like `nginx`, `redis`, `db`, and vector databases have specific environment variables that are directly referenced in the `docker-compose.yaml`.
+
+### Environment Variables Synchronization
+
+When upgrading Dify or pulling the latest changes, new environment variables may be introduced in `.env.example`.
+
+To help keep your existing `.env` file up to date **without losing your custom values**, an optional environment variables synchronization tool is provided.
+
+> This tool performs a **one-way synchronization** from `.env.example` to `.env`.
+> Existing values in `.env` are never overwritten automatically.
+
+#### `dify-env-sync.sh` (Optional)
+
+This script compares your current `.env` file with the latest `.env.example` template and helps safely apply new or updated environment variables.
+
+**What it does**
+
+- Creates a backup of the current `.env` file before making any changes
+- Synchronizes newly added environment variables from `.env.example`
+- Preserves all existing custom values in `.env`
+- Displays differences and variables removed from `.env.example` for review
+
+**Backup behavior**
+
+Before synchronization, the current `.env` file is saved to the `env-backup/` directory with a timestamped filename
+(e.g. `env-backup/.env.backup_20231218_143022`).
+
+**When to use**
+
+- After upgrading Dify to a newer version
+- When `.env.example` has been updated with new environment variables
+- When managing a large or heavily customized `.env` file
+
+**Usage**
+
+```bash
+# Grant execution permission (first time only)
+chmod +x dify-env-sync.sh
+
+# Run the synchronization
+./dify-env-sync.sh
+```
 
 ### Additional Information
 

@@ -24,15 +24,7 @@ class APIBasedExtensionPayload(BaseModel):
     api_key: str = Field(description="API key for authentication")
 
 
-class CreateAPIBasedExtensionPayload(APIBasedExtensionPayload):
-    pass
-
-
-class UpdateAPIBasedExtensionPayload(APIBasedExtensionPayload):
-    pass
-
-
-register_schema_models(console_ns, CreateAPIBasedExtensionPayload, UpdateAPIBasedExtensionPayload)
+register_schema_models(console_ns, APIBasedExtensionPayload)
 
 
 api_based_extension_model = console_ns.model("ApiBasedExtensionModel", api_based_extension_fields)
@@ -77,14 +69,14 @@ class APIBasedExtensionAPI(Resource):
 
     @console_ns.doc("create_api_based_extension")
     @console_ns.doc(description="Create a new API-based extension")
-    @console_ns.expect(console_ns.models[CreateAPIBasedExtensionPayload.__name__])
+    @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
     @console_ns.response(201, "Extension created successfully", api_based_extension_model)
     @setup_required
     @login_required
     @account_initialization_required
     @marshal_with(api_based_extension_model)
     def post(self):
-        payload = CreateAPIBasedExtensionPayload.model_validate(console_ns.payload or {})
+        payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
         _, current_tenant_id = current_account_with_tenant()
 
         extension_data = APIBasedExtension(
@@ -116,7 +108,7 @@ class APIBasedExtensionDetailAPI(Resource):
     @console_ns.doc("update_api_based_extension")
     @console_ns.doc(description="Update API-based extension")
     @console_ns.doc(params={"id": "Extension ID"})
-    @console_ns.expect(console_ns.models[UpdateAPIBasedExtensionPayload.__name__])
+    @console_ns.expect(console_ns.models[APIBasedExtensionPayload.__name__])
     @console_ns.response(200, "Extension updated successfully", api_based_extension_model)
     @setup_required
     @login_required
@@ -128,7 +120,7 @@ class APIBasedExtensionDetailAPI(Resource):
 
         extension_data_from_db = APIBasedExtensionService.get_with_tenant_id(current_tenant_id, api_based_extension_id)
 
-        payload = UpdateAPIBasedExtensionPayload.model_validate(console_ns.payload or {})
+        payload = APIBasedExtensionPayload.model_validate(console_ns.payload or {})
 
         extension_data_from_db.name = payload.name
         extension_data_from_db.api_endpoint = payload.api_endpoint
