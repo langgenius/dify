@@ -18,6 +18,7 @@ from core.llm_generator.prompts import (
     SUGGESTED_QUESTIONS_MAX_TOKENS,
     SUGGESTED_QUESTIONS_TEMPERATURE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
+    WORKFLOW_FLOWCHART_PROMPT_TEMPLATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
@@ -284,6 +285,61 @@ class LLMGenerator:
         rule_config["error"] = f"Failed to {error_step}. Error: {error}" if error else ""
 
         return rule_config
+
+    @classmethod
+    def generate_workflow_flowchart(
+        cls,
+        tenant_id: str,
+        instruction: str,
+        model_config: dict,
+        available_nodes: Sequence[dict[str, object]] | None = None,
+        existing_nodes: Sequence[dict[str, object]] | None = None,
+        available_tools: Sequence[dict[str, object]] | None = None,
+    ):
+        model_parameters = model_config.get("completion_params", {})
+        prompt_template = PromptTemplateParser(WORKFLOW_FLOWCHART_PROMPT_TEMPLATE)
+        prompt_generate = prompt_template.format(
+            inputs={
+                "TASK_DESCRIPTION": instruction,
+                "AVAILABLE_NODES": json.dumps(available_nodes or [], ensure_ascii=False),
+                "EXISTING_NODES": json.dumps(existing_nodes or [], ensure_ascii=False),
+                "AVAILABLE_TOOLS": json.dumps(available_tools or [], ensure_ascii=False),
+            },
+            remove_template_variables=False,
+        )
+
+        prompt_messages = [UserPromptMessage(content=prompt_generate)]
+
+        model_manager = ModelManager()
+        model_instance = model_manager.get_model_instance(
+            tenant_id=tenant_id,
+            model_type=ModelType.LLM,
+            provider=model_config.get("provider", ""),
+            model=model_config.get("name", ""),
+        )
+
+        flowchart = ""
+        error = ""
+
+        try:
+            response: LLMResult = model_instance.invoke_llm(
+                prompt_messages=list(prompt_messages),
+                model_parameters=model_parameters,
+                stream=False,
+            )
+            content = response.message.get_text_content()
+            if not isinstance(content, str):
+                raise ValueError("Flowchart response is not a string")
+
+            match = re.search(r"```(?:mermaid)?\s*([\s\S]+?)```", content, flags=re.IGNORECASE)
+            flowchart = (match.group(1) if match else content).strip()
+        except InvokeError as e:
+            error = str(e)
+        except Exception as e:
+            logger.exception("Failed to generate workflow flowchart, model: %s", model_config.get("name"))
+            error = str(e)
+
+        return {"flowchart": flowchart, "error": error}
 
     @classmethod
     def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):

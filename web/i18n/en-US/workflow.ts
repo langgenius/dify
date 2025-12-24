@@ -123,6 +123,16 @@ const translation = {
     noHistory: 'No History',
     tagBound: 'Number of apps using this tag',
   },
+  vibe: {
+    readOnly: 'This workflow is read-only.',
+    missingInstruction: 'Describe the workflow you want to build.',
+    modelUnavailable: 'No model available for flowchart generation.',
+    nodesUnavailable: 'Workflow nodes are not available yet.',
+    missingFlowchart: 'No flowchart was generated.',
+    invalidFlowchart: 'The generated flowchart could not be parsed.',
+    nodeTypeUnavailable: 'Node type "{{type}}" is not available in this workflow.',
+    toolUnavailable: 'Tool "{{tool}}" is not available in this workspace.',
+  },
   publishLimit: {
     startNodeTitlePrefix: 'Upgrade to',
     startNodeTitleSuffix: 'unlock unlimited triggers per workflow',

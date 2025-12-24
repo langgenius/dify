@@ -333,6 +333,9 @@ const translation = {
       feedbackDesc: 'Open community feedback discussions',
       zenTitle: 'Zen Mode',
       zenDesc: 'Toggle canvas focus mode',
+      vibeTitle: 'Vibe Workflow',
+      vibeDesc: 'Generate a workflow from natural language',
+      vibeHint: 'Describe the workflow, e.g. "{{prompt}}"',
     },
     emptyState: {
       noAppsFound: 'No apps found',

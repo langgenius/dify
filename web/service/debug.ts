@@ -19,6 +19,11 @@ export type GenRes = {
   error?: string
 }
 
+export type FlowchartGenRes = {
+  flowchart: string
+  error?: string
+}
+
 export type CodeGenRes = {
   code: string
   language: string[]
@@ -89,6 +94,12 @@ export const generateBasicAppFirstTimeRule = (body: Record<string, any>) => {
 
 export const generateRule = (body: Record<string, any>) => {
   return post<GenRes>('/instruction-generate', {
+    body,
+  })
+}
+
+export const generateFlowchart = (body: Record<string, any>) => {
+  return post<FlowchartGenRes>('/flowchart-generate', {
     body,
   })
 }

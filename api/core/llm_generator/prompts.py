@@ -143,6 +143,40 @@ Based on task description, please create a well-structured prompt template that 
 Please generate the full prompt template with at least 300 words and output only the prompt template.
 """  # noqa: E501
 
+WORKFLOW_FLOWCHART_PROMPT_TEMPLATE = """
+You are an expert workflow designer. Generate a Mermaid flowchart based on the user's request.
+
+Constraints:
+- Use only node types listed in <available_nodes>.
+- Use only tools listed in <available_tools>. When using a tool node, set type=tool and tool=<provider_id>/<tool_name>.
+- Prefer reusing node titles from <existing_nodes> when possible.
+- Output must be valid Mermaid flowchart syntax, no markdown, no extra text.
+- First line must be: flowchart LR
+- Every node must be declared on its own line using:
+  <id>["type=<type>|title=<title>|tool=<provider_id>/<tool_name>"]
+  - type is required and must match a type in <available_nodes>.
+  - title is required for non-tool nodes.
+  - tool is required only when type=tool, otherwise omit tool.
+- Edges must use:
+  <id> --> <id>
+  <id> -->|true| <id>
+  <id> -->|false| <id>
+- Keep node ids unique and simple (N1, N2, ...).
+
+<user_request>
+{{TASK_DESCRIPTION}}
+</user_request>
+<available_nodes>
+{{AVAILABLE_NODES}}
+</available_nodes>
+<existing_nodes>
+{{EXISTING_NODES}}
+</existing_nodes>
+<available_tools>
+{{AVAILABLE_TOOLS}}
+</available_tools>
+"""  # noqa: E501
+
 RULE_CONFIG_PROMPT_GENERATE_TEMPLATE = """
 Here is a task description for which I would like you to create a high-quality prompt template for:
 <task_description>

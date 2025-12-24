@@ -9,6 +9,7 @@ export const NODE_WIDTH = 240
 export const X_OFFSET = 60
 export const NODE_WIDTH_X_OFFSET = NODE_WIDTH + X_OFFSET
 export const Y_OFFSET = 39
+export const VIBE_COMMAND_EVENT = 'workflow-vibe-command'
 export const START_INITIAL_POSITION = { x: 80, y: 282 }
 export const AUTO_LAYOUT_OFFSET = {
   x: -42,

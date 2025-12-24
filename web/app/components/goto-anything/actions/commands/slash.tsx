@@ -12,6 +12,7 @@ import { forumCommand } from './forum'
 import { languageCommand } from './language'
 import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
+import { vibeCommand } from './vibe'
 import { zenCommand } from './zen'
 
 export const slashAction: ActionItem = {
@@ -41,6 +42,7 @@ export const registerSlashCommands = (deps: Record<string, any>) => {
   slashCommandRegistry.register(communityCommand, {})
   slashCommandRegistry.register(accountCommand, {})
   slashCommandRegistry.register(zenCommand, {})
+  slashCommandRegistry.register(vibeCommand, {})
 }
 
 export const unregisterSlashCommands = () => {
@@ -52,6 +54,7 @@ export const unregisterSlashCommands = () => {
   slashCommandRegistry.unregister('community')
   slashCommandRegistry.unregister('account')
   slashCommandRegistry.unregister('zen')
+  slashCommandRegistry.unregister('vibe')
 }
 
 export const SlashCommandProvider = () => {
