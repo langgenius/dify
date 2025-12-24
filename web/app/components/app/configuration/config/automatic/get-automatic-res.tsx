@@ -141,7 +141,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const [editorKey, setEditorKey] = useState(`${flowId}-0`)
   const handleChooseTemplate = useCallback((key: string) => {
     return () => {
-      const template = t(`appDebug.generate.template.${key}.instruction`)
+      const template = t(`appDebug.generate.template.${key}.instruction` as any) as string
       setInstruction(template)
       setEditorKey(`${flowId}-${Date.now()}`)
     }
@@ -322,7 +322,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   <TryLabel
                     key={item.key}
                     Icon={item.icon}
-                    text={t(`appDebug.generate.template.${item.key}.name`)}
+                    text={t(`appDebug.generate.template.${item.key}.name` as any) as string}
                     onClick={handleChooseTemplate(item.key)}
                   />
                 ))}

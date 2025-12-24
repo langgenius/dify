@@ -106,8 +106,8 @@ const Operation = ({
                               : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                           }
                           <div>
-                            <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`common.members.${toHump(role)}`)}</div>
-                            <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`common.members.${toHump(role)}Tip`)}</div>
+                            <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`common.members.${toHump(role)}` as any)}</div>
+                            <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`common.members.${toHump(role)}Tip` as any)}</div>
                           </div>
                         </div>
                       </MenuItem>

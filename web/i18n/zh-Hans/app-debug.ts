@@ -32,6 +32,9 @@ const translation = {
     cancelDisagree: '取消反对',
     userAction: '用户表示',
   },
+  code: {
+    instruction: '指令',
+  },
   notSetAPIKey: {
     title: 'LLM 提供者的密钥未设置',
     trailFinished: '试用已结束',

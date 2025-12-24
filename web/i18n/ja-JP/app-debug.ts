@@ -32,6 +32,9 @@ const translation = {
     cancelDisagree: 'いいえをキャンセル',
     userAction: 'ユーザー',
   },
+  code: {
+    instruction: '指示',
+  },
   notSetAPIKey: {
     title: 'LLM プロバイダーキーが設定されていません',
     trailFinished: 'トライアル終了',
