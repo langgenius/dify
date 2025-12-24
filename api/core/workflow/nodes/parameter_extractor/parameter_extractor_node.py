@@ -281,9 +281,7 @@ class ParameterExtractorNode(Node[ParameterExtractorNodeData]):
 
         # handle invoke result
 
-        text = invoke_result.message.content or ""
-        if not isinstance(text, str):
-            raise InvalidTextContentTypeError(f"Invalid text content type: {type(text)}. Expected str.")
+        text = invoke_result.message.get_text_content()
 
         usage = invoke_result.usage
         tool_call = invoke_result.message.tool_calls[0] if invoke_result.message.tool_calls else None
