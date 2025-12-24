@@ -41,7 +41,6 @@ from .exc import (
     InvalidModelTypeError,
     InvalidNumberOfParametersError,
     InvalidSelectValueError,
-    InvalidTextContentTypeError,
     InvalidValueTypeError,
     ModelSchemaNotFoundError,
     ParameterExtractorNodeError,
