@@ -448,9 +448,7 @@ const translation = {
     visionSettings: {
       title: 'Vision Settings',
       resolution: 'Resolution',
-      resolutionTooltip: `low res will allow model receive a low-res 512 x 512 version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail.
-      \n
-      high res will first allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget for a total of 129 tokens.`,
+      resolutionTooltip: 'low res will allow model receive a low-res 512 x 512 version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail.\nhigh res will first allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget for a total of 129 tokens.',
       high: 'High',
       low: 'Low',
       uploadMethod: 'Upload Method',
