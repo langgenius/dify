@@ -45,7 +45,7 @@ describe('AppNavItem', () => {
 
       // Assert
       expect(screen.getByText('My App')).toBeInTheDocument()
-      expect(document.querySelector('[data-state]')).toBeInTheDocument()
+      expect(screen.getByTestId('item-operation-trigger')).toBeInTheDocument()
     })
 
     it('should hide name on mobile', () => {
@@ -72,10 +72,10 @@ describe('AppNavItem', () => {
 
     it('should call onDelete with app id when delete action is clicked', async () => {
       // Arrange
-      const { container } = render(<AppNavItem {...baseProps} />)
+      render(<AppNavItem {...baseProps} />)
 
       // Act
-      fireEvent.click(container.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       // Assert
@@ -87,10 +87,10 @@ describe('AppNavItem', () => {
   describe('Edge Cases', () => {
     it('should not render delete action when app is uninstallable', () => {
       // Arrange
-      const { container } = render(<AppNavItem {...baseProps} uninstallable />)
+      render(<AppNavItem {...baseProps} uninstallable />)
 
       // Act
-      fireEvent.click(container.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
 
       // Assert
       expect(screen.queryByText('explore.sidebar.action.delete')).not.toBeInTheDocument()

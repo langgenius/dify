@@ -127,7 +127,7 @@ describe('SideBar', () => {
       renderWithContext(mockInstalledApps)
 
       // Act
-      fireEvent.click(document.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
       fireEvent.click(await screen.findByText('common.operation.confirm'))
 
@@ -148,7 +148,7 @@ describe('SideBar', () => {
       renderWithContext(mockInstalledApps)
 
       // Act
-      fireEvent.click(document.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       // Assert

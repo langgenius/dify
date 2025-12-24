@@ -27,8 +27,7 @@ describe('ItemOperation', () => {
       renderComponent()
 
       // Act
-      const trigger = document.querySelector('[data-state]')
-      fireEvent.click(trigger as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
 
       // Assert
       expect(await screen.findByText('explore.sidebar.action.pin')).toBeInTheDocument()
@@ -43,7 +42,7 @@ describe('ItemOperation', () => {
       renderComponent({ isShowRenameConversation: true })
 
       // Act
-      fireEvent.click(document.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
 
       // Assert
       expect(await screen.findByText('explore.sidebar.action.rename')).toBeInTheDocument()
@@ -54,7 +53,7 @@ describe('ItemOperation', () => {
       renderComponent({ isPinned: true })
 
       // Act
-      fireEvent.click(document.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
 
       // Assert
       expect(await screen.findByText('explore.sidebar.action.unpin')).toBeInTheDocument()
@@ -68,7 +67,7 @@ describe('ItemOperation', () => {
       const { props } = renderComponent()
 
       // Act
-      fireEvent.click(document.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.pin'))
 
       // Assert
@@ -80,7 +79,7 @@ describe('ItemOperation', () => {
       const { props } = renderComponent()
 
       // Act
-      fireEvent.click(document.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       fireEvent.click(await screen.findByText('explore.sidebar.action.delete'))
 
       // Assert
@@ -93,7 +92,7 @@ describe('ItemOperation', () => {
     it('should close the menu when mouse leaves the panel and item is not hovering', async () => {
       // Arrange
       renderComponent()
-      fireEvent.click(document.querySelector('[data-state]') as HTMLElement)
+      fireEvent.click(screen.getByTestId('item-operation-trigger'))
       const pinText = await screen.findByText('explore.sidebar.action.pin')
       const menu = pinText.closest('div')?.parentElement as HTMLElement
 
