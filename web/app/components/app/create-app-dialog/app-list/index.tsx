@@ -24,7 +24,7 @@ import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
-import { useExploreAppList } from '@/service/use-explore'
+import { exploreAppListInitialData, useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
@@ -70,7 +70,7 @@ const Apps = ({
   })
 
   const {
-    data: { categories, allList },
+    data: { categories, allList } = exploreAppListInitialData,
   } = useExploreAppList()
 
   const filteredList = useMemo(() => {

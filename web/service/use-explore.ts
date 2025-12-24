@@ -12,7 +12,7 @@ type ExploreAppListData = {
   allList: App[]
 }
 
-const exploreAppListInitialData: ExploreAppListData = {
+export const exploreAppListInitialData: ExploreAppListData = {
   categories: [],
   allList: [],
 }
@@ -27,7 +27,7 @@ export const useExploreAppList = () => {
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
       }
     },
-    initialData: exploreAppListInitialData,
+    placeholderData: exploreAppListInitialData,
   })
 }
 

@@ -20,7 +20,7 @@ import {
   DSLImportMode,
 } from '@/models/app'
 import { fetchAppDetail } from '@/service/explore'
-import { useExploreAppList } from '@/service/use-explore'
+import { exploreAppListInitialData, useExploreAppList } from '@/service/use-explore'
 import { cn } from '@/utils/classnames'
 import s from './style.module.css'
 
@@ -58,7 +58,7 @@ const Apps = ({
   })
 
   const {
-    data: { categories, allList },
+    data: { categories, allList } = exploreAppListInitialData,
   } = useExploreAppList()
 
   const filteredList = allList.filter(item => currCategory === allCategoriesEn || item.category === currCategory)
