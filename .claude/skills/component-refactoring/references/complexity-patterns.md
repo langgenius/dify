@@ -491,4 +491,3 @@ const payload = useMemo(() => ({
 | Function Length | < 30 lines |
 | Nesting Depth | ≤ 3 levels |
 | Conditional Chains | ≤ 3 conditions |
-
