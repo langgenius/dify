@@ -457,9 +457,6 @@ importers:
       '@typescript-eslint/parser':
         specifier: ^8.50.0
         version: 8.50.0(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
-      '@typescript-eslint/utils':
-        specifier: ^8.50.1
-        version: 8.50.1(eslint@9.39.2(jiti@1.21.7))(typescript@5.9.3)
       '@typescript/native-preview':
         specifier: ^7.0.0-dev
         version: 7.0.0-dev.20251209.1
