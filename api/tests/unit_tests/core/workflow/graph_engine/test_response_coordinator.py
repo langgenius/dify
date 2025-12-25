@@ -6,6 +6,7 @@ from core.workflow.entities.tool_entities import ToolResultStatus
 from core.workflow.enums import NodeType
 from core.workflow.graph.graph import Graph
 from core.workflow.graph_engine.response_coordinator.coordinator import ResponseStreamCoordinator
+from core.workflow.graph_engine.response_coordinator.session import ResponseSession
 from core.workflow.graph_events import (
     ChunkType,
     NodeRunStreamChunkEvent,
@@ -13,6 +14,7 @@ from core.workflow.graph_events import (
     ToolResult,
 )
 from core.workflow.nodes.base.entities import BaseNodeData
+from core.workflow.nodes.base.template import Template, VariableSegment
 from core.workflow.runtime import VariablePool
 
 
@@ -186,3 +188,44 @@ class TestResponseCoordinatorObjectStreaming:
         assert ("node1", "generation", "content") in children
         assert ("node1", "generation", "tool_calls") in children
         assert ("node1", "generation", "thought") in children
+
+    def test_special_selector_rewrites_to_active_response_node(self):
+        """Ensure special selectors attribute streams to the active response node."""
+        graph = MagicMock(spec=Graph)
+        variable_pool = MagicMock(spec=VariablePool)
+
+        response_node = MagicMock()
+        response_node.id = "response_node"
+        response_node.node_type = NodeType.ANSWER
+        graph.nodes = {"response_node": response_node}
+        graph.root_node = response_node
+
+        coordinator = ResponseStreamCoordinator(variable_pool, graph)
+        coordinator.track_node_execution("response_node", "exec_resp")
+
+        coordinator._active_session = ResponseSession(
+            node_id="response_node",
+            template=Template(segments=[VariableSegment(selector=["sys", "foo"])]),
+        )
+
+        event = NodeRunStreamChunkEvent(
+            id="stream_1",
+            node_id="llm_node",
+            node_type=NodeType.LLM,
+            selector=["sys", "foo"],
+            chunk="hi",
+            is_final=True,
+            chunk_type=ChunkType.TEXT,
+        )
+
+        coordinator._stream_buffers[("sys", "foo")] = [event]
+        coordinator._stream_positions[("sys", "foo")] = 0
+        coordinator._closed_streams.add(("sys", "foo"))
+
+        events, is_complete = coordinator._process_variable_segment(VariableSegment(selector=["sys", "foo"]))
+
+        assert is_complete
+        assert len(events) == 1
+        rewritten = events[0]
+        assert rewritten.node_id == "response_node"
+        assert rewritten.id == "exec_resp"

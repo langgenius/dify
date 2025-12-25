@@ -183,7 +183,24 @@ class AgentAppRunner(BaseAgentRunner):
 
                     elif output.status == AgentLog.LogStatus.SUCCESS:
                         if output.log_type == AgentLog.LogType.THOUGHT:
-                            pass
+                            if current_agent_thought_id is None:
+                                continue
+
+                            thought_text = output.data.get("thought")
+                            self.save_agent_thought(
+                                agent_thought_id=current_agent_thought_id,
+                                tool_name=None,
+                                tool_input=None,
+                                thought=thought_text,
+                                observation=None,
+                                tool_invoke_meta=None,
+                                answer=None,
+                                messages_ids=[],
+                            )
+                            self.queue_manager.publish(
+                                QueueAgentThoughtEvent(agent_thought_id=current_agent_thought_id),
+                                PublishFrom.APPLICATION_MANAGER,
+                            )
 
                         elif output.log_type == AgentLog.LogType.TOOL_CALL:
                             if current_agent_thought_id is None:
@@ -269,15 +286,20 @@ class AgentAppRunner(BaseAgentRunner):
         """
         Initialize system message
         """
-        if not prompt_messages and prompt_template:
-            return [
-                SystemPromptMessage(content=prompt_template),
-            ]
+        if not prompt_template:
+            return prompt_messages or []
 
-        if prompt_messages and not isinstance(prompt_messages[0], SystemPromptMessage) and prompt_template:
-            prompt_messages.insert(0, SystemPromptMessage(content=prompt_template))
+        prompt_messages = prompt_messages or []
 
-        return prompt_messages or []
+        if prompt_messages and isinstance(prompt_messages[0], SystemPromptMessage):
+            prompt_messages[0] = SystemPromptMessage(content=prompt_template)
+            return prompt_messages
+
+        if not prompt_messages:
+            return [SystemPromptMessage(content=prompt_template)]
+
+        prompt_messages.insert(0, SystemPromptMessage(content=prompt_template))
+        return prompt_messages
 
     def _organize_user_query(self, query: str, prompt_messages: list[PromptMessage]) -> list[PromptMessage]:
         """

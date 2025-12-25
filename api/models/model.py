@@ -1203,6 +1203,7 @@ class Message(Base):
             .all()
         )
 
+    # FIXME (Novice) -- It's easy to cause N+1 query problem here.
     @property
     def generation_detail(self) -> dict[str, Any] | None:
         """

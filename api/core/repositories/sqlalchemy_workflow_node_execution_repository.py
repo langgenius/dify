@@ -474,57 +474,67 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
         outputs = execution.outputs or {}
         metadata = execution.metadata or {}
 
-        # Extract reasoning_content from outputs
-        reasoning_content = outputs.get("reasoning_content")
-        reasoning_list: list[str] = []
-        if reasoning_content:
-            # reasoning_content could be a string or already a list
-            if isinstance(reasoning_content, str):
-                reasoning_list = [reasoning_content] if reasoning_content.strip() else []
-            elif isinstance(reasoning_content, list):
-                # Filter out empty or whitespace-only strings
-                reasoning_list = [r.strip() for r in reasoning_content if isinstance(r, str) and r.strip()]
+        reasoning_list = self._extract_reasoning(outputs)
+        tool_calls_list = self._extract_tool_calls(metadata.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG))
 
-        # Extract tool_calls from metadata.agent_log
-        tool_calls_list: list[dict] = []
-        agent_log = metadata.get(WorkflowNodeExecutionMetadataKey.AGENT_LOG)
-        if agent_log and isinstance(agent_log, list):
-            for log in agent_log:
-                # Each log entry has label, data, status, etc.
-                log_data = log.data if hasattr(log, "data") else log.get("data", {})
-                tool_name = log_data.get("tool_name")
-                # Only include tool calls with valid tool_name
-                if tool_name and str(tool_name).strip():
-                    tool_calls_list.append(
-                        {
-                            "id": log_data.get("tool_call_id", ""),
-                            "name": tool_name,
-                            "arguments": json.dumps(log_data.get("tool_args", {})),
-                            "result": str(log_data.get("output", "")),
-                        }
-                    )
-
-        # Only save if there's meaningful generation detail (reasoning or tool calls)
-        has_valid_reasoning = bool(reasoning_list)
-        has_valid_tool_calls = bool(tool_calls_list)
-
-        if not has_valid_reasoning and not has_valid_tool_calls:
+        if not reasoning_list and not tool_calls_list:
             return
 
-        # Build sequence based on content, reasoning, and tool_calls
-        sequence: list[dict] = []
-        text = outputs.get("text", "")
+        sequence = self._build_generation_sequence(outputs.get("text", ""), reasoning_list, tool_calls_list)
+        self._upsert_generation_detail(session, execution, reasoning_list, tool_calls_list, sequence)
 
-        # For now, use a simple sequence: content -> reasoning -> tool_calls
-        # This can be enhanced later to track actual streaming order
+    def _extract_reasoning(self, outputs: Mapping[str, Any]) -> list[str]:
+        """Extract reasoning_content as a clean list of non-empty strings."""
+        reasoning_content = outputs.get("reasoning_content")
+        if isinstance(reasoning_content, str):
+            trimmed = reasoning_content.strip()
+            return [trimmed] if trimmed else []
+        if isinstance(reasoning_content, list):
+            return [item.strip() for item in reasoning_content if isinstance(item, str) and item.strip()]
+        return []
+
+    def _extract_tool_calls(self, agent_log: Any) -> list[dict[str, str]]:
+        """Extract tool call records from agent logs."""
+        if not agent_log or not isinstance(agent_log, list):
+            return []
+
+        tool_calls: list[dict[str, str]] = []
+        for log in agent_log:
+            log_data = log.data if hasattr(log, "data") else (log.get("data", {}) if isinstance(log, dict) else {})
+            tool_name = log_data.get("tool_name")
+            if tool_name and str(tool_name).strip():
+                tool_calls.append(
+                    {
+                        "id": log_data.get("tool_call_id", ""),
+                        "name": tool_name,
+                        "arguments": json.dumps(log_data.get("tool_args", {})),
+                        "result": str(log_data.get("output", "")),
+                    }
+                )
+        return tool_calls
+
+    def _build_generation_sequence(
+        self, text: str, reasoning_list: list[str], tool_calls_list: list[dict[str, str]]
+    ) -> list[dict[str, Any]]:
+        """Build a simple content/reasoning/tool_call sequence."""
+        sequence: list[dict[str, Any]] = []
         if text:
             sequence.append({"type": "content", "start": 0, "end": len(text)})
-        for i, _ in enumerate(reasoning_list):
-            sequence.append({"type": "reasoning", "index": i})
-        for i in range(len(tool_calls_list)):
-            sequence.append({"type": "tool_call", "index": i})
+        for index in range(len(reasoning_list)):
+            sequence.append({"type": "reasoning", "index": index})
+        for index in range(len(tool_calls_list)):
+            sequence.append({"type": "tool_call", "index": index})
+        return sequence
 
-        # Check if generation detail already exists for this node execution
+    def _upsert_generation_detail(
+        self,
+        session,
+        execution: WorkflowNodeExecution,
+        reasoning_list: list[str],
+        tool_calls_list: list[dict[str, str]],
+        sequence: list[dict[str, Any]],
+    ) -> None:
+        """Insert or update LLMGenerationDetail with serialized fields."""
         existing = (
             session.query(LLMGenerationDetail)
             .filter_by(
@@ -534,23 +544,26 @@ class SQLAlchemyWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository)
             .first()
         )
 
+        reasoning_json = json.dumps(reasoning_list) if reasoning_list else None
+        tool_calls_json = json.dumps(tool_calls_list) if tool_calls_list else None
+        sequence_json = json.dumps(sequence) if sequence else None
+
         if existing:
-            # Update existing record
-            existing.reasoning_content = json.dumps(reasoning_list) if reasoning_list else None
-            existing.tool_calls = json.dumps(tool_calls_list) if tool_calls_list else None
-            existing.sequence = json.dumps(sequence) if sequence else None
-        else:
-            # Create new record
-            generation_detail = LLMGenerationDetail(
-                tenant_id=self._tenant_id,
-                app_id=self._app_id,
-                workflow_run_id=execution.workflow_execution_id,
-                node_id=execution.node_id,
-                reasoning_content=json.dumps(reasoning_list) if reasoning_list else None,
-                tool_calls=json.dumps(tool_calls_list) if tool_calls_list else None,
-                sequence=json.dumps(sequence) if sequence else None,
-            )
-            session.add(generation_detail)
+            existing.reasoning_content = reasoning_json
+            existing.tool_calls = tool_calls_json
+            existing.sequence = sequence_json
+            return
+
+        generation_detail = LLMGenerationDetail(
+            tenant_id=self._tenant_id,
+            app_id=self._app_id,
+            workflow_run_id=execution.workflow_execution_id,
+            node_id=execution.node_id,
+            reasoning_content=reasoning_json,
+            tool_calls=tool_calls_json,
+            sequence=sequence_json,
+        )
+        session.add(generation_detail)
 
     def get_db_models_by_workflow_run(
         self,

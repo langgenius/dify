@@ -1,4 +1,5 @@
 import logging
+import re
 import time
 from collections.abc import Generator
 from threading import Thread
@@ -67,6 +68,8 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
     """
     EasyUIBasedGenerateTaskPipeline is a class that generate stream output and state management for Application.
     """
+
+    _THINK_PATTERN = re.compile(r"<think[^>]*>(.*?)</think>", re.IGNORECASE | re.DOTALL)
 
     _task_state: EasyUITaskState
     _application_generate_entity: Union[ChatAppGenerateEntity, CompletionAppGenerateEntity, AgentChatAppGenerateEntity]
@@ -441,7 +444,13 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
             for thought in agent_thoughts:
                 # Add thought/reasoning
                 if thought.thought:
-                    reasoning_list.append(thought.thought)
+                    reasoning_text = thought.thought
+                    if "<think" in reasoning_text.lower():
+                        clean_text, extracted_reasoning = self._split_reasoning_from_answer(reasoning_text)
+                        if extracted_reasoning:
+                            reasoning_text = extracted_reasoning
+                            thought.thought = clean_text or extracted_reasoning
+                    reasoning_list.append(reasoning_text)
                     sequence.append({"type": "reasoning", "index": len(reasoning_list) - 1})
 
                 # Add tool calls
@@ -464,6 +473,14 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         else:
             # Completion/Chat mode: use reasoning_content from llm_result
             reasoning_content = llm_result.reasoning_content
+            if not reasoning_content and answer:
+                # Extract reasoning from <think> blocks and clean the final answer
+                clean_answer, reasoning_content = self._split_reasoning_from_answer(answer)
+                if reasoning_content:
+                    answer = clean_answer
+                    llm_result.message.content = clean_answer
+                    llm_result.reasoning_content = reasoning_content
+                    message.answer = clean_answer
             if reasoning_content:
                 reasoning_list = [reasoning_content]
                 # Content comes first, then reasoning
@@ -492,6 +509,19 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
                 sequence=json.dumps(sequence) if sequence else None,
             )
             session.add(generation_detail)
+
+    @classmethod
+    def _split_reasoning_from_answer(cls, text: str) -> tuple[str, str]:
+        """
+        Extract reasoning segments from <think> blocks and return (clean_text, reasoning).
+        """
+        matches = cls._THINK_PATTERN.findall(text)
+        reasoning_content = "\n".join(match.strip() for match in matches) if matches else ""
+
+        clean_text = cls._THINK_PATTERN.sub("", text)
+        clean_text = re.sub(r"\n\s*\n", "\n\n", clean_text).strip()
+
+        return clean_text, reasoning_content or ""
 
     def _handle_stop(self, event: QueueStopEvent):
         """

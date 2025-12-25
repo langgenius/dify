@@ -695,6 +695,10 @@ class WorkflowRun(Base):
     def workflow(self):
         return db.session.query(Workflow).where(Workflow.id == self.workflow_id).first()
 
+    @property
+    def outputs_as_generation(self):
+        return is_generation_outputs(self.outputs_dict)
+
     def to_dict(self):
         return {
             "id": self.id,
@@ -708,7 +712,7 @@ class WorkflowRun(Base):
             "inputs": self.inputs_dict,
             "status": self.status,
             "outputs": self.outputs_dict,
-            "outputs_as_generation": is_generation_outputs(self.outputs_dict),
+            "outputs_as_generation": self.outputs_as_generation,
             "error": self.error,
             "elapsed_time": self.elapsed_time,
             "total_tokens": self.total_tokens,

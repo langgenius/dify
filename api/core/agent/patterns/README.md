@@ -1,67 +1,55 @@
 # Agent Patterns
 
-A unified agent pattern module that provides common agent execution strategies for both Agent V2 nodes and Agent Applications in Dify.
+A unified agent pattern module that powers both Agent V2 workflow nodes and agent applications. Strategies share a common execution contract while adapting to model capabilities and tool availability.
 
 ## Overview
 
-This module implements a strategy pattern for agent execution, automatically selecting the appropriate strategy based on model capabilities. It serves as the core engine for agent-based interactions across different components of the Dify platform.
+The module applies a strategy pattern around LLM/tool orchestration. `StrategyFactory` auto-selects the best implementation based on model features or an explicit agent strategy, and each strategy streams logs and usage consistently.
 
 ## Key Features
 
-### 1. Multiple Agent Strategies
-
-- **Function Call Strategy**: Leverages native function/tool calling capabilities of advanced LLMs (e.g., GPT-4, Claude)
-- **ReAct Strategy**: Implements the ReAct (Reasoning + Acting) approach for models without native function calling support
-
-### 2. Automatic Strategy Selection
-
-The `StrategyFactory` intelligently selects the optimal strategy based on model features:
-
-- Models with `TOOL_CALL`, `MULTI_TOOL_CALL`, or `STREAM_TOOL_CALL` capabilities → Function Call Strategy
-- Other models → ReAct Strategy
-
-### 3. Unified Interface
-
-- Common base class (`AgentPattern`) ensures consistent behavior across strategies
-- Seamless integration with both workflow nodes and standalone agent applications
-- Standardized input/output formats for easy consumption
-
-### 4. Advanced Capabilities
-
-- **Streaming Support**: Real-time response streaming for better user experience
-- **File Handling**: Built-in support for processing and managing files during agent execution
-- **Iteration Control**: Configurable maximum iterations with safety limits (capped at 99)
-- **Tool Management**: Flexible tool integration supporting various tool types
-- **Context Propagation**: Execution context for tracing, auditing, and debugging
+- **Dual strategies**
+  - `FunctionCallStrategy`: uses native LLM function/tool calling when the model exposes `TOOL_CALL`, `MULTI_TOOL_CALL`, or `STREAM_TOOL_CALL`.
+  - `ReActStrategy`: ReAct (reasoning + acting) flow driven by `CotAgentOutputParser`, used when function calling is unavailable or explicitly requested.
+- **Explicit or auto selection**
+  - `StrategyFactory.create_strategy` prefers an explicit `AgentEntity.Strategy` (FUNCTION_CALLING or CHAIN_OF_THOUGHT).
+  - Otherwise it falls back to function calling when tool-call features exist, or ReAct when they do not.
+- **Unified execution contract**
+  - `AgentPattern.run` yields streaming `AgentLog` entries and `LLMResultChunk` data, returning an `AgentResult` with text, files, usage, and `finish_reason`.
+  - Iterations are configurable and hard-capped at 99 rounds; the last round forces a final answer by withholding tools.
+- **Tool handling and hooks**
+  - Tools convert to `PromptMessageTool` objects before invocation.
+  - Optional `tool_invoke_hook` lets callers override tool execution (e.g., agent apps) while workflow runs use `ToolEngine.generic_invoke`.
+  - Tool outputs support text, links, JSON, variables, blobs, retriever resources, and file attachments; `target=="self"` files are reloaded into model context, others are returned as outputs.
+- **File-aware arguments**
+  - Tool args accept `[File: <id>]` or `[Files: <id1, id2>]` placeholders that resolve to `File` objects before invocation, enabling models to reference uploaded files safely.
+- **ReAct prompt shaping**
+  - System prompts replace `{{instruction}}`, `{{tools}}`, and `{{tool_names}}` placeholders.
+  - Adds `Observation` to stop sequences and appends scratchpad text so the model sees prior Thought/Action/Observation history.
+- **Observability and accounting**
+  - Standardized `AgentLog` entries for rounds, model thoughts, and tool calls, including usage aggregation (`LLMUsage`) across streaming and non-streaming paths.
 
 ## Architecture
 
 ```
 agent/patterns/
-├── base.py              # Abstract base class defining the agent pattern interface
-├── function_call.py     # Implementation using native LLM function calling
-├── react.py            # Implementation using ReAct prompting approach
-└── strategy_factory.py  # Factory for automatic strategy selection
+├── base.py              # Shared utilities: logging, usage, tool invocation, file handling
+├── function_call.py     # Native function-calling loop with tool execution
+├── react.py             # ReAct loop with CoT parsing and scratchpad wiring
+└── strategy_factory.py  # Strategy selection by model features or explicit override
 ```
 
 ## Usage
 
-The module is designed to be used by:
-
-1. **Agent V2 Nodes**: In workflow orchestration for complex agent tasks
-1. **Agent Applications**: For standalone conversational agents
-1. **Custom Implementations**: As a foundation for building specialized agent behaviors
+- For auto-selection:
+  - Call `StrategyFactory.create_strategy(model_features, model_instance, context, tools, files, ...)` and run the returned strategy with prompt messages and model params.
+- For explicit behavior:
+  - Pass `agent_strategy=AgentEntity.Strategy.FUNCTION_CALLING` to force native calls (falls back to ReAct if unsupported), or `CHAIN_OF_THOUGHT` to force ReAct.
+- Both strategies stream chunks and logs; collect the generator output until it returns an `AgentResult`.
 
 ## Integration Points
 
-- **Model Runtime**: Interfaces with Dify's model runtime for LLM interactions
-- **Tool System**: Integrates with the tool framework for external capabilities
-- **Memory Management**: Compatible with conversation memory systems
-- **File Management**: Handles file inputs/outputs during agent execution
-
-## Benefits
-
-1. **Consistency**: Unified implementation reduces code duplication and maintenance overhead
-1. **Flexibility**: Easy to extend with new strategies or customize existing ones
-1. **Performance**: Optimized for each model's capabilities to ensure best performance
-1. **Reliability**: Built-in safety mechanisms and error handling
+- **Model runtime**: delegates to `ModelInstance.invoke_llm` for both streaming and non-streaming calls.
+- **Tool system**: defaults to `ToolEngine.generic_invoke`, with `tool_invoke_hook` for custom callers.
+- **Files**: flows through `File` objects for tool inputs/outputs and model-context attachments.
+- **Execution context**: `ExecutionContext` fields (user/app/conversation/message) propagate to tool invocations and logging.

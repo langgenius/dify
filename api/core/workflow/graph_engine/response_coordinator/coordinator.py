@@ -391,12 +391,9 @@ class ResponseStreamCoordinator:
         # Determine which node to attribute the output to
         # For special selectors (sys, env, conversation), use the active response node
         # For regular selectors, use the source node
-        if self._active_session and source_selector_prefix not in self._graph.nodes:
-            # Special selector - use active response node
-            output_node_id = self._active_session.node_id
-        else:
-            # Regular node selector
-            output_node_id = source_selector_prefix
+        active_session = self._active_session
+        special_selector = bool(active_session and source_selector_prefix not in self._graph.nodes)
+        output_node_id = active_session.node_id if special_selector and active_session else source_selector_prefix
         execution_id = self._get_or_create_execution_id(output_node_id)
 
         # Check if there's a direct stream for this selector
@@ -404,65 +401,27 @@ class ResponseStreamCoordinator:
             tuple(segment.selector) in self._stream_buffers or tuple(segment.selector) in self._closed_streams
         )
 
-        if has_direct_stream:
-            # Stream all available chunks for direct stream
-            while self._has_unread_stream(segment.selector):
-                if event := self._pop_stream_chunk(segment.selector):
-                    # For special selectors, update the event to use active response node's information
-                    if self._active_session and source_selector_prefix not in self._graph.nodes:
-                        response_node = self._graph.nodes[self._active_session.node_id]
-                        updated_event = NodeRunStreamChunkEvent(
-                            id=execution_id,
-                            node_id=response_node.id,
-                            node_type=response_node.node_type,
-                            selector=event.selector,
-                            chunk=event.chunk,
-                            is_final=event.is_final,
+        stream_targets = [segment.selector] if has_direct_stream else sorted(self._find_child_streams(segment.selector))
+
+        if stream_targets:
+            all_complete = True
+
+            for target_selector in stream_targets:
+                while self._has_unread_stream(target_selector):
+                    if event := self._pop_stream_chunk(target_selector):
+                        events.append(
+                            self._rewrite_stream_event(
+                                event=event,
+                                output_node_id=output_node_id,
+                                execution_id=execution_id,
+                                special_selector=bool(special_selector),
+                            )
                         )
-                        events.append(updated_event)
-                    else:
-                        events.append(event)
 
-            # Check if stream is closed
-            if self._is_stream_closed(segment.selector):
-                is_complete = True
+                if not self._is_stream_closed(target_selector):
+                    all_complete = False
 
-        else:
-            # No direct stream - check for child field streams (for object types)
-            child_streams = self._find_child_streams(segment.selector)
-
-            if child_streams:
-                # Process all child streams
-                all_children_complete = True
-
-                for child_selector in sorted(child_streams):
-                    # Stream all available chunks from this child
-                    while self._has_unread_stream(child_selector):
-                        if event := self._pop_stream_chunk(child_selector):
-                            # Forward child stream event
-                            if self._active_session and source_selector_prefix not in self._graph.nodes:
-                                response_node = self._graph.nodes[self._active_session.node_id]
-                                updated_event = NodeRunStreamChunkEvent(
-                                    id=execution_id,
-                                    node_id=response_node.id,
-                                    node_type=response_node.node_type,
-                                    selector=event.selector,
-                                    chunk=event.chunk,
-                                    is_final=event.is_final,
-                                    chunk_type=event.chunk_type,
-                                    tool_call=event.tool_call,
-                                    tool_result=event.tool_result,
-                                )
-                                events.append(updated_event)
-                            else:
-                                events.append(event)
-
-                    # Check if this child stream is complete
-                    if not self._is_stream_closed(child_selector):
-                        all_children_complete = False
-
-                # Object segment is complete only when all children are complete
-                is_complete = all_children_complete
+            is_complete = all_complete
 
         # Fallback: check if scalar value exists in variable pool
         if not is_complete and not has_direct_stream:
@@ -484,6 +443,28 @@ class ResponseStreamCoordinator:
                 is_complete = True
 
         return events, is_complete
+
+    def _rewrite_stream_event(
+        self,
+        event: NodeRunStreamChunkEvent,
+        output_node_id: str,
+        execution_id: str,
+        special_selector: bool,
+    ) -> NodeRunStreamChunkEvent:
+        """Rewrite event to attribute to active response node when selector is special."""
+        if not special_selector:
+            return event
+
+        return self._create_stream_chunk_event(
+            node_id=output_node_id,
+            execution_id=execution_id,
+            selector=event.selector,
+            chunk=event.chunk,
+            is_final=event.is_final,
+            chunk_type=event.chunk_type,
+            tool_call=event.tool_call,
+            tool_result=event.tool_result,
+        )
 
     def _process_text_segment(self, segment: TextSegment) -> Sequence[NodeRunStreamChunkEvent]:
         """Process a text segment. Returns (events, is_complete)."""

@@ -457,6 +457,9 @@ class WorkflowBasedAppRunner:
         elif isinstance(event, NodeRunStreamChunkEvent):
             from core.app.entities.queue_entities import ChunkType as QueueChunkType
 
+            if event.is_final and not event.chunk:
+                return
+
             self._publish_event(
                 QueueTextChunkEvent(
                     text=event.chunk,

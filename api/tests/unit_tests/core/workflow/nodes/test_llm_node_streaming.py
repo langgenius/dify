@@ -146,3 +146,4 @@ def test_serialize_tool_call_strips_files_to_ids():
     assert serialized["name"] == "do"
     assert serialized["arguments"] == '{"a":1}'
     assert serialized["output"] == "ok"
+
