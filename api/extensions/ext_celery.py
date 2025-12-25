@@ -172,6 +172,13 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.trigger_provider_refresh_task.trigger_provider_refresh",
             "schedule": timedelta(minutes=dify_config.TRIGGER_PROVIDER_REFRESH_INTERVAL),
         }
+    if dify_config.ARCHIVE_STORAGE_ENABLED:
+        # Archive workflow runs for paid tenants daily at 3:00 AM
+        imports.append("schedule.archive_workflow_runs_task")
+        beat_schedule["archive_workflow_runs_task"] = {
+            "task": "schedule.archive_workflow_runs_task.archive_workflow_runs_task",
+            "schedule": crontab(minute="0", hour="3"),
+        }
     celery_app.conf.update(beat_schedule=beat_schedule, imports=imports)
 
     return celery_app

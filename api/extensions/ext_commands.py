@@ -4,6 +4,7 @@ from dify_app import DifyApp
 def init_app(app: DifyApp):
     from commands import (
         add_qdrant_index,
+        archive_workflow_runs,
         cleanup_orphaned_draft_variables,
         clear_free_plan_tenant_expired_logs,
         clear_orphaned_file_records,
@@ -21,6 +22,7 @@ def init_app(app: DifyApp):
         reset_email,
         reset_encrypt_key_pair,
         reset_password,
+        rollback_archived_run,
         setup_datasource_oauth_client,
         setup_system_tool_oauth_client,
         setup_system_trigger_oauth_client,
@@ -54,6 +56,9 @@ def init_app(app: DifyApp):
         setup_datasource_oauth_client,
         transform_datasource_credentials,
         install_rag_pipeline_plugins,
+        archive_workflow_runs,
+        rollback_archived_run,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
+
