@@ -471,12 +471,14 @@ export const useNodesReadOnly = () => {
   const workflowRunningData = useStore(s => s.workflowRunningData)
   const historyWorkflowData = useStore(s => s.historyWorkflowData)
   const isRestoring = useStore(s => s.isRestoring)
+  // const showVibePanel = useStore(s => s.showVibePanel)
 
   const getNodesReadOnly = useCallback((): boolean => {
     const {
       workflowRunningData,
       historyWorkflowData,
       isRestoring,
+      // showVibePanel,
     } = workflowStore.getState()
 
     return !!(workflowRunningData?.result.status === WorkflowRunningStatus.Running || historyWorkflowData || isRestoring)
