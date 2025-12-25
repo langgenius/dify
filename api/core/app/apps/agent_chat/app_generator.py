@@ -9,7 +9,6 @@ from flask import Flask, current_app
 from pydantic import ValidationError
 
 from configs import dify_config
-from constants import UUID_NIL
 from core.app.app_config.easy_ui_based_app.model_config.converter import ModelConfigConverter
 from core.app.app_config.features.file_upload.manager import FileUploadConfigManager
 from core.app.apps.agent_chat.app_config_manager import AgentChatAppConfigManager
@@ -163,7 +162,7 @@ class AgentChatAppGenerator(MessageBasedAppGenerator):
             ),
             query=query,
             files=list(file_objs),
-            parent_message_id=args.get("parent_message_id") if invoke_from != InvokeFrom.SERVICE_API else UUID_NIL,
+            parent_message_id=self._resolve_parent_message_id(args, invoke_from),
             user_id=user.id,
             stream=streaming,
             invoke_from=invoke_from,

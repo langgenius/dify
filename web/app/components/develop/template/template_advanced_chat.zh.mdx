@@ -54,6 +54,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty } from '../md.tsx'
       <Property name='conversation_id' type='string' key='conversation_id'>
       （选填）会话 ID，需要基于之前的聊天记录继续对话，必须传之前消息的 conversation_id。
       </Property>
+      <Property name='parent_message_id' type='string' key='parent_message_id'>
+      用于从特定消息继续或重新生成的父消息 ID。需要提供 `conversation_id`，且必须属于该对话。
+      </Property>
       <Property name='files' type='array[object]' key='files'>
           文件列表，适用于传入文件结合文本理解并回答问题，仅当模型支持 Vision/Video 能力时可用。
           - `type` (string) 支持类型：

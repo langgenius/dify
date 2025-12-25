@@ -55,6 +55,9 @@ import { Row, Col, Properties, Property, Heading, SubProperty, Paragraph } from 
       <Property name='conversation_id' type='string' key='conversation_id'>
       会話ID、以前のチャット記録に基づいて会話を続けるには、前のメッセージのconversation_idを渡す必要があります。
       </Property>
+      <Property name='parent_message_id' type='string' key='parent_message_id'>
+      特定のメッセージから続けたり再生成するための親メッセージID。`conversation_id` が必須で、その会話に属している必要があります。
+      </Property>
       <Property name='files' type='array[object]' key='files'>
           ファイルリスト、モデルが Vision/Video 機能をサポートしている場合に限り、ファイルをテキスト理解および質問応答に組み合わせて入力するのに適しています。
           - `type` (string) サポートされるタイプ：

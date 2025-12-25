@@ -2,9 +2,8 @@ from collections.abc import Mapping, Sequence
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional
 
-from pydantic import BaseModel, ConfigDict, Field, ValidationInfo, field_validator
+from pydantic import BaseModel, ConfigDict, Field
 
-from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, WorkflowUIBasedAppConfig
 from core.entities.provider_configuration import ProviderModelBundle
 from core.file import File, FileUploadConfig
@@ -158,19 +157,11 @@ class ConversationAppGenerateEntity(AppGenerateEntity):
     parent_message_id: str | None = Field(
         default=None,
         description=(
-            "Starting from v0.9.0, parent_message_id is used to support message regeneration for internal chat API."
-            "For service API, we need to ensure its forward compatibility, "
-            "so passing in the parent_message_id as request arg is not supported for now. "
-            "It needs to be set to UUID_NIL so that the subsequent processing will treat it as legacy messages."
+            "Starting from v0.9.0, parent_message_id is used to support message regeneration "
+            "and branching in chat APIs."
+            "For service API, when it is omitted, the system treats it as UUID_NIL to preserve legacy linear history."
         ),
     )
-
-    @field_validator("parent_message_id")
-    @classmethod
-    def validate_parent_message_id(cls, v, info: ValidationInfo):
-        if info.data.get("invoke_from") == InvokeFrom.SERVICE_API and v != UUID_NIL:
-            raise ValueError("parent_message_id should be UUID_NIL for service API")
-        return v
 
 
 class ChatAppGenerateEntity(ConversationAppGenerateEntity, EasyUIBasedAppGenerateEntity):

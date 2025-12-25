@@ -56,6 +56,9 @@ Chat applications support session persistence, allowing previous chat history to
       <Property name='conversation_id' type='string' key='conversation_id'>
       Conversation ID, to continue the conversation based on previous chat records, it is necessary to pass the previous message's conversation_id.
       </Property>
+      <Property name='parent_message_id' type='string' key='parent_message_id'>
+      Parent message ID to continue from a specific message or regenerate. Requires `conversation_id` and must belong to that conversation.
+      </Property>
       <Property name='files' type='array[object]' key='files'>
           File list, suitable for inputting files combined with text understanding and answering questions, available only when the model supports Vision/Video capability.
           - `type` (string) Supported type:

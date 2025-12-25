@@ -1,11 +1,12 @@
 import json
 import logging
-from collections.abc import Generator
-from typing import Union, cast
+from collections.abc import Generator, Mapping
+from typing import Any, Union, cast
 
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
+from constants import UUID_NIL
 from core.app.app_config.entities import EasyUIBasedAppConfig, EasyUIBasedAppModelConfigFrom
 from core.app.apps.base_app_generator import BaseAppGenerator
 from core.app.apps.base_app_queue_manager import AppQueueManager
@@ -83,6 +84,12 @@ class MessageBasedAppGenerator(BaseAppGenerator):
             else:
                 logger.exception("Failed to handle response, conversation_id: %s", conversation.id)
                 raise e
+
+    def _resolve_parent_message_id(self, args: Mapping[str, Any], invoke_from: InvokeFrom) -> str | None:
+        parent_message_id = args.get("parent_message_id")
+        if invoke_from == InvokeFrom.SERVICE_API and not parent_message_id:
+            return UUID_NIL
+        return parent_message_id
 
     def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
         if conversation:

@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -33,8 +33,11 @@ from libs import helper
 from models.model import App, AppMode, EndUser
 from services.app_generate_service import AppGenerateService
 from services.app_task_service import AppTaskService
+from services.conversation_service import ConversationService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
+from services.errors.message import MessageNotExistsError
+from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 
@@ -53,14 +56,18 @@ class ChatRequestPayload(BaseModel):
     files: list[dict[str, Any]] | None = None
     response_mode: Literal["blocking", "streaming"] | None = None
     conversation_id: str | None = Field(default=None, description="Conversation UUID")
+    parent_message_id: str | None = Field(default=None, description="Parent message UUID")
     retriever_from: str = Field(default="dev")
     auto_generate_name: bool = Field(default=True, description="Auto generate conversation name")
     workflow_id: str | None = Field(default=None, description="Workflow ID for advanced chat")
 
-    @field_validator("conversation_id", mode="before")
+    @field_validator("conversation_id", "parent_message_id", mode="before")
     @classmethod
-    def normalize_conversation_id(cls, value: str | UUID | None) -> str | None:
-        """Allow missing or blank conversation IDs; enforce UUID format when provided."""
+    def normalize_uuid_fields(cls, value: str | UUID | None, info: ValidationInfo) -> str | None:
+        """Allow missing or blank UUID fields; enforce UUID format when provided."""
+        if isinstance(value, UUID):
+            return str(value)
+
         if isinstance(value, str):
             value = value.strip()
 
@@ -70,7 +77,36 @@ class ChatRequestPayload(BaseModel):
         try:
             return helper.uuid_value(value)
         except ValueError as exc:
-            raise ValueError("conversation_id must be a valid UUID") from exc
+            raise ValueError(f"{info.field_name} must be a valid UUID") from exc
+
+
+def _validate_parent_message_request(
+    *,
+    app_model: App,
+    end_user: EndUser,
+    conversation_id: str | None,
+    parent_message_id: str | None,
+) -> None:
+    if not parent_message_id:
+        return
+
+    if not conversation_id:
+        raise BadRequest("conversation_id is required when parent_message_id is provided.")
+
+    try:
+        conversation = ConversationService.get_conversation(
+            app_model=app_model, conversation_id=conversation_id, user=end_user
+        )
+    except services.errors.conversation.ConversationNotExistsError:
+        raise NotFound("Conversation Not Exists.")
+
+    try:
+        parent_message = MessageService.get_message(app_model=app_model, user=end_user, message_id=parent_message_id)
+    except MessageNotExistsError:
+        raise NotFound("Message Not Exists.")
+
+    if parent_message.conversation_id != conversation.id:
+        raise BadRequest("parent_message_id does not belong to the conversation.")
 
 
 register_schema_models(service_api_ns, CompletionRequestPayload, ChatRequestPayload)
@@ -204,6 +240,13 @@ class ChatApi(Resource):
             args["external_trace_id"] = external_trace_id
 
         streaming = payload.response_mode == "streaming"
+
+        _validate_parent_message_request(
+            app_model=app_model,
+            end_user=end_user,
+            conversation_id=args.get("conversation_id"),
+            parent_message_id=args.get("parent_message_id"),
+        )
 
         try:
             response = AppGenerateService.generate(
