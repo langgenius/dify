@@ -463,6 +463,7 @@
   "operation.reset": "リセット",
   "operation.resetKeywords": "キーワードをリセット",
   "operation.save": "保存",
+  "operation.saving": "保存中...",
   "operation.saveAndEnable": "保存 & 有効に",
   "operation.saveAndRegenerate": "保存して子チャンクを再生成",
   "operation.search": "検索",

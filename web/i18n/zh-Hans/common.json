@@ -463,6 +463,7 @@
   "operation.reset": "重置",
   "operation.resetKeywords": "重置关键词",
   "operation.save": "保存",
+  "operation.saving": "保存中...",
   "operation.saveAndEnable": "保存并启用",
   "operation.saveAndRegenerate": "保存并重新生成子分段",
   "operation.search": "搜索",
