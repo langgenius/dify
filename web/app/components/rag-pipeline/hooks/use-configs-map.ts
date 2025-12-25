@@ -1,7 +1,7 @@
 import { useMemo } from 'react'
 import { useStore } from '@/app/components/workflow/store'
-import { FlowType } from '@/types/common'
 import { Resolution, TransferMethod } from '@/types/app'
+import { FlowType } from '@/types/common'
 
 export const useConfigsMap = () => {
   const pipelineId = useStore(s => s.pipelineId)

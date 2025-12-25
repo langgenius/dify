@@ -1,31 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import type { FeedbackType } from '@/app/components/base/chat/chat/type'
+import type { WorkflowProcess } from '@/app/components/base/chat/types'
+import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import type { PromptConfig } from '@/models/debug'
+import type { InstalledApp } from '@/models/explore'
+import type { SiteInfo } from '@/models/share'
+import type { VisionFile, VisionSettings } from '@/types/app'
+import { RiLoader2Line } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
 import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import TextGenerationRes from '@/app/components/app/text-generate/item'
-import NoData from '@/app/components/share/text-generation/no-data'
-import Toast from '@/app/components/base/toast'
 import Button from '@/app/components/base/button'
-import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
-import { RiLoader2Line } from '@remixicon/react'
-import { sendCompletionMessage, sendWorkflowMessage, stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
-import type { FeedbackType } from '@/app/components/base/chat/chat/type'
-import Loading from '@/app/components/base/loading'
-import type { PromptConfig } from '@/models/debug'
-import type { InstalledApp } from '@/models/explore'
-import { TransferMethod, type VisionFile, type VisionSettings } from '@/types/app'
-import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
-import type { WorkflowProcess } from '@/app/components/base/chat/types'
-import { sleep } from '@/utils'
-import type { SiteInfo } from '@/models/share'
-import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
 import {
   getFilesInLogs,
   getProcessedFiles,
 } from '@/app/components/base/file-uploader/utils'
-import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { StopCircle } from '@/app/components/base/icons/src/vender/solid/mediaAndDevices'
+import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
+import NoData from '@/app/components/share/text-generation/no-data'
+import { NodeRunningStatus, WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { TEXT_GENERATION_TIMEOUT_MS } from '@/config'
+import { sendCompletionMessage, sendWorkflowMessage, stopChatMessageResponding, stopWorkflowMessage, updateFeedback } from '@/service/share'
+import { TransferMethod } from '@/types/app'
+import { sleep } from '@/utils'
 import { formatBooleanInputs } from '@/utils/model-config'
 
 export type IResultProps = {
@@ -52,7 +54,7 @@ export type IResultProps = {
   completionFiles: VisionFile[]
   siteInfo: SiteInfo | null
   onRunStart: () => void
-  onRunControlChange?: (control: { onStop: () => Promise<void> | void; isStopping: boolean } | null) => void
+  onRunControlChange?: (control: { onStop: () => Promise<void> | void, isStopping: boolean } | null) => void
   hideInlineStopButton?: boolean
 }
 
@@ -189,7 +191,7 @@ const Result: FC<IResultProps> = ({
 
     let hasEmptyInput = ''
     const requiredVars = prompt_variables?.filter(({ key, name, required, type }) => {
-      if(type === 'boolean' || type === 'checkbox')
+      if (type === 'boolean' || type === 'checkbox')
         return false // boolean/checkbox input is not required
       const res = (!key || !key.trim()) || (!name || !name.trim()) || (required || required === undefined || required === null)
       return res
@@ -534,16 +536,16 @@ const Result: FC<IResultProps> = ({
       {!hideInlineStopButton && isResponding && currentTaskId && (
         <div className={`mb-3 flex ${isPC ? 'justify-end' : 'justify-center'}`}>
           <Button
-            variant='secondary'
+            variant="secondary"
             disabled={isStopping}
             onClick={handleStop}
           >
             {
               isStopping
-                ? <RiLoader2Line className='mr-[5px] h-3.5 w-3.5 animate-spin' />
-                : <StopCircle className='mr-[5px] h-3.5 w-3.5' />
+                ? <RiLoader2Line className="mr-[5px] h-3.5 w-3.5 animate-spin" />
+                : <StopCircle className="mr-[5px] h-3.5 w-3.5" />
             }
-            <span className='text-xs font-normal'>{t('appDebug.operation.stopResponding')}</span>
+            <span className="text-xs font-normal">{t('appDebug.operation.stopResponding')}</span>
           </Button>
         </div>
       )}
@@ -577,28 +579,28 @@ const Result: FC<IResultProps> = ({
       {!isCallBatchAPI && !isWorkflow && (
         (isResponding && !completionRes)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>)
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : (
-            <>
-              {(isNoData)
-                ? <NoData />
-                : renderTextGenerationRes()
-              }
-            </>
-          )
+              <>
+                {(isNoData)
+                  ? <NoData />
+                  : renderTextGenerationRes()}
+              </>
+            )
       )}
       {!isCallBatchAPI && isWorkflow && (
         (isResponding && !workflowProcessData)
           ? (
-            <div className='flex h-full w-full items-center justify-center'>
-              <Loading type='area' />
-            </div>
-          )
+              <div className="flex h-full w-full items-center justify-center">
+                <Loading type="area" />
+              </div>
+            )
           : !workflowProcessData
-            ? <NoData />
-            : renderTextGenerationRes()
+              ? <NoData />
+              : renderTextGenerationRes()
       )}
       {isCallBatchAPI && renderTextGenerationRes()}
     </>

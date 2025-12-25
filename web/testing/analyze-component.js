@@ -1,10 +1,11 @@
 #!/usr/bin/env node
 
-const fs = require('node:fs')
-const path = require('node:path')
-const { Linter } = require('eslint')
-const sonarPlugin = require('eslint-plugin-sonarjs')
-const tsParser = require('@typescript-eslint/parser')
+import { spawnSync } from 'node:child_process'
+import fs from 'node:fs'
+import path from 'node:path'
+import tsParser from '@typescript-eslint/parser'
+import { Linter } from 'eslint'
+import sonarPlugin from 'eslint-plugin-sonarjs'
 
 // ============================================================================
 // Simple Analyzer
@@ -46,7 +47,7 @@ class ComponentAnalyzer {
       hasImperativeHandle: code.includes('useImperativeHandle'),
       hasSWR: code.includes('useSWR'),
       hasReactQuery: code.includes('useQuery') || code.includes('useMutation'),
-      hasAhooks: code.includes("from 'ahooks'"),
+      hasAhooks: code.includes('from \'ahooks\''),
       complexity,
       maxComplexity,
       rawComplexity,
@@ -59,17 +60,27 @@ class ComponentAnalyzer {
 
   detectType(filePath, code) {
     const normalizedPath = filePath.replace(/\\/g, '/')
-    if (normalizedPath.includes('/hooks/')) return 'hook'
-    if (normalizedPath.includes('/utils/')) return 'util'
-    if (/\/page\.(t|j)sx?$/.test(normalizedPath)) return 'page'
-    if (/\/layout\.(t|j)sx?$/.test(normalizedPath)) return 'layout'
-    if (/\/providers?\//.test(normalizedPath)) return 'provider'
+    if (normalizedPath.includes('/hooks/'))
+      return 'hook'
+    if (normalizedPath.includes('/utils/'))
+      return 'util'
+    if (/\/page\.(t|j)sx?$/.test(normalizedPath))
+      return 'page'
+    if (/\/layout\.(t|j)sx?$/.test(normalizedPath))
+      return 'layout'
+    if (/\/providers?\//.test(normalizedPath))
+      return 'provider'
     // Dify-specific types
-    if (normalizedPath.includes('/components/base/')) return 'base-component'
-    if (normalizedPath.includes('/context/')) return 'context'
-    if (normalizedPath.includes('/store/')) return 'store'
-    if (normalizedPath.includes('/service/')) return 'service'
-    if (/use[A-Z]\w+/.test(code)) return 'component'
+    if (normalizedPath.includes('/components/base/'))
+      return 'base-component'
+    if (normalizedPath.includes('/context/'))
+      return 'context'
+    if (normalizedPath.includes('/store/'))
+      return 'store'
+    if (normalizedPath.includes('/service/'))
+      return 'service'
+    if (/use[A-Z]\w+/.test(code))
+      return 'component'
     return 'component'
   }
 
@@ -111,7 +122,7 @@ class ComponentAnalyzer {
         msg => msg.ruleId === 'sonarjs/cognitive-complexity'
           && msg.messageId === 'fileComplexity',
       )
-      const total = totalMsg ? parseInt(totalMsg.message, 10) : 0
+      const total = totalMsg ? Number.parseInt(totalMsg.message, 10) : 0
 
       // Get max function complexity by analyzing each function
       const maxConfig = {
@@ -126,7 +137,7 @@ class ComponentAnalyzer {
         if (msg.ruleId === 'sonarjs/cognitive-complexity') {
           const match = msg.message.match(complexityPattern)
           if (match && match[1])
-            max = Math.max(max, parseInt(match[1], 10))
+            max = Math.max(max, Number.parseInt(match[1], 10))
         }
       })
 
@@ -181,10 +192,12 @@ class ComponentAnalyzer {
         searchName = path.basename(parentDir)
       }
 
-      if (!searchName) return 0
+      if (!searchName)
+        return 0
 
       const searchRoots = this.collectSearchRoots(resolvedComponentPath)
-      if (searchRoots.length === 0) return 0
+      if (searchRoots.length === 0)
+        return 0
 
       const escapedName = ComponentAnalyzer.escapeRegExp(searchName)
       const patterns = [
@@ -200,29 +213,34 @@ class ComponentAnalyzer {
       const stack = [...searchRoots]
       while (stack.length > 0) {
         const currentDir = stack.pop()
-        if (!currentDir || visited.has(currentDir)) continue
+        if (!currentDir || visited.has(currentDir))
+          continue
         visited.add(currentDir)
 
         const entries = fs.readdirSync(currentDir, { withFileTypes: true })
 
-        entries.forEach(entry => {
+        entries.forEach((entry) => {
           const entryPath = path.join(currentDir, entry.name)
 
           if (entry.isDirectory()) {
-            if (this.shouldSkipDir(entry.name)) return
+            if (this.shouldSkipDir(entry.name))
+              return
             stack.push(entryPath)
             return
           }
 
-          if (!this.shouldInspectFile(entry.name)) return
+          if (!this.shouldInspectFile(entry.name))
+            return
 
           const normalizedEntryPath = path.resolve(entryPath)
-          if (normalizedEntryPath === path.resolve(resolvedComponentPath)) return
+          if (normalizedEntryPath === path.resolve(resolvedComponentPath))
+            return
 
           const source = fs.readFileSync(entryPath, 'utf-8')
-          if (!source.includes(searchName)) return
+          if (!source.includes(searchName))
+            return
 
-          if (patterns.some(pattern => {
+          if (patterns.some((pattern) => {
             pattern.lastIndex = 0
             return pattern.test(source)
           })) {
@@ -251,7 +269,8 @@ class ComponentAnalyzer {
         break
       }
 
-      if (currentDir === workspaceRoot) break
+      if (currentDir === workspaceRoot)
+        break
       currentDir = path.dirname(currentDir)
     }
 
@@ -261,8 +280,9 @@ class ComponentAnalyzer {
       path.join(workspaceRoot, 'src'),
     ]
 
-    fallbackRoots.forEach(root => {
-      if (fs.existsSync(root) && fs.statSync(root).isDirectory()) roots.add(root)
+    fallbackRoots.forEach((root) => {
+      if (fs.existsSync(root) && fs.statSync(root).isDirectory())
+        roots.add(root)
     })
 
     return Array.from(roots)
@@ -285,10 +305,14 @@ class ComponentAnalyzer {
 
   shouldInspectFile(fileName) {
     const normalized = fileName.toLowerCase()
-    if (!(/\.(ts|tsx)$/i.test(fileName))) return false
-    if (normalized.endsWith('.d.ts')) return false
-    if (/\.(spec|test)\.(ts|tsx)$/.test(normalized)) return false
-    if (normalized.endsWith('.stories.tsx')) return false
+    if (!(/\.(ts|tsx)$/i.test(fileName)))
+      return false
+    if (normalized.endsWith('.d.ts'))
+      return false
+    if (/\.(spec|test)\.(ts|tsx)$/.test(normalized))
+      return false
+    if (normalized.endsWith('.stories.tsx'))
+      return false
     return true
   }
 
@@ -340,9 +364,12 @@ class ComponentAnalyzer {
    * Get priority level based on score (0-100 scale)
    */
   getPriorityLevel(score) {
-    if (score > 75) return '🔴 CRITICAL'
-    if (score > 50) return '🟠 HIGH'
-    if (score > 25) return '🟡 MEDIUM'
+    if (score > 75)
+      return '🔴 CRITICAL'
+    if (score > 50)
+      return '🟠 HIGH'
+    if (score > 25)
+      return '🟡 MEDIUM'
     return '🟢 LOW'
   }
 }
@@ -419,27 +446,42 @@ Create the test file at: ${testPath}
 
   getComplexityLevel(score) {
     // Normalized complexity thresholds (0-100 scale)
-    if (score <= 25) return '🟢 Simple'
-    if (score <= 50) return '🟡 Medium'
-    if (score <= 75) return '🟠 Complex'
+    if (score <= 25)
+      return '🟢 Simple'
+    if (score <= 50)
+      return '🟡 Medium'
+    if (score <= 75)
+      return '🟠 Complex'
     return '🔴 Very Complex'
   }
 
   buildFocusPoints(analysis) {
     const points = []
 
-    if (analysis.hasState) points.push('- Testing state management and updates')
-    if (analysis.hasEffects) points.push('- Testing side effects and cleanup')
-    if (analysis.hasCallbacks) points.push('- Testing callback stability and memoization')
-    if (analysis.hasMemo) points.push('- Testing memoization logic and dependencies')
-    if (analysis.hasEvents) points.push('- Testing user interactions and event handlers')
-    if (analysis.hasRouter) points.push('- Mocking Next.js router hooks')
-    if (analysis.hasAPI) points.push('- Mocking API calls')
-    if (analysis.hasForwardRef) points.push('- Testing ref forwarding behavior')
-    if (analysis.hasComponentMemo) points.push('- Testing component memoization')
-    if (analysis.hasSuspense) points.push('- Testing Suspense boundaries and lazy loading')
-    if (analysis.hasPortal) points.push('- Testing Portal rendering')
-    if (analysis.hasImperativeHandle) points.push('- Testing imperative handle methods')
+    if (analysis.hasState)
+      points.push('- Testing state management and updates')
+    if (analysis.hasEffects)
+      points.push('- Testing side effects and cleanup')
+    if (analysis.hasCallbacks)
+      points.push('- Testing callback stability and memoization')
+    if (analysis.hasMemo)
+      points.push('- Testing memoization logic and dependencies')
+    if (analysis.hasEvents)
+      points.push('- Testing user interactions and event handlers')
+    if (analysis.hasRouter)
+      points.push('- Mocking Next.js router hooks')
+    if (analysis.hasAPI)
+      points.push('- Mocking API calls')
+    if (analysis.hasForwardRef)
+      points.push('- Testing ref forwarding behavior')
+    if (analysis.hasComponentMemo)
+      points.push('- Testing component memoization')
+    if (analysis.hasSuspense)
+      points.push('- Testing Suspense boundaries and lazy loading')
+    if (analysis.hasPortal)
+      points.push('- Testing Portal rendering')
+    if (analysis.hasImperativeHandle)
+      points.push('- Testing imperative handle methods')
     points.push('- Testing edge cases and error handling')
     points.push('- Testing all prop variations')
 
@@ -523,9 +565,12 @@ Create the test file at: ${testPath}
     // ===== Performance Optimization =====
     if (analysis.hasCallbacks || analysis.hasMemo || analysis.hasComponentMemo) {
       const features = []
-      if (analysis.hasCallbacks) features.push('useCallback')
-      if (analysis.hasMemo) features.push('useMemo')
-      if (analysis.hasComponentMemo) features.push('React.memo')
+      if (analysis.hasCallbacks)
+        features.push('useCallback')
+      if (analysis.hasMemo)
+        features.push('useMemo')
+      if (analysis.hasComponentMemo)
+        features.push('React.memo')
 
       guidelines.push(`🚀 Performance optimization (${features.join(', ')}):`)
       guidelines.push('   - Verify callbacks maintain referential equality')
@@ -688,12 +733,14 @@ Output format:
 function extractCopyContent(prompt) {
   const marker = '📋 PROMPT FOR AI ASSISTANT'
   const markerIndex = prompt.indexOf(marker)
-  if (markerIndex === -1) return ''
+  if (markerIndex === -1)
+    return ''
 
   const section = prompt.slice(markerIndex)
   const lines = section.split('\n')
   const firstDivider = lines.findIndex(line => line.includes('━━━━━━━━'))
-  if (firstDivider === -1) return ''
+  if (firstDivider === -1)
+    return ''
 
   const startIdx = firstDivider + 1
   let endIdx = lines.length
@@ -705,7 +752,8 @@ function extractCopyContent(prompt) {
     }
   }
 
-  if (startIdx >= endIdx) return ''
+  if (startIdx >= endIdx)
+    return ''
 
   return lines.slice(startIdx, endIdx).join('\n').trim()
 }
@@ -721,8 +769,13 @@ function extractCopyContent(prompt) {
 function resolveDirectoryEntry(absolutePath, componentPath) {
   // Entry files in priority order: index files first, then common entry files
   const entryFiles = [
-    'index.tsx', 'index.ts', // Priority 1: index files
-    'node.tsx', 'panel.tsx', 'component.tsx', 'main.tsx', 'container.tsx', // Priority 2: common entry files
+    'index.tsx',
+    'index.ts', // Priority 1: index files
+    'node.tsx',
+    'panel.tsx',
+    'component.tsx',
+    'main.tsx',
+    'container.tsx', // Priority 2: common entry files
   ]
   for (const entryFile of entryFiles) {
     const entryPath = path.join(absolutePath, entryFile)
@@ -751,9 +804,12 @@ function listAnalyzableFiles(dirPath) {
         const priority = ['index.tsx', 'index.ts', 'node.tsx', 'panel.tsx', 'component.tsx', 'main.tsx', 'container.tsx']
         const aIdx = priority.indexOf(a)
         const bIdx = priority.indexOf(b)
-        if (aIdx !== -1 && bIdx !== -1) return aIdx - bIdx
-        if (aIdx !== -1) return -1
-        if (bIdx !== -1) return 1
+        if (aIdx !== -1 && bIdx !== -1)
+          return aIdx - bIdx
+        if (aIdx !== -1)
+          return -1
+        if (bIdx !== -1)
+          return 1
         return a.localeCompare(b)
       })
   }
@@ -796,7 +852,7 @@ function main() {
   let isJsonMode = false
   const args = []
 
-  rawArgs.forEach(arg => {
+  rawArgs.forEach((arg) => {
     if (arg === '--review') {
       isReviewMode = true
       return
@@ -947,12 +1003,12 @@ This component is too complex to test effectively. Please consider:
   console.log(prompt)
 
   try {
-    const { spawnSync } = require('node:child_process')
-
     const checkPbcopy = spawnSync('which', ['pbcopy'], { stdio: 'pipe' })
-    if (checkPbcopy.status !== 0) return
+    if (checkPbcopy.status !== 0)
+      return
     const copyContent = extractCopyContent(prompt)
-    if (!copyContent) return
+    if (!copyContent)
+      return
 
     const result = spawnSync('pbcopy', [], {
       input: copyContent,
@@ -974,7 +1030,8 @@ This component is too complex to test effectively. Please consider:
 
 function inferTestPath(componentPath) {
   const ext = path.extname(componentPath)
-  if (!ext) return `${componentPath}.spec.ts`
+  if (!ext)
+    return `${componentPath}.spec.ts`
   return componentPath.replace(ext, `.spec${ext}`)
 }
 

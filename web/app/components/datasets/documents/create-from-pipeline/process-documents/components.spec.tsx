@@ -1,17 +1,17 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import Actions from './actions'
-import Header from './header'
-import Form from './form'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { z } from 'zod'
+import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import Toast from '@/app/components/base/toast'
+import Actions from './actions'
+import Form from './form'
+import Header from './header'
 
 // ==========================================
 // Spy on Toast.notify for validation tests
 // ==========================================
-const toastNotifySpy = jest.spyOn(Toast, 'notify')
+const toastNotifySpy = vi.spyOn(Toast, 'notify')
 
 // ==========================================
 // Test Data Factory Functions
@@ -61,12 +61,12 @@ const createFailingSchema = () => {
 // ==========================================
 describe('Actions', () => {
   const defaultActionsProps = {
-    onBack: jest.fn(),
-    onProcess: jest.fn(),
+    onBack: vi.fn(),
+    onProcess: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -151,7 +151,7 @@ describe('Actions', () => {
   describe('User Interactions', () => {
     it('should call onBack when back button is clicked', () => {
       // Arrange
-      const onBack = jest.fn()
+      const onBack = vi.fn()
       render(<Actions {...defaultActionsProps} onBack={onBack} />)
 
       // Act
@@ -163,7 +163,7 @@ describe('Actions', () => {
 
     it('should call onProcess when process button is clicked', () => {
       // Arrange
-      const onProcess = jest.fn()
+      const onProcess = vi.fn()
       render(<Actions {...defaultActionsProps} onProcess={onProcess} />)
 
       // Act
@@ -175,7 +175,7 @@ describe('Actions', () => {
 
     it('should not call onProcess when process button is disabled and clicked', () => {
       // Arrange
-      const onProcess = jest.fn()
+      const onProcess = vi.fn()
       render(<Actions {...defaultActionsProps} onProcess={onProcess} runDisabled={true} />)
 
       // Act
@@ -202,13 +202,13 @@ describe('Actions', () => {
 // ==========================================
 describe('Header', () => {
   const defaultHeaderProps = {
-    onReset: jest.fn(),
+    onReset: vi.fn(),
     resetDisabled: false,
     previewDisabled: false,
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -328,7 +328,7 @@ describe('Header', () => {
   describe('User Interactions', () => {
     it('should call onReset when reset button is clicked', () => {
       // Arrange
-      const onReset = jest.fn()
+      const onReset = vi.fn()
       render(<Header {...defaultHeaderProps} onReset={onReset} />)
 
       // Act
@@ -340,7 +340,7 @@ describe('Header', () => {
 
     it('should not call onReset when reset button is disabled and clicked', () => {
       // Arrange
-      const onReset = jest.fn()
+      const onReset = vi.fn()
       render(<Header {...defaultHeaderProps} onReset={onReset} resetDisabled={true} />)
 
       // Act
@@ -352,7 +352,7 @@ describe('Header', () => {
 
     it('should call onPreview when preview button is clicked', () => {
       // Arrange
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
       render(<Header {...defaultHeaderProps} onPreview={onPreview} />)
 
       // Act
@@ -364,7 +364,7 @@ describe('Header', () => {
 
     it('should not call onPreview when preview button is disabled and clicked', () => {
       // Arrange
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
       render(<Header {...defaultHeaderProps} onPreview={onPreview} previewDisabled={true} />)
 
       // Act
@@ -421,14 +421,14 @@ describe('Form', () => {
     initialData: { field1: '' },
     configurations: [] as BaseConfiguration[],
     schema: createMockSchema(),
-    onSubmit: jest.fn(),
-    onPreview: jest.fn(),
+    onSubmit: vi.fn(),
+    onPreview: vi.fn(),
     ref: { current: null } as React.RefObject<unknown>,
     isRunning: false,
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     toastNotifySpy.mockClear()
   })
 
@@ -544,7 +544,7 @@ describe('Form', () => {
   describe('Ref Submit', () => {
     it('should call onSubmit when ref.submit() is called', async () => {
       // Arrange
-      const onSubmit = jest.fn()
+      const onSubmit = vi.fn()
       const mockRef = { current: null } as React.MutableRefObject<{ submit: () => void } | null>
       render(<Form {...defaultFormProps} ref={mockRef} onSubmit={onSubmit} />)
 
@@ -582,7 +582,7 @@ describe('Form', () => {
   describe('User Interactions', () => {
     it('should call onPreview when preview button is clicked', () => {
       // Arrange
-      const onPreview = jest.fn()
+      const onPreview = vi.fn()
       render(<Form {...defaultFormProps} onPreview={onPreview} />)
 
       // Act
@@ -594,7 +594,7 @@ describe('Form', () => {
 
     it('should handle form submission via form element', async () => {
       // Arrange
-      const onSubmit = jest.fn()
+      const onSubmit = vi.fn()
       const { container } = render(<Form {...defaultFormProps} onSubmit={onSubmit} />)
       const form = container.querySelector('form')!
 
@@ -721,7 +721,7 @@ describe('Form', () => {
 
     it('should not call onSubmit when validation fails', async () => {
       // Arrange
-      const onSubmit = jest.fn()
+      const onSubmit = vi.fn()
       const failingSchema = createFailingSchema()
       const { container } = render(<Form {...defaultFormProps} schema={failingSchema} onSubmit={onSubmit} />)
 
@@ -738,7 +738,7 @@ describe('Form', () => {
 
     it('should call onSubmit when validation passes', async () => {
       // Arrange
-      const onSubmit = jest.fn()
+      const onSubmit = vi.fn()
       const passingSchema = createMockSchema()
       const { container } = render(<Form {...defaultFormProps} schema={passingSchema} onSubmit={onSubmit} />)
 
@@ -826,7 +826,7 @@ describe('Form', () => {
 // ==========================================
 describe('Process Documents Components Integration', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Form with Header Integration', () => {
@@ -834,8 +834,8 @@ describe('Process Documents Components Integration', () => {
       initialData: { field1: '' },
       configurations: [] as BaseConfiguration[],
       schema: createMockSchema(),
-      onSubmit: jest.fn(),
-      onPreview: jest.fn(),
+      onSubmit: vi.fn(),
+      onPreview: vi.fn(),
       ref: { current: null } as React.RefObject<unknown>,
       isRunning: false,
     }

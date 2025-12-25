@@ -1,9 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import Input from './input'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
+import Input from './input'
 
 type Props = {
   className?: string
@@ -30,15 +30,18 @@ const Field: FC<Props> = ({
 }) => {
   return (
     <div className={cn(className)}>
-      <div className='flex py-[7px]'>
-        <div className={cn(labelClassName, 'flex h-[16px] items-center text-[13px] font-semibold text-text-secondary')}>{label} </div>
-        {isRequired && <span className='ml-0.5 text-xs font-semibold text-text-destructive'>*</span>}
+      <div className="flex py-[7px]">
+        <div className={cn(labelClassName, 'flex h-[16px] items-center text-[13px] font-semibold text-text-secondary')}>
+          {label}
+          {' '}
+        </div>
+        {isRequired && <span className="ml-0.5 text-xs font-semibold text-text-destructive">*</span>}
         {tooltip && (
           <Tooltip
             popupContent={
-              <div className='w-[200px]'>{tooltip}</div>
+              <div className="w-[200px]">{tooltip}</div>
             }
-            triggerClassName='ml-0.5 w-4 h-4'
+            triggerClassName="ml-0.5 w-4 h-4"
           />
         )}
       </div>

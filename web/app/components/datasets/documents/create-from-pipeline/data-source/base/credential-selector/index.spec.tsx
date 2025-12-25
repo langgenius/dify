@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
-import React from 'react'
-import CredentialSelector from './index'
 import type { CredentialSelectorProps } from './index'
 import type { DataSourceCredential } from '@/types/pipeline'
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react'
+import * as React from 'react'
+import CredentialSelector from './index'
 
 // Mock CredentialTypeEnum to avoid deep import chain issues
 enum MockCredentialTypeEnum {
@@ -11,7 +11,7 @@ enum MockCredentialTypeEnum {
 }
 
 // Mock plugin-auth module to avoid deep import chain issues
-jest.mock('@/app/components/plugins/plugin-auth', () => ({
+vi.mock('@/app/components/plugins/plugin-auth', () => ({
   CredentialTypeEnum: {
     OAUTH2: 'oauth2',
     API_KEY: 'api_key',
@@ -19,7 +19,7 @@ jest.mock('@/app/components/plugins/plugin-auth', () => ({
 }))
 
 // Mock portal-to-follow-elem - use React state to properly handle open/close
-jest.mock('@/app/components/base/portal-to-follow-elem', () => {
+vi.mock('@/app/components/base/portal-to-follow-elem', () => {
   const MockPortalToFollowElem = ({ children, open }: any) => {
     return (
       <div data-testid="portal-root" data-open={open}>
@@ -80,19 +80,18 @@ const createMockCredentials = (count: number = 3): DataSourceCredential[] =>
       name: `Credential ${i + 1}`,
       avatar_url: `https://example.com/avatar-${i + 1}.png`,
       is_default: i === 0,
-    }),
-  )
+    }))
 
 const createDefaultProps = (overrides?: Partial<CredentialSelectorProps>): CredentialSelectorProps => ({
   currentCredentialId: 'cred-1',
-  onCredentialChange: jest.fn(),
+  onCredentialChange: vi.fn(),
   credentials: createMockCredentials(),
   ...overrides,
 })
 
 describe('CredentialSelector', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -277,7 +276,7 @@ describe('CredentialSelector', () => {
     describe('onCredentialChange prop', () => {
       it('should be called when selecting a credential', () => {
         // Arrange
-        const mockOnChange = jest.fn()
+        const mockOnChange = vi.fn()
         const props = createDefaultProps({ onCredentialChange: mockOnChange })
         render(<CredentialSelector {...props} />)
 
@@ -298,7 +297,7 @@ describe('CredentialSelector', () => {
         ['cred-3', 'Credential 3'],
       ])('should call onCredentialChange with %s when selecting %s', (credId, credentialName) => {
         // Arrange
-        const mockOnChange = jest.fn()
+        const mockOnChange = vi.fn()
         const props = createDefaultProps({ onCredentialChange: mockOnChange })
         render(<CredentialSelector {...props} />)
 
@@ -317,7 +316,7 @@ describe('CredentialSelector', () => {
 
       it('should call onCredentialChange with cred-1 when selecting Credential 1 in dropdown', () => {
         // Arrange - Start with cred-2 selected so cred-1 is only in dropdown
-        const mockOnChange = jest.fn()
+        const mockOnChange = vi.fn()
         const props = createDefaultProps({
           onCredentialChange: mockOnChange,
           currentCredentialId: 'cred-2',
@@ -359,7 +358,7 @@ describe('CredentialSelector', () => {
 
     it('should call onCredentialChange when clicking a credential item', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       render(<CredentialSelector {...props} />)
 
@@ -376,7 +375,7 @@ describe('CredentialSelector', () => {
 
     it('should close dropdown after selecting a credential', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       render(<CredentialSelector {...props} />)
 
@@ -410,7 +409,7 @@ describe('CredentialSelector', () => {
 
     it('should allow selecting credentials multiple times', () => {
       // Arrange - Start with cred-2 selected so we can select other credentials
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({
         onCredentialChange: mockOnChange,
         currentCredentialId: 'cred-2',
@@ -435,7 +434,7 @@ describe('CredentialSelector', () => {
   describe('Side Effects and Cleanup', () => {
     it('should auto-select first credential when currentCredential is not found and credentials exist', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({
         currentCredentialId: 'non-existent-id',
         onCredentialChange: mockOnChange,
@@ -450,7 +449,7 @@ describe('CredentialSelector', () => {
 
     it('should not call onCredentialChange when currentCredential is found', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({
         currentCredentialId: 'cred-2',
         onCredentialChange: mockOnChange,
@@ -465,7 +464,7 @@ describe('CredentialSelector', () => {
 
     it('should not call onCredentialChange when credentials array is empty', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({
         currentCredentialId: 'cred-1',
         credentials: [],
@@ -481,7 +480,7 @@ describe('CredentialSelector', () => {
 
     it('should auto-select when credentials change and currentCredential becomes invalid', async () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const initialCredentials = createMockCredentials(3)
       const props = createDefaultProps({
         currentCredentialId: 'cred-1',
@@ -512,7 +511,7 @@ describe('CredentialSelector', () => {
 
     it('should not trigger auto-select effect on every render with same props', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
 
       // Act - Render and rerender with same props
@@ -531,7 +530,7 @@ describe('CredentialSelector', () => {
   describe('Callback Stability and Memoization', () => {
     it('should have stable handleCredentialChange callback', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       render(<CredentialSelector {...props} />)
 
@@ -547,8 +546,8 @@ describe('CredentialSelector', () => {
 
     it('should update handleCredentialChange when onCredentialChange changes', () => {
       // Arrange
-      const mockOnChange1 = jest.fn()
-      const mockOnChange2 = jest.fn()
+      const mockOnChange1 = vi.fn()
+      const mockOnChange2 = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange1 })
 
       const { rerender } = render(<CredentialSelector {...props} />)
@@ -618,7 +617,7 @@ describe('CredentialSelector', () => {
 
     it('should return undefined currentCredential when id not found', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({
         currentCredentialId: 'non-existent',
         onCredentialChange: mockOnChange,
@@ -643,9 +642,9 @@ describe('CredentialSelector', () => {
 
     it('should not re-render when props remain the same', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
-      const renderSpy = jest.fn()
+      const renderSpy = vi.fn()
 
       const TrackedCredentialSelector: React.FC<CredentialSelectorProps> = (trackedProps) => {
         renderSpy()
@@ -693,8 +692,8 @@ describe('CredentialSelector', () => {
 
     it('should re-render when onCredentialChange reference changes', () => {
       // Arrange
-      const mockOnChange1 = jest.fn()
-      const mockOnChange2 = jest.fn()
+      const mockOnChange1 = vi.fn()
+      const mockOnChange2 = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange1 })
       const { rerender } = render(<CredentialSelector {...props} />)
 
@@ -845,7 +844,7 @@ describe('CredentialSelector', () => {
 
     it('should handle credential selection with duplicate names', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const duplicateCredentials = [
         createMockCredential({ id: 'cred-1', name: 'Same Name' }),
         createMockCredential({ id: 'cred-2', name: 'Same Name' }),
@@ -875,7 +874,7 @@ describe('CredentialSelector', () => {
 
     it('should not crash when clicking credential after unmount', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       const { unmount } = render(<CredentialSelector {...props} />)
 
@@ -1017,7 +1016,7 @@ describe('CredentialSelector', () => {
 
     it('should pass handleCredentialChange to List component', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnChange })
       render(<CredentialSelector {...props} />)
 

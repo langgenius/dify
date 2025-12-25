@@ -1,29 +1,29 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import Breadcrumbs from './index'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock store - context provider requires mocking
 const mockStoreState = {
   hasBucket: false,
   breadcrumbs: [] as string[],
   prefix: [] as string[],
-  setOnlineDriveFileList: jest.fn(),
-  setSelectedFileIds: jest.fn(),
-  setBreadcrumbs: jest.fn(),
-  setPrefix: jest.fn(),
-  setBucket: jest.fn(),
+  setOnlineDriveFileList: vi.fn(),
+  setSelectedFileIds: vi.fn(),
+  setBreadcrumbs: vi.fn(),
+  setPrefix: vi.fn(),
+  setBucket: vi.fn(),
 }
 
-const mockGetState = jest.fn(() => mockStoreState)
+const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
-jest.mock('../../../../store', () => ({
+vi.mock('../../../../store', () => ({
   useDataSourceStore: () => mockDataSourceStore,
   useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) => selector(mockStoreState),
 }))
@@ -49,11 +49,11 @@ const resetMockStoreState = () => {
   mockStoreState.hasBucket = false
   mockStoreState.breadcrumbs = []
   mockStoreState.prefix = []
-  mockStoreState.setOnlineDriveFileList = jest.fn()
-  mockStoreState.setSelectedFileIds = jest.fn()
-  mockStoreState.setBreadcrumbs = jest.fn()
-  mockStoreState.setPrefix = jest.fn()
-  mockStoreState.setBucket = jest.fn()
+  mockStoreState.setOnlineDriveFileList = vi.fn()
+  mockStoreState.setSelectedFileIds = vi.fn()
+  mockStoreState.setBreadcrumbs = vi.fn()
+  mockStoreState.setPrefix = vi.fn()
+  mockStoreState.setBucket = vi.fn()
 }
 
 // ==========================================
@@ -61,7 +61,7 @@ const resetMockStoreState = () => {
 // ==========================================
 describe('Breadcrumbs', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     resetMockStoreState()
   })
 

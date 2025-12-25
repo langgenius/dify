@@ -3,11 +3,11 @@ import { InputNumber } from './index'
 
 describe('InputNumber Component', () => {
   const defaultProps = {
-    onChange: jest.fn(),
+    onChange: vi.fn(),
   }
 
-  afterEach(() => {
-    jest.clearAllMocks()
+  beforeEach(() => {
+    vi.clearAllMocks()
   })
 
   it('renders input with default values', () => {

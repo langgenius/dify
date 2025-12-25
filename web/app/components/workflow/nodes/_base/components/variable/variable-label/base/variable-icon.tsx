@@ -1,7 +1,7 @@
+import type { VarInInspectType } from '@/types/workflow'
 import { memo } from 'react'
 import { cn } from '@/utils/classnames'
 import { useVarIcon } from '../hooks'
-import type { VarInInspectType } from '@/types/workflow'
 
 export type VariableIconProps = {
   className?: string

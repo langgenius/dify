@@ -1,3 +1,5 @@
+import { act, renderHook } from '@testing-library/react'
+import { useGlobalPublicStore } from '@/context/global-public-context'
 /**
  * Test suite for useDocumentTitle hook
  *
@@ -11,12 +13,10 @@
  * If no page title: "[Brand Name]"
  */
 import { defaultSystemFeatures } from '@/types/feature'
-import { act, renderHook } from '@testing-library/react'
 import useDocumentTitle from './use-document-title'
-import { useGlobalPublicStore } from '@/context/global-public-context'
 
-jest.mock('@/service/common', () => ({
-  getSystemFeatures: jest.fn(() => ({ ...defaultSystemFeatures })),
+vi.mock('@/service/common', () => ({
+  getSystemFeatures: vi.fn(() => ({ ...defaultSystemFeatures })),
 }))
 
 /**

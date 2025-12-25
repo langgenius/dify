@@ -99,14 +99,14 @@ If your IDE is VSCode, rename `web/.vscode/settings.example.json` to `web/.vscod
 
 ## Test
 
-We use [Jest](https://jestjs.io/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
+We use [Vitest](https://vitest.dev/) and [React Testing Library](https://testing-library.com/docs/react-testing-library/intro/) for Unit Testing.
 
 **📖 Complete Testing Guide**: See [web/testing/testing.md](./testing/testing.md) for detailed testing specifications, best practices, and examples.
 
 Run test:
 
 ```bash
-pnpm run test
+pnpm test
 ```
 
 ### Example Code
