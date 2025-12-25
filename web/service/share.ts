@@ -333,8 +333,7 @@ export const getHumanInputForm = (token: string) => {
     form_content: string
     inputs: FormInputItem[]
     user_actions: UserAction[]
-    timeout: number
-    timeout_unit: 'hour' | 'day'
+    expiration_time: number
   }>(`/api/form/human_input/${token}`)
 }
 

@@ -77,6 +77,14 @@ const translation = {
   login: {
     backToHome: 'ホームに戻る',
   },
+  humanInput: {
+    expirationTime: 'この操作は{{relativeTime}}で期限切れになります。',
+    thanks: 'ありがとうございます！',
+    sorry: '申し訳ありません！',
+    recorded: '入力内容は記録されました。',
+    expired: 'このリクエストは期限切れのようです。',
+    completed: 'このリクエストは他の場所で処理されたようです。',
+  },
 }
 
 export default translation

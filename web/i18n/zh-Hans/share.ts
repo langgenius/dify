@@ -78,8 +78,7 @@ const translation = {
     backToHome: '返回首页',
   },
   humanInput: {
-    timeoutDay: '此操作将在 {{count}} 天后过期。',
-    timeoutHour: '此操作将在 {{count}} 小时后过期。',
+    expirationTime: '此操作将在{{relativeTime}}过期。',
     thanks: '谢谢！',
     sorry: '抱歉！',
     recorded: '您的输入已被记录。',

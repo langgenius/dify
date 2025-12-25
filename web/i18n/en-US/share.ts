@@ -82,14 +82,13 @@ const translation = {
     backToHome: 'Back to Home',
   },
   humanInput: {
-    timeoutDay: 'This action will expire in {{count}} days.',
-    timeoutHour: 'This action will expire in {{count}} hours.',
+    expirationTime: 'This action will expire {{relativeTime}}.',
     submissionID: 'submission_id: {{id}}',
     thanks: 'Thanks!',
     sorry: 'Sorry!',
     recorded: 'Your input has been recorded.',
-    expired: 'Seems like this request has expired. ',
-    completed: 'Seems like this request was dealt with elsewhere. ',
+    expired: 'Seems like this request has expired.',
+    completed: 'Seems like this request was dealt with elsewhere.',
   },
 }
 

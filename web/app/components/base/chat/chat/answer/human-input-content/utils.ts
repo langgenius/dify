@@ -1,5 +1,15 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { Locale } from '@/i18n-config'
+import dayjs from 'dayjs'
+import relativeTime from 'dayjs/plugin/relativeTime'
+import utc from 'dayjs/plugin/utc'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
+import 'dayjs/locale/en'
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/ja'
+
+dayjs.extend(utc)
+dayjs.extend(relativeTime)
 
 export const getButtonStyle = (style: UserActionButtonType) => {
   if (style === UserActionButtonType.Primary)
@@ -27,4 +37,22 @@ export const initializeInputs = (formInputs: FormInputItem[]) => {
       initialInputs[item.output_variable_name] = undefined
   })
   return initialInputs
+}
+
+const localeMap: Record<string, string> = {
+  'en-US': 'en',
+  'zh-Hans': 'zh-cn',
+  'ja-JP': 'ja',
+}
+
+export const formatRelativeTimeInZone = (
+  utcTimestamp: string | number,
+  locale: Locale = 'en-US',
+) => {
+  const dayjsLocale = localeMap[locale] ?? 'en'
+
+  return dayjs
+    .utc(utcTimestamp)
+    .locale(dayjsLocale)
+    .fromNow()
 }

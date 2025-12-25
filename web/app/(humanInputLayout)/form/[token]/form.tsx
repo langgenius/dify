@@ -11,6 +11,7 @@ import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
+import ExpirationTime from '@/app/components/base/chat/chat/answer/human-input-content/expiration-time'
 import Loading from '@/app/components/base/loading'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
@@ -24,8 +25,7 @@ export type FormData = {
   form_content: string
   inputs: FormInputItem[]
   user_actions: UserAction[]
-  timeout: number
-  timeout_unit: 'hour' | 'day'
+  expiration_time: number
 }
 
 const FormContent = () => {
@@ -249,9 +249,7 @@ const FormContent = () => {
               </Button>
             ))}
           </div>
-          <div className="system-xs-regular mt-1 text-text-tertiary">
-            {formData.timeout_unit === 'day' ? t('share.humanInput.timeoutDay', { count: formData.timeout }) : t('share.humanInput.timeoutHour', { count: formData.timeout })}
-          </div>
+          <ExpirationTime expirationTime={formData.expiration_time} />
         </div>
         <div className="flex flex-row-reverse px-2 py-3">
           <div className={cn(

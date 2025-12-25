@@ -2,20 +2,17 @@
 import type { HumanInputFormProps } from './type'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import ContentItem from './content-item'
+import ExpirationTime from './expiration-time'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from './utils'
 
 const HumanInputForm = ({
   formData,
   showTimeout,
-  timeout,
-  timeoutUnit,
   onSubmit,
+  expirationTime,
 }: HumanInputFormProps) => {
-  const { t } = useTranslation()
-
   const formID = formData.form_id
   const defaultInputs = initializeInputs(formData.inputs)
   const contentList = splitByOutputVar(formData.form_content)
@@ -59,10 +56,8 @@ const HumanInputForm = ({
           </Button>
         ))}
       </div>
-      {showTimeout && (
-        <div className="system-xs-regular mt-1 text-text-tertiary">
-          {timeoutUnit === 'day' ? t('share.humanInput.timeoutDay', { count: timeout }) : t('share.humanInput.timeoutHour', { count: timeout })}
-        </div>
+      {showTimeout && typeof expirationTime === 'number' && (
+        <ExpirationTime expirationTime={expirationTime} />
       )}
     </>
   )

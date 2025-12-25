@@ -12,16 +12,14 @@ export type HumanInputContentProps = {
   showEmailTip?: boolean
   showDebugModeTip?: boolean
   showTimeout?: boolean
-  timeout?: number
-  timeoutUnit?: 'hour' | 'day'
+  expirationTime?: number
   onSubmit?: (formID: string, data: any) => Promise<void>
 }
 
 export type HumanInputFormProps = {
   formData: HumanInputFormData
   showTimeout?: boolean
-  timeout?: number
-  timeoutUnit?: 'hour' | 'day'
+  expirationTime?: number
   onSubmit?: (formID: string, data: any) => Promise<void>
 }
 
