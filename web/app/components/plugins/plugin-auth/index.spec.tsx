@@ -359,9 +359,9 @@ describe('Utils', () => {
 
       const result = transformFormSchemasSecretInput(secretNames, values as Record<string, unknown>)
 
-      // null is falsy, so it won't be transformed
+      // null is preserved as-is to represent an explicitly unset secret, not masked as [__HIDDEN__]
       expect(result.api_key).toBe(null)
-      // 0 is falsy, so it won't be transformed
+      // numeric values like 0 are also preserved; only non-empty string secrets are transformed
       expect(result.null_key).toBe(0)
     })
   })

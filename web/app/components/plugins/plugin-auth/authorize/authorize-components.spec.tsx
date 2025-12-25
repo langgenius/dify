@@ -168,6 +168,7 @@ describe('AddApiKeyButton', () => {
 
       render(<AddApiKeyButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
+      // Verify the default button has secondary-accent variant class
       expect(screen.getByRole('button').className).toContain('btn-secondary-accent')
     })
   })
@@ -613,18 +614,9 @@ describe('AddOAuthButton', () => {
 
       render(<AddOAuthButton pluginPayload={pluginPayload} />, { wrapper: createWrapper() })
 
-      // Find and click the settings icon (right side of split button)
-      const settingsIcon = screen.getByRole('button').querySelector('[class*="shrink-0"][class*="w-8"]')
-      if (settingsIcon) {
-        fireEvent.click(settingsIcon)
-      }
-      else {
-        // Alternative: click by finding the RiEqualizer2Line icon's parent
-        const icons = screen.getByRole('button').querySelectorAll('svg')
-        const settingsButton = icons[icons.length - 1]?.parentElement
-        if (settingsButton)
-          fireEvent.click(settingsButton)
-      }
+      // Click the settings icon using data-testid for reliable selection
+      const settingsButton = screen.getByTestId('oauth-settings-button')
+      fireEvent.click(settingsButton)
 
       await waitFor(() => {
         expect(screen.getByText('plugin.auth.oauthClientSettings')).toBeInTheDocument()
@@ -1138,8 +1130,7 @@ describe('ApiKeyModal', () => {
       const confirmButton = screen.getByText('common.operation.save')
       fireEvent.click(confirmButton)
 
-      // Wait a bit and verify API was not called
-      await new Promise(resolve => setTimeout(resolve, 100))
+      // Verify API was not called since validation failed synchronously
       expect(mockAddPluginCredential).not.toHaveBeenCalled()
     })
 
@@ -1174,7 +1165,7 @@ describe('ApiKeyModal', () => {
       ])
 
       // Create a promise that we can control
-      let resolveFirstCall: (value?: unknown) => void
+      let resolveFirstCall: (value?: unknown) => void = () => {}
       let apiCallCount = 0
 
       mockAddPluginCredential.mockImplementation(() => {
@@ -1199,20 +1190,19 @@ describe('ApiKeyModal', () => {
       // First click starts the request
       fireEvent.click(confirmButton)
 
-      // Wait a tick to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for the first API call to be made
+      await waitFor(() => {
+        expect(apiCallCount).toBe(1)
+      })
 
-      // Second click while first request is still pending
+      // Second click while first request is still pending should be ignored
       fireEvent.click(confirmButton)
 
-      // Wait a bit more
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      // Only one API call should have been made
+      // Verify only one API call was made (no additional calls)
       expect(apiCallCount).toBe(1)
 
       // Clean up by resolving the promise
-      resolveFirstCall!()
+      resolveFirstCall()
     })
 
     it('should call onRemove when extra button is clicked in edit mode', async () => {
@@ -1714,7 +1704,7 @@ describe('OAuthClientSettings', () => {
 
     it('should return early from handleConfirm if doingActionRef is true', async () => {
       const pluginPayload = createPluginPayload()
-      let resolveFirstCall: (value?: unknown) => void
+      let resolveFirstCall: (value?: unknown) => void = () => {}
       let apiCallCount = 0
 
       mockSetPluginOAuthCustomClient.mockImplementation(() => {
@@ -1740,25 +1730,24 @@ describe('OAuthClientSettings', () => {
       // First click starts the request
       fireEvent.click(saveButton)
 
-      // Wait a tick to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for the first API call to be made
+      await waitFor(() => {
+        expect(apiCallCount).toBe(1)
+      })
 
-      // Second click while first request is pending
+      // Second click while first request is pending should be ignored
       fireEvent.click(saveButton)
 
-      // Wait a bit more
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      // Only one API call should have been made
+      // Verify only one API call was made (no additional calls)
       expect(apiCallCount).toBe(1)
 
       // Clean up
-      resolveFirstCall!()
+      resolveFirstCall()
     })
 
     it('should return early from handleRemove if doingActionRef is true', async () => {
       const pluginPayload = createPluginPayload()
-      let resolveFirstCall: (value?: unknown) => void
+      let resolveFirstCall: (value?: unknown) => void = () => {}
       let deleteCallCount = 0
 
       mockDeletePluginOAuthCustomClient.mockImplementation(() => {
@@ -1801,20 +1790,19 @@ describe('OAuthClientSettings', () => {
       // First click starts the delete request
       fireEvent.click(removeButton)
 
-      // Wait a tick to ensure state updates
-      await new Promise(resolve => setTimeout(resolve, 10))
+      // Wait for the first delete call to be made
+      await waitFor(() => {
+        expect(deleteCallCount).toBe(1)
+      })
 
-      // Second click while first request is pending
+      // Second click while first request is pending should be ignored
       fireEvent.click(removeButton)
 
-      // Wait a bit more
-      await new Promise(resolve => setTimeout(resolve, 10))
-
-      // Only one delete call should have been made
+      // Verify only one delete call was made (no additional calls)
       expect(deleteCallCount).toBe(1)
 
       // Clean up
-      resolveFirstCall!()
+      resolveFirstCall()
     })
   })
 
