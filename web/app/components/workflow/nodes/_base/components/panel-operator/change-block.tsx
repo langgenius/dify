@@ -2,7 +2,7 @@ import type {
   Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
-import { intersection } from 'lodash-es'
+import { intersection } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,

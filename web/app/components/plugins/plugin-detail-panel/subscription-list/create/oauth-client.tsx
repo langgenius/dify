@@ -19,7 +19,7 @@ import {
   useConfigureTriggerOAuth,
   useDeleteTriggerOAuth,
   useInitiateTriggerOAuth,
-  useVerifyTriggerSubscriptionBuilder,
+  useVerifyAndUpdateTriggerSubscriptionBuilder,
 } from '@/service/use-triggers'
 import { usePluginStore } from '../../store'
 
@@ -65,9 +65,28 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
 
   const providerName = detail?.provider || ''
   const { mutate: initiateOAuth } = useInitiateTriggerOAuth()
-  const { mutate: verifyBuilder } = useVerifyTriggerSubscriptionBuilder()
+  const { mutate: verifyBuilder } = useVerifyAndUpdateTriggerSubscriptionBuilder()
   const { mutate: configureOAuth } = useConfigureTriggerOAuth()
   const { mutate: deleteOAuth } = useDeleteTriggerOAuth()
+
+  const confirmButtonText = useMemo(() => {
+    if (authorizationStatus === AuthorizationStatusEnum.Pending)
+      return t('pluginTrigger.modal.common.authorizing')
+    if (authorizationStatus === AuthorizationStatusEnum.Success)
+      return t('pluginTrigger.modal.oauth.authorization.waitingJump')
+    return t('plugin.auth.saveAndAuth')
+  }, [authorizationStatus, t])
+
+  const getErrorMessage = (error: unknown, fallback: string) => {
+    if (error instanceof Error && error.message)
+      return error.message
+    if (typeof error === 'object' && error && 'message' in error) {
+      const message = (error as { message?: string }).message
+      if (typeof message === 'string' && message)
+        return message
+    }
+    return fallback
+  }
 
   const handleAuthorization = () => {
     setAuthorizationStatus(AuthorizationStatusEnum.Pending)
@@ -130,10 +149,10 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
           message: t('pluginTrigger.modal.oauth.remove.success'),
         })
       },
-      onError: (error: any) => {
+      onError: (error: unknown) => {
         Toast.notify({
           type: 'error',
-          message: error?.message || t('pluginTrigger.modal.oauth.remove.failed'),
+          message: getErrorMessage(error, t('pluginTrigger.modal.oauth.remove.failed')),
         })
       },
     })
@@ -179,9 +198,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
   return (
     <Modal
       title={t('pluginTrigger.modal.oauth.title')}
-      confirmButtonText={authorizationStatus === AuthorizationStatusEnum.Pending
-        ? t('pluginTrigger.modal.common.authorizing')
-        : authorizationStatus === AuthorizationStatusEnum.Success ? t('pluginTrigger.modal.oauth.authorization.waitingJump') : t('plugin.auth.saveAndAuth')}
+      confirmButtonText={confirmButtonText}
       cancelButtonText={t('plugin.auth.saveOnly')}
       extraButtonText={t('common.operation.cancel')}
       showExtraButton

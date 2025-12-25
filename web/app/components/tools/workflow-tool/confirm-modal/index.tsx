@@ -1,7 +1,7 @@
 'use client'
 
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'

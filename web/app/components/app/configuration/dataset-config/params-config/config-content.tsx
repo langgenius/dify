@@ -1,6 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
+import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type {
   DataSet,
@@ -8,7 +9,6 @@ import type {
 import type {
   DatasetConfigs,
 } from '@/models/debug'
-import { noop } from 'lodash-es'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -33,17 +33,20 @@ type Props = {
   selectedDatasets?: DataSet[]
   isInWorkflow?: boolean
   singleRetrievalModelConfig?: ModelConfig
-  onSingleRetrievalModelChange?: (config: ModelConfig) => void
-  onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
+  onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
+  onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
 }
+
+const noopModelChange: ModelParameterModalProps['setModel'] = () => {}
+const noopParamsChange: ModelParameterModalProps['onCompletionParamsChange'] = () => {}
 
 const ConfigContent: FC<Props> = ({
   datasetConfigs,
   onChange,
   isInWorkflow,
   singleRetrievalModelConfig: singleRetrievalConfig = {} as ModelConfig,
-  onSingleRetrievalModelChange = noop,
-  onSingleRetrievalModelParamsChange = noop,
+  onSingleRetrievalModelChange = noopModelChange,
+  onSingleRetrievalModelParamsChange = noopParamsChange,
   selectedDatasets = [],
 }) => {
   const { t } = useTranslation()

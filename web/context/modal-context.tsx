@@ -22,7 +22,7 @@ import type {
   ExternalDataTool,
 } from '@/models/common'
 import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
 import { useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'

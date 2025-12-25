@@ -1,7 +1,7 @@
 import type { StartNodeType } from '../../nodes/start/types'
 
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
-import { debounce, noop } from 'lodash-es'
+import { debounce, noop } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,
