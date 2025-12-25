@@ -18,6 +18,7 @@ from controllers.console.wraps import (
     setup_required,
 )
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
+from core.helper.tool_provider_cache import ToolProviderListCache
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
@@ -944,7 +945,7 @@ class ToolProviderMCPApi(Resource):
         configuration = MCPConfiguration.model_validate(args["configuration"])
         authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
 
-        # Create provider
+        # Create provider in transaction
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
             result = service.create_provider(
@@ -960,7 +961,11 @@ class ToolProviderMCPApi(Resource):
                 configuration=configuration,
                 authentication=authentication,
             )
-            return jsonable_encoder(result)
+
+        # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
+        ToolProviderListCache.invalidate_cache(tenant_id)
+
+        return jsonable_encoder(result)
 
     @console_ns.expect(parser_mcp_put)
     @setup_required
@@ -972,17 +977,23 @@ class ToolProviderMCPApi(Resource):
         authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
         _, current_tenant_id = current_account_with_tenant()
 
-        # Step 1: Validate server URL change if needed (includes URL format validation and network operation)
-        validation_result = None
+        # Step 1: Get provider data for URL validation (short-lived session, no network I/O)
+        validation_data = None
         with Session(db.engine) as session:
             service = MCPToolManageService(session=session)
-            validation_result = service.validate_server_url_change(
-                tenant_id=current_tenant_id, provider_id=args["provider_id"], new_server_url=args["server_url"]
+            validation_data = service.get_provider_for_url_validation(
+                tenant_id=current_tenant_id, provider_id=args["provider_id"]
             )
 
-            # No need to check for errors here, exceptions will be raised directly
+        # Step 2: Perform URL validation with network I/O OUTSIDE of any database session
+        # This prevents holding database locks during potentially slow network operations
+        validation_result = MCPToolManageService.validate_server_url_standalone(
+            tenant_id=current_tenant_id,
+            new_server_url=args["server_url"],
+            validation_data=validation_data,
+        )
 
-        # Step 2: Perform database update in a transaction
+        # Step 3: Perform database update in a transaction
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
             service.update_provider(
@@ -999,7 +1010,11 @@ class ToolProviderMCPApi(Resource):
                 authentication=authentication,
                 validation_result=validation_result,
             )
-            return {"result": "success"}
+
+        # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
+        ToolProviderListCache.invalidate_cache(current_tenant_id)
+
+        return {"result": "success"}
 
     @console_ns.expect(parser_mcp_delete)
     @setup_required
@@ -1012,7 +1027,11 @@ class ToolProviderMCPApi(Resource):
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
             service.delete_provider(tenant_id=current_tenant_id, provider_id=args["provider_id"])
-            return {"result": "success"}
+
+        # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
+        ToolProviderListCache.invalidate_cache(current_tenant_id)
+
+        return {"result": "success"}
 
 
 parser_auth = (
@@ -1062,6 +1081,8 @@ class ToolMCPAuthApi(Resource):
                         credentials=provider_entity.credentials,
                         authed=True,
                     )
+                # Invalidate cache after updating credentials
+                ToolProviderListCache.invalidate_cache(tenant_id)
                 return {"result": "success"}
         except MCPAuthError as e:
             try:
@@ -1075,16 +1096,22 @@ class ToolMCPAuthApi(Resource):
                 with Session(db.engine) as session, session.begin():
                     service = MCPToolManageService(session=session)
                     response = service.execute_auth_actions(auth_result)
+                    # Invalidate cache after auth actions may have updated provider state
+                    ToolProviderListCache.invalidate_cache(tenant_id)
                     return response
             except MCPRefreshTokenError as e:
                 with Session(db.engine) as session, session.begin():
                     service = MCPToolManageService(session=session)
                     service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
+                # Invalidate cache after clearing credentials
+                ToolProviderListCache.invalidate_cache(tenant_id)
                 raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
         except (MCPError, ValueError) as e:
             with Session(db.engine) as session, session.begin():
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
+            # Invalidate cache after clearing credentials
+            ToolProviderListCache.invalidate_cache(tenant_id)
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 

@@ -384,9 +384,7 @@ const translation = {
     visionSettings: {
       title: 'Impostazioni di visione',
       resolution: 'Risoluzione',
-      resolutionTooltip: `La bassa risoluzione permetterà al modello di ricevere una versione a bassa risoluzione 512 x 512 dell\\'immagine e di rappresentare l\\'immagine con un budget di 65 token. Questo permette all\\'API di restituire risposte più veloci e di consumare meno token di input per casi d\\'uso che non richiedono alta definizione.
-      \n
-      L\\'alta risoluzione permetterà al modello di vedere prima l\\'immagine a bassa risoluzione e poi di creare ritagli dettagliati delle immagini di input come quadrati 512px basati sulla dimensione dell\\'immagine di input. Ciascuno dei ritagli dettagliati utilizza il doppio del budget dei token per un totale di 129 token.`,
+      resolutionTooltip: 'La bassa risoluzione permetterà al modello di ricevere una versione a bassa risoluzione 512 x 512 dell\'immagine e di rappresentare l\'immagine con un budget di 65 token. Questo permette all\'API di restituire risposte più veloci e di consumare meno token di input per casi d\'uso che non richiedono alta definizione.\nL\'alta risoluzione permetterà al modello di vedere prima l\'immagine a bassa risoluzione e poi di creare ritagli dettagliati delle immagini di input come quadrati 512px basati sulla dimensione dell\'immagine di input. Ciascuno dei ritagli dettagliati utilizza il doppio del budget dei token per un totale di 129 token.',
       high: 'Alta',
       low: 'Bassa',
       uploadMethod: 'Metodo di caricamento',

@@ -20,7 +20,7 @@ export const useTags = (translateFromOut?: TFunction) => {
     return tagKeys.map((tag) => {
       return {
         name: tag,
-        label: t(`pluginTags.tags.${tag}`),
+        label: t(`pluginTags.tags.${tag}` as any) as string,
       }
     })
   }, [t])
@@ -66,14 +66,14 @@ export const useCategories = (translateFromOut?: TFunction, isSingle?: boolean) 
       }
       return {
         name: category,
-        label: isSingle ? t(`plugin.categorySingle.${category}`) : t(`plugin.category.${category}s`),
+        label: isSingle ? t(`plugin.categorySingle.${category}` as any) as string : t(`plugin.category.${category}s` as any) as string,
       }
     })
   }, [t, isSingle])
 
   const categoriesMap = useMemo(() => {
     return categories.reduce((acc, category) => {
-      acc[category.name] = category
+      acc[category.name] = category as any
       return acc
     }, {} as Record<string, Category>)
   }, [categories])

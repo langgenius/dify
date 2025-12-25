@@ -1,4 +1,9 @@
 const translation = {
+  theme: {
+    switchDark: '切换至深色主题',
+    switchLight: '切换至浅色主题',
+  },
+  appNamePlaceholder: '给你的应用起个名字',
   createApp: '创建应用',
   types: {
     all: '全部',
@@ -297,6 +302,7 @@ const translation = {
     commandHint: '输入 @ 按类别浏览',
     slashHint: '输入 / 查看所有可用命令',
     actions: {
+      slashTitle: '命令',
       searchApplications: '搜索应用程序',
       searchApplicationsDesc: '搜索并导航到您的应用程序',
       searchPlugins: '搜索插件',

@@ -55,31 +55,11 @@ cp -r en-US id-ID
 
 1. Add type to new language in the `language.ts` file.
 
-```typescript
-export type I18nText = {
-  'en-US': string
-  'zh-Hans': string
-  'pt-BR': string
-  'es-ES': string
-  'fr-FR': string
-  'de-DE': string
-  'ja-JP': string
-  'ko-KR': string
-  'ru-RU': string
-  'it-IT': string
-  'uk-UA': string
-  'id-ID': string
-  'tr-TR': string
-  'fa-IR': string
-  'ar-TN': string
-  'YOUR_LANGUAGE_CODE': string
-}
-```
+> Note: `I18nText` type is now automatically derived from `LanguagesSupported`, so you don't need to manually add types.
 
-4. Add the new language to the `language.json` file.
+4. Add the new language to the `languages.ts` file.
 
 ```typescript
-
 export const languages = [
   {
     value: 'en-US',
@@ -172,7 +152,7 @@ export const languages = [
     supported: true,
   },
   // Add your language here 👇
-  ...
+  // ...
   // Add your language here 👆
 ]
 ```
@@ -190,11 +170,10 @@ We have a list of languages that we support in the `language.ts` file. But some 
 
 ## Utility scripts
 
-- Auto-fill translations: `pnpm run auto-gen-i18n -- --file app common --lang zh-Hans ja-JP [--dry-run]`
+- Auto-fill translations: `pnpm run auto-gen-i18n --file app common --lang zh-Hans ja-JP [--dry-run]`
   - Use space-separated values; repeat `--file` / `--lang` as needed. Defaults to all en-US files and all supported locales except en-US.
   - Protects placeholders (`{{var}}`, `${var}`, `<tag>`) before translation and restores them after.
-- Check missing/extra keys: `pnpm run check-i18n -- --file app billing --lang zh-Hans [--auto-remove]`
+- Check missing/extra keys: `pnpm run check-i18n --file app billing --lang zh-Hans [--auto-remove]`
   - Use space-separated values; repeat `--file` / `--lang` as needed. Returns non-zero on missing/extra keys (CI will fail); `--auto-remove` deletes extra keys automatically.
-- Generate types: `pnpm run gen:i18n-types`; verify sync: `pnpm run check:i18n-types`.
 
-Workflows: `.github/workflows/translate-i18n-base-on-english.yml` auto-runs the translation generator on en-US changes to main; `.github/workflows/web-tests.yml` checks i18n keys and type sync on web changes.
+Workflows: `.github/workflows/translate-i18n-base-on-english.yml` auto-runs the translation generator on en-US changes to main; `.github/workflows/web-tests.yml` checks i18n keys on web changes.

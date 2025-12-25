@@ -1,51 +1,45 @@
+import type { Mock } from 'vitest'
+import type { ExternalAPIItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import type { ExternalAPIItem } from '@/models/datasets'
-import ExternalKnowledgeBaseConnector from './index'
 import { createExternalKnowledgeBase } from '@/service/datasets'
+import ExternalKnowledgeBaseConnector from './index'
 
 // Mock next/navigation
-const mockRouterBack = jest.fn()
-const mockReplace = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockRouterBack = vi.fn()
+const mockReplace = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     back: mockRouterBack,
     replace: mockReplace,
-    push: jest.fn(),
-    refresh: jest.fn(),
-  }),
-}))
-
-// Mock react-i18next
-jest.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
+    push: vi.fn(),
+    refresh: vi.fn(),
   }),
 }))
 
 // Mock useDocLink hook
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => `https://docs.dify.ai/en${path || ''}`,
 }))
 
 // Mock toast context
-const mockNotify = jest.fn()
-jest.mock('@/app/components/base/toast', () => ({
+const mockNotify = vi.fn()
+vi.mock('@/app/components/base/toast', () => ({
   useToastContext: () => ({
     notify: mockNotify,
   }),
 }))
 
 // Mock modal context
-jest.mock('@/context/modal-context', () => ({
+vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
-    setShowExternalKnowledgeAPIModal: jest.fn(),
+    setShowExternalKnowledgeAPIModal: vi.fn(),
   }),
 }))
 
 // Mock API service
-jest.mock('@/service/datasets', () => ({
-  createExternalKnowledgeBase: jest.fn(),
+vi.mock('@/service/datasets', () => ({
+  createExternalKnowledgeBase: vi.fn(),
 }))
 
 // Factory function to create mock ExternalAPIItem
@@ -80,20 +74,20 @@ const createDefaultMockApiList = (): ExternalAPIItem[] => [
 
 let mockExternalKnowledgeApiList: ExternalAPIItem[] = createDefaultMockApiList()
 
-jest.mock('@/context/external-knowledge-api-context', () => ({
+vi.mock('@/context/external-knowledge-api-context', () => ({
   useExternalKnowledgeApi: () => ({
     externalKnowledgeApiList: mockExternalKnowledgeApiList,
-    mutateExternalKnowledgeApis: jest.fn(),
+    mutateExternalKnowledgeApis: vi.fn(),
     isLoading: false,
   }),
 }))
 
 // Suppress console.error helper
-const suppressConsoleError = () => jest.spyOn(console, 'error').mockImplementation(jest.fn())
+const suppressConsoleError = () => vi.spyOn(console, 'error').mockImplementation(vi.fn())
 
 // Helper to create a pending promise with external resolver
 function createPendingPromise<T>() {
-  let resolve: (value: T) => void = jest.fn()
+  let resolve: (value: T) => void = vi.fn()
   const promise = new Promise<T>((r) => {
     resolve = r
   })
@@ -120,9 +114,9 @@ async function fillFormAndSubmit(user: ReturnType<typeof userEvent.setup>) {
 
 describe('ExternalKnowledgeBaseConnector', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockExternalKnowledgeApiList = createDefaultMockApiList()
-    ;(createExternalKnowledgeBase as jest.Mock).mockResolvedValue({ id: 'new-kb-id' })
+    ;(createExternalKnowledgeBase as Mock).mockResolvedValue({ id: 'new-kb-id' })
   })
 
   // Tests for rendering with real ExternalKnowledgeBaseCreate component
@@ -204,7 +198,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
     it('should show error notification when API fails', async () => {
       const user = userEvent.setup()
       const consoleErrorSpy = suppressConsoleError()
-      ;(createExternalKnowledgeBase as jest.Mock).mockRejectedValue(new Error('Network Error'))
+      ;(createExternalKnowledgeBase as Mock).mockRejectedValue(new Error('Network Error'))
 
       render(<ExternalKnowledgeBaseConnector />)
 
@@ -227,7 +221,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
     it('should show error notification when API returns invalid result', async () => {
       const user = userEvent.setup()
       const consoleErrorSpy = suppressConsoleError()
-      ;(createExternalKnowledgeBase as jest.Mock).mockResolvedValue({})
+      ;(createExternalKnowledgeBase as Mock).mockResolvedValue({})
 
       render(<ExternalKnowledgeBaseConnector />)
 
@@ -253,7 +247,7 @@ describe('ExternalKnowledgeBaseConnector', () => {
 
       // Create a promise that won't resolve immediately
       const { promise, resolve: resolvePromise } = createPendingPromise<{ id: string }>()
-      ;(createExternalKnowledgeBase as jest.Mock).mockReturnValue(promise)
+      ;(createExternalKnowledgeBase as Mock).mockReturnValue(promise)
 
       render(<ExternalKnowledgeBaseConnector />)
 

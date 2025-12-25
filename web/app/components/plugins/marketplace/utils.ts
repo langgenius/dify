@@ -1,17 +1,17 @@
-import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
-import type { Plugin } from '@/app/components/plugins/types'
-import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
   PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
+import type { Plugin } from '@/app/components/plugins/types'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import {
   APP_VERSION,
   IS_MARKETPLACE,
   MARKETPLACE_API_PREFIX,
 } from '@/config'
 import { getMarketplaceUrl } from '@/utils/var'
+import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 
 type MarketplaceFetchOptions = {
   signal?: AbortSignal

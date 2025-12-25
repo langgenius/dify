@@ -1,9 +1,9 @@
-import React from 'react'
-import cn from '@/utils/classnames'
 import type { RemixiconComponentType } from '@remixicon/react'
-import Divider from '../divider'
 import type { VariantProps } from 'class-variance-authority'
 import { cva } from 'class-variance-authority'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
+import Divider from '../divider'
 import './index.css'
 
 type SegmentedControlOption<T> = {
@@ -102,7 +102,8 @@ export const SegmentedControl = <T extends string | number | symbol>({
     <div className={cn(
       SegmentedControlVariants({ size, padding }),
       className,
-    )}>
+    )}
+    >
       {options.map((option, index) => {
         const { Icon, text, count, disabled } = option
         const isSelected = index === selectedOptionIndex
@@ -110,7 +111,7 @@ export const SegmentedControl = <T extends string | number | symbol>({
         const isLast = index === options.length - 1
         return (
           <button
-            type='button'
+            type="button"
             key={String(option.value)}
             className={cn(
               isSelected ? 'active' : 'default',
@@ -125,20 +126,20 @@ export const SegmentedControl = <T extends string | number | symbol>({
             }}
             disabled={disabled}
           >
-            {Icon && <Icon className='size-4 shrink-0' />}
+            {Icon && <Icon className="size-4 shrink-0" />}
             {text && (
               <div className={cn('inline-flex items-center gap-x-1', ItemTextWrapperVariants({ size }))}>
                 <span>{text}</span>
                 {count && size === 'large' && (
-                  <div className='system-2xs-medium-uppercase inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] text-text-tertiary'>
+                  <div className="system-2xs-medium-uppercase inline-flex h-[18px] min-w-[18px] items-center justify-center rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-[5px] text-text-tertiary">
                     {count}
                   </div>
                 )}
               </div>
             )}
             {!isLast && !isSelected && !isNextSelected && (
-              <div data-testid={`segmented-control-divider-${index}`} className='absolute right-[-1px] top-0 flex h-full items-center'>
-                <Divider type='vertical' className='mx-0 h-3.5' />
+              <div data-testid={`segmented-control-divider-${index}`} className="absolute right-[-1px] top-0 flex h-full items-center">
+                <Divider type="vertical" className="mx-0 h-3.5" />
               </div>
             )}
           </button>

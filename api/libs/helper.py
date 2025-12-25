@@ -11,6 +11,7 @@ from collections.abc import Generator, Mapping
 from datetime import datetime
 from hashlib import sha256
 from typing import TYPE_CHECKING, Annotated, Any, Optional, Union, cast
+from uuid import UUID
 from zoneinfo import available_timezones
 
 from flask import Response, stream_with_context
@@ -119,6 +120,19 @@ def uuid_value(value: Any) -> str:
         raise ValueError(error)
 
 
+def normalize_uuid(value: str | UUID) -> str:
+    if not value:
+        return ""
+
+    try:
+        return uuid_value(value)
+    except ValueError as exc:
+        raise ValueError("must be a valid UUID") from exc
+
+
+UUIDStrOrEmpty = Annotated[str, AfterValidator(normalize_uuid)]
+
+
 def alphanumeric(value: str):
     # check if the value is alphanumeric and underlined
     if re.match(r"^[a-zA-Z0-9_]+$", value):
@@ -184,7 +198,7 @@ def timezone(timezone_string):
 def convert_datetime_to_date(field, target_timezone: str = ":tz"):
     if dify_config.DB_TYPE == "postgresql":
         return f"DATE(DATE_TRUNC('day', {field} AT TIME ZONE 'UTC' AT TIME ZONE {target_timezone}))"
-    elif dify_config.DB_TYPE == "mysql":
+    elif dify_config.DB_TYPE in ["mysql", "oceanbase", "seekdb"]:
         return f"DATE(CONVERT_TZ({field}, 'UTC', {target_timezone}))"
     else:
         raise NotImplementedError(f"Unsupported database type: {dify_config.DB_TYPE}")

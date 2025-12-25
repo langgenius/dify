@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import type { WebhookHeader } from '../types'
+import type { ColumnConfig, GenericTableRow } from './generic-table'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import GenericTable from './generic-table'
-import type { ColumnConfig, GenericTableRow } from './generic-table'
-import type { WebhookHeader } from '../types'
 
 type HeaderTableProps = {
   readonly?: boolean

@@ -1,13 +1,13 @@
 ---
-name: Dify Frontend Testing
-description: Generate Jest + React Testing Library tests for Dify frontend components, hooks, and utilities. Triggers on testing, spec files, coverage, Jest, RTL, unit tests, integration tests, or write/review test requests.
+name: frontend-testing
+description: Generate Vitest + React Testing Library tests for Dify frontend components, hooks, and utilities. Triggers on testing, spec files, coverage, Vitest, RTL, unit tests, integration tests, or write/review test requests.
 ---
 
 # Dify Frontend Testing Skill
 
 This skill enables Claude to generate high-quality, comprehensive frontend tests for the Dify project following established conventions and best practices.
 
-> **⚠️ Authoritative Source**: This skill is derived from `web/testing/testing.md`. When in doubt, always refer to that document as the canonical specification.
+> **⚠️ Authoritative Source**: This skill is derived from `web/testing/testing.md`. Use Vitest mock/timer APIs (`vi.*`).
 
 ## When to Apply This Skill
 
@@ -15,7 +15,7 @@ Apply this skill when the user:
 
 - Asks to **write tests** for a component, hook, or utility
 - Asks to **review existing tests** for completeness
-- Mentions **Jest**, **React Testing Library**, **RTL**, or **spec files**
+- Mentions **Vitest**, **React Testing Library**, **RTL**, or **spec files**
 - Requests **test coverage** improvement
 - Uses `pnpm analyze-component` output as context
 - Mentions **testing**, **unit tests**, or **integration tests** for frontend code
@@ -33,9 +33,9 @@ Apply this skill when the user:
 
 | Tool | Version | Purpose |
 |------|---------|---------|
-| Jest | 29.7 | Test runner |
+| Vitest | 4.0.16 | Test runner |
 | React Testing Library | 16.0 | Component testing |
-| happy-dom | - | Test environment |
+| jsdom | - | Test environment |
 | nock | 14.0 | HTTP mocking |
 | TypeScript | 5.x | Type safety |
 
@@ -46,13 +46,13 @@ Apply this skill when the user:
 pnpm test
 
 # Watch mode
-pnpm test -- --watch
+pnpm test:watch
 
 # Run specific file
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 
 # Generate coverage report
-pnpm test -- --coverage
+pnpm test:coverage
 
 # Analyze component complexity
 pnpm analyze-component <path>
@@ -77,9 +77,9 @@ import Component from './index'
 // import { ChildComponent } from './child-component'
 
 // ✅ Mock external dependencies only
-jest.mock('@/service/api')
-jest.mock('next/navigation', () => ({
-  useRouter: () => ({ push: jest.fn() }),
+vi.mock('@/service/api')
+vi.mock('next/navigation', () => ({
+  useRouter: () => ({ push: vi.fn() }),
   usePathname: () => '/test',
 }))
 
@@ -88,7 +88,7 @@ let mockSharedState = false
 
 describe('ComponentName', () => {
   beforeEach(() => {
-    jest.clearAllMocks()  // ✅ Reset mocks BEFORE each test
+    vi.clearAllMocks()  // ✅ Reset mocks BEFORE each test
     mockSharedState = false  // ✅ Reset shared state
   })
 
@@ -117,7 +117,7 @@ describe('ComponentName', () => {
   // User Interactions
   describe('User Interactions', () => {
     it('should handle click events', () => {
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       render(<Component onClick={handleClick} />)
       
       fireEvent.click(screen.getByRole('button'))
@@ -155,7 +155,7 @@ describe('ComponentName', () => {
 For each file:
   ┌────────────────────────────────────────┐
   │ 1. Write test                          │
-  │ 2. Run: pnpm test -- <file>.spec.tsx   │
+  │ 2. Run: pnpm test <file>.spec.tsx      │
   │ 3. PASS? → Mark complete, next file    │
   │    FAIL? → Fix first, then continue    │
   └────────────────────────────────────────┘
@@ -178,7 +178,7 @@ Process in this order for multi-file testing:
 - **500+ lines**: Consider splitting before testing
 - **Many dependencies**: Extract logic into hooks first
 
-> 📖 See `guides/workflow.md` for complete workflow details and todo list format.
+> 📖 See `references/workflow.md` for complete workflow details and todo list format.
 
 ## Testing Strategy
 
@@ -289,17 +289,18 @@ For each test file generated, aim for:
 - ✅ **>95%** branch coverage
 - ✅ **>95%** line coverage
 
-> **Note**: For multi-file directories, process one file at a time with full coverage each. See `guides/workflow.md`.
+> **Note**: For multi-file directories, process one file at a time with full coverage each. See `references/workflow.md`.
 
 ## Detailed Guides
 
 For more detailed information, refer to:
 
-- `guides/workflow.md` - **Incremental testing workflow** (MUST READ for multi-file testing)
-- `guides/mocking.md` - Mock patterns and best practices
-- `guides/async-testing.md` - Async operations and API calls
-- `guides/domain-components.md` - Workflow, Dataset, Configuration testing
-- `guides/common-patterns.md` - Frequently used testing patterns
+- `references/workflow.md` - **Incremental testing workflow** (MUST READ for multi-file testing)
+- `references/mocking.md` - Mock patterns and best practices
+- `references/async-testing.md` - Async operations and API calls
+- `references/domain-components.md` - Workflow, Dataset, Configuration testing
+- `references/common-patterns.md` - Frequently used testing patterns
+- `references/checklist.md` - Test generation checklist and validation steps
 
 ## Authoritative References
 
@@ -315,6 +316,7 @@ For more detailed information, refer to:
 
 ### Project Configuration
 
-- `web/jest.config.ts` - Jest configuration
-- `web/jest.setup.ts` - Test environment setup
+- `web/vitest.config.ts` - Vitest configuration
+- `web/vitest.setup.ts` - Test environment setup
 - `web/testing/analyze-component.js` - Component analysis tool
+- Modules are not mocked automatically. Global mocks live in `web/vitest.setup.ts` (for example `react-i18next`, `next/image`); mock other modules like `ky` or `mime` locally in test files.

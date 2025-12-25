@@ -1419,7 +1419,7 @@ class DocumentService:
 
         document.name = name
         db.session.add(document)
-        if document.data_source_info_dict:
+        if document.data_source_info_dict and "upload_file_id" in document.data_source_info_dict:
             db.session.query(UploadFile).where(
                 UploadFile.id == document.data_source_info_dict["upload_file_id"]
             ).update({UploadFile.name: name})
@@ -3458,7 +3458,7 @@ class SegmentService:
         if keyword:
             query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
 
-        query = query.order_by(DocumentSegment.position.asc())
+        query = query.order_by(DocumentSegment.position.asc(), DocumentSegment.id.asc())
         paginated_segments = db.paginate(select=query, page=page, per_page=limit, max_per_page=100, error_out=False)
 
         return paginated_segments.items, paginated_segments.total
