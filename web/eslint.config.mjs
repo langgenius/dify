@@ -115,6 +115,7 @@ export default antfu(
     rules: {
       'sonarjs/max-lines': 'off',
       'max-lines': 'off',
+      'jsonc/sort-keys': 'error',
     },
   },
   tailwind.configs['flat/recommended'],
