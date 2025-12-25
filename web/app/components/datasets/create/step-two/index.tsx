@@ -9,7 +9,7 @@ import {
   RiArrowLeftLine,
   RiSearchEyeLine,
 } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import Image from 'next/image'
 import Link from 'next/link'
 import * as React from 'react'

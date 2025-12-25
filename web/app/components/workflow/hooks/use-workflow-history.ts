@@ -1,5 +1,5 @@
 import type { WorkflowHistoryEventMeta } from '../workflow-history-store'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import {
   useCallback,
   useRef,

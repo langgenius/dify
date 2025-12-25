@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { Topic } from '../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { uniqueId } from 'lodash-es'
+import { uniqueId } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

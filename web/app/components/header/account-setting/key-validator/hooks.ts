@@ -1,4 +1,4 @@
-import type { DebouncedFunc } from 'lodash-es'
+import type { DebouncedFunc } from 'es-toolkit/compat'
 import type { ValidateCallback, ValidatedStatusState, ValidateValue } from './declarations'
 import { useDebounceFn } from 'ahooks'
 import { useState } from 'react'

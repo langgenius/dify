@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { KnowledgeRetrievalNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import { intersectionBy } from 'lodash-es'
+import { intersectionBy } from 'es-toolkit/compat'
 import {
   memo,
   useMemo,
@@ -104,7 +104,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
                 onRetrievalModeChange={handleRetrievalModeChange}
                 onMultipleRetrievalConfigChange={handleMultipleRetrievalConfigChange}
                 singleRetrievalModelConfig={inputs.single_retrieval_config?.model}
-                onSingleRetrievalModelChange={handleModelChanged as any}
+                onSingleRetrievalModelChange={handleModelChanged}
                 onSingleRetrievalModelParamsChange={handleCompletionParamsChange}
                 readonly={readOnly || !selectedDatasets.length}
                 rerankModalOpen={rerankModelOpen}
