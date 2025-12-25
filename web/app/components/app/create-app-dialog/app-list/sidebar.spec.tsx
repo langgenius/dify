@@ -5,11 +5,6 @@ vi.mock('@remixicon/react', () => ({
   RiStickyNoteAddLine: () => <span>sticky</span>,
   RiThumbUpLine: () => <span>thumb</span>,
 }))
-vi.mock('@/app/components/base/divider', () => ({
-  __esModule: true,
-  default: () => <div data-testid="divider" />,
-}))
-
 describe('Sidebar', () => {
   it('renders recommended and custom categories', () => {
     render(<Sidebar current={AppCategories.RECOMMENDED} categories={['Cat A', 'Cat B']} />)
