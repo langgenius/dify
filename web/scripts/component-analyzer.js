@@ -443,7 +443,7 @@ export function listAnalyzableFiles(dirPath) {
  * Extract copy content from prompt (for clipboard)
  */
 export function extractCopyContent(prompt) {
-  const marker = '📋 PROMPT FOR AI ASSISTANT'
+  const marker = '📋 PROMPT FOR AI ASSISTANT (COPY THIS TO YOUR AI ASSISTANT):'
   const markerIndex = prompt.indexOf(marker)
   if (markerIndex === -1)
     return ''

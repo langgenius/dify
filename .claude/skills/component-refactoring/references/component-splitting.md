@@ -6,7 +6,7 @@ This document provides detailed guidance on splitting large components into smal
 
 Split a component when you identify:
 
-1. **Multiple UI sections** - Distinct visual areas that can be rendered independently
+1. **Multiple UI sections** - Distinct visual areas with minimal coupling that can be composed independently
 1. **Conditional rendering blocks** - Large `{condition && <JSX />}` blocks
 1. **Repeated patterns** - Similar UI structures used multiple times
 1. **300+ lines** - Component exceeds manageable size

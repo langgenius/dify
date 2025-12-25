@@ -6,7 +6,7 @@ This document provides detailed guidance on extracting custom hooks from complex
 
 Extract a custom hook when you identify:
 
-1. **Coupled state groups** - Multiple `useState` that are always used together
+1. **Coupled state groups** - Multiple `useState` hooks that are always used together
 1. **Complex effects** - `useEffect` with multiple dependencies or cleanup logic
 1. **Business logic** - Data transformations, validations, or calculations
 1. **Reusable patterns** - Logic that appears in multiple components

@@ -21,10 +21,14 @@ class RefactorAnalyzer extends ComponentAnalyzer {
     const baseAnalysis = super.analyze(code, filePath, absolutePath)
 
     // Add refactoring-specific metrics
-    const stateCount = (code.match(/useState/g) || []).length
-    const effectCount = (code.match(/useEffect/g) || []).length
-    const callbackCount = (code.match(/useCallback/g) || []).length
-    const memoCount = (code.match(/useMemo/g) || []).length
+    // Note: These counts use regex matching which may include import statements.
+    // For most components this results in +1 over actual usage, which is acceptable
+    // for heuristic analysis. For precise AST-based counting, consider using
+    // @typescript-eslint/parser to traverse the AST.
+    const stateCount = (code.match(/useState\s*[(<]/g) || []).length
+    const effectCount = (code.match(/useEffect\s*\(/g) || []).length
+    const callbackCount = (code.match(/useCallback\s*\(/g) || []).length
+    const memoCount = (code.match(/useMemo\s*\(/g) || []).length
     const conditionalBlocks = this.countConditionalBlocks(code)
     const nestedTernaries = this.countNestedTernaries(code)
     const hasContext = code.includes('useContext') || code.includes('createContext')
@@ -51,7 +55,7 @@ class RefactorAnalyzer extends ComponentAnalyzer {
       /Dialog/g,
       /Drawer/g,
       /Confirm/g,
-      /showModal|setShowModal|isShow/g,
+      /showModal|setShowModal|isShown|isShowing/g,
     ]
     let count = 0
     modalPatterns.forEach((pattern) => {
@@ -70,9 +74,10 @@ class RefactorAnalyzer extends ComponentAnalyzer {
   }
 
   countNestedTernaries(code) {
-    // Count ternaries that contain other ternaries
-    const nestedPattern = /\?[^:?]*\?[^:]*:/g
-    return (code.match(nestedPattern) || []).length
+    const nestedInTrueBranch = (code.match(/\?[^:?]*\?[^:]*:/g) || []).length
+    const nestedInFalseBranch = (code.match(/\?[^:?]*:[^?]*\?[^:]*:/g) || []).length
+
+    return nestedInTrueBranch + nestedInFalseBranch
   }
 }
 
