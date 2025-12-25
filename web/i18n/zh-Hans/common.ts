@@ -454,7 +454,7 @@ const translation = {
       buyQuota: '购买额度',
       priorityUse: '优先使用',
       removeKey: '删除 API 密钥',
-      tip: '消息额度支持使用 OpenAI、Anthropic、Gemini、Grok、DeepSeek、TONGYI 的模型；免费额度会在付费额度用尽后才会消耗。',
+      tip: '消息额度支持使用 OpenAI、Anthropic、Gemini、xAI、深度求索、通义 的模型；免费额度会在付费额度用尽后才会消耗。',
       modelSupported: '{{modelName}} 模型正在使用此额度。',
       modelAPI: '{{modelName}} 模型正在使用 API Key。',
       modelNotSupported: '{{modelName}} 模型未安装。',
