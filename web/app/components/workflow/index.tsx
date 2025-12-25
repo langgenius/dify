@@ -195,9 +195,11 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { nodesReadOnly } = useNodesReadOnly()
   const { eventEmitter } = useEventEmitterContextContext()
 
+  const store = useStoreApi()
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
+      store.getState().setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
 
       if (v.payload.viewport)
@@ -359,7 +361,6 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [schemaTypeDefinitions, fetchInspectVars, isLoadedVars, vars, customTools, buildInTools, workflowTools, mcpTools, dataSourceList])
 
-  const store = useStoreApi()
   if (process.env.NODE_ENV === 'development') {
     store.getState().onError = (code, message) => {
       if (code === '002')
