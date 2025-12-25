@@ -5,8 +5,8 @@ import {
   RiRobot2Fill,
   RiRobot2Line,
 } from '@remixicon/react'
+import { flatten } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { flatten } from 'lodash-es'
 import { useParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

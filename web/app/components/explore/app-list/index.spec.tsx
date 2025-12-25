@@ -10,7 +10,9 @@ import AppList from './index'
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
-let mockExploreData: { categories: string[], allList: App[] } = { categories: [], allList: [] }
+let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
+let mockIsLoading = false
+let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 
@@ -34,8 +36,11 @@ vi.mock('ahooks', async () => {
 })
 
 vi.mock('@/service/use-explore', () => ({
-  exploreAppListInitialData: { categories: [], allList: [] },
-  useExploreAppList: () => ({ data: mockExploreData }),
+  useExploreAppList: () => ({
+    data: mockExploreData,
+    isLoading: mockIsLoading,
+    isError: mockIsError,
+  }),
 }))
 
 vi.mock('@/service/explore', () => ({
@@ -136,13 +141,16 @@ describe('AppList', () => {
     vi.clearAllMocks()
     mockTabValue = allCategoriesEn
     mockExploreData = { categories: [], allList: [] }
+    mockIsLoading = false
+    mockIsError = false
   })
 
   // Rendering: show loading when categories are not ready.
   describe('Rendering', () => {
-    it('should render loading when categories are empty', () => {
+    it('should render loading when the query is loading', () => {
       // Arrange
-      mockExploreData = { categories: [], allList: [] }
+      mockExploreData = undefined
+      mockIsLoading = true
 
       // Act
       renderWithContext()

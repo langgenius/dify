@@ -8,7 +8,6 @@ import Header from '@/app/components/workflow/header'
 import {
   useStore,
 } from '@/app/components/workflow/store'
-import { fetchWorkflowRunHistory } from '@/service/workflow'
 import InputFieldButton from './input-field-button'
 import Publisher from './publisher'
 import RunMode from './run-mode'
@@ -21,7 +20,6 @@ const RagPipelineHeader = () => {
   const viewHistoryProps = useMemo(() => {
     return {
       historyUrl: `/rag/pipelines/${pipelineId}/workflow-runs`,
-      historyFetcher: fetchWorkflowRunHistory,
     }
   }, [pipelineId])
 

@@ -5,7 +5,7 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'

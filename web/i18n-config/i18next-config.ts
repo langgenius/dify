@@ -1,7 +1,7 @@
 'use client'
 import type { Locale } from '.'
+import { camelCase, kebabCase } from 'es-toolkit/compat'
 import i18n from 'i18next'
-import { camelCase, kebabCase } from 'lodash-es'
 
 import { initReactI18next } from 'react-i18next'
 import app from '../i18n/en-US/app'

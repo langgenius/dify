@@ -6,7 +6,7 @@ import type {
 import {
   uniq,
   xorBy,
-} from 'lodash-es'
+} from 'es-toolkit/compat'
 import { DATASET_DEFAULT } from '@/config'
 import {
   DEFAULT_WEIGHTED_SCORE,

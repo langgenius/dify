@@ -1,9 +1,8 @@
 import type { Locale } from '.'
-import type { KeyPrefix, Namespace } from './i18next-config'
+import type { Namespace } from './i18next-config'
 import { match } from '@formatjs/intl-localematcher'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
-import { camelCase } from 'lodash-es'
 import Negotiator from 'negotiator'
 import { cookies, headers } from 'next/headers'
 import { initReactI18next } from 'react-i18next/initReactI18next'
@@ -23,10 +22,11 @@ const initI18next = async (lng: Locale, ns: Namespace) => {
   return i18nInstance
 }
 
-export async function getTranslation(lng: Locale, ns: Namespace) {
+export async function getTranslation(lng: Locale, ns: Namespace, options: Record<string, any> = {}) {
   const i18nextInstance = await initI18next(lng, ns)
   return {
-    t: i18nextInstance.getFixedT(lng, 'translation', camelCase(ns) as KeyPrefix),
+    // @ts-expect-error types mismatch
+    t: i18nextInstance.getFixedT(lng, ns, options.keyPrefix),
     i18n: i18nextInstance,
   }
 }

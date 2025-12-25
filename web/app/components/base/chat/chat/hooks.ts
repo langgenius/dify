@@ -8,8 +8,8 @@ import type { InputForm } from './type'
 import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
+import { noop, uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
-import { noop, uniqBy } from 'lodash-es'
 import { useParams, usePathname } from 'next/navigation'
 import {
   useCallback,

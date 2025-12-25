@@ -6,7 +6,7 @@ import {
   RiCloseLine,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import * as React from 'react'
 import {
   cloneElement,

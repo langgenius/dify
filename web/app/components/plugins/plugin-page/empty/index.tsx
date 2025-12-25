@@ -1,5 +1,5 @@
 'use client'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

@@ -2,7 +2,7 @@ import type {
   Node,
   Var,
 } from '../../types'
-import { uniqBy } from 'lodash-es'
+import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { useNodes } from 'reactflow'
 import {
