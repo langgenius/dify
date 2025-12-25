@@ -1285,6 +1285,18 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
+class PaidPlanWorkflowRunArchiveConfig(BaseSettings):
+    PAID_PLAN_WORKFLOW_RUN_ARCHIVE_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days before archiving paid plan workflow runs",
+        default=90,
+        validation_alias=AliasChoices("ARCHIVE_RETENTION_DAYS"),
+    )
+    PAID_PLAN_WORKFLOW_RUN_ARCHIVE_BATCH_SIZE: PositiveInt = Field(
+        description="Batch size for paid plan workflow run archiving",
+        default=100,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1310,6 +1322,7 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
+    PaidPlanWorkflowRunArchiveConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
