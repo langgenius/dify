@@ -3,7 +3,7 @@ import type {
   CodeBasedExtensionItem,
   ExternalDataTool,
 } from '@/models/common'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'

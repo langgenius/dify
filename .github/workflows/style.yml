@@ -108,36 +108,6 @@ jobs:
         working-directory: ./web
         run: pnpm run type-check:tsgo
 
-  docker-compose-template:
-    name: Docker Compose Template
-    runs-on: ubuntu-latest
-
-    steps:
-      - name: Checkout code
-        uses: actions/checkout@v4
-        with:
-          persist-credentials: false
-
-      - name: Check changed files
-        id: changed-files
-        uses: tj-actions/changed-files@v46
-        with:
-          files: |
-            docker/generate_docker_compose
-            docker/.env.example
-            docker/docker-compose-template.yaml
-            docker/docker-compose.yaml
-
-      - name: Generate Docker Compose
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: |
-          cd docker
-          ./generate_docker_compose
-
-      - name: Check for changes
-        if: steps.changed-files.outputs.any_changed == 'true'
-        run: git diff --exit-code
-
   superlinter:
     name: SuperLinter
     runs-on: ubuntu-latest

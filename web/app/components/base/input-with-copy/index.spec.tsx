@@ -25,8 +25,8 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-// Mock lodash-es debounce
-vi.mock('lodash-es', () => ({
+// Mock es-toolkit/compat debounce
+vi.mock('es-toolkit/compat', () => ({
   debounce: (fn: any) => fn,
 }))
 

@@ -359,10 +359,6 @@ class TriggerProviderService:
             raise ValueError(f"Trigger provider subscription {subscription_id} not found")
 
         credential_type: CredentialType = CredentialType.of(subscription.credential_type)
-        is_auto_created: bool = credential_type in [CredentialType.OAUTH2, CredentialType.API_KEY]
-        if not is_auto_created:
-            return None
-
         provider_id = TriggerProviderID(subscription.provider_id)
         provider_controller: PluginTriggerProviderController = TriggerManager.get_trigger_provider(
             tenant_id=tenant_id, provider_id=provider_id
@@ -372,17 +368,20 @@ class TriggerProviderService:
             controller=provider_controller,
             subscription=subscription,
         )
-        try:
-            TriggerManager.unsubscribe_trigger(
-                tenant_id=tenant_id,
-                user_id=subscription.user_id,
-                provider_id=provider_id,
-                subscription=subscription.to_entity(),
-                credentials=encrypter.decrypt(subscription.credentials),
-                credential_type=credential_type,
-            )
-        except Exception as e:
-            logger.exception("Error unsubscribing trigger", exc_info=e)
+
+        is_auto_created: bool = credential_type in [CredentialType.OAUTH2, CredentialType.API_KEY]
+        if is_auto_created:
+            try:
+                TriggerManager.unsubscribe_trigger(
+                    tenant_id=tenant_id,
+                    user_id=subscription.user_id,
+                    provider_id=provider_id,
+                    subscription=subscription.to_entity(),
+                    credentials=encrypter.decrypt(subscription.credentials),
+                    credential_type=credential_type,
+                )
+            except Exception as e:
+                logger.exception("Error unsubscribing trigger", exc_info=e)
 
         session.delete(subscription)
         # Clear cache

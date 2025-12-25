@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
