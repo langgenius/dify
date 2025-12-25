@@ -95,10 +95,7 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
             elif config.node_id in updated_node_ids:
                 # Update existing schedule plan only if config changed
                 existing_plan = existing_plans_map[config.node_id]
-                if (
-                    existing_plan.cron_expression != config.cron_expression
-                    or existing_plan.timezone != config.timezone
-                ):
+                if existing_plan.cron_expression != config.cron_expression or existing_plan.timezone != config.timezone:
                     logger.info("Updating schedule plan for app %s, node %s", app_id, config.node_id)
                     updates = SchedulePlanUpdate(
                         node_id=config.node_id,
