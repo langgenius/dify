@@ -1,18 +1,19 @@
 import type { FC } from 'react'
-import React from 'react'
+import type { DocExtractorNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import VarReferencePicker from '../_base/components/variable/var-reference-picker'
-import OutputVars, { VarItem } from '../_base/components/output-vars'
-import Split from '../_base/components/split'
-import { useNodeHelpLink } from '../_base/hooks/use-node-help-link'
-import useConfig from './use-config'
-import type { DocExtractorNodeType } from './types'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import { BlockEnum, type NodePanelProps } from '@/app/components/workflow/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 import I18n from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useFileSupportTypes } from '@/service/use-common'
+import OutputVars, { VarItem } from '../_base/components/output-vars'
+import Split from '../_base/components/split'
+import VarReferencePicker from '../_base/components/variable/var-reference-picker'
+import { useNodeHelpLink } from '../_base/hooks/use-node-help-link'
+import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.docExtractor'
 
@@ -48,8 +49,8 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
   } = useConfig(id, data)
 
   return (
-    <div className='mt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="mt-2">
+      <div className="space-y-4 px-4 pb-4">
         <Field
           title={t(`${i18nPrefix}.inputVar`)}
           required
@@ -62,11 +63,11 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
               value={inputs.variable_selector || []}
               onChange={handleVarChanges}
               filterVar={filterVar}
-              typePlaceHolder='File | Array[File]'
+              typePlaceHolder="File | Array[File]"
             />
-            <div className='body-xs-regular mt-1 py-0.5 text-text-tertiary'>
+            <div className="body-xs-regular mt-1 py-0.5 text-text-tertiary">
               {t(`${i18nPrefix}.supportFileTypes`, { types: supportTypesShowNames })}
-              <a className='text-text-accent' href={link} target='_blank'>{t(`${i18nPrefix}.learnMore`)}</a>
+              <a className="text-text-accent" href={link} target="_blank">{t(`${i18nPrefix}.learnMore`)}</a>
             </div>
           </>
         </Field>
@@ -75,7 +76,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
       <div>
         <OutputVars>
           <VarItem
-            name='text'
+            name="text"
             type={inputs.is_array_file ? 'array[string]' : 'string'}
             description={t(`${i18nPrefix}.outputVars.text`)}
           />

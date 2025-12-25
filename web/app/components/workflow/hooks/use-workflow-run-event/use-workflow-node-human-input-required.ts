@@ -1,10 +1,10 @@
+import type { HumanInputRequiredResponse } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useStoreApi,
 } from 'reactflow'
-import { produce } from 'immer'
 import { useWorkflowStore } from '@/app/components/workflow/store'
-import type { HumanInputRequiredResponse } from '@/types/workflow'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 // import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 

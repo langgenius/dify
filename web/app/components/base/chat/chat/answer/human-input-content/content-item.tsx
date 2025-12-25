@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import type { ContentItemProps } from './type'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { Markdown } from '@/app/components/base/markdown'
 import Textarea from '@/app/components/base/textarea'
-import type { ContentItemProps } from './type'
 
 const ContentItem = ({
   content,
@@ -11,12 +12,12 @@ const ContentItem = ({
   onInputChange,
 }: ContentItemProps) => {
   const isInputField = (field: string) => {
-    const outputVarRegex = /{{#\$output\.[^#]+#}}/
+    const outputVarRegex = /\{\{#\$output\.[^#]+#\}\}/
     return outputVarRegex.test(field)
   }
 
   const extractFieldName = (str: string): string => {
-    const outputVarRegex = /{{#\$output\.([^#]+)#}}/
+    const outputVarRegex = /\{\{#\$output\.([^#]+)#\}\}/
     const match = str.match(outputVarRegex)
     return match ? match[1] : ''
   }
@@ -41,13 +42,14 @@ const ContentItem = ({
     )
   }
 
-  if (!formInputField) return null
+  if (!formInputField)
+    return null
 
   return (
-    <div className='py-3'>
+    <div className="py-3">
       {formInputField.type === 'paragraph' && (
         <Textarea
-          className='h-[104px] sm:text-xs'
+          className="h-[104px] sm:text-xs"
           placeholder={placeholder}
           value={inputs[fieldName]}
           onChange={(e) => { onInputChange(fieldName, e.target.value) }}

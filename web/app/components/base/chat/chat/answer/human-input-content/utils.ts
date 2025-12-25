@@ -13,7 +13,7 @@ export const getButtonStyle = (style: UserActionButtonType) => {
 }
 
 export const splitByOutputVar = (content: string): string[] => {
-  const outputVarRegex = /({{#\$output\.[^#]+#}})/g
+  const outputVarRegex = /(\{\{#\$output\.[^#]+#\}\})/g
   const parts = content.split(outputVarRegex)
   return parts.filter(part => part.length > 0)
 }

@@ -1,25 +1,43 @@
 'use client'
 
-import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
 import type {
   EditorState,
   LexicalCommand,
 } from 'lexical'
+import type { FC } from 'react'
+import type { Hotkey } from './plugins/shortcuts-popup-plugin'
+import type {
+  ContextBlockType,
+  CurrentBlockType,
+  ErrorMessageBlockType,
+  ExternalToolBlockType,
+  HistoryBlockType,
+  HITLInputBlockType,
+  LastRunBlockType,
+  QueryBlockType,
+  RequestURLBlockType,
+  VariableBlockType,
+  WorkflowVariableBlockType,
+} from './types'
+import { CodeNode } from '@lexical/code'
+import { LexicalComposer } from '@lexical/react/LexicalComposer'
+import { ContentEditable } from '@lexical/react/LexicalContentEditable'
+import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
+import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
+import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import {
   $getRoot,
   TextNode,
 } from 'lexical'
-import { CodeNode } from '@lexical/code'
-import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
-import { ContentEditable } from '@lexical/react/LexicalContentEditable'
-import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
-import { OnChangePlugin } from '@lexical/react/LexicalOnChangePlugin'
-import { HistoryPlugin } from '@lexical/react/LexicalHistoryPlugin'
-import DraggableBlockPlugin from './plugins/draggable-plugin'
-// import TreeView from './plugins/tree-view'
-import Placeholder from './plugins/placeholder'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { cn } from '@/utils/classnames'
+import {
+  UPDATE_DATASETS_EVENT_EMITTER,
+  UPDATE_HISTORY_EVENT_EMITTER,
+} from './constants'
 import ComponentPickerBlock from './plugins/component-picker-block'
 import {
   ContextBlock,
@@ -27,73 +45,57 @@ import {
   ContextBlockReplacementBlock,
 } from './plugins/context-block'
 import {
-  QueryBlock,
-  QueryBlockNode,
-  QueryBlockReplacementBlock,
-} from './plugins/query-block'
-import {
-  HistoryBlock,
-  HistoryBlockNode,
-  HistoryBlockReplacementBlock,
-} from './plugins/history-block'
-import {
-  WorkflowVariableBlock,
-  WorkflowVariableBlockNode,
-  WorkflowVariableBlockReplacementBlock,
-} from './plugins/workflow-variable-block'
-import {
-  HITLInputBlock,
-  HITLInputBlockReplacementBlock,
-  HITLInputNode,
-} from './plugins/hitl-input-block'
-import {
-  RequestURLBlock,
-  RequestURLBlockNode,
-  RequestURLBlockReplacementBlock,
-} from './plugins/request-url-block'
-import {
   CurrentBlock,
   CurrentBlockNode,
   CurrentBlockReplacementBlock,
 } from './plugins/current-block'
+import { CustomTextNode } from './plugins/custom-text/node'
+import DraggableBlockPlugin from './plugins/draggable-plugin'
 import {
   ErrorMessageBlock,
   ErrorMessageBlockNode,
   ErrorMessageBlockReplacementBlock,
 } from './plugins/error-message-block'
 import {
+  HistoryBlock,
+  HistoryBlockNode,
+  HistoryBlockReplacementBlock,
+} from './plugins/history-block'
+
+import {
+  HITLInputBlock,
+  HITLInputBlockReplacementBlock,
+  HITLInputNode,
+} from './plugins/hitl-input-block'
+import {
   LastRunBlock,
   LastRunBlockNode,
   LastRunReplacementBlock,
 } from './plugins/last-run-block'
-
+import OnBlurBlock from './plugins/on-blur-or-focus-block'
+// import TreeView from './plugins/tree-view'
+import Placeholder from './plugins/placeholder'
+import {
+  QueryBlock,
+  QueryBlockNode,
+  QueryBlockReplacementBlock,
+} from './plugins/query-block'
+import {
+  RequestURLBlock,
+  RequestURLBlockNode,
+  RequestURLBlockReplacementBlock,
+} from './plugins/request-url-block'
+import ShortcutsPopupPlugin from './plugins/shortcuts-popup-plugin'
+import UpdateBlock from './plugins/update-block'
 import VariableBlock from './plugins/variable-block'
 import VariableValueBlock from './plugins/variable-value-block'
 import { VariableValueBlockNode } from './plugins/variable-value-block/node'
-import { CustomTextNode } from './plugins/custom-text/node'
-import OnBlurBlock from './plugins/on-blur-or-focus-block'
-import UpdateBlock from './plugins/update-block'
-import ShortcutsPopupPlugin, { type Hotkey } from './plugins/shortcuts-popup-plugin'
-import { textToEditorState } from './utils'
-import type {
-  ContextBlockType,
-  CurrentBlockType,
-  ErrorMessageBlockType,
-  ExternalToolBlockType,
-  HITLInputBlockType,
-  HistoryBlockType,
-  LastRunBlockType,
-  QueryBlockType,
-  RequestURLBlockType,
-  VariableBlockType,
-  WorkflowVariableBlockType,
-} from './types'
 import {
-  UPDATE_DATASETS_EVENT_EMITTER,
-  UPDATE_HISTORY_EVENT_EMITTER,
-} from './constants'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
+  WorkflowVariableBlock,
+  WorkflowVariableBlockNode,
+  WorkflowVariableBlockReplacementBlock,
+} from './plugins/workflow-variable-block'
+import { textToEditorState } from './utils'
 
 export type PromptEditorProps = {
   instanceId?: string
@@ -120,7 +122,7 @@ export type PromptEditorProps = {
   errorMessageBlock?: ErrorMessageBlockType
   lastRunBlock?: LastRunBlockType
   isSupportFileVar?: boolean
-  shortcutPopups?: Array<{ hotkey: Hotkey; Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void }> }>
+  shortcutPopups?: Array<{ hotkey: Hotkey, Popup: React.ComponentType<{ onClose: () => void, onInsert: (command: LexicalCommand<unknown>, params: any[]) => void }> }>
 }
 
 const PromptEditor: FC<PromptEditorProps> = ({
@@ -209,7 +211,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
     <LexicalComposer initialConfig={{ ...initialConfig, editable }}>
       <div className={cn('relative', wrapperClassName)} ref={onRef}>
         <RichTextPlugin
-          contentEditable={
+          contentEditable={(
             <ContentEditable
               className={cn(
                 'text-text-secondary outline-none',
@@ -218,23 +220,23 @@ const PromptEditor: FC<PromptEditorProps> = ({
               )}
               style={style || {}}
             />
-          }
-          placeholder={
+          )}
+          placeholder={(
             <Placeholder
               value={placeholder}
               className={cn('truncate', placeholderClassName)}
               compact={compact}
             />
-          }
+          )}
           ErrorBoundary={LexicalErrorBoundary}
         />
         {shortcutPopups?.map(({ hotkey, Popup }, idx) => (
-          <ShortcutsPopupPlugin key={idx} hotkey={hotkey} >
+          <ShortcutsPopupPlugin key={idx} hotkey={hotkey}>
             {(closePortal, onInsert) => <Popup onClose={closePortal} onInsert={onInsert} />}
           </ShortcutsPopupPlugin>
         ))}
         <ComponentPickerBlock
-          triggerString='/'
+          triggerString="/"
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}
@@ -248,7 +250,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           isSupportFileVar={isSupportFileVar}
         />
         <ComponentPickerBlock
-          triggerString='{'
+          triggerString="{"
           contextBlock={contextBlock}
           historyBlock={historyBlock}
           queryBlock={queryBlock}

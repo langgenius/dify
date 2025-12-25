@@ -13,15 +13,15 @@ const HumanInputInfo = ({ nodeTitle }: props) => {
   // const historyWorkflowData = useStore(s => s.historyWorkflowData)
 
   return (
-    <div className='rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-xs'>
-      <div className='p-2'>
+    <div className="rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-2 shadow-xs">
+      <div className="p-2">
         {/* node icon */}
         <BlockIcon
           type={BlockEnum.HumanInput}
           // toolIcon={triggerIcon}
         />
         {/* node name */}
-        <div className='system-sm-semibold-uppercase text-text-primary'>{nodeTitle}</div>
+        <div className="system-sm-semibold-uppercase text-text-primary">{nodeTitle}</div>
       </div>
       <div>
         {/* human input form content */}

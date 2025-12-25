@@ -1,10 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import Modal from '@/app/components/base/modal'
 import type { ConversationHistoriesRole } from '@/models/debug'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Modal from '@/app/components/base/modal'
+
 type Props = {
   isShow: boolean
   saveLoading: boolean
@@ -28,8 +30,9 @@ const EditModal: FC<Props> = ({
       isShow={isShow}
       onClose={onClose}
     >
-      <div className={'mt-6 text-sm font-medium leading-[21px] text-text-primary'}>{t('appDebug.feature.conversationHistory.editModal.userPrefix')}</div>
-      <input className={'mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10'}
+      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('appDebug.feature.conversationHistory.editModal.userPrefix')}</div>
+      <input
+        className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10"
         value={tempData.user_prefix}
         onChange={e => setTempData({
           ...tempData,
@@ -37,8 +40,9 @@ const EditModal: FC<Props> = ({
         })}
       />
 
-      <div className={'mt-6 text-sm font-medium leading-[21px] text-text-primary'}>{t('appDebug.feature.conversationHistory.editModal.assistantPrefix')}</div>
-      <input className={'mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10'}
+      <div className="mt-6 text-sm font-medium leading-[21px] text-text-primary">{t('appDebug.feature.conversationHistory.editModal.assistantPrefix')}</div>
+      <input
+        className="mt-2 box-border h-10 w-full rounded-lg bg-components-input-bg-normal px-3 text-sm leading-10"
         value={tempData.assistant_prefix}
         onChange={e => setTempData({
           ...tempData,
@@ -47,9 +51,9 @@ const EditModal: FC<Props> = ({
         placeholder={t('common.chat.conversationNamePlaceholder') || ''}
       />
 
-      <div className='mt-10 flex justify-end'>
-        <Button className='mr-2 shrink-0' onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button variant='primary' className='shrink-0' onClick={() => onSave(tempData)} loading={saveLoading}>{t('common.operation.save')}</Button>
+      <div className="mt-10 flex justify-end">
+        <Button className="mr-2 shrink-0" onClick={onClose}>{t('common.operation.cancel')}</Button>
+        <Button variant="primary" className="shrink-0" onClick={() => onSave(tempData)} loading={saveLoading}>{t('common.operation.save')}</Button>
       </div>
     </Modal>
   )

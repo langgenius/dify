@@ -1,22 +1,22 @@
-import {
-  memo,
-  useEffect,
-} from 'react'
+import type { HITLInputBlockType } from '../../types'
+import type {
+  HITLNodeProps,
+} from './node'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { HITLInputBlockType } from '../../types'
-import type {
-  HITLNodeProps,
-} from './node'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $createHITLInputNode,
   HITLInputNode,
 } from './node'
-import { mergeRegister } from '@lexical/utils'
 
 export const INSERT_HITL_INPUT_BLOCK_COMMAND = createCommand('INSERT_HITL_INPUT_BLOCK_COMMAND')
 export const DELETE_HITL_INPUT_BLOCK_COMMAND = createCommand('DELETE_HITL_INPUT_BLOCK_COMMAND')
@@ -94,5 +94,5 @@ const HITLInputBlock = memo(({
 HITLInputBlock.displayName = 'HITLInputBlock'
 
 export { HITLInputBlock }
-export { HITLInputNode } from './node'
 export { default as HITLInputBlockReplacementBlock } from './hitl-input-block-replacement-block'
+export { HITLInputNode } from './node'

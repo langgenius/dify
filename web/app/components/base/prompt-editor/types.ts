@@ -1,5 +1,5 @@
-import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { GeneratorType } from '../../app/configuration/config/automatic/types'
+import type { FormInputItem } from '../../workflow/nodes/human-input/types'
 import type { Type } from '../../workflow/nodes/llm/types'
 import type { Dataset } from './plugins/context-block'
 import type { RoleName } from './plugins/history-block'
@@ -66,8 +66,8 @@ export type ExternalToolBlockType = {
 }
 
 export type GetVarType = (payload: {
-  nodeId: string,
-  valueSelector: ValueSelector,
+  nodeId: string
+  valueSelector: ValueSelector
 }) => Type
 
 export type WorkflowVariableBlockType = {

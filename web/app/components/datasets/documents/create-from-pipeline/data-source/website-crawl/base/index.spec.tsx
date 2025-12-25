@@ -1,11 +1,11 @@
+import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import CheckboxWithLabel from './checkbox-with-label'
-import CrawledResultItem from './crawled-result-item'
 import CrawledResult from './crawled-result'
+import CrawledResultItem from './crawled-result-item'
 import Crawling from './crawling'
 import ErrorMessage from './error-message'
-import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
 
 // ==========================================
 // Test Data Builders
@@ -24,8 +24,7 @@ const createMockCrawlResultItems = (count = 3): CrawlResultItemType[] => {
     createMockCrawlResultItem({
       source_url: `https://example.com/page${i + 1}`,
       title: `Page ${i + 1}`,
-    }),
-  )
+    }))
 }
 
 // ==========================================
@@ -34,12 +33,12 @@ const createMockCrawlResultItems = (count = 3): CrawlResultItemType[] => {
 describe('CheckboxWithLabel', () => {
   const defaultProps = {
     isChecked: false,
-    onChange: jest.fn(),
+    onChange: vi.fn(),
     label: 'Test Label',
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -114,7 +113,7 @@ describe('CheckboxWithLabel', () => {
   describe('User Interactions', () => {
     it('should call onChange with true when clicking unchecked checkbox', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={false} onChange={mockOnChange} />)
 
       // Act
@@ -127,7 +126,7 @@ describe('CheckboxWithLabel', () => {
 
     it('should call onChange with false when clicking checked checkbox', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       const { container } = render(<CheckboxWithLabel {...defaultProps} isChecked={true} onChange={mockOnChange} />)
 
       // Act
@@ -140,7 +139,7 @@ describe('CheckboxWithLabel', () => {
 
     it('should not trigger onChange when clicking label text due to custom checkbox', () => {
       // Arrange
-      const mockOnChange = jest.fn()
+      const mockOnChange = vi.fn()
       render(<CheckboxWithLabel {...defaultProps} onChange={mockOnChange} />)
 
       // Act - Click on the label text element
@@ -160,14 +159,14 @@ describe('CrawledResultItem', () => {
   const defaultProps = {
     payload: createMockCrawlResultItem(),
     isChecked: false,
-    onCheckChange: jest.fn(),
+    onCheckChange: vi.fn(),
     isPreview: false,
     showPreview: true,
-    onPreview: jest.fn(),
+    onPreview: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -282,7 +281,7 @@ describe('CrawledResultItem', () => {
   describe('User Interactions', () => {
     it('should call onCheckChange with true when clicking unchecked checkbox', () => {
       // Arrange
-      const mockOnCheckChange = jest.fn()
+      const mockOnCheckChange = vi.fn()
       const { container } = render(
         <CrawledResultItem
           {...defaultProps}
@@ -301,7 +300,7 @@ describe('CrawledResultItem', () => {
 
     it('should call onCheckChange with false when clicking checked checkbox', () => {
       // Arrange
-      const mockOnCheckChange = jest.fn()
+      const mockOnCheckChange = vi.fn()
       const { container } = render(
         <CrawledResultItem
           {...defaultProps}
@@ -320,7 +319,7 @@ describe('CrawledResultItem', () => {
 
     it('should call onPreview when clicking preview button', () => {
       // Arrange
-      const mockOnPreview = jest.fn()
+      const mockOnPreview = vi.fn()
       render(<CrawledResultItem {...defaultProps} onPreview={mockOnPreview} />)
 
       // Act
@@ -332,7 +331,7 @@ describe('CrawledResultItem', () => {
 
     it('should toggle radio state when isMultipleChoice is false', () => {
       // Arrange
-      const mockOnCheckChange = jest.fn()
+      const mockOnCheckChange = vi.fn()
       const { container } = render(
         <CrawledResultItem
           {...defaultProps}
@@ -359,12 +358,12 @@ describe('CrawledResult', () => {
   const defaultProps = {
     list: createMockCrawlResultItems(3),
     checkedList: [] as CrawlResultItemType[],
-    onSelectedChange: jest.fn(),
+    onSelectedChange: vi.fn(),
     usedTime: 1.5,
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -478,7 +477,7 @@ describe('CrawledResult', () => {
   describe('User Interactions', () => {
     it('should call onSelectedChange with all items when clicking select all', () => {
       // Arrange
-      const mockOnSelectedChange = jest.fn()
+      const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
       const { container } = render(
         <CrawledResult
@@ -499,7 +498,7 @@ describe('CrawledResult', () => {
 
     it('should call onSelectedChange with empty array when clicking reset all', () => {
       // Arrange
-      const mockOnSelectedChange = jest.fn()
+      const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
       const { container } = render(
         <CrawledResult
@@ -520,7 +519,7 @@ describe('CrawledResult', () => {
 
     it('should add item to checkedList when checking unchecked item', () => {
       // Arrange
-      const mockOnSelectedChange = jest.fn()
+      const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
       const { container } = render(
         <CrawledResult
@@ -541,7 +540,7 @@ describe('CrawledResult', () => {
 
     it('should remove item from checkedList when unchecking checked item', () => {
       // Arrange
-      const mockOnSelectedChange = jest.fn()
+      const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
       const { container } = render(
         <CrawledResult
@@ -562,7 +561,7 @@ describe('CrawledResult', () => {
 
     it('should replace selection when checking in single choice mode', () => {
       // Arrange
-      const mockOnSelectedChange = jest.fn()
+      const mockOnSelectedChange = vi.fn()
       const list = createMockCrawlResultItems(3)
       const { container } = render(
         <CrawledResult
@@ -584,7 +583,7 @@ describe('CrawledResult', () => {
 
     it('should call onPreview with item and index when clicking preview', () => {
       // Arrange
-      const mockOnPreview = jest.fn()
+      const mockOnPreview = vi.fn()
       const list = createMockCrawlResultItems(3)
       render(
         <CrawledResult
@@ -664,7 +663,7 @@ describe('Crawling', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -753,7 +752,7 @@ describe('ErrorMessage', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -883,7 +882,7 @@ describe('Base Components Integration', () => {
       <CrawledResult
         list={list}
         checkedList={[]}
-        onSelectedChange={jest.fn()}
+        onSelectedChange={vi.fn()}
         usedTime={1.0}
       />,
     )
@@ -902,7 +901,7 @@ describe('Base Components Integration', () => {
       <CrawledResult
         list={list}
         checkedList={[]}
-        onSelectedChange={jest.fn()}
+        onSelectedChange={vi.fn()}
         usedTime={1.0}
         isMultipleChoice={true}
       />,
@@ -916,8 +915,8 @@ describe('Base Components Integration', () => {
   it('should allow selecting and previewing items', () => {
     // Arrange
     const list = createMockCrawlResultItems(3)
-    const mockOnSelectedChange = jest.fn()
-    const mockOnPreview = jest.fn()
+    const mockOnSelectedChange = vi.fn()
+    const mockOnPreview = vi.fn()
 
     const { container } = render(
       <CrawledResult

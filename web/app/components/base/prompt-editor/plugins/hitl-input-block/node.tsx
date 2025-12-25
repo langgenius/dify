@@ -1,10 +1,10 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
+import type { GetVarType } from '../../types'
+import type { WorkflowNodesMap } from '../workflow-variable-block/node'
+import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
+import type { Var } from '@/app/components/workflow/types'
 import { DecoratorNode } from 'lexical'
 import HILTInputBlockComponent from './component'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import type { WorkflowNodesMap } from '../workflow-variable-block/node'
-import type { GetVarType } from '../../types'
-import type { Var } from '@/app/components/workflow/types'
 
 export type HITLNodeProps = {
   variableName: string
@@ -163,20 +163,22 @@ export class HITLInputNode extends DecoratorNode<React.JSX.Element> {
   }
 
   decorate(): React.JSX.Element {
-    return <HILTInputBlockComponent
-      nodeKey={this.getKey()}
-      varName={this.getVariableName()}
-      nodeId={this.getNodeId()}
-      formInputs={this.getFormInputs()}
-      onChange={this.getOnFormInputsChange()}
-      onRename={this.getOnFormInputItemRename()}
-      onRemove={this.getOnFormInputItemRemove()}
-      workflowNodesMap={this.getWorkflowNodesMap()}
-      getVarType={this.getGetVarType()}
-      environmentVariables={this.getEnvironmentVariables()}
-      conversationVariables={this.getConversationVariables()}
-      ragVariables={this.getRagVariables()}
-    />
+    return (
+      <HILTInputBlockComponent
+        nodeKey={this.getKey()}
+        varName={this.getVariableName()}
+        nodeId={this.getNodeId()}
+        formInputs={this.getFormInputs()}
+        onChange={this.getOnFormInputsChange()}
+        onRename={this.getOnFormInputItemRename()}
+        onRemove={this.getOnFormInputItemRemove()}
+        workflowNodesMap={this.getWorkflowNodesMap()}
+        getVarType={this.getGetVarType()}
+        environmentVariables={this.getEnvironmentVariables()}
+        conversationVariables={this.getConversationVariables()}
+        ragVariables={this.getRagVariables()}
+      />
+    )
   }
 
   static importJSON(serializedNode: SerializedNode): HITLInputNode {

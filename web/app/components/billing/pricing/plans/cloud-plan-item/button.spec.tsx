@@ -1,12 +1,12 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Button from './button'
+import * as React from 'react'
 import { Plan } from '../../../type'
+import Button from './button'
 
 describe('CloudPlanButton', () => {
   describe('Disabled state', () => {
-    test('should disable button and hide arrow when plan is not available', () => {
-      const handleGetPayUrl = jest.fn()
+    it('should disable button and hide arrow when plan is not available', () => {
+      const handleGetPayUrl = vi.fn()
       // Arrange
       render(
         <Button
@@ -26,8 +26,8 @@ describe('CloudPlanButton', () => {
   })
 
   describe('Enabled state', () => {
-    test('should invoke handler and render arrow when plan is available', () => {
-      const handleGetPayUrl = jest.fn()
+    it('should invoke handler and render arrow when plan is available', () => {
+      const handleGetPayUrl = vi.fn()
       // Arrange
       render(
         <Button

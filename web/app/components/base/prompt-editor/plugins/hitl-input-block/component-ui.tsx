@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
-import { VariableX } from '../../../icons/src/vender/workflow'
-import { InputVarType } from '@/app/components/workflow/types'
-import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import ActionButton from '../../../action-button'
-import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import InputField from './input-field'
-import { useBoolean } from 'ahooks'
-import Modal from '../../../modal'
 import type { WorkflowNodesMap } from '../workflow-variable-block/node'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import type { Type } from '@/app/components/workflow/nodes/llm/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
+import { InputVarType } from '@/app/components/workflow/types'
+import ActionButton from '../../../action-button'
+import { VariableX } from '../../../icons/src/vender/workflow'
+import Modal from '../../../modal'
+import InputField from './input-field'
 import VariableBlock from './variable-block'
 
 type HITLInputComponentUIProps = {
@@ -26,8 +27,8 @@ type HITLInputComponentUIProps = {
   conversationVariables?: Var[]
   ragVariables?: Var[]
   getVarType?: (payload: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => Type
 }
 
@@ -83,7 +84,7 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   }, [onRemove, varName])
 
   const handleChange = useCallback((newPayload: FormInputItem) => {
-    if(varName === newPayload.output_variable_name)
+    if (varName === newPayload.output_variable_name)
       onChange(newPayload)
     else
       onRename(newPayload, varName)
@@ -96,17 +97,17 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
 
   return (
     <div
-      className='relative flex h-8 w-full select-none items-center rounded-[8px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1.5 pr-0.5'
+      className="relative flex h-8 w-full select-none items-center rounded-[8px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1.5 pr-0.5"
     >
-      <div className='absolute left-2.5 top-[-12px]'>
-        <div className='absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle'></div>
-        <div className='relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only'>
-          <VariableX className='size-3' />
-          <div className='system-xs-medium'>{varName}</div>
+      <div className="absolute left-2.5 top-[-12px]">
+        <div className="absolute bottom-1 h-[1.5px] w-full bg-background-default-subtle"></div>
+        <div className="relative flex items-center space-x-0.5 px-1 text-text-accent-light-mode-only">
+          <VariableX className="size-3" />
+          <div className="system-xs-medium">{varName}</div>
         </div>
       </div>
 
-      <div className='flex w-full items-center justify-between'>
+      <div className="flex w-full items-center justify-between">
         {/* Placeholder Info */}
         {isPlaceholderVariable && (
           <VariableBlock
@@ -119,20 +120,20 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
           />
         )}
         {!isPlaceholderVariable && (
-          <div className='system-xs-medium text-text-quaternary'>{formInput.placeholder.value}</div>
+          <div className="system-xs-medium text-text-quaternary">{formInput.placeholder.value}</div>
         )}
 
         {/* Actions */}
-        <div className='flex h-full items-center space-x-1 pr-[24px]'>
-          <div className='flex h-full items-center' ref={editBtnRef}>
-            <ActionButton size='s'>
-              <RiEditLine className='size-4 text-text-tertiary' />
+        <div className="flex h-full items-center space-x-1 pr-[24px]">
+          <div className="flex h-full items-center" ref={editBtnRef}>
+            <ActionButton size="s">
+              <RiEditLine className="size-4 text-text-tertiary" />
             </ActionButton>
           </div>
 
-          <div className='flex h-full items-center' ref={removeBtnRef}>
-            <ActionButton size='s'>
-              <RiDeleteBinLine className='size-4 text-text-tertiary' />
+          <div className="flex h-full items-center" ref={removeBtnRef}>
+            <ActionButton size="s">
+              <RiDeleteBinLine className="size-4 text-text-tertiary" />
             </ActionButton>
           </div>
         </div>
@@ -142,8 +143,8 @@ const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
         <Modal
           isShow
           onClose={hideEditModal}
-          wrapperClassName='z-[999]'
-          className='max-w-[372px] !p-0'
+          wrapperClassName="z-[999]"
+          className="max-w-[372px] !p-0"
         >
           <InputField
             nodeId={nodeId}

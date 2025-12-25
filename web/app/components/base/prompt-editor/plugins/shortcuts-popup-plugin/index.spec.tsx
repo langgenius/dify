@@ -1,11 +1,12 @@
-import React, { useState } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import '@testing-library/jest-dom'
 import { LexicalComposer } from '@lexical/react/LexicalComposer'
-import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
 import { ContentEditable } from '@lexical/react/LexicalContentEditable'
 import { LexicalErrorBoundary } from '@lexical/react/LexicalErrorBoundary'
+import { RichTextPlugin } from '@lexical/react/LexicalRichTextPlugin'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { useState } from 'react'
 import ShortcutsPopupPlugin, { SHORTCUTS_EMPTY_CONTENT } from './index'
+import '@testing-library/jest-dom'
 
 const CONTAINER_ID = 'host'
 const CONTENT_EDITABLE_ID = 'ce'
@@ -38,7 +39,7 @@ const MinimalEditor: React.FC<{
 }
 
 describe('ShortcutsPopupPlugin', () => {
-  test('opens on hotkey when editor is focused', async () => {
+  it('opens on hotkey when editor is focused', async () => {
     render(<MinimalEditor />)
     const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
     ce.focus()
@@ -47,7 +48,7 @@ describe('ShortcutsPopupPlugin', () => {
     expect(await screen.findByText(SHORTCUTS_EMPTY_CONTENT)).toBeInTheDocument()
   })
 
-  test('does not open when editor is not focused', async () => {
+  it('does not open when editor is not focused', async () => {
     render(<MinimalEditor />)
     // 未聚焦
     fireEvent.keyDown(document, { key: '/', ctrlKey: true })
@@ -56,7 +57,7 @@ describe('ShortcutsPopupPlugin', () => {
     })
   })
 
-  test('closes on Escape', async () => {
+  it('closes on Escape', async () => {
     render(<MinimalEditor />)
     const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
     ce.focus()
@@ -70,7 +71,7 @@ describe('ShortcutsPopupPlugin', () => {
     })
   })
 
-  test('closes on click outside', async () => {
+  it('closes on click outside', async () => {
     render(<MinimalEditor />)
     const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
     ce.focus()
@@ -84,7 +85,7 @@ describe('ShortcutsPopupPlugin', () => {
     })
   })
 
-  test('portals into provided container when container is set', async () => {
+  it('portals into provided container when container is set', async () => {
     render(<MinimalEditor withContainer />)
     const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
     const host = screen.getByTestId(CONTAINER_ID)
@@ -95,7 +96,7 @@ describe('ShortcutsPopupPlugin', () => {
     expect(host).toContainElement(portalContent)
   })
 
-  test('falls back to document.body when container is not provided', async () => {
+  it('falls back to document.body when container is not provided', async () => {
     render(<MinimalEditor withContainer={false} />)
     const ce = screen.getByTestId(CONTENT_EDITABLE_ID)
     ce.focus()

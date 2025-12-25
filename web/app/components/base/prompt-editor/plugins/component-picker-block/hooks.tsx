@@ -1,8 +1,3 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiGlobalLine } from '@remixicon/react'
-import { $insertNodes } from 'lexical'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import type {
   ContextBlockType,
   CurrentBlockType,
@@ -15,25 +10,30 @@ import type {
   VariableBlockType,
   WorkflowVariableBlockType,
 } from '../../types'
-import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
-import { INSERT_HISTORY_BLOCK_COMMAND } from '../history-block'
-import { INSERT_QUERY_BLOCK_COMMAND } from '../query-block'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
-import { INSERT_REQUEST_URL_BLOCK_COMMAND } from '../request-url-block'
-import { $createCustomTextNode } from '../custom-text/node'
-import { PromptMenuItem } from './prompt-option'
-import { VariableMenuItem } from './variable-option'
-import { PickerBlockMenuOption } from './menu'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { RiGlobalLine } from '@remixicon/react'
+import { $insertNodes } from 'lexical'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
+import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import { File05 } from '@/app/components/base/icons/src/vender/solid/files'
 import {
   MessageClockCircle,
   Tool03,
 } from '@/app/components/base/icons/src/vender/solid/general'
-import { BracketsX } from '@/app/components/base/icons/src/vender/line/development'
 import { UserEdit02 } from '@/app/components/base/icons/src/vender/solid/users'
-import { ArrowUpRight } from '@/app/components/base/icons/src/vender/line/arrows'
-import AppIcon from '@/app/components/base/app-icon'
 import { VarType } from '@/app/components/workflow/types'
+import { INSERT_CONTEXT_BLOCK_COMMAND } from '../context-block'
+import { $createCustomTextNode } from '../custom-text/node'
+import { INSERT_HISTORY_BLOCK_COMMAND } from '../history-block'
+import { INSERT_QUERY_BLOCK_COMMAND } from '../query-block'
+import { INSERT_REQUEST_URL_BLOCK_COMMAND } from '../request-url-block'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '../variable-block'
+import { PickerBlockMenuOption } from './menu'
+import { PromptMenuItem } from './prompt-option'
+import { VariableMenuItem } from './variable-option'
 
 export const usePromptOptions = (
   contextBlock?: ContextBlockType,
@@ -50,14 +50,16 @@ export const usePromptOptions = (
       key: t('common.promptEditor.context.item.title'),
       group: 'prompt context',
       render: ({ isSelected, onSelect, onSetHighlight }) => {
-        return <PromptMenuItem
-          title={t('common.promptEditor.context.item.title')}
-          icon={<File05 className='h-4 w-4 text-[#6938EF]' />}
-          disabled={!contextBlock.selectable}
-          isSelected={isSelected}
-          onClick={onSelect}
-          onMouseEnter={onSetHighlight}
-        />
+        return (
+          <PromptMenuItem
+            title={t('common.promptEditor.context.item.title')}
+            icon={<File05 className="h-4 w-4 text-[#6938EF]" />}
+            disabled={!contextBlock.selectable}
+            isSelected={isSelected}
+            onClick={onSelect}
+            onMouseEnter={onSetHighlight}
+          />
+        )
       },
       onSelect: () => {
         if (!contextBlock?.selectable)
@@ -76,7 +78,7 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.query.item.title')}
-              icon={<UserEdit02 className='h-4 w-4 text-[#FD853A]' />}
+              icon={<UserEdit02 className="h-4 w-4 text-[#FD853A]" />}
               disabled={!queryBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
@@ -98,14 +100,16 @@ export const usePromptOptions = (
       key: t('common.promptEditor.requestURL.item.title'),
       group: 'request URL',
       render: ({ isSelected, onSelect, onSetHighlight }) => {
-        return <PromptMenuItem
-          title={t('common.promptEditor.requestURL.item.title')}
-          icon={<RiGlobalLine className='h-4 w-4 text-util-colors-violet-violet-600' />}
-          disabled={!requestURLBlock.selectable}
-          isSelected={isSelected}
-          onClick={onSelect}
-          onMouseEnter={onSetHighlight}
-        />
+        return (
+          <PromptMenuItem
+            title={t('common.promptEditor.requestURL.item.title')}
+            icon={<RiGlobalLine className="h-4 w-4 text-util-colors-violet-violet-600" />}
+            disabled={!requestURLBlock.selectable}
+            isSelected={isSelected}
+            onClick={onSelect}
+            onMouseEnter={onSetHighlight}
+          />
+        )
       },
       onSelect: () => {
         if (!requestURLBlock?.selectable)
@@ -124,9 +128,8 @@ export const usePromptOptions = (
           return (
             <PromptMenuItem
               title={t('common.promptEditor.history.item.title')}
-              icon={<MessageClockCircle className='h-4 w-4 text-[#DD2590]' />}
-              disabled={!historyBlock.selectable
-              }
+              icon={<MessageClockCircle className="h-4 w-4 text-[#DD2590]" />}
+              disabled={!historyBlock.selectable}
               isSelected={isSelected}
               onClick={onSelect}
               onMouseEnter={onSetHighlight}
@@ -163,7 +166,7 @@ export const useVariableOptions = (
           return (
             <VariableMenuItem
               title={item.value}
-              icon={<BracketsX className='h-[14px] w-[14px] text-text-accent' />}
+              icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -192,7 +195,7 @@ export const useVariableOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.add')}
-            icon={<BracketsX className='h-[14px] w-[14px] text-text-accent' />}
+            icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -234,14 +237,14 @@ export const useExternalToolOptions = (
           return (
             <VariableMenuItem
               title={item.name}
-              icon={
+              icon={(
                 <AppIcon
-                  className='!h-[14px] !w-[14px]'
+                  className="!h-[14px] !w-[14px]"
                   icon={item.icon}
                   background={item.icon_background}
                 />
-              }
-              extraElement={<div className='text-xs text-text-tertiary'>{item.variableName}</div>}
+              )}
+              extraElement={<div className="text-xs text-text-tertiary">{item.variableName}</div>}
               queryString={queryString}
               isSelected={isSelected}
               onClick={onSelect}
@@ -270,8 +273,8 @@ export const useExternalToolOptions = (
         return (
           <VariableMenuItem
             title={t('common.promptEditor.variable.modal.addTool')}
-            icon={<Tool03 className='h-[14px] w-[14px] text-text-accent' />}
-            extraElement={< ArrowUpRight className='h-3 w-3 text-text-tertiary' />}
+            icon={<Tool03 className="h-[14px] w-[14px] text-text-accent" />}
+            extraElement={<ArrowUpRight className="h-3 w-3 text-text-tertiary" />}
             queryString={queryString}
             isSelected={isSelected}
             onClick={onSelect}
@@ -311,7 +314,7 @@ export const useOptions = (
     if (!workflowVariableBlockType?.show)
       return []
     const res = workflowVariableBlockType.variables || []
-    if(errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
+    if (errorMessageBlockType?.show && res.findIndex(v => v.nodeId === 'error_message') === -1) {
       res.unshift({
         nodeId: 'error_message',
         title: 'error_message',
@@ -324,7 +327,7 @@ export const useOptions = (
         ],
       })
     }
-    if(lastRunBlockType?.show && res.findIndex(v => v.nodeId === 'last_run') === -1) {
+    if (lastRunBlockType?.show && res.findIndex(v => v.nodeId === 'last_run') === -1) {
       res.unshift({
         nodeId: 'last_run',
         title: 'last_run',
@@ -337,7 +340,7 @@ export const useOptions = (
         ],
       })
     }
-    if(currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
+    if (currentBlockType?.show && res.findIndex(v => v.nodeId === 'current') === -1) {
       const title = currentBlockType.generatorType === 'prompt' ? 'current_prompt' : 'current_code'
       res.unshift({
         nodeId: 'current',

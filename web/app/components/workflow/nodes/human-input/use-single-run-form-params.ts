@@ -1,16 +1,16 @@
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { HumanInputNodeType } from './types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
-import type { HumanInputNodeType } from './types'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { isOutput } from './utils'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
 type Params = {
-  id: string,
-  payload: HumanInputNodeType,
+  id: string
+  payload: HumanInputNodeType
   runInputData: Record<string, any>
   getInputVars: (textList: string[]) => InputVar[]
   setRunInputData: (data: Record<string, any>) => void
@@ -81,7 +81,7 @@ const useSingleRunFormParams = ({
     else {
       if (!submittedData)
         return null
-      const newContent = inputs.form_content.replace(/{{#(.*?)#}}/g, (originStr, varName) => {
+      const newContent = inputs.form_content.replace(/\{\{#(.*?)#\}\}/g, (originStr, varName) => {
         if (isOutput(varName.split('.')))
           return originStr
         return submittedData[`#${varName}#`] ?? ''

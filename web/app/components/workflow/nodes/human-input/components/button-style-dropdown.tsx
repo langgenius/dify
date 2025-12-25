@@ -1,17 +1,18 @@
 import type { FC } from 'react'
-import React, { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import {
   RiFontSize,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import { UserActionButtonType } from '../types'
 import { cn } from '@/utils/classnames'
+import { UserActionButtonType } from '../types'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -45,7 +46,7 @@ const ButtonStyleDropdown: FC<Props> = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-end'
+      placement="bottom-end"
       offset={{
         mainAxis: 4,
         crossAxis: 44,
@@ -53,15 +54,15 @@ const ButtonStyleDropdown: FC<Props> = ({
     >
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className={cn('flex cursor-pointer items-center justify-center rounded-lg bg-components-button-tertiary-bg p-1 hover:bg-components-button-tertiary-bg-hover', open && 'bg-components-button-tertiary-bg-hover')}>
-          <Button size='small' className='pointer-events-none px-1' variant={currentStyle}>
-            <RiFontSize className='h-4 w-4' />
+          <Button size="small" className="pointer-events-none px-1" variant={currentStyle}>
+            <RiFontSize className="h-4 w-4" />
           </Button>
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
-        <div className='rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-sm'>
-          <div className='system-md-medium text-text-primary'>{t(`${i18nPrefix}.userActions.chooseStyle`)}</div>
-          <div className='mt-2 flex w-[324px] flex-wrap gap-1'>
+        <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-sm">
+          <div className="system-md-medium text-text-primary">{t(`${i18nPrefix}.userActions.chooseStyle`)}</div>
+          <div className="mt-2 flex w-[324px] flex-wrap gap-1">
             <div
               className={cn(
                 'box-border flex h-[80px] w-[160px] cursor-pointer items-center justify-center rounded-lg border-[1.5px] border-transparent bg-background-section hover:bg-background-section-burn',
@@ -69,7 +70,7 @@ const ButtonStyleDropdown: FC<Props> = ({
               )}
               onClick={() => onChange(UserActionButtonType.Primary)}
             >
-              <Button variant='primary' className='pointer-events-none'>{text}</Button>
+              <Button variant="primary" className="pointer-events-none">{text}</Button>
             </div>
             <div
               className={cn(
@@ -78,7 +79,7 @@ const ButtonStyleDropdown: FC<Props> = ({
               )}
               onClick={() => onChange(UserActionButtonType.Default)}
             >
-              <Button variant='secondary' className='pointer-events-none'>{text}</Button>
+              <Button variant="secondary" className="pointer-events-none">{text}</Button>
             </div>
             <div
               className={cn(
@@ -87,7 +88,7 @@ const ButtonStyleDropdown: FC<Props> = ({
               )}
               onClick={() => onChange(UserActionButtonType.Accent)}
             >
-              <Button variant='secondary-accent' className='pointer-events-none'>{text}</Button>
+              <Button variant="secondary-accent" className="pointer-events-none">{text}</Button>
             </div>
             <div
               className={cn(
@@ -96,7 +97,7 @@ const ButtonStyleDropdown: FC<Props> = ({
               )}
               onClick={() => onChange(UserActionButtonType.Ghost)}
             >
-              <Button variant='ghost' className='pointer-events-none'>{text}</Button>
+              <Button variant="ghost" className="pointer-events-none">{text}</Button>
             </div>
           </div>
         </div>

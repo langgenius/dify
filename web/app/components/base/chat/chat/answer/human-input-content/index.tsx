@@ -1,7 +1,6 @@
-import { useTranslation } from 'react-i18next'
-import HumanInputForm from './human-input-form'
-import Divider from '@/app/components/base/divider'
 import type { HumanInputContentProps } from './type'
+import Divider from '@/app/components/base/divider'
+import HumanInputForm from './human-input-form'
 
 const HumanInputContent = ({
   formData,
@@ -10,8 +9,6 @@ const HumanInputContent = ({
   showTimeout = false,
   onSubmit,
 }: HumanInputContentProps) => {
-  const { t } = useTranslation()
-
   return (
     <>
       <HumanInputForm
@@ -21,10 +18,10 @@ const HumanInputContent = ({
       />
       {(showEmailTip || showDebugModeTip) && (
         <>
-          <Divider className='!my-2 w-[30px]' />
-          <div className='space-y-1 pt-1'>
-            {showEmailTip && <div className='system-xs-regular text-text-secondary'>{t('humanInputEmailTip')}</div>}
-            {showDebugModeTip && <div className='system-xs-medium text-text-warning'>{t('humanInputWebappTip')}</div>}
+          <Divider className="!my-2 w-[30px]" />
+          <div className="space-y-1 pt-1">
+            {showEmailTip && <div className="system-xs-regular text-text-secondary">humanInputEmailTip</div>}
+            {showDebugModeTip && <div className="system-xs-medium text-text-warning">humanInputWebappTip</div>}
           </div>
         </>
       )}

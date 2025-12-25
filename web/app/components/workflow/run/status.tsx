@@ -1,10 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
 import { useDocLink } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
 
 type ResultProps = {
   status: string
@@ -30,12 +30,13 @@ const StatusPanel: FC<ResultProps> = ({
 
   return (
     <StatusContainer status={status}>
-      <div className='flex'>
+      <div className="flex">
         <div className={cn(
           'max-w-[120px] flex-[33%]',
           status === 'partial-succeeded' && 'min-w-[140px]',
-        )}>
-          <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.status')}</div>
+        )}
+        >
+          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.status')}</div>
           <div
             className={cn(
               'system-xs-semibold-uppercase flex items-center gap-1',
@@ -48,64 +49,64 @@ const StatusPanel: FC<ResultProps> = ({
           >
             {status === 'running' && (
               <>
-                <Indicator color={'blue'} />
+                <Indicator color="blue" />
                 <span>{isListening ? 'Listening' : 'Running'}</span>
               </>
             )}
             {status === 'succeeded' && (
               <>
-                <Indicator color={'green'} />
+                <Indicator color="green" />
                 <span>SUCCESS</span>
               </>
             )}
             {status === 'partial-succeeded' && (
               <>
-                <Indicator color={'green'} />
+                <Indicator color="green" />
                 <span>PARTIAL SUCCESS</span>
               </>
             )}
             {status === 'exception' && (
               <>
-                <Indicator color={'yellow'} />
+                <Indicator color="yellow" />
                 <span>EXCEPTION</span>
               </>
             )}
             {status === 'failed' && (
               <>
-                <Indicator color={'red'} />
+                <Indicator color="red" />
                 <span>FAIL</span>
               </>
             )}
             {status === 'stopped' && (
               <>
-                <Indicator color={'yellow'} />
+                <Indicator color="yellow" />
                 <span>STOP</span>
               </>
             )}
             {status === 'suspended' && (
               <>
-                <Indicator color={'yellow'} />
+                <Indicator color="yellow" />
                 <span>PENDING</span>
               </>
             )}
           </div>
         </div>
-        <div className='max-w-[152px] flex-[33%]'>
-          <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.time')}</div>
-          <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
+        <div className="max-w-[152px] flex-[33%]">
+          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.time')}</div>
+          <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {(status === 'running' || status === 'suspended') && (
-              <div className='h-2 w-16 rounded-sm bg-text-quaternary' />
+              <div className="h-2 w-16 rounded-sm bg-text-quaternary" />
             )}
             {status !== 'running' && status !== 'suspended' && (
               <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
             )}
           </div>
         </div>
-        <div className='flex-[33%]'>
-          <div className='system-2xs-medium-uppercase mb-1 text-text-tertiary'>{t('runLog.resultPanel.tokens')}</div>
-          <div className='system-sm-medium flex items-center gap-1 text-text-secondary'>
+        <div className="flex-[33%]">
+          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.tokens')}</div>
+          <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {(status === 'running' || status === 'suspended') && (
-              <div className='h-2 w-20 rounded-sm bg-text-quaternary' />
+              <div className="h-2 w-20 rounded-sm bg-text-quaternary" />
             )}
             {status !== 'running' && status !== 'suspended' && (
               <span>{`${tokens || 0} Tokens`}</span>
@@ -115,13 +116,13 @@ const StatusPanel: FC<ResultProps> = ({
       </div>
       {status === 'failed' && error && (
         <>
-          <div className='my-2 h-[0.5px] bg-divider-subtle'/>
-          <div className='system-xs-regular whitespace-pre-wrap text-text-destructive'>{error}</div>
+          <div className="my-2 h-[0.5px] bg-divider-subtle" />
+          <div className="system-xs-regular whitespace-pre-wrap text-text-destructive">{error}</div>
           {
             !!exceptionCounts && (
               <>
-                <div className='my-2 h-[0.5px] bg-divider-subtle'/>
-                <div className='system-xs-regular text-text-destructive'>
+                <div className="my-2 h-[0.5px] bg-divider-subtle" />
+                <div className="system-xs-regular text-text-destructive">
                   {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
                 </div>
               </>
@@ -132,8 +133,8 @@ const StatusPanel: FC<ResultProps> = ({
       {
         status === 'partial-succeeded' && !!exceptionCounts && (
           <>
-            <div className='my-2 h-[0.5px] bg-divider-deep'/>
-            <div className='system-xs-medium text-text-warning'>
+            <div className="my-2 h-[0.5px] bg-divider-deep" />
+            <div className="system-xs-medium text-text-warning">
               {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
             </div>
           </>
@@ -142,13 +143,13 @@ const StatusPanel: FC<ResultProps> = ({
       {
         status === 'exception' && (
           <>
-            <div className='my-2 h-[0.5px] bg-divider-deep'/>
-            <div className='system-xs-medium text-text-warning'>
+            <div className="my-2 h-[0.5px] bg-divider-deep" />
+            <div className="system-xs-medium text-text-warning">
               {error}
               <a
                 href={docLink('/guides/workflow/error-handling/error-type')}
-                target='_blank'
-                className='text-text-accent'
+                target="_blank"
+                className="text-text-accent"
               >
                 {t('workflow.common.learnMore')}
               </a>
@@ -158,19 +159,21 @@ const StatusPanel: FC<ResultProps> = ({
       }
       {status === 'suspended' && (
         <>
-          <div className='my-2 h-[0.5px] bg-divider-deep'/>
-          <div className='system-xs-medium space-y-1 text-text-warning'>
-            <div className='flex items-center gap-1'>
-              <div className='w-[96px] uppercase'>{t('workflow.nodes.humanInput.log.reason')}</div>
-              <div className='truncate'>{t('workflow.nodes.humanInput.log.reasonContent')}</div>
+          <div className="my-2 h-[0.5px] bg-divider-deep" />
+          <div className="system-xs-medium space-y-1 text-text-warning">
+            <div className="flex items-center gap-1">
+              <div className="w-[96px] uppercase">{t('workflow.nodes.humanInput.log.reason')}</div>
+              <div className="truncate">{t('workflow.nodes.humanInput.log.reasonContent')}</div>
             </div>
-            <div className='flex items-center gap-1'>
-              <div className='w-[96px] uppercase'>{t('workflow.nodes.humanInput.log.inputURL')}</div>
+            <div className="flex items-center gap-1">
+              <div className="w-[96px] uppercase">{t('workflow.nodes.humanInput.log.inputURL')}</div>
               <a
                 href={inputURL}
-                target='_blank'
-                className='text-text-accent'
-              >{inputURL}</a>
+                target="_blank"
+                className="text-text-accent"
+              >
+                {inputURL}
+              </a>
             </div>
           </div>
         </>

@@ -1,22 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { Props as FormProps } from './form'
-import Form from './form'
-import { cn } from '@/utils/classnames'
-import Button from '@/app/components/base/button'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
-import { InputVarType } from '@/app/components/workflow/types'
-import Toast from '@/app/components/base/toast'
-import { TransferMethod } from '@/types/app'
-import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
-import type { NodeRunningStatus } from '@/app/components/workflow/types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { SpecialResultPanelProps } from '@/app/components/workflow/run/special-result-panel'
-import PanelWrap from './panel-wrap'
+import type { NodeRunningStatus } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { getProcessedFiles } from '@/app/components/base/file-uploader/utils'
+import Toast from '@/app/components/base/toast'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 import SingleRunForm from '@/app/components/workflow/nodes/human-input/components/single-run-form'
+import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
+import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import Form from './form'
+import PanelWrap from './panel-wrap'
 
 const i18nPrefix = 'workflow.singleRun'
 
@@ -39,9 +39,9 @@ export type BeforeRunFormProps = {
 } & Partial<SpecialResultPanelProps>
 
 function formatValue(value: string | any, type: InputVarType) {
-  if(type === InputVarType.checkbox)
+  if (type === InputVarType.checkbox)
     return !!value
-  if(value === undefined || value === null)
+  if (value === undefined || value === null)
     return value
   if (type === InputVarType.number)
     return Number.parseFloat(value)
@@ -157,14 +157,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
   const hasRun = useRef(false)
   useEffect(() => {
     // React 18 run twice in dev mode
-    if(hasRun.current)
+    if (hasRun.current)
       return
     hasRun.current = true
-    if(filteredExistVarForms.length === 0 && !isHumanInput)
+    if (filteredExistVarForms.length === 0 && !isHumanInput)
       onRun({})
   }, [filteredExistVarForms, onRun])
 
-  if(filteredExistVarForms.length === 0 && !isHumanInput)
+  if (filteredExistVarForms.length === 0 && !isHumanInput)
     return null
 
   return (
@@ -172,9 +172,9 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       nodeName={nodeName}
       onHide={onHide}
     >
-      <div className='h-0 grow overflow-y-auto pb-4'>
+      <div className="h-0 grow overflow-y-auto pb-4">
         {!showGeneratedForm && (
-          <div className='mt-3 space-y-4 px-4'>
+          <div className="mt-3 space-y-4 px-4">
             {filteredExistVarForms.map((form, index) => (
               <div key={index}>
                 <Form
@@ -198,14 +198,14 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           />
         )}
         {!showGeneratedForm && (
-          <div className='mt-4 flex justify-between space-x-2 px-4' >
+          <div className="mt-4 flex justify-between space-x-2 px-4">
             {!isHumanInput && (
-              <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
+              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
                 <div>{t(`${i18nPrefix}.startRun`)}</div>
               </Button>
             )}
             {isHumanInput && (
-              <Button disabled={!isFileLoaded} variant='primary' className='w-0 grow space-x-2' onClick={handleRunOrGenerateForm}>
+              <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
                 <div>{t('workflow.nodes.humanInput.singleRun.button')}</div>
               </Button>
             )}

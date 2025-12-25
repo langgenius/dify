@@ -1,20 +1,19 @@
-import { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { useStoreApi } from 'reactflow'
-import { VarType } from '../../types'
 import type { ValueSelector, Var } from '../../types'
-import { WriteMode } from './types'
 import type { AssignerNodeOperation, AssignerNodeType } from './types'
-import { writeModeTypesNum } from './types'
-import { useGetAvailableVars } from './hooks'
-import { convertV1ToV2 } from './utils'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { produce } from 'immer'
+import { useCallback, useMemo } from 'react'
+import { useStoreApi } from 'reactflow'
 import {
   useIsChatMode,
   useNodesReadOnly,
   useWorkflow,
   useWorkflowVariables,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { VarType } from '../../types'
+import { useGetAvailableVars } from './hooks'
+import { WriteMode, writeModeTypesNum } from './types'
+import { convertV1ToV2 } from './utils'
 
 const useConfig = (id: string, rawPayload: AssignerNodeType) => {
   const payload = useMemo(() => convertV1ToV2(rawPayload), [rawPayload])
@@ -75,8 +74,9 @@ const useConfig = (id: string, rawPayload: AssignerNodeType) => {
 
   const getToAssignedVarType = useCallback((assignedVarType: VarType, write_mode: WriteMode) => {
     if (write_mode === WriteMode.overwrite || write_mode === WriteMode.increment || write_mode === WriteMode.decrement
-      || write_mode === WriteMode.multiply || write_mode === WriteMode.divide || write_mode === WriteMode.extend)
+      || write_mode === WriteMode.multiply || write_mode === WriteMode.divide || write_mode === WriteMode.extend) {
       return assignedVarType
+    }
     if (write_mode === WriteMode.append) {
       if (assignedVarType === VarType.arrayString)
         return VarType.string

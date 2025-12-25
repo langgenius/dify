@@ -1,4 +1,4 @@
-import type React from 'react'
+import type * as React from 'react'
 import type { FormInputItemPlaceholder } from '../types'
 
 const variableRegex = /\{\{#(.+?)#\}\}/g
@@ -11,12 +11,13 @@ export function rehypeVariable() {
 
       variableRegex.lastIndex = 0
       noteRegex.lastIndex = 0
-      if(node.type === 'text' && variableRegex.test(value) && !noteRegex.test(value)) {
+      if (node.type === 'text' && variableRegex.test(value) && !noteRegex.test(value)) {
         let m: RegExpExecArray | null
         let last = 0
         const parts: any[] = []
         variableRegex.lastIndex = 0
-        while ((m = variableRegex.exec(value))) {
+        m = variableRegex.exec(value)
+        while (m !== null) {
           if (m.index > last)
             parts.push({ type: 'text', value: value.slice(last, m.index) })
 
@@ -28,6 +29,7 @@ export function rehypeVariable() {
           })
 
           last = m.index + m[0].length
+          m = variableRegex.exec(value)
         }
 
         if (parts.length) {
@@ -40,7 +42,7 @@ export function rehypeVariable() {
       if (node.children) {
         let i = 0
         // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
-        while(i < node.children.length) {
+        while (i < node.children.length) {
           iterate(node.children[i], i, node)
           i++
         }
@@ -48,7 +50,7 @@ export function rehypeVariable() {
     }
     let i = 0
     // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
-    while(i < tree.children.length) {
+    while (i < tree.children.length) {
       iterate(tree.children[i], i, tree)
       i++
     }
@@ -61,12 +63,13 @@ export function rehypeNotes() {
       const value = node.value
 
       noteRegex.lastIndex = 0
-      if(node.type === 'text' && noteRegex.test(value)) {
+      if (node.type === 'text' && noteRegex.test(value)) {
         let m: RegExpExecArray | null
         let last = 0
         const parts: any[] = []
         noteRegex.lastIndex = 0
-        while ((m = noteRegex.exec(value))) {
+        m = noteRegex.exec(value)
+        while (m !== null) {
           if (m.index > last)
             parts.push({ type: 'text', value: value.slice(last, m.index) })
 
@@ -79,6 +82,7 @@ export function rehypeNotes() {
           })
 
           last = m.index + m[0].length
+          m = noteRegex.exec(value)
         }
 
         if (parts.length) {
@@ -92,7 +96,7 @@ export function rehypeNotes() {
       if (node.children) {
         let i = 0
         // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
-        while(i < node.children.length) {
+        while (i < node.children.length) {
           iterate(node.children[i], i, node)
           i++
         }
@@ -100,7 +104,7 @@ export function rehypeNotes() {
     }
     let i = 0
     // Caution: can not use forEach. Because the length of tree.children may be changed because of change content: parent.children.splice(index, 1, ...parts)
-    while(i < tree.children.length) {
+    while (i < tree.children.length) {
       iterate(tree.children[i], i, tree)
       i++
     }
@@ -108,10 +112,15 @@ export function rehypeNotes() {
 }
 
 export const Variable: React.FC<{ path: string }> = ({ path }) => {
-  return <span className='text-text-accent'>{
-    path.replaceAll('.', '/')
-      .replace('{{#', '{{')
-      .replace('#}}', '}}')}</span>
+  return (
+    <span className="text-text-accent">
+      {
+        path.replaceAll('.', '/')
+          .replace('{{#', '{{')
+          .replace('#}}', '}}')
+      }
+    </span>
+  )
 }
 
 export const Note: React.FC<{ placeholder: FormInputItemPlaceholder, title: string }> = ({ placeholder, title }) => {
@@ -119,7 +128,7 @@ export const Note: React.FC<{ placeholder: FormInputItemPlaceholder, title: stri
   return (
     <>
       <h2>{title}</h2>
-      <div className='mt-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2'>
+      <div className="mt-3 rounded-[10px] bg-components-input-bg-normal px-2.5 py-2">
         {isVariable ? <Variable path={`{{${placeholder.selector.join('.')}}}`} /> : <span>{placeholder.value}</span>}
       </div>
     </>

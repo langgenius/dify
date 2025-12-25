@@ -1,12 +1,13 @@
 'use client'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 import { RiArrowLeftLine } from '@remixicon/react'
+import * as React from 'react'
+import { useState } from 'react'
 
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import ContentItem from '@/app/components/base/chat/chat/answer/human-input-content/content-item'
 import { UserActionButtonType } from '@/app/components/workflow/nodes/human-input/types'
-import type { FormInputItem, UserAction } from '@/app/components/workflow/nodes/human-input/types'
 
 type Props = {
   nodeName: string
@@ -28,7 +29,7 @@ const FormContent = ({
   const { t } = useTranslation()
 
   const splitByOutputVar = (content: string): string[] => {
-    const outputVarRegex = /({{#\$output\.[^#]+#}})/g
+    const outputVarRegex = /(\{\{#\$output\.[^#]+#\}\})/g
     const parts = content.split(outputVarRegex)
     return parts.filter(part => part.length > 0)
   }
@@ -74,16 +75,16 @@ const FormContent = ({
   return (
     <>
       {showBackButton && (
-        <div className='flex items-center p-4 pb-1'>
-          <div className='system-sm-semibold-uppercase flex cursor-pointer items-center text-text-accent' onClick={handleBack}>
-            <RiArrowLeftLine className='mr-1 h-4 w-4' />
+        <div className="flex items-center p-4 pb-1">
+          <div className="system-sm-semibold-uppercase flex cursor-pointer items-center text-text-accent" onClick={handleBack}>
+            <RiArrowLeftLine className="mr-1 h-4 w-4" />
             {t('workflow.nodes.humanInput.singleRun.back')}
           </div>
-          <div className='system-xs-regular mx-1 text-divider-deep'>/</div>
-          <div className='system-sm-semibold-uppercase text-text-secondary'>{nodeName}</div>
+          <div className="system-xs-regular mx-1 text-divider-deep">/</div>
+          <div className="system-sm-semibold-uppercase text-text-secondary">{nodeName}</div>
         </div>
       )}
-      <div className='px-4 py-3'>
+      <div className="px-4 py-3">
         {contentList.map((content, index) => (
           <ContentItem
             key={index}
@@ -93,7 +94,7 @@ const FormContent = ({
             onInputChange={handleInputsChange}
           />
         ))}
-        <div className='flex flex-wrap gap-1 py-1'>
+        <div className="flex flex-wrap gap-1 py-1">
           {userActions.map((action: any) => (
             <Button
               key={action.id}

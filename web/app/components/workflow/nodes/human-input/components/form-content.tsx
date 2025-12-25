@@ -1,18 +1,19 @@
 'use client'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import useAvailableVarList from '../../_base/hooks/use-available-var-list'
-import { BlockEnum } from '../../../types'
-import { useWorkflowVariableType } from '../../../hooks'
-import { Trans, useTranslation } from 'react-i18next'
-import type { FormInputItem } from '../types'
-import AddInputField from './add-input-field'
-import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
 import type { LexicalCommand } from 'lexical'
-import { isMac } from '../../../utils'
+import type { FC } from 'react'
+import type { FormInputItem } from '../types'
 import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { Trans, useTranslation } from 'react-i18next'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import { INSERT_HITL_INPUT_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/hitl-input-block'
 import { cn } from '@/utils/classnames'
+import { useWorkflowVariableType } from '../../../hooks'
+import { BlockEnum } from '../../../types'
+import { isMac } from '../../../utils'
+import useAvailableVarList from '../../_base/hooks/use-available-var-list'
+import AddInputField from './add-input-field'
 
 type FormContentProps = {
   nodeId: string
@@ -145,9 +146,9 @@ const FormContent: FC<FormContentProps> = ({
         }]}
       />
       {isFocus && (
-        <div className='system-xs-regular flex h-8 shrink-0 items-center px-3 text-components-input-text-placeholder'>
+        <div className="system-xs-regular flex h-8 shrink-0 items-center px-3 text-components-input-text-placeholder">
           <Trans
-            i18nKey='workflow.nodes.humanInput.formContent.hotkeyTip'
+            i18nKey="workflow.nodes.humanInput.formContent.hotkeyTip"
             components={
               {
                 Key: <Key>/</Key>,

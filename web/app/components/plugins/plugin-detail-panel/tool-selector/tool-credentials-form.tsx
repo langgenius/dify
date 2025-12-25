@@ -1,18 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Collection } from '@/app/components/tools/types'
 import {
   RiArrowRightUpLine,
 } from '@remixicon/react'
-import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import type { Collection } from '@/app/components/tools/types'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Toast from '@/app/components/base/toast'
-import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
 import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
+import { addDefaultValue, toolCredentialToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
+import { fetchBuiltInToolCredential, fetchBuiltInToolCredentialSchema } from '@/service/tools'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -55,41 +56,43 @@ const ToolCredentialForm: FC<Props> = ({
   return (
     <>
       {!credentialSchema
-        ? <div className='pt-3'><Loading type='app' /></div>
+        ? <div className="pt-3"><Loading type="app" /></div>
         : (
-          <>
-            <div className='max-h-[464px] overflow-y-auto px-4'>
-              <Form
-                value={tempCredential}
-                onChange={(v) => {
-                  setTempCredential(v)
-                }}
-                formSchemas={credentialSchema}
-                isEditMode={true}
-                showOnVariableMap={{}}
-                validating={false}
-                inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
-                fieldMoreInfo={item => item.url
-                  ? (<a
-                    href={item.url}
-                    target='_blank' rel='noopener noreferrer'
-                    className='inline-flex items-center text-xs text-text-accent'
-                  >
-                    {t('tools.howToGet')}
-                    <RiArrowRightUpLine className='ml-1 h-3 w-3' />
-                  </a>)
-                  : null}
-              />
-            </div>
-            <div className={cn('mt-1 flex justify-end px-4')} >
-              <div className='flex space-x-2'>
-                <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+            <>
+              <div className="max-h-[464px] overflow-y-auto px-4">
+                <Form
+                  value={tempCredential}
+                  onChange={(v) => {
+                    setTempCredential(v)
+                  }}
+                  formSchemas={credentialSchema}
+                  isEditMode={true}
+                  showOnVariableMap={{}}
+                  validating={false}
+                  inputClassName="bg-components-input-bg-normal hover:bg-components-input-bg-hover"
+                  fieldMoreInfo={item => item.url
+                    ? (
+                        <a
+                          href={item.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center text-xs text-text-accent"
+                        >
+                          {t('tools.howToGet')}
+                          <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+                        </a>
+                      )
+                    : null}
+                />
               </div>
-            </div>
-          </>
-        )
-      }
+              <div className={cn('mt-1 flex justify-end px-4')}>
+                <div className="flex space-x-2">
+                  <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
+                  <Button variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
+                </div>
+              </div>
+            </>
+          )}
 
     </>
   )

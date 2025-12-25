@@ -1,14 +1,15 @@
-import React, { useCallback, useState } from 'react'
+import type { FormInputItem, FormInputItemPlaceholder } from '@/app/components/workflow/nodes/human-input/types'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
+import { InputVarType } from '@/app/components/workflow/types'
+import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 // import PromptEditor from '@/app/components/base/prompt-editor'
 // import TagLabel from './tag-label'
 import Button from '../../../button'
-import { useTranslation } from 'react-i18next'
-import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
-import type { FormInputItem, FormInputItemPlaceholder } from '@/app/components/workflow/nodes/human-input/types'
 import PrePopulate from './pre-populate'
-import { produce } from 'immer'
-import { InputVarType } from '@/app/components/workflow/types'
 
 const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
 
@@ -43,9 +44,9 @@ const InputField: React.FC<Props> = ({
         if (!draft.placeholder)
           draft.placeholder = { type: 'constant', selector: [], value: '' }
         draft.placeholder[key] = value
-        if(key === 'selector')
+        if (key === 'selector')
           draft.placeholder.type = 'variable'
-        else if(key === 'value')
+        else if (key === 'value')
           draft.placeholder.type = 'constant'
       })
       setTempPayload(nextValue)
@@ -53,10 +54,11 @@ const InputField: React.FC<Props> = ({
   }, [tempPayload])
   return (
     <div className="w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]">
-      <div className='system-md-semibold text-text-primary'>{t(`${i18nPrefix}.title`)}</div>
+      <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`)}</div>
       <div className="mt-3">
-        <div className='system-xs-medium text-text-secondary'>
-          {t(`${i18nPrefix}.saveResponseAs`)}<span className='system-xs-regular relative text-text-destructive-secondary'>*</span>
+        <div className="system-xs-medium text-text-secondary">
+          {t(`${i18nPrefix}.saveResponseAs`)}
+          <span className="system-xs-regular relative text-text-destructive-secondary">*</span>
         </div>
         <Input
           className="mt-1.5"
@@ -68,8 +70,8 @@ const InputField: React.FC<Props> = ({
           autoFocus
         />
       </div>
-      <div className='mt-4'>
-        <div className='system-xs-medium mb-1.5 text-text-secondary'>
+      <div className="mt-4">
+        <div className="system-xs-medium mb-1.5 text-text-secondary">
           {t(`${i18nPrefix}.prePopulateField`)}
         </div>
         <PrePopulate
@@ -84,26 +86,28 @@ const InputField: React.FC<Props> = ({
           onValueChange={handlePlaceholderChange('value')}
         />
       </div>
-      <div className='mt-4 flex justify-end space-x-2'>
+      <div className="mt-4 flex justify-end space-x-2">
         <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-        {isEdit ? (
-          <Button
-            variant='primary'
-            onClick={handleSave}
-          >
-            {t('common.operation.save')}
-          </Button>
-        ) : (
-          <Button
-            className='flex'
-            variant='primary'
-            onClick={handleSave}
-          >
-            <span className='mr-1'>{t(`${i18nPrefix}.insert`)}</span>
-            <span className='system-kbd mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1'>{getKeyboardKeyNameBySystem('ctrl')}</span>
-            <span className=' system-kbd flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1'>↩︎</span>
-          </Button>
-        )}
+        {isEdit
+          ? (
+              <Button
+                variant="primary"
+                onClick={handleSave}
+              >
+                {t('common.operation.save')}
+              </Button>
+            )
+          : (
+              <Button
+                className="flex"
+                variant="primary"
+                onClick={handleSave}
+              >
+                <span className="mr-1">{t(`${i18nPrefix}.insert`)}</span>
+                <span className="system-kbd mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1">{getKeyboardKeyNameBySystem('ctrl')}</span>
+                <span className=" system-kbd flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1">↩︎</span>
+              </Button>
+            )}
 
       </div>
     </div>

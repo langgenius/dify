@@ -1,3 +1,10 @@
+import type { WorkflowNodesMap } from '../workflow-variable-block/node'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import {
+  COMMAND_PRIORITY_EDITOR,
+} from 'lexical'
 import {
   memo,
   useEffect,
@@ -5,12 +12,7 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import {
-  COMMAND_PRIORITY_EDITOR,
-} from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { WorkflowNodesMap } from '../workflow-variable-block/node'
+import Tooltip from '@/app/components/base/tooltip'
 import {
   isConversationVar,
   isENV,
@@ -18,14 +20,12 @@ import {
   isRagVariableVar,
   isSystemVar,
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
-import Tooltip from '@/app/components/base/tooltip'
-import { isExceptionVariable } from '@/app/components/workflow/utils'
 import VarFullPathPanel from '@/app/components/workflow/nodes/_base/components/variable/var-full-path-panel'
-import { Type } from '@/app/components/workflow/nodes/llm/types'
-import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import {
   VariableLabelInEditor,
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { Type } from '@/app/components/workflow/nodes/llm/types'
+import { isExceptionVariable } from '@/app/components/workflow/utils'
 import { UPDATE_WORKFLOW_NODES_MAP } from '../workflow-variable-block'
 import { HITLInputNode } from './node'
 
@@ -36,8 +36,8 @@ type HITLInputVariableBlockComponentProps = {
   conversationVariables?: Var[]
   ragVariables?: Var[]
   getVarType?: (payload: {
-    nodeId: string,
-    valueSelector: ValueSelector,
+    nodeId: string
+    valueSelector: ValueSelector
   }) => Type
 }
 
@@ -125,16 +125,19 @@ const HITLInputVariableBlockComponent = ({
   return (
     <Tooltip
       noDecoration
-      popupContent={
+      popupContent={(
         <VarFullPathPanel
           nodeName={node.title}
           path={variables.slice(1)}
-          varType={getVarType ? getVarType({
-            nodeId: variables[0],
-            valueSelector: variables,
-          }) : Type.string}
+          varType={getVarType
+            ? getVarType({
+                nodeId: variables[0],
+                valueSelector: variables,
+              })
+            : Type.string}
           nodeType={node?.type}
-        />}
+        />
+      )}
       disabled={!isShowAPart}
     >
       <div>{Item}</div>

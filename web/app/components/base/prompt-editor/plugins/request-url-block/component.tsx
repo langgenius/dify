@@ -1,10 +1,10 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiGlobalLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
 
+import { cn } from '@/utils/classnames'
 import { useSelectOrDelete } from '../../hooks'
 import { DELETE_REQUEST_URL_BLOCK_COMMAND } from './index'
-import { cn } from '@/utils/classnames'
 
 type RequestURLBlockComponentProps = {
   nodeKey: string
@@ -24,8 +24,8 @@ const RequestURLBlockComponent: FC<RequestURLBlockComponentProps> = ({
       )}
       ref={ref}
     >
-      <RiGlobalLine className='mr-0.5 h-3.5 w-3.5 text-util-colors-violet-violet-600' />
-      <div className='system-xs-medium text-util-colors-violet-violet-600'>{t('common.promptEditor.requestURL.item.title')}</div>
+      <RiGlobalLine className="mr-0.5 h-3.5 w-3.5 text-util-colors-violet-violet-600" />
+      <div className="system-xs-medium text-util-colors-violet-violet-600">{t('common.promptEditor.requestURL.item.title')}</div>
     </div>
   )
 }

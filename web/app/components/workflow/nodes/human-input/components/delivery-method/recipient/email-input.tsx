@@ -1,15 +1,16 @@
-import React, { useMemo, useRef, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import type { Member } from '@/models/common'
 import type { Recipient as RecipientItem } from '../../../types'
-import EmailItem from './email-item'
-import MemberList from './member-list'
+import type { Member } from '@/models/common'
+import * as React from 'react'
+import { useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
+import EmailItem from './email-item'
+import MemberList from './member-list'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -52,7 +53,8 @@ const EmailInput = ({
   }, [selectedEmails, t, isFocus])
 
   const setInputFocus = () => {
-    if (disabled) return
+    if (disabled)
+      return
     setIsFocus(true)
     const input = inputRef.current?.children[0] as HTMLInputElement
     input?.focus()
@@ -75,7 +77,7 @@ const EmailInput = ({
   }
 
   const checkEmailValid = (email: string) => {
-    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/
+    const emailRegex = /^[^\s@]+@[^\s@][^\s.@]*\.[^\s@]+$/
     return emailRegex.test(email)
   }
 
@@ -105,7 +107,7 @@ const EmailInput = ({
   }
 
   return (
-    <div className='p-1 pt-0'>
+    <div className="p-1 pt-0">
       <div
         className={cn(
           'flex max-h-24 min-h-16 flex-wrap overflow-y-auto rounded-lg border border-transparent bg-components-input-bg-normal p-2',
@@ -127,16 +129,16 @@ const EmailInput = ({
           <PortalToFollowElem
             open={open}
             onOpenChange={setOpen}
-            placement='bottom-start'
+            placement="bottom-start"
             offset={{
               mainAxis: 4,
               crossAxis: -40,
             }}
           >
-            <PortalToFollowElemTrigger className='block h-6 min-w-[166px]'>
+            <PortalToFollowElemTrigger className="block h-6 min-w-[166px]">
               <input
                 ref={inputRef}
-                className='system-sm-regular h-6 min-w-[166px] appearance-none bg-transparent p-1 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder'
+                className="system-sm-regular h-6 min-w-[166px] appearance-none bg-transparent p-1 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder"
                 placeholder={placeholder}
                 onFocus={() => setIsFocus(true)}
                 onBlur={() => setIsFocus(false)}
@@ -145,7 +147,7 @@ const EmailInput = ({
                 onKeyDown={handleKeyDown}
               />
             </PortalToFollowElemTrigger>
-            <PortalToFollowElemContent className='z-[1000]'>
+            <PortalToFollowElemContent className="z-[1000]">
               <MemberList
                 searchValue={searchKey}
                 list={list}

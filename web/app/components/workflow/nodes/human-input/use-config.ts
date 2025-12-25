@@ -1,10 +1,11 @@
-import { produce } from 'immer'
 import type { DeliveryMethod, HumanInputNodeType, UserAction } from './types'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { produce } from 'immer'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import useFormContent from './use-form-content'
+
 const useConfig = (id: string, payload: HumanInputNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<HumanInputNodeType>(id, payload)
@@ -43,7 +44,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
     })
   }
 
-  const handleTimeoutChange = ({ timeout, unit }: { timeout: number; unit: 'hour' | 'day' }) => {
+  const handleTimeoutChange = ({ timeout, unit }: { timeout: number, unit: 'hour' | 'day' }) => {
     setInputs({
       ...inputs,
       timeout,

@@ -1,7 +1,7 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import useNodeCrud from '../_base/hooks/use-node-crud'
 import type { FormInputItem, HumanInputNodeType } from './types'
 import { produce } from 'immer'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import useNodeCrud from '../_base/hooks/use-node-crud'
 
 const useFormContent = (id: string, payload: HumanInputNodeType) => {
   const [editorKey, setEditorKey] = useState(0)
@@ -30,7 +30,7 @@ const useFormContent = (id: string, payload: HumanInputNodeType) => {
     const newInputs = produce(inputs, (draft) => {
       draft.form_content = draft.form_content.replaceAll(`{{#$output.${oldName}#}}`, `{{#$output.${payload.output_variable_name}#}}`)
       draft.inputs = draft.inputs.map(item => item.output_variable_name === oldName ? payload : item)
-      if(!draft.inputs.find(item => item.output_variable_name === payload.output_variable_name))
+      if (!draft.inputs.find(item => item.output_variable_name === payload.output_variable_name))
         draft.inputs = [...draft.inputs, payload]
     })
     setInputs(newInputs)

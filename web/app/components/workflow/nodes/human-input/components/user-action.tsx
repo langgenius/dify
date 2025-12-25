@@ -1,14 +1,14 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { UserAction } from '../types'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
-import type { UserAction } from '../types'
-import Input from '@/app/components/base/input'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import ButtonStyleDropdown from './button-style-dropdown'
+import Input from '@/app/components/base/input'
 import { genActionId } from '../utils'
+import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -40,16 +40,16 @@ const UserActionItem: FC<Props> = ({
   }
 
   return (
-    <div className='flex items-center gap-1'>
-      <div className='shrink-0'>
+    <div className="flex items-center gap-1">
+      <div className="shrink-0">
         <Input
-          wrapperClassName='w-[120px]'
+          wrapperClassName="w-[120px]"
           value={data.id}
           placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`)}
           onChange={handleIDChange}
         />
       </div>
-      <div className='grow'>
+      <div className="grow">
         <Input
           value={data.title}
           placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`)}
@@ -62,11 +62,11 @@ const UserActionItem: FC<Props> = ({
         onChange={type => onChange({ ...data, button_style: type })}
       />
       <Button
-        className='px-2'
-        variant='tertiary'
+        className="px-2"
+        variant="tertiary"
         onClick={() => onDelete(data.id)}
       >
-        <RiDeleteBinLine className='h-4 w-4' />
+        <RiDeleteBinLine className="h-4 w-4" />
       </Button>
     </div>
   )

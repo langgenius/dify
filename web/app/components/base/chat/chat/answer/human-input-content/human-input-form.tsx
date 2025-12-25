@@ -1,10 +1,11 @@
 'use client'
-import React, { useCallback, useState } from 'react'
+import type { HumanInputFormProps } from './type'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import ContentItem from './content-item'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from './utils'
-import type { HumanInputFormProps } from './type'
 
 const HumanInputForm = ({
   formData,
@@ -46,7 +47,7 @@ const HumanInputForm = ({
           onInputChange={handleInputsChange}
         />
       ))}
-      <div className='flex flex-wrap gap-1 py-1'>
+      <div className="flex flex-wrap gap-1 py-1">
         {formData.actions.map((action: any) => (
           <Button
             key={action.id}
@@ -59,7 +60,7 @@ const HumanInputForm = ({
         ))}
       </div>
       {showTimeout && (
-        <div className='system-xs-regular mt-1 text-text-tertiary'>
+        <div className="system-xs-regular mt-1 text-text-tertiary">
           {timeoutUnit === 'day' ? t('share.humanInput.timeoutDay', { count: timeout }) : t('share.humanInput.timeoutHour', { count: timeout })}
         </div>
       )}

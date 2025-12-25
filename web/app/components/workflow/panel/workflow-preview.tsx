@@ -1,32 +1,32 @@
 import {
+  RiClipboardLine,
+  RiCloseLine,
+} from '@remixicon/react'
+import copy from 'copy-to-clipboard'
+import {
   memo,
   useCallback,
   useEffect,
   useState,
 } from 'react'
-import {
-  RiClipboardLine,
-  RiCloseLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import copy from 'copy-to-clipboard'
-import ResultText from '../run/result-text'
-import ResultPanel from '../run/result-panel'
-import TracingPanel from '../run/tracing-panel'
+import Button from '@/app/components/base/button'
+import Loading from '@/app/components/base/loading'
+import { cn } from '@/utils/classnames'
+import Toast from '../../base/toast'
 import {
   useWorkflowInteractions,
 } from '../hooks'
+import ResultPanel from '../run/result-panel'
+import ResultText from '../run/result-text'
+import TracingPanel from '../run/tracing-panel'
 import { useStore } from '../store'
 import {
   WorkflowRunningStatus,
 } from '../types'
 import { formatWorkflowRunIdentifier } from '../utils'
-import Toast from '../../base/toast'
-import InputsPanel from './inputs-panel'
-import { cn } from '@/utils/classnames'
-import Loading from '@/app/components/base/loading'
-import Button from '@/app/components/base/button'
 import HumanInputInfo from './human-input-info'
+import InputsPanel from './inputs-panel'
 
 const WorkflowPreview = () => {
   const { t } = useTranslation()
@@ -96,23 +96,22 @@ const WorkflowPreview = () => {
   }, [resize, stopResizing])
 
   return (
-    <div className={
-      'relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
-    }
-    style={{ width: `${panelWidth}px` }}
+    <div
+      className="relative flex h-full flex-col rounded-l-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
+      style={{ width: `${panelWidth}px` }}
     >
       <div
         className="absolute bottom-0 left-[3px] top-1/2 z-50 h-6 w-[3px] cursor-col-resize rounded bg-gray-300"
         onMouseDown={startResizing}
       />
-      <div className='flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary'>
+      <div className="flex items-center justify-between p-4 pb-1 text-base font-semibold text-text-primary">
         {`Test Run${formatWorkflowRunIdentifier(workflowRunningData?.result.finished_at)}`}
-        <div className='cursor-pointer p-1' onClick={() => handleCancelDebugAndPreviewPanel()}>
-          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+        <div className="cursor-pointer p-1" onClick={() => handleCancelDebugAndPreviewPanel()}>
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
       </div>
-      <div className='relative flex grow flex-col'>
-        <div className='flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4'>
+      <div className="relative flex grow flex-col">
+        <div className="flex shrink-0 items-center border-b-[0.5px] border-divider-subtle px-4">
           {showInputsPanel && (
             <div
               className={cn(
@@ -120,7 +119,9 @@ const WorkflowPreview = () => {
                 currentTab === 'INPUT' && '!border-[rgb(21,94,239)] text-text-secondary',
               )}
               onClick={() => switchTab('INPUT')}
-            >{t('runLog.input')}</div>
+            >
+              {t('runLog.input')}
+            </div>
           )}
           <div
             className={cn(
@@ -133,7 +134,9 @@ const WorkflowPreview = () => {
                 return
               switchTab('RESULT')
             }}
-          >{t('runLog.result')}</div>
+          >
+            {t('runLog.result')}
+          </div>
           <div
             className={cn(
               'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
@@ -145,7 +148,9 @@ const WorkflowPreview = () => {
                 return
               switchTab('DETAIL')
             }}
-          >{t('runLog.detail')}</div>
+          >
+            {t('runLog.detail')}
+          </div>
           <div
             className={cn(
               'mr-6 cursor-pointer border-b-2 border-transparent py-3 text-[13px] font-semibold leading-[18px] text-text-tertiary',
@@ -157,12 +162,15 @@ const WorkflowPreview = () => {
                 return
               switchTab('TRACING')
             }}
-          >{t('runLog.tracing')}</div>
+          >
+            {t('runLog.tracing')}
+          </div>
         </div>
         <div className={cn(
           'h-0 grow overflow-y-auto rounded-b-2xl bg-components-panel-bg',
           (currentTab === 'RESULT' || currentTab === 'TRACING') && '!bg-background-section-burn',
-        )}>
+        )}
+        >
           {currentTab === 'INPUT' && showInputsPanel && (
             <InputsPanel onRun={() => switchTab('RESULT')} />
           )}
@@ -191,8 +199,9 @@ const WorkflowPreview = () => {
                     else
                       copy(JSON.stringify(content))
                     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-                  }}>
-                  <RiClipboardLine className='h-3.5 w-3.5' />
+                  }}
+                >
+                  <RiClipboardLine className="h-3.5 w-3.5" />
                   <div>{t('common.operation.copy')}</div>
                 </Button>
               )}
@@ -218,18 +227,18 @@ const WorkflowPreview = () => {
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (
-            <div className='flex h-full items-center justify-center bg-components-panel-bg'>
+            <div className="flex h-full items-center justify-center bg-components-panel-bg">
               <Loading />
             </div>
           )}
           {currentTab === 'TRACING' && (
             <TracingPanel
-              className='bg-background-section-burn'
+              className="bg-background-section-burn"
               list={workflowRunningData?.tracing || []}
             />
           )}
           {currentTab === 'TRACING' && !workflowRunningData?.tracing?.length && (
-            <div className='flex h-full items-center justify-center !bg-background-section-burn'>
+            <div className="flex h-full items-center justify-center !bg-background-section-burn">
               <Loading />
             </div>
           )}

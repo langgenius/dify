@@ -1,9 +1,9 @@
 'use client'
-import { RiEditLine } from '@remixicon/react'
 import type { FC } from 'react'
-import React from 'react'
-import { Variable02 } from '../../../icons/src/vender/solid/development'
+import { RiEditLine } from '@remixicon/react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
+import { Variable02 } from '../../../icons/src/vender/solid/development'
 
 type Props = {
   type: 'edit' | 'variable'
@@ -22,9 +22,10 @@ const TagLabel: FC<Props> = ({
   return (
     <div
       className={cn('inline-flex h-5 cursor-pointer items-center space-x-1 rounded-md bg-components-button-secondary-bg px-1 text-text-accent', className)}
-      onClick={onClick}>
-      <Icon className='size-3.5' />
-      <div className='system-xs-medium '>{children}</div>
+      onClick={onClick}
+    >
+      <Icon className="size-3.5" />
+      <div className="system-xs-medium ">{children}</div>
     </div>
   )
 }

@@ -1,18 +1,4 @@
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import {
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react'
-import { createPortal } from 'react-dom'
 import type { LexicalCommand } from 'lexical'
-import {
-  $getSelection,
-  $isRangeSelection,
-} from 'lexical'
-import { cn } from '@/utils/classnames'
 import {
   autoUpdate,
   flip,
@@ -21,6 +7,21 @@ import {
   size,
   useFloating,
 } from '@floating-ui/react'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import {
+  $getSelection,
+  $isRangeSelection,
+} from 'lexical'
+import {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react'
+import { createPortal } from 'react-dom'
+import { cn } from '@/utils/classnames'
+
 export const SHORTCUTS_EMPTY_CONTENT = 'shortcuts_empty_content'
 
 // Hotkey can be:

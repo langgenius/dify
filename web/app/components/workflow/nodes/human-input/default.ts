@@ -1,9 +1,9 @@
 import type { NodeDefault } from '../../types'
 import type { HumanInputNodeType } from './types'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
 // import { DeliveryMethodType, UserActionButtonType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 
 const i18nPrefix = 'workflow.nodes.humanInput.errorMsg'
 

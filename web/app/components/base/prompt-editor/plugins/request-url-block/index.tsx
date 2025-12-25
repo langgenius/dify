@@ -1,15 +1,15 @@
-import {
-  memo,
-  useEffect,
-} from 'react'
+import type { RequestURLBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { RequestURLBlockType } from '../../types'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $createRequestURLBlockNode,
   RequestURLBlockNode,

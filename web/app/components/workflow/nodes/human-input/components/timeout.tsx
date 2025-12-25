@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'
@@ -9,7 +9,7 @@ const i18nPrefix = 'workflow.nodes.humanInput'
 type Props = {
   timeout: number
   unit: 'day' | 'hour'
-  onChange: (state: { timeout: number; unit: 'day' | 'hour' }) => void
+  onChange: (state: { timeout: number, unit: 'day' | 'hour' }) => void
 }
 
 const TimeoutInput: FC<Props> = ({
@@ -27,15 +27,15 @@ const TimeoutInput: FC<Props> = ({
       onChange({ timeout: 1, unit })
   }
   return (
-    <div className='flex items-center gap-1'>
+    <div className="flex items-center gap-1">
       <Input
-        wrapperClassName='w-16'
-        type='number'
+        wrapperClassName="w-16"
+        type="number"
         value={timeout}
         min={1}
         onChange={handleValueChange}
       />
-      <div className='flex items-center gap-0.5 rounded-[10px] bg-components-segmented-control-bg-normal p-0.5'>
+      <div className="flex items-center gap-0.5 rounded-[10px] bg-components-segmented-control-bg-normal p-0.5">
         <div
           className={cn(
             'cursor-pointer rounded-lg px-2 py-1 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
@@ -43,7 +43,7 @@ const TimeoutInput: FC<Props> = ({
           )}
           onClick={() => onChange({ timeout, unit: 'day' })}
         >
-          <div className='system-sm-medium p-0.5'>{t(`${i18nPrefix}.timeout.days`)}</div>
+          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.days`)}</div>
         </div>
         <div
           className={cn(
@@ -52,7 +52,7 @@ const TimeoutInput: FC<Props> = ({
           )}
           onClick={() => onChange({ timeout, unit: 'hour' })}
         >
-          <div className='system-sm-medium p-0.5'>{t(`${i18nPrefix}.timeout.hours`)}</div>
+          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.hours`)}</div>
         </div>
       </div>
     </div>

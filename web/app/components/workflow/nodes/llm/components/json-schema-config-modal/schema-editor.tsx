@@ -1,7 +1,8 @@
-import React, { type FC } from 'react'
-import CodeEditor from './code-editor'
-import { cn } from '@/utils/classnames'
+import type { FC } from 'react'
+import * as React from 'react'
 import LargeDataAlert from '@/app/components/workflow/variable-inspect/large-data-alert'
+import { cn } from '@/utils/classnames'
+import CodeEditor from './code-editor'
 
 type SchemaEditorProps = {
   schema: string
@@ -28,13 +29,13 @@ const SchemaEditor: FC<SchemaEditorProps> = ({
     <CodeEditor
       readOnly={readonly}
       className={cn('grow rounded-xl', className)}
-      editorWrapperClassName='grow'
+      editorWrapperClassName="grow"
       value={schema}
       onUpdate={onUpdate}
       hideTopMenu={hideTopMenu}
       onFocus={onFocus}
       onBlur={onBlur}
-      topContent={isTruncated && <LargeDataAlert className='mx-1 mb-3 mt-[-4px]' />}
+      topContent={isTruncated && <LargeDataAlert className="mx-1 mb-3 mt-[-4px]" />}
     />
   )
 }

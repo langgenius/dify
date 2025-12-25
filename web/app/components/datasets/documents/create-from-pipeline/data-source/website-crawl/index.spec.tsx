@@ -1,82 +1,91 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import WebsiteCrawl from './index'
-import type { CrawlResultItem } from '@/models/datasets'
-import { CrawlStep } from '@/models/datasets'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { CrawlResultItem } from '@/models/datasets'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { CrawlStep } from '@/models/datasets'
+import WebsiteCrawl from './index'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useDocLink - context hook requires mocking
-const mockDocLink = jest.fn((path?: string) => `https://docs.example.com${path || ''}`)
-jest.mock('@/context/i18n', () => ({
+const mockDocLink = vi.fn((path?: string) => `https://docs.example.com${path || ''}`)
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
 // Mock dataset-detail context - context provider requires mocking
 let mockPipelineId: string | undefined = 'pipeline-123'
-jest.mock('@/context/dataset-detail', () => ({
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (s: any) => any) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock modal context - context provider requires mocking
-const mockSetShowAccountSettingModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowAccountSettingModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: (selector: (s: any) => any) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
 
 // Mock ssePost - API service requires mocking
-const mockSsePost = jest.fn()
-jest.mock('@/service/base', () => ({
-  ssePost: (...args: any[]) => mockSsePost(...args),
+const { mockSsePost } = vi.hoisted(() => ({
+  mockSsePost: vi.fn(),
+}))
+
+vi.mock('@/service/base', () => ({
+  ssePost: mockSsePost,
 }))
 
 // Mock useGetDataSourceAuth - API service hook requires mocking
-const mockUseGetDataSourceAuth = jest.fn()
-jest.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (params: any) => mockUseGetDataSourceAuth(params),
+const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
+  mockUseGetDataSourceAuth: vi.fn(),
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
 // Mock usePipeline hooks - API service hooks require mocking
-const mockUseDraftPipelinePreProcessingParams = jest.fn()
-const mockUsePublishedPipelinePreProcessingParams = jest.fn()
-jest.mock('@/service/use-pipeline', () => ({
-  useDraftPipelinePreProcessingParams: (...args: any[]) => mockUseDraftPipelinePreProcessingParams(...args),
-  usePublishedPipelinePreProcessingParams: (...args: any[]) => mockUsePublishedPipelinePreProcessingParams(...args),
+const { mockUseDraftPipelinePreProcessingParams, mockUsePublishedPipelinePreProcessingParams } = vi.hoisted(() => ({
+  mockUseDraftPipelinePreProcessingParams: vi.fn(),
+  mockUsePublishedPipelinePreProcessingParams: vi.fn(),
+}))
+
+vi.mock('@/service/use-pipeline', () => ({
+  useDraftPipelinePreProcessingParams: mockUseDraftPipelinePreProcessingParams,
+  usePublishedPipelinePreProcessingParams: mockUsePublishedPipelinePreProcessingParams,
 }))
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
 
 // Mock store
 const mockStoreState = {
-  crawlResult: undefined as { data: CrawlResultItem[]; time_consuming: number | string } | undefined,
+  crawlResult: undefined as { data: CrawlResultItem[], time_consuming: number | string } | undefined,
   step: CrawlStep.init,
   websitePages: [] as CrawlResultItem[],
   previewIndex: -1,
   currentCredentialId: '',
-  setWebsitePages: jest.fn(),
-  setCurrentWebsite: jest.fn(),
-  setPreviewIndex: jest.fn(),
-  setStep: jest.fn(),
-  setCrawlResult: jest.fn(),
+  setWebsitePages: vi.fn(),
+  setCurrentWebsite: vi.fn(),
+  setPreviewIndex: vi.fn(),
+  setStep: vi.fn(),
+  setCrawlResult: vi.fn(),
 }
 
-const mockGetState = jest.fn(() => mockStoreState)
+const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
-jest.mock('../store', () => ({
+vi.mock('../store', () => ({
   useDataSourceStoreWithSelector: (selector: (s: any) => any) => selector(mockStoreState),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
 // Mock Header component
-jest.mock('../base/header', () => {
-  const MockHeader = (props: any) => (
+vi.mock('../base/header', () => ({
+  default: (props: any) => (
     <div data-testid="header">
       <span data-testid="header-doc-title">{props.docTitle}</span>
       <span data-testid="header-doc-link">{props.docLink}</span>
@@ -86,14 +95,13 @@ jest.mock('../base/header', () => {
       <button data-testid="header-credential-change" onClick={() => props.onCredentialChange('new-cred-id')}>Change Credential</button>
       <span data-testid="header-credentials-count">{props.credentials?.length || 0}</span>
     </div>
-  )
-  return MockHeader
-})
+  ),
+}))
 
 // Mock Options component
-const mockOptionsSubmit = jest.fn()
-jest.mock('./base/options', () => {
-  const MockOptions = (props: any) => (
+const mockOptionsSubmit = vi.fn()
+vi.mock('./base/options', () => ({
+  default: (props: any) => (
     <div data-testid="options">
       <span data-testid="options-step">{props.step}</span>
       <span data-testid="options-run-disabled">{String(props.runDisabled)}</span>
@@ -108,35 +116,32 @@ jest.mock('./base/options', () => {
         Submit
       </button>
     </div>
-  )
-  return MockOptions
-})
+  ),
+}))
 
 // Mock Crawling component
-jest.mock('./base/crawling', () => {
-  const MockCrawling = (props: any) => (
+vi.mock('./base/crawling', () => ({
+  default: (props: any) => (
     <div data-testid="crawling">
       <span data-testid="crawling-crawled-num">{props.crawledNum}</span>
       <span data-testid="crawling-total-num">{props.totalNum}</span>
     </div>
-  )
-  return MockCrawling
-})
+  ),
+}))
 
 // Mock ErrorMessage component
-jest.mock('./base/error-message', () => {
-  const MockErrorMessage = (props: any) => (
+vi.mock('./base/error-message', () => ({
+  default: (props: any) => (
     <div data-testid="error-message" className={props.className}>
       <span data-testid="error-title">{props.title}</span>
       <span data-testid="error-msg">{props.errorMsg}</span>
     </div>
-  )
-  return MockErrorMessage
-})
+  ),
+}))
 
 // Mock CrawledResult component
-jest.mock('./base/crawled-result', () => {
-  const MockCrawledResult = (props: any) => (
+vi.mock('./base/crawled-result', () => ({
+  default: (props: any) => (
     <div data-testid="crawled-result" className={props.className}>
       <span data-testid="crawled-result-count">{props.list?.length || 0}</span>
       <span data-testid="crawled-result-checked-count">{props.checkedList?.length || 0}</span>
@@ -157,9 +162,8 @@ jest.mock('./base/crawled-result', () => {
         Preview
       </button>
     </div>
-  )
-  return MockCrawledResult
-})
+  ),
+}))
 
 // ==========================================
 // Test Data Builders
@@ -184,7 +188,7 @@ const createMockCrawlResultItem = (overrides?: Partial<CrawlResultItem>): CrawlR
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',
@@ -199,7 +203,7 @@ type WebsiteCrawlProps = React.ComponentProps<typeof WebsiteCrawl>
 const createDefaultProps = (overrides?: Partial<WebsiteCrawlProps>): WebsiteCrawlProps => ({
   nodeId: 'node-1',
   nodeData: createMockNodeData(),
-  onCredentialChange: jest.fn(),
+  onCredentialChange: vi.fn(),
   isInPipeline: false,
   supportBatchUpload: true,
   ...overrides,
@@ -210,7 +214,7 @@ const createDefaultProps = (overrides?: Partial<WebsiteCrawlProps>): WebsiteCraw
 // ==========================================
 describe('WebsiteCrawl', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Reset store state
     mockStoreState.crawlResult = undefined
@@ -218,11 +222,11 @@ describe('WebsiteCrawl', () => {
     mockStoreState.websitePages = []
     mockStoreState.previewIndex = -1
     mockStoreState.currentCredentialId = ''
-    mockStoreState.setWebsitePages = jest.fn()
-    mockStoreState.setCurrentWebsite = jest.fn()
-    mockStoreState.setPreviewIndex = jest.fn()
-    mockStoreState.setStep = jest.fn()
-    mockStoreState.setCrawlResult = jest.fn()
+    mockStoreState.setWebsitePages = vi.fn()
+    mockStoreState.setCurrentWebsite = vi.fn()
+    mockStoreState.setPreviewIndex = vi.fn()
+    mockStoreState.setStep = vi.fn()
+    mockStoreState.setCrawlResult = vi.fn()
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
@@ -511,7 +515,7 @@ describe('WebsiteCrawl', () => {
     describe('onCredentialChange prop', () => {
       it('should call onCredentialChange with credential id and reset state', () => {
         // Arrange
-        const mockOnCredentialChange = jest.fn()
+        const mockOnCredentialChange = vi.fn()
         const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
 
         // Act
@@ -684,7 +688,7 @@ describe('WebsiteCrawl', () => {
 
     it('should have stable handleCredentialChange that resets state', () => {
       // Arrange
-      const mockOnCredentialChange = jest.fn()
+      const mockOnCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
       render(<WebsiteCrawl {...props} />)
 
@@ -732,7 +736,7 @@ describe('WebsiteCrawl', () => {
 
     it('should handle credential change', () => {
       // Arrange
-      const mockOnCredentialChange = jest.fn()
+      const mockOnCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
       render(<WebsiteCrawl {...props} />)
 
@@ -1263,7 +1267,7 @@ describe('WebsiteCrawl', () => {
       const props: WebsiteCrawlProps = {
         nodeId: 'node-1',
         nodeData: createMockNodeData(),
-        onCredentialChange: jest.fn(),
+        onCredentialChange: vi.fn(),
         // isInPipeline and supportBatchUpload are not provided
       }
 
@@ -1399,7 +1403,7 @@ describe('WebsiteCrawl', () => {
     it('should handle credential change and allow new crawl', () => {
       // Arrange
       mockStoreState.currentCredentialId = 'initial-cred'
-      const mockOnCredentialChange = jest.fn()
+      const mockOnCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
 
       // Act
@@ -1453,7 +1457,7 @@ describe('WebsiteCrawl', () => {
 
     it('should not re-run callbacks when props are the same', () => {
       // Arrange
-      const onCredentialChange = jest.fn()
+      const onCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange })
 
       // Act

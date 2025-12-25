@@ -1,15 +1,15 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   Credential,
   CustomModelCredential,
   ModelProvider,
 } from '../../declarations'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { FormTypeEnum } from '@/app/components/base/form/types'
 import {
   genModelNameFormSchema,
   genModelTypeFormSchema,
 } from '../../utils'
-import { FormTypeEnum } from '@/app/components/base/form/types'
 
 export const useModelFormSchemas = (
   provider: ModelProvider,

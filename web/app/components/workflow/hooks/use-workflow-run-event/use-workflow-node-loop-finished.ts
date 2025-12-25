@@ -1,7 +1,7 @@
+import type { LoopFinishedResponse } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import { useStoreApi } from 'reactflow'
-import { produce } from 'immer'
-import type { LoopFinishedResponse } from '@/types/workflow'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 
 export const useWorkflowNodeLoopFinished = () => {

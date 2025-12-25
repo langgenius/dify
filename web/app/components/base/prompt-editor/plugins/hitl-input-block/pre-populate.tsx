@@ -1,13 +1,14 @@
 'use client'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import type { ValueSelector } from '@/app/components/workflow/types'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import type { ValueSelector } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { cn } from '@/utils/classnames'
 import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
 import TypeSwitch from './type-switch'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   isVariable?: boolean
@@ -31,18 +32,20 @@ const Placeholder = ({
 }: PlaceholderProps) => {
   const { t } = useTranslation()
   return (
-    <div className='system-sm-regular mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 text-text-tertiary'>
-      <div className='flex flex-wrap items-center leading-5'>
+    <div className="system-sm-regular mt-1 h-[80px] rounded-lg bg-components-input-bg-normal px-3 pt-2 text-text-tertiary">
+      <div className="flex flex-wrap items-center leading-5">
         <Trans
           i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}
           components={{
-            staticContent: <TagLabel type='edit' className='mx-1' onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`)}</TagLabel>,
-            variable: <VarReferencePicker
-              {...varPickerProps}
-              trigger={
-                <TagLabel type='variable' className='mx-1'>{t(`${i18nPrefix}.variable`)}</TagLabel>
-              }
-            />,
+            staticContent: <TagLabel type="edit" className="mx-1" onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`)}</TagLabel>,
+            variable: (
+              <VarReferencePicker
+                {...varPickerProps}
+                trigger={
+                  <TagLabel type="variable" className="mx-1">{t(`${i18nPrefix}.variable`)}</TagLabel>
+                }
+              />
+            ),
           }}
         />
       </div>
@@ -81,13 +84,13 @@ const PrePopulate: FC<Props> = ({
 
   if (isVariable) {
     return (
-      <div className='relative h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2'>
+      <div className="relative h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal px-3 pt-2">
         <VarReferencePicker
           {...varPickerProps}
           isJustShowValue
         />
         <TypeSwitch
-          className='absolute bottom-1 left-1.5'
+          className="absolute bottom-1 left-1.5"
           isVariable={isVariable}
           onIsVariableChange={handleTypeChange}
         />
@@ -98,7 +101,7 @@ const PrePopulate: FC<Props> = ({
     <div className={cn('relative min-h-[80px] rounded-lg border border-transparent bg-components-input-bg-normal pb-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active shadow-xs')}>
       <Textarea
         value={value || ''}
-        className='h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none'
+        className="h-[43px] min-h-[43px] rounded-none border-none bg-transparent px-3 hover:bg-transparent focus:bg-transparent focus:shadow-none"
         onChange={e => onValueChange?.(e.target.value)}
         onFocus={() => {
           setOnPlaceholderClicked(true)
@@ -107,7 +110,7 @@ const PrePopulate: FC<Props> = ({
         onBlur={() => setIsFocus(false)}
       />
       <TypeSwitch
-        className='absolute bottom-1 left-1.5'
+        className="absolute bottom-1 left-1.5"
         isVariable={isVariable}
         onIsVariableChange={handleTypeChange}
       />

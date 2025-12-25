@@ -79,6 +79,7 @@ const translation = {
     pathParams: 'Path Params',
     query: 'Query',
     toc: '目录',
+    noContent: '暂无内容',
   },
 }
 

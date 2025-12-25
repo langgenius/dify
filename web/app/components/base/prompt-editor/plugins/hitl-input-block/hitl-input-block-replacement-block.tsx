@@ -1,18 +1,18 @@
+import type { TextNode } from 'lexical'
+import type { HITLInputBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
+import { $applyNodeReplacement } from 'lexical'
 import {
   memo,
   useCallback,
   useEffect,
   useMemo,
 } from 'react'
-import type { TextNode } from 'lexical'
-import { $applyNodeReplacement } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { decoratorTransform } from '../../utils'
-import type { HITLInputBlockType } from '../../types'
-import { $createHITLInputNode, HITLInputNode } from './node'
-import { CustomTextNode } from '../custom-text/node'
 import { HITL_INPUT_REG } from '@/config'
+import { decoratorTransform } from '../../utils'
+import { CustomTextNode } from '../custom-text/node'
+import { $createHITLInputNode, HITLInputNode } from './node'
 
 const REGEX = new RegExp(HITL_INPUT_REG)
 
@@ -44,7 +44,7 @@ const HITLInputReplacementBlock = ({
   }, [editor])
 
   const createHITLInputBlockNode = useCallback((textNode: TextNode): HITLInputNode => {
-    const varName = textNode.getTextContent().split('.')[1].replace(/#}}$/, '')
+    const varName = textNode.getTextContent().split('.')[1].replace(/#\}\}$/, '')
     return $applyNodeReplacement($createHITLInputNode(
       varName,
       nodeId,

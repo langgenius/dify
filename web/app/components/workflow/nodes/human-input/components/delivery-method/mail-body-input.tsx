@@ -1,10 +1,10 @@
-import { useTranslation } from 'react-i18next'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { useTranslation } from 'react-i18next'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import Placeholder from '@/app/components/workflow/nodes/tool/components/mixed-variable-text-input/placeholder'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 
@@ -32,7 +32,7 @@ const MailBodyInput = ({
         'hover:border-components-input-border-hover hover:bg-components-input-bg-hover',
         'focus-within:border-components-input-border-active focus-within:bg-components-input-bg-active focus-within:shadow-xs',
       )}
-      className='caret:text-text-accent min-h-[128px]'
+      className="caret:text-text-accent min-h-[128px]"
       editable={!readOnly}
       value={value}
       workflowVariableBlock={{

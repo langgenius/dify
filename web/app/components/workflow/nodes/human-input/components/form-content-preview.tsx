@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
 import type { FormInputItem, UserAction } from '../types'
-import { useStore } from '@/app/components/workflow/store'
-import { Markdown } from '@/app/components/base/markdown'
-import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
-import Button from '@/app/components/base/button'
-import Badge from '@/app/components/base/badge'
+import { RiCloseLine } from '@remixicon/react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
-import { RiCloseLine } from '@remixicon/react'
-import { Note, Variable, rehypeNotes, rehypeVariable } from './variable-in-markdown'
+import Badge from '@/app/components/base/badge'
+import Button from '@/app/components/base/button'
+import { getButtonStyle } from '@/app/components/base/chat/chat/answer/human-input-content/utils'
+import { Markdown } from '@/app/components/base/markdown'
+import { useStore } from '@/app/components/workflow/store'
+import { Note, rehypeNotes, rehypeVariable, Variable } from './variable-in-markdown'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
@@ -31,14 +31,17 @@ const FormContentPreview: FC<Props> = ({
   const panelWidth = useStore(state => state.panelWidth)
 
   return (
-    <div className='fixed top-[112px] z-10 max-h-[calc(100vh-116px)] w-[600px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl' style={{
-      right: panelWidth + 8,
-    }}>
-      <div className='flex h-[26px] items-center justify-between px-4'>
-        <Badge uppercase className='border-text-accent-secondary text-text-accent-secondary'>{t(`${i18nPrefix}.formContent.preview`)}</Badge>
-        <ActionButton onClick={onClose}><RiCloseLine className='w-5 text-text-tertiary' /></ActionButton>
+    <div
+      className="fixed top-[112px] z-10 max-h-[calc(100vh-116px)] w-[600px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg py-3 shadow-xl"
+      style={{
+        right: panelWidth + 8,
+      }}
+    >
+      <div className="flex h-[26px] items-center justify-between px-4">
+        <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">{t(`${i18nPrefix}.formContent.preview`)}</Badge>
+        <ActionButton onClick={onClose}><RiCloseLine className="w-5 text-text-tertiary" /></ActionButton>
       </div>
-      <div className='max-h-[calc(100vh-167px)] overflow-y-auto px-4'>
+      <div className="max-h-[calc(100vh-167px)] overflow-y-auto px-4">
         <Markdown
           content={content}
           rehypePlugins={[rehypeVariable, rehypeNotes]}
@@ -49,22 +52,25 @@ const FormContentPreview: FC<Props> = ({
             section: ({ node }: any) => (() => {
               const name = node.properties?.['data-name'] as string
               const input = formInputs.find(i => i.output_variable_name === name)
-              if(!input) {
+              if (!input) {
                 return (
-                  <div>Can't find note: {name}</div>
+                  <div>
+                    Can't find note:
+                    {name}
+                  </div>
                 )
               }
               const placeholder = input.placeholder
               return (
                 <Note
                   placeholder={placeholder!}
-                  title={t('workflow.nodes.humanInput.editor.notes')}
+                  title="variableName"
                 />
               )
             })(),
           }}
         />
-        <div className='mt-3 flex flex-wrap gap-1 py-1'>
+        <div className="mt-3 flex flex-wrap gap-1 py-1">
           {userActions.map((action: any) => (
             <Button
               key={action.id}
@@ -74,7 +80,7 @@ const FormContentPreview: FC<Props> = ({
             </Button>
           ))}
         </div>
-        <div className='system-xs-regular mt-1 text-text-tertiary'>{t('workflow.nodes.humanInput.editor.previewTip')}</div>
+        <div className="system-xs-regular mt-1 text-text-tertiary">{t('workflow.nodes.humanInput.editor.previewTip')}</div>
       </div>
     </div>
   )

@@ -1,8 +1,8 @@
 'use client'
-import InputField from '@/app/components/base/prompt-editor/plugins/hitl-input-block/input-field'
 import type { FC } from 'react'
-import React from 'react'
 import type { FormInputItem } from '../types'
+import * as React from 'react'
+import InputField from '@/app/components/base/prompt-editor/plugins/hitl-input-block/input-field'
 
 type Props = {
   nodeId: string
