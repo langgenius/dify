@@ -6,8 +6,10 @@ import type { StrategyParamItem } from '@/app/components/plugins/types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { toType } from '@/app/components/tools/utils/to-form-schema'
+import { Resolution } from '@/types/app'
 import { useStore } from '../../store'
 import { AgentStrategy } from '../_base/components/agent-strategy'
+import ConfigVision from '../_base/components/config-vision'
 import Field from '../_base/components/field'
 import MemoryConfig from '../_base/components/memory-config'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
@@ -40,6 +42,8 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     readOnly,
     outputSchema,
     handleMemoryChange,
+    handleVisionEnabledChange,
+    handleVisionConfigChange,
     canChooseMCPTool,
   } = useConfig(props.id, props.data)
   const { t } = useTranslation()
@@ -85,12 +89,11 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           canChooseMCPTool={canChooseMCPTool}
         />
       </Field>
-      <div className="px-4 py-2">
+      <div className="space-y-4 px-4 py-2">
         {isChatMode && currentStrategy?.features?.includes(AgentFeature.HISTORY_MESSAGES) && (
           <>
             <Split />
             <MemoryConfig
-              className="mt-4"
               readonly={readOnly}
               config={{ data: inputs.memory }}
               onChange={handleMemoryChange}
@@ -98,6 +101,15 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
             />
           </>
         )}
+        <ConfigVision
+          nodeId={props.id}
+          readOnly={readOnly}
+          isVisionModel={true}
+          enabled={inputs.vision?.enabled || false}
+          onEnabledChange={handleVisionEnabledChange}
+          config={inputs.vision?.configs || { detail: Resolution.high, variable_selector: [] }}
+          onConfigChange={handleVisionConfigChange}
+        />
       </div>
       <div>
         <OutputVars>

@@ -943,6 +943,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: '이 모델은 더 이상 사용되지 않습니다.',
       },
+      vision: '비전',
       outputVars: {
         files: {
           url: '이미지 URL',

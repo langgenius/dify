@@ -1024,6 +1024,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'تم إهمال هذا النموذج',
       },
+      vision: 'الرؤية',
       outputVars: {
         text: 'محتوى تم إنشاؤه بواسطة الوكيل',
         usage: 'معلومات استخدام النموذج',

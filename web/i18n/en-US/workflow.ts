@@ -1024,6 +1024,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'This model is deprecated',
       },
+      vision: 'vision',
       outputVars: {
         text: 'agent generated content',
         usage: 'Model Usage Information',

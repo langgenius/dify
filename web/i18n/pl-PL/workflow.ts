@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Ten model jest przestarzały',
       },
+      vision: 'wizja',
       outputVars: {
         files: {
           title: 'Pliki generowane przez agenta',

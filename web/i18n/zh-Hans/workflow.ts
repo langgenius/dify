@@ -980,6 +980,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: '此模型已弃用',
       },
+      vision: '视觉',
       outputVars: {
         text: 'agent 生成的内容',
         usage: '模型用量信息',

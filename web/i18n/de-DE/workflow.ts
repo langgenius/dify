@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Dieses Modell ist veraltet',
       },
+      vision: 'Vision',
       outputVars: {
         files: {
           type: 'Art der Unterstützung. Jetzt nur noch Image unterstützen',

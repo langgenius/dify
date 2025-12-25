@@ -960,6 +960,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'このモデルは廃止されました',
       },
+      vision: 'ビジョン',
       outputVars: {
         files: {
           url: '画像の URL',

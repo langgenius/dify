@@ -906,6 +906,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: '此模型已棄用',
       },
+      vision: '視覺',
       outputVars: {
         files: {
           type: '支撐類型。現在僅支援鏡像',

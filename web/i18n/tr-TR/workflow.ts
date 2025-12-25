@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Bu model kullanım dışıdır',
       },
+      vision: 'görsel',
       outputVars: {
         files: {
           upload_file_id: 'Dosya kimliğini karşıya yükle',

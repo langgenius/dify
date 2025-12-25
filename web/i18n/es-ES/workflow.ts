@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Este modelo está en desuso',
       },
+      vision: 'visión',
       outputVars: {
         files: {
           url: 'URL de la imagen',

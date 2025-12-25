@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Эта модель устарела',
       },
+      vision: 'зрение',
       outputVars: {
         files: {
           transfer_method: 'Способ переноса. Ценность составляет remote_url или local_file',

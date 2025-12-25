@@ -940,6 +940,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Ta model je zastarelo',
       },
+      vision: 'vizija',
       outputVars: {
         files: {
           type: 'Vrsta podpore. Zdaj podpiramo samo slike.',

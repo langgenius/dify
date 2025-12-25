@@ -940,6 +940,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Model ini tidak digunakan lagi',
       },
+      vision: 'penglihatan',
       outputVars: {
         files: {
           transfer_method: 'Metode transfer. Nilai adalah remote_url atau local_file',

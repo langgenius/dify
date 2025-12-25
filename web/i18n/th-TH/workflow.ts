@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'โมเดลนี้เลิกใช้แล้ว',
       },
+      vision: 'การมองเห็น',
       outputVars: {
         files: {
           transfer_method: 'วิธีการโอน ค่าเป็น remote_url หรือ local_file',

@@ -921,6 +921,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'यह मॉडल अप्रचलित है।',
       },
+      vision: 'दृष्टि',
       outputVars: {
         files: {
           transfer_method: 'स्थानांतरण विधि। मान या तो remote_url है या local_file।',

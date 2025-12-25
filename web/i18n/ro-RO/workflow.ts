@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Acest model este învechit',
       },
+      vision: 'viziune',
       outputVars: {
         files: {
           upload_file_id: 'Încărcați ID-ul fișierului',

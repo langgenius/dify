@@ -927,6 +927,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Questo modello è deprecato',
       },
+      vision: 'vision',
       outputVars: {
         files: {
           type: 'Tipo di supporto. Ora supporta solo l\'immagine',

@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'این مدل منسوخ شده است',
       },
+      vision: 'بینایی',
       outputVars: {
         files: {
           transfer_method: 'روش انتقال. ارزش remote_url یا local_file',

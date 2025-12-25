@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Mô hình này không còn được dùng nữa',
       },
+      vision: 'tầm nhìn',
       outputVars: {
         files: {
           title: 'Tệp do tác nhân tạo',

@@ -901,6 +901,7 @@ const translation = {
       modelSelectorTooltips: {
         deprecated: 'Ця модель вважається застарілою',
       },
+      vision: 'бачення',
       outputVars: {
         files: {
           upload_file_id: 'Завантажити ідентифікатор файлу',
