@@ -62,11 +62,16 @@ class TestWorkflowRunArchiver:
 
         mock_run = MagicMock()
         mock_run.tenant_id = "tenant-123"
+        mock_run.app_id = "app-999"
         mock_run.id = "run-456"
+        mock_run.created_at = datetime(2024, 1, 15, 12, 0, 0)
 
         key = archiver._get_manifest_key(mock_run)
 
-        assert key == "tenant-123/workflow_run_id=run-456/manifest.json"
+        assert (
+            key
+            == "tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/manifest.json"
+        )
 
     def test_get_table_key(self):
         """Test table data key generation."""
@@ -76,11 +81,17 @@ class TestWorkflowRunArchiver:
 
         mock_run = MagicMock()
         mock_run.tenant_id = "tenant-123"
+        mock_run.app_id = "app-999"
         mock_run.id = "run-456"
+        mock_run.created_at = datetime(2024, 1, 15, 12, 0, 0)
 
         key = archiver._get_table_key(mock_run, "workflow_node_executions")
 
-        assert key == "tenant-123/workflow_run_id=run-456/table=workflow_node_executions/data.jsonl.gz"
+        assert (
+            key
+            == "tenant-123/app_id=app-999/year=2024/month=01/workflow_run_id=run-456/"
+            "table=workflow_node_executions/data.jsonl.gz"
+        )
 
 
 class TestWorkflowRunRollback:

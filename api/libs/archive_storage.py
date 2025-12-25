@@ -5,6 +5,7 @@ This module provides a dedicated storage client for archiving workflow run logs
 to S3-compatible object storage.
 """
 
+import datetime
 import gzip
 import hashlib
 import json
@@ -301,3 +302,18 @@ def get_archive_storage() -> ArchiveStorage:
     if _archive_storage is None:
         _archive_storage = ArchiveStorage()
     return _archive_storage
+
+
+def build_workflow_run_prefix(
+    *,
+    tenant_id: str,
+    app_id: str,
+    created_at: datetime.datetime | None,
+    run_id: str,
+) -> str:
+    archive_time = created_at or datetime.datetime.now(datetime.UTC)
+    year = archive_time.strftime("%Y")
+    month = archive_time.strftime("%m")
+    return (
+        f"{tenant_id}/app_id={app_id}/year={year}/month={month}/workflow_run_id={run_id}"
+    )

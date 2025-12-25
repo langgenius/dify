@@ -16,7 +16,12 @@ from sqlalchemy import select
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
-from libs.archive_storage import ArchiveStorage, ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.archive_storage import (
+    ArchiveStorage,
+    ArchiveStorageNotConfiguredError,
+    build_workflow_run_prefix,
+    get_archive_storage,
+)
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowNodeExecutionModel,
@@ -181,7 +186,13 @@ class WorkflowRunExportService:
             )
 
             # Load manifest
-            manifest_key = f"{run.tenant_id}/workflow_run_id={run.id}/manifest.json"
+            prefix = build_workflow_run_prefix(
+                tenant_id=run.tenant_id,
+                app_id=run.app_id,
+                created_at=run.created_at,
+                run_id=run.id,
+            )
+            manifest_key = f"{prefix}/manifest.json"
             try:
                 manifest_data = storage.get_object(manifest_key)
                 manifest = json.loads(manifest_data.decode("utf-8"))
@@ -195,7 +206,7 @@ class WorkflowRunExportService:
                 if row_count == 0:
                     continue
 
-                table_key = f"{run.tenant_id}/workflow_run_id={run.id}/table={table_name}/data.jsonl.gz"
+                table_key = f"{prefix}/table={table_name}/data.jsonl.gz"
                 try:
                     data = storage.get_object(table_key)
                     records = ArchiveStorage.deserialize_from_jsonl_gz(data)

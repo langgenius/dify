@@ -29,7 +29,12 @@ from sqlalchemy.orm import Session, sessionmaker
 from configs import dify_config
 from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
-from libs.archive_storage import ArchiveStorage, ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.archive_storage import (
+    ArchiveStorage,
+    ArchiveStorageNotConfiguredError,
+    build_workflow_run_prefix,
+    get_archive_storage,
+)
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowNodeExecutionModel,
@@ -86,7 +91,7 @@ class WorkflowRunArchiver:
     Archive workflow run logs for paid plan users.
 
     Storage Layout:
-    {tenant_id}/workflow_run_id={run_id}/
+    {tenant_id}/app_id={app_id}/year={YYYY}/month={MM}/workflow_run_id={run_id}/
         ├── manifest.json
         ├── table=workflow_node_executions/data.jsonl.gz
         ├── table=workflow_node_execution_offload/data.jsonl.gz
@@ -334,17 +339,6 @@ class WorkflowRunArchiver:
             # Serialize and upload each table
             table_stats: list[TableStats] = []
             for table_name, records in table_data.items():
-                if not records:
-                    table_stats.append(
-                        TableStats(
-                            table_name=table_name,
-                            row_count=0,
-                            checksum="",
-                            size_bytes=0,
-                        )
-                    )
-                    continue
-
                 data = ArchiveStorage.serialize_to_jsonl_gz(records)
                 key = self._get_table_key(run, table_name)
                 checksum = storage.put_object(key, data)
@@ -455,11 +449,23 @@ class WorkflowRunArchiver:
 
     def _get_manifest_key(self, run: WorkflowRun) -> str:
         """Get the storage key for the manifest file."""
-        return f"{run.tenant_id}/workflow_run_id={run.id}/manifest.json"
+        prefix = build_workflow_run_prefix(
+            tenant_id=run.tenant_id,
+            app_id=run.app_id,
+            created_at=run.created_at,
+            run_id=run.id,
+        )
+        return f"{prefix}/manifest.json"
 
     def _get_table_key(self, run: WorkflowRun, table_name: str) -> str:
         """Get the storage key for a table data file."""
-        return f"{run.tenant_id}/workflow_run_id={run.id}/table={table_name}/data.jsonl.gz"
+        prefix = build_workflow_run_prefix(
+            tenant_id=run.tenant_id,
+            app_id=run.app_id,
+            created_at=run.created_at,
+            run_id=run.id,
+        )
+        return f"{prefix}/table={table_name}/data.jsonl.gz"
 
     def _generate_manifest(
         self,
@@ -469,10 +475,6 @@ class WorkflowRunArchiver:
         """Generate a manifest for the archived workflow run."""
         return {
             "schema_version": "1.0",
-            "workflow_run_id": run.id,
-            "tenant_id": run.tenant_id,
-            "app_id": run.app_id,
-            "workflow_id": run.workflow_id,
             "created_at": run.created_at.isoformat() if run.created_at else None,
             "archived_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "tables": {
@@ -503,9 +505,6 @@ class WorkflowRunArchiver:
         tables = manifest.get("tables", {})
 
         for table_name, info in tables.items():
-            if info["row_count"] == 0:
-                continue
-
             key = self._get_table_key(run, table_name)
             if not storage.object_exists(key):
                 logger.warning("Missing archived table object: %s", key)
@@ -515,11 +514,11 @@ class WorkflowRunArchiver:
             try:
                 data = storage.get_object(key)
                 actual_checksum = ArchiveStorage.compute_checksum(data)
-                if actual_checksum != info["checksum"]:
+                if actual_checksum != info.get("checksum"):
                     logger.warning(
                         "Checksum mismatch for %s: expected=%s, actual=%s",
                         key,
-                        info["checksum"],
+                        info.get("checksum"),
                         actual_checksum,
                     )
                     return False

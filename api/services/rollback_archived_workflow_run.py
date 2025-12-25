@@ -18,7 +18,12 @@ from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
-from libs.archive_storage import ArchiveStorage, ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.archive_storage import (
+    ArchiveStorage,
+    ArchiveStorageNotConfiguredError,
+    build_workflow_run_prefix,
+    get_archive_storage,
+)
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowNodeExecutionModel,
@@ -130,8 +135,14 @@ class WorkflowRunRollback:
                     click.echo(click.style(result.error, fg="yellow"))
                     return result
 
+                prefix = build_workflow_run_prefix(
+                    tenant_id=run.tenant_id,
+                    app_id=run.app_id,
+                    created_at=run.created_at,
+                    run_id=run.id,
+                )
                 # Load manifest
-                manifest_key = f"{tenant_id}/workflow_run_id={workflow_run_id}/manifest.json"
+                manifest_key = f"{prefix}/manifest.json"
                 try:
                     manifest_data = storage.get_object(manifest_key)
                     manifest = json.loads(manifest_data.decode("utf-8"))
@@ -148,7 +159,7 @@ class WorkflowRunRollback:
                         result.restored_counts[table_name] = 0
                         continue
 
-                    table_key = f"{tenant_id}/workflow_run_id={workflow_run_id}/table={table_name}/data.jsonl.gz"
+                    table_key = f"{prefix}/table={table_name}/data.jsonl.gz"
 
                     if self.dry_run:
                         click.echo(
