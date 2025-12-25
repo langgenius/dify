@@ -69,10 +69,6 @@ export const namespaces = {
   workflow,
 }
 
-export type Namespaces = typeof namespaces
-
-// pluginTrigger -> plugin-trigger
-
 export type KebabCase<S extends string> = S extends `${infer T}${infer U}`
   ? T extends Lowercase<T>
     ? `${T}${KebabCase<U>}`
@@ -83,10 +79,10 @@ export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
   ? `${T}${Capitalize<CamelCase<U>>}`
   : S
 
-export type KeyPrefix = keyof typeof namespaces
-export type Namespace = KebabCase<KeyPrefix>
+export type NamespaceCamelCase = keyof typeof namespaces
+export type NamespaceKebabCase = KebabCase<NamespaceCamelCase>
 
-const requireSilent = async (lang: Locale, namespace: Namespace) => {
+const requireSilent = async (lang: Locale, namespace: NamespaceKebabCase) => {
   let res
   try {
     res = (await import(`../i18n/${lang}/${namespace}.json`)).default
@@ -98,11 +94,11 @@ const requireSilent = async (lang: Locale, namespace: Namespace) => {
   return res
 }
 
-const NAMESPACES = Object.keys(namespaces).map(kebabCase) as Namespace[]
+const NAMESPACES = Object.keys(namespaces).map(kebabCase) as NamespaceKebabCase[]
 
 // Load a single namespace for a language
-export const loadNamespace = async (lang: Locale, ns: Namespace) => {
-  const camelNs = camelCase(ns) as KeyPrefix
+export const loadNamespace = async (lang: Locale, ns: NamespaceKebabCase) => {
+  const camelNs = camelCase(ns) as NamespaceCamelCase
   if (i18n.hasResourceBundle(lang, camelNs))
     return
 

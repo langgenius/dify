@@ -1,5 +1,5 @@
 import type { Locale } from '.'
-import type { KeyPrefix, Namespace } from './i18next-config'
+import type { NamespaceCamelCase, NamespaceKebabCase } from './i18next-config'
 import { match } from '@formatjs/intl-localematcher'
 import { camelCase } from 'es-toolkit/compat'
 import { createInstance } from 'i18next'
@@ -10,11 +10,11 @@ import { initReactI18next } from 'react-i18next/initReactI18next'
 import { i18n } from '.'
 
 // https://locize.com/blog/next-13-app-dir-i18n/
-const initI18next = async (lng: Locale, ns: Namespace) => {
+const initI18next = async (lng: Locale, ns: NamespaceKebabCase) => {
   const i18nInstance = createInstance()
   await i18nInstance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: Locale, namespace: string) => {
+    .use(resourcesToBackend((language: Locale, namespace: NamespaceKebabCase) => {
       return import(`../i18n/${language}/${namespace}.json`)
     }))
     .init({
@@ -26,8 +26,8 @@ const initI18next = async (lng: Locale, ns: Namespace) => {
   return i18nInstance
 }
 
-export async function getTranslation(lng: Locale, ns: Namespace) {
-  const camelNs = camelCase(ns) as KeyPrefix
+export async function getTranslation(lng: Locale, ns: NamespaceKebabCase) {
+  const camelNs = camelCase(ns) as NamespaceCamelCase
   const i18nextInstance = await initI18next(lng, ns)
   return {
     t: i18nextInstance.getFixedT(lng, camelNs),
