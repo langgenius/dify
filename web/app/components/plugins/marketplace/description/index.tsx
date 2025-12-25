@@ -1,10 +1,11 @@
+import type { Locale } from '@/i18n-config'
 import {
   getLocaleOnServer,
-  useTranslation as translate,
+  getTranslation as translate,
 } from '@/i18n-config/server'
 
 type DescriptionProps = {
-  locale?: string
+  locale?: Locale
 }
 const Description = async ({
   locale: localeFromProps,
@@ -16,14 +17,14 @@ const Description = async ({
 
   return (
     <>
-      <h1 className='title-4xl-semi-bold mb-2 shrink-0 text-center text-text-primary'>
+      <h1 className="title-4xl-semi-bold mb-2 shrink-0 text-center text-text-primary">
         {t('marketplace.empower')}
       </h1>
-      <h2 className='body-md-regular flex shrink-0 items-center justify-center text-center text-text-tertiary'>
+      <h2 className="body-md-regular flex shrink-0 items-center justify-center text-center text-text-tertiary">
         {
           isZhHans && (
             <>
-              <span className='mr-1'>{tCommon('operation.in')}</span>
+              <span className="mr-1">{tCommon('operation.in')}</span>
               {t('marketplace.difyMarketplace')}
               {t('marketplace.discover')}
             </>
@@ -66,7 +67,7 @@ const Description = async ({
         {
           !isZhHans && (
             <>
-              <span className='mr-1'>{tCommon('operation.in')}</span>
+              <span className="mr-1">{tCommon('operation.in')}</span>
               {t('marketplace.difyMarketplace')}
             </>
           )

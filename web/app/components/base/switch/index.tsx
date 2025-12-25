@@ -1,6 +1,7 @@
 'use client'
-import React, { useEffect, useState } from 'react'
 import { Switch as OriginalSwitch } from '@headlessui/react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { cn } from '@/utils/classnames'
 
 type SwitchProps = {
@@ -20,7 +21,7 @@ const Switch = (
     disabled = false,
     className,
   }: SwitchProps & {
-    ref?: React.RefObject<HTMLButtonElement>;
+    ref?: React.RefObject<HTMLButtonElement>
   },
 ) => {
   const [enabled, setEnabled] = useState(defaultValue)
@@ -60,19 +61,11 @@ const Switch = (
         setEnabled(checked)
         onChange?.(checked)
       }}
-      className={cn(wrapStyle[size],
-        enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked',
-        'relative inline-flex  shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out',
-        disabled ? '!cursor-not-allowed !opacity-50' : '',
-        size === 'xs' && 'rounded-sm',
-        className)}
+      className={cn(wrapStyle[size], enabled ? 'bg-components-toggle-bg' : 'bg-components-toggle-bg-unchecked', 'relative inline-flex  shrink-0 cursor-pointer rounded-[5px] border-2 border-transparent transition-colors duration-200 ease-in-out', disabled ? '!cursor-not-allowed !opacity-50' : '', size === 'xs' && 'rounded-sm', className)}
     >
       <span
         aria-hidden="true"
-        className={cn(circleStyle[size],
-          enabled ? translateLeft[size] : 'translate-x-0',
-          size === 'xs' && 'rounded-[1px]',
-          'pointer-events-none inline-block rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out')}
+        className={cn(circleStyle[size], enabled ? translateLeft[size] : 'translate-x-0', size === 'xs' && 'rounded-[1px]', 'pointer-events-none inline-block rounded-[3px] bg-components-toggle-knob shadow ring-0 transition duration-200 ease-in-out')}
       />
     </OriginalSwitch>
   )

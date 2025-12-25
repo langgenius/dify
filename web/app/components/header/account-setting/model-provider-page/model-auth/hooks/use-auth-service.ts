@@ -1,3 +1,6 @@
+import type {
+  CustomModel,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useCallback } from 'react'
 import {
   useActiveModelCredential,
@@ -11,9 +14,6 @@ import {
   useGetModelCredential,
   useGetProviderCredential,
 } from '@/service/use-models'
-import type {
-  CustomModel,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
 
 export const useGetCredential = (provider: string, isModelCredential?: boolean, credentialId?: string, model?: CustomModel, configFrom?: string) => {
   const providerData = useGetProviderCredential(!isModelCredential && !!credentialId, provider, credentialId)

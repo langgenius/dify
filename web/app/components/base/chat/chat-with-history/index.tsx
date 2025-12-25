@@ -1,24 +1,24 @@
 'use client'
 import type { FC } from 'react'
+import type { InstalledApp } from '@/models/explore'
 import {
   useEffect,
   useState,
 } from 'react'
+import Loading from '@/app/components/base/loading'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { cn } from '@/utils/classnames'
 import { useThemeContext } from '../embedded-chatbot/theme/theme-context'
+import ChatWrapper from './chat-wrapper'
 import {
   ChatWithHistoryContext,
   useChatWithHistoryContext,
 } from './context'
-import { useChatWithHistory } from './hooks'
-import Sidebar from './sidebar'
 import Header from './header'
 import HeaderInMobile from './header-in-mobile'
-import ChatWrapper from './chat-wrapper'
-import type { InstalledApp } from '@/models/explore'
-import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { cn } from '@/utils/classnames'
-import useDocumentTitle from '@/hooks/use-document-title'
+import { useChatWithHistory } from './hooks'
+import Sidebar from './sidebar'
 
 type ChatWithHistoryProps = {
   className?: string
@@ -56,12 +56,14 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
       'flex h-full bg-background-default-burn',
       isMobile && 'flex-col',
       className,
-    )}>
+    )}
+    >
       {!isMobile && (
         <div className={cn(
           'flex w-[236px] flex-col p-1 pr-0 transition-all duration-200 ease-in-out',
           isSidebarCollapsed && 'w-0 overflow-hidden !p-0',
-        )}>
+        )}
+        >
           <Sidebar />
         </div>
       )}
@@ -84,7 +86,7 @@ const ChatWithHistory: FC<ChatWithHistoryProps> = ({
         <div className={cn('flex h-full flex-col overflow-hidden border-[0,5px] border-components-panel-border-subtle bg-chatbot-bg', isMobile ? 'rounded-t-2xl' : 'rounded-2xl')}>
           {!isMobile && <Header />}
           {appChatListDataLoading && (
-            <Loading type='app' />
+            <Loading type="app" />
           )}
           {!appChatListDataLoading && (
             <ChatWrapper key={chatShouldReloadKey} />
@@ -188,7 +190,8 @@ const ChatWithHistoryWrap: FC<ChatWithHistoryWrapProps> = ({
       setCurrentConversationInputs,
       allInputsHidden,
       initUserVariables,
-    }}>
+    }}
+    >
       <ChatWithHistory className={className} />
     </ChatWithHistoryContext.Provider>
   )

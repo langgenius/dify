@@ -1,15 +1,15 @@
-import { useCallback, useMemo, useRef } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../../types'
 import type { ToolDefaultValue } from '../types'
-import { ViewType } from '../view-type-select'
-import { useGetLanguage } from '@/context/i18n'
-import { groupItems } from '../index-bar'
-import { cn } from '@/utils/classnames'
-import ToolListTreeView from '../tool/tool-list-tree-view/list'
-import ToolListFlatView from '../tool/tool-list-flat-view/list'
-import UninstalledItem from './uninstalled-item'
 import type { Plugin } from '@/app/components/plugins/types'
 import type { OnSelectBlock } from '@/app/components/workflow/types'
+import { useCallback, useMemo, useRef } from 'react'
+import { useGetLanguage } from '@/context/i18n'
+import { cn } from '@/utils/classnames'
+import { groupItems } from '../index-bar'
+import ToolListFlatView from '../tool/tool-list-flat-view/list'
+import ToolListTreeView from '../tool/tool-list-tree-view/list'
+import { ViewType } from '../view-type-select'
+import UninstalledItem from './uninstalled-item'
 
 type ListProps = {
   onSelect: OnSelectBlock
@@ -67,25 +67,27 @@ const List = ({
   return (
     <div className={cn('max-w-[100%] p-1', className)}>
       {!!tools.length && (
-        isFlatView ? (
-          <ToolListFlatView
-            toolRefs={toolRefs}
-            letters={letters}
-            payload={listViewToolData}
-            isShowLetterIndex={false}
-            hasSearchText={false}
-            onSelect={handleSelect}
-            canNotSelectMultiple
-            indexBar={null}
-          />
-        ) : (
-          <ToolListTreeView
-            payload={treeViewToolsData}
-            hasSearchText={false}
-            onSelect={handleSelect}
-            canNotSelectMultiple
-          />
-        )
+        isFlatView
+          ? (
+              <ToolListFlatView
+                toolRefs={toolRefs}
+                letters={letters}
+                payload={listViewToolData}
+                isShowLetterIndex={false}
+                hasSearchText={false}
+                onSelect={handleSelect}
+                canNotSelectMultiple
+                indexBar={null}
+              />
+            )
+          : (
+              <ToolListTreeView
+                payload={treeViewToolsData}
+                hasSearchText={false}
+                onSelect={handleSelect}
+                canNotSelectMultiple
+              />
+            )
       )}
       {
         unInstalledPlugins.map((item) => {

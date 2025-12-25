@@ -1,9 +1,9 @@
-import React from 'react'
+import type { AgentConfig } from '@/models/debug'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AssistantTypePicker from './index'
-import type { AgentConfig } from '@/models/debug'
+import * as React from 'react'
 import { AgentStrategy } from '@/types/app'
+import AssistantTypePicker from './index'
 
 // Test utilities
 const defaultAgentConfig: AgentConfig = {

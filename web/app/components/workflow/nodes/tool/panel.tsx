@@ -1,18 +1,18 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import Split from '../_base/components/split'
 import type { ToolNodeType } from './types'
-import useConfig from './use-config'
-import ToolForm from './components/tool-form'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
 import type { NodePanelProps } from '@/app/components/workflow/types'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
 import StructureOutputItem from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/show'
 import { useStore } from '@/app/components/workflow/store'
 import { wrapStructuredVarItem } from '@/app/components/workflow/utils/tool'
+import Split from '../_base/components/split'
 import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/variable/use-match-schema-type'
+import ToolForm from './components/tool-form'
+import useConfig from './use-config'
 
 const i18nPrefix = 'workflow.nodes.tool'
 
@@ -44,19 +44,19 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
 
   if (isLoading) {
     return (
-      <div className='flex h-[200px] items-center justify-center'>
+      <div className="flex h-[200px] items-center justify-center">
         <Loading />
       </div>
     )
   }
 
   return (
-    <div className='pt-2'>
+    <div className="pt-2">
       {!isShowAuthBtn && (
-        <div className='relative'>
+        <div className="relative">
           {toolInputVarSchema.length > 0 && (
             <Field
-              className='px-4'
+              className="px-4"
               title={t(`${i18nPrefix}.inputVars`)}
             >
               <ToolForm
@@ -74,7 +74,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           )}
 
           {toolInputVarSchema.length > 0 && toolSettingSchema.length > 0 && (
-            <Split className='mt-1' />
+            <Split className="mt-1" />
           )}
 
           {toolSettingSchema.length > 0 && (
@@ -102,20 +102,20 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
         <OutputVars>
           <>
             <VarItem
-              name='text'
-              type='string'
+              name="text"
+              type="string"
               description={t(`${i18nPrefix}.outputVars.text`)}
               isIndent={hasObjectOutput}
             />
             <VarItem
-              name='files'
-              type='array[file]'
+              name="files"
+              type="array[file]"
               description={t(`${i18nPrefix}.outputVars.files.title`)}
               isIndent={hasObjectOutput}
             />
             <VarItem
-              name='json'
-              type='array[object]'
+              name="json"
+              type="array[object]"
               description={t(`${i18nPrefix}.outputVars.json`)}
               isIndent={hasObjectOutput}
             />
@@ -126,7 +126,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
                 <div key={outputItem.name}>
                   {outputItem.value?.type === 'object' ? (
                     <StructureOutputItem
-                      rootClassName='code-sm-semibold text-text-secondary'
+                      rootClassName="code-sm-semibold text-text-secondary"
                       payload={wrapStructuredVarItem(outputItem, schemaType)}
                     />
                   ) : (

@@ -1,4 +1,6 @@
 import type { FC } from 'react'
+import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
+import type { NodeProps } from '@/app/components/workflow/types'
 import {
   memo,
   useEffect,
@@ -8,9 +10,7 @@ import {
   useNodesInitialized,
   useViewport,
 } from 'reactflow'
-import type { LoopNodeType } from '@/app/components/workflow/nodes/loop/types'
 import { cn } from '@/utils/classnames'
-import type { NodeProps } from '@/app/components/workflow/types'
 import { useNodeLoopInteractions } from './hooks'
 
 const Node: FC<NodeProps<LoopNodeType>> = ({
@@ -36,10 +36,10 @@ const Node: FC<NodeProps<LoopNodeType>> = ({
     >
       <Background
         id={`loop-background-${id}`}
-        className='!z-0 rounded-2xl'
+        className="!z-0 rounded-2xl"
         gap={[14 / zoom, 14 / zoom]}
         size={2 / zoom}
-        color='var(--color-workflow-canvas-workflow-dot-color)'
+        color="var(--color-workflow-canvas-workflow-dot-color)"
       />
     </div>
   )

@@ -134,6 +134,7 @@ x-shared-env: &shared-api-worker-env
   ALIYUN_OSS_REGION: ${ALIYUN_OSS_REGION:-ap-southeast-1}
   ALIYUN_OSS_AUTH_VERSION: ${ALIYUN_OSS_AUTH_VERSION:-v4}
   ALIYUN_OSS_PATH: ${ALIYUN_OSS_PATH:-your-path}
+  ALIYUN_CLOUDBOX_ID: ${ALIYUN_CLOUDBOX_ID:-your-cloudbox-id}
   TENCENT_COS_BUCKET_NAME: ${TENCENT_COS_BUCKET_NAME:-your-bucket-name}
   TENCENT_COS_SECRET_KEY: ${TENCENT_COS_SECRET_KEY:-your-secret-key}
   TENCENT_COS_SECRET_ID: ${TENCENT_COS_SECRET_ID:-your-secret-id}
@@ -148,6 +149,7 @@ x-shared-env: &shared-api-worker-env
   HUAWEI_OBS_SECRET_KEY: ${HUAWEI_OBS_SECRET_KEY:-your-secret-key}
   HUAWEI_OBS_ACCESS_KEY: ${HUAWEI_OBS_ACCESS_KEY:-your-access-key}
   HUAWEI_OBS_SERVER: ${HUAWEI_OBS_SERVER:-your-server-url}
+  HUAWEI_OBS_PATH_STYLE: ${HUAWEI_OBS_PATH_STYLE:-false}
   VOLCENGINE_TOS_BUCKET_NAME: ${VOLCENGINE_TOS_BUCKET_NAME:-your-bucket-name}
   VOLCENGINE_TOS_SECRET_KEY: ${VOLCENGINE_TOS_SECRET_KEY:-your-secret-key}
   VOLCENGINE_TOS_ACCESS_KEY: ${VOLCENGINE_TOS_ACCESS_KEY:-your-access-key}
@@ -939,7 +941,7 @@ services:
 
   # plugin daemon
   plugin_daemon:
-    image: langgenius/dify-plugin-daemon:0.5.1-local
+    image: langgenius/dify-plugin-daemon:0.5.2-local
     restart: always
     environment:
       # Use the shared environment variables.

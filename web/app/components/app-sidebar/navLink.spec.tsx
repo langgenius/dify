@@ -1,7 +1,7 @@
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import NavLink from './navLink'
 import type { NavLinkProps } from './navLink'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import NavLink from './navLink'
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({

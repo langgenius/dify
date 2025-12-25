@@ -1,11 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import type { CrawlOptions } from '@/models/datasets'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from '../base/checkbox-with-label'
 import Field from '../base/field'
-import { cn } from '@/utils/classnames'
-import type { CrawlOptions } from '@/models/datasets'
 
 const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
@@ -36,12 +37,12 @@ const Options: FC<Props> = ({
         label={t(`${I18N_PREFIX}.crawlSubPage`)}
         isChecked={payload.crawl_sub_pages}
         onChange={handleChange('crawl_sub_pages')}
-        labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
-        testId='crawl-sub-pages'
+        labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"
+        testId="crawl-sub-pages"
       />
-      <div className='flex justify-between space-x-4'>
+      <div className="flex justify-between space-x-4">
         <Field
-          className='shrink-0 grow'
+          className="shrink-0 grow"
           label={t(`${I18N_PREFIX}.limit`)}
           value={payload.limit}
           onChange={handleChange('limit')}
@@ -49,7 +50,7 @@ const Options: FC<Props> = ({
           isRequired
         />
         <Field
-          className='shrink-0 grow'
+          className="shrink-0 grow"
           label={t(`${I18N_PREFIX}.maxDepth`)}
           value={payload.max_depth}
           onChange={handleChange('max_depth')}
@@ -58,28 +59,28 @@ const Options: FC<Props> = ({
         />
       </div>
 
-      <div className='flex justify-between space-x-4'>
+      <div className="flex justify-between space-x-4">
         <Field
-          className='shrink-0 grow'
+          className="shrink-0 grow"
           label={t(`${I18N_PREFIX}.excludePaths`)}
           value={payload.excludes}
           onChange={handleChange('excludes')}
-          placeholder='blog/*, /about/*'
+          placeholder="blog/*, /about/*"
         />
         <Field
-          className='shrink-0 grow'
+          className="shrink-0 grow"
           label={t(`${I18N_PREFIX}.includeOnlyPaths`)}
           value={payload.includes}
           onChange={handleChange('includes')}
-          placeholder='articles/*'
+          placeholder="articles/*"
         />
       </div>
       <CheckboxWithLabel
         label={t(`${I18N_PREFIX}.extractOnlyMainContent`)}
         isChecked={payload.only_main_content}
         onChange={handleChange('only_main_content')}
-        labelClassName='text-[13px] leading-[16px] font-medium text-text-secondary'
-        testId='only-main-content'
+        labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"
+        testId="only-main-content"
       />
     </div>
   )

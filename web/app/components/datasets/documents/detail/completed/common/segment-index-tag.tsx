@@ -1,4 +1,6 @@
-import React, { type FC, useMemo } from 'react'
+import type { FC } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { Chunk } from '@/app/components/base/icons/src/vender/knowledge'
 import { cn } from '@/utils/classnames'
 

@@ -47,7 +47,8 @@ export const useTextGeneration = () => {
         onError() {
           setIsResponding(false)
         },
-      })
+      },
+    )
     return true
   }
 
