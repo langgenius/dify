@@ -475,17 +475,3 @@ function List<T>({ items, renderItem, renderEmpty }: ListProps<T>) {
   renderEmpty={() => <EmptyState message="No operations" />}
 />
 ```
-
-## Checklist
-
-Before considering component splitting complete:
-
-- [ ] Each new component has single responsibility
-- [ ] Props are minimal and well-typed
-- [ ] Components are under 300 lines each
-- [ ] File names follow Dify conventions (kebab-case)
-- [ ] Directory structure matches existing patterns
-- [ ] No circular dependencies introduced
-- [ ] Parent component is primarily orchestration
-- [ ] Child components are testable in isolation
-

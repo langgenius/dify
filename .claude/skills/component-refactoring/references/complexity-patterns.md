@@ -482,19 +482,6 @@ const payload = useMemo(() => ({
 }), [detail, icon, name, parameters, outputParameters])
 ```
 
-## Complexity Reduction Checklist
-
-When refactoring for complexity:
-
-- [ ] Replace nested `if/else` with early returns
-- [ ] Replace `switch` statements with lookup tables
-- [ ] Extract chained ternaries to functions
-- [ ] Flatten nested loops with functional methods
-- [ ] Extract complex boolean expressions
-- [ ] Break down large functions (> 30 lines)
-- [ ] Reduce callback nesting levels
-- [ ] Separate concerns in useMemo/useCallback
-
 ## Target Metrics After Refactoring
 
 | Metric | Target |

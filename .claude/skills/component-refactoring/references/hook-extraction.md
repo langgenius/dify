@@ -315,16 +315,3 @@ describe('useModelConfig', () => {
   })
 })
 ```
-
-## Checklist
-
-Before considering hook extraction complete:
-
-- [ ] Hook has clear, single responsibility
-- [ ] All related state is grouped together
-- [ ] Effects are moved with their dependent state
-- [ ] Hook is properly typed (params and return types)
-- [ ] File follows naming conventions
-- [ ] Component complexity is reduced
-- [ ] Hook is testable in isolation
-

@@ -474,19 +474,6 @@ const useButtonState = () => {
 - Don't create abstractions for single-use code
 - Keep refactored code in the same domain area
 
-## Quality Checklist
-
-Before considering refactoring complete:
-
-- [ ] Complexity score reduced below 50
-- [ ] Each new file < 300 lines
-- [ ] No TypeScript errors (`pnpm type-check:tsgo`)
-- [ ] No ESLint errors (`pnpm lint:fix`)
-- [ ] Existing functionality preserved
-- [ ] Follows Dify naming conventions
-- [ ] Related code stays cohesive
-- [ ] Exports maintain backward compatibility
-
 ## References
 
 ### Dify Codebase Examples
