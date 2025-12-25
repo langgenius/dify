@@ -11,8 +11,8 @@ import {
   RiLoader4Line,
   RiMoreLine,
 } from '@remixicon/react'
+import { noop } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

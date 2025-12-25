@@ -10,8 +10,8 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { useLocalStorageState } from 'ahooks'
+import { noop } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import {
   useCallback,
   useEffect,

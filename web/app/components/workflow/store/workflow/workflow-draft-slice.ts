@@ -5,7 +5,7 @@ import type {
   EnvironmentVariable,
   Node,
 } from '@/app/components/workflow/types'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 
 type DebouncedFunc = {
   (fn: () => void): void

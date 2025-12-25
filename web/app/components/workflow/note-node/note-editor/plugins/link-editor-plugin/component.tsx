@@ -11,7 +11,7 @@ import {
   RiLinkUnlinkM,
 } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
-import { escape } from 'lodash-es'
+import { escape } from 'es-toolkit/compat'
 import {
   memo,
   useEffect,

@@ -6,7 +6,7 @@ import {
   RiBook2Fill,
   RiBook2Line,
 } from '@remixicon/react'
-import { flatten } from 'lodash-es'
+import { flatten } from 'es-toolkit/compat'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'

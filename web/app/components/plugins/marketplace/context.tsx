@@ -10,7 +10,7 @@ import type {
   SearchParams,
   SearchParamsFromCollection,
 } from './types'
-import { debounce, noop } from 'lodash-es'
+import { debounce, noop } from 'es-toolkit/compat'
 import {
   useCallback,
   useEffect,

@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import {
   useCallback,
   useMemo,

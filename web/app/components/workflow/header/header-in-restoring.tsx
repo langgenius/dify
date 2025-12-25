@@ -86,7 +86,8 @@ const HeaderInRestoring = ({
           disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
           variant="primary"
           className={cn(
-            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+            'rounded-lg border border-transparent',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
           )}
         >
           {t('workflow.common.restore')}
@@ -94,8 +95,8 @@ const HeaderInRestoring = ({
         <Button
           onClick={handleCancelRestore}
           className={cn(
-            'text-components-button-secondary-accent-text',
-            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+            'rounded-lg border border-transparent text-components-button-secondary-accent-text',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
           )}
         >
           <div className="flex items-center gap-x-0.5">
