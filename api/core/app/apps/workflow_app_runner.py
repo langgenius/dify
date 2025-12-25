@@ -28,6 +28,7 @@ from core.app.entities.queue_entities import (
     QueueWorkflowSucceededEvent,
 )
 from core.workflow.entities import GraphInitParams
+from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.graph import Graph
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_events import (
@@ -55,7 +56,6 @@ from core.workflow.graph_events import (
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_events.graph import GraphRunAbortedEvent
-from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.node_factory import DifyNodeFactory
 from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
@@ -63,9 +63,9 @@ from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
 from core.workflow.variable_loader import DUMMY_VARIABLE_LOADER, VariableLoader, load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
-from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 from models.enums import UserFrom
 from models.workflow import Workflow
+from tasks.mail_human_input_delivery_task import dispatch_human_input_email_task
 
 logger = logging.getLogger(__name__)
 

@@ -9,7 +9,8 @@ from core.repositories.human_input_reposotiry import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputFormStatus
+from libs.datetime_utils import naive_utc_now
 from libs.exception import BaseHTTPException
 from models.account import Account
 from models.human_input import RecipientType
@@ -48,6 +49,14 @@ class Form:
     def recipient_type(self) -> RecipientType | None:
         return self._record.recipient_type
 
+    @property
+    def status(self) -> HumanInputFormStatus:
+        return self._record.status
+
+    @property
+    def expiration_time(self):
+        return self._record.expiration_time
+
 
 class HumanInputError(Exception):
     pass
@@ -78,6 +87,14 @@ class InvalidFormDataError(HumanInputError, BaseHTTPException):
 
 class WebAppDeliveryNotEnabledError(HumanInputError, BaseException):
     pass
+
+
+class FormExpiredError(HumanInputError, BaseHTTPException):
+    error_code = "human_input_form_expired"
+    code = 412
+
+    def __init__(self, form_id: str):
+        super().__init__(description=f"This form has expired, form_id={form_id}")
 
 
 logger = logging.getLogger(__name__)
@@ -134,7 +151,7 @@ class HumanInputService:
         if form is None:
             raise WebAppDeliveryNotEnabledError()
 
-        self._ensure_not_submitted(form)
+        self._ensure_form_active(form)
         self._validate_submission(form=form, selected_action_id=selected_action_id, form_data=form_data)
 
         result = self._form_repository.mark_submitted(
@@ -160,7 +177,7 @@ class HumanInputService:
         if form is None or form.recipient_type != recipient_type:
             raise WebAppDeliveryNotEnabledError()
 
-        self._ensure_not_submitted(form)
+        self._ensure_form_active(form)
         self._validate_submission(form=form, selected_action_id=selected_action_id, form_data=form_data)
 
         result = self._form_repository.mark_submitted(
@@ -173,6 +190,15 @@ class HumanInputService:
         )
 
         self._enqueue_resume(result.workflow_run_id)
+
+    def _ensure_form_active(self, form: Form) -> None:
+        if form.submitted:
+            raise FormSubmittedError(form.id)
+        if form.status == HumanInputFormStatus.TIMEOUT:
+            raise FormExpiredError(form.id)
+        now = naive_utc_now()
+        if form.expiration_time <= now:
+            raise FormExpiredError(form.id)
 
     def _ensure_not_submitted(self, form: Form) -> None:
         if form.submitted:

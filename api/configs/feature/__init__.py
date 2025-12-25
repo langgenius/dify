@@ -82,6 +82,12 @@ class AppExecutionConfig(BaseSettings):
         default=0,
     )
 
+    HITL_GLOBAL_TIMEOUT_HOURS: PositiveInt = Field(
+        description="Maximum hours a workflow run can stay paused waiting for human input before global timeout.",
+        default=24 * 7,
+        ge=1,
+    )
+
 
 class CodeExecutionSandboxConfig(BaseSettings):
     """

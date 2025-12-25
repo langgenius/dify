@@ -1,5 +1,5 @@
 import dataclasses
-from datetime import datetime
+from datetime import datetime, timedelta
 from unittest.mock import MagicMock
 
 import pytest
@@ -8,7 +8,14 @@ from core.repositories.human_input_reposotiry import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.nodes.human_input.entities import FormDefinition, FormInput, FormInputType, TimeoutUnit, UserAction
+from core.workflow.nodes.human_input.entities import (
+    FormDefinition,
+    FormInput,
+    FormInputType,
+    HumanInputFormStatus,
+    TimeoutUnit,
+    UserAction,
+)
 from models.account import Account
 from models.human_input import RecipientType
 from services.human_input_service import FormSubmittedError, HumanInputService, InvalidFormDataError
@@ -42,7 +49,8 @@ def sample_form_record():
             timeout_unit=TimeoutUnit.HOUR,
         ),
         rendered_content="<p>hello</p>",
-        expiration_time=datetime(2024, 1, 1),
+        expiration_time=datetime.utcnow() + timedelta(hours=1),
+        status=HumanInputFormStatus.WAITING,
         selected_action_id=None,
         submitted_data=None,
         submitted_at=None,

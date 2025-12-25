@@ -1,9 +1,10 @@
 import abc
 import dataclasses
 from collections.abc import Mapping
+from datetime import datetime
 from typing import Any, Protocol
 
-from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.entities import HumanInputFormStatus, HumanInputNodeData
 
 
 class HumanInputError(Exception):
@@ -80,6 +81,18 @@ class HumanInputFormEntity(abc.ABC):
     @abc.abstractmethod
     def submitted(self) -> bool:
         """Whether the form has been submitted."""
+        ...
+
+    @property
+    @abc.abstractmethod
+    def status(self) -> HumanInputFormStatus:
+        """Current status of the form."""
+        ...
+
+    @property
+    @abc.abstractmethod
+    def expiration_time(self) -> datetime:
+        """When the form expires."""
         ...
 
 

@@ -1,4 +1,3 @@
-import types
 from collections.abc import Sequence
 
 import pytest

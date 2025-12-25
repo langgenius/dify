@@ -1,15 +1,13 @@
 import logging
 import time
 from collections.abc import Mapping
-from typing import Any
 
 import click
 from celery import shared_task
 
-from configs import dify_config
 from extensions.ext_mail import mail
-from libs.email_template_renderer import render_email_template
 from libs.email_i18n import get_email_i18n_service
+from libs.email_template_renderer import render_email_template
 
 logger = logging.getLogger(__name__)
 

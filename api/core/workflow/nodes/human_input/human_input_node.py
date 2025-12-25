@@ -15,8 +15,9 @@ from core.workflow.repositories.human_input_form_repository import (
 )
 from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
+from libs.datetime_utils import naive_utc_now
 
-from .entities import HumanInputNodeData, PlaceholderType
+from .entities import HumanInputFormStatus, HumanInputNodeData, PlaceholderType
 
 if TYPE_CHECKING:
     from core.workflow.entities.graph_init_params import GraphInitParams
@@ -219,6 +220,14 @@ class HumanInputNode(Node[HumanInputNodeData]):
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs=outputs,
                 edge_source_handle=selected_action_id,
+            )
+
+        if form.status == HumanInputFormStatus.TIMEOUT or form.expiration_time <= naive_utc_now():
+            outputs: dict[str, Any] = {"__rendered_content": form.rendered_content}
+            return NodeRunResult(
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                outputs=outputs,
+                edge_source_handle="__timeout",
             )
 
         return self._pause_with_form(form)

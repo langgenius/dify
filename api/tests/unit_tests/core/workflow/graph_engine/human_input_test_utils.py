@@ -4,14 +4,17 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from typing import Any
 
+from core.workflow.nodes.human_input.entities import HumanInputFormStatus
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
     HumanInputFormEntity,
     HumanInputFormRecipientEntity,
     HumanInputFormRepository,
 )
+from libs.datetime_utils import naive_utc_now
 
 
 class _InMemoryFormRecipient(HumanInputFormRecipientEntity):
@@ -38,6 +41,8 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     action_id: str | None = None
     data: Mapping[str, Any] | None = None
     is_submitted: bool = False
+    status_value: HumanInputFormStatus = HumanInputFormStatus.WAITING
+    expiration: datetime = naive_utc_now()
 
     @property
     def id(self) -> str:
@@ -66,6 +71,14 @@ class _InMemoryFormEntity(HumanInputFormEntity):
     @property
     def submitted(self) -> bool:
         return self.is_submitted
+
+    @property
+    def status(self) -> HumanInputFormStatus:
+        return self.status_value
+
+    @property
+    def expiration_time(self) -> datetime:
+        return self.expiration
 
 
 class InMemoryHumanInputFormRepository(HumanInputFormRepository):
@@ -100,6 +113,7 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity.action_id = action_id
         entity.data = form_data or {}
         entity.is_submitted = True
+        entity.status_value = HumanInputFormStatus.SUBMITTED
 
     def clear_submission(self) -> None:
         if not self.created_forms:
@@ -108,3 +122,4 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
             form.action_id = None
             form.data = None
             form.is_submitted = False
+            form.status_value = HumanInputFormStatus.WAITING

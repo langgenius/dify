@@ -13,6 +13,7 @@ from core.workflow.nodes.human_input.entities import (
     EmailRecipient,
     ExternalRecipient,
     FormDefinition,
+    HumanInputFormStatus,
     HumanInputNodeData,
     MemberRecipient,
     WebAppDeliveryMethod,
@@ -106,6 +107,14 @@ class _HumanInputFormEntityImpl(HumanInputFormEntity):
     def submitted(self) -> bool:
         return self._form_model.submitted_at is not None
 
+    @property
+    def status(self) -> HumanInputFormStatus:
+        return self._form_model.status
+
+    @property
+    def expiration_time(self) -> datetime:
+        return self._form_model.expiration_time
+
 
 @dataclasses.dataclass(frozen=True)
 class HumanInputFormRecord:
@@ -116,6 +125,7 @@ class HumanInputFormRecord:
     definition: FormDefinition
     rendered_content: str
     expiration_time: datetime
+    status: HumanInputFormStatus
     selected_action_id: str | None
     submitted_data: Mapping[str, Any] | None
     submitted_at: datetime | None
@@ -142,6 +152,7 @@ class HumanInputFormRecord:
             definition=FormDefinition.model_validate_json(form_model.form_definition),
             rendered_content=form_model.rendered_content,
             expiration_time=form_model.expiration_time,
+            status=form_model.status,
             selected_action_id=form_model.selected_action_id,
             submitted_data=json.loads(form_model.submitted_data) if form_model.submitted_data else None,
             submitted_at=form_model.submitted_at,
@@ -296,6 +307,8 @@ class HumanInputFormRepositoryImpl:
         with self._session_factory(expire_on_commit=False) as session, session.begin():
             # Generate unique form ID
             form_id = str(uuidv7())
+            start_time = naive_utc_now()
+            node_expiration = form_config.expiration_time(start_time)
             form_definition = FormDefinition(
                 form_content=form_config.form_content,
                 inputs=form_config.inputs,
@@ -312,7 +325,8 @@ class HumanInputFormRepositoryImpl:
                 node_id=params.node_id,
                 form_definition=form_definition.model_dump_json(),
                 rendered_content=params.rendered_content,
-                expiration_time=form_config.expiration_time(naive_utc_now()),
+                expiration_time=node_expiration,
+                created_at=start_time,
             )
             session.add(form_model)
             recipient_models: list[HumanInputFormRecipient] = []
@@ -404,6 +418,7 @@ class HumanInputFormSubmissionRepository:
             form_model.selected_action_id = selected_action_id
             form_model.submitted_data = json.dumps(form_data)
             form_model.submitted_at = naive_utc_now()
+            form_model.status = HumanInputFormStatus.SUBMITTED
             form_model.submission_user_id = submission_user_id
             form_model.submission_end_user_id = submission_end_user_id
             form_model.completed_by_recipient_id = recipient_id
@@ -415,3 +430,29 @@ class HumanInputFormSubmissionRepository:
                 session.refresh(recipient_model)
 
             return HumanInputFormRecord.from_models(form_model, recipient_model)
+
+    def mark_timeout(self, *, form_id: str, reason: str | None = None) -> HumanInputFormRecord:
+        with self._session_factory(expire_on_commit=False) as session, session.begin():
+            form_model = session.get(HumanInputForm, form_id)
+            if form_model is None:
+                raise FormNotFoundError(f"form not found, id={form_id}")
+
+            # already handled or submitted
+            if form_model.status == HumanInputFormStatus.TIMEOUT:
+                return HumanInputFormRecord.from_models(form_model, None)
+
+            if form_model.submitted_at is not None or form_model.status == HumanInputFormStatus.SUBMITTED:
+                raise FormNotFoundError(f"form already submitted, id={form_id}")
+
+            form_model.status = HumanInputFormStatus.TIMEOUT
+            form_model.selected_action_id = None
+            form_model.submitted_data = None
+            form_model.submission_user_id = None
+            form_model.submission_end_user_id = None
+            form_model.completed_by_recipient_id = None
+            # Reason is recorded in status/error downstream; not stored on form.
+            session.add(form_model)
+            session.flush()
+            session.refresh(form_model)
+
+            return HumanInputFormRecord.from_models(form_model, None)

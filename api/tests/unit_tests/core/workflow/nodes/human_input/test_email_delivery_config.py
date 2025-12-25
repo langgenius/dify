@@ -1,5 +1,3 @@
-import pytest
-
 from core.workflow.nodes.human_input.entities import EmailDeliveryConfig, EmailRecipients
 
 
