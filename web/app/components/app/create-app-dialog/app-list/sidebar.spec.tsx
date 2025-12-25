@@ -1,9 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import Sidebar, { AppCategories } from './sidebar'
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({ t: (key: string) => key }),
-}))
 vi.mock('@remixicon/react', () => ({
   RiStickyNoteAddLine: () => <span>sticky</span>,
   RiThumbUpLine: () => <span>thumb</span>,
