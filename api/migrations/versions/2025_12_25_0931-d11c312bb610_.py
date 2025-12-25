@@ -1,18 +1,17 @@
-"""empty message
+"""add is_archived column to workflow_runs table
 
 Revision ID: d11c312bb610
-Revises: 905527cc8fd3
-Create Date: 2025-12-24 09:31:07.955409
+Revises: 03ea244985ce
+Create Date: 2025-12-25 09:31:07.955409
 
 """
 from alembic import op
 import models as models
 import sqlalchemy as sa
-from sqlalchemy.dialects import postgresql
 
 # revision identifiers, used by Alembic.
 revision = 'd11c312bb610'
-down_revision = '905527cc8fd3'
+down_revision = '03ea244985ce'
 branch_labels = None
 depends_on = None
 
