@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "인증 실패",
   "modal.errors.createFailed": "구독 생성에 실패했습니다",
   "modal.errors.networkError": "네트워크 오류가 발생했습니다. 다시 시도해주세요.",
+  "modal.errors.updateFailed": "구독 업데이트에 실패했습니다",
   "modal.errors.verifyFailed": "인증 정보를 확인하지 못했습니다",
   "modal.form.callbackUrl.description": "이 URL은 웹훅 이벤트를 수신합니다",
   "modal.form.callbackUrl.label": "콜백 URL",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "구독 {{name}} 삭제 실패",
   "subscription.list.item.actions.deleteConfirm.success": "구독 {{name}}이(가) 성공적으로 삭제되었습니다",
   "subscription.list.item.actions.deleteConfirm.title": "{{name}}을(를) 삭제하시겠습니까?",
+  "subscription.list.item.actions.edit.error": "구독 업데이트에 실패했습니다",
+  "subscription.list.item.actions.edit.success": "구독이 성공적으로 업데이트되었습니다",
+  "subscription.list.item.actions.edit.title": "구독 편집",
   "subscription.list.item.credentialType.api_key": "API 키",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "매뉴얼",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "선택한 구독이 없습니다",
   "subscription.selectPlaceholder": "구독 선택",
   "subscription.subscriptionRemoved": "구독 취소됨",
-  "subscription.title": "구독",
-  "modal.errors.updateFailed": "구독 업데이트에 실패했습니다",
-  "subscription.list.item.actions.edit.error": "구독 업데이트에 실패했습니다",
-  "subscription.list.item.actions.edit.success": "구독이 성공적으로 업데이트되었습니다",
-  "subscription.list.item.actions.edit.title": "구독 편집"
+  "subscription.title": "구독"
 }

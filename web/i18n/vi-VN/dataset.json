@@ -82,6 +82,7 @@
   "externalTag": "Ngoài",
   "imageUploader.browse": "Duyệt",
   "imageUploader.button": "Kéo và thả tệp hoặc thư mục, hoặc",
+  "imageUploader.fileSizeLimitExceeded": "Kích thước tệp vượt quá giới hạn {{size}}MB",
   "imageUploader.tip": "{{supportTypes}} (Tối đa {{batchCount}}, {{size}}MB mỗi cái)",
   "inconsistentEmbeddingModelTip": "Mô hình xếp hạng lại là cần thiết nếu các mô hình nhúng của các cơ sở kiến thức được chọn không nhất quán.",
   "indexingMethod.full_text_search": "VĂN BẢN ĐẦY ĐỦ",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Ngữ nghĩa",
   "weightedScore.semanticFirst": "Ngữ nghĩa trước",
   "weightedScore.title": "Điểm số có trọng số",
-  "wordCount": " nghìn từ",
-  "imageUploader.fileSizeLimitExceeded": "Kích thước tệp vượt quá giới hạn {{size}}MB"
+  "wordCount": " nghìn từ"
 }

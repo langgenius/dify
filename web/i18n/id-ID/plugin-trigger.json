@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Otorisasi gagal",
   "modal.errors.createFailed": "Gagal membuat langganan",
   "modal.errors.networkError": "Kesalahan jaringan, silakan coba lagi",
+  "modal.errors.updateFailed": "Gagal memperbarui langganan",
   "modal.errors.verifyFailed": "Gagal memverifikasi kredensial",
   "modal.form.callbackUrl.description": "URL ini akan menerima event webhook",
   "modal.form.callbackUrl.label": "URL Panggilan Balik",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Gagal menghapus langganan {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Langganan {{name}} berhasil dihapus",
   "subscription.list.item.actions.deleteConfirm.title": "Hapus {{name}}?",
+  "subscription.list.item.actions.edit.error": "Gagal memperbarui langganan",
+  "subscription.list.item.actions.edit.success": "Langganan berhasil diperbarui",
+  "subscription.list.item.actions.edit.title": "Ubah Langganan",
   "subscription.list.item.credentialType.api_key": "Kunci API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Manual",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Belum memilih langganan",
   "subscription.selectPlaceholder": "Pilih langganan",
   "subscription.subscriptionRemoved": "Langganan dihapus",
-  "subscription.title": "Langganan",
-  "modal.errors.updateFailed": "Gagal memperbarui langganan",
-  "subscription.list.item.actions.edit.error": "Gagal memperbarui langganan",
-  "subscription.list.item.actions.edit.success": "Langganan berhasil diperbarui",
-  "subscription.list.item.actions.edit.title": "Ubah Langganan"
+  "subscription.title": "Langganan"
 }

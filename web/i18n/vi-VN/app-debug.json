@@ -21,6 +21,7 @@
   "assistantType.name": "Loại trợ lý",
   "autoAddVar": "Phát hiện biến không xác định được tham chiếu trong tiền-lời nhắc, bạn có muốn thêm chúng vào biểu mẫu đầu vào người dùng không?",
   "chatSubTitle": "Hướng dẫn",
+  "code.instruction": "Hướng dẫn",
   "codegen.apply": "Áp dụng",
   "codegen.applyChanges": "Áp dụng thay đổi",
   "codegen.description": "Trình tạo mã sử dụng các mô hình đã định cấu hình để tạo mã chất lượng cao dựa trên hướng dẫn của bạn. Vui lòng cung cấp hướng dẫn rõ ràng và chi tiết.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Chuyển đổi văn bản thành giọng nói hỗ trợ ngôn ngữ.",
   "voice.voiceSettings.title": "Cài đặt giọng nói",
   "voice.voiceSettings.voice": "Giọng nói",
-  "warningMessage.timeoutExceeded": "Kết quả không được hiển thị do hết thời gian chờ. Vui lòng tham khảo nhật ký để thu thập kết quả đầy đủ.",
-  "code.instruction": "Hướng dẫn"
+  "warningMessage.timeoutExceeded": "Kết quả không được hiển thị do hết thời gian chờ. Vui lòng tham khảo nhật ký để thu thập kết quả đầy đủ."
 }

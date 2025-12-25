@@ -82,6 +82,7 @@
   "externalTag": "Esterno",
   "imageUploader.browse": "Sfoglia",
   "imageUploader.button": "Trascina e rilascia file o cartella, oppure",
+  "imageUploader.fileSizeLimitExceeded": "La dimensione del file supera il limite di {{size}} MB",
   "imageUploader.tip": "{{supportTypes}} (Max {{batchCount}}, {{size}}MB ciascuno)",
   "inconsistentEmbeddingModelTip": "Il modello di riclassificazione è necessario se i modelli di embedding delle basi di conoscenza selezionate sono incoerenti.",
   "indexingMethod.full_text_search": "TESTO COMPLETO",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Semantico",
   "weightedScore.semanticFirst": "Semantica prima",
   "weightedScore.title": "Punteggio ponderato",
-  "wordCount": " k parole",
-  "imageUploader.fileSizeLimitExceeded": "La dimensione del file supera il limite di {{size}} MB"
+  "wordCount": " k parole"
 }

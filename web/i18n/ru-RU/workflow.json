@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Не все месяцы имеют 31 день. Используйте опцию «последний день», чтобы выбрать последний день каждого месяца.",
   "nodes.triggerSchedule.minutes": "Минуты",
   "nodes.triggerSchedule.mode": "Мода",
+  "nodes.triggerSchedule.modeCron": "Крон",
+  "nodes.triggerSchedule.modeVisual": "Визуальный",
   "nodes.triggerSchedule.monthlyDay": "Ежемесячный день",
   "nodes.triggerSchedule.nextExecution": "Следующее исполнение",
   "nodes.triggerSchedule.nextExecutionTime": "ВРЕМЯ СЛЕДУЮЩЕГО ВЫПОЛНЕНИЯ",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "На минуту",
   "nodes.triggerSchedule.selectDateTime": "Выберите дату и время",
   "nodes.triggerSchedule.selectFrequency": "Выберите частоту",
+  "nodes.triggerSchedule.selectTime": "Выбрать время",
   "nodes.triggerSchedule.startTime": "Время начала",
   "nodes.triggerSchedule.startTimeMustBeFuture": "Время начала должно быть в будущем",
   "nodes.triggerSchedule.time": "Время",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Назовите эту версию",
   "versionHistory.releaseNotesPlaceholder": "Опишите, что изменилось",
   "versionHistory.restorationTip": "После восстановления версии текущий черновик будет перезаписан.",
-  "versionHistory.title": "Версии",
-  "nodes.triggerSchedule.modeCron": "Крон",
-  "nodes.triggerSchedule.modeVisual": "Визуальный",
-  "nodes.triggerSchedule.selectTime": "Выбрать время"
+  "versionHistory.title": "Версии"
 }

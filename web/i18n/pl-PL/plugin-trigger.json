@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Autoryzacja nie powiodła się",
   "modal.errors.createFailed": "Nie udało się utworzyć subskrypcji",
   "modal.errors.networkError": "Błąd sieci, spróbuj ponownie",
+  "modal.errors.updateFailed": "Nie udało się zaktualizować subskrypcji",
   "modal.errors.verifyFailed": "Nie udało się zweryfikować danych uwierzytelniających",
   "modal.form.callbackUrl.description": "Ten adres URL będzie odbierać zdarzenia webhook",
   "modal.form.callbackUrl.label": "Adres URL zwrotny",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Nie udało się usunąć subskrypcji {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Subskrypcja {{name}} została pomyślnie usunięta",
   "subscription.list.item.actions.deleteConfirm.title": "Usunąć {{name}}?",
+  "subscription.list.item.actions.edit.error": "Nie udało się zaktualizować subskrypcji",
+  "subscription.list.item.actions.edit.success": "Subskrypcja została pomyślnie zaktualizowana",
+  "subscription.list.item.actions.edit.title": "Edytuj subskrypcję",
   "subscription.list.item.credentialType.api_key": "Klucz API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Instrukcja",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Nie wybrano subskrypcji",
   "subscription.selectPlaceholder": "Wybierz subskrypcję",
   "subscription.subscriptionRemoved": "Subskrypcja usunięta",
-  "subscription.title": "Subskrypcje",
-  "modal.errors.updateFailed": "Nie udało się zaktualizować subskrypcji",
-  "subscription.list.item.actions.edit.error": "Nie udało się zaktualizować subskrypcji",
-  "subscription.list.item.actions.edit.success": "Subskrypcja została pomyślnie zaktualizowana",
-  "subscription.list.item.actions.edit.title": "Edytuj subskrypcję"
+  "subscription.title": "Subskrypcje"
 }

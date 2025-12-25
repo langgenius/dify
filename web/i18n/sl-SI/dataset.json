@@ -82,6 +82,7 @@
   "externalTag": "Zunanje",
   "imageUploader.browse": "Brskaj",
   "imageUploader.button": "Povlecite in spustite datoteko ali mapo, ali",
+  "imageUploader.fileSizeLimitExceeded": "Velikost datoteke presega omejitev {{size}} MB",
   "imageUploader.tip": "{{supportTypes}} (maks. {{batchCount}}, {{size}} MB vsak)",
   "inconsistentEmbeddingModelTip": "Model za ponovno razvrščanje je potreben, če so vdelani modeli izbranih baz znanja neenotni.",
   "indexingMethod.full_text_search": "CELOTNO BESEDILO",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Semantično",
   "weightedScore.semanticFirst": "Semantično najprej",
   "weightedScore.title": "Utežena ocena",
-  "wordCount": " tisoč besed",
-  "imageUploader.fileSizeLimitExceeded": "Velikost datoteke presega omejitev {{size}} MB"
+  "wordCount": " tisoč besed"
 }

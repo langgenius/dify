@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Autorisierung fehlgeschlagen",
   "modal.errors.createFailed": "Fehler beim Erstellen des Abonnements",
   "modal.errors.networkError": "Netzwerkfehler, bitte versuchen Sie es erneut",
+  "modal.errors.updateFailed": "Aktualisierung des Abonnements fehlgeschlagen",
   "modal.errors.verifyFailed": "Anmeldeinformationen konnten nicht überprüft werden",
   "modal.form.callbackUrl.description": "Diese URL wird Webhook-Ereignisse empfangen",
   "modal.form.callbackUrl.label": "Rückruf-URL",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Löschen des Abonnements {{name}} fehlgeschlagen",
   "subscription.list.item.actions.deleteConfirm.success": "Abonnement {{name}} erfolgreich gelöscht",
   "subscription.list.item.actions.deleteConfirm.title": "„{{name}} löschen?“",
+  "subscription.list.item.actions.edit.error": "Aktualisierung des Abonnements fehlgeschlagen",
+  "subscription.list.item.actions.edit.success": "Abonnement erfolgreich aktualisiert",
+  "subscription.list.item.actions.edit.title": "Abonnement bearbeiten",
   "subscription.list.item.credentialType.api_key": "API-Schlüssel",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Handbuch",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Kein Abonnement ausgewählt",
   "subscription.selectPlaceholder": "Abonnement auswählen",
   "subscription.subscriptionRemoved": "Abonnement entfernt",
-  "subscription.title": "Abonnements",
-  "modal.errors.updateFailed": "Aktualisierung des Abonnements fehlgeschlagen",
-  "subscription.list.item.actions.edit.error": "Aktualisierung des Abonnements fehlgeschlagen",
-  "subscription.list.item.actions.edit.success": "Abonnement erfolgreich aktualisiert",
-  "subscription.list.item.actions.edit.title": "Abonnement bearbeiten"
+  "subscription.title": "Abonnements"
 }

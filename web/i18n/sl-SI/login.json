@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Geslo je obvezno",
   "error.passwordInvalid": "Geslo mora vsebovati črke in številke, dolžina pa mora biti več kot 8 znakov",
   "error.passwordLengthInValid": "Geslo mora vsebovati vsaj 8 znakov",
+  "error.redirectUrlMissing": "Preusmeritveni URL manjka",
   "error.registrationNotAllowed": "Računa ni mogoče najti. Za registracijo se obrnite na skrbnika sistema.",
   "explore": "Razišči Dify",
   "forget": "Ste pozabili geslo?",
@@ -110,6 +111,5 @@
   "welcome": "Dobrodošli v Dify, prosimo, prijavite se za nadaljevanje.",
   "withGitHub": "Nadaljujte z GitHub",
   "withGoogle": "Nadaljujte z Google",
-  "withSSO": "Nadaljujte z enotno prijavo",
-  "error.redirectUrlMissing": "Preusmeritveni URL manjka"
+  "withSSO": "Nadaljujte z enotno prijavo"
 }

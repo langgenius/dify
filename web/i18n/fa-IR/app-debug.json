@@ -21,6 +21,7 @@
   "assistantType.name": "نوع دستیار",
   "autoAddVar": "متغیرهای تعریف نشده که در پیش اعلان ارجاع داده شده اند، آیا می خواهید آنها را به صورت ورودی کاربر اضافه کنید؟",
   "chatSubTitle": "دستورالعمل",
+  "code.instruction": "دستورالعمل",
   "codegen.apply": "درخواست",
   "codegen.applyChanges": "اعمال تغییرات",
   "codegen.description": "Code Generator از مدل های پیکربندی شده برای تولید کد با کیفیت بالا بر اساس دستورالعمل های شما استفاده می کند. لطفا دستورالعمل های واضح و دقیق ارائه دهید.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "زبان پشتیبانی از صدای متن به گفتار。",
   "voice.voiceSettings.title": "تنظیمات صدا",
   "voice.voiceSettings.voice": "صوتی",
-  "warningMessage.timeoutExceeded": "نتایج به دلیل مهلت زمانی نمایش داده نمی شوند. لطفا برای جمع آوری نتایج کامل به گزارش ها مراجعه کنید.",
-  "code.instruction": "دستورالعمل"
+  "warningMessage.timeoutExceeded": "نتایج به دلیل مهلت زمانی نمایش داده نمی شوند. لطفا برای جمع آوری نتایج کامل به گزارش ها مراجعه کنید."
 }

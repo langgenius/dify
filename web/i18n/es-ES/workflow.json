@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "No todos los meses tienen 31 días. Usa la opción 'último día' para seleccionar el último día de cada mes.",
   "nodes.triggerSchedule.minutes": "Minutos",
   "nodes.triggerSchedule.mode": "Modo",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Visual",
   "nodes.triggerSchedule.monthlyDay": "Día mensual",
   "nodes.triggerSchedule.nextExecution": "Próxima ejecución",
   "nodes.triggerSchedule.nextExecutionTime": "PRÓXIMA HORA DE EJECUCIÓN",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "En un minuto",
   "nodes.triggerSchedule.selectDateTime": "Seleccionar fecha y hora",
   "nodes.triggerSchedule.selectFrequency": "Seleccionar frecuencia",
+  "nodes.triggerSchedule.selectTime": "Seleccionar hora",
   "nodes.triggerSchedule.startTime": "Hora de inicio",
   "nodes.triggerSchedule.startTimeMustBeFuture": "La hora de inicio debe ser en el futuro",
   "nodes.triggerSchedule.time": "Tiempo",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Nombra esta versión",
   "versionHistory.releaseNotesPlaceholder": "Describe lo que cambió",
   "versionHistory.restorationTip": "Después de la restauración de la versión, el borrador actual será sobrescrito.",
-  "versionHistory.title": "Versiones",
-  "nodes.triggerSchedule.modeCron": "Cron",
-  "nodes.triggerSchedule.modeVisual": "Visual",
-  "nodes.triggerSchedule.selectTime": "Seleccionar hora"
+  "versionHistory.title": "Versiones"
 }

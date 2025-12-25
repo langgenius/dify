@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Autorização falhou",
   "modal.errors.createFailed": "Falha ao criar assinatura",
   "modal.errors.networkError": "Erro de rede, por favor tente novamente",
+  "modal.errors.updateFailed": "Falha ao atualizar a assinatura",
   "modal.errors.verifyFailed": "Falha ao verificar as credenciais",
   "modal.form.callbackUrl.description": "Esta URL receberá eventos de webhook",
   "modal.form.callbackUrl.label": "URL de Retorno de Chamada",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Falha ao excluir a assinatura {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Assinatura {{name}} excluída com sucesso",
   "subscription.list.item.actions.deleteConfirm.title": "Excluir {{name}}?",
+  "subscription.list.item.actions.edit.error": "Falha ao atualizar a assinatura",
+  "subscription.list.item.actions.edit.success": "Assinatura atualizada com sucesso",
+  "subscription.list.item.actions.edit.title": "Editar Assinatura",
   "subscription.list.item.credentialType.api_key": "Chave de API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Manual",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Nenhuma assinatura selecionada",
   "subscription.selectPlaceholder": "Selecionar assinatura",
   "subscription.subscriptionRemoved": "Assinatura removida",
-  "subscription.title": "Assinaturas",
-  "modal.errors.updateFailed": "Falha ao atualizar a assinatura",
-  "subscription.list.item.actions.edit.error": "Falha ao atualizar a assinatura",
-  "subscription.list.item.actions.edit.success": "Assinatura atualizada com sucesso",
-  "subscription.list.item.actions.edit.title": "Editar Assinatura"
+  "subscription.title": "Assinaturas"
 }

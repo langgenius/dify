@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "ไม่ใช่ทุกเดือนที่จะมี 31 วัน ใช้ตัวเลือก 'วันสุดท้าย' เพื่อเลือกวันสุดท้ายของแต่ละเดือน",
   "nodes.triggerSchedule.minutes": "นาที",
   "nodes.triggerSchedule.mode": "แฟชั่น",
+  "nodes.triggerSchedule.modeCron": "ครอน",
+  "nodes.triggerSchedule.modeVisual": "ภาพ",
   "nodes.triggerSchedule.monthlyDay": "วันประจำเดือน",
   "nodes.triggerSchedule.nextExecution": "การดำเนินการครั้งถัดไป",
   "nodes.triggerSchedule.nextExecutionTime": "เวลาการดำเนินการครั้งถัดไป",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "ในนาที",
   "nodes.triggerSchedule.selectDateTime": "เลือกวันที่และเวลา",
   "nodes.triggerSchedule.selectFrequency": "เลือกความถี่",
+  "nodes.triggerSchedule.selectTime": "เลือกเวลา",
   "nodes.triggerSchedule.startTime": "เวลาเริ่มต้น",
   "nodes.triggerSchedule.startTimeMustBeFuture": "เวลาที่เริ่มต้นต้องเป็นเวลาที่อยู่ในอนาคต",
   "nodes.triggerSchedule.time": "เวลา",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "ชื่อเวอร์ชันนี้",
   "versionHistory.releaseNotesPlaceholder": "อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร",
   "versionHistory.restorationTip": "หลังจากการกู้คืนเวอร์ชันแล้ว ร่างปัจจุบันจะถูกเขียนทับ.",
-  "versionHistory.title": "เวอร์ชัน",
-  "nodes.triggerSchedule.modeCron": "ครอน",
-  "nodes.triggerSchedule.modeVisual": "ภาพ",
-  "nodes.triggerSchedule.selectTime": "เลือกเวลา"
+  "versionHistory.title": "เวอร์ชัน"
 }

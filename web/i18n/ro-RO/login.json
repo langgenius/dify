@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Parola este obligatorie",
   "error.passwordInvalid": "Parola trebuie să conțină litere și cifre, iar lungimea trebuie să fie mai mare de 8 caractere",
   "error.passwordLengthInValid": "Parola trebuie să aibă cel puțin 8 caractere",
+  "error.redirectUrlMissing": "URL-ul de redirecționare lipsește",
   "error.registrationNotAllowed": "Contul nu a fost găsit. Vă rugăm să contactați administratorul de sistem pentru a vă înregistra.",
   "explore": "Explorează Dify",
   "forget": "Ai uitat parola?",
@@ -110,6 +111,5 @@
   "welcome": "Bine ai venit la Dify, te rugăm să te autentifici pentru a continua.",
   "withGitHub": "Continuă cu GitHub",
   "withGoogle": "Continuă cu Google",
-  "withSSO": "Continuați cu SSO",
-  "error.redirectUrlMissing": "URL-ul de redirecționare lipsește"
+  "withSSO": "Continuați cu SSO"
 }

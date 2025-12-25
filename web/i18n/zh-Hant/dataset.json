@@ -82,6 +82,7 @@
   "externalTag": "外部",
   "imageUploader.browse": "瀏覽",
   "imageUploader.button": "拖放檔案或資料夾，或",
+  "imageUploader.fileSizeLimitExceeded": "檔案大小超過 {{size}}MB 限制",
   "imageUploader.tip": "{{supportTypes}}（最多 {{batchCount}}，每個 {{size}}MB）",
   "inconsistentEmbeddingModelTip": "如果選定知識庫的嵌入模型不一致，則需要重新排序模型。",
   "indexingMethod.full_text_search": "全文",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "語義",
   "weightedScore.semanticFirst": "語義優先",
   "weightedScore.title": "加權分數",
-  "wordCount": " 千字元",
-  "imageUploader.fileSizeLimitExceeded": "檔案大小超過 {{size}}MB 限制"
+  "wordCount": " 千字元"
 }

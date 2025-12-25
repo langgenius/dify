@@ -21,6 +21,7 @@
   "assistantType.name": "Jenis Asisten",
   "autoAddVar": "Variabel yang tidak ditentukan direferensikan dalam pra-prompt, apakah Anda ingin menambahkannya dalam formulir input pengguna?",
   "chatSubTitle": "Peraturan",
+  "code.instruction": "Instruksi",
   "codegen.apply": "Berlaku",
   "codegen.applyChanges": "Terapkan Perubahan",
   "codegen.description": "Pembuat Kode menggunakan model yang dikonfigurasi untuk menghasilkan kode berkualitas tinggi berdasarkan instruksi Anda. Harap berikan instruksi yang jelas dan terperinci.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Bahasa pendukung suara text-to-speech。",
   "voice.voiceSettings.title": "Pengaturan Suara",
   "voice.voiceSettings.voice": "Suara",
-  "warningMessage.timeoutExceeded": "Hasil tidak ditampilkan karena batas waktu. Silakan lihat log untuk mengumpulkan hasil lengkap.",
-  "code.instruction": "Instruksi"
+  "warningMessage.timeoutExceeded": "Hasil tidak ditampilkan karena batas waktu. Silakan lihat log untuk mengumpulkan hasil lengkap."
 }

@@ -14,6 +14,7 @@
   "auth.setup": "Kullanmak için yetkilendirmeyi ayarla",
   "auth.setupModalTitle": "Yetkilendirmeyi Ayarla",
   "auth.setupModalTitleDescription": "Kimlik bilgilerini yapılandırdıktan sonra, çalışma alanındaki tüm üyeler uygulamaları düzenlerken bu aracı kullanabilir.",
+  "auth.unauthorized": "Yetkisiz",
   "author": "Tarafından",
   "builtInPromptTitle": "Prompt",
   "contribute.line1": "Dify'ye ",
@@ -200,6 +201,5 @@
   "toolRemoved": "Araç kaldırıldı",
   "type.builtIn": "Yerleşik",
   "type.custom": "Özel",
-  "type.workflow": "Workflow",
-  "auth.unauthorized": "Yetkisiz"
+  "type.workflow": "Workflow"
 }

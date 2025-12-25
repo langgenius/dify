@@ -14,6 +14,7 @@
   "auth.setup": "उपयोग करने के लिए अधिकृति सेटअप करें",
   "auth.setupModalTitle": "अधिकृति सेटअप करें",
   "auth.setupModalTitleDescription": "प्रमाणिकरण कॉन्फ़िगर करने के बाद, कार्यस्थान के सभी सदस्य इस उपकरण का उपयोग कर सकेंगे।",
+  "auth.unauthorized": "अनधिकृत",
   "author": "द्वारा",
   "builtInPromptTitle": "प्रॉम्प्ट",
   "contribute.line1": "मैं रुचि रखता हूं ",
@@ -200,6 +201,5 @@
   "toolRemoved": "उपकरण हटाया गया",
   "type.builtIn": "निर्मित",
   "type.custom": "कस्टम",
-  "type.workflow": "कार्यप्रवाह",
-  "auth.unauthorized": "अनधिकृत"
+  "type.workflow": "कार्यप्रवाह"
 }

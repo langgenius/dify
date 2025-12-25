@@ -82,6 +82,7 @@
   "externalTag": "Dış",
   "imageUploader.browse": "Gözat",
   "imageUploader.button": "Dosya veya klasörü sürükleyip bırakın, veya",
+  "imageUploader.fileSizeLimitExceeded": "Dosya boyutu {{size}}MB sınırını aşıyor",
   "imageUploader.tip": "{{supportTypes}} (Her biri Maks. {{batchCount}}, {{size}}MB)",
   "inconsistentEmbeddingModelTip": "Seçilen bilgi tabanlarının Yerleştirme modelleri tutarsızsa Yeniden Sıralama modeli gereklidir.",
   "indexingMethod.full_text_search": "TAM METİN",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Anlamsal",
   "weightedScore.semanticFirst": "Anlamsal Öncelikli",
   "weightedScore.title": "Ağırlıklı Puan",
-  "wordCount": " k kelime",
-  "imageUploader.fileSizeLimitExceeded": "Dosya boyutu {{size}}MB sınırını aşıyor"
+  "wordCount": " k kelime"
 }

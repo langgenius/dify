@@ -82,6 +82,7 @@
   "externalTag": "Zewnętrzny",
   "imageUploader.browse": "Przeglądaj",
   "imageUploader.button": "Przeciągnij i upuść plik lub folder, lub",
+  "imageUploader.fileSizeLimitExceeded": "Rozmiar pliku przekracza limit {{size}} MB",
   "imageUploader.tip": "{{supportTypes}} (maks. {{batchCount}}, {{size}} MB każdy)",
   "inconsistentEmbeddingModelTip": "Model ponownego rankingu jest wymagany, jeśli modele osadzania wybranych baz wiedzy są niespójne.",
   "indexingMethod.full_text_search": "PEŁNY TEKST",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Semantyczne",
   "weightedScore.semanticFirst": "Najpierw semantyczne",
   "weightedScore.title": "Ważona ocena",
-  "wordCount": " k słów",
-  "imageUploader.fileSizeLimitExceeded": "Rozmiar pliku przekracza limit {{size}} MB"
+  "wordCount": " k słów"
 }

@@ -14,6 +14,7 @@
   "auth.setup": "사용을 위한 인증 설정",
   "auth.setupModalTitle": "인증 설정",
   "auth.setupModalTitleDescription": "자격 증명을 구성한 후에 워크스페이스의 모든 멤버가 이 도구를 사용하여 애플리케이션을 조작할 수 있습니다.",
+  "auth.unauthorized": "권한 없음",
   "author": "저자",
   "builtInPromptTitle": "프롬프트",
   "contribute.line1": "저는 Dify 에",
@@ -200,6 +201,5 @@
   "toolRemoved": "도구가 제거되었습니다",
   "type.builtIn": "내장",
   "type.custom": "커스텀",
-  "type.workflow": "워크플로우",
-  "auth.unauthorized": "권한 없음"
+  "type.workflow": "워크플로우"
 }

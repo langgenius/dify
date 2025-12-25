@@ -54,6 +54,7 @@
   "completionMode.title": "Zakończenie App API",
   "copied": "Skopiowane",
   "copy": "Kopiuj",
+  "develop.noContent": "Brak treści",
   "develop.pathParams": "Parametry ścieżki",
   "develop.query": "Zapytanie",
   "develop.requestBody": "Ciało żądania",
@@ -67,6 +68,5 @@
   "play": "Graj",
   "playing": "Gra",
   "regenerate": "Ponownie wygenerować",
-  "status": "Status",
-  "develop.noContent": "Brak treści"
+  "status": "Status"
 }

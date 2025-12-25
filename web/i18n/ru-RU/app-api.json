@@ -54,6 +54,7 @@
   "completionMode.title": "API приложения",
   "copied": "Скопировано",
   "copy": "Копировать",
+  "develop.noContent": "Нет контента",
   "develop.pathParams": "Параметры пути",
   "develop.query": "Запрос",
   "develop.requestBody": "Тело запроса",
@@ -67,6 +68,5 @@
   "play": "Запустить",
   "playing": "Запущено",
   "regenerate": "Регенерировать",
-  "status": "Статус",
-  "develop.noContent": "Нет контента"
+  "status": "Статус"
 }

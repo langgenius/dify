@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Tüm ayların 31 günü yoktur. Her ayın son gününü seçmek için 'son gün' seçeneğini kullanın.",
   "nodes.triggerSchedule.minutes": "Dakikalar",
   "nodes.triggerSchedule.mode": "Moda",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Görsel",
   "nodes.triggerSchedule.monthlyDay": "Aylık Gün",
   "nodes.triggerSchedule.nextExecution": "Bir sonraki idam",
   "nodes.triggerSchedule.nextExecutionTime": "SONRAKİ YÜRÜTME ZAMANI",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "On Dakika",
   "nodes.triggerSchedule.selectDateTime": "Tarih ve Saat Seç",
   "nodes.triggerSchedule.selectFrequency": "Frekansı seç",
+  "nodes.triggerSchedule.selectTime": "Zaman seç",
   "nodes.triggerSchedule.startTime": "Başlangıç Saati",
   "nodes.triggerSchedule.startTimeMustBeFuture": "Başlangıç zamanı gelecekte olmalıdır",
   "nodes.triggerSchedule.time": "Zaman",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Bu versiyona isim ver",
   "versionHistory.releaseNotesPlaceholder": "Değişen şeyleri tanımlayın",
   "versionHistory.restorationTip": "Sürüm geri yüklemeden sonra, mevcut taslak üzerine yazılacak.",
-  "versionHistory.title": "Sürümler",
-  "nodes.triggerSchedule.modeCron": "Cron",
-  "nodes.triggerSchedule.modeVisual": "Görsel",
-  "nodes.triggerSchedule.selectTime": "Zaman seç"
+  "versionHistory.title": "Sürümler"
 }

@@ -14,6 +14,7 @@
   "auth.setup": "Nastavite avtorizacijo za uporabo",
   "auth.setupModalTitle": "Nastavi avtorizacijo",
   "auth.setupModalTitleDescription": "Po konfiguraciji poverilnic bodo vsi člani znotraj delovnega prostora lahko uporabljali to orodje pri orkestraciji aplikacij.",
+  "auth.unauthorized": "Nepooblaščeno",
   "author": "Avtor",
   "builtInPromptTitle": "Poziv",
   "contribute.line1": "Zanima me ",
@@ -200,6 +201,5 @@
   "toolRemoved": "Orodje odstranjeno",
   "type.builtIn": "Vgrajena",
   "type.custom": "Prilagojena",
-  "type.workflow": "Potek dela",
-  "auth.unauthorized": "Nepooblaščeno"
+  "type.workflow": "Potek dela"
 }

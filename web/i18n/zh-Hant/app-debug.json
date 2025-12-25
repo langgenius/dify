@@ -21,6 +21,7 @@
   "assistantType.name": "助手型別",
   "autoAddVar": "提示詞中引用了未定義的變數，是否自動新增到使用者輸入表單中？",
   "chatSubTitle": "提示詞",
+  "code.instruction": "指示",
   "codegen.apply": "應用",
   "codegen.applyChanges": "應用更改",
   "codegen.description": "程式碼生成器使用配置的模型根據您的指令生成高品質的程式碼。請提供清晰詳細的說明。",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "文字轉語音音色支援語言。",
   "voice.voiceSettings.title": "音色設定",
   "voice.voiceSettings.voice": "音色",
-  "warningMessage.timeoutExceeded": "由於超時，不顯示結果。請參閱日誌以收集完整結果。",
-  "code.instruction": "指示"
+  "warningMessage.timeoutExceeded": "由於超時，不顯示結果。請參閱日誌以收集完整結果。"
 }

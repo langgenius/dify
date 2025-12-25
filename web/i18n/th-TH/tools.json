@@ -14,6 +14,7 @@
   "auth.setup": "ตั้งค่าการให้สิทธิ์เพื่อใช้",
   "auth.setupModalTitle": "ตั้งค่าการให้สิทธิ์",
   "auth.setupModalTitleDescription": "หลังจากกําหนดค่าข้อมูลประจําตัวแล้ว สมาชิกทั้งหมดภายในพื้นที่ทํางานสามารถใช้เครื่องมือนี้เมื่อประสานงานแอปพลิเคชันได้",
+  "auth.unauthorized": "ไม่ได้รับอนุญาต",
   "author": "โดย",
   "builtInPromptTitle": "พร้อมท์",
   "contribute.line1": "ฉันสนใจใน",
@@ -200,6 +201,5 @@
   "toolRemoved": "เครื่องมือถูกลบออก",
   "type.builtIn": "ในตัว",
   "type.custom": "ธรรมเนียม",
-  "type.workflow": "เวิร์กโฟลว์",
-  "auth.unauthorized": "ไม่ได้รับอนุญาต"
+  "type.workflow": "เวิร์กโฟลว์"
 }

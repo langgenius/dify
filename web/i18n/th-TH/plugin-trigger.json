@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "การอนุญาตล้มเหลว",
   "modal.errors.createFailed": "ไม่สามารถสร้างการสมัครสมาชิกได้",
   "modal.errors.networkError": "เกิดข้อผิดพลาดของเครือข่าย กรุณาลองใหม่",
+  "modal.errors.updateFailed": "ไม่สามารถอัปเดตการสมัครสมาชิกได้",
   "modal.errors.verifyFailed": "ไม่สามารถตรวจสอบข้อมูลประจำตัวได้",
   "modal.form.callbackUrl.description": "URL นี้จะได้รับเหตุการณ์เว็บฮุค",
   "modal.form.callbackUrl.label": "URL สำหรับเรียกกลับ",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "ลบการสมัครสมาชิก {{name}} ไม่สำเร็จ",
   "subscription.list.item.actions.deleteConfirm.success": "การสมัครสมาชิก {{name}} ถูกลบเรียบร้อยแล้ว",
   "subscription.list.item.actions.deleteConfirm.title": "ลบ {{name}} หรือไม่?",
+  "subscription.list.item.actions.edit.error": "ไม่สามารถอัปเดตการสมัครสมาชิกได้",
+  "subscription.list.item.actions.edit.success": "การสมัครสมาชิกอัปเดตเรียบร้อยแล้ว",
+  "subscription.list.item.actions.edit.title": "แก้ไขการสมัครสมาชิก",
   "subscription.list.item.credentialType.api_key": "คีย์ API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "คู่มือ",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "ยังไม่ได้เลือกการสมัครสมาชิก",
   "subscription.selectPlaceholder": "เลือกการสมัครสมาชิก",
   "subscription.subscriptionRemoved": "ยกเลิกการสมัครแล้ว",
-  "subscription.title": "การสมัครสมาชิก",
-  "modal.errors.updateFailed": "ไม่สามารถอัปเดตการสมัครสมาชิกได้",
-  "subscription.list.item.actions.edit.error": "ไม่สามารถอัปเดตการสมัครสมาชิกได้",
-  "subscription.list.item.actions.edit.success": "การสมัครสมาชิกอัปเดตเรียบร้อยแล้ว",
-  "subscription.list.item.actions.edit.title": "แก้ไขการสมัครสมาชิก"
+  "subscription.title": "การสมัครสมาชิก"
 }

@@ -21,6 +21,7 @@
   "assistantType.name": "Tip Asistent",
   "autoAddVar": "Variabilele nedefinite la care se face referire în pre-prompt, doriți să le adăugați în formularul de intrare al utilizatorului?",
   "chatSubTitle": "Instrucțiuni",
+  "code.instruction": "Instrucțiune",
   "codegen.apply": "Aplica",
   "codegen.applyChanges": "Aplicarea modificărilor",
   "codegen.description": "Generatorul de cod utilizează modele configurate pentru a genera cod de înaltă calitate pe baza instrucțiunilor dvs. Vă rugăm să oferiți instrucțiuni clare și detaliate.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Suport pentru limba de voce text-to-speech.",
   "voice.voiceSettings.title": "Setări Voce",
   "voice.voiceSettings.voice": "Voce",
-  "warningMessage.timeoutExceeded": "Rezultatele nu sunt afișate din cauza expirării. Vă rugăm să consultați jurnalele pentru a colecta rezultatele complete.",
-  "code.instruction": "Instrucțiune"
+  "warningMessage.timeoutExceeded": "Rezultatele nu sunt afișate din cauza expirării. Vă rugăm să consultați jurnalele pentru a colecta rezultatele complete."
 }

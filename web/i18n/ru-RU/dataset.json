@@ -82,6 +82,7 @@
   "externalTag": "Внешний",
   "imageUploader.browse": "Просматривать",
   "imageUploader.button": "Перетащите файл или папку, или",
+  "imageUploader.fileSizeLimitExceeded": "Размер файла превышает лимит в {{size}} МБ",
   "imageUploader.tip": "{{supportTypes}} (макс. {{batchCount}}, {{size}} МБ каждый)",
   "inconsistentEmbeddingModelTip": "Модель переранжирования требуется, если модели встраивания выбранных баз знаний несовместимы.",
   "indexingMethod.full_text_search": "ПОЛНЫЙ ТЕКСТ",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Семантика",
   "weightedScore.semanticFirst": "Семантика в первую очередь",
   "weightedScore.title": "Взвешенная оценка",
-  "wordCount": " тыс. слов",
-  "imageUploader.fileSizeLimitExceeded": "Размер файла превышает лимит в {{size}} МБ"
+  "wordCount": " тыс. слов"
 }

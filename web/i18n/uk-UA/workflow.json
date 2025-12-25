@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Не всі місяці мають 31 день. Використовуйте опцію «останній день», щоб вибрати останній день кожного місяця.",
   "nodes.triggerSchedule.minutes": "Хвилини",
   "nodes.triggerSchedule.mode": "Мода",
+  "nodes.triggerSchedule.modeCron": "Крон",
+  "nodes.triggerSchedule.modeVisual": "Візуальний",
   "nodes.triggerSchedule.monthlyDay": "Щомісячний день",
   "nodes.triggerSchedule.nextExecution": "Наступне виконання",
   "nodes.triggerSchedule.nextExecutionTime": "ЧАС НАСТУПНОГО ВИКОНАННЯ",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "Що хвилина",
   "nodes.triggerSchedule.selectDateTime": "Вибрати дату та час",
   "nodes.triggerSchedule.selectFrequency": "Виберіть частоту",
+  "nodes.triggerSchedule.selectTime": "Виберіть час",
   "nodes.triggerSchedule.startTime": "Час початку",
   "nodes.triggerSchedule.startTimeMustBeFuture": "Час початку має бути в майбутньому",
   "nodes.triggerSchedule.time": "Час",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Назвіть цю версію",
   "versionHistory.releaseNotesPlaceholder": "Опишіть, що змінилося",
   "versionHistory.restorationTip": "Після відновлення версії нинішній проект буде перезаписано.",
-  "versionHistory.title": "Версії",
-  "nodes.triggerSchedule.modeCron": "Крон",
-  "nodes.triggerSchedule.modeVisual": "Візуальний",
-  "nodes.triggerSchedule.selectTime": "Виберіть час"
+  "versionHistory.title": "Версії"
 }

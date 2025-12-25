@@ -21,6 +21,7 @@
   "assistantType.name": "Vrsta pomočnika",
   "autoAddVar": "Nedoločene spremenljivke, na katere se sklicuje vnaprejšnji poziv, ali jih želite dodati v obrazec za vnos uporabnika?",
   "chatSubTitle": "Navodila",
+  "code.instruction": "Navodilo",
   "codegen.apply": "Uporabiti",
   "codegen.applyChanges": "Uporaba sprememb",
   "codegen.description": "Generator kode uporablja konfigurirane modele za ustvarjanje visokokakovostne kode na podlagi vaših navodil. Navedite jasna in podrobna navodila.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Jezik glasovne podpore za pretvorbo besedila v govor。",
   "voice.voiceSettings.title": "Glasovne nastavitve",
   "voice.voiceSettings.voice": "Glas",
-  "warningMessage.timeoutExceeded": "Rezultati niso prikazani zaradi časovne omejitve. Prosimo, glejte dnevnike, da zberete popolne rezultate.",
-  "code.instruction": "Navodilo"
+  "warningMessage.timeoutExceeded": "Rezultati niso prikazani zaradi časovne omejitve. Prosimo, glejte dnevnike, da zberete popolne rezultate."
 }

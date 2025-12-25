@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Tous les mois n'ont pas 31 jours. Utilisez l'option « dernier jour » pour sélectionner le dernier jour de chaque mois.",
   "nodes.triggerSchedule.minutes": "Minutes",
   "nodes.triggerSchedule.mode": "Mode",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Visuel",
   "nodes.triggerSchedule.monthlyDay": "Jour mensuel",
   "nodes.triggerSchedule.nextExecution": "Prochaine exécution",
   "nodes.triggerSchedule.nextExecutionTime": "PROCHAINE HEURE D'EXÉCUTION",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "Une minute",
   "nodes.triggerSchedule.selectDateTime": "Sélectionner la date et l'heure",
   "nodes.triggerSchedule.selectFrequency": "Sélectionner la fréquence",
+  "nodes.triggerSchedule.selectTime": "Sélectionner l'heure",
   "nodes.triggerSchedule.startTime": "Heure de début",
   "nodes.triggerSchedule.startTimeMustBeFuture": "L'heure de début doit être dans le futur",
   "nodes.triggerSchedule.time": "Temps",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Nommez cette version",
   "versionHistory.releaseNotesPlaceholder": "Décrivez ce qui a changé",
   "versionHistory.restorationTip": "Après la restauration de la version, le brouillon actuel sera écrasé.",
-  "versionHistory.title": "Versions",
-  "nodes.triggerSchedule.modeCron": "Cron",
-  "nodes.triggerSchedule.modeVisual": "Visuel",
-  "nodes.triggerSchedule.selectTime": "Sélectionner l'heure"
+  "versionHistory.title": "Versions"
 }

@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Kata sandi diperlukan",
   "error.passwordInvalid": "Kata sandi harus berisi huruf dan angka, dan panjangnya harus lebih besar dari 8",
   "error.passwordLengthInValid": "Kata sandi harus minimal 8 karakter",
+  "error.redirectUrlMissing": "URL pengalihan hilang",
   "error.registrationNotAllowed": "Akun tidak ditemukan. Silakan hubungi admin sistem untuk mendaftar.",
   "explore": "Jelajahi Dify",
   "forget": "Lupa Kata Sandi Anda?",
@@ -110,6 +111,5 @@
   "welcome": "👋 Selamat datang di Dify, silakan login untuk melanjutkan.",
   "withGitHub": "Lanjutkan dengan GitHub",
   "withGoogle": "Lanjutkan dengan Google",
-  "withSSO": "Lanjutkan dengan SSO",
-  "error.redirectUrlMissing": "URL pengalihan hilang"
+  "withSSO": "Lanjutkan dengan SSO"
 }

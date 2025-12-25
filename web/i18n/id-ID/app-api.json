@@ -54,6 +54,7 @@
   "completionMode.title": "API Aplikasi Penyelesaian",
   "copied": "Disalin",
   "copy": "Salin",
+  "develop.noContent": "Tidak ada konten",
   "develop.pathParams": "Parameter Jalur",
   "develop.query": "Kueri",
   "develop.requestBody": "Isi Permintaan",
@@ -67,6 +68,5 @@
   "play": "Putar",
   "playing": "Sedang Memutar",
   "regenerate": "Hasilkan Ulang",
-  "status": "Status",
-  "develop.noContent": "Tidak ada konten"
+  "status": "Status"
 }

@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "ليست كل الأشهر 31 يومًا. استخدم خيار \"اليوم الأخير\" لتحديد اليوم الأخير من كل شهر.",
   "nodes.triggerSchedule.minutes": "الدقائق",
   "nodes.triggerSchedule.mode": "الوضع",
+  "nodes.triggerSchedule.modeCron": "كرون",
+  "nodes.triggerSchedule.modeVisual": "بصري",
   "nodes.triggerSchedule.monthlyDay": "يوم شهري",
   "nodes.triggerSchedule.nextExecution": "التنفيذ التالي",
   "nodes.triggerSchedule.nextExecutionTime": "وقت التنفيذ التالي",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "في الدقيقة",
   "nodes.triggerSchedule.selectDateTime": "حدد التاريخ والوقت",
   "nodes.triggerSchedule.selectFrequency": "حدد التكرار",
+  "nodes.triggerSchedule.selectTime": "اختر الوقت",
   "nodes.triggerSchedule.startTime": "وقت البدء",
   "nodes.triggerSchedule.startTimeMustBeFuture": "يجب أن يكون وقت البدء في المستقبل",
   "nodes.triggerSchedule.time": "الوقت",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "تسمية هذا الإصدار",
   "versionHistory.releaseNotesPlaceholder": "صف ما تغير",
   "versionHistory.restorationTip": "بعد استعادة الإصدار، سيتم استبدال المسودة الحالية.",
-  "versionHistory.title": "الإصدارات",
-  "nodes.triggerSchedule.modeCron": "كرون",
-  "nodes.triggerSchedule.modeVisual": "بصري",
-  "nodes.triggerSchedule.selectTime": "اختر الوقت"
+  "versionHistory.title": "الإصدارات"
 }

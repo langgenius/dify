@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Nu toate lunile au 31 de zile. Folosește opțiunea 'ultima zi' pentru a selecta ultima zi a fiecărei luni.",
   "nodes.triggerSchedule.minutes": "Minute",
   "nodes.triggerSchedule.mode": "Modă",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Vizual",
   "nodes.triggerSchedule.monthlyDay": "Ziua lunară",
   "nodes.triggerSchedule.nextExecution": "Următoarea execuție",
   "nodes.triggerSchedule.nextExecutionTime": "URMĂTOAREA ORĂ DE EXECUȚIE",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "Într-un minut",
   "nodes.triggerSchedule.selectDateTime": "Selectează data și ora",
   "nodes.triggerSchedule.selectFrequency": "Selectați frecvența",
+  "nodes.triggerSchedule.selectTime": "Selectează ora",
   "nodes.triggerSchedule.startTime": "Ora de începere",
   "nodes.triggerSchedule.startTimeMustBeFuture": "Ora de începere trebuie să fie în viitor",
   "nodes.triggerSchedule.time": "Timp",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Numește această versiune",
   "versionHistory.releaseNotesPlaceholder": "Descrie ce s-a schimbat",
   "versionHistory.restorationTip": "După restaurarea versiunii, proiectul actual va fi suprascris.",
-  "versionHistory.title": "Versiuni",
-  "nodes.triggerSchedule.modeCron": "Cron",
-  "nodes.triggerSchedule.modeVisual": "Vizual",
-  "nodes.triggerSchedule.selectTime": "Selectează ora"
+  "versionHistory.title": "Versiuni"
 }

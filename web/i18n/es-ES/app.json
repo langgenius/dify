@@ -27,6 +27,7 @@
   "answerIcon.title": "Usar el icono de la aplicación web para reemplazar 🤖",
   "appDeleteFailed": "Error al eliminar app",
   "appDeleted": "App eliminada",
+  "appNamePlaceholder": "Dale un nombre a tu aplicación",
   "appSelector.label": "APLICACIÓN",
   "appSelector.noParams": "No se necesitan parámetros",
   "appSelector.params": "PARÁMETROS DE LA APLICACIÓN",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Buscar y saltar a nodos en el flujo de trabajo actual por nombre o tipo",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Esta función solo funciona cuando se visualiza un flujo de trabajo. Primero vaya a un flujo de trabajo.",
   "gotoAnything.actions.slashDesc": "Ejecuta comandos como /tema, /idioma",
+  "gotoAnything.actions.slashTitle": "Comandos",
   "gotoAnything.actions.themeCategoryDesc": "Cambiar el tema de la aplicación",
   "gotoAnything.actions.themeCategoryTitle": "Tema",
   "gotoAnything.actions.themeDark": "Tema oscuro",
@@ -212,6 +214,8 @@
   "switchTip": "volver",
   "switchTipEnd": " a la Orquestación Básica.",
   "switchTipStart": "Se creará una nueva copia de la app para ti y la nueva copia cambiará a Orquestación de Flujo de Trabajo. La nueva copia no permitirá",
+  "theme.switchDark": "Cambiar a tema oscuro",
+  "theme.switchLight": "Cambiar a tema claro",
   "tracing.aliyun.description": "La plataforma de observabilidad totalmente gestionada y sin mantenimiento proporcionada por Alibaba Cloud, permite la monitorización, trazado y evaluación de aplicaciones Dify de manera inmediata.",
   "tracing.aliyun.title": "Monitor de Nubes",
   "tracing.arize.description": "Observabilidad de LLM de nivel empresarial, evaluación en línea y fuera de línea, monitoreo y experimentación—impulsada por OpenTelemetry. Diseñada específicamente para aplicaciones impulsadas por LLM y agentes.",
@@ -275,9 +279,5 @@
   "types.basic": "Básico",
   "types.chatbot": "Chatbot",
   "types.completion": "Finalización",
-  "types.workflow": "Flujo de trabajo",
-  "appNamePlaceholder": "Dale un nombre a tu aplicación",
-  "gotoAnything.actions.slashTitle": "Comandos",
-  "theme.switchDark": "Cambiar a tema oscuro",
-  "theme.switchLight": "Cambiar a tema claro"
+  "types.workflow": "Flujo de trabajo"
 }

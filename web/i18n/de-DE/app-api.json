@@ -54,6 +54,7 @@
   "completionMode.title": "Completion App API",
   "copied": "Kopiert",
   "copy": "Kopieren",
+  "develop.noContent": "Kein Inhalt",
   "develop.pathParams": "Pfadparameter",
   "develop.query": "Anfrage",
   "develop.requestBody": "Anfragekörper",
@@ -67,6 +68,5 @@
   "play": "Abspielen",
   "playing": "Wiedergabe",
   "regenerate": "Erneuern",
-  "status": "Status",
-  "develop.noContent": "Kein Inhalt"
+  "status": "Status"
 }

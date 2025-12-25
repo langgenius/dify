@@ -27,6 +27,7 @@
   "answerIcon.title": "Gunakan ikon aplikasi web untuk mengganti 🤖",
   "appDeleteFailed": "Gagal menghapus aplikasi",
   "appDeleted": "Aplikasi dihapus",
+  "appNamePlaceholder": "Beri nama pada aplikasi Anda",
   "appSelector.label": "APP",
   "appSelector.noParams": "Tidak perlu parameter",
   "appSelector.params": "PARAMETER APLIKASI",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Temukan dan lompat ke simpul dalam alur kerja saat ini berdasarkan nama atau jenis",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Fitur ini hanya berfungsi saat melihat alur kerja. Navigasikan ke alur kerja terlebih dahulu.",
   "gotoAnything.actions.slashDesc": "Jalankan perintah (ketik / untuk melihat semua perintah yang tersedia)",
+  "gotoAnything.actions.slashTitle": "Perintah",
   "gotoAnything.actions.themeCategoryDesc": "Ganti tema aplikasi",
   "gotoAnything.actions.themeCategoryTitle": "Tema",
   "gotoAnything.actions.themeDark": "Tema Gelap",
@@ -212,6 +214,8 @@
   "switchTip": "tidak mengizinkan",
   "switchTipEnd": "beralih kembali ke Basic Orchestrate.",
   "switchTipStart": "Salinan aplikasi baru akan dibuat untuk Anda, dan salinan baru akan beralih ke Workflow Orchestrate. Salinan baru akan",
+  "theme.switchDark": "Beralih ke tema gelap",
+  "theme.switchLight": "Beralih ke tema terang",
   "tracing.aliyun.description": "Platform observabilitas yang dikelola sepenuhnya dan bebas perawatan yang disediakan oleh Alibaba Cloud, memungkinkan pemantauan, pelacakan, dan evaluasi aplikasi Dify yang out-of-the-box.",
   "tracing.aliyun.title": "Monitor Awan",
   "tracing.arize.description": "Observabilitas LLM tingkat perusahaan, evaluasi, pemantauan, dan eksperimen online & offline—didukung oleh OpenTelemetry. Dibuat khusus untuk LLM & aplikasi berbasis agen.",
@@ -275,9 +279,5 @@
   "types.basic": "Dasar",
   "types.chatbot": "Chatbot",
   "types.completion": "Penyelesaian",
-  "types.workflow": "Alur Kerja",
-  "appNamePlaceholder": "Beri nama pada aplikasi Anda",
-  "gotoAnything.actions.slashTitle": "Perintah",
-  "theme.switchDark": "Beralih ke tema gelap",
-  "theme.switchLight": "Beralih ke tema terang"
+  "types.workflow": "Alur Kerja"
 }

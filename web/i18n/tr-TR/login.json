@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Şifre gereklidir",
   "error.passwordInvalid": "Şifre harf ve rakamlardan oluşmalı ve uzunluğu 8 karakterden fazla olmalıdır",
   "error.passwordLengthInValid": "Şifre en az 8 karakterden oluşmalıdır",
+  "error.redirectUrlMissing": "Yönlendirme URL'si eksik",
   "error.registrationNotAllowed": "Hesap bulunamadı. Kayıt olmak için lütfen sistem yöneticisi ile iletişime geçin.",
   "explore": "Dify'yi Keşfet",
   "forget": "Şifrenizi mi unuttunuz?",
@@ -110,6 +111,5 @@
   "welcome": "Dify'ye hoş geldiniz, devam etmek için lütfen giriş yapın.",
   "withGitHub": "GitHub ile devam et",
   "withGoogle": "Google ile devam et",
-  "withSSO": "TOA ile devam etme",
-  "error.redirectUrlMissing": "Yönlendirme URL'si eksik"
+  "withSSO": "TOA ile devam etme"
 }

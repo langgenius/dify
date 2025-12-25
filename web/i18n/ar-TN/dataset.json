@@ -82,6 +82,7 @@
   "externalTag": "خارجي",
   "imageUploader.browse": "تصفح",
   "imageUploader.button": "اسحب وأفلت الملف أو المجلد، أو",
+  "imageUploader.fileSizeLimitExceeded": "حجم الملف يتجاوز الحد الأقصى {{size}} ميغابايت",
   "imageUploader.tip": "{{supportTypes}} (الحد الأقصى {{batchCount}}، {{size}} ميغابايت لكل منها)",
   "inconsistentEmbeddingModelTip": "مطلوب نموذج إعادة الترتيب إذا كانت نماذج التضمين لقواعد المعرفة المختارة غير متسقة.",
   "indexingMethod.full_text_search": "FULL TEXT",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "دلالي",
   "weightedScore.semanticFirst": "الدلالي أولاً",
   "weightedScore.title": "الدرجة المرجحة",
-  "wordCount": " ألف كلمة",
-  "imageUploader.fileSizeLimitExceeded": "حجم الملف يتجاوز الحد الأقصى {{size}} ميغابايت"
+  "wordCount": " ألف كلمة"
 }

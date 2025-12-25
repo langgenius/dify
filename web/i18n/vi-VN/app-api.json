@@ -54,6 +54,7 @@
   "completionMode.title": "API ứng dụng hoàn thành",
   "copied": "Đã sao chép",
   "copy": "Sao chép",
+  "develop.noContent": "Không có nội dung",
   "develop.pathParams": "Tham số đường dẫn",
   "develop.query": "Truy vấn",
   "develop.requestBody": "Nội dung yêu cầu",
@@ -67,6 +68,5 @@
   "play": "Chạy",
   "playing": "Đang chạy",
   "regenerate": "Tái tạo",
-  "status": "Trạng thái",
-  "develop.noContent": "Không có nội dung"
+  "status": "Trạng thái"
 }

@@ -54,6 +54,7 @@
   "completionMode.title": "API програми для завершення",
   "copied": "Скопійовано",
   "copy": "Копіювати",
+  "develop.noContent": "Немає вмісту",
   "develop.pathParams": "Параметри шляху",
   "develop.query": "Запит",
   "develop.requestBody": "Тіло запиту",
@@ -67,6 +68,5 @@
   "play": "Відтворити",
   "playing": "Відтворення",
   "regenerate": "Відновити",
-  "status": "Статус",
-  "develop.noContent": "Немає вмісту"
+  "status": "Статус"
 }

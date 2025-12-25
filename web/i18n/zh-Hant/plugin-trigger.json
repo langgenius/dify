@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "授權失敗",
   "modal.errors.createFailed": "建立訂閱失敗",
   "modal.errors.networkError": "網絡錯誤，請再試一次",
+  "modal.errors.updateFailed": "更新訂閱失敗",
   "modal.errors.verifyFailed": "驗證憑證失敗",
   "modal.form.callbackUrl.description": "此 URL 將接收 webhook 事件",
   "modal.form.callbackUrl.label": "回呼網址",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "無法刪除訂閱 {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "訂閱 {{name}} 已成功刪除",
   "subscription.list.item.actions.deleteConfirm.title": "刪除 {{name}}？",
+  "subscription.list.item.actions.edit.error": "更新訂閱失敗",
+  "subscription.list.item.actions.edit.success": "訂閱更新成功",
+  "subscription.list.item.actions.edit.title": "編輯訂閱",
   "subscription.list.item.credentialType.api_key": "API 金鑰",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "手冊",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "未選擇訂閱",
   "subscription.selectPlaceholder": "選擇訂閱",
   "subscription.subscriptionRemoved": "已取消訂閱",
-  "subscription.title": "訂閱",
-  "modal.errors.updateFailed": "更新訂閱失敗",
-  "subscription.list.item.actions.edit.error": "更新訂閱失敗",
-  "subscription.list.item.actions.edit.success": "訂閱更新成功",
-  "subscription.list.item.actions.edit.title": "編輯訂閱"
+  "subscription.title": "訂閱"
 }

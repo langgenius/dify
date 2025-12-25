@@ -14,6 +14,7 @@
   "auth.setup": "إعداد التفويض للاستخدام",
   "auth.setupModalTitle": "إعداد التفويض",
   "auth.setupModalTitleDescription": "بعد تكوين بيانات الاعتماد، يمكن لجميع الأعضاء داخل مساحة العمل استخدام هذه الأداة عند تنظيم التطبيقات.",
+  "auth.unauthorized": "غير مصرح",
   "author": "بواسطة",
   "builtInPromptTitle": "موجه",
   "contribute.line1": "أنا مهتم بـ ",
@@ -200,6 +201,5 @@
   "toolRemoved": "تمت إزالة الأداة",
   "type.builtIn": "أدوات",
   "type.custom": "مخصص",
-  "type.workflow": "سير عمل",
-  "auth.unauthorized": "غير مصرح"
+  "type.workflow": "سير عمل"
 }

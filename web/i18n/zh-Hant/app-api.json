@@ -54,6 +54,7 @@
   "completionMode.title": "文字生成型應用 API",
   "copied": "已複製",
   "copy": "複製",
+  "develop.noContent": "無內容",
   "develop.pathParams": "Path Params",
   "develop.query": "Query",
   "develop.requestBody": "Request Body",
@@ -67,6 +68,5 @@
   "play": "播放",
   "playing": "播放中",
   "regenerate": "重新生成",
-  "status": "狀態",
-  "develop.noContent": "無內容"
+  "status": "狀態"
 }

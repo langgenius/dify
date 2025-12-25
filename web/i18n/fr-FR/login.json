@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Un mot de passe est requis",
   "error.passwordInvalid": "Le mot de passe doit contenir des lettres et des chiffres, et la longueur doit être supérieure à 8.",
   "error.passwordLengthInValid": "Le mot de passe doit comporter au moins 8 caractères.",
+  "error.redirectUrlMissing": "L'URL de redirection est manquante",
   "error.registrationNotAllowed": "Compte introuvable. Veuillez contacter l’administrateur système pour vous inscrire.",
   "explore": "Explorez Dify",
   "forget": "Mot de passe oublié ?",
@@ -110,6 +111,5 @@
   "welcome": "Bienvenue sur Dify, veuillez vous connecter pour continuer.",
   "withGitHub": "Continuer avec GitHub",
   "withGoogle": "Continuer avec Google",
-  "withSSO": "Poursuivre avec l’authentification unique",
-  "error.redirectUrlMissing": "L'URL de redirection est manquante"
+  "withSSO": "Poursuivre avec l’authentification unique"
 }

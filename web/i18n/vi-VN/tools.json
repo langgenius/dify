@@ -14,6 +14,7 @@
   "auth.setup": "Thiết lập xác thực để sử dụng",
   "auth.setupModalTitle": "Thiết lập xác thực",
   "auth.setupModalTitleDescription": "Sau khi cấu hình thông tin đăng nhập, tất cả thành viên trong không gian làm việc có thể sử dụng công cụ này khi triển khai ứng dụng.",
+  "auth.unauthorized": "Không được phép",
   "author": "Tác giả",
   "builtInPromptTitle": "Lời nhắc",
   "contribute.line1": "Tôi quan tâm đến việc ",
@@ -200,6 +201,5 @@
   "toolRemoved": "Công cụ đã bị xóa",
   "type.builtIn": "Tích hợp sẵn",
   "type.custom": "Tùy chỉnh",
-  "type.workflow": "Quy trình làm việc",
-  "auth.unauthorized": "Không được phép"
+  "type.workflow": "Quy trình làm việc"
 }

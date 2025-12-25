@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Autorisation échouée",
   "modal.errors.createFailed": "Échec de la création de l'abonnement",
   "modal.errors.networkError": "Erreur réseau, veuillez réessayer",
+  "modal.errors.updateFailed": "Échec de la mise à jour de l'abonnement",
   "modal.errors.verifyFailed": "Échec de la vérification des identifiants",
   "modal.form.callbackUrl.description": "Cette URL recevra des événements webhook",
   "modal.form.callbackUrl.label": "URL de rappel",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Échec de la suppression de l'abonnement {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Abonnement {{name}} supprimé avec succès",
   "subscription.list.item.actions.deleteConfirm.title": "Supprimer {{name}} ?",
+  "subscription.list.item.actions.edit.error": "Échec de la mise à jour de l'abonnement",
+  "subscription.list.item.actions.edit.success": "Abonnement mis à jour avec succès",
+  "subscription.list.item.actions.edit.title": "Modifier l'abonnement",
   "subscription.list.item.credentialType.api_key": "Clé API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Manuel",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Aucun abonnement sélectionné",
   "subscription.selectPlaceholder": "Sélectionner un abonnement",
   "subscription.subscriptionRemoved": "Abonnement supprimé",
-  "subscription.title": "Abonnements",
-  "modal.errors.updateFailed": "Échec de la mise à jour de l'abonnement",
-  "subscription.list.item.actions.edit.error": "Échec de la mise à jour de l'abonnement",
-  "subscription.list.item.actions.edit.success": "Abonnement mis à jour avec succès",
-  "subscription.list.item.actions.edit.title": "Modifier l'abonnement"
+  "subscription.title": "Abonnements"
 }

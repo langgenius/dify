@@ -82,6 +82,7 @@
   "externalTag": "Eksternal",
   "imageUploader.browse": "Telusuri",
   "imageUploader.button": "Seret dan lepas file atau folder, atau",
+  "imageUploader.fileSizeLimitExceeded": "Ukuran file melebihi batas {{size}}MB",
   "imageUploader.tip": "{{supportTypes}} (Maks {{batchCount}}, {{size}}MB masing-masing)",
   "inconsistentEmbeddingModelTip": "Model Rerank diperlukan jika model Penyematan dari basis pengetahuan yang dipilih tidak konsisten.",
   "indexingMethod.full_text_search": "TEKS LENGKAP",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Semantik",
   "weightedScore.semanticFirst": "Semantik pertama",
   "weightedScore.title": "Skor Tertimbang",
-  "wordCount": "K Kata-kata",
-  "imageUploader.fileSizeLimitExceeded": "Ukuran file melebihi batas {{size}}MB"
+  "wordCount": "K Kata-kata"
 }

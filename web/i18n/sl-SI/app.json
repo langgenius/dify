@@ -27,6 +27,7 @@
   "answerIcon.title": "Uporabite ikono web app za zamenjavo 🤖",
   "appDeleteFailed": "Brisanje aplikacije ni uspelo",
   "appDeleted": "Aplikacija izbrisana",
+  "appNamePlaceholder": "Poimenujte svojo aplikacijo",
   "appSelector.label": "APL",
   "appSelector.noParams": "Parametri niso potrebni",
   "appSelector.params": "PARAMETRI APLIKACIJE",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Iskanje vozlišč in skok nanje v trenutnem poteku dela po imenu ali vrsti",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Ta funkcija deluje le pri ogledu poteka dela. Najprej se pomaknite do poteka dela.",
   "gotoAnything.actions.slashDesc": "Izvedi ukaze kot so /tema, /jezik",
+  "gotoAnything.actions.slashTitle": "Ukazi",
   "gotoAnything.actions.themeCategoryDesc": "Preklopi temo aplikacije",
   "gotoAnything.actions.themeCategoryTitle": "Tema",
   "gotoAnything.actions.themeDark": "Temna tema",
@@ -212,6 +214,8 @@
   "switchTip": "dovolila",
   "switchTipEnd": " preklopa nazaj na Basic Orchestrate.",
   "switchTipStart": "Za vas bo ustvarjena nova kopija aplikacije, ki bo preklopila na Workflow Orchestrate. Nova kopija ne bo ",
+  "theme.switchDark": "Preklopi na temno temo",
+  "theme.switchLight": "Preklopi na svetlo temo",
   "tracing.aliyun.description": "Popolnoma upravljana in brez vzdrževanja platforma za opazovanje, ki jo zagotavlja Alibaba Cloud, omogoča takojšnje spremljanje, sledenje in ocenjevanje aplikacij Dify.",
   "tracing.aliyun.title": "Oblačni nadzor",
   "tracing.arize.description": "Podjetniško opazovanje LLM, spletno in nespletno vrednotenje, nadzorovanje in eksperimentiranje — s podporo OpenTelemetry. Namenjeno aplikacijam, ki temeljijo na LLM in agentih.",
@@ -275,9 +279,5 @@
   "types.basic": "Osnoven",
   "types.chatbot": "Klepetalnik",
   "types.completion": "Dopolnjevanje",
-  "types.workflow": "Potek dela",
-  "appNamePlaceholder": "Poimenujte svojo aplikacijo",
-  "gotoAnything.actions.slashTitle": "Ukazi",
-  "theme.switchDark": "Preklopi na temno temo",
-  "theme.switchLight": "Preklopi na svetlo temo"
+  "types.workflow": "Potek dela"
 }

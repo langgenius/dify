@@ -14,6 +14,7 @@
   "auth.setup": "Menyiapkan otorisasi untuk digunakan",
   "auth.setupModalTitle": "Menyiapkan Otorisasi",
   "auth.setupModalTitleDescription": "Setelah mengonfigurasi kredensial, semua anggota dalam ruang kerja dapat menggunakan alat ini saat mengatur aplikasi.",
+  "auth.unauthorized": "Tidak sah",
   "author": "Oleh",
   "builtInPromptTitle": "Cepat",
   "contribute.line1": "Saya tertarik",
@@ -200,6 +201,5 @@
   "toolRemoved": "Alat dihapus",
   "type.builtIn": "Perkakas",
   "type.custom": "Adat",
-  "type.workflow": "Alur Kerja",
-  "auth.unauthorized": "Tidak sah"
+  "type.workflow": "Alur Kerja"
 }

@@ -54,6 +54,7 @@
   "completionMode.title": "API completare aplicație",
   "copied": "Copiat",
   "copy": "Copiază",
+  "develop.noContent": "Fără conținut",
   "develop.pathParams": "Parametrii căii",
   "develop.query": "Interogare",
   "develop.requestBody": "Corpul cererii",
@@ -67,6 +68,5 @@
   "play": "Redă",
   "playing": "În redare",
   "regenerate": "Regenera",
-  "status": "Stare",
-  "develop.noContent": "Fără conținut"
+  "status": "Stare"
 }

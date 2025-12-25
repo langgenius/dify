@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Autorización fallida",
   "modal.errors.createFailed": "No se pudo crear la suscripción",
   "modal.errors.networkError": "Error de red, por favor intenta de nuevo",
+  "modal.errors.updateFailed": "No se pudo actualizar la suscripción",
   "modal.errors.verifyFailed": "No se pudieron verificar las credenciales",
   "modal.form.callbackUrl.description": "Esta URL recibirá eventos de webhook",
   "modal.form.callbackUrl.label": "URL de retorno de llamada",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Error al eliminar la suscripción {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Suscripción {{name}} eliminada con éxito",
   "subscription.list.item.actions.deleteConfirm.title": "¿Eliminar {{name}}?",
+  "subscription.list.item.actions.edit.error": "No se pudo actualizar la suscripción",
+  "subscription.list.item.actions.edit.success": "Suscripción actualizada con éxito",
+  "subscription.list.item.actions.edit.title": "Editar suscripción",
   "subscription.list.item.credentialType.api_key": "Clave de API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Manual",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "No se ha seleccionado ninguna suscripción",
   "subscription.selectPlaceholder": "Seleccionar suscripción",
   "subscription.subscriptionRemoved": "Suscripción eliminada",
-  "subscription.title": "Suscripciones",
-  "modal.errors.updateFailed": "No se pudo actualizar la suscripción",
-  "subscription.list.item.actions.edit.error": "No se pudo actualizar la suscripción",
-  "subscription.list.item.actions.edit.success": "Suscripción actualizada con éxito",
-  "subscription.list.item.actions.edit.title": "Editar suscripción"
+  "subscription.title": "Suscripciones"
 }

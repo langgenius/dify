@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Авторизація не вдалася",
   "modal.errors.createFailed": "Не вдалося створити підписку",
   "modal.errors.networkError": "Помилка мережі, будь ласка, спробуйте ще раз",
+  "modal.errors.updateFailed": "Не вдалося оновити підписку",
   "modal.errors.verifyFailed": "Не вдалося перевірити облікові дані",
   "modal.form.callbackUrl.description": "Цей URL буде отримувати події вебхука",
   "modal.form.callbackUrl.label": "URL зворотного виклику",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Не вдалося видалити підписку {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Підписку {{name}} успішно видалено",
   "subscription.list.item.actions.deleteConfirm.title": "Видалити {{name}}?",
+  "subscription.list.item.actions.edit.error": "Не вдалося оновити підписку",
+  "subscription.list.item.actions.edit.success": "Підписку успішно оновлено",
+  "subscription.list.item.actions.edit.title": "Редагувати підписку",
   "subscription.list.item.credentialType.api_key": "API ключ",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Посібник",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Підписка не обрана",
   "subscription.selectPlaceholder": "Виберіть підписку",
   "subscription.subscriptionRemoved": "Підписку видалено",
-  "subscription.title": "Підписки",
-  "modal.errors.updateFailed": "Не вдалося оновити підписку",
-  "subscription.list.item.actions.edit.error": "Не вдалося оновити підписку",
-  "subscription.list.item.actions.edit.success": "Підписку успішно оновлено",
-  "subscription.list.item.actions.edit.title": "Редагувати підписку"
+  "subscription.title": "Підписки"
 }

@@ -39,6 +39,7 @@
   "error.passwordEmpty": "비밀번호를 입력하세요.",
   "error.passwordInvalid": "비밀번호는 문자와 숫자를 포함하고 8 자 이상이어야 합니다.",
   "error.passwordLengthInValid": "비밀번호는 8 자 이상이어야 합니다.",
+  "error.redirectUrlMissing": "리디렉션 URL이 없습니다",
   "error.registrationNotAllowed": "계정을 찾을 수 없습니다. 등록하려면 시스템 관리자에게 문의하십시오.",
   "explore": "Dify 를 탐색하세요",
   "forget": "비밀번호를 잊으셨나요?",
@@ -110,6 +111,5 @@
   "welcome": "Dify 에 오신 것을 환영합니다. 계속하려면 로그인하세요.",
   "withGitHub": "GitHub 로 계속",
   "withGoogle": "Google 로 계속",
-  "withSSO": "SSO 로 계속하기",
-  "error.redirectUrlMissing": "리디렉션 URL이 없습니다"
+  "withSSO": "SSO 로 계속하기"
 }

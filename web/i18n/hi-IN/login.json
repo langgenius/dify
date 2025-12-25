@@ -39,6 +39,7 @@
   "error.passwordEmpty": "पासवर्ड आवश्यक है",
   "error.passwordInvalid": "पासवर्ड में अक्षर और अंक होने चाहिए, और लंबाई 8 से अधिक होनी चाहिए",
   "error.passwordLengthInValid": "पासवर्ड कम से कम 8 वर्णों का होना चाहिए",
+  "error.redirectUrlMissing": "पुनःनिर्देश URL गायब है",
   "error.registrationNotAllowed": "खाता नहीं मिला. रजिस्टर करने के लिए कृपया सिस्टम एडमिन से संपर्क करें।",
   "explore": "Dify का अन्वेषण करें",
   "forget": "क्या आप पासवर्ड भूल गए?",
@@ -110,6 +111,5 @@
   "welcome": "Dify में आपका स्वागत है, कृपया जारी रखने के लिए लॉग इन करें।",
   "withGitHub": "GitHub के साथ जारी रखें",
   "withGoogle": "Google के साथ जारी रखें",
-  "withSSO": "एसएसओ के साथ जारी रखें",
-  "error.redirectUrlMissing": "पुनःनिर्देश URL गायब है"
+  "withSSO": "एसएसओ के साथ जारी रखें"
 }

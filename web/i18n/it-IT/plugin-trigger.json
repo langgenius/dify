@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Autorizzazione fallita",
   "modal.errors.createFailed": "Impossibile creare l'abbonamento",
   "modal.errors.networkError": "Errore di rete, riprova",
+  "modal.errors.updateFailed": "Impossibile aggiornare l'abbonamento",
   "modal.errors.verifyFailed": "Impossibile verificare le credenziali",
   "modal.form.callbackUrl.description": "Questa URL riceverà eventi webhook",
   "modal.form.callbackUrl.label": "URL di richiamata",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Impossibile eliminare l'abbonamento {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Abbonamento {{name}} eliminato con successo",
   "subscription.list.item.actions.deleteConfirm.title": "Eliminare {{name}}?",
+  "subscription.list.item.actions.edit.error": "Impossibile aggiornare l'abbonamento",
+  "subscription.list.item.actions.edit.success": "Abbonamento aggiornato con successo",
+  "subscription.list.item.actions.edit.title": "Modifica abbonamento",
   "subscription.list.item.credentialType.api_key": "Chiave API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Manuale",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Nessun abbonamento selezionato",
   "subscription.selectPlaceholder": "Seleziona abbonamento",
   "subscription.subscriptionRemoved": "Abbonamento rimosso",
-  "subscription.title": "Abbonamenti",
-  "modal.errors.updateFailed": "Impossibile aggiornare l'abbonamento",
-  "subscription.list.item.actions.edit.error": "Impossibile aggiornare l'abbonamento",
-  "subscription.list.item.actions.edit.success": "Abbonamento aggiornato con successo",
-  "subscription.list.item.actions.edit.title": "Modifica abbonamento"
+  "subscription.title": "Abbonamenti"
 }

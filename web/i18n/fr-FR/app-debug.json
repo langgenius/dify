@@ -21,6 +21,7 @@
   "assistantType.name": "Type d'Assistant",
   "autoAddVar": "Des variables indéfinies référencées dans le pre-prompt, voulez-vous les ajouter dans le formulaire d'entrée de l'utilisateur ?",
   "chatSubTitle": "Instructions",
+  "code.instruction": "Instruction",
   "codegen.apply": "Appliquer",
   "codegen.applyChanges": "Appliquer les modifications",
   "codegen.description": "Le générateur de code utilise des modèles configurés pour générer un code de haute qualité basé sur vos instructions. Veuillez fournir des instructions claires et détaillées.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Support de la langue pour la voix de synthèse de texte.",
   "voice.voiceSettings.title": "Paramètres de voix",
   "voice.voiceSettings.voice": "Voix",
-  "warningMessage.timeoutExceeded": "Les résultats ne s’affichent pas en raison d’un délai d’expiration. Veuillez vous référer aux journaux pour rassembler les résultats complets.",
-  "code.instruction": "Instruction"
+  "warningMessage.timeoutExceeded": "Les résultats ne s’affichent pas en raison d’un délai d’expiration. Veuillez vous référer aux journaux pour rassembler les résultats complets."
 }

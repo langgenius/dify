@@ -21,6 +21,7 @@
   "assistantType.name": "ประเภทผู้ช่วย",
   "autoAddVar": "ตัวแปรที่ไม่ได้กําหนดอ้างอิงในพรอมต์ล่วงหน้าคุณต้องการเพิ่มในแบบฟอร์มการป้อนข้อมูลของผู้ใช้หรือไม่?",
   "chatSubTitle": "คำ แนะ นำ",
+  "code.instruction": "คำแนะนำ",
   "codegen.apply": "ใช้",
   "codegen.applyChanges": "ใช้การเปลี่ยนแปลง",
   "codegen.description": "ตัวสร้างโค้ดใช้โมเดลที่กําหนดค่าเพื่อสร้างโค้ดคุณภาพสูงตามคําแนะนําของคุณ โปรดให้คําแนะนําที่ชัดเจนและละเอียด",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "ภาษาสนับสนุนเสียงแปลงข้อความเป็นคําพูด。",
   "voice.voiceSettings.title": "การตั้งค่าเสียง",
   "voice.voiceSettings.voice": "เสียง",
-  "warningMessage.timeoutExceeded": "ผลลัพธ์จะไม่แสดงเนื่องจากหมดเวลา โปรดดูบันทึกเพื่อรวบรวมผลลัพธ์ที่สมบูรณ์",
-  "code.instruction": "คำแนะนำ"
+  "warningMessage.timeoutExceeded": "ผลลัพธ์จะไม่แสดงเนื่องจากหมดเวลา โปรดดูบันทึกเพื่อรวบรวมผลลัพธ์ที่สมบูรณ์"
 }

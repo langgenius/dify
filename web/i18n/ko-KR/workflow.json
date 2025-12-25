@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "모든 달이 31일인 것은 아닙니다. 각 달의 마지막 날을 선택하려면 '마지막 날' 옵션을 사용하세요.",
   "nodes.triggerSchedule.minutes": "분",
   "nodes.triggerSchedule.mode": "모드",
+  "nodes.triggerSchedule.modeCron": "크론",
+  "nodes.triggerSchedule.modeVisual": "시각적인",
   "nodes.triggerSchedule.monthlyDay": "월간 일",
   "nodes.triggerSchedule.nextExecution": "다음 실행",
   "nodes.triggerSchedule.nextExecutionTime": "다음 실행 시간",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "분 안에",
   "nodes.triggerSchedule.selectDateTime": "날짜 및 시간 선택",
   "nodes.triggerSchedule.selectFrequency": "주파수 선택",
+  "nodes.triggerSchedule.selectTime": "시간 선택",
   "nodes.triggerSchedule.startTime": "시작 시간",
   "nodes.triggerSchedule.startTimeMustBeFuture": "시작 시간은 미래여야 합니다",
   "nodes.triggerSchedule.time": "시간",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "이름 바꾸기",
   "versionHistory.releaseNotesPlaceholder": "변경된 내용을 설명하세요.",
   "versionHistory.restorationTip": "버전 복원 후 현재 초안이 덮어쓰여질 것입니다.",
-  "versionHistory.title": "버전 기록",
-  "nodes.triggerSchedule.modeCron": "크론",
-  "nodes.triggerSchedule.modeVisual": "시각적인",
-  "nodes.triggerSchedule.selectTime": "시간 선택"
+  "versionHistory.title": "버전 기록"
 }

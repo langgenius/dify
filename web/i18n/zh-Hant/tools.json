@@ -14,6 +14,7 @@
   "auth.setup": "要使用請先授權",
   "auth.setupModalTitle": "設定授權",
   "auth.setupModalTitleDescription": "配置憑據後，工作區中的所有成員都可以在編排應用程式時使用此工具。",
+  "auth.unauthorized": "未經授權",
   "author": "作者",
   "builtInPromptTitle": "提示詞",
   "contribute.line1": "我有興趣為 ",
@@ -200,6 +201,5 @@
   "toolRemoved": "工具已被移除",
   "type.builtIn": "內建",
   "type.custom": "自定義",
-  "type.workflow": "工作流",
-  "auth.unauthorized": "未經授權"
+  "type.workflow": "工作流"
 }

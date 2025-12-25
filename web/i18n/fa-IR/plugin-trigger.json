@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "مجوز ناموفق بود",
   "modal.errors.createFailed": "ایجاد اشتراک با شکست مواجه شد",
   "modal.errors.networkError": "خطای شبکه، لطفاً دوباره تلاش کنید",
+  "modal.errors.updateFailed": "به‌روزرسانی اشتراک ناموفق بود",
   "modal.errors.verifyFailed": "تأیید اطلاعات ورود ناموفق بود",
   "modal.form.callbackUrl.description": "این آدرس URL رویدادهای وب هوک را دریافت خواهد کرد",
   "modal.form.callbackUrl.label": "آدرس بازگشت تماس",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "حذف اشتراک {{name}} ناموفق بود",
   "subscription.list.item.actions.deleteConfirm.success": "اشتراک {{name}} با موفقیت حذف شد",
   "subscription.list.item.actions.deleteConfirm.title": "آیا {{name}} را حذف می‌کنید؟",
+  "subscription.list.item.actions.edit.error": "به‌روزرسانی اشتراک ناموفق بود",
+  "subscription.list.item.actions.edit.success": "اشتراک با موفقیت به‌روزرسانی شد",
+  "subscription.list.item.actions.edit.title": "ویرایش اشتراک",
   "subscription.list.item.credentialType.api_key": "کلید API",
   "subscription.list.item.credentialType.oauth2": "اواف",
   "subscription.list.item.credentialType.unauthorized": "دستی",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "هیچ اشتراکی انتخاب نشده است",
   "subscription.selectPlaceholder": "انتخاب اشتراک",
   "subscription.subscriptionRemoved": "اشتراک حذف شد",
-  "subscription.title": "اشتراک‌ها",
-  "modal.errors.updateFailed": "به‌روزرسانی اشتراک ناموفق بود",
-  "subscription.list.item.actions.edit.error": "به‌روزرسانی اشتراک ناموفق بود",
-  "subscription.list.item.actions.edit.success": "اشتراک با موفقیت به‌روزرسانی شد",
-  "subscription.list.item.actions.edit.title": "ویرایش اشتراک"
+  "subscription.title": "اشتراک‌ها"
 }

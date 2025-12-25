@@ -21,6 +21,7 @@
   "assistantType.name": "نوع المساعد",
   "autoAddVar": "المتغيرات غير المحددة المشار إليها في ما قبل المطالبة، هل ترغب في إضافتها في نموذج إدخال المستخدم؟",
   "chatSubTitle": "تعليمات",
+  "code.instruction": "تعليمات",
   "codegen.apply": "تطبيق",
   "codegen.applyChanges": "تطبيق التغييرات",
   "codegen.description": "يستخدم مولد الكود النماذج المكونة لتوليد كود عالي الجودة بناءً على تعليماتك. يرجى تقديم تعليمات واضحة ومفصلة.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "دعم لغة تحويل النص إلى كلام.",
   "voice.voiceSettings.title": "إعدادات الصوت",
   "voice.voiceSettings.voice": "صوت",
-  "warningMessage.timeoutExceeded": "لا يتم عرض النتائج بسبب المهلة. يرجى الرجوع إلى السجلات لجمع النتائج الكاملة.",
-  "code.instruction": "تعليمات"
+  "warningMessage.timeoutExceeded": "لا يتم عرض النتائج بسبب المهلة. يرجى الرجوع إلى السجلات لجمع النتائج الكاملة."
 }

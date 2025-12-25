@@ -21,6 +21,7 @@
   "assistantType.name": "Typ asystenta",
   "autoAddVar": "Niezdefiniowane zmienne odwołują się w pre-monicie, czy chcesz je dodać do formularza wejściowego użytkownika?",
   "chatSubTitle": "Instrukcje",
+  "code.instruction": "Instrukcja",
   "codegen.apply": "Zastosować",
   "codegen.applyChanges": "Stosowanie zmian",
   "codegen.description": "Generator kodów używa skonfigurowanych modeli do generowania wysokiej jakości kodu na podstawie Twoich instrukcji. Podaj jasne i szczegółowe instrukcje.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Wsparcie językowe głosu tekstu na mowę.",
   "voice.voiceSettings.title": "Ustawienia Głosu",
   "voice.voiceSettings.voice": "Głos",
-  "warningMessage.timeoutExceeded": "Wyniki nie są wyświetlane z powodu przekroczenia limitu czasu. Zapoznaj się z dziennikami, aby zebrać pełne wyniki.",
-  "code.instruction": "Instrukcja"
+  "warningMessage.timeoutExceeded": "Wyniki nie są wyświetlane z powodu przekroczenia limitu czasu. Zapoznaj się z dziennikami, aby zebrać pełne wyniki."
 }

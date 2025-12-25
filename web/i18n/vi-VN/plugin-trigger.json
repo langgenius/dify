@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Ủy quyền thất bại",
   "modal.errors.createFailed": "Tạo đăng ký thất bại",
   "modal.errors.networkError": "Lỗi mạng, vui lòng thử lại",
+  "modal.errors.updateFailed": "Cập nhật đăng ký thất bại",
   "modal.errors.verifyFailed": "Xác minh thông tin đăng nhập thất bại",
   "modal.form.callbackUrl.description": "URL này sẽ nhận các sự kiện webhook",
   "modal.form.callbackUrl.label": "URL gọi lại",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Không thể xóa đăng ký {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Đăng ký {{name}} đã được xóa thành công",
   "subscription.list.item.actions.deleteConfirm.title": "Xóa {{name}}?",
+  "subscription.list.item.actions.edit.error": "Cập nhật đăng ký thất bại",
+  "subscription.list.item.actions.edit.success": "Cập nhật đăng ký thành công",
+  "subscription.list.item.actions.edit.title": "Chỉnh sửa đăng ký",
   "subscription.list.item.credentialType.api_key": "Khóa API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Hướng dẫn",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Chưa chọn gói đăng ký",
   "subscription.selectPlaceholder": "Chọn gói đăng ký",
   "subscription.subscriptionRemoved": "Đã hủy đăng ký",
-  "subscription.title": "Đăng ký",
-  "modal.errors.updateFailed": "Cập nhật đăng ký thất bại",
-  "subscription.list.item.actions.edit.error": "Cập nhật đăng ký thất bại",
-  "subscription.list.item.actions.edit.success": "Cập nhật đăng ký thành công",
-  "subscription.list.item.actions.edit.title": "Chỉnh sửa đăng ký"
+  "subscription.title": "Đăng ký"
 }

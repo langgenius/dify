@@ -27,6 +27,7 @@
   "answerIcon.title": "Sử dụng biểu tượng web app để thay thế 🤖",
   "appDeleteFailed": "Không thể xóa ứng dụng",
   "appDeleted": "Ứng dụng đã bị xóa",
+  "appNamePlaceholder": "Đặt tên cho ứng dụng của bạn",
   "appSelector.label": "Ứng dụng",
   "appSelector.noParams": "Không cần thông số",
   "appSelector.params": "THÔNG SỐ ỨNG DỤNG",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Tìm và chuyển đến các nút trong quy trình làm việc hiện tại theo tên hoặc loại",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Tính năng này chỉ hoạt động khi xem quy trình làm việc. Điều hướng đến quy trình làm việc trước.",
   "gotoAnything.actions.slashDesc": "Thực hiện các lệnh như /theme, /lang",
+  "gotoAnything.actions.slashTitle": "Lệnh",
   "gotoAnything.actions.themeCategoryDesc": "Chuyển đổi giao diện ứng dụng",
   "gotoAnything.actions.themeCategoryTitle": "Chủ đề",
   "gotoAnything.actions.themeDark": "Chủ đề tối",
@@ -212,6 +214,8 @@
   "switchTip": "không thể",
   "switchTipEnd": " chuyển lại quản lý cơ bản.",
   "switchTipStart": "Một bản sao ứng dụng mới sẽ được tạo và chuyển sang quản lý quy trình. Bản sao mới sẽ ",
+  "theme.switchDark": "Chuyển sang chế độ tối",
+  "theme.switchLight": "Chuyển sang giao diện sáng",
   "tracing.aliyun.description": "Nền tảng quan sát được quản lý hoàn toàn và không cần bảo trì do Alibaba Cloud cung cấp, cho phép giám sát, theo dõi và đánh giá các ứng dụng Dify ngay lập tức.",
   "tracing.aliyun.title": "Giám sát Đám mây",
   "tracing.arize.description": "Khả năng quan sát LLM cấp doanh nghiệp, đánh giá trực tuyến và ngoại tuyến, giám sát và thử nghiệm—được hỗ trợ bởi OpenTelemetry. Được thiết kế đặc biệt cho các ứng dụng dựa trên LLM và tác nhân.",
@@ -275,9 +279,5 @@
   "types.basic": "Cơ bản",
   "types.chatbot": "Chatbot",
   "types.completion": "Hoàn thành",
-  "types.workflow": "Quy trình",
-  "appNamePlaceholder": "Đặt tên cho ứng dụng của bạn",
-  "gotoAnything.actions.slashTitle": "Lệnh",
-  "theme.switchDark": "Chuyển sang chế độ tối",
-  "theme.switchLight": "Chuyển sang giao diện sáng"
+  "types.workflow": "Quy trình"
 }

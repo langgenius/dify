@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "تمام ماه‌ها ۳۱ روز ندارند. از گزینه «آخرین روز» برای انتخاب روز آخر هر ماه استفاده کنید.",
   "nodes.triggerSchedule.minutes": "دقایق",
   "nodes.triggerSchedule.mode": "مد",
+  "nodes.triggerSchedule.modeCron": "کرون",
+  "nodes.triggerSchedule.modeVisual": "بینایی",
   "nodes.triggerSchedule.monthlyDay": "روز ماهانه",
   "nodes.triggerSchedule.nextExecution": "اجرای بعدی",
   "nodes.triggerSchedule.nextExecutionTime": "زمان اجرای بعدی",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "در دقیقه",
   "nodes.triggerSchedule.selectDateTime": "تاریخ و زمان را انتخاب کنید",
   "nodes.triggerSchedule.selectFrequency": "انتخاب فرکانس",
+  "nodes.triggerSchedule.selectTime": "انتخاب زمان",
   "nodes.triggerSchedule.startTime": "زمان شروع",
   "nodes.triggerSchedule.startTimeMustBeFuture": "زمان شروع باید در آینده باشد",
   "nodes.triggerSchedule.time": "زمان",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "این نسخه را نامگذاری کنید",
   "versionHistory.releaseNotesPlaceholder": "شرح دهید چه چیزی تغییر کرده است",
   "versionHistory.restorationTip": "پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.",
-  "versionHistory.title": "نسخه‌ها",
-  "nodes.triggerSchedule.modeCron": "کرون",
-  "nodes.triggerSchedule.modeVisual": "بینایی",
-  "nodes.triggerSchedule.selectTime": "انتخاب زمان"
+  "versionHistory.title": "نسخه‌ها"
 }

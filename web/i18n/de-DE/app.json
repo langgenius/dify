@@ -27,6 +27,7 @@
   "answerIcon.title": "Verwenden Sie das web app Symbol, um es zu ersetzen 🤖",
   "appDeleteFailed": "Löschen der App fehlgeschlagen",
   "appDeleted": "App gelöscht",
+  "appNamePlaceholder": "Gib deiner App einen Namen",
   "appSelector.label": "APP",
   "appSelector.noParams": "Keine Parameter erforderlich",
   "appSelector.params": "APP-PARAMETER",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Suchen und Springen zu Knoten im aktuellen Workflow nach Name oder Typ",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Diese Funktion funktioniert nur, wenn ein Workflow angezeigt wird. Navigieren Sie zuerst zu einem Workflow.",
   "gotoAnything.actions.slashDesc": "Führen Sie Befehle wie /theme, /lang aus",
+  "gotoAnything.actions.slashTitle": "Befehle",
   "gotoAnything.actions.themeCategoryDesc": "Anwendungsthema wechseln",
   "gotoAnything.actions.themeCategoryTitle": "Thema",
   "gotoAnything.actions.themeDark": "Dunkles Thema",
@@ -212,6 +214,8 @@
   "switchTip": "nicht erlauben",
   "switchTipEnd": " zur Basis-Orchestrierung zurückzuwechseln.",
   "switchTipStart": "Eine neue App-Kopie wird für Sie erstellt, und die neue Kopie wird zur Workflow-Orchestrierung wechseln. Die neue Kopie wird ",
+  "theme.switchDark": "Zum dunklen Modus wechseln",
+  "theme.switchLight": "Zum hellen Thema wechseln",
   "tracing.aliyun.description": "Die vollständig verwaltete und wartungsfreie Observability-Plattform von Alibaba Cloud ermöglicht eine sofortige Überwachung, Verfolgung und Bewertung von Dify-Anwendungen.",
   "tracing.aliyun.title": "Cloud-Monitor",
   "tracing.arize.description": "Unternehmensgerechte LLM-Observierbarkeit, Online- und Offline-Bewertung, Überwachung und Experimentierung—unterstützt durch OpenTelemetry. Speziell für LLM- und agentenbasierte Anwendungen entwickelt.",
@@ -275,9 +279,5 @@
   "types.basic": "Grundlegend",
   "types.chatbot": "Chatbot",
   "types.completion": "Vervollständigung",
-  "types.workflow": "Arbeitsablauf",
-  "appNamePlaceholder": "Gib deiner App einen Namen",
-  "gotoAnything.actions.slashTitle": "Befehle",
-  "theme.switchDark": "Zum dunklen Modus wechseln",
-  "theme.switchLight": "Zum hellen Thema wechseln"
+  "types.workflow": "Arbeitsablauf"
 }

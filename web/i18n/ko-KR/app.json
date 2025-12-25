@@ -27,6 +27,7 @@
   "answerIcon.title": "web app 아이콘을 사용하여 🤖",
   "appDeleteFailed": "앱 삭제 실패",
   "appDeleted": "앱이 삭제되었습니다",
+  "appNamePlaceholder": "앱 이름을 지어주세요",
   "appSelector.label": "앱",
   "appSelector.noParams": "매개 변수가 필요하지 않습니다.",
   "appSelector.params": "앱 매개 변수",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "이름 또는 유형별로 현재 워크플로의 노드를 찾아 이동",
   "gotoAnything.actions.searchWorkflowNodesHelp": "이 기능은 워크플로를 볼 때만 작동합니다. 먼저 워크플로로 이동합니다.",
   "gotoAnything.actions.slashDesc": "/theme, /lang와 같은 명령어를 실행하십시오.",
+  "gotoAnything.actions.slashTitle": "명령어",
   "gotoAnything.actions.themeCategoryDesc": "애플리케이션 테마 전환",
   "gotoAnything.actions.themeCategoryTitle": "주제",
   "gotoAnything.actions.themeDark": "어두운 테마",
@@ -212,6 +214,8 @@
   "switchTip": "전환을 허용하지 않습니다",
   "switchTipEnd": " 기본적인 오케스트레이션으로 되돌릴 수 없습니다.",
   "switchTipStart": "새로운 앱의 복사본이 생성되어 새로운 복사본이 워크플로우 오케스트레이션으로 전환됩니다. 새로운 복사본은 ",
+  "theme.switchDark": "다크 모드로 전환",
+  "theme.switchLight": "라이트 테마로 전환",
   "tracing.aliyun.description": "알리바바 클라우드에서 제공하는 완전 관리형 및 유지보수가 필요 없는 가시성 플랫폼은 Dify 애플리케이션의 모니터링, 추적 및 평가를 즉시 사용할 수 있도록 지원합니다.",
   "tracing.aliyun.title": "클라우드 모니터",
   "tracing.arize.description": "엔터프라이즈급 LLM 가시성, 온라인 및 오프라인 평가, 모니터링 및 실험—OpenTelemetry를 기반으로 합니다. LLM 및 에이전트 기반 애플리케이션을 위해 특별히 설계되었습니다.",
@@ -275,9 +279,5 @@
   "types.basic": "기초의",
   "types.chatbot": "챗봇",
   "types.completion": "완성",
-  "types.workflow": "워크플로우",
-  "appNamePlaceholder": "앱 이름을 지어주세요",
-  "gotoAnything.actions.slashTitle": "명령어",
-  "theme.switchDark": "다크 모드로 전환",
-  "theme.switchLight": "라이트 테마로 전환"
+  "types.workflow": "워크플로우"
 }

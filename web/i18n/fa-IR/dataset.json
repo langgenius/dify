@@ -82,6 +82,7 @@
   "externalTag": "خارجی",
   "imageUploader.browse": "مرور کردن",
   "imageUploader.button": "کشیدن و رها کردن فایل یا پوشه، یا",
+  "imageUploader.fileSizeLimitExceeded": "حجم فایل از محدودیت {{size}} مگابایت تجاوز کرده است",
   "imageUploader.tip": "{{supportTypes}} (حداکثر {{batchCount}}، هر کدام {{size}} مگابایت)",
   "inconsistentEmbeddingModelTip": "مدل دوباره رتبه‌بندی لازم است اگر مدل‌های جاسازی پایگاه‌های دانش انتخابی ناسازگار باشند.",
   "indexingMethod.full_text_search": "متن کامل",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "معنایی",
   "weightedScore.semanticFirst": "اولویت معنایی",
   "weightedScore.title": "امتیاز وزنی",
-  "wordCount": " هزار کلمه",
-  "imageUploader.fileSizeLimitExceeded": "حجم فایل از محدودیت {{size}} مگابایت تجاوز کرده است"
+  "wordCount": " هزار کلمه"
 }

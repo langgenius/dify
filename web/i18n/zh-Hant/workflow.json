@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "並非所有月份都有31天。使用「最後一天」選項來選擇每個月的最後一天。",
   "nodes.triggerSchedule.minutes": "分鐘",
   "nodes.triggerSchedule.mode": "時尚",
+  "nodes.triggerSchedule.modeCron": "排程程式",
+  "nodes.triggerSchedule.modeVisual": "視覺的",
   "nodes.triggerSchedule.monthlyDay": "每月日",
   "nodes.triggerSchedule.nextExecution": "下一次執行",
   "nodes.triggerSchedule.nextExecutionTime": "下一次執行時間",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "在一分鐘內",
   "nodes.triggerSchedule.selectDateTime": "選擇日期和時間",
   "nodes.triggerSchedule.selectFrequency": "選擇頻率",
+  "nodes.triggerSchedule.selectTime": "選擇時間",
   "nodes.triggerSchedule.startTime": "開始時間",
   "nodes.triggerSchedule.startTimeMustBeFuture": "開始時間必須是未來的時間",
   "nodes.triggerSchedule.time": "時間",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "給這個版本命名",
   "versionHistory.releaseNotesPlaceholder": "描述發生了什麼變化",
   "versionHistory.restorationTip": "版本恢復後，當前草稿將被覆蓋。",
-  "versionHistory.title": "版本",
-  "nodes.triggerSchedule.modeCron": "排程程式",
-  "nodes.triggerSchedule.modeVisual": "視覺的",
-  "nodes.triggerSchedule.selectTime": "選擇時間"
+  "versionHistory.title": "版本"
 }

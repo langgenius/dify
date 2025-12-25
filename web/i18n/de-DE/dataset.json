@@ -82,6 +82,7 @@
   "externalTag": "Äußerlich",
   "imageUploader.browse": "Durchsuchen",
   "imageUploader.button": "Datei oder Ordner ziehen und ablegen, oder",
+  "imageUploader.fileSizeLimitExceeded": "Die Dateigröße überschreitet das Limit von {{size}} MB",
   "imageUploader.tip": "{{supportTypes}} (Max {{batchCount}}, je {{size}}MB)",
   "inconsistentEmbeddingModelTip": "Das Rerank-Modell ist erforderlich, wenn die Embedding-Modelle der ausgewählten Wissensbasen inkonsistent sind.",
   "indexingMethod.full_text_search": "VOLLTEXT",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Semantisch",
   "weightedScore.semanticFirst": "Semantik zuerst",
   "weightedScore.title": "Gewichtete Bewertung",
-  "wordCount": " k Wörter",
-  "imageUploader.fileSizeLimitExceeded": "Die Dateigröße überschreitet das Limit von {{size}} MB"
+  "wordCount": " k Wörter"
 }

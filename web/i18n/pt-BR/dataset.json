@@ -82,6 +82,7 @@
   "externalTag": "Externo",
   "imageUploader.browse": "Navegar",
   "imageUploader.button": "Arraste e solte o arquivo ou pasta, ou",
+  "imageUploader.fileSizeLimitExceeded": "O tamanho do arquivo excede o limite de {{size}}MB",
   "imageUploader.tip": "{{supportTypes}} (Máx. {{batchCount}}, {{size}}MB cada)",
   "inconsistentEmbeddingModelTip": "O modelo de reclassificação é necessário se os modelos de incorporação das bases de conhecimento selecionadas forem inconsistentes.",
   "indexingMethod.full_text_search": "TEXTO COMPLETO",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Semântico",
   "weightedScore.semanticFirst": "Semântica primeiro",
   "weightedScore.title": "Pontuação Ponderada",
-  "wordCount": " k palavras",
-  "imageUploader.fileSizeLimitExceeded": "O tamanho do arquivo excede o limite de {{size}}MB"
+  "wordCount": " k palavras"
 }

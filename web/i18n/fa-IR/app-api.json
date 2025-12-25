@@ -54,6 +54,7 @@
   "completionMode.title": "API برنامه تکمیل",
   "copied": "کپی شد",
   "copy": "کپی",
+  "develop.noContent": "هیچ محتوا",
   "develop.pathParams": "پارامترهای مسیر",
   "develop.query": "پرس‌وجو",
   "develop.requestBody": "بدنه درخواست",
@@ -67,6 +68,5 @@
   "play": "پخش",
   "playing": "در حال پخش",
   "regenerate": "بازسازی",
-  "status": "وضعیت",
-  "develop.noContent": "هیچ محتوا"
+  "status": "وضعیت"
 }

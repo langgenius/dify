@@ -27,6 +27,7 @@
   "answerIcon.title": "Utilizați pictograma web app pentru a înlocui 🤖",
   "appDeleteFailed": "Ștergerea aplicației a eșuat",
   "appDeleted": "Aplicația a fost ștearsă",
+  "appNamePlaceholder": "Dă aplicației tale un nume",
   "appSelector.label": "APLICAȚIE",
   "appSelector.noParams": "Nu sunt necesari parametri",
   "appSelector.params": "PARAMETRII APLICAȚIEI",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Găsiți și treceți la nodurile din fluxul de lucru curent după nume sau tip",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Această caracteristică funcționează numai atunci când vizualizați un flux de lucru. Navigați mai întâi la un flux de lucru.",
   "gotoAnything.actions.slashDesc": "Execută comenzi precum /theme, /lang",
+  "gotoAnything.actions.slashTitle": "Comenzi",
   "gotoAnything.actions.themeCategoryDesc": "Schimbă tema aplicației",
   "gotoAnything.actions.themeCategoryTitle": "Temă",
   "gotoAnything.actions.themeDark": "Temă întunecată",
@@ -212,6 +214,8 @@
   "switchTip": "nu va permite",
   "switchTipEnd": " comutarea înapoi la Orchestrare de Bază.",
   "switchTipStart": "O nouă copie a aplicației va fi creată pentru tine, iar noua copie va comuta la Orchestrare Flux de Lucru. Noua copie ",
+  "theme.switchDark": "Comută la tema închisă",
+  "theme.switchLight": "Comută la tema deschisă",
   "tracing.aliyun.description": "Platforma de observabilitate SaaS oferită de Alibaba Cloud permite monitorizarea, urmărirea și evaluarea aplicațiilor Dify din cutie.",
   "tracing.aliyun.title": "Monitorizarea Cloud",
   "tracing.arize.description": "Observabilitate LLM de nivel enterprise, evaluare online și offline, monitorizare și experimentare—alimentată de OpenTelemetry. Proiectată special pentru aplicații bazate pe LLM și agenți.",
@@ -275,9 +279,5 @@
   "types.basic": "Bază",
   "types.chatbot": "Chatbot",
   "types.completion": "Finalizare",
-  "types.workflow": "Flux de lucru",
-  "appNamePlaceholder": "Dă aplicației tale un nume",
-  "gotoAnything.actions.slashTitle": "Comenzi",
-  "theme.switchDark": "Comută la tema închisă",
-  "theme.switchLight": "Comută la tema deschisă"
+  "types.workflow": "Flux de lucru"
 }

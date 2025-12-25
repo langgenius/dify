@@ -27,6 +27,7 @@
   "answerIcon.title": "Utiliser l’icône web app pour remplacer 🤖",
   "appDeleteFailed": "Échec de la suppression de l'application",
   "appDeleted": "Application supprimée",
+  "appNamePlaceholder": "Donnez un nom à votre application",
   "appSelector.label": "APPLI",
   "appSelector.noParams": "Aucun paramètre nécessaire",
   "appSelector.params": "PARAMÈTRES DE L’APPLICATION",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Recherchez et accédez aux nœuds du flux de travail actuel par nom ou type",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Cette fonctionnalité ne fonctionne que lors de l'affichage d'un flux de travail. Accédez d'abord à un flux de travail.",
   "gotoAnything.actions.slashDesc": "Exécutez des commandes telles que /theme, /lang",
+  "gotoAnything.actions.slashTitle": "Commandes",
   "gotoAnything.actions.themeCategoryDesc": "Changer le thème de l'application",
   "gotoAnything.actions.themeCategoryTitle": "Thème",
   "gotoAnything.actions.themeDark": "Thème Sombre",
@@ -212,6 +214,8 @@
   "switchTip": "retour",
   "switchTipEnd": " à l'orchestration de base.",
   "switchTipStart": "Une nouvelle copie de l'application sera créée pour vous, et la nouvelle copie passera à l'orchestration de flux de travail. La nouvelle copie ne permettra pas le ",
+  "theme.switchDark": "Passer au thème sombre",
+  "theme.switchLight": "Passer au thème clair",
   "tracing.aliyun.description": "La plateforme d'observabilité entièrement gérée et sans maintenance fournie par Alibaba Cloud permet une surveillance, un traçage et une évaluation prêts à l'emploi des applications Dify.",
   "tracing.aliyun.title": "Surveillance Cloud",
   "tracing.arize.description": "Observabilité de LLM de niveau entreprise, évaluation en ligne et hors ligne, surveillance et expérimentation—alimentée par OpenTelemetry. Conçue spécialement pour les applications basées sur LLM et agents.",
@@ -275,9 +279,5 @@
   "types.basic": "Basique",
   "types.chatbot": "Chatbot",
   "types.completion": "Terminaison",
-  "types.workflow": "Flux de travail",
-  "appNamePlaceholder": "Donnez un nom à votre application",
-  "gotoAnything.actions.slashTitle": "Commandes",
-  "theme.switchDark": "Passer au thème sombre",
-  "theme.switchLight": "Passer au thème clair"
+  "types.workflow": "Flux de travail"
 }

@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Se requiere una contraseña",
   "error.passwordInvalid": "La contraseña debe contener letras y números, y tener una longitud mayor a 8",
   "error.passwordLengthInValid": "La contraseña debe tener al menos 8 caracteres",
+  "error.redirectUrlMissing": "Falta la URL de redirección",
   "error.registrationNotAllowed": "Cuenta no encontrada. Póngase en contacto con el administrador del sistema para registrarse.",
   "explore": "Explorar Dify",
   "forget": "¿Olvidaste tu contraseña?",
@@ -110,6 +111,5 @@
   "welcome": "Bienvenido a Dify, por favor inicia sesión para continuar.",
   "withGitHub": "Continuar con GitHub",
   "withGoogle": "Continuar con Google",
-  "withSSO": "Continuar con SSO",
-  "error.redirectUrlMissing": "Falta la URL de redirección"
+  "withSSO": "Continuar con SSO"
 }

@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Yetkilendirme başarısız",
   "modal.errors.createFailed": "Abonelik oluşturulamadı",
   "modal.errors.networkError": "Ağ hatası, lütfen tekrar deneyin",
+  "modal.errors.updateFailed": "Abonelik güncellenemedi",
   "modal.errors.verifyFailed": "Kimlik bilgileri doğrulanamadı",
   "modal.form.callbackUrl.description": "Bu URL webhook olaylarını alacaktır",
   "modal.form.callbackUrl.label": "Geri Arama URL'si",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Abonelik {{name}} silinemedi",
   "subscription.list.item.actions.deleteConfirm.success": "Abonelik {{name}} başarıyla silindi",
   "subscription.list.item.actions.deleteConfirm.title": "{{name}} silinsin mi?",
+  "subscription.list.item.actions.edit.error": "Abonelik güncellenemedi",
+  "subscription.list.item.actions.edit.success": "Abonelik başarıyla güncellendi",
+  "subscription.list.item.actions.edit.title": "Aboneliği Düzenle",
   "subscription.list.item.credentialType.api_key": "API Anahtarı",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Kılavuz",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Hiçbir abonelik seçilmedi",
   "subscription.selectPlaceholder": "Abonelik seç",
   "subscription.subscriptionRemoved": "Abonelik kaldırıldı",
-  "subscription.title": "Abonelikler",
-  "modal.errors.updateFailed": "Abonelik güncellenemedi",
-  "subscription.list.item.actions.edit.error": "Abonelik güncellenemedi",
-  "subscription.list.item.actions.edit.success": "Abonelik başarıyla güncellendi",
-  "subscription.list.item.actions.edit.title": "Aboneliği Düzenle"
+  "subscription.title": "Abonelikler"
 }

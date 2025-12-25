@@ -27,6 +27,7 @@
   "answerIcon.title": "Użyj ikony web app, aby zastąpić 🤖",
   "appDeleteFailed": "Nie udało się usunąć aplikacji",
   "appDeleted": "Aplikacja usunięta",
+  "appNamePlaceholder": "Nadaj swojej aplikacji nazwę",
   "appSelector.label": "Aplikacja",
   "appSelector.noParams": "Nie są potrzebne żadne parametry",
   "appSelector.params": "PARAMETRY APLIKACJI",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Znajdowanie węzłów w bieżącym przepływie pracy i przechodzenie do nich według nazwy lub typu",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Ta funkcja działa tylko podczas wyświetlania przepływu pracy. Najpierw przejdź do przepływu pracy.",
   "gotoAnything.actions.slashDesc": "Wykonuj polecenia takie jak /theme, /lang",
+  "gotoAnything.actions.slashTitle": "Polecenia",
   "gotoAnything.actions.themeCategoryDesc": "Zmień motyw aplikacji",
   "gotoAnything.actions.themeCategoryTitle": "Temat",
   "gotoAnything.actions.themeDark": "Ciemny motyw",
@@ -212,6 +214,8 @@
   "switchTip": "nie pozwoli",
   "switchTipEnd": " na powrót do Podstawowej Orkiestracji.",
   "switchTipStart": "Dla ciebie zostanie utworzona nowa kopia aplikacji, a nowa kopia przełączy się na Orkiestrację Przepływu Pracy. Nowa kopia będzie ",
+  "theme.switchDark": "Przełącz na ciemny motyw",
+  "theme.switchLight": "Przełącz na jasny motyw",
   "tracing.aliyun.description": "W pełni zarządzana i wolna od konserwacji platforma obserwowalności oferowana przez Alibaba Cloud umożliwia gotowe monitorowanie, śledzenie i oceny aplikacji Dify.",
   "tracing.aliyun.title": "Monitor Chmury",
   "tracing.arize.description": "Obserwowalność LLM klasy korporacyjnej, ocena online i offline, monitorowanie i eksperymentowanie — oparta na OpenTelemetry. Zaprojektowana specjalnie dla aplikacji opartych na LLM i agentach.",
@@ -275,9 +279,5 @@
   "types.basic": "Podstawowy",
   "types.chatbot": "Chatbot",
   "types.completion": "Zakończenie",
-  "types.workflow": "Przepływ pracy",
-  "appNamePlaceholder": "Nadaj swojej aplikacji nazwę",
-  "gotoAnything.actions.slashTitle": "Polecenia",
-  "theme.switchDark": "Przełącz na ciemny motyw",
-  "theme.switchLight": "Przełącz na jasny motyw"
+  "types.workflow": "Przepływ pracy"
 }

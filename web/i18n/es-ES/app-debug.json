@@ -21,6 +21,7 @@
   "assistantType.name": "Tipo de Asistente",
   "autoAddVar": "Variables no definidas referenciadas en la pre-indicación, ¿quieres agregarlas en el formulario de entrada del usuario?",
   "chatSubTitle": "Instrucciones",
+  "code.instruction": "Instrucción",
   "codegen.apply": "Aplicar",
   "codegen.applyChanges": "Aplicar cambios",
   "codegen.description": "El Generador de código utiliza modelos configurados para generar código de alta calidad basado en sus instrucciones. Proporcione instrucciones claras y detalladas.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Soporte de idioma para voz a texto.",
   "voice.voiceSettings.title": "Configuraciones de Voz",
   "voice.voiceSettings.voice": "Voz",
-  "warningMessage.timeoutExceeded": "Los resultados no se muestran debido al tiempo de espera. Consulte los registros para obtener resultados completos.",
-  "code.instruction": "Instrucción"
+  "warningMessage.timeoutExceeded": "Los resultados no se muestran debido al tiempo de espera. Consulte los registros para obtener resultados completos."
 }

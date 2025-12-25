@@ -54,6 +54,7 @@
   "completionMode.title": "API تطبيق الإكمال",
   "copied": "تم النسخ",
   "copy": "نسخ",
+  "develop.noContent": "لا يوجد محتوى",
   "develop.pathParams": "معلمات المسار (Path Params)",
   "develop.query": "استعلام (Query)",
   "develop.requestBody": "جسم الطلب (Request Body)",
@@ -67,6 +68,5 @@
   "play": "تشغيل",
   "playing": "جاري التشغيل",
   "regenerate": "إعادة إنشاء",
-  "status": "الحالة",
-  "develop.noContent": "لا يوجد محتوى"
+  "status": "الحالة"
 }

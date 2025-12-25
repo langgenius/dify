@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Không phải tất cả các tháng đều có 31 ngày. Sử dụng tùy chọn 'ngày cuối cùng' để chọn ngày cuối cùng của mỗi tháng.",
   "nodes.triggerSchedule.minutes": "Phút",
   "nodes.triggerSchedule.mode": "Chế độ",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Hình ảnh",
   "nodes.triggerSchedule.monthlyDay": "Ngày hàng tháng",
   "nodes.triggerSchedule.nextExecution": "Lần thi hành tiếp theo",
   "nodes.triggerSchedule.nextExecutionTime": "THỜI GIAN THỰC THI TIẾP THEO",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "Trong một phút",
   "nodes.triggerSchedule.selectDateTime": "Chọn Ngày & Giờ",
   "nodes.triggerSchedule.selectFrequency": "Chọn tần suất",
+  "nodes.triggerSchedule.selectTime": "Chọn thời gian",
   "nodes.triggerSchedule.startTime": "Thời gian bắt đầu",
   "nodes.triggerSchedule.startTimeMustBeFuture": "Thời gian bắt đầu phải là trong tương lai",
   "nodes.triggerSchedule.time": "Thời gian",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Đặt tên cho phiên bản này",
   "versionHistory.releaseNotesPlaceholder": "Mô tả những gì đã thay đổi",
   "versionHistory.restorationTip": "Sau khi phục hồi phiên bản, bản nháp hiện tại sẽ bị ghi đè.",
-  "versionHistory.title": "Các phiên bản",
-  "nodes.triggerSchedule.modeCron": "Cron",
-  "nodes.triggerSchedule.modeVisual": "Hình ảnh",
-  "nodes.triggerSchedule.selectTime": "Chọn thời gian"
+  "versionHistory.title": "Các phiên bản"
 }

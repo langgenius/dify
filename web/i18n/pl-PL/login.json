@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Hasło jest wymagane",
   "error.passwordInvalid": "Hasło musi zawierać litery i cyfry, a jego długość musi być większa niż 8",
   "error.passwordLengthInValid": "Hasło musi składać się z co najmniej 8 znaków",
+  "error.redirectUrlMissing": "Brak przekierowania URL",
   "error.registrationNotAllowed": "Nie znaleziono konta. Skontaktuj się z administratorem systemu, aby się zarejestrować.",
   "explore": "Odkryj Dify",
   "forget": "Zapomniałeś hasła?",
@@ -110,6 +111,5 @@
   "welcome": "Witaj w Dify, zaloguj się, aby kontynuować.",
   "withGitHub": "Kontynuuj za pomocą GitHub",
   "withGoogle": "Kontynuuj za pomocą Google",
-  "withSSO": "Kontynuuj logowanie jednokrotne",
-  "error.redirectUrlMissing": "Brak przekierowania URL"
+  "withSSO": "Kontynuuj logowanie jednokrotne"
 }

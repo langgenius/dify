@@ -54,6 +54,7 @@
   "completionMode.title": "API แอปที่สมบูรณ์",
   "copied": "คัด ลอก",
   "copy": "ลอก",
+  "develop.noContent": "ไม่มีเนื้อหา",
   "develop.pathParams": "พารามิเตอร์เส้นทาง",
   "develop.query": "สอบถาม",
   "develop.requestBody": "เนื้อหาคําขอ",
@@ -67,6 +68,5 @@
   "play": "เล่น",
   "playing": "เล่น",
   "regenerate": "สร้างใหม่",
-  "status": "สถานะ",
-  "develop.noContent": "ไม่มีเนื้อหา"
+  "status": "สถานะ"
 }

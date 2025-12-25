@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Пароль є обов’язковим",
   "error.passwordInvalid": "Пароль повинен містити літери та цифри, а довжина повинна бути більшою за 8",
   "error.passwordLengthInValid": "Пароль повинен бути не менше 8 символів",
+  "error.redirectUrlMissing": "URL-адресу для перенаправлення відсутня",
   "error.registrationNotAllowed": "Аккаунт не знайдено. Будь ласка, зверніться до адміністратора системи для реєстрації.",
   "explore": "Досліджуйте Dify",
   "forget": "Забули пароль?",
@@ -110,6 +111,5 @@
   "welcome": "Ласкаво просимо до Dify, будь ласка, увійдіть, щоб продовжити.",
   "withGitHub": "Продовжити з GitHub",
   "withGoogle": "Продовжити з Google",
-  "withSSO": "Продовжуйте працювати з SSW",
-  "error.redirectUrlMissing": "URL-адресу для перенаправлення відсутня"
+  "withSSO": "Продовжуйте працювати з SSW"
 }

@@ -54,6 +54,7 @@
   "completionMode.title": "완성 모드 API",
   "copied": "복사 완료",
   "copy": "복사",
+  "develop.noContent": "내용 없음",
   "develop.pathParams": "경로 매개변수",
   "develop.query": "쿼리",
   "develop.requestBody": "요청 본문",
@@ -67,6 +68,5 @@
   "play": "실행",
   "playing": "실행 중",
   "regenerate": "재생성",
-  "status": "상태",
-  "develop.noContent": "내용 없음"
+  "status": "상태"
 }

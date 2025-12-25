@@ -54,6 +54,7 @@
   "completionMode.title": "API za dokončanje aplikacije",
   "copied": "Kopirano",
   "copy": "Kopiraj",
+  "develop.noContent": "Brez vsebine",
   "develop.pathParams": "Parametri poti",
   "develop.query": "Poizvedba",
   "develop.requestBody": "Telo zahteve",
@@ -67,6 +68,5 @@
   "play": "Predvajaj",
   "playing": "Predvajanje",
   "regenerate": "Regeneriraj",
-  "status": "Status",
-  "develop.noContent": "Brez vsebine"
+  "status": "Status"
 }

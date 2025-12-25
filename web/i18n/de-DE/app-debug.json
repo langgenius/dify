@@ -21,6 +21,7 @@
   "assistantType.name": "Assistententyp",
   "autoAddVar": "Im Vor-Prompt referenzierte undefinierte Variablen, möchten Sie sie im Benutzereingabeformular hinzufügen?",
   "chatSubTitle": "Anweisungen",
+  "code.instruction": "Anleitung",
   "codegen.apply": "Anwenden",
   "codegen.applyChanges": "Änderungen übernehmen",
   "codegen.description": "Der Code-Generator verwendet konfigurierte Modelle, um qualitativ hochwertigen Code basierend auf Ihren Anweisungen zu generieren. Bitte geben Sie klare und detaillierte Anweisungen.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Text-zu-Sprache unterstützte Sprache.",
   "voice.voiceSettings.title": "Stimmeinstellungen",
   "voice.voiceSettings.voice": "Stimme",
-  "warningMessage.timeoutExceeded": "Die Ergebnisse werden aufgrund einer Zeitüberschreitung nicht angezeigt. Bitte beziehen Sie sich auf die Protokolle, um die vollständigen Ergebnisse zu erhalten.",
-  "code.instruction": "Anleitung"
+  "warningMessage.timeoutExceeded": "Die Ergebnisse werden aufgrund einer Zeitüberschreitung nicht angezeigt. Bitte beziehen Sie sich auf die Protokolle, um die vollständigen Ergebnisse zu erhalten."
 }

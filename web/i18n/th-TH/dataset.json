@@ -82,6 +82,7 @@
   "externalTag": "ภายนอก",
   "imageUploader.browse": "เรียกดู",
   "imageUploader.button": "ลากและวางไฟล์หรือโฟลเดอร์ หรือ",
+  "imageUploader.fileSizeLimitExceeded": "ขนาดไฟล์เกินขีดจำกัด {{size}}MB",
   "imageUploader.tip": "{{supportTypes}} (สูงสุด {{batchCount}}, {{size}}MB ต่อชิ้น)",
   "inconsistentEmbeddingModelTip": "จําเป็นต้องมีแบบจําลอง Rerank หากแบบจําลองการฝังของฐานความรู้ที่เลือกไม่สอดคล้องกัน",
   "indexingMethod.full_text_search": "ข้อความฉบับเต็ม",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "ความหมาย",
   "weightedScore.semanticFirst": "ความหมายก่อน",
   "weightedScore.title": "คะแนนถ่วงน้ําหนัก",
-  "wordCount": "คํา k",
-  "imageUploader.fileSizeLimitExceeded": "ขนาดไฟล์เกินขีดจำกัด {{size}}MB"
+  "wordCount": "คํา k"
 }

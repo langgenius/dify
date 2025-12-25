@@ -14,6 +14,7 @@
   "auth.setup": "Configurar la autorización para usar",
   "auth.setupModalTitle": "Configurar Autorización",
   "auth.setupModalTitleDescription": "Después de configurar las credenciales, todos los miembros dentro del espacio de trabajo pueden usar esta herramienta al orquestar aplicaciones.",
+  "auth.unauthorized": "No autorizado",
   "author": "Por",
   "builtInPromptTitle": "Aviso",
   "contribute.line1": "Estoy interesado en ",
@@ -200,6 +201,5 @@
   "toolRemoved": "Herramienta eliminada",
   "type.builtIn": "Incorporadas",
   "type.custom": "Personalizadas",
-  "type.workflow": "Flujo de Trabajo",
-  "auth.unauthorized": "No autorizado"
+  "type.workflow": "Flujo de Trabajo"
 }

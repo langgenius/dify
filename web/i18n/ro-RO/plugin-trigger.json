@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Autorizare eșuată",
   "modal.errors.createFailed": "Eșec la crearea abonamentului",
   "modal.errors.networkError": "Eroare de rețea, vă rugăm să încercați din nou",
+  "modal.errors.updateFailed": "Actualizarea abonamentului a eșuat",
   "modal.errors.verifyFailed": "Nu s-au putut verifica acreditările",
   "modal.form.callbackUrl.description": "Acest URL va primi evenimente webhook",
   "modal.form.callbackUrl.label": "URL de returnare",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Nu s-a putut șterge abonamentul {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Abonamentul {{name}} a fost șters cu succes",
   "subscription.list.item.actions.deleteConfirm.title": "Ștergi {{name}}?",
+  "subscription.list.item.actions.edit.error": "Actualizarea abonamentului a eșuat",
+  "subscription.list.item.actions.edit.success": "Abonamentul a fost actualizat cu succes",
+  "subscription.list.item.actions.edit.title": "Modifică abonamentul",
   "subscription.list.item.credentialType.api_key": "Cheie API",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Manual",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Nicio abonare selectată",
   "subscription.selectPlaceholder": "Selectați abonamentul",
   "subscription.subscriptionRemoved": "Abonament eliminat",
-  "subscription.title": "Abonamente",
-  "modal.errors.updateFailed": "Actualizarea abonamentului a eșuat",
-  "subscription.list.item.actions.edit.error": "Actualizarea abonamentului a eșuat",
-  "subscription.list.item.actions.edit.success": "Abonamentul a fost actualizat cu succes",
-  "subscription.list.item.actions.edit.title": "Modifică abonamentul"
+  "subscription.title": "Abonamente"
 }

@@ -39,6 +39,7 @@
   "error.passwordEmpty": "رمز عبور لازم است",
   "error.passwordInvalid": "رمز عبور باید شامل حروف و اعداد باشد و طول آن بیشتر از ۸ کاراکتر باشد",
   "error.passwordLengthInValid": "رمز عبور باید حداقل ۸ کاراکتر باشد",
+  "error.redirectUrlMissing": "آدرس URL برای هدایت وجود ندارد",
   "error.registrationNotAllowed": "حساب پیدا نشد. لطفا برای ثبت نام با مدیر سیستم تماس حاصل فرمایید.",
   "explore": "کاوش Dify",
   "forget": "رمز عبور خود را فراموش کرده‌اید؟",
@@ -110,6 +111,5 @@
   "welcome": "به Dify خوش آمدید، لطفا برای ادامه وارد شوید.",
   "withGitHub": "ادامه با GitHub",
   "withGoogle": "ادامه با Google",
-  "withSSO": "با SSO ادامه دهید",
-  "error.redirectUrlMissing": "آدرس URL برای هدایت وجود ندارد"
+  "withSSO": "با SSO ادامه دهید"
 }

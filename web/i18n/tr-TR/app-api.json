@@ -54,6 +54,7 @@
   "completionMode.title": "Completion Uygulama API",
   "copied": "Kopyalandı",
   "copy": "Kopyala",
+  "develop.noContent": "İçerik yok",
   "develop.pathParams": "Path Params",
   "develop.query": "Query",
   "develop.requestBody": "Request Body",
@@ -67,6 +68,5 @@
   "play": "Oynat",
   "playing": "Oynatılıyor",
   "regenerate": "Yenilemek",
-  "status": "Durum",
-  "develop.noContent": "İçerik yok"
+  "status": "Durum"
 }

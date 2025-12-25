@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Ne vsi meseci imajo 31 dni. Uporabite možnost 'zadnji dan', da izberete zadnji dan vsakega meseca.",
   "nodes.triggerSchedule.minutes": "Minute",
   "nodes.triggerSchedule.mode": "Moda",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Vizualno",
   "nodes.triggerSchedule.monthlyDay": "Mesečni dan",
   "nodes.triggerSchedule.nextExecution": "Naslednja izvršitev",
   "nodes.triggerSchedule.nextExecutionTime": "NASLEDNJI ČAS IZVRŠITVE",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "Na minuto",
   "nodes.triggerSchedule.selectDateTime": "Izberite datum in čas",
   "nodes.triggerSchedule.selectFrequency": "Izberite frekvenco",
+  "nodes.triggerSchedule.selectTime": "Izberi čas",
   "nodes.triggerSchedule.startTime": "Začetni čas",
   "nodes.triggerSchedule.startTimeMustBeFuture": "Začetni čas mora biti v prihodnosti",
   "nodes.triggerSchedule.time": "Čas",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Poimenujte to različico",
   "versionHistory.releaseNotesPlaceholder": "Opisujte, kaj se je spremenilo",
   "versionHistory.restorationTip": "Po obnovitvi različice bo trenutni osnutek prepisan.",
-  "versionHistory.title": "Različice",
-  "nodes.triggerSchedule.modeCron": "Cron",
-  "nodes.triggerSchedule.modeVisual": "Vizualno",
-  "nodes.triggerSchedule.selectTime": "Izberi čas"
+  "versionHistory.title": "Različice"
 }

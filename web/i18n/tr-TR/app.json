@@ -27,6 +27,7 @@
   "answerIcon.title": "Değiştirmek 🤖 için web app simgesini kullanın",
   "appDeleteFailed": "Uygulama silinemedi",
   "appDeleted": "Uygulama silindi",
+  "appNamePlaceholder": "Uygulamanıza bir isim verin",
   "appSelector.label": "Uygulama",
   "appSelector.noParams": "Parametre gerekmez",
   "appSelector.params": "UYGULAMA PARAMETRELERI",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "Geçerli iş akışındaki düğümleri ada veya türe göre bulun ve atlayın",
   "gotoAnything.actions.searchWorkflowNodesHelp": "Bu özellik yalnızca bir iş akışını görüntülerken çalışır. Önce bir iş akışına gidin.",
   "gotoAnything.actions.slashDesc": "/tema, /dil gibi komutları çalıştırın",
+  "gotoAnything.actions.slashTitle": "Komutlar",
   "gotoAnything.actions.themeCategoryDesc": "Uygulama temasını değiştir",
   "gotoAnything.actions.themeCategoryTitle": "Tema",
   "gotoAnything.actions.themeDark": "Karanlık Tema",
@@ -212,6 +214,8 @@
   "switchTip": "izin vermeyecek",
   "switchTipEnd": " Temel Orkestrasyona geri dönmek.",
   "switchTipStart": "Sizin için yeni bir uygulama kopyası oluşturulacak ve yeni kopya Workflow Orkestrasyonuna geçecektir. Yeni kopya ",
+  "theme.switchDark": "Koyu tema geçiş yap",
+  "theme.switchLight": "Aydınlık tema'ya geç",
   "tracing.aliyun.description": "Alibaba Cloud tarafından sağlanan tamamen yönetilen ve bakım gerektirmeyen gözlemleme platformu, Dify uygulamalarının kutudan çıkar çıkmaz izlenmesi, takip edilmesi ve değerlendirilmesine olanak tanır.",
   "tracing.aliyun.title": "Bulut İzleyici",
   "tracing.arize.description": "Kurumsal düzeyde LLM gözlemlenebilirliği, çevrimiçi ve çevrimdışı değerlendirme, izleme ve deneyler — OpenTelemetry ile desteklenmektedir. LLM ve ajan tabanlı uygulamalar için özel olarak tasarlanmıştır.",
@@ -275,9 +279,5 @@
   "types.basic": "Temel",
   "types.chatbot": "Chatbot",
   "types.completion": "Tamamlama",
-  "types.workflow": "Workflow",
-  "appNamePlaceholder": "Uygulamanıza bir isim verin",
-  "gotoAnything.actions.slashTitle": "Komutlar",
-  "theme.switchDark": "Koyu tema geçiş yap",
-  "theme.switchLight": "Aydınlık tema'ya geç"
+  "types.workflow": "Workflow"
 }

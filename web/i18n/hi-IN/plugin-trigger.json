@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "प्राधिकरण असफल",
   "modal.errors.createFailed": "सब्सक्रिप्शन बनाने में असफल",
   "modal.errors.networkError": "नेटवर्क त्रुटि, कृपया फिर से प्रयास करें",
+  "modal.errors.updateFailed": "सब्सक्रिप्शन अपडेट करने में विफल",
   "modal.errors.verifyFailed": "प्रमाणीकरण सत्यापित करने में विफल",
   "modal.form.callbackUrl.description": "यह URL वेबहुक इवेंट प्राप्त करेगा",
   "modal.form.callbackUrl.label": "कॉलबैक URL",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "सदस्यता {{name}} हटाने में असफल",
   "subscription.list.item.actions.deleteConfirm.success": "सदस्यता {{name}} सफलतापूर्वक हटाई गई",
   "subscription.list.item.actions.deleteConfirm.title": "क्या आप {{name}} को हटा देना चाहते हैं?",
+  "subscription.list.item.actions.edit.error": "सब्सक्रिप्शन अपडेट करने में विफल",
+  "subscription.list.item.actions.edit.success": "सब्सक्रिप्शन सफलतापूर्वक अपडेट किया गया",
+  "subscription.list.item.actions.edit.title": "सदस्यता संपादित करें",
   "subscription.list.item.credentialType.api_key": "एपीआई कुंजी",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "मैनुअल",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "कोई सदस्यता नहीं चुनी गई",
   "subscription.selectPlaceholder": "सदस्यता चुनें",
   "subscription.subscriptionRemoved": "सदस्यता हटा दी गई",
-  "subscription.title": "सदस्यताएँ",
-  "modal.errors.updateFailed": "सब्सक्रिप्शन अपडेट करने में विफल",
-  "subscription.list.item.actions.edit.error": "सब्सक्रिप्शन अपडेट करने में विफल",
-  "subscription.list.item.actions.edit.success": "सब्सक्रिप्शन सफलतापूर्वक अपडेट किया गया",
-  "subscription.list.item.actions.edit.title": "सदस्यता संपादित करें"
+  "subscription.title": "सदस्यताएँ"
 }

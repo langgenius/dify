@@ -82,6 +82,7 @@
   "externalTag": "Зовнішній",
   "imageUploader.browse": "Перегляд",
   "imageUploader.button": "Перетягніть файл або папку, або",
+  "imageUploader.fileSizeLimitExceeded": "Розмір файлу перевищує ліміт у {{size}} МБ",
   "imageUploader.tip": "{{supportTypes}} (Макс {{batchCount}}, по {{size}} МБ кожен)",
   "inconsistentEmbeddingModelTip": "Модель перерангування потрібна, якщо моделі вбудовування вибраних баз знань є несумісними.",
   "indexingMethod.full_text_search": "ПОВНИЙ ТЕКСТ",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Семантичний",
   "weightedScore.semanticFirst": "Спочатку семантичний",
   "weightedScore.title": "Зважена оцінка",
-  "wordCount": " тис. слів",
-  "imageUploader.fileSizeLimitExceeded": "Розмір файлу перевищує ліміт у {{size}} МБ"
+  "wordCount": " тис. слів"
 }

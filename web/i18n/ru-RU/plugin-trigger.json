@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Авторизация не удалась",
   "modal.errors.createFailed": "Не удалось создать подписку",
   "modal.errors.networkError": "Ошибка сети, пожалуйста, попробуйте ещё раз",
+  "modal.errors.updateFailed": "Не удалось обновить подписку",
   "modal.errors.verifyFailed": "Не удалось проверить учетные данные",
   "modal.form.callbackUrl.description": "Этот URL будет получать события вебхука",
   "modal.form.callbackUrl.label": "URL для обратного вызова",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Не удалось удалить подписку {{name}}",
   "subscription.list.item.actions.deleteConfirm.success": "Подписка {{name}} успешно удалена",
   "subscription.list.item.actions.deleteConfirm.title": "Удалить {{name}}?",
+  "subscription.list.item.actions.edit.error": "Не удалось обновить подписку",
+  "subscription.list.item.actions.edit.success": "Подписка успешно обновлена",
+  "subscription.list.item.actions.edit.title": "Изменить подписку",
   "subscription.list.item.credentialType.api_key": "API ключ",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Руководство",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Подписка не выбрана",
   "subscription.selectPlaceholder": "Выберите подписку",
   "subscription.subscriptionRemoved": "Подписка удалена",
-  "subscription.title": "Подписки",
-  "modal.errors.updateFailed": "Не удалось обновить подписку",
-  "subscription.list.item.actions.edit.error": "Не удалось обновить подписку",
-  "subscription.list.item.actions.edit.success": "Подписка успешно обновлена",
-  "subscription.list.item.actions.edit.title": "Изменить подписку"
+  "subscription.title": "Подписки"
 }

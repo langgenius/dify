@@ -27,6 +27,7 @@
   "modal.errors.authFailed": "Avtorizacija ni uspela",
   "modal.errors.createFailed": "Ustvarjanje naročnine ni uspelo",
   "modal.errors.networkError": "Napaka v omrežju, poskusite znova",
+  "modal.errors.updateFailed": "Posodobitev naročnine ni uspela",
   "modal.errors.verifyFailed": "Neuspešno preverjanje poverilnic",
   "modal.form.callbackUrl.description": "Ta URL bo prejel dogodke webhook",
   "modal.form.callbackUrl.label": "URL za povratni klic",
@@ -94,6 +95,9 @@
   "subscription.list.item.actions.deleteConfirm.error": "Brisanje naročnine {{name}} ni uspelo",
   "subscription.list.item.actions.deleteConfirm.success": "Naročnina {{name}} je bila uspešno izbrisana",
   "subscription.list.item.actions.deleteConfirm.title": "Izbrišem {{name}}?",
+  "subscription.list.item.actions.edit.error": "Posodobitev naročnine ni uspela",
+  "subscription.list.item.actions.edit.success": "Naročnina je bila uspešno posodobljena",
+  "subscription.list.item.actions.edit.title": "Uredi naročnino",
   "subscription.list.item.credentialType.api_key": "API ključ",
   "subscription.list.item.credentialType.oauth2": "OAuth",
   "subscription.list.item.credentialType.unauthorized": "Priročnik",
@@ -110,9 +114,5 @@
   "subscription.noSubscriptionSelected": "Nobena naročnina ni izbrana",
   "subscription.selectPlaceholder": "Izberite naročnino",
   "subscription.subscriptionRemoved": "Naročnina odstranjena",
-  "subscription.title": "Naročnine",
-  "modal.errors.updateFailed": "Posodobitev naročnine ni uspela",
-  "subscription.list.item.actions.edit.error": "Posodobitev naročnine ni uspela",
-  "subscription.list.item.actions.edit.success": "Naročnina je bila uspešno posodobljena",
-  "subscription.list.item.actions.edit.title": "Uredi naročnino"
+  "subscription.title": "Naročnine"
 }

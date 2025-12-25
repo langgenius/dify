@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "Tidak semua bulan memiliki 31 hari. Gunakan opsi 'hari terakhir' untuk memilih hari terakhir setiap bulan.",
   "nodes.triggerSchedule.minutes": "Menit",
   "nodes.triggerSchedule.mode": "Mode",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Visual",
   "nodes.triggerSchedule.monthlyDay": "Hari Bulanan",
   "nodes.triggerSchedule.nextExecution": "Eksekusi berikutnya",
   "nodes.triggerSchedule.nextExecutionTime": "WAKTU EKSEKUSI BERIKUTNYA",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "Dalam Sejuta",
   "nodes.triggerSchedule.selectDateTime": "Pilih Tanggal & Waktu",
   "nodes.triggerSchedule.selectFrequency": "Pilih frekuensi",
+  "nodes.triggerSchedule.selectTime": "Pilih waktu",
   "nodes.triggerSchedule.startTime": "Waktu Mulai",
   "nodes.triggerSchedule.startTimeMustBeFuture": "Waktu mulai harus di masa depan",
   "nodes.triggerSchedule.time": "Waktu",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "Beri nama versi ini",
   "versionHistory.releaseNotesPlaceholder": "Menjelaskan apa yang berubah",
   "versionHistory.restorationTip": "Setelah pemulihan versi, draf saat ini akan ditimpa.",
-  "versionHistory.title": "Versi",
-  "nodes.triggerSchedule.modeCron": "Cron",
-  "nodes.triggerSchedule.modeVisual": "Visual",
-  "nodes.triggerSchedule.selectTime": "Pilih waktu"
+  "versionHistory.title": "Versi"
 }

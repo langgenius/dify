@@ -27,6 +27,7 @@
   "answerIcon.title": "使用 web app 圖示取代 🤖",
   "appDeleteFailed": "應用刪除失敗",
   "appDeleted": "應用已刪除",
+  "appNamePlaceholder": "為你的應用程式命名",
   "appSelector.label": "應用程式",
   "appSelector.noParams": "無需參數",
   "appSelector.params": "應用程式參數",
@@ -65,6 +66,7 @@
   "gotoAnything.actions.searchWorkflowNodesDesc": "按名稱或類型查找並跳轉到當前工作流中的節點",
   "gotoAnything.actions.searchWorkflowNodesHelp": "此功能僅在查看工作流時有效。首先導航到工作流。",
   "gotoAnything.actions.slashDesc": "執行命令如 /theme, /lang",
+  "gotoAnything.actions.slashTitle": "指令",
   "gotoAnything.actions.themeCategoryDesc": "切換應用程式主題",
   "gotoAnything.actions.themeCategoryTitle": "主題",
   "gotoAnything.actions.themeDark": "黑暗主題",
@@ -212,6 +214,8 @@
   "switchTip": "不能夠",
   "switchTipEnd": "遷移回基礎編排",
   "switchTipStart": "將為您建立一個使用工作流編排的新應用。新應用將",
+  "theme.switchDark": "切換到深色主題",
+  "theme.switchLight": "切換到亮色主題",
   "tracing.aliyun.description": "阿里雲提供的完全管理且無需維護的可觀察性平台，支持即時監控、追蹤和評估 Dify 應用程序。",
   "tracing.aliyun.title": "雲端監控",
   "tracing.arize.description": "企業級LLM可觀測性、線上與離線評估、監控和實驗平台，基於OpenTelemetry構建，專為LLM和代理驅動的應用程式設計。",
@@ -275,9 +279,5 @@
   "types.basic": "基本",
   "types.chatbot": "聊天助手",
   "types.completion": "文字生成",
-  "types.workflow": "工作流",
-  "appNamePlaceholder": "為你的應用程式命名",
-  "gotoAnything.actions.slashTitle": "指令",
-  "theme.switchDark": "切換到深色主題",
-  "theme.switchLight": "切換到亮色主題"
+  "types.workflow": "工作流"
 }

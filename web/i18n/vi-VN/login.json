@@ -39,6 +39,7 @@
   "error.passwordEmpty": "Vui lòng nhập mật khẩu",
   "error.passwordInvalid": "Mật khẩu phải chứa cả chữ và số, và có độ dài ít nhất 8 ký tự",
   "error.passwordLengthInValid": "Mật khẩu phải có ít nhất 8 ký tự",
+  "error.redirectUrlMissing": "URL chuyển hướng bị thiếu",
   "error.registrationNotAllowed": "Không tìm thấy tài khoản. Vui lòng liên hệ với quản trị viên hệ thống để đăng ký.",
   "explore": "Khám phá Dify",
   "forget": "Quên mật khẩu?",
@@ -110,6 +111,5 @@
   "welcome": "Chào mừng bạn đến với Dify, vui lòng đăng nhập để tiếp tục.",
   "withGitHub": "Tiếp tục với GitHub",
   "withGoogle": "Tiếp tục với Google",
-  "withSSO": "Tiếp tục với SSO",
-  "error.redirectUrlMissing": "URL chuyển hướng bị thiếu"
+  "withSSO": "Tiếp tục với SSO"
 }

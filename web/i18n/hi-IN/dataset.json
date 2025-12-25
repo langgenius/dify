@@ -82,6 +82,7 @@
   "externalTag": "बाह्य",
   "imageUploader.browse": "ब्राउज़",
   "imageUploader.button": "फ़ाइल या फ़ोल्डर खींचें और छोड़ें, या",
+  "imageUploader.fileSizeLimitExceeded": "फ़ाइल का आकार {{size}}MB सीमा से अधिक है",
   "imageUploader.tip": "{{supportTypes}} (अधिकतम {{batchCount}}, प्रत्येक {{size}}MB)",
   "inconsistentEmbeddingModelTip": "यदि चयनित ज्ञान आधारों के एम्बेडिंग मॉडल असंगत हैं, तो पुनः रैंकिंग मॉडल आवश्यक है।",
   "indexingMethod.full_text_search": "पूर्ण पाठ",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "शब्दार्थ",
   "weightedScore.semanticFirst": "शब्दार्थ पहले",
   "weightedScore.title": "भारित स्कोर",
-  "wordCount": " के शब्द",
-  "imageUploader.fileSizeLimitExceeded": "फ़ाइल का आकार {{size}}MB सीमा से अधिक है"
+  "wordCount": " के शब्द"
 }

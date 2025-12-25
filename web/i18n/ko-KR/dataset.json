@@ -82,6 +82,7 @@
   "externalTag": "외부",
   "imageUploader.browse": "둘러보기",
   "imageUploader.button": "파일 또는 폴더를 끌어다 놓거나",
+  "imageUploader.fileSizeLimitExceeded": "파일 크기가 {{size}}MB 제한을 초과합니다",
   "imageUploader.tip": "{{supportTypes}} (최대 {{batchCount}}, 각각 {{size}}MB)",
   "inconsistentEmbeddingModelTip": "선택된 지식 베이스의 임베딩 모델이 일관되지 않은 경우 재순위 모델이 필요합니다.",
   "indexingMethod.full_text_search": "전체 텍스트",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "의미론적",
   "weightedScore.semanticFirst": "의미론 우선",
   "weightedScore.title": "가중 점수",
-  "wordCount": " k 단어",
-  "imageUploader.fileSizeLimitExceeded": "파일 크기가 {{size}}MB 제한을 초과합니다"
+  "wordCount": " k 단어"
 }

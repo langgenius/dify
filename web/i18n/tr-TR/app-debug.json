@@ -21,6 +21,7 @@
   "assistantType.name": "Asistan Türü",
   "autoAddVar": "Ön promptta referans verilen tanımlanmamış değişkenler, kullanıcı giriş formunda eklemek istiyor musunuz?",
   "chatSubTitle": "Talimatlar",
+  "code.instruction": "Talimat",
   "codegen.apply": "Uygulamak",
   "codegen.applyChanges": "Değişiklikleri Uygula",
   "codegen.description": "Kod Oluşturucu, talimatlarınıza göre yüksek kaliteli kod oluşturmak için yapılandırılmış modelleri kullanır. Lütfen açık ve ayrıntılı talimatlar verin.",
@@ -386,6 +387,5 @@
   "voice.voiceSettings.resolutionTooltip": "Metinden sese ses destek dili.",
   "voice.voiceSettings.title": "Ses Ayarları",
   "voice.voiceSettings.voice": "Ses",
-  "warningMessage.timeoutExceeded": "Zaman aşımı nedeniyle sonuçlar görüntülenmez. Tam sonuçları almak için lütfen günlüklere bakın.",
-  "code.instruction": "Talimat"
+  "warningMessage.timeoutExceeded": "Zaman aşımı nedeniyle sonuçlar görüntülenmez. Tam sonuçları almak için lütfen günlüklere bakın."
 }

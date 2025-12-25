@@ -830,6 +830,8 @@
   "nodes.triggerSchedule.lastDayTooltip": "सभी महीनों में 31 दिन नहीं होते। हर महीने का अंतिम दिन चुनने के लिए 'अंतिम दिन' विकल्प का उपयोग करें।",
   "nodes.triggerSchedule.minutes": "मिनट",
   "nodes.triggerSchedule.mode": "मोड",
+  "nodes.triggerSchedule.modeCron": "क्रॉन",
+  "nodes.triggerSchedule.modeVisual": "दृश्य",
   "nodes.triggerSchedule.monthlyDay": "मासिक दिवस",
   "nodes.triggerSchedule.nextExecution": "अगला निष्पादन",
   "nodes.triggerSchedule.nextExecutionTime": "अगली निष्पादन समय",
@@ -840,6 +842,7 @@
   "nodes.triggerSchedule.onMinute": "एक मिनट पर",
   "nodes.triggerSchedule.selectDateTime": "तारीख़ और समय चुनें",
   "nodes.triggerSchedule.selectFrequency": "आवृत्ति चुनें",
+  "nodes.triggerSchedule.selectTime": "समय चुनें",
   "nodes.triggerSchedule.startTime": "प्रारंभ समय",
   "nodes.triggerSchedule.startTimeMustBeFuture": "आरंभ समय भविष्य में होना चाहिए",
   "nodes.triggerSchedule.time": "समय",
@@ -1034,8 +1037,5 @@
   "versionHistory.nameThisVersion": "इस संस्करण का नाम दें",
   "versionHistory.releaseNotesPlaceholder": "बताइए कि क्या बदला",
   "versionHistory.restorationTip": "संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।",
-  "versionHistory.title": "संस्करण",
-  "nodes.triggerSchedule.modeCron": "क्रॉन",
-  "nodes.triggerSchedule.modeVisual": "दृश्य",
-  "nodes.triggerSchedule.selectTime": "समय चुनें"
+  "versionHistory.title": "संस्करण"
 }

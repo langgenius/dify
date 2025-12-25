@@ -14,6 +14,7 @@
   "auth.setup": "Autorisierung einrichten, um zu nutzen",
   "auth.setupModalTitle": "Autorisierung einrichten",
   "auth.setupModalTitleDescription": "Nach der Konfiguration der Anmeldeinformationen können alle Mitglieder im Arbeitsbereich dieses Werkzeug beim Orchestrieren von Anwendungen nutzen.",
+  "auth.unauthorized": "Unbefugt",
   "author": "Von",
   "builtInPromptTitle": "Aufforderung",
   "contribute.line1": "Ich interessiere mich dafür, ",
@@ -200,6 +201,5 @@
   "toolRemoved": "Werkzeug entfernt",
   "type.builtIn": "Integriert",
   "type.custom": "Benutzerdefiniert",
-  "type.workflow": "Arbeitsablauf",
-  "auth.unauthorized": "Unbefugt"
+  "type.workflow": "Arbeitsablauf"
 }

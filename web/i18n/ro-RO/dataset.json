@@ -82,6 +82,7 @@
   "externalTag": "Extern",
   "imageUploader.browse": "Răsfoiește",
   "imageUploader.button": "Trage și plasează fișierul sau folderul, sau",
+  "imageUploader.fileSizeLimitExceeded": "Dimensiunea fișierului depășește limita de {{size}}MB",
   "imageUploader.tip": "{{supportTypes}} (Maxim {{batchCount}}, {{size}}MB fiecare)",
   "inconsistentEmbeddingModelTip": "Modelul de reclasificare este necesar dacă modelele de încorporare ale bazelor de cunoștințe selectate sunt inconsistente.",
   "indexingMethod.full_text_search": "TEXT COMPLET",
@@ -176,6 +177,5 @@
   "weightedScore.semantic": "Semantic",
   "weightedScore.semanticFirst": "Semantic primul",
   "weightedScore.title": "Scor ponderat",
-  "wordCount": " mii de cuvinte",
-  "imageUploader.fileSizeLimitExceeded": "Dimensiunea fișierului depășește limita de {{size}}MB"
+  "wordCount": " mii de cuvinte"
 }

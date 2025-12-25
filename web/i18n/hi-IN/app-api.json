@@ -54,6 +54,7 @@
   "completionMode.title": "पूर्णता ऐप एपीआई",
   "copied": "प्रतिलिपि बन गई",
   "copy": "प्रतिलिपि",
+  "develop.noContent": "कोई सामग्री नहीं",
   "develop.pathParams": "पथ पैरामीटर",
   "develop.query": "प्रश्न",
   "develop.requestBody": "अनुरोध निकाय",
@@ -67,6 +68,5 @@
   "play": "चलाएं",
   "playing": "चल रहा है",
   "regenerate": "पुनर्जन्म",
-  "status": "स्थिति",
-  "develop.noContent": "कोई सामग्री नहीं"
+  "status": "स्थिति"
 }
