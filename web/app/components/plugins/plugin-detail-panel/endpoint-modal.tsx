@@ -48,7 +48,7 @@ const EndpointModal: FC<Props> = ({
   const handleSave = () => {
     for (const field of formSchemas) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>) }) })
+        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>) }) })
         return
       }
     }
@@ -83,12 +83,12 @@ const EndpointModal: FC<Props> = ({
       <>
         <div className="p-4 pb-2">
           <div className="flex items-center justify-between">
-            <div className="system-xl-semibold text-text-primary">{t('plugin.detailPanel.endpointModalTitle')}</div>
+            <div className="system-xl-semibold text-text-primary">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
             <ActionButton onClick={onCancel}>
               <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
-          <div className="system-xs-regular mt-0.5 text-text-tertiary">{t('plugin.detailPanel.endpointModalDesc')}</div>
+          <div className="system-xs-regular mt-0.5 text-text-tertiary">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
           <ReadmeEntrance pluginDetail={pluginDetail} className="px-0 pt-3" />
         </div>
         <div className="grow overflow-y-auto">
@@ -111,7 +111,7 @@ const EndpointModal: FC<Props> = ({
                       rel="noopener noreferrer"
                       className="body-xs-regular inline-flex items-center text-text-accent-secondary"
                     >
-                      {t('tools.howToGet')}
+                      {t('howToGet', { ns: 'tools' })}
                       <RiArrowRightUpLine className="ml-1 h-3 w-3" />
                     </a>
                   )
@@ -120,8 +120,8 @@ const EndpointModal: FC<Props> = ({
           </div>
           <div className={cn('flex justify-end p-4 pt-0')}>
             <div className="flex gap-2">
-              <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-              <Button variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
+              <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
             </div>
           </div>
         </div>

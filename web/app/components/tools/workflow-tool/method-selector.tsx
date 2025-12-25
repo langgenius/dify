@@ -39,7 +39,7 @@ const MethodSelector: FC<MethodSelectorProps> = ({
           )}
           >
             <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
-              {value === 'llm' ? t('tools.createTool.toolInput.methodParameter') : t('tools.createTool.toolInput.methodSetting')}
+              {value === 'llm' ? t('createTool.toolInput.methodParameter', { ns: 'tools' }) : t('createTool.toolInput.methodSetting', { ns: 'tools' })}
             </div>
             <div className="ml-1 shrink-0 text-text-secondary opacity-60">
               <RiArrowDownSLine className="h-4 w-4" />
@@ -54,18 +54,18 @@ const MethodSelector: FC<MethodSelectorProps> = ({
                   <div className="h-4 w-4 shrink-0">
                     {value === 'llm' && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
                   </div>
-                  <div className="text-[13px] font-medium leading-[18px] text-text-secondary">{t('tools.createTool.toolInput.methodParameter')}</div>
+                  <div className="text-[13px] font-medium leading-[18px] text-text-secondary">{t('createTool.toolInput.methodParameter', { ns: 'tools' })}</div>
                 </div>
-                <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">{t('tools.createTool.toolInput.methodParameterTip')}</div>
+                <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">{t('createTool.toolInput.methodParameterTip', { ns: 'tools' })}</div>
               </div>
               <div className="cursor-pointer rounded-lg py-2.5 pl-3 pr-2 hover:bg-components-panel-on-panel-item-bg-hover" onClick={() => onChange('form')}>
                 <div className="item-center flex gap-1">
                   <div className="h-4 w-4 shrink-0">
                     {value === 'form' && <Check className="h-4 w-4 shrink-0 text-text-accent" />}
                   </div>
-                  <div className="text-[13px] font-medium leading-[18px] text-text-secondary">{t('tools.createTool.toolInput.methodSetting')}</div>
+                  <div className="text-[13px] font-medium leading-[18px] text-text-secondary">{t('createTool.toolInput.methodSetting', { ns: 'tools' })}</div>
                 </div>
-                <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">{t('tools.createTool.toolInput.methodSettingTip')}</div>
+                <div className="pl-5 text-[13px] leading-[18px] text-text-tertiary">{t('createTool.toolInput.methodSettingTip', { ns: 'tools' })}</div>
               </div>
             </div>
           </div>

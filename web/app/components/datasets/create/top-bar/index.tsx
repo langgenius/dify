@@ -33,7 +33,7 @@ export const TopBar: FC<TopBarProps> = (props) => {
           <RiArrowLeftLine className="size-4 text-text-primary" />
         </div>
         <p className="system-sm-semibold-uppercase text-text-primary">
-          {t('datasetCreation.steps.header.fallbackRoute')}
+          {t('steps.header.fallbackRoute', { ns: 'datasetCreation' })}
         </p>
       </Link>
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">

@@ -52,7 +52,7 @@ const Sort: FC<Props> = ({
             )}
             >
               <div className="flex items-center gap-0.5 px-1">
-                <div className="system-sm-regular text-text-tertiary">{t('appLog.filter.sortBy')}</div>
+                <div className="system-sm-regular text-text-tertiary">{t('filter.sortBy', { ns: 'appLog' })}</div>
                 <div className={cn('system-sm-regular text-text-tertiary', !!value && 'text-text-secondary')}>
                   {triggerContent}
                 </div>

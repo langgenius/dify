@@ -74,10 +74,10 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
         <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
           <div>
             <div className="text-sm font-medium text-text-tertiary">
-              {t('app.gotoAnything.noMatchingCommands')}
+              {t('gotoAnything.noMatchingCommands', { ns: 'app' })}
             </div>
             <div className="mt-1 text-xs text-text-quaternary">
-              {t('app.gotoAnything.tryDifferentSearch')}
+              {t('gotoAnything.tryDifferentSearch', { ns: 'app' })}
             </div>
           </div>
         </div>
@@ -88,7 +88,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
   return (
     <div className="px-4 py-3">
       <div className="mb-2 text-left text-sm font-medium text-text-secondary">
-        {isSlashMode ? t('app.gotoAnything.groups.commands') : t('app.gotoAnything.selectSearchType')}
+        {isSlashMode ? t('gotoAnything.groups.commands', { ns: 'app' }) : t('gotoAnything.selectSearchType', { ns: 'app' })}
       </div>
       <Command.Group className="space-y-1">
         {allItems.map(item => (

@@ -55,14 +55,14 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}` as any) as string }))}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}` as any, { ns: 'appLog' }) as string }))}
       />
       <Input
         wrapperClassName="w-[200px]"
         showLeftIcon
         showClearIcon
         value={queryParams.keyword ?? ''}
-        placeholder={t('common.operation.search')!}
+        placeholder={t('operation.search', { ns: 'common' })!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}

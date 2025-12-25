@@ -57,14 +57,14 @@ const VarList: FC<Props> = ({
     if (!isValid) {
       setToastHandle(Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }),
+        message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: errorKey }),
       }))
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
       setToastHandle(Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
       }))
     }
     else {
@@ -152,7 +152,7 @@ const VarList: FC<Props> = ({
               disabled={readonly}
               value={variable.variable}
               onChange={handleVarNameChange(index)}
-              placeholder={t('workflow.common.variableNamePlaceholder')!}
+              placeholder={t('common.variableNamePlaceholder', { ns: 'workflow' })!}
             />
             <VarReferencePicker
               nodeId={nodeId}

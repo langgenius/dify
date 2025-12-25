@@ -42,8 +42,8 @@ export const useAvailableNodesMetaData = () => {
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
-    const title = t(`workflow.blocks.${metaData.type}` as any) as string
-    const description = t(`workflow.blocksAbout.${metaData.type}` as any) as string
+    const title = t(`blocks.${metaData.type}` as any, { ns: 'workflow' }) as string
+    const description = t(`blocksAbout.${metaData.type}` as any, { ns: 'workflow' }) as string
     const helpLinkPath = `guides/workflow/node/${metaData.helpLinkUri}`
     return {
       ...node,

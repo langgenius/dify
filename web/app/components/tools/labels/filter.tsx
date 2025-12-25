@@ -76,7 +76,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
               <Tag01 className="h-3.5 w-3.5 text-text-tertiary" />
             </div>
             <div className="text-[13px] leading-[18px] text-text-tertiary">
-              {!value.length && t('common.tag.placeholder')}
+              {!value.length && t('tag.placeholder', { ns: 'common' })}
               {!!value.length && currentLabel?.label}
             </div>
             {value.length > 1 && (
@@ -125,7 +125,7 @@ const LabelFilter: FC<LabelFilterProps> = ({
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
                   <Tag03 className="h-6 w-6 text-text-quaternary" />
-                  <div className="text-xs leading-[14px] text-text-tertiary">{t('common.tag.noTag')}</div>
+                  <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}
             </div>

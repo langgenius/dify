@@ -9,7 +9,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { cn } from '@/utils/classnames'
 import InputNumberWithSlider from '../../_base/components/input-number-with-slider'
 
-const i18nPrefix = 'workflow.nodes.listFilter'
+const i18nPrefix = 'nodes.listFilter'
 const LIMIT_SIZE_MIN = 1
 const LIMIT_SIZE_MAX = 20
 const LIMIT_SIZE_DEFAULT = 10
@@ -53,7 +53,7 @@ const LimitConfig: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <Field
-        title={t(`${i18nPrefix}.limit`)}
+        title={t(`${i18nPrefix}.limit`, { ns: 'workflow' })}
         operations={(
           <Switch
             defaultValue={payload.enabled}

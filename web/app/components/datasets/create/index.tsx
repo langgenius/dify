@@ -103,7 +103,7 @@ const DatasetUpdateForm = ({ datasetId }: DatasetUpdateFormProps) => {
   }, [step, setStep])
 
   if (fetchingAuthedDataSourceListError)
-    return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
+    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
     <div className="flex flex-col overflow-hidden bg-components-panel-bg" style={{ height: 'calc(100vh - 56px)' }}>

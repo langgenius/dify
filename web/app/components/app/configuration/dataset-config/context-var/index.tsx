@@ -19,11 +19,11 @@ const ContextVar: FC<Props> = (props) => {
         <div className="p-1">
           <BracketsX className="h-4 w-4 text-text-accent" />
         </div>
-        <div className="mr-1 text-sm font-medium text-text-secondary">{t('appDebug.feature.dataSet.queryVariable.title')}</div>
+        <div className="mr-1 text-sm font-medium text-text-secondary">{t('feature.dataSet.queryVariable.title', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
-              {t('appDebug.feature.dataSet.queryVariable.tip')}
+              {t('feature.dataSet.queryVariable.tip', { ns: 'appDebug' })}
             </div>
           )}
         />
