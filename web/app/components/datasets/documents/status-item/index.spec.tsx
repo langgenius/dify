@@ -1,29 +1,29 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import StatusItem from './index'
 import type { DocumentDisplayStatus } from '@/models/datasets'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import StatusItem from './index'
 
 // Mock ToastContext - required to verify notifications
-const mockNotify = jest.fn()
-jest.mock('use-context-selector', () => ({
-  ...jest.requireActual('use-context-selector'),
+const mockNotify = vi.fn()
+vi.mock('use-context-selector', async importOriginal => ({
+  ...await importOriginal<typeof import('use-context-selector')>(),
   useContext: () => ({ notify: mockNotify }),
 }))
 
 // Mock document service hooks - required to avoid real API calls
-const mockEnableDocument = jest.fn()
-const mockDisableDocument = jest.fn()
-const mockDeleteDocument = jest.fn()
+const mockEnableDocument = vi.fn()
+const mockDisableDocument = vi.fn()
+const mockDeleteDocument = vi.fn()
 
-jest.mock('@/service/knowledge/use-document', () => ({
+vi.mock('@/service/knowledge/use-document', () => ({
   useDocumentEnable: () => ({ mutateAsync: mockEnableDocument }),
   useDocumentDisable: () => ({ mutateAsync: mockDisableDocument }),
   useDocumentDelete: () => ({ mutateAsync: mockDeleteDocument }),
 }))
 
 // Mock useDebounceFn to execute immediately for testing
-jest.mock('ahooks', () => ({
-  ...jest.requireActual('ahooks'),
+vi.mock('ahooks', async importOriginal => ({
+  ...await importOriginal<typeof import('ahooks')>(),
   useDebounceFn: (fn: (...args: unknown[]) => void) => ({ run: fn }),
 }))
 
@@ -59,7 +59,7 @@ const createDetailProps = (overrides: Partial<{
 
 describe('StatusItem', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockEnableDocument.mockResolvedValue({ result: 'success' })
     mockDisableDocument.mockResolvedValue({ result: 'success' })
     mockDeleteDocument.mockResolvedValue({ result: 'success' })
@@ -382,7 +382,7 @@ describe('StatusItem', () => {
   describe('Switch Toggle', () => {
     it('should call enable operation when switch is toggled on', async () => {
       // Arrange
-      const mockOnUpdate = jest.fn()
+      const mockOnUpdate = vi.fn()
       renderWithProviders(
         <StatusItem
           status="disabled"
@@ -408,7 +408,7 @@ describe('StatusItem', () => {
 
     it('should call disable operation when switch is toggled off', async () => {
       // Arrange
-      const mockOnUpdate = jest.fn()
+      const mockOnUpdate = vi.fn()
       renderWithProviders(
         <StatusItem
           status="enabled"
@@ -489,7 +489,7 @@ describe('StatusItem', () => {
       // Note: The guard checks props.enabled, NOT the Switch's internal UI state.
       // This prevents redundant API calls when the UI toggles back to a state
       // that already matches the server-side data (props haven't been updated yet).
-      const mockOnUpdate = jest.fn()
+      const mockOnUpdate = vi.fn()
       renderWithProviders(
         <StatusItem
           status="enabled"
@@ -517,7 +517,7 @@ describe('StatusItem', () => {
       // Note: The guard checks props.enabled, NOT the Switch's internal UI state.
       // This prevents redundant API calls when the UI toggles back to a state
       // that already matches the server-side data (props haven't been updated yet).
-      const mockOnUpdate = jest.fn()
+      const mockOnUpdate = vi.fn()
       renderWithProviders(
         <StatusItem
           status="disabled"
@@ -546,7 +546,7 @@ describe('StatusItem', () => {
   describe('onUpdate Callback', () => {
     it('should call onUpdate with operation name on successful enable', async () => {
       // Arrange
-      const mockOnUpdate = jest.fn()
+      const mockOnUpdate = vi.fn()
       renderWithProviders(
         <StatusItem
           status="disabled"
@@ -569,7 +569,7 @@ describe('StatusItem', () => {
 
     it('should call onUpdate with operation name on successful disable', async () => {
       // Arrange
-      const mockOnUpdate = jest.fn()
+      const mockOnUpdate = vi.fn()
       renderWithProviders(
         <StatusItem
           status="enabled"
@@ -593,7 +593,7 @@ describe('StatusItem', () => {
     it('should not call onUpdate when operation fails', async () => {
       // Arrange
       mockEnableDocument.mockRejectedValue(new Error('API Error'))
-      const mockOnUpdate = jest.fn()
+      const mockOnUpdate = vi.fn()
       renderWithProviders(
         <StatusItem
           status="disabled"
@@ -831,8 +831,14 @@ describe('StatusItem', () => {
     it('should handle all status types in sequence', () => {
       // Arrange
       const statuses: DocumentDisplayStatus[] = [
-        'queuing', 'indexing', 'paused', 'error',
-        'available', 'enabled', 'disabled', 'archived',
+        'queuing',
+        'indexing',
+        'paused',
+        'error',
+        'available',
+        'enabled',
+        'disabled',
+        'archived',
       ]
 
       // Act & Assert

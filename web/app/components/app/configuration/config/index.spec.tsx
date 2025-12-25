@@ -1,27 +1,28 @@
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import Config from './index'
+import type { Mock } from 'vitest'
 import type { ModelConfig, PromptVariable } from '@/models/debug'
-import * as useContextSelector from 'use-context-selector'
 import type { ToolItem } from '@/types/app'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import * as useContextSelector from 'use-context-selector'
 import { AgentStrategy, AppModeEnum, ModelModeType } from '@/types/app'
+import Config from './index'
 
-jest.mock('use-context-selector', () => {
-  const actual = jest.requireActual('use-context-selector')
+vi.mock('use-context-selector', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('use-context-selector')>()
   return {
     ...actual,
-    useContext: jest.fn(),
+    useContext: vi.fn(),
   }
 })
 
-const mockFormattingDispatcher = jest.fn()
-jest.mock('../debug/hooks', () => ({
+const mockFormattingDispatcher = vi.fn()
+vi.mock('../debug/hooks', () => ({
   __esModule: true,
   useFormattingChangedDispatcher: () => mockFormattingDispatcher,
 }))
 
 let latestConfigPromptProps: any
-jest.mock('@/app/components/app/configuration/config-prompt', () => ({
+vi.mock('@/app/components/app/configuration/config-prompt', () => ({
   __esModule: true,
   default: (props: any) => {
     latestConfigPromptProps = props
@@ -30,7 +31,7 @@ jest.mock('@/app/components/app/configuration/config-prompt', () => ({
 }))
 
 let latestConfigVarProps: any
-jest.mock('@/app/components/app/configuration/config-var', () => ({
+vi.mock('@/app/components/app/configuration/config-var', () => ({
   __esModule: true,
   default: (props: any) => {
     latestConfigVarProps = props
@@ -38,33 +39,33 @@ jest.mock('@/app/components/app/configuration/config-var', () => ({
   },
 }))
 
-jest.mock('../dataset-config', () => ({
+vi.mock('../dataset-config', () => ({
   __esModule: true,
   default: () => <div data-testid="dataset-config" />,
 }))
 
-jest.mock('./agent/agent-tools', () => ({
+vi.mock('./agent/agent-tools', () => ({
   __esModule: true,
   default: () => <div data-testid="agent-tools" />,
 }))
 
-jest.mock('../config-vision', () => ({
+vi.mock('../config-vision', () => ({
   __esModule: true,
   default: () => <div data-testid="config-vision" />,
 }))
 
-jest.mock('./config-document', () => ({
+vi.mock('./config-document', () => ({
   __esModule: true,
   default: () => <div data-testid="config-document" />,
 }))
 
-jest.mock('./config-audio', () => ({
+vi.mock('./config-audio', () => ({
   __esModule: true,
   default: () => <div data-testid="config-audio" />,
 }))
 
 let latestHistoryPanelProps: any
-jest.mock('../config-prompt/conversation-history/history-panel', () => ({
+vi.mock('../config-prompt/conversation-history/history-panel', () => ({
   __esModule: true,
   default: (props: any) => {
     latestHistoryPanelProps = props
@@ -82,10 +83,10 @@ type MockContext = {
     history: boolean
     query: boolean
   }
-  showHistoryModal: jest.Mock
+  showHistoryModal: Mock
   modelConfig: ModelConfig
-  setModelConfig: jest.Mock
-  setPrevPromptConfig: jest.Mock
+  setModelConfig: Mock
+  setPrevPromptConfig: Mock
 }
 
 const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVariable => ({
@@ -143,14 +144,14 @@ const createContextValue = (overrides: Partial<MockContext> = {}): MockContext =
     history: true,
     query: false,
   },
-  showHistoryModal: jest.fn(),
+  showHistoryModal: vi.fn(),
   modelConfig: createModelConfig(),
-  setModelConfig: jest.fn(),
-  setPrevPromptConfig: jest.fn(),
+  setModelConfig: vi.fn(),
+  setPrevPromptConfig: vi.fn(),
   ...overrides,
 })
 
-const mockUseContext = useContextSelector.useContext as jest.Mock
+const mockUseContext = useContextSelector.useContext as Mock
 
 const renderConfig = (contextOverrides: Partial<MockContext> = {}) => {
   const contextValue = createContextValue(contextOverrides)
@@ -162,7 +163,7 @@ const renderConfig = (contextOverrides: Partial<MockContext> = {}) => {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   latestConfigPromptProps = undefined
   latestConfigVarProps = undefined
   latestHistoryPanelProps = undefined
@@ -190,7 +191,7 @@ describe('Config - Rendering', () => {
   })
 
   it('should display HistoryPanel only when advanced chat completion values apply', () => {
-    const showHistoryModal = jest.fn()
+    const showHistoryModal = vi.fn()
     renderConfig({
       isAdvancedMode: true,
       mode: AppModeEnum.ADVANCED_CHAT,

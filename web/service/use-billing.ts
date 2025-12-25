@@ -6,7 +6,7 @@ const NAME_SPACE = 'billing'
 export const useBindPartnerStackInfo = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'bind-partner-stack'],
-    mutationFn: (data: { partnerKey: string; clickId: string }) => bindPartnerStackInfo(data.partnerKey, data.clickId),
+    mutationFn: (data: { partnerKey: string, clickId: string }) => bindPartnerStackInfo(data.partnerKey, data.clickId),
   })
 }
 

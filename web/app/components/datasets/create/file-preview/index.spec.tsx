@@ -1,35 +1,40 @@
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import FilePreview from './index'
+import type { MockedFunction } from 'vitest'
 import type { CustomFile as File } from '@/models/datasets'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { fetchFilePreview } from '@/service/common'
+import FilePreview from './index'
 
 // Mock the fetchFilePreview service
-jest.mock('@/service/common', () => ({
-  fetchFilePreview: jest.fn(),
+vi.mock('@/service/common', () => ({
+  fetchFilePreview: vi.fn(),
 }))
 
-const mockFetchFilePreview = fetchFilePreview as jest.MockedFunction<typeof fetchFilePreview>
+const mockFetchFilePreview = fetchFilePreview as MockedFunction<typeof fetchFilePreview>
 
 // Factory function to create mock file objects
 const createMockFile = (overrides: Partial<File> = {}): File => {
-  const file = new window.File(['test content'], 'test-file.txt', {
+  const fileName = overrides.name ?? 'test-file.txt'
+  // Create a plain object that looks like a File with CustomFile properties
+  // We can't use Object.assign on a real File because 'name' is a getter-only property
+  return {
+    name: fileName,
+    size: 1024,
     type: 'text/plain',
-  }) as File
-  return Object.assign(file, {
+    lastModified: Date.now(),
     id: 'file-123',
     extension: 'txt',
     mime_type: 'text/plain',
     created_by: 'user-1',
     created_at: Date.now(),
     ...overrides,
-  })
+  } as File
 }
 
 // Helper to render FilePreview with default props
-const renderFilePreview = (props: Partial<{ file?: File; hidePreview: () => void }> = {}) => {
+const renderFilePreview = (props: Partial<{ file?: File, hidePreview: () => void }> = {}) => {
   const defaultProps = {
     file: createMockFile(),
-    hidePreview: jest.fn(),
+    hidePreview: vi.fn(),
     ...props,
   }
   return {
@@ -48,7 +53,7 @@ const findLoadingSpinner = (container: HTMLElement) => {
 // ============================================================================
 describe('FilePreview', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Default successful API response
     mockFetchFilePreview.mockResolvedValue({ content: 'Preview content here' })
   })
@@ -168,7 +173,7 @@ describe('FilePreview', () => {
 
       // Act - Initial render
       const { rerender, container } = render(
-        <FilePreview file={file1} hidePreview={jest.fn()} />,
+        <FilePreview file={file1} hidePreview={vi.fn()} />,
       )
 
       // First file loading - spinner should be visible
@@ -184,7 +189,7 @@ describe('FilePreview', () => {
       })
 
       // Rerender with new file
-      rerender(<FilePreview file={file2} hidePreview={jest.fn()} />)
+      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
 
       // Should show loading again
       await waitFor(() => {
@@ -245,14 +250,14 @@ describe('FilePreview', () => {
 
       // Act
       const { rerender } = render(
-        <FilePreview file={file1} hidePreview={jest.fn()} />,
+        <FilePreview file={file1} hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledWith({ fileID: 'file-1' })
       })
 
-      rerender(<FilePreview file={file2} hidePreview={jest.fn()} />)
+      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
 
       // Assert
       await waitFor(() => {
@@ -310,7 +315,7 @@ describe('FilePreview', () => {
   describe('User Interactions', () => {
     it('should call hidePreview when close button is clicked', async () => {
       // Arrange
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
       const { container } = renderFilePreview({ hidePreview })
 
       // Act
@@ -323,7 +328,7 @@ describe('FilePreview', () => {
 
     it('should call hidePreview with event object when clicked', async () => {
       // Arrange
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
       const { container } = renderFilePreview({ hidePreview })
 
       // Act
@@ -337,7 +342,7 @@ describe('FilePreview', () => {
 
     it('should handle multiple clicks on close button', async () => {
       // Arrange
-      const hidePreview = jest.fn()
+      const hidePreview = vi.fn()
       const { container } = renderFilePreview({ hidePreview })
 
       // Act
@@ -391,7 +396,7 @@ describe('FilePreview', () => {
 
       // Act
       const { rerender, container } = render(
-        <FilePreview file={file1} hidePreview={jest.fn()} />,
+        <FilePreview file={file1} hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -399,7 +404,7 @@ describe('FilePreview', () => {
       })
 
       // Change file
-      rerender(<FilePreview file={file2} hidePreview={jest.fn()} />)
+      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
 
       // Assert - Loading should be shown again
       await waitFor(() => {
@@ -421,7 +426,7 @@ describe('FilePreview', () => {
 
       // Act
       const { rerender } = render(
-        <FilePreview file={file1} hidePreview={jest.fn()} />,
+        <FilePreview file={file1} hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
@@ -429,7 +434,7 @@ describe('FilePreview', () => {
       })
 
       // Change file - loading should replace content
-      rerender(<FilePreview file={file2} hidePreview={jest.fn()} />)
+      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
 
       // Resolve second fetch
       await act(async () => {
@@ -487,7 +492,7 @@ describe('FilePreview', () => {
         const { container } = renderFilePreview({ file })
 
         // Assert - getFileName returns empty for single segment, but component still renders
-        const fileNameElement = container.querySelector('.fileName')
+        const fileNameElement = container.querySelector('[class*="fileName"]')
         expect(fileNameElement).toBeInTheDocument()
         // The first span (file name) should be empty
         const fileNameSpan = fileNameElement?.querySelector('span:first-child')
@@ -509,7 +514,7 @@ describe('FilePreview', () => {
     describe('hidePreview prop', () => {
       it('should accept hidePreview callback', async () => {
         // Arrange
-        const hidePreview = jest.fn()
+        const hidePreview = vi.fn()
 
         // Act
         renderFilePreview({ hidePreview })
@@ -594,7 +599,7 @@ describe('FilePreview', () => {
 
       // Assert - Should render as text, not execute scripts
       await waitFor(() => {
-        const contentDiv = container.querySelector('.fileContent')
+        const contentDiv = container.querySelector('[class*="fileContent"]')
         expect(contentDiv).toBeInTheDocument()
         // Content is escaped by React, so HTML entities are displayed
         expect(contentDiv?.textContent).toContain('alert')
@@ -625,7 +630,7 @@ describe('FilePreview', () => {
 
       // Assert - Content should be in the DOM
       await waitFor(() => {
-        const contentDiv = container.querySelector('.fileContent')
+        const contentDiv = container.querySelector('[class*="fileContent"]')
         expect(contentDiv).toBeInTheDocument()
         expect(contentDiv?.textContent).toContain('Line 1')
         expect(contentDiv?.textContent).toContain('Line 2')
@@ -658,14 +663,14 @@ describe('FilePreview', () => {
 
       // Act
       const { rerender } = render(
-        <FilePreview file={file1} hidePreview={jest.fn()} />,
+        <FilePreview file={file1} hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
       })
 
-      rerender(<FilePreview file={file2} hidePreview={jest.fn()} />)
+      rerender(<FilePreview file={file2} hidePreview={vi.fn()} />)
 
       // Assert
       await waitFor(() => {
@@ -676,8 +681,8 @@ describe('FilePreview', () => {
     it('should not trigger effect when hidePreview changes', async () => {
       // Arrange
       const file = createMockFile()
-      const hidePreview1 = jest.fn()
-      const hidePreview2 = jest.fn()
+      const hidePreview1 = vi.fn()
+      const hidePreview2 = vi.fn()
 
       // Act
       const { rerender } = render(
@@ -700,17 +705,16 @@ describe('FilePreview', () => {
     it('should handle rapid file changes', async () => {
       // Arrange
       const files = Array.from({ length: 5 }, (_, i) =>
-        createMockFile({ id: `file-${i}` }),
-      )
+        createMockFile({ id: `file-${i}` }))
 
       // Act
       const { rerender } = render(
-        <FilePreview file={files[0]} hidePreview={jest.fn()} />,
+        <FilePreview file={files[0]} hidePreview={vi.fn()} />,
       )
 
       // Rapidly change files
       for (let i = 1; i < files.length; i++)
-        rerender(<FilePreview file={files[i]} hidePreview={jest.fn()} />)
+        rerender(<FilePreview file={files[i]} hidePreview={vi.fn()} />)
 
       // Assert - Should have called API for each file
       await waitFor(() => {
@@ -740,14 +744,14 @@ describe('FilePreview', () => {
 
       // Act
       const { rerender, container } = render(
-        <FilePreview file={file} hidePreview={jest.fn()} />,
+        <FilePreview file={file} hidePreview={vi.fn()} />,
       )
 
       await waitFor(() => {
         expect(mockFetchFilePreview).toHaveBeenCalledTimes(1)
       })
 
-      rerender(<FilePreview file={undefined} hidePreview={jest.fn()} />)
+      rerender(<FilePreview file={undefined} hidePreview={vi.fn()} />)
 
       // Assert - Should not crash, API should not be called again
       expect(container.firstChild).toBeInTheDocument()
@@ -789,7 +793,7 @@ describe('FilePreview', () => {
       const { container } = renderFilePreview({ file })
 
       // Assert - slice(0, -1) on single element array returns empty
-      const fileNameElement = container.querySelector('.fileName')
+      const fileNameElement = container.querySelector('[class*="fileName"]')
       const firstSpan = fileNameElement?.querySelector('span:first-child')
       expect(firstSpan?.textContent).toBe('')
     })

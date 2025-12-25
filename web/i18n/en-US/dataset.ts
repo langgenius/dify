@@ -245,6 +245,7 @@ const translation = {
     button: 'Drag and drop file or folder, or',
     browse: 'Browse',
     tip: '{{supportTypes}} (Max {{batchCount}}, {{size}}MB each)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 
