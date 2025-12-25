@@ -9,12 +9,13 @@ import SegmentCard from './index'
 // Mock react-i18next - external dependency
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
-      if (key === 'datasetDocuments.segment.characters')
+    t: (key: string, options?: { count?: number, ns?: string }) => {
+      if (key === 'segment.characters')
         return options?.count === 1 ? 'character' : 'characters'
-      if (key === 'datasetDocuments.segment.childChunks')
+      if (key === 'segment.childChunks')
         return options?.count === 1 ? 'child chunk' : 'child chunks'
-      return key
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

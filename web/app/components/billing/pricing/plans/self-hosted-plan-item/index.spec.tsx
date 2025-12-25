@@ -18,7 +18,8 @@ vi.mock('react-i18next', () => ({
     t: (key: string, options?: Record<string, unknown>) => {
       if (options?.returnObjects)
         return featuresTranslations[key] || []
-      return key
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
   Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
