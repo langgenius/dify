@@ -462,8 +462,9 @@ const translation = {
       buyQuota: 'Buy Quota',
       priorityUse: 'Priority use',
       removeKey: 'Remove API Key',
-      tip: 'Message Credits supports models from OpenAI, Anthropic, Gemini, Grok, and DeepSeek. Priority will be given to the paid quota. The free quota will be used after the paid quota is exhausted.',
+      tip: 'Message Credits supports models from OpenAI, Anthropic, Gemini, Grok, DeepSeek and TONGYI. Priority will be given to the paid quota. The free quota will be used after the paid quota is exhausted.',
       modelSupported: '{{modelName}} models are using this quota.',
+      modelAPI: '{{modelName}} models are using the API Key.',
       modelNotSupported: '{{modelName}} models are not installed.',
     },
     item: {

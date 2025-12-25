@@ -24,15 +24,17 @@ export enum ModelProviderQuotaGetPaid {
   GEMINI = 'langgenius/gemini/google',
   X = 'langgenius/x/x',
   DEEPSEEK = 'langgenius/deepseek/deepseek',
+  TONGYI = 'langgenius/tongyi/tongyi',
 }
-export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK]
+export const MODEL_PROVIDER_QUOTA_GET_PAID = [ModelProviderQuotaGetPaid.ANTHROPIC, ModelProviderQuotaGetPaid.OPENAI, ModelProviderQuotaGetPaid.GEMINI, ModelProviderQuotaGetPaid.X, ModelProviderQuotaGetPaid.DEEPSEEK, ModelProviderQuotaGetPaid.TONGYI]
 
 export const modelNameMap = {
   [ModelProviderQuotaGetPaid.OPENAI]: 'OpenAI',
   [ModelProviderQuotaGetPaid.ANTHROPIC]: 'Anthropic',
   [ModelProviderQuotaGetPaid.GEMINI]: 'Gemini',
-  [ModelProviderQuotaGetPaid.X]: 'Grok',
+  [ModelProviderQuotaGetPaid.X]: 'xAI',
   [ModelProviderQuotaGetPaid.DEEPSEEK]: 'DeepSeek',
+  [ModelProviderQuotaGetPaid.TONGYI]: 'TONGYI',
 }
 
 export const isNullOrUndefined = (value: any) => {

@@ -2,9 +2,9 @@ import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall } from '@/app/components/base/icons/src/public/llm'
+import { AnthropicShortLight, Deepseek, Gemini, Grok, OpenaiSmall, Tongyi } from '@/app/components/base/icons/src/public/llm'
 import Loading from '@/app/components/base/loading'
 import Tooltip from '@/app/components/base/tooltip'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
@@ -12,6 +12,7 @@ import { useAppContext } from '@/context/app-context'
 import useTimestamp from '@/hooks/use-timestamp'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
+import { PreferredProviderTypeEnum } from '../declarations'
 import { useMarketplaceAllPlugins } from '../hooks'
 import { modelNameMap, ModelProviderQuotaGetPaid } from '../utils'
 
@@ -21,6 +22,7 @@ const allProviders = [
   { key: ModelProviderQuotaGetPaid.GEMINI, Icon: Gemini },
   { key: ModelProviderQuotaGetPaid.X, Icon: Grok },
   { key: ModelProviderQuotaGetPaid.DEEPSEEK, Icon: Deepseek },
+  { key: ModelProviderQuotaGetPaid.TONGYI, Icon: Tongyi },
 ] as const
 
 // Map provider key to plugin ID
@@ -31,6 +33,7 @@ const providerKeyToPluginId: Record<string, string> = {
   [ModelProviderQuotaGetPaid.GEMINI]: 'langgenius/gemini',
   [ModelProviderQuotaGetPaid.X]: 'langgenius/x',
   [ModelProviderQuotaGetPaid.DEEPSEEK]: 'langgenius/deepseek',
+  [ModelProviderQuotaGetPaid.TONGYI]: 'langgenius/tongyi',
 }
 
 type QuotaPanelProps = {
@@ -43,8 +46,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { currentWorkspace } = useAppContext()
-  const credits = Math.max(currentWorkspace.trial_credits - currentWorkspace.trial_credits_used, 0)
-  const providerSet = new Set(providers.map(p => p.provider))
+  const credits = Math.max(currentWorkspace.trial_credits - currentWorkspace.trial_credits_used || 0, 0)
+  const providerMap = useMemo(() => new Map(
+    providers.map(p => [p.provider, p.preferred_provider_type]),
+  ), [providers])
   const { formatTime } = useTimestamp()
   const {
     plugins: allPlugins,
@@ -56,8 +61,9 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   }] = useBoolean(false)
   const selectedPluginIdRef = useRef<string | null>(null)
 
-  const handleIconClick = useCallback((key: string, isAvailable: boolean) => {
-    if (!isAvailable && allPlugins) {
+  const handleIconClick = useCallback((key: string) => {
+    const providerType = providerMap.get(key)
+    if (!providerType && allPlugins) {
       const pluginId = providerKeyToPluginId[key]
       const plugin = allPlugins.find(p => p.plugin_id === pluginId)
       if (plugin) {
@@ -66,9 +72,8 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         showInstallFromMarketplace()
       }
     }
-  }, [allPlugins, showInstallFromMarketplace])
+  }, [allPlugins, providerMap, showInstallFromMarketplace])
 
-  // Listen to providers changes and auto-close modal if installation succeeds
   useEffect(() => {
     if (isShowInstallModal && selectedPluginIdRef.current) {
       const isInstalled = providers.some(p => p.provider.startsWith(selectedPluginIdRef.current!))
@@ -113,18 +118,26 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
         </div>
         <div className="flex items-center gap-1">
           {allProviders.map(({ key, Icon }) => {
-            const isAvailable = providerSet.has(key)
+            const providerType = providerMap.get(key)
+            const usingQuota = providerType === PreferredProviderTypeEnum.system
+            const getTooltipKey = () => {
+              if (usingQuota)
+                return 'common.modelProvider.card.modelSupported'
+              if (providerType === PreferredProviderTypeEnum.custom)
+                return 'common.modelProvider.card.modelAPI'
+              return 'common.modelProvider.card.modelNotSupported'
+            }
             return (
               <Tooltip
                 key={key}
-                popupContent={t(isAvailable ? 'common.modelProvider.card.modelSupported' : 'common.modelProvider.card.modelNotSupported', { modelName: modelNameMap[key] })}
+                popupContent={t(getTooltipKey(), { modelName: modelNameMap[key] })}
               >
                 <div
-                  className={cn('relative h-6 w-6', !isAvailable && 'cursor-pointer hover:opacity-80')}
-                  onClick={() => handleIconClick(key, isAvailable)}
+                  className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
+                  onClick={() => handleIconClick(key)}
                 >
                   <Icon className="h-6 w-6 rounded-lg" />
-                  {!isAvailable && (
+                  {!usingQuota && (
                     <div className="absolute inset-0 rounded-lg border-[0.5px] border-components-panel-border-subtle bg-background-default-dodge opacity-30" />
                   )}
                 </div>
