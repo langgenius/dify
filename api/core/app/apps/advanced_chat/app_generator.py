@@ -126,6 +126,14 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app_model=app_model, conversation_id=conversation_id, user=user
             )
 
+        self._validate_parent_message_for_service_api(
+            app_model=app_model,
+            user=user,
+            conversation=conversation,
+            parent_message_id=args.get("parent_message_id"),
+            invoke_from=invoke_from,
+        )
+
         # parse files
         # TODO(QuantumGhost): Move file parsing logic to the API controller layer
         # for better separation of concerns.

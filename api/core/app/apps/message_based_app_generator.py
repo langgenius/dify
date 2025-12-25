@@ -35,6 +35,7 @@ from models.model import App, AppMode, AppModelConfig, Conversation, EndUser, Me
 from services.errors.app_model_config import AppModelConfigBrokenError
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
+from services.message_service import MessageService
 
 logger = logging.getLogger(__name__)
 
@@ -90,6 +91,28 @@ class MessageBasedAppGenerator(BaseAppGenerator):
         if invoke_from == InvokeFrom.SERVICE_API and not parent_message_id:
             return UUID_NIL
         return parent_message_id
+
+    def _validate_parent_message_for_service_api(
+        self,
+        *,
+        app_model: App,
+        user: Union[Account, EndUser],
+        conversation: Conversation | None,
+        parent_message_id: str | None,
+        invoke_from: InvokeFrom,
+    ) -> None:
+        if invoke_from != InvokeFrom.SERVICE_API:
+            return
+
+        if not parent_message_id or parent_message_id == UUID_NIL:
+            return
+
+        if not conversation:
+            raise ConversationNotExistsError("Conversation not exists")
+
+        parent_message = MessageService.get_message(app_model=app_model, user=user, message_id=parent_message_id)
+        if parent_message.conversation_id != conversation.id:
+            raise MessageNotExistsError("Message not exists")
 
     def _get_app_model_config(self, app_model: App, conversation: Conversation | None = None) -> AppModelConfig:
         if conversation:

@@ -4,6 +4,7 @@ from unittest.mock import patch
 import pytest
 from werkzeug.exceptions import BadRequest, NotFound
 
+from constants import UUID_NIL
 from controllers.service_api.app.completion import _validate_parent_message_request
 from services.errors.conversation import ConversationNotExistsError
 from services.errors.message import MessageNotExistsError
@@ -19,6 +20,25 @@ def test_validate_parent_message_skips_when_missing():
     ):
         _validate_parent_message_request(
             app_model=app_model, end_user=end_user, conversation_id=None, parent_message_id=None
+        )
+
+        get_conversation.assert_not_called()
+        get_message.assert_not_called()
+
+
+def test_validate_parent_message_skips_uuid_nil():
+    app_model = object()
+    end_user = object()
+
+    with (
+        patch("controllers.service_api.app.completion.ConversationService.get_conversation") as get_conversation,
+        patch("controllers.service_api.app.completion.MessageService.get_message") as get_message,
+    ):
+        _validate_parent_message_request(
+            app_model=app_model,
+            end_user=end_user,
+            conversation_id=None,
+            parent_message_id=UUID_NIL,
         )
 
         get_conversation.assert_not_called()

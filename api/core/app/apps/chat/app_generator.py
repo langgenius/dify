@@ -96,6 +96,14 @@ class ChatAppGenerator(MessageBasedAppGenerator):
             conversation = ConversationService.get_conversation(
                 app_model=app_model, conversation_id=conversation_id, user=user
             )
+
+        self._validate_parent_message_for_service_api(
+            app_model=app_model,
+            user=user,
+            conversation=conversation,
+            parent_message_id=args.get("parent_message_id"),
+            invoke_from=invoke_from,
+        )
         # get app model config
         app_model_config = self._get_app_model_config(app_model=app_model, conversation=conversation)
 

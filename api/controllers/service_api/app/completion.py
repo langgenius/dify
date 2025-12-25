@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field, ValidationInfo, field_validator
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
+from constants import UUID_NIL
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import (
@@ -87,7 +88,7 @@ def _validate_parent_message_request(
     conversation_id: str | None,
     parent_message_id: str | None,
 ) -> None:
-    if not parent_message_id:
+    if not parent_message_id or parent_message_id == UUID_NIL:
         return
 
     if not conversation_id:
