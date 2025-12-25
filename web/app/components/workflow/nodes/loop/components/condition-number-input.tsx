@@ -4,7 +4,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { capitalize } from 'lodash-es'
+import { capitalize } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,

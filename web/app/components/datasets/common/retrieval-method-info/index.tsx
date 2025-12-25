@@ -33,8 +33,8 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
     <div className="space-y-2">
       <RadioCard
         icon={icon}
-        title={t(`dataset.retrieval.${type}.title`)}
-        description={t(`dataset.retrieval.${type}.description`)}
+        title={t(`dataset.retrieval.${type}.title` as any) as string}
+        description={t(`dataset.retrieval.${type}.description` as any) as string}
         noRadio
         chosenConfigWrapClassName="!pb-3"
         chosenConfig={(

@@ -44,7 +44,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
       text: (
         <div className="flex h-full items-center">
           {getToneIcon(tone.id)}
-          {t(`common.model.tone.${tone.name}`) as string}
+          {t(`common.model.tone.${tone.name}` as any) as string}
         </div>
       ),
     }

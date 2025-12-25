@@ -13,8 +13,8 @@ import type { VarInInspect } from '@/types/workflow'
 import {
   useEventListener,
 } from 'ahooks'
+import { isEqual } from 'es-toolkit/compat'
 import { setAutoFreeze } from 'immer'
-import { isEqual } from 'lodash-es'
 import dynamic from 'next/dynamic'
 import {
   memo,

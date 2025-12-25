@@ -12,12 +12,11 @@ import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { get, noop } from 'lodash-es'
+import { get, noop } from 'es-toolkit/compat'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ModelInfo from '@/app/components/app/log/model-info'
@@ -38,7 +37,8 @@ import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import PromptLogModal from '../../base/prompt-log-modal'
@@ -825,8 +825,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
  */
 const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
-  const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
-  const { data: conversationDetail, mutate: conversationDetailMutate } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchCompletionConversationDetail)
+  const { data: conversationDetail, refetch: conversationDetailMutate } = useCompletionConversationDetail(appId, conversationId)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
@@ -875,8 +874,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
  * Chat App Conversation Detail Component
  */
 const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
-  const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
-  const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
+  const { data: conversationDetail } = useChatConversationDetail(appId, conversationId)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 

@@ -13,7 +13,7 @@ import type {
 import type { InputForm } from './type'
 import type { Emoji } from '@/app/components/tools/types'
 import type { AppData } from '@/models/share'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,

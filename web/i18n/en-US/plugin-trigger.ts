@@ -30,6 +30,11 @@ const translation = {
           unauthorized: 'Manual',
         },
         actions: {
+          edit: {
+            title: 'Edit Subscription',
+            success: 'Subscription updated successfully',
+            error: 'Failed to update subscription',
+          },
           delete: 'Delete',
           deleteConfirm: {
             title: 'Delete {{name}}?',
@@ -158,6 +163,7 @@ const translation = {
     },
     errors: {
       createFailed: 'Failed to create subscription',
+      updateFailed: 'Failed to update subscription',
       verifyFailed: 'Failed to verify credentials',
       authFailed: 'Authorization failed',
       networkError: 'Network error, please try again',

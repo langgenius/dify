@@ -208,7 +208,7 @@ export const CreateSubscriptionButton = ({ buttonType = CreateButtonType.FULL_BU
               )
             : (
                 <Tooltip
-                  popupContent={subscriptionCount >= MAX_COUNT ? t('pluginTrigger.subscription.maxCount', { num: MAX_COUNT }) : t(`pluginTrigger.subscription.addType.options.${methodType.toLowerCase()}.description`)}
+                  popupContent={subscriptionCount >= MAX_COUNT ? t('pluginTrigger.subscription.maxCount', { num: MAX_COUNT }) : t(`pluginTrigger.subscription.addType.options.${methodType.toLowerCase()}.description` as any)}
                   disabled={!(supportedMethods?.length === 1 || subscriptionCount >= MAX_COUNT)}
                 >
                   <ActionButton
