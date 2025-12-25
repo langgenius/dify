@@ -22,6 +22,7 @@ const initI18next = async (lng: Locale, ns: NamespaceKebabCase) => {
       ns,
       defaultNS: ns,
       fallbackLng: 'en-US',
+      keySeparator: false,
     })
   return i18nInstance
 }

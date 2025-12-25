@@ -113,7 +113,7 @@ export const loadLangResources = async (lang: Locale) => {
   )
 }
 
-// Initial resources: only load common namespace for en-US
+// Initial resources: load en-US namespaces for fallback/default locale
 const getInitialTranslations = () => {
   return {
     'en-US': namespaces,
