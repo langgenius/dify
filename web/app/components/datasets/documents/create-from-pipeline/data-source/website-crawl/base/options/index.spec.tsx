@@ -1,29 +1,33 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import Options from './index'
-import { CrawlStep } from '@/models/datasets'
+import type { MockInstance } from 'vitest'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { PipelineInputVarType } from '@/models/pipeline'
-import Toast from '@/app/components/base/toast'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import Toast from '@/app/components/base/toast'
+import { CrawlStep } from '@/models/datasets'
+import { PipelineInputVarType } from '@/models/pipeline'
+import Options from './index'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useInitialData and useConfigurations hooks
-const mockUseInitialData = jest.fn()
-const mockUseConfigurations = jest.fn()
-jest.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
-  useInitialData: (...args: any[]) => mockUseInitialData(...args),
-  useConfigurations: (...args: any[]) => mockUseConfigurations(...args),
+const { mockUseInitialData, mockUseConfigurations } = vi.hoisted(() => ({
+  mockUseInitialData: vi.fn(),
+  mockUseConfigurations: vi.fn(),
+}))
+
+vi.mock('@/app/components/rag-pipeline/hooks/use-input-fields', () => ({
+  useInitialData: mockUseInitialData,
+  useConfigurations: mockUseConfigurations,
 }))
 
 // Mock BaseField
-const mockBaseField = jest.fn()
-jest.mock('@/app/components/base/form/form-scenarios/base/field', () => {
+const mockBaseField = vi.fn()
+vi.mock('@/app/components/base/form/form-scenarios/base/field', () => {
   const MockBaseFieldFactory = (props: any) => {
     mockBaseField(props)
     const MockField = ({ form }: { form: any }) => (
@@ -38,13 +42,13 @@ jest.mock('@/app/components/base/form/form-scenarios/base/field', () => {
     )
     return MockField
   }
-  return MockBaseFieldFactory
+  return { default: MockBaseFieldFactory }
 })
 
 // Mock useAppForm
-const mockHandleSubmit = jest.fn()
+const mockHandleSubmit = vi.fn()
 const mockFormValues: Record<string, any> = {}
-jest.mock('@/app/components/base/form', () => ({
+vi.mock('@/app/components/base/form', () => ({
   useAppForm: (options: any) => {
     const formOptions = options
     return {
@@ -84,8 +88,7 @@ const createMockVariables = (count = 1): RAGPipelineVariables => {
     createMockVariable({
       variable: `variable_${i}`,
       label: `Label ${i}`,
-    }),
-  )
+    }))
 }
 
 const createMockConfiguration = (overrides?: Partial<any>): any => ({
@@ -106,7 +109,7 @@ const createDefaultProps = (overrides?: Partial<OptionsProps>): OptionsProps => 
   variables: createMockVariables(),
   step: CrawlStep.init,
   runDisabled: false,
-  onSubmit: jest.fn(),
+  onSubmit: vi.fn(),
   ...overrides,
 })
 
@@ -114,13 +117,13 @@ const createDefaultProps = (overrides?: Partial<OptionsProps>): OptionsProps => 
 // Test Suites
 // ==========================================
 describe('Options', () => {
-  let toastNotifySpy: jest.SpyInstance
+  let toastNotifySpy: MockInstance
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Spy on Toast.notify instead of mocking the entire module
-    toastNotifySpy = jest.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: jest.fn() }))
+    toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({ clear: vi.fn() }))
 
     // Reset mock form values
     Object.keys(mockFormValues).forEach(key => delete mockFormValues[key])
@@ -379,7 +382,7 @@ describe('Options', () => {
           type: BaseFieldType.textInput,
         })
         mockUseConfigurations.mockReturnValue([config])
-        const mockOnSubmit = jest.fn()
+        const mockOnSubmit = vi.fn()
         const props = createDefaultProps({ onSubmit: mockOnSubmit })
 
         // Act
@@ -392,7 +395,7 @@ describe('Options', () => {
 
       it('should not call onSubmit when validation fails', () => {
         // Arrange
-        const mockOnSubmit = jest.fn()
+        const mockOnSubmit = vi.fn()
         // Create a required field configuration
         const requiredConfig = createMockConfiguration({
           variable: 'url',
@@ -421,7 +424,7 @@ describe('Options', () => {
         mockUseConfigurations.mockReturnValue(configs)
         mockFormValues.url = 'https://example.com'
         mockFormValues.depth = 2
-        const mockOnSubmit = jest.fn()
+        const mockOnSubmit = vi.fn()
         const props = createDefaultProps({ onSubmit: mockOnSubmit })
 
         // Act
@@ -591,7 +594,7 @@ describe('Options', () => {
         required: false, // Not required so validation passes with empty value
       })
       mockUseConfigurations.mockReturnValue([config])
-      const mockOnSubmit = jest.fn()
+      const mockOnSubmit = vi.fn()
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
@@ -635,8 +638,8 @@ describe('Options', () => {
 
       // Act
       const form = container.querySelector('form')!
-      const mockPreventDefault = jest.fn()
-      const mockStopPropagation = jest.fn()
+      const mockPreventDefault = vi.fn()
+      const mockStopPropagation = vi.fn()
 
       fireEvent.submit(form, {
         preventDefault: mockPreventDefault,
@@ -655,7 +658,7 @@ describe('Options', () => {
         type: BaseFieldType.textInput,
       })
       mockUseConfigurations.mockReturnValue([config])
-      const mockOnSubmit = jest.fn()
+      const mockOnSubmit = vi.fn()
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
@@ -668,7 +671,7 @@ describe('Options', () => {
 
     it('should not trigger submit when button is disabled', () => {
       // Arrange
-      const mockOnSubmit = jest.fn()
+      const mockOnSubmit = vi.fn()
       const props = createDefaultProps({ onSubmit: mockOnSubmit, runDisabled: true })
       render(<Options {...props} />)
 
@@ -792,8 +795,7 @@ describe('Options', () => {
     it('should handle many configurations', () => {
       // Arrange
       const manyConfigs = Array.from({ length: 10 }, (_, i) =>
-        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }),
-      )
+        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }))
       mockUseConfigurations.mockReturnValue(manyConfigs)
       const props = createDefaultProps()
 
@@ -837,7 +839,7 @@ describe('Options', () => {
       })
       mockUseConfigurations.mockReturnValue([requiredConfig])
       mockFormValues.url = 'https://example.com' // Provide valid value
-      const mockOnSubmit = jest.fn()
+      const mockOnSubmit = vi.fn()
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
@@ -947,7 +949,7 @@ describe('Options', () => {
         type: BaseFieldType.textInput,
       })
       mockUseConfigurations.mockReturnValue([config])
-      const mockOnSubmit = jest.fn()
+      const mockOnSubmit = vi.fn()
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 
@@ -968,7 +970,7 @@ describe('Options', () => {
         type: BaseFieldType.textInput,
       })
       mockUseConfigurations.mockReturnValue([config])
-      const mockOnSubmit = jest.fn()
+      const mockOnSubmit = vi.fn()
       const props = createDefaultProps({ onSubmit: mockOnSubmit })
       render(<Options {...props} />)
 

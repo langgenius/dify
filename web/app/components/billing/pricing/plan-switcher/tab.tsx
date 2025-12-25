@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { cn } from '@/utils/classnames'
 
 type TabProps<T> = {
@@ -22,7 +23,7 @@ const Tab = <T,>({
 
   return (
     <div
-      className='flex cursor-pointer items-center justify-center gap-x-2 px-5 py-3'
+      className="flex cursor-pointer items-center justify-center gap-x-2 px-5 py-3"
       onClick={handleClick}
     >
       <Icon isActive={isActive} />

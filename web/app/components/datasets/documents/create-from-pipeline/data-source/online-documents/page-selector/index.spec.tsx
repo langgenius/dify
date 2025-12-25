@@ -1,18 +1,18 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import PageSelector from './index'
 import type { NotionPageTreeItem, NotionPageTreeMap } from './index'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import PageSelector from './index'
 import { recursivePushInParentDescendants } from './utils'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock react-window FixedSizeList - renders items directly for testing
-jest.mock('react-window', () => ({
+vi.mock('react-window', () => ({
   FixedSizeList: ({ children: ItemComponent, itemCount, itemData, itemKey }: any) => (
     <div data-testid="virtual-list">
       {Array.from({ length: itemCount }).map((_, index) => (
@@ -25,6 +25,7 @@ jest.mock('react-window', () => ({
       ))}
     </div>
   ),
+  areEqual: (prevProps: any, nextProps: any) => prevProps === nextProps,
 }))
 
 // Note: NotionIcon from @/app/components/base/ is NOT mocked - using real component per testing guidelines
@@ -76,9 +77,9 @@ const createDefaultProps = (overrides?: Partial<PageSelectorProps>): PageSelecto
     searchValue: '',
     pagesMap: createMockPagesMap(defaultList),
     list: defaultList,
-    onSelect: jest.fn(),
+    onSelect: vi.fn(),
     canPreview: true,
-    onPreview: jest.fn(),
+    onPreview: vi.fn(),
     isMultipleChoice: true,
     currentCredentialId: 'cred-1',
     ...overrides,
@@ -103,7 +104,7 @@ const createHierarchicalPages = () => {
 // ==========================================
 describe('PageSelector', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -539,7 +540,7 @@ describe('PageSelector', () => {
     describe('onSelect prop', () => {
       it('should call onSelect when checkbox is clicked', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         const props = createDefaultProps({ onSelect: mockOnSelect })
 
         // Act
@@ -553,7 +554,7 @@ describe('PageSelector', () => {
 
       it('should pass updated set to onSelect', () => {
         // Arrange
-        const mockOnSelect = jest.fn()
+        const mockOnSelect = vi.fn()
         const page = createMockPage({ page_id: 'page-1' })
         const props = createDefaultProps({
           list: [page],
@@ -575,7 +576,7 @@ describe('PageSelector', () => {
     describe('onPreview prop', () => {
       it('should call onPreview when preview button is clicked', () => {
         // Arrange
-        const mockOnPreview = jest.fn()
+        const mockOnPreview = vi.fn()
         const page = createMockPage({ page_id: 'page-1' })
         const props = createDefaultProps({
           list: [page],
@@ -679,7 +680,7 @@ describe('PageSelector', () => {
 
     it('should maintain currentPreviewPageId state', () => {
       // Arrange
-      const mockOnPreview = jest.fn()
+      const mockOnPreview = vi.fn()
       const pages = [
         createMockPage({ page_id: 'page-1', page_name: 'Page 1' }),
         createMockPage({ page_id: 'page-2', page_name: 'Page 2' }),
@@ -833,7 +834,7 @@ describe('PageSelector', () => {
 
     it('should have stable handleCheck that adds page and descendants to selection', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const { list, pagesMap } = createHierarchicalPages()
       const props = createDefaultProps({
         list,
@@ -857,7 +858,7 @@ describe('PageSelector', () => {
 
     it('should have stable handleCheck that removes page and descendants from selection', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const { list, pagesMap } = createHierarchicalPages()
       const props = createDefaultProps({
         list,
@@ -879,7 +880,7 @@ describe('PageSelector', () => {
 
     it('should have stable handlePreview that updates currentPreviewPageId', () => {
       // Arrange
-      const mockOnPreview = jest.fn()
+      const mockOnPreview = vi.fn()
       const page = createMockPage({ page_id: 'preview-page' })
       const props = createDefaultProps({
         list: [page],
@@ -1007,7 +1008,7 @@ describe('PageSelector', () => {
 
     it('should check/uncheck page when clicking checkbox', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({
         onSelect: mockOnSelect,
         checkedIds: new Set(),
@@ -1023,7 +1024,7 @@ describe('PageSelector', () => {
 
     it('should select radio when clicking in single choice mode', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const props = createDefaultProps({
         onSelect: mockOnSelect,
         isMultipleChoice: false,
@@ -1040,7 +1041,7 @@ describe('PageSelector', () => {
 
     it('should clear previous selection in single choice mode', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const pages = [
         createMockPage({ page_id: 'page-1', page_name: 'Page 1' }),
         createMockPage({ page_id: 'page-2', page_name: 'Page 2' }),
@@ -1067,7 +1068,7 @@ describe('PageSelector', () => {
 
     it('should trigger preview when clicking preview button', () => {
       // Arrange
-      const mockOnPreview = jest.fn()
+      const mockOnPreview = vi.fn()
       const props = createDefaultProps({
         onPreview: mockOnPreview,
         canPreview: true,
@@ -1083,7 +1084,7 @@ describe('PageSelector', () => {
 
     it('should not cascade selection in search mode', () => {
       // Arrange
-      const mockOnSelect = jest.fn()
+      const mockOnSelect = vi.fn()
       const { list, pagesMap } = createHierarchicalPages()
       const props = createDefaultProps({
         list,
@@ -1359,7 +1360,7 @@ describe('PageSelector', () => {
         searchValue: '',
         pagesMap: createMockPagesMap([createMockPage()]),
         list: [createMockPage()],
-        onSelect: jest.fn(),
+        onSelect: vi.fn(),
         currentCredentialId: 'cred-1',
         // canPreview defaults to true
         // isMultipleChoice defaults to true

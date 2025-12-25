@@ -1,37 +1,38 @@
-import React from 'react'
+import type { Mock } from 'vitest'
+import type { IBatchModalProps } from './index'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import BatchModal, { ProcessStatus } from './index'
+import * as React from 'react'
+import Toast from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { annotationBatchImport, checkAnnotationBatchImportProgress } from '@/service/annotation'
-import type { IBatchModalProps } from './index'
-import Toast from '@/app/components/base/toast'
+import BatchModal, { ProcessStatus } from './index'
 
-jest.mock('@/app/components/base/toast', () => ({
+vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
   default: {
-    notify: jest.fn(),
+    notify: vi.fn(),
   },
 }))
 
-jest.mock('@/service/annotation', () => ({
-  annotationBatchImport: jest.fn(),
-  checkAnnotationBatchImportProgress: jest.fn(),
+vi.mock('@/service/annotation', () => ({
+  annotationBatchImport: vi.fn(),
+  checkAnnotationBatchImportProgress: vi.fn(),
 }))
 
-jest.mock('@/context/provider-context', () => ({
-  useProviderContext: jest.fn(),
+vi.mock('@/context/provider-context', () => ({
+  useProviderContext: vi.fn(),
 }))
 
-jest.mock('./csv-downloader', () => ({
+vi.mock('./csv-downloader', () => ({
   __esModule: true,
   default: () => <div data-testid="csv-downloader-stub" />,
 }))
 
 let lastUploadedFile: File | undefined
 
-jest.mock('./csv-uploader', () => ({
+vi.mock('./csv-uploader', () => ({
   __esModule: true,
-  default: ({ file, updateFile }: { file?: File; updateFile: (file?: File) => void }) => (
+  default: ({ file, updateFile }: { file?: File, updateFile: (file?: File) => void }) => (
     <div>
       <button
         data-testid="mock-uploader"
@@ -47,22 +48,22 @@ jest.mock('./csv-uploader', () => ({
   ),
 }))
 
-jest.mock('@/app/components/billing/annotation-full', () => ({
+vi.mock('@/app/components/billing/annotation-full', () => ({
   __esModule: true,
   default: () => <div data-testid="annotation-full" />,
 }))
 
-const mockNotify = Toast.notify as jest.Mock
-const useProviderContextMock = useProviderContext as jest.Mock
-const annotationBatchImportMock = annotationBatchImport as jest.Mock
-const checkAnnotationBatchImportProgressMock = checkAnnotationBatchImportProgress as jest.Mock
+const mockNotify = Toast.notify as Mock
+const useProviderContextMock = useProviderContext as Mock
+const annotationBatchImportMock = annotationBatchImport as Mock
+const checkAnnotationBatchImportProgressMock = checkAnnotationBatchImportProgress as Mock
 
 const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
   const mergedProps: IBatchModalProps = {
     appId: 'app-id',
     isShow: true,
-    onCancel: jest.fn(),
-    onAdded: jest.fn(),
+    onCancel: vi.fn(),
+    onAdded: vi.fn(),
     ...props,
   }
   return {
@@ -73,7 +74,7 @@ const renderComponent = (props: Partial<IBatchModalProps> = {}) => {
 
 describe('BatchModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     lastUploadedFile = undefined
     useProviderContextMock.mockReturnValue({
       plan: {
@@ -115,7 +116,7 @@ describe('BatchModal', () => {
   })
 
   it('should submit the csv file, poll status, and notify when import completes', async () => {
-    jest.useFakeTimers()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
     const { props } = renderComponent()
     const fileTrigger = screen.getByTestId('mock-uploader')
     fireEvent.click(fileTrigger)
@@ -144,7 +145,7 @@ describe('BatchModal', () => {
     })
 
     await act(async () => {
-      jest.runOnlyPendingTimers()
+      vi.runOnlyPendingTimers()
     })
 
     await waitFor(() => {
@@ -159,6 +160,6 @@ describe('BatchModal', () => {
       expect(props.onAdded).toHaveBeenCalledTimes(1)
       expect(props.onCancel).toHaveBeenCalledTimes(1)
     })
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 })

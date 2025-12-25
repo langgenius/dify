@@ -1,149 +1,65 @@
-import {
-  GLOB_TESTS, combine, javascript, node,
-  stylistic, typescript, unicorn,
-} from '@antfu/eslint-config'
-import globals from 'globals'
-import storybook from 'eslint-plugin-storybook'
-// import { fixupConfigRules } from '@eslint/compat'
-import tailwind from 'eslint-plugin-tailwindcss'
-import reactHooks from 'eslint-plugin-react-hooks'
+// @ts-check
+import antfu from '@antfu/eslint-config'
 import sonar from 'eslint-plugin-sonarjs'
-import oxlint from 'eslint-plugin-oxlint'
-import next from '@next/eslint-plugin-next'
+import storybook from 'eslint-plugin-storybook'
+import tailwind from 'eslint-plugin-tailwindcss'
 
-// import reactRefresh from 'eslint-plugin-react-refresh'
-
-export default combine(
-  stylistic({
-    lessOpinionated: true,
-    // original @antfu/eslint-config does not support jsx
-    jsx: false,
-    semi: false,
-    quotes: 'single',
-    overrides: {
-      // original config
-      'style/indent': ['error', 2],
-      'style/quotes': ['error', 'single'],
-      'curly': ['error', 'multi-or-nest', 'consistent'],
-      'style/comma-spacing': ['error', { before: false, after: true }],
-      'style/quote-props': ['warn', 'consistent-as-needed'],
-
-      // these options does not exist in old version
-      // maybe useless
-      'style/indent-binary-ops': 'off',
-      'style/multiline-ternary': 'off',
-      'antfu/top-level-function': 'off',
-      'antfu/curly': 'off',
-      'antfu/consistent-chaining': 'off',
-
-      // copy from eslint-config-antfu 0.36.0
-      'style/brace-style': ['error', 'stroustrup', { allowSingleLine: true }],
-      'style/dot-location': ['error', 'property'],
-      'style/object-curly-newline': ['error', { consistent: true, multiline: true }],
-      'style/template-curly-spacing': ['error', 'never'],
-      'style/keyword-spacing': 'off',
-
-      // not exist in old version, and big change
-      'style/member-delimiter-style': 'off',
-    },
-  }),
-  javascript({
-    overrides: {
-      // handled by unused-imports/no-unused-vars
-      'no-unused-vars': 'off',
-    },
-  }),
-  typescript({
-    overrides: {
-      // original config
-      'ts/consistent-type-definitions': ['warn', 'type'],
-
-      // useful, but big change
-      'ts/no-empty-object-type': 'off',
-    },
-  }),
-  unicorn(),
-  node(),
-  // Next.js configuration
+export default antfu(
   {
-    plugins: {
-      '@next/next': next,
+    react: {
+      overrides: {
+        'react/no-context-provider': 'off',
+        'react/no-forward-ref': 'off',
+        'react/no-use-context': 'off',
+        'react/prefer-namespace-import': 'error',
+      },
     },
-    rules: {
-      ...next.configs.recommended.rules,
-      ...next.configs['core-web-vitals'].rules,
-      // performance issue, and not used.
-      '@next/next/no-html-link-for-pages': 'off',
+    nextjs: true,
+    ignores: ['public'],
+    typescript: {
+      overrides: {
+        'ts/consistent-type-definitions': ['error', 'type'],
+        'ts/no-explicit-any': 'warn',
+      },
     },
-  },
-  {
-    ignores: [
-      'storybook-static/**',
-      '**/node_modules/*',
-      '**/dist/',
-      '**/build/',
-      '**/out/',
-      '**/.next/',
-      '**/public/*',
-      '**/*.json',
-      '**/*.js',
-    ],
-  },
-  {
-    // orignal config
-    rules: {
-      // orignal ts/no-var-requires
-      'ts/no-require-imports': 'off',
-      'no-console': 'off',
-      'react/display-name': 'off',
-      'array-callback-return': ['error', {
-        allowImplicit: false,
-        checkForEach: false,
-      }],
-
-      // copy from eslint-config-antfu 0.36.0
-      'camelcase': 'off',
-      'default-case-last': 'error',
-
-      // antfu use eslint-plugin-perfectionist to replace this
-      // will cause big change, so keep the original sort-imports
-      'sort-imports': [
-        'error',
-        {
-          ignoreCase: false,
-          ignoreDeclarationSort: true,
-          ignoreMemberSort: false,
-          memberSyntaxSortOrder: ['none', 'all', 'multiple', 'single'],
-          allowSeparatedGroups: false,
-        },
-      ],
-
-      // antfu migrate to eslint-plugin-unused-imports
-      'unused-imports/no-unused-vars': 'warn',
-      'unused-imports/no-unused-imports': 'warn',
-
-      // We use `import { noop } from 'lodash-es'` across `web` project
-      'no-empty-function': 'error',
+    test: {
+      overrides: {
+        'test/prefer-lowercase-title': 'off',
+      },
     },
-
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.es2025,
-        ...globals.node,
-        React: 'readable',
-        JSX: 'readable',
+    stylistic: {
+      overrides: {
+        'antfu/top-level-function': 'off',
       },
     },
   },
-  storybook.configs['flat/recommended'],
-  // reactRefresh.configs.recommended,
+  // downgrade some rules from error to warn for gradual adoption
+  // we should fix these in following pull requests
   {
-    rules: reactHooks.configs.recommended.rules,
-    plugins: {
-      'react-hooks': reactHooks,
+    // @keep-sorted
+    rules: {
+      'next/inline-script-id': 'warn',
+      'no-console': 'warn',
+      'no-irregular-whitespace': 'warn',
+      'node/prefer-global/buffer': 'warn',
+      'node/prefer-global/process': 'warn',
+      'react/no-create-ref': 'warn',
+      'react/no-missing-key': 'warn',
+      'react/no-nested-component-definitions': 'warn',
+      'regexp/no-dupe-disjunctions': 'warn',
+      'regexp/no-super-linear-backtracking': 'warn',
+      'regexp/no-unused-capturing-group': 'warn',
+      'regexp/no-useless-assertions': 'warn',
+      'regexp/no-useless-quantifier': 'warn',
+      'style/multiline-ternary': 'warn',
+      'test/no-identical-title': 'warn',
+      'test/prefer-hooks-in-order': 'warn',
+      'ts/no-empty-object-type': 'warn',
+      'unicorn/prefer-number-properties': 'warn',
+      'unused-imports/no-unused-vars': 'warn',
     },
   },
+  storybook.configs['flat/recommended'],
   // sonar
   {
     rules: {
@@ -180,6 +96,14 @@ export default combine(
       // others
       'sonarjs/todo-tag': 'warn',
       'sonarjs/table-header': 'off',
+
+      // new from this update
+      'sonarjs/unused-import': 'off',
+      'sonarjs/use-type-alias': 'warn',
+      'sonarjs/single-character-alternation': 'warn',
+      'sonarjs/no-os-command-from-path': 'warn',
+      'sonarjs/class-name': 'off',
+      'sonarjs/no-redundant-jump': 'warn',
     },
     plugins: {
       sonarjs: sonar,
@@ -191,39 +115,6 @@ export default combine(
     rules: {
       'sonarjs/max-lines': 'off',
       'max-lines': 'off',
-    },
-  },
-  // need further research
-  {
-    rules: {
-      // not exist in old version
-      'antfu/consistent-list-newline': 'off',
-      'node/prefer-global/process': 'off',
-      'node/prefer-global/buffer': 'off',
-      'node/no-callback-literal': 'off',
-      'eslint-comments/no-unused-disable': 'off',
-      'tailwindcss/no-arbitrary-value': 'off',
-      'tailwindcss/classnames-order': 'off',
-      'style/indent': ['error', 2, {
-        SwitchCase: 1,
-        ignoreComments: true,
-
-      }],
-      // useful, but big change
-      'unicorn/prefer-number-properties': 'warn',
-      'unicorn/no-new-array': 'warn',
-    },
-  },
-  // suppress error for `no-undef` rule
-  {
-    files: GLOB_TESTS,
-    languageOptions: {
-      globals: {
-        ...globals.browser,
-        ...globals.es2021,
-        ...globals.node,
-        ...globals.jest,
-      },
     },
   },
   tailwind.configs['flat/recommended'],
@@ -264,5 +155,4 @@ export default combine(
       'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
-  ...oxlint.buildFromOxlintConfigFile('./.oxlintrc.json'),
 )

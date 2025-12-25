@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import type { Timeout as TimeoutPayloadType } from '../../types'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import { useStore } from '@/app/components/workflow/store'
@@ -34,7 +34,7 @@ const InputField: FC<{
         <span className="text-xs font-normal text-text-tertiary">{description}</span>
       </div>
       <Input
-        type='number'
+        type="number"
         value={value}
         onChange={(e) => {
           const inputValue = e.target.value
@@ -70,7 +70,7 @@ const Timeout: FC<Props> = ({ readonly, payload, onChange }) => {
 
   return (
     <FieldCollapse title={t(`${i18nPrefix}.timeout.title`)}>
-      <div className='mt-2 space-y-1'>
+      <div className="mt-2 space-y-1">
         <div className="space-y-3">
           <InputField
             title={t('workflow.nodes.http.timeout.connectLabel')!}

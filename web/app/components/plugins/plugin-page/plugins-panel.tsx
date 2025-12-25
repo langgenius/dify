@@ -1,17 +1,17 @@
 'use client'
+import type { FilterState } from './filter-management'
+import { useDebounceFn } from 'ahooks'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { FilterState } from './filter-management'
-import FilterManagement from './filter-management'
-import List from './list'
-import { useInstalledLatestVersion, useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
-import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
-import { usePluginPageContext } from './context'
-import { useDebounceFn } from 'ahooks'
 import Button from '@/app/components/base/button'
-import Empty from './empty'
+import PluginDetailPanel from '@/app/components/plugins/plugin-detail-panel'
+import { useInstalledLatestVersion, useInstalledPluginList, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import Loading from '../../base/loading'
 import { PluginSource } from '../types'
+import { usePluginPageContext } from './context'
+import Empty from './empty'
+import FilterManagement from './filter-management'
+import List from './list'
 
 const PluginsPanel = () => {
   const { t } = useTranslation()
@@ -63,30 +63,32 @@ const PluginsPanel = () => {
 
   return (
     <>
-      <div className='flex flex-col items-start justify-center gap-3 self-stretch px-12 pb-3 pt-1'>
-        <div className='h-px self-stretch bg-divider-subtle'></div>
+      <div className="flex flex-col items-start justify-center gap-3 self-stretch px-12 pb-3 pt-1">
+        <div className="h-px self-stretch bg-divider-subtle"></div>
         <FilterManagement
           onFilterChange={handleFilterChange}
         />
       </div>
-      {isPluginListLoading && <Loading type='app' />}
+      {isPluginListLoading && <Loading type="app" />}
       {!isPluginListLoading && (
         <>
-          {(filteredList?.length ?? 0) > 0 ? (
-            <div className='flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto px-12'>
-              <div className='w-full'>
-                <List pluginList={filteredList || []} />
-              </div>
-              {!isLastPage && !isFetching && (
-                <Button onClick={loadNextPage}>
-                  {t('workflow.common.loadMore')}
-                </Button>
+          {(filteredList?.length ?? 0) > 0
+            ? (
+                <div className="flex grow flex-wrap content-start items-start justify-center gap-2 self-stretch overflow-y-auto px-12">
+                  <div className="w-full">
+                    <List pluginList={filteredList || []} />
+                  </div>
+                  {!isLastPage && !isFetching && (
+                    <Button onClick={loadNextPage}>
+                      {t('workflow.common.loadMore')}
+                    </Button>
+                  )}
+                  {isFetching && <div className="system-md-semibold text-text-secondary">{t('appLog.detail.loading')}</div>}
+                </div>
+              )
+            : (
+                <Empty />
               )}
-              {isFetching && <div className='system-md-semibold text-text-secondary'>{t('appLog.detail.loading')}</div>}
-            </div>
-          ) : (
-            <Empty />
-          )}
         </>
       )}
       <PluginDetailPanel

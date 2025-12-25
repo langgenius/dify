@@ -1,9 +1,11 @@
-import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
-import { refreshAccessTokenOrRelogin } from './refresh-token'
-import Toast from '@/app/components/base/toast'
-import { basePath } from '@/utils/var'
+import type { FetchOptionType, ResponseError } from './fetch'
 import type { AnnotationReply, MessageEnd, MessageReplace, ThoughtItem } from '@/app/components/base/chat/chat/type'
 import type { VisionFile } from '@/types/app'
+import type {
+  DataSourceNodeCompletedResponse,
+  DataSourceNodeErrorResponse,
+  DataSourceNodeProcessingResponse,
+} from '@/types/pipeline'
 import type {
   AgentLogResponse,
   IterationFinishedResponse,
@@ -21,16 +23,15 @@ import type {
   WorkflowFinishedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
-import type { FetchOptionType, ResponseError } from './fetch'
-import { ContentType, base, getBaseOptions } from './fetch'
-import { asyncRunSafe } from '@/utils'
-import type {
-  DataSourceNodeCompletedResponse,
-  DataSourceNodeErrorResponse,
-  DataSourceNodeProcessingResponse,
-} from '@/types/pipeline'
 import Cookies from 'js-cookie'
+import Toast from '@/app/components/base/toast'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_CE_EDITION, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
+import { asyncRunSafe } from '@/utils'
+import { basePath } from '@/utils/var'
+import { base, ContentType, getBaseOptions } from './fetch'
+import { refreshAccessTokenOrRelogin } from './refresh-token'
 import { getWebAppPassport } from './webapp-auth'
+
 const TIME_OUT = 100000
 
 export type IOnDataMoreInfo = {
@@ -464,7 +465,7 @@ export const ssePost = async (
       if (!/^[23]\d{2}$/.test(String(res.status))) {
         if (res.status === 401) {
           if (isPublicAPI) {
-            res.json().then((data: { code?: string; message?: string }) => {
+            res.json().then((data: { code?: string, message?: string }) => {
               if (isPublicAPI) {
                 if (data.code === 'web_app_access_denied')
                   requiredWebSSOLogin(data.message, 403)
@@ -532,7 +533,8 @@ export const ssePost = async (
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
       )
-    }).catch((e) => {
+    })
+    .catch((e) => {
       if (e.toString() !== 'AbortError: The user aborted a request.' && !e.toString().includes('TypeError: Cannot assign to read only property'))
         Toast.notify({ type: 'error', message: e })
       onError?.(e)

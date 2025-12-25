@@ -1,10 +1,10 @@
 'use client'
-import React from 'react'
 import type { FC } from 'react'
-import Drawer from '@/app/components/base/drawer'
-import MCPDetailContent from './content'
 import type { ToolWithProvider } from '../../../workflow/types'
+import * as React from 'react'
+import Drawer from '@/app/components/base/drawer'
 import { cn } from '@/utils/classnames'
+import MCPDetailContent from './content'
 
 type Props = {
   detail?: ToolWithProvider

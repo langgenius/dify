@@ -1,5 +1,5 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import Actions from './index'
 
 // ==========================================
@@ -8,18 +8,18 @@ import Actions from './index'
 
 // Mock next/navigation - useParams returns datasetId
 const mockDatasetId = 'test-dataset-id'
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useParams: () => ({ datasetId: mockDatasetId }),
 }))
 
 // Mock next/link to capture href
-jest.mock('next/link', () => {
-  return ({ children, href, replace }: { children: React.ReactNode; href: string; replace?: boolean }) => (
+vi.mock('next/link', () => ({
+  default: ({ children, href, replace }: { children: React.ReactNode, href: string, replace?: boolean }) => (
     <a href={href} data-replace={replace}>
       {children}
     </a>
-  )
-})
+  ),
+}))
 
 // ==========================================
 // Test Suite
@@ -28,11 +28,11 @@ jest.mock('next/link', () => {
 describe('Actions', () => {
   // Default mock for required props
   const defaultProps = {
-    handleNextStep: jest.fn(),
+    handleNextStep: vi.fn(),
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // ==========================================
@@ -122,7 +122,7 @@ describe('Actions', () => {
     describe('showSelect prop', () => {
       it('should show select all section when showSelect is true', () => {
         // Arrange & Act
-        render(<Actions {...defaultProps} showSelect={true} onSelectAll={jest.fn()} />)
+        render(<Actions {...defaultProps} showSelect={true} onSelectAll={vi.fn()} />)
 
         // Assert
         expect(screen.getByText('common.operation.selectAll')).toBeInTheDocument()
@@ -138,7 +138,7 @@ describe('Actions', () => {
 
       it('should hide select all section when showSelect defaults to false', () => {
         // Arrange & Act
-        render(<Actions handleNextStep={jest.fn()} />)
+        render(<Actions handleNextStep={vi.fn()} />)
 
         // Assert
         expect(screen.queryByText('common.operation.selectAll')).not.toBeInTheDocument()
@@ -151,7 +151,7 @@ describe('Actions', () => {
         const tip = 'This is a helpful tip'
 
         // Act
-        render(<Actions {...defaultProps} showSelect={true} tip={tip} onSelectAll={jest.fn()} />)
+        render(<Actions {...defaultProps} showSelect={true} tip={tip} onSelectAll={vi.fn()} />)
 
         // Assert
         expect(screen.getByText(tip)).toBeInTheDocument()
@@ -171,7 +171,7 @@ describe('Actions', () => {
 
       it('should not show tip when tip is empty string', () => {
         // Arrange & Act
-        render(<Actions {...defaultProps} showSelect={true} tip="" onSelectAll={jest.fn()} />)
+        render(<Actions {...defaultProps} showSelect={true} tip="" onSelectAll={vi.fn()} />)
 
         // Assert
         const tipElements = screen.queryAllByTitle('')
@@ -181,7 +181,7 @@ describe('Actions', () => {
 
       it('should use empty string as default tip value', () => {
         // Arrange & Act
-        render(<Actions {...defaultProps} showSelect={true} onSelectAll={jest.fn()} />)
+        render(<Actions {...defaultProps} showSelect={true} onSelectAll={vi.fn()} />)
 
         // Assert - tip container should not exist when tip defaults to empty string
         const tipContainer = document.querySelector('.text-text-tertiary.truncate')
@@ -197,7 +197,7 @@ describe('Actions', () => {
     // Tests for event handlers
     it('should call handleNextStep when next button is clicked', () => {
       // Arrange
-      const handleNextStep = jest.fn()
+      const handleNextStep = vi.fn()
       render(<Actions {...defaultProps} handleNextStep={handleNextStep} />)
 
       // Act
@@ -209,7 +209,7 @@ describe('Actions', () => {
 
     it('should not call handleNextStep when next button is disabled and clicked', () => {
       // Arrange
-      const handleNextStep = jest.fn()
+      const handleNextStep = vi.fn()
       render(<Actions {...defaultProps} handleNextStep={handleNextStep} disabled={true} />)
 
       // Act
@@ -221,7 +221,7 @@ describe('Actions', () => {
 
     it('should call onSelectAll when checkbox is clicked', () => {
       // Arrange
-      const onSelectAll = jest.fn()
+      const onSelectAll = vi.fn()
       render(
         <Actions
           {...defaultProps}
@@ -258,7 +258,7 @@ describe('Actions', () => {
             showSelect={false}
             totalOptions={5}
             selectedOptions={2}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -274,7 +274,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={undefined}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -291,7 +291,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={undefined}
             selectedOptions={2}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -308,7 +308,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={3}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -326,7 +326,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={0}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -343,7 +343,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={5}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -362,7 +362,7 @@ describe('Actions', () => {
             showSelect={false}
             totalOptions={5}
             selectedOptions={5}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -378,7 +378,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={undefined}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -395,7 +395,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={undefined}
             selectedOptions={5}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -412,7 +412,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={5}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -429,7 +429,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={0}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -446,7 +446,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={5}
             selectedOptions={4}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -469,14 +469,14 @@ describe('Actions', () => {
 
     it('should not re-render when props are the same', () => {
       // Arrange
-      const handleNextStep = jest.fn()
+      const handleNextStep = vi.fn()
       const props = {
         handleNextStep,
         disabled: false,
         showSelect: true,
         totalOptions: 5,
         selectedOptions: 3,
-        onSelectAll: jest.fn(),
+        onSelectAll: vi.fn(),
         tip: 'Test tip',
       }
 
@@ -493,14 +493,14 @@ describe('Actions', () => {
 
     it('should re-render when props change', () => {
       // Arrange
-      const handleNextStep = jest.fn()
+      const handleNextStep = vi.fn()
       const initialProps = {
         handleNextStep,
         disabled: false,
         showSelect: true,
         totalOptions: 5,
         selectedOptions: 0,
-        onSelectAll: jest.fn(),
+        onSelectAll: vi.fn(),
         tip: 'Initial tip',
       }
 
@@ -530,7 +530,7 @@ describe('Actions', () => {
           showSelect={true}
           totalOptions={0}
           selectedOptions={0}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -547,7 +547,7 @@ describe('Actions', () => {
           showSelect={true}
           totalOptions={1000000}
           selectedOptions={500000}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -566,7 +566,7 @@ describe('Actions', () => {
           {...defaultProps}
           showSelect={true}
           tip={longTip}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -585,7 +585,7 @@ describe('Actions', () => {
           {...defaultProps}
           showSelect={true}
           tip={specialTip}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -603,7 +603,7 @@ describe('Actions', () => {
           {...defaultProps}
           showSelect={true}
           tip={unicodeTip}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -620,7 +620,7 @@ describe('Actions', () => {
           showSelect={true}
           totalOptions={5}
           selectedOptions={10}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -637,7 +637,7 @@ describe('Actions', () => {
           showSelect={true}
           totalOptions={5}
           selectedOptions={-1}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -702,7 +702,7 @@ describe('Actions', () => {
           showSelect={true}
           totalOptions={5}
           selectedOptions={3}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 
@@ -716,11 +716,11 @@ describe('Actions', () => {
       // Arrange
       const allProps = {
         disabled: false,
-        handleNextStep: jest.fn(),
+        handleNextStep: vi.fn(),
         showSelect: true,
         totalOptions: 10,
         selectedOptions: 5,
-        onSelectAll: jest.fn(),
+        onSelectAll: vi.fn(),
         tip: 'All props provided',
       }
 
@@ -736,7 +736,7 @@ describe('Actions', () => {
 
     it('should render minimal component with only required props', () => {
       // Arrange & Act
-      render(<Actions handleNextStep={jest.fn()} />)
+      render(<Actions handleNextStep={vi.fn()} />)
 
       // Assert
       expect(screen.queryByText('common.operation.selectAll')).not.toBeInTheDocument()
@@ -770,7 +770,7 @@ describe('Actions', () => {
             showSelect={true}
             totalOptions={totalOptions}
             selectedOptions={selectedOptions}
-            onSelectAll={jest.fn()}
+            onSelectAll={vi.fn()}
           />,
         )
 
@@ -813,7 +813,7 @@ describe('Actions', () => {
           showSelect={true}
           totalOptions={5}
           selectedOptions={3}
-          onSelectAll={jest.fn()}
+          onSelectAll={vi.fn()}
         />,
       )
 

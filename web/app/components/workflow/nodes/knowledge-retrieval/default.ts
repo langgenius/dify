@@ -1,10 +1,11 @@
 import type { NodeDefault } from '../../types'
 import type { KnowledgeRetrievalNodeType } from './types'
-import { checkoutRerankModelConfiguredInRetrievalSettings } from './utils'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { DATASET_DEFAULT } from '@/config'
 import { RETRIEVE_TYPE } from '@/types/app'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { checkoutRerankModelConfiguredInRetrievalSettings } from './utils'
+
 const i18nPrefix = 'workflow'
 
 const metaData = genNodeMetaData({

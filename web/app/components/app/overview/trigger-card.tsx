@@ -1,24 +1,25 @@
 'use client'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { AppDetailResponse } from '@/models/app'
+import type { AppTrigger } from '@/service/use-tools'
+import type { AppSSO } from '@/types/app'
 import Link from 'next/link'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { TriggerAll } from '@/app/components/base/icons/src/vender/workflow'
 import Switch from '@/app/components/base/switch'
-import type { AppDetailResponse } from '@/models/app'
-import type { AppSSO } from '@/types/app'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
 import {
-  type AppTrigger,
+
   useAppTriggers,
   useInvalidateAppTriggers,
   useUpdateTriggerStatus,
 } from '@/service/use-tools'
 import { useAllTriggerPlugins } from '@/service/use-triggers'
 import { canFindTool } from '@/utils'
-import { useTriggerStatusStore } from '@/app/components/workflow/store/trigger-status'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { useDocLink } from '@/context/i18n'
 
 export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
@@ -162,8 +163,7 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
                 <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
                   {triggerCount > 0
                     ? t('appOverview.overview.triggerInfo.triggersAdded', { count: triggerCount })
-                    : t('appOverview.overview.triggerInfo.noTriggerAdded')
-                  }
+                    : t('appOverview.overview.triggerInfo.noTriggerAdded')}
                 </div>
               </div>
             </div>
@@ -204,7 +204,8 @@ function TriggerCard({ appInfo, onToggleResult }: ITriggerCardProps) {
         {triggerCount === 0 && (
           <div className="p-3">
             <div className="system-xs-regular leading-4 text-text-tertiary">
-              {t('appOverview.overview.triggerInfo.triggerStatusDescription')}{' '}
+              {t('appOverview.overview.triggerInfo.triggerStatusDescription')}
+              {' '}
               <Link
                 href={docLink('/guides/workflow/node/trigger')}
                 target="_blank"

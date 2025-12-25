@@ -1,9 +1,9 @@
-import { MAX_VAR_KEY_LENGTH } from '@/config'
 import type { TFunction } from 'i18next'
-import { z } from 'zod'
 import type { SchemaOptions } from './types'
-import { PipelineInputVarType } from '@/models/pipeline'
+import { z } from 'zod'
 import { InputTypeEnum } from '@/app/components/base/form/components/field/input-type-select/types'
+import { MAX_VAR_KEY_LENGTH } from '@/config'
+import { PipelineInputVarType } from '@/models/pipeline'
 
 export const TEXT_MAX_LENGTH = 256
 
@@ -31,7 +31,7 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
       message: t('appDebug.varKeyError.tooLong', { key: t('appDebug.variableConfig.varName') }),
     }).regex(/^(?!\d)\w+/, {
       message: t('appDebug.varKeyError.notStartWithNumber', { key: t('appDebug.variableConfig.varName') }),
-    }).regex(/^[a-zA-Z_]\w{0,29}$/, {
+    }).regex(/^[a-z_]\w{0,29}$/i, {
       message: t('appDebug.varKeyError.notValid', { key: t('appDebug.variableConfig.varName') }),
     }),
     label: z.string().nonempty({

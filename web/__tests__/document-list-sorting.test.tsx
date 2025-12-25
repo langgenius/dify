@@ -46,32 +46,32 @@ describe('Document List Sorting', () => {
     })
   }
 
-  test('sorts by name descending (default for UI consistency)', () => {
+  it('sorts by name descending (default for UI consistency)', () => {
     const sorted = sortDocuments(mockDocuments, 'name', 'desc')
     expect(sorted.map(doc => doc.name)).toEqual(['Gamma.docx', 'Beta.pdf', 'Alpha.txt'])
   })
 
-  test('sorts by name ascending (after toggle)', () => {
+  it('sorts by name ascending (after toggle)', () => {
     const sorted = sortDocuments(mockDocuments, 'name', 'asc')
     expect(sorted.map(doc => doc.name)).toEqual(['Alpha.txt', 'Beta.pdf', 'Gamma.docx'])
   })
 
-  test('sorts by word_count descending', () => {
+  it('sorts by word_count descending', () => {
     const sorted = sortDocuments(mockDocuments, 'word_count', 'desc')
     expect(sorted.map(doc => doc.word_count)).toEqual([800, 500, 200])
   })
 
-  test('sorts by hit_count descending', () => {
+  it('sorts by hit_count descending', () => {
     const sorted = sortDocuments(mockDocuments, 'hit_count', 'desc')
     expect(sorted.map(doc => doc.hit_count)).toEqual([25, 10, 5])
   })
 
-  test('sorts by created_at descending (newest first)', () => {
+  it('sorts by created_at descending (newest first)', () => {
     const sorted = sortDocuments(mockDocuments, 'created_at', 'desc')
     expect(sorted.map(doc => doc.created_at)).toEqual([1699123500, 1699123456, 1699123400])
   })
 
-  test('handles empty values correctly', () => {
+  it('handles empty values correctly', () => {
     const docsWithEmpty = [
       { id: '1', name: 'Test', word_count: 100, hit_count: 5, created_at: 1699123456 },
       { id: '2', name: 'Empty', word_count: 0, hit_count: 0, created_at: 1699123400 },

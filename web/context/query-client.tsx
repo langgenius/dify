@@ -16,8 +16,10 @@ const client = new QueryClient({
 
 export const TanstackQueryInitializer: FC<PropsWithChildren> = (props) => {
   const { children } = props
-  return <QueryClientProvider client={client}>
-    {children}
-    <ReactQueryDevtools initialIsOpen={false} />
-  </QueryClientProvider>
+  return (
+    <QueryClientProvider client={client}>
+      {children}
+      <ReactQueryDevtools initialIsOpen={false} />
+    </QueryClientProvider>
+  )
 }

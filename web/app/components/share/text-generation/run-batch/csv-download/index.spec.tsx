@@ -1,11 +1,11 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
+import * as React from 'react'
 import CSVDownload from './index'
 
 const mockType = { Link: 'mock-link' }
 let capturedProps: Record<string, unknown> | undefined
 
-jest.mock('react-papaparse', () => ({
+vi.mock('react-papaparse', () => ({
   useCSVDownloader: () => {
     const CSVDownloader = ({ children, ...props }: React.PropsWithChildren<Record<string, unknown>>) => {
       capturedProps = props
@@ -23,10 +23,10 @@ describe('CSVDownload', () => {
 
   beforeEach(() => {
     capturedProps = undefined
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
-  test('should render table headers and sample row for each variable', () => {
+  it('should render table headers and sample row for each variable', () => {
     render(<CSVDownload vars={vars} />)
 
     expect(screen.getByText('share.generation.csvStructureTitle')).toBeInTheDocument()
@@ -35,7 +35,7 @@ describe('CSVDownload', () => {
     expect(screen.getByText('context share.generation.field')).toBeInTheDocument()
   })
 
-  test('should configure CSV downloader with template data', () => {
+  it('should configure CSV downloader with template data', () => {
     render(<CSVDownload vars={vars} />)
 
     expect(capturedProps?.filename).toBe('template')

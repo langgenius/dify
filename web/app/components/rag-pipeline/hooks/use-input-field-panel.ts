@@ -1,6 +1,6 @@
+import type { InputFieldEditorProps } from '../components/panel/input-field/editor'
 import { useCallback, useMemo } from 'react'
 import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import type { InputFieldEditorProps } from '../components/panel/input-field/editor'
 
 export const useInputFieldPanel = () => {
   const workflowStore = useWorkflowStore()

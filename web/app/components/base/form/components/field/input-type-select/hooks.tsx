@@ -1,6 +1,3 @@
-import { InputTypeEnum } from './types'
-import { PipelineInputVarType } from '@/models/pipeline'
-import { useTranslation } from 'react-i18next'
 import {
   RiAlignLeft,
   RiCheckboxLine,
@@ -10,6 +7,9 @@ import {
   RiListCheck3,
   RiTextSnippet,
 } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import { PipelineInputVarType } from '@/models/pipeline'
+import { InputTypeEnum } from './types'
 
 const i18nFileTypeMap: Record<string, string> = {
   'number': 'number',
@@ -44,7 +44,7 @@ export const useInputTypeOptions = (supportFile: boolean) => {
   return options.map((value) => {
     return {
       value,
-      label: t(`appDebug.variableConfig.${i18nFileTypeMap[value] || value}`),
+      label: t(`appDebug.variableConfig.${i18nFileTypeMap[value] || value}` as any),
       Icon: INPUT_TYPE_ICON[value],
       type: DATA_TYPE[value],
     }

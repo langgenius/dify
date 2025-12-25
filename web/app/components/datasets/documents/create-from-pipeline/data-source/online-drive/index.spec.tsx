@@ -1,56 +1,65 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import OnlineDrive from './index'
-import Header from './header'
-import { convertOnlineDriveData, isBucketListInitiation, isFile } from './utils'
-import type { OnlineDriveFile } from '@/models/pipeline'
-import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import type { OnlineDriveFile } from '@/models/pipeline'
 import type { OnlineDriveData } from '@/types/pipeline'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { DatasourceType, OnlineDriveFileType } from '@/models/pipeline'
+import Header from './header'
+import OnlineDrive from './index'
+import { convertOnlineDriveData, isBucketListInitiation, isFile } from './utils'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useDocLink - context hook requires mocking
-const mockDocLink = jest.fn((path?: string) => `https://docs.example.com${path || ''}`)
-jest.mock('@/context/i18n', () => ({
+const mockDocLink = vi.fn((path?: string) => `https://docs.example.com${path || ''}`)
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
 // Mock dataset-detail context - context provider requires mocking
 let mockPipelineId: string | undefined = 'pipeline-123'
-jest.mock('@/context/dataset-detail', () => ({
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (s: any) => any) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock modal context - context provider requires mocking
-const mockSetShowAccountSettingModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowAccountSettingModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: (selector: (s: any) => any) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
 
 // Mock ssePost - API service requires mocking
-const mockSsePost = jest.fn()
-jest.mock('@/service/base', () => ({
-  ssePost: (...args: any[]) => mockSsePost(...args),
+const { mockSsePost } = vi.hoisted(() => ({
+  mockSsePost: vi.fn(),
+}))
+
+vi.mock('@/service/base', () => ({
+  ssePost: mockSsePost,
 }))
 
 // Mock useGetDataSourceAuth - API service hook requires mocking
-const mockUseGetDataSourceAuth = jest.fn()
-jest.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (params: any) => mockUseGetDataSourceAuth(params),
+const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
+  mockUseGetDataSourceAuth: vi.fn(),
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
 // Mock Toast
-const mockToastNotify = jest.fn()
-jest.mock('@/app/components/base/toast', () => ({
+const { mockToastNotify } = vi.hoisted(() => ({
+  mockToastNotify: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
   default: {
-    notify: (...args: any[]) => mockToastNotify(...args),
+    notify: mockToastNotify,
   },
 }))
 
@@ -68,26 +77,26 @@ const mockStoreState = {
   currentCredentialId: '',
   isTruncated: { current: false },
   currentNextPageParametersRef: { current: {} },
-  setOnlineDriveFileList: jest.fn(),
-  setKeywords: jest.fn(),
-  setSelectedFileIds: jest.fn(),
-  setBreadcrumbs: jest.fn(),
-  setPrefix: jest.fn(),
-  setBucket: jest.fn(),
-  setHasBucket: jest.fn(),
+  setOnlineDriveFileList: vi.fn(),
+  setKeywords: vi.fn(),
+  setSelectedFileIds: vi.fn(),
+  setBreadcrumbs: vi.fn(),
+  setPrefix: vi.fn(),
+  setBucket: vi.fn(),
+  setHasBucket: vi.fn(),
 }
 
-const mockGetState = jest.fn(() => mockStoreState)
+const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
-jest.mock('../store', () => ({
+vi.mock('../store', () => ({
   useDataSourceStoreWithSelector: (selector: (s: any) => any) => selector(mockStoreState),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
 // Mock Header component
-jest.mock('../base/header', () => {
-  const MockHeader = (props: any) => (
+vi.mock('../base/header', () => ({
+  default: (props: any) => (
     <div data-testid="header">
       <span data-testid="header-doc-title">{props.docTitle}</span>
       <span data-testid="header-doc-link">{props.docLink}</span>
@@ -97,13 +106,12 @@ jest.mock('../base/header', () => {
       <button data-testid="header-credential-change" onClick={() => props.onCredentialChange('new-cred-id')}>Change Credential</button>
       <span data-testid="header-credentials-count">{props.credentials?.length || 0}</span>
     </div>
-  )
-  return MockHeader
-})
+  ),
+}))
 
 // Mock FileList component
-jest.mock('./file-list', () => {
-  const MockFileList = (props: any) => (
+vi.mock('./file-list', () => ({
+  default: (props: any) => (
     <div data-testid="file-list">
       <span data-testid="file-list-count">{props.fileList?.length || 0}</span>
       <span data-testid="file-list-selected-count">{props.selectedFileIds?.length || 0}</span>
@@ -164,9 +172,8 @@ jest.mock('./file-list', () => {
         Open File
       </button>
     </div>
-  )
-  return MockFileList
-})
+  ),
+}))
 
 // ==========================================
 // Test Data Builders
@@ -191,7 +198,7 @@ const createMockOnlineDriveFile = (overrides?: Partial<OnlineDriveFile>): Online
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',
@@ -206,7 +213,7 @@ type OnlineDriveProps = React.ComponentProps<typeof OnlineDrive>
 const createDefaultProps = (overrides?: Partial<OnlineDriveProps>): OnlineDriveProps => ({
   nodeId: 'node-1',
   nodeData: createMockNodeData(),
-  onCredentialChange: jest.fn(),
+  onCredentialChange: vi.fn(),
   isInPipeline: false,
   supportBatchUpload: true,
   ...overrides,
@@ -226,13 +233,13 @@ const resetMockStoreState = () => {
   mockStoreState.currentCredentialId = ''
   mockStoreState.isTruncated = { current: false }
   mockStoreState.currentNextPageParametersRef = { current: {} }
-  mockStoreState.setOnlineDriveFileList = jest.fn()
-  mockStoreState.setKeywords = jest.fn()
-  mockStoreState.setSelectedFileIds = jest.fn()
-  mockStoreState.setBreadcrumbs = jest.fn()
-  mockStoreState.setPrefix = jest.fn()
-  mockStoreState.setBucket = jest.fn()
-  mockStoreState.setHasBucket = jest.fn()
+  mockStoreState.setOnlineDriveFileList = vi.fn()
+  mockStoreState.setKeywords = vi.fn()
+  mockStoreState.setSelectedFileIds = vi.fn()
+  mockStoreState.setBreadcrumbs = vi.fn()
+  mockStoreState.setPrefix = vi.fn()
+  mockStoreState.setBucket = vi.fn()
+  mockStoreState.setHasBucket = vi.fn()
 }
 
 // ==========================================
@@ -240,7 +247,7 @@ const resetMockStoreState = () => {
 // ==========================================
 describe('OnlineDrive', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Reset store state
     resetMockStoreState()
@@ -498,7 +505,7 @@ describe('OnlineDrive', () => {
     describe('onCredentialChange prop', () => {
       it('should call onCredentialChange with credential id', () => {
         // Arrange
-        const mockOnCredentialChange = jest.fn()
+        const mockOnCredentialChange = vi.fn()
         const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
 
         // Act
@@ -847,7 +854,7 @@ describe('OnlineDrive', () => {
     describe('Credential Change', () => {
       it('should call onCredentialChange prop', () => {
         // Arrange
-        const mockOnCredentialChange = jest.fn()
+        const mockOnCredentialChange = vi.fn()
         const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
         render(<OnlineDrive {...props} />)
 
@@ -1296,14 +1303,14 @@ describe('OnlineDrive', () => {
 // ==========================================
 describe('Header', () => {
   const createHeaderProps = (overrides?: Partial<React.ComponentProps<typeof Header>>) => ({
-    onClickConfiguration: jest.fn(),
+    onClickConfiguration: vi.fn(),
     docTitle: 'Documentation',
     docLink: 'https://docs.example.com/guide',
     ...overrides,
   })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('Rendering', () => {
@@ -1398,7 +1405,7 @@ describe('Header', () => {
     describe('onClickConfiguration prop', () => {
       it('should call onClickConfiguration when configuration icon is clicked', () => {
         // Arrange
-        const mockOnClickConfiguration = jest.fn()
+        const mockOnClickConfiguration = vi.fn()
         const props = createHeaderProps({ onClickConfiguration: mockOnClickConfiguration })
 
         // Act
