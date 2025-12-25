@@ -623,9 +623,7 @@ class WorkflowRun(Base):
         nullable=False,
         default=False,
         server_default=sa.text("false"),
-        comment=(
-            "Indicates whether the current workflow run has been archived. "
-        ),
+        comment=("Indicates whether the current workflow run has been archived. "),
     )
 
     pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
