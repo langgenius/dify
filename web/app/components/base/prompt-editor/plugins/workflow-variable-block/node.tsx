@@ -1,9 +1,8 @@
 import type { LexicalNode, NodeKey, SerializedLexicalNode } from 'lexical'
-import { DecoratorNode } from 'lexical'
-import type { WorkflowVariableBlockType } from '../../types'
-import WorkflowVariableBlockComponent from './component'
-import type { GetVarType } from '../../types'
+import type { GetVarType, WorkflowVariableBlockType } from '../../types'
 import type { Var } from '@/app/components/workflow/types'
+import { DecoratorNode } from 'lexical'
+import WorkflowVariableBlockComponent from './component'
 
 export type WorkflowNodesMap = WorkflowVariableBlockType['workflowNodesMap']
 

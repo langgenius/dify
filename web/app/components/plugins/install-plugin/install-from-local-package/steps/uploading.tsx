@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { RiLoader2Line } from '@remixicon/react'
-import Card from '../../../card'
 import type { Dependency, PluginDeclaration } from '../../../types'
-import Button from '@/app/components/base/button'
+import { RiLoader2Line } from '@remixicon/react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import { uploadFile } from '@/service/plugins'
+import Card from '../../../card'
+
 const i18nPrefix = 'plugin.installModal'
 
 type Props = {
@@ -58,18 +59,18 @@ const Uploading: FC<Props> = ({
   }, [])
   return (
     <>
-      <div className='flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3'>
-        <div className='flex items-center gap-1 self-stretch'>
-          <RiLoader2Line className='h-4 w-4 animate-spin-slow text-text-accent' />
-          <div className='system-md-regular text-text-secondary'>
+      <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
+        <div className="flex items-center gap-1 self-stretch">
+          <RiLoader2Line className="h-4 w-4 animate-spin-slow text-text-accent" />
+          <div className="system-md-regular text-text-secondary">
             {t(`${i18nPrefix}.uploadingPackage`, {
               packageName: fileName,
             })}
           </div>
         </div>
-        <div className='flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2'>
+        <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
           <Card
-            className='w-full'
+            className="w-full"
             payload={{ name: fileName } as any}
             isLoading
             loadingFileName={fileName}
@@ -79,13 +80,13 @@ const Uploading: FC<Props> = ({
       </div>
 
       {/* Action Buttons */}
-      <div className='flex items-center justify-end gap-2 self-stretch p-6 pt-5'>
-        <Button variant='secondary' className='min-w-[72px]' onClick={onCancel}>
+      <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
+        <Button variant="secondary" className="min-w-[72px]" onClick={onCancel}>
           {t('common.operation.cancel')}
         </Button>
         <Button
-          variant='primary'
-          className='min-w-[72px]'
+          variant="primary"
+          className="min-w-[72px]"
           disabled
         >
           {t(`${i18nPrefix}.install`)}

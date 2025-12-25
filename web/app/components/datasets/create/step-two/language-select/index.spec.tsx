@@ -1,8 +1,8 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import LanguageSelect from './index'
 import type { ILanguageSelectProps } from './index'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { languages } from '@/i18n-config/language'
+import LanguageSelect from './index'
 
 // Get supported languages for test assertions
 const supportedLanguages = languages.filter(lang => lang.supported)

@@ -245,6 +245,7 @@ const translation = {
     button: 'ファイルまたはフォルダをドラッグアンドドロップ、または',
     browse: '閲覧',
     tip: '{{supportTypes}}（最大 {{batchCount}}、各 {{size}}MB）',
+    fileSizeLimitExceeded: 'ファイルサイズが {{size}}MB の制限を超えています',
   },
 }
 

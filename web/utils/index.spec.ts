@@ -408,7 +408,7 @@ describe('randomString extended', () => {
   })
 
   it('should only contain valid characters', () => {
-    const validChars = /^[0-9a-zA-Z_-]+$/
+    const validChars = /^[\w-]+$/
     const str = randomString(100)
     expect(validChars.test(str)).toBe(true)
   })

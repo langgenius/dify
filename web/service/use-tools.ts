@@ -1,19 +1,19 @@
-import { del, get, post, put } from './base'
+import type { QueryKey } from '@tanstack/react-query'
 import type {
   Collection,
   MCPServerDetail,
   Tool,
 } from '@/app/components/tools/types'
-import { CollectionType } from '@/app/components/tools/types'
 import type { RAGRecommendedPlugins, ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
-import { useInvalid } from './use-base'
-import type { QueryKey } from '@tanstack/react-query'
 import {
   useMutation,
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
+import { CollectionType } from '@/app/components/tools/types'
+import { del, get, post, put } from './base'
+import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'tools'
 
@@ -160,8 +160,8 @@ export const useDeleteMCP = ({
 export const useAuthorizeMCP = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'authorize-mcp'],
-    mutationFn: (payload: { provider_id: string; }) => {
-      return post<{ result?: string; authorization_url?: string }>('/workspaces/current/tool-provider/mcp/auth', {
+    mutationFn: (payload: { provider_id: string }) => {
+      return post<{ result?: string, authorization_url?: string }>('/workspaces/current/tool-provider/mcp/auth', {
         body: payload,
       })
     },
@@ -171,7 +171,7 @@ export const useAuthorizeMCP = () => {
 export const useUpdateMCPAuthorizationToken = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'refresh-mcp-server-code'],
-    mutationFn: (payload: { provider_id: string; authorization_code: string }) => {
+    mutationFn: (payload: { provider_id: string, authorization_code: string }) => {
       return get<MCPServerDetail>('/workspaces/current/tool-provider/mcp/token', {
         params: {
           ...payload,
@@ -194,7 +194,8 @@ export const useInvalidateMCPTools = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'get-MCP-provider-tool', providerID],
-      })
+      },
+    )
   }
 }
 
@@ -217,7 +218,8 @@ export const useInvalidateMCPServerDetail = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'MCPServerDetail', appID],
-      })
+      },
+    )
   }
 }
 
@@ -281,7 +283,8 @@ export const useInvalidateBuiltinProviderInfo = () => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'builtin-provider-info', providerName],
-      })
+      },
+    )
   }
 }
 

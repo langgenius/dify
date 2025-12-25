@@ -1,9 +1,9 @@
-import React from 'react'
+import type { ActionItem } from './actions/types'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import { Command } from 'cmdk'
+import * as React from 'react'
 import CommandSelector from './command-selector'
-import type { ActionItem } from './actions/types'
 
 vi.mock('next/navigation', () => ({
   usePathname: () => '/app',
@@ -40,7 +40,7 @@ const createActions = (): Record<string, ActionItem> => ({
 })
 
 describe('CommandSelector', () => {
-  test('should list contextual search actions and notify selection', async () => {
+  it('should list contextual search actions and notify selection', async () => {
     const actions = createActions()
     const onSelect = vi.fn()
 
@@ -49,8 +49,8 @@ describe('CommandSelector', () => {
         <CommandSelector
           actions={actions}
           onCommandSelect={onSelect}
-          searchFilter='app'
-          originalQuery='@app'
+          searchFilter="app"
+          originalQuery="@app"
         />
       </Command>,
     )
@@ -61,7 +61,7 @@ describe('CommandSelector', () => {
     expect(onSelect).toHaveBeenCalledWith('@app')
   })
 
-  test('should render slash commands when query starts with slash', async () => {
+  it('should render slash commands when query starts with slash', async () => {
     const actions = createActions()
     const onSelect = vi.fn()
 
@@ -70,8 +70,8 @@ describe('CommandSelector', () => {
         <CommandSelector
           actions={actions}
           onCommandSelect={onSelect}
-          searchFilter='zen'
-          originalQuery='/zen'
+          searchFilter="zen"
+          originalQuery="/zen"
         />
       </Command>,
     )

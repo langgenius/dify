@@ -1,11 +1,11 @@
 'use client'
 
-import React from 'react'
-import type { Item } from '@/app/components/base/select'
-import { PortalSelect } from '@/app/components/base/select'
-import Button from '@/app/components/base/button'
 import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../../types'
+import type { Item } from '@/app/components/base/select'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { PortalSelect } from '@/app/components/base/select'
 import { useGitHubUpload } from '../../hooks'
 
 const i18nPrefix = 'plugin.installFromGitHub'
@@ -46,7 +46,8 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   const { handleUpload } = useGitHubUpload()
 
   const handleUploadPackage = async () => {
-    if (isUploading) return
+    if (isUploading)
+      return
     setIsUploading(true)
     try {
       const repo = repoUrl.replace('https://github.com/', '')
@@ -71,10 +72,10 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
   return (
     <>
       <label
-        htmlFor='version'
-        className='flex flex-col items-start justify-center self-stretch text-text-secondary'
+        htmlFor="version"
+        className="flex flex-col items-start justify-center self-stretch text-text-secondary"
       >
-        <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectVersion`)}</span>
+        <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`)}</span>
       </label>
       <PortalSelect
         value={selectedVersion}
@@ -82,14 +83,14 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         items={versions}
         installedValue={updatePayload?.originalPackageInfo.version}
         placeholder={t(`${i18nPrefix}.selectVersionPlaceholder`) || ''}
-        popupClassName='w-[512px] z-[1001]'
-        triggerClassName='text-components-input-text-filled'
+        popupClassName="w-[512px] z-[1001]"
+        triggerClassName="text-components-input-text-filled"
       />
       <label
-        htmlFor='package'
-        className='flex flex-col items-start justify-center self-stretch text-text-secondary'
+        htmlFor="package"
+        className="flex flex-col items-start justify-center self-stretch text-text-secondary"
       >
-        <span className='system-sm-semibold'>{t(`${i18nPrefix}.selectPackage`)}</span>
+        <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`)}</span>
       </label>
       <PortalSelect
         value={selectedPackage}
@@ -97,23 +98,24 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         items={packages}
         readonly={!selectedVersion}
         placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`) || ''}
-        popupClassName='w-[512px] z-[1001]'
-        triggerClassName='text-components-input-text-filled'
+        popupClassName="w-[512px] z-[1001]"
+        triggerClassName="text-components-input-text-filled"
       />
-      <div className='mt-4 flex items-center justify-end gap-2 self-stretch'>
+      <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isEdit
-          && <Button
-            variant='secondary'
-            className='min-w-[72px]'
-            onClick={onBack}
-            disabled={isUploading}
-          >
-            {t('plugin.installModal.back')}
-          </Button>
-        }
+          && (
+            <Button
+              variant="secondary"
+              className="min-w-[72px]"
+              onClick={onBack}
+              disabled={isUploading}
+            >
+              {t('plugin.installModal.back')}
+            </Button>
+          )}
         <Button
-          variant='primary'
-          className='min-w-[72px]'
+          variant="primary"
+          className="min-w-[72px]"
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >

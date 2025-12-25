@@ -24,7 +24,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('createNavigationPath', () => {
-    test('preserves query parameters by default', () => {
+    it('preserves query parameters by default', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3&limit=10&keyword=test' },
         writable: true,
@@ -34,7 +34,7 @@ describe('Navigation Utilities', () => {
       expect(path).toBe('/datasets/123/documents?page=3&limit=10&keyword=test')
     })
 
-    test('returns clean path when preserveParams is false', () => {
+    it('returns clean path when preserveParams is false', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3&limit=10' },
         writable: true,
@@ -44,7 +44,7 @@ describe('Navigation Utilities', () => {
       expect(path).toBe('/datasets/123/documents')
     })
 
-    test('handles empty query parameters', () => {
+    it('handles empty query parameters', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '' },
         writable: true,
@@ -54,7 +54,7 @@ describe('Navigation Utilities', () => {
       expect(path).toBe('/datasets/123/documents')
     })
 
-    test('handles errors gracefully', () => {
+    it('handles errors gracefully', () => {
       // Mock window.location to throw an error
       Object.defineProperty(window, 'location', {
         get: () => {
@@ -74,7 +74,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('createBackNavigation', () => {
-    test('creates function that navigates with preserved params', () => {
+    it('creates function that navigates with preserved params', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=2&limit=25' },
         writable: true,
@@ -86,7 +86,7 @@ describe('Navigation Utilities', () => {
       expect(mockPush).toHaveBeenCalledWith('/datasets/123/documents?page=2&limit=25')
     })
 
-    test('creates function that navigates without params when specified', () => {
+    it('creates function that navigates without params when specified', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=2&limit=25' },
         writable: true,
@@ -100,7 +100,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('extractQueryParams', () => {
-    test('extracts specified parameters', () => {
+    it('extracts specified parameters', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3&limit=10&keyword=test&other=value' },
         writable: true,
@@ -114,7 +114,7 @@ describe('Navigation Utilities', () => {
       })
     })
 
-    test('handles missing parameters', () => {
+    it('handles missing parameters', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3' },
         writable: true,
@@ -126,7 +126,7 @@ describe('Navigation Utilities', () => {
       })
     })
 
-    test('handles errors gracefully', () => {
+    it('handles errors gracefully', () => {
       Object.defineProperty(window, 'location', {
         get: () => {
           throw new Error('Location access denied')
@@ -145,7 +145,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('createNavigationPathWithParams', () => {
-    test('creates path with specified parameters', () => {
+    it('creates path with specified parameters', () => {
       const path = createNavigationPathWithParams('/datasets/123/documents', {
         page: 1,
         limit: 25,
@@ -155,7 +155,7 @@ describe('Navigation Utilities', () => {
       expect(path).toBe('/datasets/123/documents?page=1&limit=25&keyword=search+term')
     })
 
-    test('filters out empty values', () => {
+    it('filters out empty values', () => {
       const path = createNavigationPathWithParams('/datasets/123/documents', {
         page: 1,
         limit: '',
@@ -166,7 +166,7 @@ describe('Navigation Utilities', () => {
       expect(path).toBe('/datasets/123/documents?page=1&keyword=test')
     })
 
-    test('handles errors gracefully', () => {
+    it('handles errors gracefully', () => {
       // Mock URLSearchParams to throw an error
       const originalURLSearchParams = globalThis.URLSearchParams
       globalThis.URLSearchParams = vi.fn(() => {
@@ -185,7 +185,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('mergeQueryParams', () => {
-    test('merges new params with existing ones', () => {
+    it('merges new params with existing ones', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3&limit=10' },
         writable: true,
@@ -199,7 +199,7 @@ describe('Navigation Utilities', () => {
       expect(result).toContain('keyword=test') // added
     })
 
-    test('removes parameters when value is null', () => {
+    it('removes parameters when value is null', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3&limit=10&keyword=test' },
         writable: true,
@@ -214,7 +214,7 @@ describe('Navigation Utilities', () => {
       expect(result).toContain('filter=active')
     })
 
-    test('creates fresh params when preserveExisting is false', () => {
+    it('creates fresh params when preserveExisting is false', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3&limit=10' },
         writable: true,
@@ -228,7 +228,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('datasetNavigation', () => {
-    test('backToDocuments creates correct navigation function', () => {
+    it('backToDocuments creates correct navigation function', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=2&limit=25' },
         writable: true,
@@ -240,14 +240,14 @@ describe('Navigation Utilities', () => {
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-123/documents?page=2&limit=25')
     })
 
-    test('toDocumentDetail creates correct navigation function', () => {
+    it('toDocumentDetail creates correct navigation function', () => {
       const detailFn = datasetNavigation.toDocumentDetail(mockRouter, 'dataset-123', 'doc-456')
       detailFn()
 
       expect(mockPush).toHaveBeenCalledWith('/datasets/dataset-123/documents/doc-456')
     })
 
-    test('toDocumentSettings creates correct navigation function', () => {
+    it('toDocumentSettings creates correct navigation function', () => {
       const settingsFn = datasetNavigation.toDocumentSettings(mockRouter, 'dataset-123', 'doc-456')
       settingsFn()
 
@@ -256,7 +256,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('Real-world Integration Scenarios', () => {
-    test('complete user workflow: list -> detail -> back', () => {
+    it('complete user workflow: list -> detail -> back', () => {
       // User starts on page 3 with search
       Object.defineProperty(window, 'location', {
         value: { search: '?page=3&keyword=API&limit=25' },
@@ -273,7 +273,7 @@ describe('Navigation Utilities', () => {
       expect(mockPush).toHaveBeenCalledWith('/datasets/main-dataset/documents?page=3&keyword=API&limit=25')
     })
 
-    test('user applies filters then views document', () => {
+    it('user applies filters then views document', () => {
       // Complex filter state
       Object.defineProperty(window, 'location', {
         value: { search: '?page=1&limit=50&status=active&type=pdf&sort=created_at&order=desc' },
@@ -288,7 +288,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('Edge Cases and Error Handling', () => {
-    test('handles special characters in query parameters', () => {
+    it('handles special characters in query parameters', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?keyword=hello%20world&filter=type%3Apdf&tag=%E4%B8%AD%E6%96%87' },
         writable: true,
@@ -300,7 +300,7 @@ describe('Navigation Utilities', () => {
       expect(path).toContain('%E4%B8%AD%E6%96%87')
     })
 
-    test('handles duplicate query parameters', () => {
+    it('handles duplicate query parameters', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?tag=tag1&tag=tag2&tag=tag3' },
         writable: true,
@@ -311,7 +311,7 @@ describe('Navigation Utilities', () => {
       expect(params.tag).toBe('tag1')
     })
 
-    test('handles very long query strings', () => {
+    it('handles very long query strings', () => {
       const longValue = 'a'.repeat(1000)
       Object.defineProperty(window, 'location', {
         value: { search: `?data=${longValue}` },
@@ -323,7 +323,7 @@ describe('Navigation Utilities', () => {
       expect(path.length).toBeGreaterThan(1000)
     })
 
-    test('handles empty string values in query parameters', () => {
+    it('handles empty string values in query parameters', () => {
       const path = createNavigationPathWithParams('/datasets/123/documents', {
         page: 1,
         keyword: '',
@@ -336,7 +336,7 @@ describe('Navigation Utilities', () => {
       expect(path).not.toContain('filter=')
     })
 
-    test('handles null and undefined values in mergeQueryParams', () => {
+    it('handles null and undefined values in mergeQueryParams', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=1&limit=10&keyword=test' },
         writable: true,
@@ -355,7 +355,7 @@ describe('Navigation Utilities', () => {
       expect(result).toContain('sort=name')
     })
 
-    test('handles navigation with hash fragments', () => {
+    it('handles navigation with hash fragments', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=1', hash: '#section-2' },
         writable: true,
@@ -366,7 +366,7 @@ describe('Navigation Utilities', () => {
       expect(path).toBe('/datasets/123/documents?page=1')
     })
 
-    test('handles malformed query strings gracefully', () => {
+    it('handles malformed query strings gracefully', () => {
       Object.defineProperty(window, 'location', {
         value: { search: '?page=1&invalid&limit=10&=value&key=' },
         writable: true,
@@ -382,7 +382,7 @@ describe('Navigation Utilities', () => {
   })
 
   describe('Performance Tests', () => {
-    test('handles large number of query parameters efficiently', () => {
+    it('handles large number of query parameters efficiently', () => {
       const manyParams = Array.from({ length: 50 }, (_, i) => `param${i}=value${i}`).join('&')
       Object.defineProperty(window, 'location', {
         value: { search: `?${manyParams}` },

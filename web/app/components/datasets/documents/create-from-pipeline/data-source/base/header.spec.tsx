@@ -1,7 +1,7 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import Header from './header'
 import type { DataSourceCredential } from '@/types/pipeline'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import Header from './header'
 
 // Mock CredentialTypeEnum to avoid deep import chain issues
 enum MockCredentialTypeEnum {
@@ -74,8 +74,7 @@ const createMockCredentials = (count: number = 3): DataSourceCredential[] =>
       name: `Credential ${i + 1}`,
       avatar_url: `https://example.com/avatar-${i + 1}.png`,
       is_default: i === 0,
-    }),
-  )
+    }))
 
 type HeaderProps = React.ComponentProps<typeof Header>
 

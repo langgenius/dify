@@ -1,14 +1,14 @@
 'use client'
 
-import { SWRConfig } from 'swr'
-import { useCallback, useEffect, useState } from 'react'
 import type { ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
-import { fetchSetupStatus } from '@/service/common'
+import { useCallback, useEffect, useState } from 'react'
+import { SWRConfig } from 'swr'
 import {
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
+import { fetchSetupStatus } from '@/service/common'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 
 type SwrInitializerProps = {
@@ -71,16 +71,17 @@ const SwrInitializer = ({
 
   return init
     ? (
-      <SWRConfig value={{
-        shouldRetryOnError: false,
-        revalidateOnFocus: false,
-        dedupingInterval: 60000,
-        focusThrottleInterval: 5000,
-        provider: () => new Map(),
-      }}>
-        {children}
-      </SWRConfig>
-    )
+        <SWRConfig value={{
+          shouldRetryOnError: false,
+          revalidateOnFocus: false,
+          dedupingInterval: 60000,
+          focusThrottleInterval: 5000,
+          provider: () => new Map(),
+        }}
+        >
+          {children}
+        </SWRConfig>
+      )
     : null
 }
 

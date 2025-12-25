@@ -1,8 +1,8 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
-import SchemaNode from './schema-node'
-import { useSchemaNodeOperations } from './hooks'
 import { cn } from '@/utils/classnames'
+import { useSchemaNodeOperations } from './hooks'
+import SchemaNode from './schema-node'
 
 export type VisualEditorProps = {
   className?: string
