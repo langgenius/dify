@@ -441,6 +441,7 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
         if agent_thoughts:
             # Agent-Chat mode: merge MessageAgentThought records
             content_pos = 0
+            cleaned_answer_parts: list[str] = []
             for thought in agent_thoughts:
                 # Add thought/reasoning
                 if thought.thought:
@@ -466,10 +467,26 @@ class EasyUIBasedGenerateTaskPipeline(BasedGenerateTaskPipeline):
 
                 # Add answer content if present
                 if thought.answer:
-                    start = content_pos
-                    end = content_pos + len(thought.answer)
-                    sequence.append({"type": "content", "start": start, "end": end})
-                    content_pos = end
+                    content_text = thought.answer
+                    if "<think" in content_text.lower():
+                        clean_answer, extracted_reasoning = self._split_reasoning_from_answer(content_text)
+                        if extracted_reasoning:
+                            reasoning_list.append(extracted_reasoning)
+                            sequence.append({"type": "reasoning", "index": len(reasoning_list) - 1})
+                        content_text = clean_answer
+                        thought.answer = clean_answer or content_text
+
+                    if content_text:
+                        start = content_pos
+                        end = content_pos + len(content_text)
+                        sequence.append({"type": "content", "start": start, "end": end})
+                        content_pos = end
+                        cleaned_answer_parts.append(content_text)
+
+            if cleaned_answer_parts:
+                merged_answer = "".join(cleaned_answer_parts)
+                message.answer = merged_answer
+                llm_result.message.content = merged_answer
         else:
             # Completion/Chat mode: use reasoning_content from llm_result
             reasoning_content = llm_result.reasoning_content

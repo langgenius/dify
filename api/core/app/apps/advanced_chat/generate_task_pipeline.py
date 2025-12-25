@@ -529,7 +529,9 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         match chunk_type:
             case ChunkType.TEXT:
                 self._stream_buffer.record_text_chunk(delta_text)
+                self._task_state.answer += delta_text
             case ChunkType.THOUGHT:
+                # Reasoning should not be part of final answer text
                 self._stream_buffer.record_thought_chunk(delta_text)
             case ChunkType.TOOL_CALL:
                 self._stream_buffer.record_tool_call(
@@ -542,8 +544,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                     tool_call_id=tool_call_id,
                     result=delta_text,
                 )
+                self._task_state.answer += delta_text
 
-        self._task_state.answer += delta_text
         yield self._message_cycle_manager.message_to_stream_response(
             answer=delta_text,
             message_id=self._message_id,
@@ -920,6 +922,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
 
         # If there are assistant files, remove markdown image links from answer
         answer_text = self._task_state.answer
+        answer_text = self._strip_think_blocks(answer_text)
         if self._recorded_files:
             # Remove markdown image links since we're storing files separately
             answer_text = re.sub(r"!\[.*?\]\(.*?\)", "", answer_text).strip()
@@ -970,6 +973,19 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             for file in self._recorded_files
         ]
         session.add_all(message_files)
+
+        # Save generation detail (reasoning/tool calls/sequence) from stream buffer
+        self._save_generation_detail(session=session, message=message)
+
+    @staticmethod
+    def _strip_think_blocks(text: str) -> str:
+        """Remove <think>...</think> blocks (including their content) from text."""
+        if not text or "<think" not in text.lower():
+            return text
+
+        clean_text = re.sub(r"<think[^>]*>.*?</think>", "", text, flags=re.IGNORECASE | re.DOTALL)
+        clean_text = re.sub(r"\n\s*\n", "\n\n", clean_text).strip()
+        return clean_text
 
     def _save_generation_detail(self, *, session: Session, message: Message) -> None:
         """
