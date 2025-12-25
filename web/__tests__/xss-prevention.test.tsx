@@ -5,8 +5,8 @@
  * components have been properly fixed by replacing dangerouslySetInnerHTML with safe React rendering.
  */
 
-import React from 'react'
 import { cleanup, render } from '@testing-library/react'
+import * as React from 'react'
 import BlockInput from '../app/components/base/block-input'
 import SupportVarInput from '../app/components/workflow/nodes/_base/components/support-var-input'
 

@@ -1,11 +1,3 @@
-import {
-  memo,
-  useCallback,
-} from 'react'
-import { RiAddLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
-import { cn } from '@/utils/classnames'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -13,7 +5,15 @@ import type {
   ModelCredential,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { RiAddLine } from '@remixicon/react'
+import {
+  memo,
+  useCallback,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import { ConfigurationMethodEnum, ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { Authorized } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { cn } from '@/utils/classnames'
 
 type AddCredentialInLoadBalancingProps = {
   provider: ModelProvider
@@ -49,8 +49,9 @@ const AddCredentialInLoadBalancing = ({
       <div className={cn(
         'system-sm-medium flex h-8 items-center rounded-lg px-3 text-text-accent hover:bg-state-base-hover',
         open && 'bg-state-base-hover',
-      )}>
-        <RiAddLine className='mr-2 h-4 w-4' />
+      )}
+      >
+        <RiAddLine className="mr-2 h-4 w-4" />
         {t('common.modelProvider.auth.addCredential')}
       </div>
     )
@@ -78,12 +79,14 @@ const AddCredentialInLoadBalancing = ({
       ]}
       showModelTitle={!isCustomModel}
       configurationMethod={configurationMethod}
-      currentCustomConfigurationModelFixedFields={isCustomModel ? {
-        __model_name: model.model,
-        __model_type: model.model_type,
-      } : undefined}
+      currentCustomConfigurationModelFixedFields={isCustomModel
+        ? {
+            __model_name: model.model,
+            __model_type: model.model_type,
+          }
+        : undefined}
       onItemClick={onSelectCredential}
-      placement='bottom-start'
+      placement="bottom-start"
       popupTitle={isCustomModel ? t('common.modelProvider.auth.modelCredentials') : ''}
     />
   )

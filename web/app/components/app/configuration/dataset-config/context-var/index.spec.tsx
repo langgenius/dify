@@ -1,8 +1,8 @@
-import * as React from 'react'
+import type { Props } from './var-picker'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import ContextVar from './index'
-import type { Props } from './var-picker'
 
 // Mock external dependencies only
 vi.mock('next/navigation', () => ({
@@ -15,7 +15,7 @@ type PortalToFollowElemProps = {
   open?: boolean
   onOpenChange?: (open: boolean) => void
 }
-type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode; asChild?: boolean }
+type PortalToFollowElemTriggerProps = React.HTMLAttributes<HTMLElement> & { children?: React.ReactNode, asChild?: boolean }
 type PortalToFollowElemContentProps = React.HTMLAttributes<HTMLDivElement> & { children?: React.ReactNode }
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => {
@@ -31,7 +31,8 @@ vi.mock('@/app/components/base/portal-to-follow-elem', () => {
 
   const PortalToFollowElemContent = ({ children, ...props }: PortalToFollowElemContentProps) => {
     const { open } = React.useContext(PortalContext)
-    if (!open) return null
+    if (!open)
+      return null
     return (
       <div data-testid="portal-content" {...props}>
         {children}

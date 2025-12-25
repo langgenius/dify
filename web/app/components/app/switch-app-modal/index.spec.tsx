@@ -1,12 +1,12 @@
-import React from 'react'
+import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SwitchAppModal from './index'
+import * as React from 'react'
 import { ToastContext } from '@/app/components/base/toast'
-import type { App } from '@/types/app'
-import { AppModeEnum } from '@/types/app'
 import { Plan } from '@/app/components/billing/type'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { AppModeEnum } from '@/types/app'
+import SwitchAppModal from './index'
 
 const mockPush = vi.fn()
 const mockReplace = vi.fn()
@@ -73,7 +73,12 @@ vi.mock('@/context/provider-context', () => ({
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   __esModule: true,
-  default: ({ loc }: { loc: string }) => <div data-testid="apps-full">AppsFull {loc}</div>,
+  default: ({ loc }: { loc: string }) => (
+    <div data-testid="apps-full">
+      AppsFull
+      {loc}
+    </div>
+  ),
 }))
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({

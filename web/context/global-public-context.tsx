@@ -1,12 +1,12 @@
 'use client'
-import { create } from 'zustand'
-import { useQuery } from '@tanstack/react-query'
 import type { FC, PropsWithChildren } from 'react'
-import { useEffect } from 'react'
 import type { SystemFeatures } from '@/types/feature'
-import { defaultSystemFeatures } from '@/types/feature'
-import { getSystemFeatures } from '@/service/common'
+import { useQuery } from '@tanstack/react-query'
+import { useEffect } from 'react'
+import { create } from 'zustand'
 import Loading from '@/app/components/base/loading'
+import { getSystemFeatures } from '@/service/common'
+import { defaultSystemFeatures } from '@/types/feature'
 
 type GlobalPublicStore = {
   isGlobalPending: boolean
@@ -40,7 +40,7 @@ const GlobalPublicStoreProvider: FC<PropsWithChildren> = ({
   }, [isPending, setIsPending])
 
   if (isPending)
-    return <div className='flex h-screen w-screen items-center justify-center'><Loading /></div>
+    return <div className="flex h-screen w-screen items-center justify-center"><Loading /></div>
   return <>{children}</>
 }
 export default GlobalPublicStoreProvider

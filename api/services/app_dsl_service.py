@@ -155,6 +155,7 @@ class AppDslService:
                     parsed_url.scheme == "https"
                     and parsed_url.netloc == "github.com"
                     and parsed_url.path.endswith((".yml", ".yaml"))
+                    and "/blob/" in parsed_url.path
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")

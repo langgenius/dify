@@ -1,13 +1,14 @@
-import { useState } from 'react'
+import type { OffsetOptions } from '@floating-ui/react'
 import type { FC, ReactNode } from 'react'
-import { FloatingFocusManager, type OffsetOptions, autoUpdate, flip, offset, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
+import type { SliceProps } from './type'
+import { autoUpdate, flip, FloatingFocusManager, offset, shift, useDismiss, useFloating, useHover, useInteractions, useRole } from '@floating-ui/react'
 import { RiDeleteBinLine } from '@remixicon/react'
 // @ts-expect-error no types available
 import lineClamp from 'line-clamp'
-import type { SliceProps } from './type'
-import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared'
-import { cn } from '@/utils/classnames'
+import { useState } from 'react'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import { cn } from '@/utils/classnames'
+import { SliceContainer, SliceContent, SliceDivider, SliceLabel } from './shared'
 
 type EditSliceProps = SliceProps<{
   label: ReactNode
@@ -55,7 +56,8 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
 
   return (
     <>
-      <SliceContainer {...rest}
+      <SliceContainer
+        {...rest}
         className={cn('mr-0 block', className)}
         ref={(ref) => {
           refs.setReference(ref)
@@ -65,44 +67,46 @@ export const EditSlice: FC<EditSliceProps> = (props) => {
         {...getReferenceProps()}
       >
         <SliceLabel
-          className={cn(isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface',
-            labelClassName)}
+          className={cn(isDestructive && '!bg-state-destructive-solid !text-text-primary-on-surface', labelClassName)}
           labelInnerClassName={labelInnerClassName}
         >
           {label}
         </SliceLabel>
         <SliceContent
-          className={cn(isDestructive && '!bg-state-destructive-hover-alt',
-            contentClassName)}
+          className={cn(isDestructive && '!bg-state-destructive-hover-alt', contentClassName)}
         >
           {text}
         </SliceContent>
-        {showDivider && <SliceDivider
-          className={cn(isDestructive && '!bg-state-destructive-hover-alt')}
-        />}
-        {delBtnShow && <FloatingFocusManager
-          context={context}
-        >
-          <span
-            ref={refs.setFloating}
-            style={floatingStyles}
-            {...getFloatingProps()}
-            className='inline-flex items-center justify-center rounded-lg bg-components-actionbar-bg p-1 shadow'
-            onMouseEnter={() => setDelBtnHover(true)}
-            onMouseLeave={() => setDelBtnHover(false)}
+        {showDivider && (
+          <SliceDivider
+            className={cn(isDestructive && '!bg-state-destructive-hover-alt')}
+          />
+        )}
+        {delBtnShow && (
+          <FloatingFocusManager
+            context={context}
           >
-            <ActionButton
-              onClick={(e) => {
-                e.stopPropagation()
-                onDelete()
-                setDelBtnShow(false)
-              }}
-              state={ActionButtonState.Destructive}
+            <span
+              ref={refs.setFloating}
+              style={floatingStyles}
+              {...getFloatingProps()}
+              className="inline-flex items-center justify-center rounded-lg bg-components-actionbar-bg p-1 shadow"
+              onMouseEnter={() => setDelBtnHover(true)}
+              onMouseLeave={() => setDelBtnHover(false)}
             >
-              <RiDeleteBinLine className='h-4 w-4' />
-            </ActionButton>
-          </span>
-        </FloatingFocusManager>}
+              <ActionButton
+                onClick={(e) => {
+                  e.stopPropagation()
+                  onDelete()
+                  setDelBtnShow(false)
+                }}
+                state={ActionButtonState.Destructive}
+              >
+                <RiDeleteBinLine className="h-4 w-4" />
+              </ActionButton>
+            </span>
+          </FloatingFocusManager>
+        )}
       </SliceContainer>
     </>
   )

@@ -1,12 +1,12 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import Actions from './actions'
-import Header from './header'
-import Form from './form'
 import type { BaseConfiguration } from '@/app/components/base/form/form-scenarios/base/types'
-import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { z } from 'zod'
+import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
 import Toast from '@/app/components/base/toast'
+import Actions from './actions'
+import Form from './form'
+import Header from './header'
 
 // ==========================================
 // Spy on Toast.notify for validation tests

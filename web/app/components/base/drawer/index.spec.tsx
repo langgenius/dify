@@ -1,7 +1,7 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import Drawer from './index'
 import type { IDrawerProps } from './index'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import Drawer from './index'
 
 // Capture dialog onClose for testing
 let capturedDialogOnClose: (() => void) | null = null
@@ -56,7 +56,7 @@ vi.mock('@headlessui/react', () => ({
 
 // Mock XMarkIcon
 vi.mock('@heroicons/react/24/outline', () => ({
-  XMarkIcon: ({ className, onClick }: { className: string; onClick?: () => void }) => (
+  XMarkIcon: ({ className, onClick }: { className: string, onClick?: () => void }) => (
     <svg data-testid="close-icon" className={className} onClick={onClick} />
   ),
 }))

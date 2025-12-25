@@ -1,7 +1,7 @@
 'use client'
 
-import { scan } from 'react-scan'
 import { useEffect } from 'react'
+import { scan } from 'react-scan'
 import { IS_DEV } from '@/config'
 
 export function ReactScan() {

@@ -21,10 +21,10 @@ pnpm test
 pnpm test:watch
 
 # Generate coverage report
-pnpm test -- --coverage
+pnpm test:coverage
 
 # Run specific file
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 ```
 
 ## Project Test Setup
@@ -266,8 +266,8 @@ const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs =
 
 ### Example Structure
 
-```typescript
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+```tsx
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Component from './index'
 
 // ✅ Import real project components (DO NOT mock these)
@@ -286,18 +286,18 @@ let mockSharedState = false
 
 describe('ComponentName', () => {
   beforeEach(() => {
-    vi.clearAllMocks()  // ✅ Reset mocks before each test
-    mockSharedState = false  // ✅ Reset shared state if used in mocks
+    vi.clearAllMocks() // ✅ Reset mocks before each test
+    mockSharedState = false // ✅ Reset shared state if used in mocks
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       // Arrange
       const props = { title: 'Test' }
-      
+
       // Act
       render(<Component {...props} />)
-      
+
       // Assert
       expect(screen.getByText('Test')).toBeInTheDocument()
     })
@@ -307,9 +307,9 @@ describe('ComponentName', () => {
     it('should handle click events', () => {
       const handleClick = vi.fn()
       render(<Component onClick={handleClick} />)
-      
+
       fireEvent.click(screen.getByRole('button'))
-      
+
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
@@ -348,26 +348,27 @@ describe('ComponentName', () => {
 
 1. **Example - Correct mock with conditional rendering**:
 
-```typescript
+```tsx
 // ✅ CORRECT: Matches actual component behavior
 let mockPortalOpenState = false
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open, ...props }: any) => {
-    mockPortalOpenState = open || false  // Update shared state
+    mockPortalOpenState = open || false // Update shared state
     return <div data-open={open}>{children}</div>
   },
   PortalToFollowElemContent: ({ children }: any) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockPortalOpenState) return null
+    if (!mockPortalOpenState)
+      return null
     return <div>{children}</div>
   },
 }))
 
 describe('Component', () => {
   beforeEach(() => {
-    vi.clearAllMocks()  // ✅ Reset mock call history
-    mockPortalOpenState = false  // ✅ Reset shared state
+    vi.clearAllMocks() // ✅ Reset mock call history
+    mockPortalOpenState = false // ✅ Reset shared state
   })
 })
 ```

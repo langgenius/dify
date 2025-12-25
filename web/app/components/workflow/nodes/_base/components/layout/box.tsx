@@ -18,7 +18,8 @@ export const Box = memo(({
         'py-2',
         withBorderBottom && 'border-b border-divider-subtle',
         className,
-      )}>
+      )}
+    >
       {children}
     </div>
   )
