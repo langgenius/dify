@@ -1,5 +1,5 @@
 'use client'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'

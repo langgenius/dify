@@ -6,7 +6,7 @@ import {
   RiArrowDownSLine,
   RiArrowRightSLine,
 } from '@remixicon/react'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import { Fragment, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'

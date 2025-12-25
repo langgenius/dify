@@ -9,7 +9,7 @@ import {
   RiGlobalLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { pick, uniq } from 'lodash-es'
+import { pick, uniq } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'

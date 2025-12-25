@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { RiAlertFill } from '@remixicon/react'
-import { camelCase } from 'lodash-es'
+import { camelCase } from 'es-toolkit/compat'
 import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'

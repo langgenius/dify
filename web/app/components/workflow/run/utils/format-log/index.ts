@@ -1,5 +1,5 @@
 import type { NodeTracing } from '@/types/workflow'
-import { cloneDeep } from 'lodash-es'
+import { cloneDeep } from 'es-toolkit/compat'
 import { BlockEnum } from '../../../types'
 import formatAgentNode from './agent'
 import { addChildrenToIterationNode } from './iteration'
