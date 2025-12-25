@@ -58,7 +58,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
     if (!isCurrentWorkspaceManager) {
       Toast.notify({
         type: 'error',
-        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
+        message: t('billing.buyPermissionDeniedTip'),
         className: 'z-[1001]',
       })
       return
@@ -115,7 +115,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
             </div>
           </div>
           <span className="system-xs-regular text-text-tertiary">
-            {t('plans.premium.comingSoon', { ns: 'billing' })}
+            {t('billing.plans.premium.comingSoon')}
           </span>
         </div>
       )}

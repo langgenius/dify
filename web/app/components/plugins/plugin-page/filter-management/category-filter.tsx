@@ -58,7 +58,7 @@ const CategoriesFilter = ({
           )}
           >
             {
-              !selectedTagsLength && t('allCategories', { ns: 'plugin' })
+              !selectedTagsLength && t('plugin.allCategories')
             }
             {
               !!selectedTagsLength && value.map(val => categoriesMap[val].label).slice(0, 2).join(',')
@@ -99,7 +99,7 @@ const CategoriesFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder={t('searchCategories', { ns: 'plugin' })}
+              placeholder={t('plugin.searchCategories')}
             />
           </div>
           <div className="max-h-[448px] overflow-y-auto p-1">

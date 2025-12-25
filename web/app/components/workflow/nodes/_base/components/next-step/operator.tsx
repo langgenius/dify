@@ -45,7 +45,7 @@ const ChangeItem = ({
   const renderTrigger = useCallback(() => {
     return (
       <div className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover">
-        {t('panel.change', { ns: 'workflow' })}
+        {t('workflow.panel.change')}
       </div>
     )
   }, [t])
@@ -109,7 +109,7 @@ const Operator = ({
               className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
               onClick={() => handleNodeDisconnect(nodeId)}
             >
-              {t('common.disconnect', { ns: 'workflow' })}
+              {t('workflow.common.disconnect')}
             </div>
           </div>
           <div className="p-1">
@@ -117,7 +117,7 @@ const Operator = ({
               className="flex h-8 cursor-pointer items-center rounded-lg px-2 hover:bg-state-base-hover"
               onClick={() => handleNodeDelete(nodeId)}
             >
-              {t('operation.delete', { ns: 'common' })}
+              {t('common.operation.delete')}
             </div>
           </div>
         </div>

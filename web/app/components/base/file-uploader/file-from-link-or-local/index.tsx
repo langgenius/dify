@@ -71,7 +71,7 @@ const FileFromLinkOrLocal = ({
                 >
                   <input
                     className="system-sm-regular mr-0.5 block grow appearance-none bg-transparent px-1 outline-none"
-                    placeholder={t('fileUploader.pasteFileLinkInputPlaceholder', { ns: 'common' }) || ''}
+                    placeholder={t('common.fileUploader.pasteFileLinkInputPlaceholder') || ''}
                     value={url}
                     onChange={(e) => {
                       setShowError(false)
@@ -86,13 +86,13 @@ const FileFromLinkOrLocal = ({
                     disabled={!url || disabled}
                     onClick={handleSaveUrl}
                   >
-                    {t('operation.ok', { ns: 'common' })}
+                    {t('common.operation.ok')}
                   </Button>
                 </div>
                 {
                   showError && (
                     <div className="body-xs-regular mt-0.5 text-text-destructive">
-                      {t('fileUploader.pasteFileLinkInvalid', { ns: 'common' })}
+                      {t('common.fileUploader.pasteFileLinkInvalid')}
                     </div>
                   )
                 }
@@ -116,7 +116,7 @@ const FileFromLinkOrLocal = ({
                 disabled={disabled}
               >
                 <RiUploadCloud2Line className="mr-1 h-4 w-4" />
-                {t('fileUploader.uploadFromComputer', { ns: 'common' })}
+                {t('common.fileUploader.uploadFromComputer')}
                 <FileInput fileConfig={fileConfig} />
               </Button>
             )

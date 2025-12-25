@@ -13,34 +13,34 @@ const useContextMenu = (props: ContextMenuProps) => {
 
   const deleteOperation = {
     key: VersionHistoryContextMenuOptions.delete,
-    name: t('operation.delete', { ns: 'common' }),
+    name: t('common.operation.delete'),
   }
 
   const options = useMemo(() => {
     return [
       {
         key: VersionHistoryContextMenuOptions.restore,
-        name: t('common.restore', { ns: 'workflow' }),
+        name: t('workflow.common.restore'),
       },
       isNamedVersion
         ? {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t('versionHistory.editVersionInfo', { ns: 'workflow' }),
+            name: t('workflow.versionHistory.editVersionInfo'),
           }
         : {
             key: VersionHistoryContextMenuOptions.edit,
-            name: t('versionHistory.nameThisVersion', { ns: 'workflow' }),
+            name: t('workflow.versionHistory.nameThisVersion'),
           },
       // todo: pipeline support export specific version DSL
       ...(!pipelineId
         ? [{
             key: VersionHistoryContextMenuOptions.exportDSL,
-            name: t('export', { ns: 'app' }),
+            name: t('app.export'),
           }]
         : []),
       {
         key: VersionHistoryContextMenuOptions.copyId,
-        name: t('versionHistory.copyId', { ns: 'workflow' }),
+        name: t('workflow.versionHistory.copyId'),
       },
     ]
   }, [isNamedVersion, t])

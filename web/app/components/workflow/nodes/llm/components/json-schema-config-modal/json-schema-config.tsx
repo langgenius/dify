@@ -193,7 +193,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       if (advancedEditing || isAddingNewField) {
         Toast.notify({
           type: 'warning',
-          message: t('nodes.llm.jsonSchema.warningTips.saveSchema', { ns: 'workflow' }),
+          message: t('workflow.nodes.llm.jsonSchema.warningTips.saveSchema'),
         })
         return
       }
@@ -207,7 +207,7 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
       {/* Header */}
       <div className="relative flex p-6 pb-3 pr-14">
         <div className="title-2xl-semi-bold grow truncate text-text-primary">
-          {t('nodes.llm.jsonSchema.title', { ns: 'workflow' })}
+          {t('workflow.nodes.llm.jsonSchema.title')}
         </div>
         <div className="absolute right-5 top-5 flex h-8 w-8 items-center justify-center p-1.5" onClick={onClose}>
           <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
@@ -259,22 +259,22 @@ const JsonSchemaConfig: FC<JsonSchemaConfigProps> = ({
           target="_blank"
           rel="noopener noreferrer"
         >
-          <span className="system-xs-regular">{t('nodes.llm.jsonSchema.doc', { ns: 'workflow' })}</span>
+          <span className="system-xs-regular">{t('workflow.nodes.llm.jsonSchema.doc')}</span>
           <RiExternalLinkLine className="h-3 w-3" />
         </a>
         <div className="flex items-center gap-x-3">
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleResetDefaults}>
-              {t('nodes.llm.jsonSchema.resetDefaults', { ns: 'workflow' })}
+              {t('workflow.nodes.llm.jsonSchema.resetDefaults')}
             </Button>
             <Divider type="vertical" className="ml-1 mr-0 h-4" />
           </div>
           <div className="flex items-center gap-x-2">
             <Button variant="secondary" onClick={handleCancel}>
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
             <Button variant="primary" onClick={handleSave}>
-              {t('operation.save', { ns: 'common' })}
+              {t('common.operation.save')}
             </Button>
           </div>
         </div>

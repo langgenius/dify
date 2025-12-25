@@ -83,7 +83,7 @@ const Item = ({
               className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
-              placeholder={t('placeholder.input', { ns: 'common' })}
+              placeholder={t('common.placeholder.input')}
               onClick={e => e.stopPropagation()}
             />
             <Button
@@ -98,7 +98,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('operation.save', { ns: 'common' })}
+              {t('common.operation.save')}
             </Button>
             <Button
               size="small"
@@ -107,7 +107,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
           </div>
         )
@@ -139,7 +139,7 @@ const Item = ({
             {
               credential.is_default && (
                 <Badge className="shrink-0">
-                  {t('auth.default', { ns: 'plugin' })}
+                  {t('plugin.auth.default')}
                 </Badge>
               )
             }
@@ -166,13 +166,13 @@ const Item = ({
                     onSetDefault?.(credential.id)
                   }}
                 >
-                  {t('auth.setDefault', { ns: 'plugin' })}
+                  {t('plugin.auth.setDefault')}
                 </Button>
               )
             }
             {
               !disableRename && !credential.from_enterprise && !credential.not_allowed_to_use && (
-                <Tooltip popupContent={t('operation.rename', { ns: 'common' })}>
+                <Tooltip popupContent={t('common.operation.rename')}>
                   <ActionButton
                     disabled={disabled}
                     onClick={(e) => {
@@ -188,7 +188,7 @@ const Item = ({
             }
             {
               !isOAuth && !disableEdit && !credential.from_enterprise && !credential.not_allowed_to_use && (
-                <Tooltip popupContent={t('operation.edit', { ns: 'common' })}>
+                <Tooltip popupContent={t('common.operation.edit')}>
                   <ActionButton
                     disabled={disabled}
                     onClick={(e) => {
@@ -210,7 +210,7 @@ const Item = ({
             }
             {
               !disableDelete && !credential.from_enterprise && (
-                <Tooltip popupContent={t('operation.delete', { ns: 'common' })}>
+                <Tooltip popupContent={t('common.operation.delete')}>
                   <ActionButton
                     className="hover:bg-transparent"
                     disabled={disabled}
@@ -232,7 +232,7 @@ const Item = ({
 
   if (credential.not_allowed_to_use) {
     return (
-      <Tooltip popupContent={t('auth.customCredentialUnavailable', { ns: 'plugin' })}>
+      <Tooltip popupContent={t('plugin.auth.customCredentialUnavailable')}>
         {CredentialItem}
       </Tooltip>
     )

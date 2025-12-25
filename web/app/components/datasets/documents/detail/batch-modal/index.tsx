@@ -42,7 +42,7 @@ const BatchModal: FC<IBatchModalProps> = ({
 
   return (
     <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
-      <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</div>
+      <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('datasetDocuments.list.batchModal.title')}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
         <RiCloseLine className="h-4 w-4 text-text-secondary" />
       </div>
@@ -55,10 +55,10 @@ const BatchModal: FC<IBatchModalProps> = ({
       />
       <div className="mt-[28px] flex justify-end pt-6">
         <Button className="mr-2" onClick={onCancel}>
-          {t('list.batchModal.cancel', { ns: 'datasetDocuments' })}
+          {t('datasetDocuments.list.batchModal.cancel')}
         </Button>
         <Button variant="primary" onClick={handleSend} disabled={!currentCSV || !currentCSV.file || !currentCSV.file.id}>
-          {t('list.batchModal.run', { ns: 'datasetDocuments' })}
+          {t('datasetDocuments.list.batchModal.run')}
         </Button>
       </div>
     </Modal>

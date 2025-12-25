@@ -48,7 +48,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: uploadedFileId } })
       setIsShowAvatarPicker(false)
       onSave?.()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })
@@ -58,7 +58,7 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
   const handleDeleteAvatar = useCallback(async () => {
     try {
       await updateUserProfile({ url: 'account/avatar', body: { avatar: '' } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setIsShowDeleteConfirm(false)
       onSave?.()
     }
@@ -145,11 +145,11 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
 
         <div className="flex w-full items-center justify-center gap-2 p-3">
           <Button className="w-full" onClick={() => setIsShowAvatarPicker(false)}>
-            {t('iconPicker.cancel', { ns: 'app' })}
+            {t('app.iconPicker.cancel')}
           </Button>
 
           <Button variant="primary" className="w-full" disabled={uploading || !inputImageInfo} loading={uploading} onClick={handleSelect}>
-            {t('iconPicker.ok', { ns: 'app' })}
+            {t('app.iconPicker.ok')}
           </Button>
         </div>
       </Modal>
@@ -160,16 +160,16 @@ const AvatarWithEdit = ({ onSave, ...props }: AvatarWithEditProps) => {
         isShow={isShowDeleteConfirm}
         onClose={() => setIsShowDeleteConfirm(false)}
       >
-        <div className="title-2xl-semi-bold mb-3 text-text-primary">{t('avatar.deleteTitle', { ns: 'common' })}</div>
-        <p className="mb-8 text-text-secondary">{t('avatar.deleteDescription', { ns: 'common' })}</p>
+        <div className="title-2xl-semi-bold mb-3 text-text-primary">{t('common.avatar.deleteTitle')}</div>
+        <p className="mb-8 text-text-secondary">{t('common.avatar.deleteDescription')}</p>
 
         <div className="flex w-full items-center justify-center gap-2">
           <Button className="w-full" onClick={() => setIsShowDeleteConfirm(false)}>
-            {t('operation.cancel', { ns: 'common' })}
+            {t('common.operation.cancel')}
           </Button>
 
           <Button variant="warning" className="w-full" onClick={handleDeleteAvatar}>
-            {t('operation.delete', { ns: 'common' })}
+            {t('common.operation.delete')}
           </Button>
         </div>
       </Modal>

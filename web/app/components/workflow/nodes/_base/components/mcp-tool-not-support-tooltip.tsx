@@ -11,7 +11,7 @@ const McpToolNotSupportTooltip: FC = () => {
     <Tooltip
       popupContent={(
         <div className="w-[256px]">
-          {t('detailPanel.toolSelector.unsupportedMCPTool', { ns: 'plugin' })}
+          {t('plugin.detailPanel.toolSelector.unsupportedMCPTool')}
         </div>
       )}
     >

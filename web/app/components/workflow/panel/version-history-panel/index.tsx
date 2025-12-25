@@ -117,7 +117,7 @@ export const VersionHistoryPanel = ({
         copy(item.id)
         Toast.notify({
           type: 'success',
-          message: t('versionHistory.action.copyIdSuccess', { ns: 'workflow' }),
+          message: t('workflow.versionHistory.action.copyIdSuccess'),
         })
         break
       case VersionHistoryContextMenuOptions.exportDSL:
@@ -151,7 +151,7 @@ export const VersionHistoryPanel = ({
       onSuccess: () => {
         Toast.notify({
           type: 'success',
-          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
+          message: t('workflow.versionHistory.action.restoreSuccess'),
         })
         deleteAllInspectVars()
         invalidAllLastRun()
@@ -159,7 +159,7 @@ export const VersionHistoryPanel = ({
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
+          message: t('workflow.versionHistory.action.restoreFailure'),
         })
       },
       onSettled: () => {
@@ -176,7 +176,7 @@ export const VersionHistoryPanel = ({
         setDeleteConfirmOpen(false)
         Toast.notify({
           type: 'success',
-          message: t('versionHistory.action.deleteSuccess', { ns: 'workflow' }),
+          message: t('workflow.versionHistory.action.deleteSuccess'),
         })
         resetWorkflowVersionHistory()
         deleteAllInspectVars()
@@ -185,7 +185,7 @@ export const VersionHistoryPanel = ({
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('versionHistory.action.deleteFailure', { ns: 'workflow' }),
+          message: t('workflow.versionHistory.action.deleteFailure'),
         })
       },
       onSettled: () => {
@@ -206,14 +206,14 @@ export const VersionHistoryPanel = ({
         setEditModalOpen(false)
         Toast.notify({
           type: 'success',
-          message: t('versionHistory.action.updateSuccess', { ns: 'workflow' }),
+          message: t('workflow.versionHistory.action.updateSuccess'),
         })
         resetWorkflowVersionHistory()
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('versionHistory.action.updateFailure', { ns: 'workflow' }),
+          message: t('workflow.versionHistory.action.updateFailure'),
         })
       },
       onSettled: () => {
@@ -225,7 +225,7 @@ export const VersionHistoryPanel = ({
   return (
     <div className="flex h-full w-[268px] flex-col rounded-l-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
       <div className="flex items-center gap-x-2 px-4 pt-3">
-        <div className="system-xl-semibold flex-1 py-1 text-text-primary">{t('versionHistory.title', { ns: 'workflow' })}</div>
+        <div className="system-xl-semibold flex-1 py-1 text-text-primary">{t('workflow.versionHistory.title')}</div>
         <Filter
           filterValue={filterValue}
           isOnlyShowNamedVersions={isOnlyShowNamedVersions}
@@ -282,7 +282,7 @@ export const VersionHistoryPanel = ({
                   : <RiArrowDownDoubleLine className="h-3.5 w-3.5 text-text-accent" />}
               </div>
               <div className="system-xs-medium-uppercase py-[1px] text-text-accent">
-                {t('common.loadMore', { ns: 'workflow' })}
+                {t('workflow.common.loadMore')}
               </div>
             </div>
           </div>

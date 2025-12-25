@@ -24,7 +24,7 @@ const Header = () => {
   return (
     <div className="flex items-center gap-x-2 pl-4 pr-3 pt-4">
       <div className="system-xl-semibold grow pl-1 pr-8 text-text-primary">
-        {t('testRun.title', { ns: 'datasetPipeline' })}
+        {t('datasetPipeline.testRun.title')}
       </div>
       <button
         type="button"

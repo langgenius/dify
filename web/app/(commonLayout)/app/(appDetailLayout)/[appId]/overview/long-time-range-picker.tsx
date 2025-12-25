@@ -25,9 +25,9 @@ const LongTimeRangePicker: FC<Props> = ({
   const handleSelect = React.useCallback((item: Item) => {
     const id = item.value
     const value = periodMapping[id]?.value ?? '-1'
-    const name = item.name || t('filter.period.allTime', { ns: 'appLog' })
+    const name = item.name || t('appLog.filter.period.allTime')
     if (value === -1) {
-      onSelect({ name: t('filter.period.allTime', { ns: 'appLog' }), query: undefined })
+      onSelect({ name: t('appLog.filter.period.allTime'), query: undefined })
     }
     else if (value === 0) {
       const startOfToday = today.startOf('day').format(queryDateFormat)
@@ -53,7 +53,7 @@ const LongTimeRangePicker: FC<Props> = ({
 
   return (
     <SimpleSelect
-      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}` as any, { ns: 'appLog' }) as string }))}
+      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}` as any) as string }))}
       className="mt-0 !w-40"
       notClearable={true}
       onSelect={handleSelect}

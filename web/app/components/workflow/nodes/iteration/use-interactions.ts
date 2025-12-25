@@ -135,7 +135,7 @@ export const useNodeIterationInteractions = () => {
           _isBundled: false,
           _connectedSourceHandleIds: [],
           _connectedTargetHandleIds: [],
-          title: nodesWithSameType.length > 0 ? `${t(`blocks.${childNodeType}` as any, { ns: 'workflow' }) as string} ${childNodeTypeCount[childNodeType]}` : t(`blocks.${childNodeType}` as any, { ns: 'workflow' }) as string,
+          title: nodesWithSameType.length > 0 ? `${t(`workflow.blocks.${childNodeType}` as any) as string} ${childNodeTypeCount[childNodeType]}` : t(`workflow.blocks.${childNodeType}` as any) as string,
           iteration_id: newNodeId,
           type: childNodeType,
         },

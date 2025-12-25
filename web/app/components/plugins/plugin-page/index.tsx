@@ -57,7 +57,7 @@ const PluginPage = ({
   const { locale } = useContext(I18n)
   const searchParams = useSearchParams()
   const { replace } = useRouter()
-  useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
+  useDocumentTitle(t('plugin.metadata.title'))
 
   // just support install one package now
   const packageId = useMemo(() => {
@@ -195,7 +195,7 @@ const PluginPage = ({
                       variant="ghost"
                       className="text-text-tertiary"
                     >
-                      {t('requestAPlugin', { ns: 'plugin' })}
+                      {t('plugin.requestAPlugin')}
                     </Button>
                   </Link>
                   <Link
@@ -207,7 +207,7 @@ const PluginPage = ({
                       variant="secondary-accent"
                     >
                       <RiBookOpenLine className="mr-1 h-4 w-4" />
-                      {t('publishPlugins', { ns: 'plugin' })}
+                      {t('plugin.publishPlugins')}
                     </Button>
                   </Link>
                   <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
@@ -228,7 +228,7 @@ const PluginPage = ({
             {
               canSetPermissions && (
                 <Tooltip
-                  popupContent={t('privilege.title', { ns: 'plugin' })}
+                  popupContent={t('plugin.privilege.title')}
                 >
                   <Button
                     className="group h-full w-full p-2 text-components-button-secondary-text"
@@ -254,7 +254,7 @@ const PluginPage = ({
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
             <RiDragDropLine className="h-4 w-4" />
-            <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
+            <span className="system-xs-regular">{t('plugin.installModal.dropPluginToInstall')}</span>
           </div>
           {currentFile && (
             <InstallFromLocalPackage

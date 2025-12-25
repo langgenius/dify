@@ -20,7 +20,7 @@ type Props = {
   onSaved: () => void
 }
 
-const I18N_PREFIX = 'jinaReader'
+const I18N_PREFIX = 'datasetCreation.jinaReader'
 
 const ConfigJinaReaderModal: FC<Props> = ({
   onCancel,
@@ -36,8 +36,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
     let errorMsg = ''
     if (!errorMsg) {
       if (!apiKey) {
-        errorMsg = t('errorMsg.fieldRequired', {
-          ns: 'common',
+        errorMsg = t('common.errorMsg.fieldRequired', {
           field: 'API Key',
         })
       }
@@ -65,7 +64,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
       await createDataSourceApiKeyBinding(postData)
       Toast.notify({
         type: 'success',
-        message: t('api.success', { ns: 'common' }),
+        message: t('common.api.success'),
       })
     }
     finally {
@@ -82,7 +81,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
           <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
             <div className="px-8 pt-8">
               <div className="mb-4 flex items-center justify-between">
-                <div className="system-xl-semibold text-text-primary">{t(`${I18N_PREFIX}.configJinaReader`, { ns: 'datasetCreation' })}</div>
+                <div className="system-xl-semibold text-text-primary">{t(`${I18N_PREFIX}.configJinaReader`)}</div>
               </div>
 
               <div className="space-y-4">
@@ -92,12 +91,12 @@ const ConfigJinaReaderModal: FC<Props> = ({
                   isRequired
                   value={apiKey}
                   onChange={(value: string | number) => setApiKey(value as string)}
-                  placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`, { ns: 'datasetCreation' })!}
+                  placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`)!}
                 />
               </div>
               <div className="my-8 flex h-8 items-center justify-between">
                 <a className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-text-accent" target="_blank" href="https://jina.ai/reader/">
-                  <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`, { ns: 'datasetCreation' })}</span>
+                  <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
                   <LinkExternal02 className="h-3 w-3" />
                 </a>
                 <div className="flex">
@@ -106,7 +105,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
                     className="mr-2"
                     onClick={onCancel}
                   >
-                    {t('operation.cancel', { ns: 'common' })}
+                    {t('common.operation.cancel')}
                   </Button>
                   <Button
                     variant="primary"
@@ -114,7 +113,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
                     onClick={handleSave}
                     loading={isSaving}
                   >
-                    {t('operation.save', { ns: 'common' })}
+                    {t('common.operation.save')}
                   </Button>
                 </div>
 
@@ -123,7 +122,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
             <div className="border-t-[0.5px] border-t-divider-regular">
               <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
                 <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
-                {t('modelProvider.encrypted.front', { ns: 'common' })}
+                {t('common.modelProvider.encrypted.front')}
                 <a
                   className="mx-1 text-text-accent"
                   target="_blank"
@@ -132,7 +131,7 @@ const ConfigJinaReaderModal: FC<Props> = ({
                 >
                   PKCS1_OAEP
                 </a>
-                {t('modelProvider.encrypted.back', { ns: 'common' })}
+                {t('common.modelProvider.encrypted.back')}
               </div>
             </div>
           </div>

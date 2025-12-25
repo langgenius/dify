@@ -26,13 +26,13 @@ const Operations = ({
       <div className="flex flex-col p-1">
         <OperationItem
           Icon={RiEditLine}
-          name={t('operation.edit', { ns: 'common' })}
+          name={t('common.operation.edit')}
           handleClick={openRenameModal}
         />
         {showExportPipeline && (
           <OperationItem
             Icon={RiFileDownloadLine}
-            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
+            name={t('datasetPipeline.operations.exportPipeline')}
             handleClick={handleExportPipeline}
           />
         )}
@@ -43,7 +43,7 @@ const Operations = ({
           <div className="flex flex-col p-1">
             <OperationItem
               Icon={RiDeleteBinLine}
-              name={t('operation.delete', { ns: 'common' })}
+              name={t('common.operation.delete')}
               handleClick={detectIsUsedByApp}
             />
           </div>

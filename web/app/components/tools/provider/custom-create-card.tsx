@@ -37,7 +37,7 @@ const Contribute = ({ onRefreshData }: Props) => {
     await createCustomCollection(data)
     Toast.notify({
       type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
+      message: t('common.api.actionSuccess'),
     })
     setIsShowEditCustomCollectionModal(false)
     onRefreshData()
@@ -52,13 +52,13 @@ const Contribute = ({ onRefreshData }: Props) => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
                 <RiAddCircleFill className="h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
               </div>
-              <div className="system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent">{t('createCustomTool', { ns: 'tools' })}</div>
+              <div className="system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent">{t('tools.createCustomTool')}</div>
             </div>
           </div>
           <div className="rounded-b-xl border-t-[0.5px] border-divider-subtle px-4 py-3 text-text-tertiary hover:text-text-accent">
             <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1">
               <RiBookOpenLine className="h-3 w-3 shrink-0" />
-              <div className="system-xs-regular grow truncate" title={t('customToolTip', { ns: 'tools' }) || ''}>{t('customToolTip', { ns: 'tools' })}</div>
+              <div className="system-xs-regular grow truncate" title={t('tools.customToolTip') || ''}>{t('tools.customToolTip')}</div>
               <RiArrowRightUpLine className="h-3 w-3 shrink-0" />
             </a>
           </div>

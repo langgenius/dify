@@ -22,7 +22,7 @@ type NodeVariableItemProps = {
   isException?: boolean
 }
 
-const i18nPrefix = 'nodes.assigner'
+const i18nPrefix = 'workflow.nodes.assigner'
 
 const NodeVariableItem = ({
   node,
@@ -120,7 +120,7 @@ const NodeVariableItem = ({
         {VariableIcon}
         {VariableName}
       </div>
-      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any, { ns: 'workflow' }) as string} />}
+      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any) as string} />}
     </div>
   )
 }

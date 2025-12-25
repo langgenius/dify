@@ -155,17 +155,17 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                         <div className="p-1">
                           <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('blank')}>
                             <FilePlus01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('newApp.startFromBlank', { ns: 'app' })}
+                            {t('app.newApp.startFromBlank')}
                           </div>
                           <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('template')}>
                             <FilePlus02 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('newApp.startFromTemplate', { ns: 'app' })}
+                            {t('app.newApp.startFromTemplate')}
                           </div>
                         </div>
                         <div className="border-t border-divider-regular p-1">
                           <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('dsl')}>
                             <FileArrow01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('importDSL', { ns: 'app' })}
+                            {t('app.importDSL')}
                           </div>
                         </div>
                       </MenuItems>

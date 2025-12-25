@@ -33,7 +33,7 @@ const Filter: FC<IFilterProps> = ({
         showLeftIcon
         showClearIcon
         value={queryParams.keyword}
-        placeholder={t('operation.search', { ns: 'common' })!}
+        placeholder={t('common.operation.search')!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}

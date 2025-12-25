@@ -97,7 +97,7 @@ const EditPipelineInfo = ({
       {/* Header */}
       <div className="pb-3 pl-6 pr-14 pt-6">
         <span className="title-2xl-semi-bold text-text-primary">
-          {t('editPipelineInfo', { ns: 'datasetPipeline' })}
+          {t('datasetPipeline.editPipelineInfo')}
         </span>
       </div>
       <button
@@ -112,12 +112,12 @@ const EditPipelineInfo = ({
         <div className="flex items-end gap-x-3 self-stretch">
           <div className="flex grow flex-col gap-y-1 pb-1">
             <label className="system-sm-medium flex h-6 items-center text-text-secondary">
-              {t('pipelineNameAndIcon', { ns: 'datasetPipeline' })}
+              {t('datasetPipeline.pipelineNameAndIcon')}
             </label>
             <Input
               onChange={handleAppNameChange}
               value={name}
-              placeholder={t('knowledgeNameAndIconPlaceholder', { ns: 'datasetPipeline' })}
+              placeholder={t('datasetPipeline.knowledgeNameAndIconPlaceholder')}
             />
           </div>
           <AppIcon
@@ -133,12 +133,12 @@ const EditPipelineInfo = ({
         </div>
         <div className="flex flex-col gap-y-1">
           <label className="system-sm-medium flex h-6 items-center text-text-secondary">
-            {t('knowledgeDescription', { ns: 'datasetPipeline' })}
+            {t('datasetPipeline.knowledgeDescription')}
           </label>
           <Textarea
             onChange={handleDescriptionChange}
             value={description}
-            placeholder={t('knowledgeDescriptionPlaceholder', { ns: 'datasetPipeline' })}
+            placeholder={t('datasetPipeline.knowledgeDescriptionPlaceholder')}
           />
         </div>
       </div>
@@ -148,13 +148,13 @@ const EditPipelineInfo = ({
           variant="secondary"
           onClick={onClose}
         >
-          {t('operation.cancel', { ns: 'common' })}
+          {t('common.operation.cancel')}
         </Button>
         <Button
           variant="primary"
           onClick={handleSave}
         >
-          {t('operation.save', { ns: 'common' })}
+          {t('common.operation.save')}
         </Button>
       </div>
       {showAppIconPicker && (

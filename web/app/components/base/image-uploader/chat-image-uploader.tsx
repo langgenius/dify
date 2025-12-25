@@ -110,7 +110,7 @@ const UploaderButton: FC<UploaderButtonProps> = ({
                     )}
                   >
                     <Upload03 className="mr-1 h-4 w-4" />
-                    {t('imageUploader.uploadFromComputer', { ns: 'common' })}
+                    {t('common.imageUploader.uploadFromComputer')}
                   </div>
                 )}
               </Uploader>

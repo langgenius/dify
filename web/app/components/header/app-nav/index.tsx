@@ -103,12 +103,12 @@ const AppNav = () => {
         isApp
         icon={<RiRobot2Line className="h-4 w-4" />}
         activeIcon={<RiRobot2Fill className="h-4 w-4" />}
-        text={t('menus.apps', { ns: 'common' })}
+        text={t('common.menus.apps')}
         activeSegment={['apps', 'app']}
         link="/apps"
         curNav={appDetail}
         navigationItems={navItems}
-        createText={t('menus.newApp', { ns: 'common' })}
+        createText={t('common.menus.newApp')}
         onCreate={openModal}
         onLoadMore={handleLoadMore}
       />

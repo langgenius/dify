@@ -56,7 +56,7 @@ const Uploader: FC<Props> = ({
       return
     const files = [...e.dataTransfer.files]
     if (files.length > 1) {
-      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
+      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
       return
     }
     updateFile(files[0])
@@ -115,12 +115,12 @@ const Uploader: FC<Props> = ({
             <div className="flex w-full items-center justify-center space-x-2">
               <RiUploadCloud2Line className="h-6 w-6 text-text-tertiary" />
               <div className="text-text-tertiary">
-                {t('dslUploader.button', { ns: 'app' })}
+                {t('app.dslUploader.button')}
                 <span
                   className="cursor-pointer pl-1 text-text-accent"
                   onClick={selectHandle}
                 >
-                  {t('dslUploader.browse', { ns: 'app' })}
+                  {t('app.dslUploader.browse')}
                 </span>
               </div>
             </div>

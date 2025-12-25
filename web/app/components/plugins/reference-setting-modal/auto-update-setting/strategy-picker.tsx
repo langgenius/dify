@@ -12,7 +12,7 @@ import {
 } from '@/app/components/base/portal-to-follow-elem'
 import { AUTO_UPDATE_STRATEGY } from './types'
 
-const i18nPrefix = 'autoUpdate.strategy'
+const i18nPrefix = 'plugin.autoUpdate.strategy'
 
 type Props = {
   value: AUTO_UPDATE_STRATEGY
@@ -27,18 +27,18 @@ const StrategyPicker = ({
   const options = [
     {
       value: AUTO_UPDATE_STRATEGY.disabled,
-      label: t(`${i18nPrefix}.disabled.name`, { ns: 'plugin' }),
-      description: t(`${i18nPrefix}.disabled.description`, { ns: 'plugin' }),
+      label: t(`${i18nPrefix}.disabled.name`),
+      description: t(`${i18nPrefix}.disabled.description`),
     },
     {
       value: AUTO_UPDATE_STRATEGY.fixOnly,
-      label: t(`${i18nPrefix}.fixOnly.name`, { ns: 'plugin' }),
-      description: t(`${i18nPrefix}.fixOnly.description`, { ns: 'plugin' }),
+      label: t(`${i18nPrefix}.fixOnly.name`),
+      description: t(`${i18nPrefix}.fixOnly.description`),
     },
     {
       value: AUTO_UPDATE_STRATEGY.latest,
-      label: t(`${i18nPrefix}.latest.name`, { ns: 'plugin' }),
-      description: t(`${i18nPrefix}.latest.description`, { ns: 'plugin' }),
+      label: t(`${i18nPrefix}.latest.name`),
+      description: t(`${i18nPrefix}.latest.description`),
     },
   ]
   const selectedOption = options.find(option => option.value === value)

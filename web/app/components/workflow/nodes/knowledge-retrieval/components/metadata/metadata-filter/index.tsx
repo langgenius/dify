@@ -44,12 +44,12 @@ const MetadataFilter = ({
         <div className="flex grow items-center justify-between pr-4">
           <div className="flex items-center">
             <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
-              {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
+              {t('workflow.nodes.knowledgeRetrieval.metadata.title')}
             </div>
             <Tooltip
               popupContent={(
                 <div className="w-[200px]">
-                  {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
+                  {t('workflow.nodes.knowledgeRetrieval.metadata.tip')}
                 </div>
               )}
             />
@@ -76,7 +76,7 @@ const MetadataFilter = ({
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
               <div className="body-xs-regular px-4 text-text-tertiary">
-                {t('nodes.knowledgeRetrieval.metadata.options.automatic.desc', { ns: 'workflow' })}
+                {t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.desc')}
               </div>
               <div className="mt-1 px-4">
                 <ModelParameterModal

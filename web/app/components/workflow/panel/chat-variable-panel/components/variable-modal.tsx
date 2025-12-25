@@ -127,7 +127,7 @@ const ChatVariableModal = ({
     if (!isValid) {
       notify({
         type: 'error',
-        message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }) as string,
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('workflow.env.modal.name') }) as string,
       })
       return false
     }
@@ -273,7 +273,7 @@ const ChatVariableModal = ({
       className={cn('flex h-full w-[360px] flex-col rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-2xl', type === ChatVarType.Object && 'w-[480px]')}
     >
       <div className="system-xl-semibold mb-3 flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
-        {!chatVar ? t('chatVariable.modal.title', { ns: 'workflow' }) : t('chatVariable.modal.editTitle', { ns: 'workflow' })}
+        {!chatVar ? t('workflow.chatVariable.modal.title') : t('workflow.chatVariable.modal.editTitle')}
         <div className="flex items-center">
           <div
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
@@ -286,10 +286,10 @@ const ChatVariableModal = ({
       <div className="max-h-[480px] overflow-y-auto px-4 py-2">
         {/* name */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.name', { ns: 'workflow' })}</div>
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('workflow.chatVariable.modal.name')}</div>
           <div className="flex">
             <Input
-              placeholder={t('chatVariable.modal.namePlaceholder', { ns: 'workflow' }) || ''}
+              placeholder={t('workflow.chatVariable.modal.namePlaceholder') || ''}
               value={name}
               onChange={handleVarNameChange}
               onBlur={e => checkVariableName(e.target.value)}
@@ -299,7 +299,7 @@ const ChatVariableModal = ({
         </div>
         {/* type */}
         <div className="mb-4">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.type', { ns: 'workflow' })}</div>
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('workflow.chatVariable.modal.type')}</div>
           <div className="flex">
             <VariableTypeSelector
               value={type}
@@ -312,7 +312,7 @@ const ChatVariableModal = ({
         {/* default value */}
         <div className="mb-4">
           <div className="system-sm-semibold mb-1 flex h-6 items-center justify-between text-text-secondary">
-            <div>{t('chatVariable.modal.value', { ns: 'workflow' })}</div>
+            <div>{t('workflow.chatVariable.modal.value')}</div>
             {(type === ChatVarType.ArrayString || type === ChatVarType.ArrayNumber || type === ChatVarType.ArrayBoolean) && (
               <Button
                 variant="ghost"
@@ -321,7 +321,7 @@ const ChatVariableModal = ({
                 onClick={() => handleEditorChange(!editInJSON)}
               >
                 {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
-                {editInJSON ? t('chatVariable.modal.oneByOne', { ns: 'workflow' }) : t('chatVariable.modal.editInJSON', { ns: 'workflow' })}
+                {editInJSON ? t('workflow.chatVariable.modal.oneByOne') : t('workflow.chatVariable.modal.editInJSON')}
               </Button>
             )}
             {type === ChatVarType.Object && (
@@ -332,7 +332,7 @@ const ChatVariableModal = ({
                 onClick={() => handleEditorChange(!editInJSON)}
               >
                 {editInJSON ? <RiInputField className="mr-1 h-3.5 w-3.5" /> : <RiDraftLine className="mr-1 h-3.5 w-3.5" />}
-                {editInJSON ? t('chatVariable.modal.editInForm', { ns: 'workflow' }) : t('chatVariable.modal.editInJSON', { ns: 'workflow' })}
+                {editInJSON ? t('workflow.chatVariable.modal.editInForm') : t('workflow.chatVariable.modal.editInJSON')}
               </Button>
             )}
           </div>
@@ -342,13 +342,13 @@ const ChatVariableModal = ({
               <textarea
                 className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                 value={value}
-                placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
+                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 onChange={e => setValue(e.target.value)}
               />
             )}
             {type === ChatVarType.Number && (
               <Input
-                placeholder={t('chatVariable.modal.valuePlaceholder', { ns: 'workflow' }) || ''}
+                placeholder={t('workflow.chatVariable.modal.valuePlaceholder') || ''}
                 value={value}
                 onChange={e => setValue(Number(e.target.value))}
                 type="number"
@@ -403,12 +403,12 @@ const ChatVariableModal = ({
         </div>
         {/* description */}
         <div className="">
-          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('chatVariable.modal.description', { ns: 'workflow' })}</div>
+          <div className="system-sm-semibold mb-1 flex h-6 items-center text-text-secondary">{t('workflow.chatVariable.modal.description')}</div>
           <div className="flex">
             <textarea
               className="system-sm-regular placeholder:system-sm-regular block h-20 w-full resize-none appearance-none rounded-lg border border-transparent bg-components-input-bg-normal p-2 text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
               value={description}
-              placeholder={t('chatVariable.modal.descriptionPlaceholder', { ns: 'workflow' }) || ''}
+              placeholder={t('workflow.chatVariable.modal.descriptionPlaceholder') || ''}
               onChange={e => setDescription(e.target.value)}
             />
           </div>
@@ -416,8 +416,8 @@ const ChatVariableModal = ({
       </div>
       <div className="flex flex-row-reverse rounded-b-2xl p-4 pt-2">
         <div className="flex gap-2">
-          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-          <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+          <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
+          <Button variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
         </div>
       </div>
     </div>

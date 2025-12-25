@@ -57,20 +57,20 @@ const RuleDetail: FC<{
   const { t } = useTranslation()
 
   const segmentationRuleMap = {
-    mode: t('embedding.mode', { ns: 'datasetDocuments' }),
-    segmentLength: t('embedding.segmentLength', { ns: 'datasetDocuments' }),
-    textCleaning: t('embedding.textCleaning', { ns: 'datasetDocuments' }),
+    mode: t('datasetDocuments.embedding.mode'),
+    segmentLength: t('datasetDocuments.embedding.segmentLength'),
+    textCleaning: t('datasetDocuments.embedding.textCleaning'),
   }
 
   const getRuleName = (key: string) => {
     if (key === 'remove_extra_spaces')
-      return t('stepTwo.removeExtraSpaces', { ns: 'datasetCreation' })
+      return t('datasetCreation.stepTwo.removeExtraSpaces')
 
     if (key === 'remove_urls_emails')
-      return t('stepTwo.removeUrlEmails', { ns: 'datasetCreation' })
+      return t('datasetCreation.stepTwo.removeUrlEmails')
 
     if (key === 'remove_stopwords')
-      return t('stepTwo.removeStopwords', { ns: 'datasetCreation' })
+      return t('datasetCreation.stepTwo.removeStopwords')
   }
 
   const isNumber = (value: unknown) => {
@@ -90,17 +90,17 @@ const RuleDetail: FC<{
         value = !sourceData?.mode
           ? value
           : sourceData.mode === ProcessMode.general
-            ? (t('embedding.custom', { ns: 'datasetDocuments' }) as string)
-            : `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${sourceData?.rules?.parent_mode === 'paragraph'
-              ? t('parentMode.paragraph', { ns: 'dataset' })
-              : t('parentMode.fullDoc', { ns: 'dataset' })}`
+            ? (t('datasetDocuments.embedding.custom') as string)
+            : `${t('datasetDocuments.embedding.hierarchical')} · ${sourceData?.rules?.parent_mode === 'paragraph'
+              ? t('dataset.parentMode.paragraph')
+              : t('dataset.parentMode.fullDoc')}`
         break
       case 'segmentLength':
         value = !sourceData?.mode
           ? value
           : sourceData.mode === ProcessMode.general
             ? maxTokens
-            : `${t('embedding.parentMaxTokens', { ns: 'datasetDocuments' })} ${maxTokens}; ${t('embedding.childMaxTokens', { ns: 'datasetDocuments' })} ${childMaxTokens}`
+            : `${t('datasetDocuments.embedding.parentMaxTokens')} ${maxTokens}; ${t('datasetDocuments.embedding.childMaxTokens')} ${childMaxTokens}`
         break
       default:
         value = !sourceData?.mode
@@ -124,8 +124,8 @@ const RuleDetail: FC<{
         )
       })}
       <FieldInfo
-        label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
-        displayedValue={t(`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
+        label={t('datasetCreation.stepTwo.indexMode')}
+        displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
         valueIcon={(
           <Image
             className="size-4"
@@ -139,9 +139,9 @@ const RuleDetail: FC<{
         )}
       />
       <FieldInfo
-        label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+        label={t('datasetSettings.form.retrievalSetting.title')}
         // displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
-        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title` as any, { ns: 'dataset' }) as string}
+        displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title` as any) as string}
         valueIcon={(
           <Image
             className="size-4"
@@ -267,10 +267,10 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           {isEmbedding && (
             <>
               <RiLoader2Fill className="size-4 animate-spin" />
-              <span>{t('embedding.processing', { ns: 'datasetDocuments' })}</span>
+              <span>{t('datasetDocuments.embedding.processing')}</span>
             </>
           )}
-          {isEmbeddingCompleted && t('embedding.completed', { ns: 'datasetDocuments' })}
+          {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
         </div>
         {
           enableBilling && plan.type !== Plan.team && (
@@ -279,7 +279,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
                 <ZapFast className="h-4 w-4 text-[#FB6514]" />
               </div>
               <div className="mx-3 grow text-[13px] font-medium text-gray-700">
-                {t('plansCommon.documentProcessingPriorityUpgrade', { ns: 'billing' })}
+                {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
               </div>
               <UpgradeBtn loc="knowledge-speed-up" />
             </div>
@@ -372,7 +372,7 @@ const EmbeddingProcess: FC<Props> = ({ datasetId, batchId, documents = [], index
           variant="primary"
           onClick={navToDocumentList}
         >
-          <span className="px-0.5">{t('stepThree.navTo', { ns: 'datasetCreation' })}</span>
+          <span className="px-0.5">{t('datasetCreation.stepThree.navTo')}</span>
           <RiArrowRightLine className="size-4 stroke-current stroke-1" />
         </Button>
       </div>

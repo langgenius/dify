@@ -146,7 +146,7 @@ const FeaturesTrigger = () => {
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
+      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
       throw new Error('Checklist has unresolved items')
     }
 
@@ -159,7 +159,7 @@ const FeaturesTrigger = () => {
       })
 
       if (res) {
-        notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
+        notify({ type: 'success', message: t('common.api.actionSuccess') })
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -194,7 +194,7 @@ const FeaturesTrigger = () => {
           onClick={handleShowFeatures}
         >
           <RiApps2AddLine className="mr-1 h-4 w-4 text-components-button-secondary-text" />
-          {t('common.features', { ns: 'workflow' })}
+          {t('workflow.common.features')}
         </Button>
       )}
       <AppPublisher

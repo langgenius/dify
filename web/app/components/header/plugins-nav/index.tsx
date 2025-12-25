@@ -55,7 +55,7 @@ const PluginsNav = ({
             )
           }
         </div>
-        <span className="px-0.5">{t('menus.plugins', { ns: 'common' })}</span>
+        <span className="px-0.5">{t('common.menus.plugins')}</span>
       </div>
     </Link>
   )

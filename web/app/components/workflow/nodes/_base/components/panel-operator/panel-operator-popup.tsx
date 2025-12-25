@@ -79,7 +79,7 @@ const PanelOperatorPopup = ({
                       onClosePopup()
                     }}
                   >
-                    {t('panel.runThisStep', { ns: 'workflow' })}
+                    {t('workflow.panel.runThisStep')}
                   </div>
                 )
               }
@@ -111,7 +111,7 @@ const PanelOperatorPopup = ({
                         handleNodesCopy(id)
                       }}
                     >
-                      {t('common.copy', { ns: 'workflow' })}
+                      {t('workflow.common.copy')}
                       <ShortcutsName keys={['ctrl', 'c']} />
                     </div>
                     <div
@@ -121,7 +121,7 @@ const PanelOperatorPopup = ({
                         handleNodesDuplicate(id)
                       }}
                     >
-                      {t('common.duplicate', { ns: 'workflow' })}
+                      {t('workflow.common.duplicate')}
                       <ShortcutsName keys={['ctrl', 'd']} />
                     </div>
                   </div>
@@ -140,7 +140,7 @@ const PanelOperatorPopup = ({
                       `}
                       onClick={() => handleNodeDelete(id)}
                     >
-                      {t('operation.delete', { ns: 'common' })}
+                      {t('common.operation.delete')}
                       <ShortcutsName keys={['del']} />
                     </div>
                   </div>
@@ -160,7 +160,7 @@ const PanelOperatorPopup = ({
                 target="_blank"
                 className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
-                {t('panel.openWorkflow', { ns: 'workflow' })}
+                {t('workflow.panel.openWorkflow')}
               </a>
             </div>
             <div className="h-px bg-divider-regular"></div>
@@ -176,7 +176,7 @@ const PanelOperatorPopup = ({
                 target="_blank"
                 className="flex h-8 cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
               >
-                {t('panel.helpLink', { ns: 'workflow' })}
+                {t('workflow.panel.helpLink')}
               </a>
             </div>
             <div className="h-px bg-divider-regular"></div>
@@ -186,11 +186,11 @@ const PanelOperatorPopup = ({
       <div className="p-1">
         <div className="px-3 py-2 text-xs text-text-tertiary">
           <div className="mb-1 flex h-[22px] items-center font-medium">
-            {t('panel.about', { ns: 'workflow' }).toLocaleUpperCase()}
+            {t('workflow.panel.about').toLocaleUpperCase()}
           </div>
           <div className="mb-1 leading-[18px] text-text-secondary">{nodeMetaData.description}</div>
           <div className="leading-[18px]">
-            {t('panel.createdBy', { ns: 'workflow' })}
+            {t('workflow.panel.createdBy')}
             {' '}
             {nodeMetaData.author}
           </div>

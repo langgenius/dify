@@ -90,7 +90,7 @@ export const useFieldList = ({
     if (isDuplicate) {
       Toast.notify({
         type: 'error',
-        message: t('inputFieldPanel.error.variableDuplicate', { ns: 'datasetPipeline' }),
+        message: t('datasetPipeline.inputFieldPanel.error.variableDuplicate'),
       })
       return
     }

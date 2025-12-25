@@ -122,7 +122,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </div>
           <div className="flex items-center gap-x-0.5">
             {showFormatButton && (
-              <Tooltip popupContent={t('operation.format', { ns: 'common' })}>
+              <Tooltip popupContent={t('common.operation.format')}>
                 <button
                   type="button"
                   className="flex h-6 w-6 items-center justify-center"
@@ -132,7 +132,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                 </button>
               </Tooltip>
             )}
-            <Tooltip popupContent={t('operation.copy', { ns: 'common' })}>
+            <Tooltip popupContent={t('common.operation.copy')}>
               <button
                 type="button"
                 className="flex h-6 w-6 items-center justify-center"

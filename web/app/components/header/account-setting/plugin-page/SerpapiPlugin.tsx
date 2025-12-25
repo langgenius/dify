@@ -22,8 +22,8 @@ const SerpapiPlugin = ({
 
   const forms: Form[] = [{
     key: 'api_key',
-    title: t('plugin.serpapi.apiKey', { ns: 'common' }),
-    placeholder: t('plugin.serpapi.apiKeyPlaceholder', { ns: 'common' }),
+    title: t('common.plugin.serpapi.apiKey'),
+    placeholder: t('common.plugin.serpapi.apiKeyPlaceholder'),
     value: plugin.credentials?.api_key,
     validate: {
       before: (v) => {
@@ -55,7 +55,7 @@ const SerpapiPlugin = ({
     })
 
     if (res.status === 'success') {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       onUpdate()
       return true
     }
@@ -68,7 +68,7 @@ const SerpapiPlugin = ({
       status={plugin.credentials?.api_key ? 'success' : 'add'}
       forms={forms}
       keyFrom={{
-        text: t('plugin.serpapi.keyFrom', { ns: 'common' }),
+        text: t('common.plugin.serpapi.keyFrom'),
         link: 'https://serpapi.com/manage-api-key',
       }}
       onSave={handleSave}

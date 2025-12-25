@@ -82,7 +82,7 @@ const RAGToolRecommendations = ({
         className="flex w-full items-center rounded-md px-3 pb-0.5 pt-1 text-left text-text-tertiary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className="system-xs-medium text-text-tertiary">{t('ragToolSuggestions.title', { ns: 'pipeline' })}</span>
+        <span className="system-xs-medium text-text-tertiary">{t('pipeline.ragToolSuggestions.title')}</span>
         <ArrowDownRoundFill className={`ml-1 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
       {!isCollapsed && (
@@ -126,7 +126,7 @@ const RAGToolRecommendations = ({
                   <RiMoreLine className="size-4 text-text-tertiary" />
                 </div>
                 <div className="system-xs-regular text-text-tertiary">
-                  {t('operation.more', { ns: 'common' })}
+                  {t('common.operation.more')}
                 </div>
               </div>
             </>

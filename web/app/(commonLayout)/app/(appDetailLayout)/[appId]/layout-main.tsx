@@ -70,7 +70,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const navConfig = [
       ...(isCurrentWorkspaceEditor
         ? [{
-            name: t('appMenus.promptEng', { ns: 'common' }),
+            name: t('common.appMenus.promptEng'),
             href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
             icon: RiTerminalWindowLine,
             selectedIcon: RiTerminalWindowFill,
@@ -78,7 +78,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         : []
       ),
       {
-        name: t('appMenus.apiAccess', { ns: 'common' }),
+        name: t('common.appMenus.apiAccess'),
         href: `/app/${appId}/develop`,
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
@@ -86,8 +86,8 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
       ...(isCurrentWorkspaceEditor
         ? [{
             name: mode !== AppModeEnum.WORKFLOW
-              ? t('appMenus.logAndAnn', { ns: 'common' })
-              : t('appMenus.logs', { ns: 'common' }),
+              ? t('common.appMenus.logAndAnn')
+              : t('common.appMenus.logs'),
             href: `/app/${appId}/logs`,
             icon: RiFileList3Line,
             selectedIcon: RiFileList3Fill,
@@ -95,7 +95,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         : []
       ),
       {
-        name: t('appMenus.overview', { ns: 'common' }),
+        name: t('common.appMenus.overview'),
         href: `/app/${appId}/overview`,
         icon: RiDashboard2Line,
         selectedIcon: RiDashboard2Fill,
@@ -104,7 +104,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return navConfig
   }, [t])
 
-  useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
+  useDocumentTitle(appDetail?.name || t('common.menus.appDetail'))
 
   useEffect(() => {
     if (appDetail) {

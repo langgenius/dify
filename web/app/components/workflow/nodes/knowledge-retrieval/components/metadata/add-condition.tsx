@@ -51,7 +51,7 @@ const AddCondition = ({
           variant="secondary"
         >
           <RiAddLine className="h-3.5 w-3.5" />
-          {t('nodes.knowledgeRetrieval.metadata.panel.add', { ns: 'workflow' })}
+          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.add')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">
@@ -59,7 +59,7 @@ const AddCondition = ({
           <div className="p-2 pb-1">
             <Input
               showLeftIcon
-              placeholder={t('nodes.knowledgeRetrieval.metadata.panel.search', { ns: 'workflow' })}
+              placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.search')}
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
             />

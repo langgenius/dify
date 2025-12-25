@@ -15,7 +15,7 @@ export const useTextGeneration = () => {
     data: any,
   ) => {
     if (isResponding) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
 

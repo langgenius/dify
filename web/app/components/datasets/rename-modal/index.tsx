@@ -60,7 +60,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
 
   const onConfirm: MouseEventHandler = useCallback(async () => {
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
+      Toast.notify({ type: 'error', message: t('datasetSettings.form.nameError') })
       return
     }
     try {
@@ -83,13 +83,13 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         datasetId: dataset.id,
         body,
       })
-      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       if (onSuccess)
         onSuccess()
       onClose()
     }
     catch {
-      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
     finally {
       setLoading(false)
@@ -103,7 +103,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
       onClose={noop}
     >
       <div className="flex items-center justify-between pb-2">
-        <div className="text-xl font-medium leading-[30px] text-text-primary">{t('title', { ns: 'datasetSettings' })}</div>
+        <div className="text-xl font-medium leading-[30px] text-text-primary">{t('datasetSettings.title')}</div>
         <div className="cursor-pointer p-2" onClick={onClose}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
@@ -111,7 +111,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
       <div>
         <div className={cn('flex flex-col py-4')}>
           <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
-            {t('form.name', { ns: 'datasetSettings' })}
+            {t('datasetSettings.form.name')}
           </div>
           <div className="flex items-center gap-x-2">
             <AppIcon
@@ -128,27 +128,27 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               value={name}
               onChange={e => setName(e.target.value)}
               className="h-9 grow"
-              placeholder={t('form.namePlaceholder', { ns: 'datasetSettings' }) || ''}
+              placeholder={t('datasetSettings.form.namePlaceholder') || ''}
             />
           </div>
         </div>
         <div className={cn('flex flex-col py-4')}>
           <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
-            {t('form.desc', { ns: 'datasetSettings' })}
+            {t('datasetSettings.form.desc')}
           </div>
           <div className="w-full">
             <Textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               className="resize-none"
-              placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
+              placeholder={t('datasetSettings.form.descPlaceholder') || ''}
             />
           </div>
         </div>
       </div>
       <div className="flex justify-end pt-6">
-        <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
-        <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('operation.save', { ns: 'common' })}</Button>
+        <Button className="mr-2" onClick={onClose}>{t('common.operation.cancel')}</Button>
+        <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('common.operation.save')}</Button>
       </div>
       {showAppIconPicker && (
         <AppIconPicker

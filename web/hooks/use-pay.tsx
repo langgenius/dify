@@ -20,7 +20,7 @@ export const useAnthropicCheckPay = () => {
     if (providerName === 'anthropic' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
+        title: paymentResult === 'succeeded' ? t('common.actionMsg.paySucceeded') : t('common.actionMsg.payCancelled'),
       })
     }
   }, [providerName, paymentResult, t])
@@ -39,7 +39,7 @@ export const useBillingPay = () => {
     if (paymentType === 'billing' && (paymentResult === 'succeeded' || paymentResult === 'cancelled')) {
       setConfirm({
         type: paymentResult === 'succeeded' ? 'info' : 'warning',
-        title: paymentResult === 'succeeded' ? t('actionMsg.paySucceeded', { ns: 'common' }) : t('actionMsg.payCancelled', { ns: 'common' }),
+        title: paymentResult === 'succeeded' ? t('common.actionMsg.paySucceeded') : t('common.actionMsg.payCancelled'),
       })
     }
   }, [paymentType, paymentResult, t])
@@ -105,7 +105,7 @@ export const CheckModal = () => {
       type={confirmInfo.type === 'info' ? 'info' : 'warning'}
       title={confirmInfo.title}
       content={(confirmInfo as unknown as { desc: string }).desc || ''}
-      confirmText={(confirmInfo.type === 'info' && t('operation.ok', { ns: 'common' })) || ''}
+      confirmText={(confirmInfo.type === 'info' && t('common.operation.ok')) || ''}
     />
   )
 }

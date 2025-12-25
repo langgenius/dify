@@ -173,10 +173,10 @@ const SearchMethodOption = ({
                       onChange={onRerankingModelEnabledChange}
                       disabled={readonly}
                     />
-                    {t('modelProvider.rerankModel.key', { ns: 'common' })}
+                    {t('common.modelProvider.rerankModel.key')}
                     <Tooltip
                       triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
-                      popupContent={t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                      popupContent={t('common.modelProvider.rerankModel.tip')}
                     />
                   </div>
                 )
@@ -193,7 +193,7 @@ const SearchMethodOption = ({
                     <AlertTriangle className="size-4 text-text-warning-secondary" />
                   </div>
                   <span className="system-xs-medium text-text-primary">
-                    {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
+                    {t('datasetSettings.form.retrievalSetting.multiModalTip')}
                   </span>
                 </div>
               )}

@@ -27,7 +27,7 @@ const ConditionValue = ({
   value,
 }: ConditionValueProps) => {
   const { t } = useTranslation()
-  const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`nodes.ifElse.comparisonOperator.${operator}` as any, { ns: 'workflow' }) as string : operator
+  const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${operator}` as any) as string : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)
   const formatValue = useMemo(() => {
     if (notHasValue)
@@ -50,7 +50,7 @@ const ConditionValue = ({
     if (isSelect) {
       const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === (Array.isArray(value) ? value[0] : value))[0]
       return name
-        ? (t(`nodes.ifElse.optionName.${name.i18nKey}` as any, { ns: 'workflow' }) as string).replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
+        ? (t(`workflow.nodes.ifElse.optionName.${name.i18nKey}` as any) as string).replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
             const arr: string[] = b.split('.')
             if (isSystemVar(arr))
               return `{{${b}}}`

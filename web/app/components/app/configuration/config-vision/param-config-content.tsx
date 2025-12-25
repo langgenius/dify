@@ -42,15 +42,15 @@ const ParamConfigContent: FC = () => {
 
   return (
     <div>
-      <div className="text-base font-semibold leading-6 text-text-primary">{t('vision.visionSettings.title', { ns: 'appDebug' })}</div>
+      <div className="text-base font-semibold leading-6 text-text-primary">{t('appDebug.vision.visionSettings.title')}</div>
       <div className="space-y-6 pt-3">
         <div>
           <div className="mb-2 flex items-center  space-x-1">
-            <div className="text-[13px] font-semibold leading-[18px] text-text-secondary">{t('vision.visionSettings.resolution', { ns: 'appDebug' })}</div>
+            <div className="text-[13px] font-semibold leading-[18px] text-text-secondary">{t('appDebug.vision.visionSettings.resolution')}</div>
             <Tooltip
               popupContent={(
                 <div className="w-[180px]">
-                  {t('vision.visionSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+                  {t('appDebug.vision.visionSettings.resolutionTooltip').split('\n').map(item => (
                     <div key={item}>{item}</div>
                   ))}
                 </div>
@@ -60,7 +60,7 @@ const ParamConfigContent: FC = () => {
           <div className="flex items-center gap-1">
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.high', { ns: 'appDebug' })}
+              title={t('appDebug.vision.visionSettings.high')}
               selected={file?.image?.detail === Resolution.high}
               onSelect={() => handleChange({
                 ...file,
@@ -69,7 +69,7 @@ const ParamConfigContent: FC = () => {
             />
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.low', { ns: 'appDebug' })}
+              title={t('appDebug.vision.visionSettings.low')}
               selected={file?.image?.detail === Resolution.low}
               onSelect={() => handleChange({
                 ...file,
@@ -79,11 +79,11 @@ const ParamConfigContent: FC = () => {
           </div>
         </div>
         <div>
-          <div className="mb-2 text-[13px] font-semibold leading-[18px] text-text-secondary">{t('vision.visionSettings.uploadMethod', { ns: 'appDebug' })}</div>
+          <div className="mb-2 text-[13px] font-semibold leading-[18px] text-text-secondary">{t('appDebug.vision.visionSettings.uploadMethod')}</div>
           <div className="flex items-center gap-1">
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.both', { ns: 'appDebug' })}
+              title={t('appDebug.vision.visionSettings.both')}
               selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) && !!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url)}
               onSelect={() => handleChange({
                 ...file,
@@ -92,7 +92,7 @@ const ParamConfigContent: FC = () => {
             />
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.localUpload', { ns: 'appDebug' })}
+              title={t('appDebug.vision.visionSettings.localUpload')}
               selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.local_file) && file?.allowed_file_upload_methods?.length === 1}
               onSelect={() => handleChange({
                 ...file,
@@ -101,7 +101,7 @@ const ParamConfigContent: FC = () => {
             />
             <OptionCard
               className="grow"
-              title={t('vision.visionSettings.url', { ns: 'appDebug' })}
+              title={t('appDebug.vision.visionSettings.url')}
               selected={!!file?.allowed_file_upload_methods?.includes(TransferMethod.remote_url) && file?.allowed_file_upload_methods?.length === 1}
               onSelect={() => handleChange({
                 ...file,
@@ -114,7 +114,7 @@ const ParamConfigContent: FC = () => {
           <ParamItem
             id="upload_limit"
             className=""
-            name={t('vision.visionSettings.uploadLimit', { ns: 'appDebug' })}
+            name={t('appDebug.vision.visionSettings.uploadLimit')}
             noTooltip
             {...{
               default: 2,

@@ -36,14 +36,14 @@ const VoiceParamConfig = ({
   let languageItem = languages.find(item => item.value === text2speech?.language)
   if (languages && !languageItem)
     languageItem = languages[0]
-  const localLanguagePlaceholder = languageItem?.name || t('placeholder.select', { ns: 'common' })
+  const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
 
   const language = languageItem?.value
   const { data: voiceItems } = useAppVoices(appId, language)
   let voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem)
     voiceItem = voiceItems[0]
-  const localVoicePlaceholder = voiceItem?.name || t('placeholder.select', { ns: 'common' })
+  const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
 
   const handleChange = (value: Record<string, string>) => {
     const {
@@ -66,16 +66,16 @@ const VoiceParamConfig = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
+        <div className="system-xl-semibold text-text-primary">{t('appDebug.voice.voiceSettings.title')}</div>
         <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <div className="mb-3">
         <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
-          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
+          {t('appDebug.voice.voiceSettings.language')}
           <Tooltip
             popupContent={(
               <div className="w-[180px]">
-                {t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
+                {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (
                   <div key={item}>
                     {item}
                   </div>
@@ -97,7 +97,7 @@ const VoiceParamConfig = ({
               className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6"
             >
               <span className={cn('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
-                {languageItem?.name ? t(`voice.language.${languageItem?.value.replace('-', '')}` as any, { ns: 'common' }) as string : localLanguagePlaceholder}
+                {languageItem?.name ? t(`common.voice.language.${languageItem?.value.replace('-', '')}` as any) as string : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                 <ChevronDownIcon
@@ -128,7 +128,7 @@ const VoiceParamConfig = ({
                         <span
                           className={cn('block', selected && 'font-normal')}
                         >
-                          {t(`voice.language.${(item.value).toString().replace('-', '')}` as any, { ns: 'common' }) as string}
+                          {t(`common.voice.language.${(item.value).toString().replace('-', '')}` as any) as string}
                         </span>
                         {(selected || item.value === text2speech?.language) && (
                           <span
@@ -148,7 +148,7 @@ const VoiceParamConfig = ({
       </div>
       <div className="mb-3">
         <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
-          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
+          {t('appDebug.voice.voiceSettings.voice')}
         </div>
         <div className="flex items-center gap-1">
           <Listbox
@@ -225,7 +225,7 @@ const VoiceParamConfig = ({
       </div>
       <div>
         <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
-          {t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}
+          {t('appDebug.voice.voiceSettings.autoPlay')}
         </div>
         <Switch
           className="shrink-0"

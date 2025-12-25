@@ -101,8 +101,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           className,
         )}
         placeholder={placeholder ?? (showLeftIcon
-          ? (t('operation.search', { ns: 'common' }) || '')
-          : (t('placeholder.input', { ns: 'common' }) || ''))}
+          ? (t('common.operation.search') || '')
+          : (t('common.placeholder.input') || ''))}
         value={value}
         onChange={props.type === 'number' ? handleNumberChange : onChange}
         onBlur={props.type === 'number' ? handleNumberBlur : onBlur}

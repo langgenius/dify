@@ -96,7 +96,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }) as string,
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('appDebug.variableConfig.varName') }) as string,
       })
       return false
     }
@@ -138,40 +138,40 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   const selectOptions: SelectItem[] = [
     {
-      name: t('variableConfig.text-input', { ns: 'appDebug' }),
+      name: t('appDebug.variableConfig.text-input'),
       value: InputVarType.textInput,
     },
     {
-      name: t('variableConfig.paragraph', { ns: 'appDebug' }),
+      name: t('appDebug.variableConfig.paragraph'),
       value: InputVarType.paragraph,
     },
     {
-      name: t('variableConfig.select', { ns: 'appDebug' }),
+      name: t('appDebug.variableConfig.select'),
       value: InputVarType.select,
     },
     {
-      name: t('variableConfig.number', { ns: 'appDebug' }),
+      name: t('appDebug.variableConfig.number'),
       value: InputVarType.number,
     },
     {
-      name: t('variableConfig.checkbox', { ns: 'appDebug' }),
+      name: t('appDebug.variableConfig.checkbox'),
       value: InputVarType.checkbox,
     },
     ...(supportFile
       ? [
           {
-            name: t('variableConfig.single-file', { ns: 'appDebug' }),
+            name: t('appDebug.variableConfig.single-file'),
             value: InputVarType.singleFile,
           },
           {
-            name: t('variableConfig.multi-files', { ns: 'appDebug' }),
+            name: t('appDebug.variableConfig.multi-files'),
             value: InputVarType.multiFiles,
           },
         ]
       : []),
     ...((!isBasicApp && isSupportJSON)
       ? [{
-          name: t('variableConfig.json', { ns: 'appDebug' }),
+          name: t('appDebug.variableConfig.json'),
           value: InputVarType.jsonObject,
         }]
       : []),
@@ -216,7 +216,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: errorKey }) as string,
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }) as string,
       })
       return
     }
@@ -238,7 +238,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
       return
 
     if (!tempPayload.label) {
-      Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }) })
+      Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.labelNameRequired') })
       return
     }
     if (isStringInput || type === InputVarType.number) {
@@ -246,7 +246,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     }
     else if (type === InputVarType.select) {
       if (options?.length === 0) {
-        Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }) })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.atLeastOneOption') })
         return
       }
       const obj: Record<string, boolean> = {}
@@ -259,19 +259,19 @@ const ConfigModal: FC<IConfigModalProps> = ({
         obj[o] = true
       })
       if (hasRepeatedItem) {
-        Toast.notify({ type: 'error', message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }) })
+        Toast.notify({ type: 'error', message: t('appDebug.variableConfig.errorMsg.optionRepeat') })
         return
       }
       onConfirm(tempPayload, moreInfo)
     }
     else if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
       if (tempPayload.allowed_file_types?.length === 0) {
-        const errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('variableConfig.file.supportFileTypes', { ns: 'appDebug' }) })
+        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConfig.file.supportFileTypes') })
         Toast.notify({ type: 'error', message: errorMessages })
         return
       }
       if (tempPayload.allowed_file_types?.includes(SupportUploadFileTypes.custom) && !tempPayload.allowed_file_extensions?.length) {
-        const errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('variableConfig.file.custom.name', { ns: 'appDebug' }) })
+        const errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('appDebug.variableConfig.file.custom.name') })
         Toast.notify({ type: 'error', message: errorMessages })
         return
       }
@@ -284,34 +284,34 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
   return (
     <Modal
-      title={t(`variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`, { ns: 'appDebug' })}
+      title={t(`appDebug.variableConfig.${isCreate ? 'addModalTitle' : 'editModalTitle'}`)}
       isShow={isShow}
       onClose={onClose}
     >
       <div className="mb-8" ref={modalRef} tabIndex={-1}>
         <div className="space-y-2">
-          <Field title={t('variableConfig.fieldType', { ns: 'appDebug' })}>
+          <Field title={t('appDebug.variableConfig.fieldType')}>
             <TypeSelector value={type} items={selectOptions} onSelect={handleTypeChange} />
           </Field>
 
-          <Field title={t('variableConfig.varName', { ns: 'appDebug' })}>
+          <Field title={t('appDebug.variableConfig.varName')}>
             <Input
               value={variable}
               onChange={handleVarNameChange}
               onBlur={handleVarKeyBlur}
-              placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>
-          <Field title={t('variableConfig.labelName', { ns: 'appDebug' })}>
+          <Field title={t('appDebug.variableConfig.labelName')}>
             <Input
               value={label as string}
               onChange={e => handlePayloadChange('label')(e.target.value)}
-              placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
+              placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
             />
           </Field>
 
           {isStringInput && (
-            <Field title={t('variableConfig.maxLength', { ns: 'appDebug' })}>
+            <Field title={t('appDebug.variableConfig.maxLength')}>
               <ConfigString maxLength={type === InputVarType.textInput ? TEXT_MAX_LENGTH : Infinity} modelId={modelConfig.model_id} value={max_length} onChange={handlePayloadChange('max_length')} />
             </Field>
 
@@ -319,50 +319,50 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           {/* Default value for text input */}
           {type === InputVarType.textInput && (
-            <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Input
                 value={tempPayload.default || ''}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
-                placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               />
             </Field>
           )}
 
           {/* Default value for paragraph */}
           {type === InputVarType.paragraph && (
-            <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Textarea
                 value={String(tempPayload.default ?? '')}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
-                placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               />
             </Field>
           )}
 
           {/* Default value for number input */}
           {type === InputVarType.number && (
-            <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
               <Input
                 type="number"
                 value={tempPayload.default || ''}
                 onChange={e => handlePayloadChange('default')(e.target.value || undefined)}
-                placeholder={t('variableConfig.inputPlaceholder', { ns: 'appDebug' })!}
+                placeholder={t('appDebug.variableConfig.inputPlaceholder')!}
               />
             </Field>
           )}
 
           {type === InputVarType.checkbox && (
-            <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+            <Field title={t('appDebug.variableConfig.defaultValue')}>
               <SimpleSelect
                 className="w-full"
                 optionWrapClassName="max-h-[140px] overflow-y-auto"
                 items={[
-                  { value: CHECKBOX_DEFAULT_TRUE_VALUE, name: t('variableConfig.startChecked', { ns: 'appDebug' }) },
-                  { value: CHECKBOX_DEFAULT_FALSE_VALUE, name: t('variableConfig.noDefaultSelected', { ns: 'appDebug' }) },
+                  { value: CHECKBOX_DEFAULT_TRUE_VALUE, name: t('appDebug.variableConfig.startChecked') },
+                  { value: CHECKBOX_DEFAULT_FALSE_VALUE, name: t('appDebug.variableConfig.noDefaultSelected') },
                 ]}
                 defaultValue={checkboxDefaultSelectValue}
                 onSelect={item => handlePayloadChange('default')(parseCheckboxSelectValue(String(item.value)))}
-                placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })}
+                placeholder={t('appDebug.variableConfig.selectDefaultValue')}
                 allowSearch={false}
               />
             </Field>
@@ -370,17 +370,17 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           {type === InputVarType.select && (
             <>
-              <Field title={t('variableConfig.options', { ns: 'appDebug' })}>
+              <Field title={t('appDebug.variableConfig.options')}>
                 <ConfigSelect options={options || []} onChange={handlePayloadChange('options')} />
               </Field>
               {options && options.length > 0 && (
-                <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+                <Field title={t('appDebug.variableConfig.defaultValue')}>
                   <SimpleSelect
                     key={`default-select-${options.join('-')}`}
                     className="w-full"
                     optionWrapClassName="max-h-[140px] overflow-y-auto"
                     items={[
-                      { value: '', name: t('variableConfig.noDefaultValue', { ns: 'appDebug' }) },
+                      { value: '', name: t('appDebug.variableConfig.noDefaultValue') },
                       ...options.filter(opt => opt.trim() !== '').map(option => ({
                         value: option,
                         name: option,
@@ -388,7 +388,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
                     ]}
                     defaultValue={tempPayload.default || ''}
                     onSelect={item => handlePayloadChange('default')(item.value === '' ? undefined : item.value)}
-                    placeholder={t('variableConfig.selectDefaultValue', { ns: 'appDebug' })}
+                    placeholder={t('appDebug.variableConfig.selectDefaultValue')}
                     allowSearch={false}
                   />
                 </Field>
@@ -403,7 +403,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
                 onChange={(p: UploadFileSetting) => setTempPayload(p as InputVar)}
                 isMultiple={type === InputVarType.multiFiles}
               />
-              <Field title={t('variableConfig.defaultValue', { ns: 'appDebug' })}>
+              <Field title={t('appDebug.variableConfig.defaultValue')}>
                 <FileUploaderInAttachmentWrapper
                   value={(type === InputVarType.singleFile ? (tempPayload.default ? [tempPayload.default] : []) : (tempPayload.default || [])) as unknown as FileEntity[]}
                   onChange={(files) => {
@@ -424,7 +424,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
           )}
 
           {type === InputVarType.jsonObject && (
-            <Field title={t('variableConfig.jsonSchema', { ns: 'appDebug' })} isOptional>
+            <Field title={t('appDebug.variableConfig.jsonSchema')} isOptional>
               <CodeEditor
                 language={CodeLanguage.json}
                 value={jsonSchemaStr}
@@ -440,12 +440,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
           <div className="!mt-5 flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.required} disabled={tempPayload.hide} onCheck={() => handlePayloadChange('required')(!tempPayload.required)} />
-            <span className="system-sm-semibold text-text-secondary">{t('variableConfig.required', { ns: 'appDebug' })}</span>
+            <span className="system-sm-semibold text-text-secondary">{t('appDebug.variableConfig.required')}</span>
           </div>
 
           <div className="!mt-5 flex h-6 items-center space-x-2">
             <Checkbox checked={tempPayload.hide} disabled={tempPayload.required} onCheck={() => handlePayloadChange('hide')(!tempPayload.hide)} />
-            <span className="system-sm-semibold text-text-secondary">{t('variableConfig.hide', { ns: 'appDebug' })}</span>
+            <span className="system-sm-semibold text-text-secondary">{t('appDebug.variableConfig.hide')}</span>
           </div>
         </div>
       </div>

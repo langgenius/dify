@@ -5,7 +5,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { CodeLanguage } from './types'
 
-const i18nPrefix = 'errorMsg'
+const i18nPrefix = 'workflow.errorMsg'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Transform,
@@ -24,11 +24,11 @@ const nodeDefault: NodeDefault<CodeNodeType> = {
     let errorMessages = ''
     const { code, variables } = payload
     if (!errorMessages && variables.filter(v => !v.variable).length > 0)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
     if (!errorMessages && variables.filter(v => !v.value_selector.length).length > 0)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
     if (!errorMessages && !code)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.code`, { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.code`) })
 
     return {
       isValid: !errorMessages,

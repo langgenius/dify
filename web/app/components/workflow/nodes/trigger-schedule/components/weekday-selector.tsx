@@ -32,7 +32,7 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
   return (
     <div className="space-y-2">
       <label className="mb-2 block text-xs font-medium text-text-tertiary">
-        {t('nodes.triggerSchedule.weekdays', { ns: 'workflow' })}
+        {t('workflow.nodes.triggerSchedule.weekdays')}
       </label>
       <div className="flex gap-1.5">
         {weekdays.map(day => (

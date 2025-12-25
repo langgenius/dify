@@ -44,7 +44,7 @@ export const useInputTypeOptions = (supportFile: boolean) => {
   return options.map((value) => {
     return {
       value,
-      label: t(`variableConfig.${i18nFileTypeMap[value] || value}` as any, { ns: 'appDebug' }),
+      label: t(`appDebug.variableConfig.${i18nFileTypeMap[value] || value}` as any),
       Icon: INPUT_TYPE_ICON[value],
       type: DATA_TYPE[value],
     }

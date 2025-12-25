@@ -92,7 +92,7 @@ const Tool: FC<Props> = ({
     if (isAllSelected) {
       return (
         <span className="system-xs-regular text-text-tertiary">
-          {t('addToolModal.added', { ns: 'tools' })}
+          {t('tools.addToolModal.added')}
         </span>
       )
     }
@@ -129,7 +129,7 @@ const Tool: FC<Props> = ({
             }))
           }}
         >
-          {t('tabs.addAll', { ns: 'workflow' })}
+          {t('workflow.tabs.addAll')}
         </span>
       )
     }
@@ -140,7 +140,7 @@ const Tool: FC<Props> = ({
     return (
       <span className="system-xs-regular text-text-tertiary">
         {isAllSelected
-          ? t('tabs.allAdded', { ns: 'workflow' })
+          ? t('workflow.tabs.allAdded')
           : `${selectedToolsNum} / ${totalToolsNum}`}
       </span>
     )
@@ -162,10 +162,10 @@ const Tool: FC<Props> = ({
       return payload.author
 
     if (payload.type === CollectionType.custom)
-      return t('tabs.customTool', { ns: 'workflow' })
+      return t('workflow.tabs.customTool')
 
     if (payload.type === CollectionType.workflow)
-      return t('tabs.workflowTool', { ns: 'workflow' })
+      return t('workflow.tabs.workflowTool')
 
     return ''
   }, [payload.author, payload.type, t])

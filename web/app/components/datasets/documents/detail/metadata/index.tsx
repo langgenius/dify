@@ -70,7 +70,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
           defaultValue={value}
           className={s.select}
           wrapperClassName={s.selectWrapper}
-          placeholder={`${t('metadata.placeholder.select', { ns: 'datasetDocuments' })}${label}`}
+          placeholder={`${t('datasetDocuments.metadata.placeholder.select')}${label}`}
         />
       )
     }
@@ -81,7 +81,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
           onChange={e => onUpdate?.(e.target.value)}
           value={value}
           className={s.textArea}
-          placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
+          placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
         />
       )
     }
@@ -91,7 +91,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
         onChange={e => onUpdate?.(e.target.value)}
         value={value}
         defaultValue={defaultValue}
-        placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
+        placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
       />
     )
   }
@@ -212,19 +212,19 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
       <>
         {!doc_type && !documentType && (
           <>
-            <div className={s.desc}>{t('metadata.desc', { ns: 'datasetDocuments' })}</div>
+            <div className={s.desc}>{t('datasetDocuments.metadata.desc')}</div>
           </>
         )}
         <div className={s.operationWrapper}>
           {!doc_type && !documentType && (
             <>
-              <span className={s.title}>{t('metadata.docTypeSelectTitle', { ns: 'datasetDocuments' })}</span>
+              <span className={s.title}>{t('datasetDocuments.metadata.docTypeSelectTitle')}</span>
             </>
           )}
           {documentType && (
             <>
-              <span className={s.title}>{t('metadata.docTypeChangeTitle', { ns: 'datasetDocuments' })}</span>
-              <span className={s.changeTip}>{t('metadata.docTypeSelectWarning', { ns: 'datasetDocuments' })}</span>
+              <span className={s.title}>{t('datasetDocuments.metadata.docTypeChangeTitle')}</span>
+              <span className={s.changeTip}>{t('datasetDocuments.metadata.docTypeSelectWarning')}</span>
             </>
           )}
           <Radio.Group value={tempDocType ?? documentType ?? ''} onChange={setTempDocType} className={s.radioGroup}>
@@ -246,13 +246,13 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
               onClick={confirmDocType}
               disabled={!tempDocType}
             >
-              {t('metadata.firstMetaAction', { ns: 'datasetDocuments' })}
+              {t('datasetDocuments.metadata.firstMetaAction')}
             </Button>
           )}
           {documentType && (
             <div className={s.opBtnWrapper}>
-              <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary">{t('operation.save', { ns: 'common' })}</Button>
-              <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary">{t('common.operation.save')}</Button>
+              <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
             </div>
           )}
         </div>
@@ -337,9 +337,9 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
       },
     }) as Promise<CommonResponse>)
     if (!e)
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     else
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     onUpdate?.()
     setEditStatus(false)
     setSaveLoading(false)
@@ -352,26 +352,26 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
         : (
             <>
               <div className={s.titleWrapper}>
-                <span className={s.title}>{t('metadata.title', { ns: 'datasetDocuments' })}</span>
+                <span className={s.title}>{t('datasetDocuments.metadata.title')}</span>
                 {!editStatus
                   ? (
                       <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
                         <PencilIcon className={s.opIcon} />
-                        {t('operation.edit', { ns: 'common' })}
+                        {t('common.operation.edit')}
                       </Button>
                     )
                   : showDocTypes
                     ? null
                     : (
                         <div className={s.opBtnWrapper}>
-                          <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('operation.cancel', { ns: 'common' })}</Button>
+                          <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
                           <Button
                             onClick={onSave}
                             className={`${s.opBtn} ${s.opSaveBtn}`}
                             variant="primary"
                             loading={saveLoading}
                           >
-                            {t('operation.save', { ns: 'common' })}
+                            {t('common.operation.save')}
                           </Button>
                         </div>
                       )}
@@ -399,7 +399,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                                   onClick={() => { setShowDocTypes(true) }}
                                   className="cursor-pointer hover:text-text-accent"
                                 >
-                                  {t('operation.change', { ns: 'common' })}
+                                  {t('common.operation.change')}
                                 </div>
                               </div>
                             )}

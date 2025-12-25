@@ -14,7 +14,7 @@ const NoData: FC<INoDataProps> = () => {
       <div
         className="system-sm-regular mt-2 text-text-quaternary"
       >
-        {t('generation.noData', { ns: 'share' })}
+        {t('share.generation.noData')}
       </div>
     </div>
   )

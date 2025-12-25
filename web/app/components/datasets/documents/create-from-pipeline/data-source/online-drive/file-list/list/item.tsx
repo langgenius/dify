@@ -36,7 +36,7 @@ const Item = ({
   const Wrapper = disabled ? Tooltip : React.Fragment
   const wrapperProps = disabled
     ? {
-        popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
+        popupContent: t('datasetPipeline.onlineDrive.notSupportedFileType'),
         position: 'top-end' as Placement,
         offset: { mainAxis: 4, crossAxis: -104 },
       }

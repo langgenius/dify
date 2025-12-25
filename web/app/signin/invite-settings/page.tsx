@@ -43,7 +43,7 @@ export default function InviteSettingsPage() {
   const handleActivate = useCallback(async () => {
     try {
       if (!name) {
-        Toast.notify({ type: 'error', message: t('enterYourName', { ns: 'login' }) })
+        Toast.notify({ type: 'error', message: t('login.enterYourName') })
         return
       }
       const res = await activateMember({
@@ -74,11 +74,11 @@ export default function InviteSettingsPage() {
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
-          <h2 className="title-4xl-semi-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
+          <h2 className="title-4xl-semi-bold text-text-primary">{t('login.invalid')}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
           <Button variant="primary" className="w-full !text-sm">
-            <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
+            <a href="https://dify.ai">{t('login.explore')}</a>
           </Button>
         </div>
       </div>
@@ -91,12 +91,12 @@ export default function InviteSettingsPage() {
         <RiAccountCircleLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('setYourAccount', { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.setYourAccount')}</h2>
       </div>
       <form onSubmit={noop}>
         <div className="mb-5">
           <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-            {t('name', { ns: 'login' })}
+            {t('login.name')}
           </label>
           <div className="mt-1">
             <Input
@@ -104,7 +104,7 @@ export default function InviteSettingsPage() {
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
+              placeholder={t('login.namePlaceholder') || ''}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -117,7 +117,7 @@ export default function InviteSettingsPage() {
         </div>
         <div className="mb-5">
           <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-            {t('interfaceLanguage', { ns: 'login' })}
+            {t('login.interfaceLanguage')}
           </label>
           <div className="mt-1">
             <SimpleSelect
@@ -132,7 +132,7 @@ export default function InviteSettingsPage() {
         {/* timezone */}
         <div className="mb-5">
           <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
-            {t('timezone', { ns: 'login' })}
+            {t('login.timezone')}
           </label>
           <div className="mt-1">
             <SimpleSelect
@@ -150,13 +150,13 @@ export default function InviteSettingsPage() {
             className="w-full"
             onClick={handleActivate}
           >
-            {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
+            {`${t('login.join')} ${checkRes?.data?.workspace_name}`}
           </Button>
         </div>
       </form>
       {!systemFeatures.branding.enabled && (
         <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
-          {t('license.tip', { ns: 'login' })}
+          {t('login.license.tip')}
       &nbsp;
           <Link
             className="system-xs-medium text-text-accent-secondary"
@@ -164,7 +164,7 @@ export default function InviteSettingsPage() {
             rel="noopener noreferrer"
             href={docLink('/policies/open-source')}
           >
-            {t('license.link', { ns: 'login' })}
+            {t('login.license.link')}
           </Link>
         </div>
       )}

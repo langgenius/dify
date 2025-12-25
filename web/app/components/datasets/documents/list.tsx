@@ -243,10 +243,10 @@ const DocumentList: FC<IDocumentListProps> = ({
       if (!e) {
         if (actionName === DocumentActionType.delete)
           onSelectedIdChange([])
-        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         onUpdate()
       }
-      else { Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
+      else { Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
     }
   }
 
@@ -302,20 +302,20 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </div>
               </td>
               <td>
-                {renderSortHeader('name', t('list.table.header.fileName', { ns: 'datasetDocuments' }))}
+                {renderSortHeader('name', t('datasetDocuments.list.table.header.fileName'))}
               </td>
-              <td className="w-[130px]">{t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}</td>
+              <td className="w-[130px]">{t('datasetDocuments.list.table.header.chunkingMode')}</td>
               <td className="w-24">
-                {renderSortHeader('word_count', t('list.table.header.words', { ns: 'datasetDocuments' }))}
+                {renderSortHeader('word_count', t('datasetDocuments.list.table.header.words'))}
               </td>
               <td className="w-44">
-                {renderSortHeader('hit_count', t('list.table.header.hitCount', { ns: 'datasetDocuments' }))}
+                {renderSortHeader('hit_count', t('datasetDocuments.list.table.header.hitCount'))}
               </td>
               <td className="w-44">
-                {renderSortHeader('created_at', t('list.table.header.uploadTime', { ns: 'datasetDocuments' }))}
+                {renderSortHeader('created_at', t('datasetDocuments.list.table.header.uploadTime'))}
               </td>
-              <td className="w-40">{t('list.table.header.status', { ns: 'datasetDocuments' })}</td>
-              <td className="w-20">{t('list.table.header.action', { ns: 'datasetDocuments' })}</td>
+              <td className="w-40">{t('datasetDocuments.list.table.header.status')}</td>
+              <td className="w-20">{t('datasetDocuments.list.table.header.action')}</td>
             </tr>
           </thead>
           <tbody className="text-text-secondary">
@@ -393,7 +393,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                       </Tooltip>
                       <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
                         <Tooltip
-                          popupContent={t('list.table.rename', { ns: 'datasetDocuments' })}
+                          popupContent={t('datasetDocuments.list.table.rename')}
                         >
                           <div
                             className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
@@ -417,7 +417,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                   <td>{renderCount(doc.word_count)}</td>
                   <td>{renderCount(doc.hit_count)}</td>
                   <td className="text-[13px] text-text-secondary">
-                    {formatTime(doc.created_at, t('dateTimeFormat', { ns: 'datasetHitTesting' }) as string)}
+                    {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
                   </td>
                   <td>
                     <StatusItem status={doc.display_status} />

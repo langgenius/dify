@@ -80,10 +80,10 @@ const PluginsPanel = () => {
                   </div>
                   {!isLastPage && !isFetching && (
                     <Button onClick={loadNextPage}>
-                      {t('common.loadMore', { ns: 'workflow' })}
+                      {t('workflow.common.loadMore')}
                     </Button>
                   )}
-                  {isFetching && <div className="system-md-semibold text-text-secondary">{t('detail.loading', { ns: 'appLog' })}</div>}
+                  {isFetching && <div className="system-md-semibold text-text-secondary">{t('appLog.detail.loading')}</div>}
                 </div>
               )
             : (

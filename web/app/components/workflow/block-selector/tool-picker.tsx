@@ -141,7 +141,7 @@ const ToolPicker: FC<Props> = ({
     await createCustomCollection(data)
     Toast.notify({
       type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
+      message: t('common.api.actionSuccess'),
     })
     hideEditCustomCollectionModal()
     handleAddedCustomTool()
@@ -179,7 +179,7 @@ const ToolPicker: FC<Props> = ({
               onSearchChange={setSearchText}
               tags={tags}
               onTagsChange={setTags}
-              placeholder={t('searchTools', { ns: 'plugin' })!}
+              placeholder={t('plugin.searchTools')!}
               supportAddCustomTool={supportAddCustomTool}
               onAddedCustomTool={handleAddedCustomTool}
               onShowAddCustomCollectionModal={showEditCustomCollectionModal}

@@ -56,7 +56,7 @@ const Actions = ({
               checked={checked}
             />
             <span className="system-sm-medium text-text-accent">
-              {t('operation.selectAll', { ns: 'common' })}
+              {t('common.operation.selectAll')}
             </span>
           </div>
           {tip && (
@@ -75,7 +75,7 @@ const Actions = ({
             variant="ghost"
             className="px-3 py-2"
           >
-            {t('operation.cancel', { ns: 'common' })}
+            {t('common.operation.cancel')}
           </Button>
         </Link>
         <Button
@@ -84,7 +84,7 @@ const Actions = ({
           onClick={handleNextStep}
           className="gap-x-0.5"
         >
-          <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
+          <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
           <RiArrowRightLine className="size-4" />
         </Button>
       </div>

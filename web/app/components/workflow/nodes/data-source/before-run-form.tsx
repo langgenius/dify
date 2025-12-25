@@ -93,7 +93,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
         )}
         <div className="flex justify-end gap-x-2">
           <Button onClick={onCancel}>
-            {t('operation.cancel', { ns: 'common' })}
+            {t('common.operation.cancel')}
           </Button>
           <Button
             onClick={handleRunWithSyncDraft}
@@ -101,7 +101,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             loading={isPending}
             disabled={isPending || startRunBtnDisabled}
           >
-            {t('singleRun.startRun', { ns: 'workflow' })}
+            {t('workflow.singleRun.startRun')}
           </Button>
         </div>
       </div>

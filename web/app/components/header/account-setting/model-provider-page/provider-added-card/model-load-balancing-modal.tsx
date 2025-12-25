@@ -158,7 +158,7 @@ const ModelLoadBalancingModal = ({
         },
       )
       if (res.result === 'success') {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         handleRefreshModel(provider, currentCustomConfigurationModelFixedFields, false)
         onSave?.(provider.provider)
         onClose?.()
@@ -238,8 +238,8 @@ const ModelLoadBalancingModal = ({
             <div className="h-[30px]">
               {
                 draftConfig?.enabled
-                  ? t('modelProvider.auth.configLoadBalancing', { ns: 'common' })
-                  : t('modelProvider.auth.configModel', { ns: 'common' })
+                  ? t('common.modelProvider.auth.configLoadBalancing')
+                  : t('common.modelProvider.auth.configModel')
               }
             </div>
             {Boolean(model) && (
@@ -280,15 +280,15 @@ const ModelLoadBalancingModal = ({
                         <div className="text-sm text-text-secondary">
                           {
                             providerFormSchemaPredefined
-                              ? t('modelProvider.auth.providerManaged', { ns: 'common' })
-                              : t('modelProvider.auth.specifyModelCredential', { ns: 'common' })
+                              ? t('common.modelProvider.auth.providerManaged')
+                              : t('common.modelProvider.auth.specifyModelCredential')
                           }
                         </div>
                         <div className="text-xs text-text-tertiary">
                           {
                             providerFormSchemaPredefined
-                              ? t('modelProvider.auth.providerManagedTip', { ns: 'common' })
-                              : t('modelProvider.auth.specifyModelCredentialTip', { ns: 'common' })
+                              ? t('common.modelProvider.auth.providerManagedTip')
+                              : t('common.modelProvider.auth.specifyModelCredentialTip')
                           }
                         </div>
                       </div>
@@ -340,13 +340,13 @@ const ModelLoadBalancingModal = ({
                           onClick={() => openConfirmDelete(undefined, { model: model.model, model_type: model.model_type })}
                           className="text-components-button-destructive-secondary-text"
                         >
-                          {t('modelProvider.auth.removeModel', { ns: 'common' })}
+                          {t('common.modelProvider.auth.removeModel')}
                         </Button>
                       )
                     }
                   </div>
                   <div className="space-x-2">
-                    <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
                     <Button
                       variant="primary"
                       onClick={handleSave}
@@ -356,7 +356,7 @@ const ModelLoadBalancingModal = ({
                         || isLoading
                       }
                     >
-                      {t('operation.save', { ns: 'common' })}
+                      {t('common.operation.save')}
                     </Button>
                   </div>
                 </div>
@@ -367,7 +367,7 @@ const ModelLoadBalancingModal = ({
         deleteModel && (
           <Confirm
             isShow
-            title={t('modelProvider.confirmDelete', { ns: 'common' })}
+            title={t('common.modelProvider.confirmDelete')}
             onCancel={closeConfirmDelete}
             onConfirm={handleDeleteModel}
             isDisabled={doingAction}

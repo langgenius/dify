@@ -98,14 +98,14 @@ const Annotation: FC<Props> = (props) => {
 
   const handleAdd = async (payload: AnnotationItemBasic) => {
     await addAnnotation(appDetail.id, payload)
-    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
 
   const handleRemove = async (id: string) => {
     await delAnnotation(appDetail.id, id)
-    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -113,13 +113,13 @@ const Annotation: FC<Props> = (props) => {
   const handleBatchDelete = async () => {
     try {
       await delAnnotations(appDetail.id, selectedIds)
-      Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+      Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
       fetchList()
       setControlUpdateList(Date.now())
       setSelectedIds([])
     }
     catch (e: any) {
-      Toast.notify({ type: 'error', message: e.message || t('api.actionFailed', { ns: 'common' }) })
+      Toast.notify({ type: 'error', message: e.message || t('common.api.actionFailed') })
     }
   }
 
@@ -132,7 +132,7 @@ const Annotation: FC<Props> = (props) => {
     if (!currItem)
       return
     await editAnnotation(appDetail.id, currItem.id, { question, answer })
-    Toast.notify({ message: t('api.actionSuccess', { ns: 'common' }), type: 'success' })
+    Toast.notify({ message: t('common.api.actionSuccess'), type: 'success' })
     fetchList()
     setControlUpdateList(Date.now())
   }
@@ -144,7 +144,7 @@ const Annotation: FC<Props> = (props) => {
 
   return (
     <div className="flex h-full flex-col">
-      <p className="system-sm-regular text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
+      <p className="system-sm-regular text-text-tertiary">{t('appLog.description')}</p>
       <div className="relative flex h-full flex-1 flex-col py-4">
         <Filter appId={appDetail.id} queryParams={queryParams} setQueryParams={setQueryParams}>
           <div className="flex items-center space-x-2">
@@ -152,7 +152,7 @@ const Annotation: FC<Props> = (props) => {
               <>
                 <div className={cn(!annotationConfig?.enabled && 'pr-2', 'flex h-7 items-center space-x-1 rounded-lg border border-components-panel-border bg-components-panel-bg-blur pl-2')}>
                   <MessageFast className="h-4 w-4 text-util-colors-indigo-indigo-600" />
-                  <div className="system-sm-medium text-text-primary">{t('name', { ns: 'appAnnotation' })}</div>
+                  <div className="system-sm-medium text-text-primary">{t('appAnnotation.name')}</div>
                   <Switch
                     key={controlRefreshSwitch}
                     defaultValue={annotationConfig?.enabled}
@@ -171,7 +171,7 @@ const Annotation: FC<Props> = (props) => {
                         await ensureJobCompleted(jobId, AnnotationEnableStatus.disable)
                         await fetchAnnotationConfig()
                         Toast.notify({
-                          message: t('api.actionSuccess', { ns: 'common' }),
+                          message: t('common.api.actionSuccess'),
                           type: 'success',
                         })
                       }
@@ -264,7 +264,7 @@ const Annotation: FC<Props> = (props) => {
 
               await fetchAnnotationConfig()
               Toast.notify({
-                message: t('api.actionSuccess', { ns: 'common' }),
+                message: t('common.api.actionSuccess'),
                 type: 'success',
               })
               setIsShowEdit(false)

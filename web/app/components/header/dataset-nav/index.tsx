@@ -85,12 +85,12 @@ const DatasetNav = () => {
       isApp={false}
       icon={<RiBook2Line className="h-4 w-4" />}
       activeIcon={<RiBook2Fill className="h-4 w-4" />}
-      text={t('menus.datasets', { ns: 'common' })}
+      text={t('common.menus.datasets')}
       activeSegment="datasets"
       link="/datasets"
       curNav={curNav}
       navigationItems={navigationItems}
-      createText={t('menus.newDataset', { ns: 'common' })}
+      createText={t('common.menus.newDataset')}
       onCreate={() => router.push(createRoute)}
       onLoadMore={handleLoadMore}
     />

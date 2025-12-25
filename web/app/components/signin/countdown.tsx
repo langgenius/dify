@@ -33,7 +33,7 @@ export default function Countdown({ onResend }: CountdownProps) {
 
   return (
     <p className="system-xs-regular text-text-tertiary">
-      <span>{t('checkCode.didNotReceiveCode', { ns: 'login' })}</span>
+      <span>{t('login.checkCode.didNotReceiveCode')}</span>
       {time > 0 && (
         <span>
           {Math.round(time / 1000)}
@@ -41,7 +41,7 @@ export default function Countdown({ onResend }: CountdownProps) {
         </span>
       )}
       {
-        time <= 0 && <span className="system-xs-medium cursor-pointer text-text-accent-secondary" onClick={resend}>{t('checkCode.resend', { ns: 'login' })}</span>
+        time <= 0 && <span className="system-xs-medium cursor-pointer text-text-accent-secondary" onClick={resend}>{t('login.checkCode.resend')}</span>
       }
     </p>
   )

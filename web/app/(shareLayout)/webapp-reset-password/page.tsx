@@ -27,14 +27,14 @@ export default function CheckCode() {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+        Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
         return
       }
 
       if (!emailRegex.test(email)) {
         Toast.notify({
           type: 'error',
-          message: t('error.emailInValid', { ns: 'login' }),
+          message: t('login.error.emailInValid'),
         })
         return
       }
@@ -50,7 +50,7 @@ export default function CheckCode() {
       else if (res.code === 'account_not_found') {
         Toast.notify({
           type: 'error',
-          message: t('error.registrationNotAllowed', { ns: 'login' }),
+          message: t('login.error.registrationNotAllowed'),
         })
       }
       else {
@@ -74,21 +74,21 @@ export default function CheckCode() {
         <RiLockPasswordLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('resetPassword', { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.resetPassword')}</h2>
         <p className="body-md-regular mt-2 text-text-secondary">
-          {t('resetPasswordDesc', { ns: 'login' })}
+          {t('login.resetPasswordDesc')}
         </p>
       </div>
 
       <form onSubmit={noop}>
         <input type="text" className="hidden" />
         <div className="mb-2">
-          <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
+          <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('login.email')}</label>
           <div className="mt-1">
-            <Input id="email" type="email" disabled={loading} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
+            <Input id="email" type="email" disabled={loading} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
           </div>
           <div className="mt-3">
-            <Button loading={loading} disabled={loading} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t('sendVerificationCode', { ns: 'login' })}</Button>
+            <Button loading={loading} disabled={loading} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t('login.sendVerificationCode')}</Button>
           </div>
         </div>
       </form>
@@ -99,7 +99,7 @@ export default function CheckCode() {
         <div className="inline-block rounded-full bg-background-default-dimmed p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="system-xs-regular ml-2">{t('backToLogin', { ns: 'login' })}</span>
+        <span className="system-xs-regular ml-2">{t('login.backToLogin')}</span>
       </Link>
     </div>
   )

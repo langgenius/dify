@@ -384,69 +384,69 @@ const SelectionContextmenu = () => {
       <div ref={menuRef} className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
         <div className="p-1">
           <div className="system-xs-medium px-2 py-2 text-text-tertiary">
-            {t('operator.vertical', { ns: 'workflow' })}
+            {t('workflow.operator.vertical')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Top)}
           >
             <RiAlignTop className="h-4 w-4" />
-            {t('operator.alignTop', { ns: 'workflow' })}
+            {t('workflow.operator.alignTop')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Middle)}
           >
             <RiAlignCenter className="h-4 w-4 rotate-90" />
-            {t('operator.alignMiddle', { ns: 'workflow' })}
+            {t('workflow.operator.alignMiddle')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Bottom)}
           >
             <RiAlignBottom className="h-4 w-4" />
-            {t('operator.alignBottom', { ns: 'workflow' })}
+            {t('workflow.operator.alignBottom')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.DistributeVertical)}
           >
             <RiAlignJustify className="h-4 w-4 rotate-90" />
-            {t('operator.distributeVertical', { ns: 'workflow' })}
+            {t('workflow.operator.distributeVertical')}
           </div>
         </div>
         <div className="h-px bg-divider-regular"></div>
         <div className="p-1">
           <div className="system-xs-medium px-2 py-2 text-text-tertiary">
-            {t('operator.horizontal', { ns: 'workflow' })}
+            {t('workflow.operator.horizontal')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Left)}
           >
             <RiAlignLeft className="h-4 w-4" />
-            {t('operator.alignLeft', { ns: 'workflow' })}
+            {t('workflow.operator.alignLeft')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Center)}
           >
             <RiAlignCenter className="h-4 w-4" />
-            {t('operator.alignCenter', { ns: 'workflow' })}
+            {t('workflow.operator.alignCenter')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.Right)}
           >
             <RiAlignRight className="h-4 w-4" />
-            {t('operator.alignRight', { ns: 'workflow' })}
+            {t('workflow.operator.alignRight')}
           </div>
           <div
             className="flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
             onClick={() => handleAlignNodes(AlignType.DistributeHorizontal)}
           >
             <RiAlignJustify className="h-4 w-4" />
-            {t('operator.distributeHorizontal', { ns: 'workflow' })}
+            {t('workflow.operator.distributeHorizontal')}
           </div>
         </div>
       </div>

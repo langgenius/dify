@@ -32,11 +32,11 @@ const EditWorkspaceModal = ({
           name,
         },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       location.assign(`${location.origin}`)
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
     }
   }
 
@@ -44,15 +44,15 @@ const EditWorkspaceModal = ({
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
         <div className="mb-2 flex justify-between">
-          <div className="text-xl font-semibold text-text-primary">{t('account.editWorkspaceInfo', { ns: 'common' })}</div>
+          <div className="text-xl font-semibold text-text-primary">{t('common.account.editWorkspaceInfo')}</div>
           <RiCloseLine className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
         </div>
         <div>
-          <div className="mb-2 text-sm font-medium text-text-primary">{t('account.workspaceName', { ns: 'common' })}</div>
+          <div className="mb-2 text-sm font-medium text-text-primary">{t('common.account.workspaceName')}</div>
           <Input
             className="mb-2"
             value={name}
-            placeholder={t('account.workspaceNamePlaceholder', { ns: 'common' })}
+            placeholder={t('common.account.workspaceNamePlaceholder')}
             onChange={(e) => {
               setName(e.target.value)
             }}
@@ -66,7 +66,7 @@ const EditWorkspaceModal = ({
               size="large"
               onClick={onCancel}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
             <Button
               size="large"
@@ -77,7 +77,7 @@ const EditWorkspaceModal = ({
               }}
               disabled={!isCurrentWorkspaceOwner}
             >
-              {t('operation.confirm', { ns: 'common' })}
+              {t('common.operation.confirm')}
             </Button>
           </div>
 

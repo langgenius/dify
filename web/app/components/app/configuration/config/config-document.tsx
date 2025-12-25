@@ -56,11 +56,11 @@ const ConfigDocument: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('feature.documentUpload.title', { ns: 'appDebug' })}</div>
+        <div className="system-sm-semibold mr-1 text-text-secondary">{t('appDebug.feature.documentUpload.title')}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
-              {t('feature.documentUpload.description', { ns: 'appDebug' })}
+              {t('appDebug.feature.documentUpload.description')}
             </div>
           )}
         />

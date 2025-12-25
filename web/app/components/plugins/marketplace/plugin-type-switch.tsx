@@ -41,42 +41,42 @@ const PluginTypeSwitch = ({
   const options = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: t('category.all', { ns: 'plugin' }),
+      text: t('plugin.category.all'),
       icon: null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
-      text: t('category.models', { ns: 'plugin' }),
+      text: t('plugin.category.models'),
       icon: <RiBrain2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
-      text: t('category.tools', { ns: 'plugin' }),
+      text: t('plugin.category.tools'),
       icon: <RiHammerLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t('category.datasources', { ns: 'plugin' }),
+      text: t('plugin.category.datasources'),
       icon: <RiDatabase2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
-      text: t('category.triggers', { ns: 'plugin' }),
+      text: t('plugin.category.triggers'),
       icon: <TriggerIcon className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t('category.agents', { ns: 'plugin' }),
+      text: t('plugin.category.agents'),
       icon: <RiSpeakAiLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
-      text: t('category.extensions', { ns: 'plugin' }),
+      text: t('plugin.category.extensions'),
       icon: <RiPuzzle2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      text: t('category.bundles', { ns: 'plugin' }),
+      text: t('plugin.category.bundles'),
       icon: <RiArchive2Line className="mr-1.5 h-4 w-4" />,
     },
   ]

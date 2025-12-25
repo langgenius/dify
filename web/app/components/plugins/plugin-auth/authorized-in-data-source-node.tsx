@@ -28,8 +28,8 @@ const AuthorizedInDataSourceNode = ({
       />
       {
         authorizationsNum > 1
-          ? t('auth.authorizations', { ns: 'plugin' })
-          : t('auth.authorization', { ns: 'plugin' })
+          ? t('plugin.auth.authorizations')
+          : t('plugin.auth.authorization')
       }
       <RiEqualizer2Line
         className={cn(

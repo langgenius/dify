@@ -96,11 +96,11 @@ const LoopLogTrigger = ({
     >
       <Loop className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
       <div className="system-sm-medium flex-1 text-left text-components-button-tertiary-text">
-        {t('nodes.loop.loop', { ns: 'workflow', count: displayLoopCount })}
+        {t('workflow.nodes.loop.loop', { count: displayLoopCount })}
         {errorCount > 0 && (
           <>
-            {t('nodes.loop.comma', { ns: 'workflow' })}
-            {t('nodes.loop.error', { ns: 'workflow', count: errorCount })}
+            {t('workflow.nodes.loop.comma')}
+            {t('workflow.nodes.loop.error', { count: errorCount })}
           </>
         )}
       </div>

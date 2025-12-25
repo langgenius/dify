@@ -23,15 +23,15 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationConfirmTitle', { ns: 'datasetDocuments' })}</span>
-        <p className="system-md-regular text-text-secondary">{t('segment.regenerationConfirmMessage', { ns: 'datasetDocuments' })}</p>
+        <span className="title-2xl-semi-bold text-text-primary">{t('datasetDocuments.segment.regenerationConfirmTitle')}</span>
+        <p className="system-md-regular text-text-secondary">{t('datasetDocuments.segment.regenerationConfirmMessage')}</p>
       </div>
       <div className="flex justify-end gap-x-2 pt-6">
         <Button onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t('common.operation.cancel')}
         </Button>
         <Button variant="warning" destructive onClick={onConfirm}>
-          {t('operation.regenerate', { ns: 'common' })}
+          {t('common.operation.regenerate')}
         </Button>
       </div>
     </>
@@ -46,13 +46,13 @@ const RegeneratingContent: FC = React.memo(() => {
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regeneratingTitle', { ns: 'datasetDocuments' })}</span>
-        <p className="system-md-regular text-text-secondary">{t('segment.regeneratingMessage', { ns: 'datasetDocuments' })}</p>
+        <span className="title-2xl-semi-bold text-text-primary">{t('datasetDocuments.segment.regeneratingTitle')}</span>
+        <p className="system-md-regular text-text-secondary">{t('datasetDocuments.segment.regeneratingMessage')}</p>
       </div>
       <div className="flex justify-end pt-6">
         <Button variant="warning" destructive disabled className="inline-flex items-center gap-x-0.5">
           <RiLoader2Line className="h-4 w-4 animate-spin text-components-button-destructive-primary-text-disabled" />
-          <span>{t('operation.regenerate', { ns: 'common' })}</span>
+          <span>{t('common.operation.regenerate')}</span>
         </Button>
       </div>
     </>
@@ -80,12 +80,12 @@ const RegenerationCompletedContent: FC<IRegenerationCompletedContentProps> = Rea
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationSuccessTitle', { ns: 'datasetDocuments' })}</span>
-        <p className="system-md-regular text-text-secondary">{t('segment.regenerationSuccessMessage', { ns: 'datasetDocuments' })}</p>
+        <span className="title-2xl-semi-bold text-text-primary">{t('datasetDocuments.segment.regenerationSuccessTitle')}</span>
+        <p className="system-md-regular text-text-secondary">{t('datasetDocuments.segment.regenerationSuccessMessage')}</p>
       </div>
       <div className="flex justify-end pt-6">
         <Button variant="primary" onClick={onClose}>
-          {`${t('operation.close', { ns: 'common' })}${countdown === 0 ? '' : `(${Math.round(countdown / 1000)})`}`}
+          {`${t('common.operation.close')}${countdown === 0 ? '' : `(${Math.round(countdown / 1000)})`}`}
         </Button>
       </div>
     </>

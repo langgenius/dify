@@ -188,10 +188,9 @@ const CreateFormPipeline = () => {
 
   const tip = useMemo(() => {
     if (datasourceType === DatasourceType.onlineDocument)
-      return t('addDocuments.selectOnlineDocumentTip', { ns: 'datasetPipeline', count: 50 })
+      return t('datasetPipeline.addDocuments.selectOnlineDocumentTip', { count: 50 })
     if (datasourceType === DatasourceType.onlineDrive) {
-      return t('addDocuments.selectOnlineDriveTip', {
-        ns: 'datasetPipeline',
+      return t('datasetPipeline.addDocuments.selectOnlineDriveTip', {
         count: fileUploadConfig.batch_count_limit,
         fileSize: fileUploadConfig.file_size_limit,
       })
@@ -468,7 +467,7 @@ const CreateFormPipeline = () => {
         <div className="flex h-full flex-col px-14">
           <LeftHeader
             steps={steps}
-            title={t('addDocuments.title', { ns: 'datasetPipeline' })}
+            title={t('datasetPipeline.addDocuments.title')}
             currentStep={currentStep}
           />
           <div className="grow overflow-y-auto">
@@ -609,8 +608,8 @@ const CreateFormPipeline = () => {
         <PlanUpgradeModal
           show
           onClose={hidePlanUpgradeModal}
-          title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
-          description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
+          title={t('billing.upgrade.uploadMultiplePages.title')!}
+          description={t('billing.upgrade.uploadMultiplePages.description')!}
         />
       )}
     </div>

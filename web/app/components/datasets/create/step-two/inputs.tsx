@@ -24,11 +24,11 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
-        <span className="system-sm-semibold mr-0.5">{t('stepTwo.separator', { ns: 'datasetCreation' })}</span>
+        <span className="system-sm-semibold mr-0.5">{t('datasetCreation.stepTwo.separator')}</span>
         <Tooltip
           popupContent={(
             <div className="max-w-[200px]">
-              {props.tooltip || t('stepTwo.separatorTip', { ns: 'datasetCreation' })}
+              {props.tooltip || t('datasetCreation.stepTwo.separatorTip')}
             </div>
           )}
         />
@@ -38,7 +38,7 @@ export const DelimiterInput: FC<InputProps & { tooltip?: string }> = (props) => 
       <Input
         type="text"
         className="h-9"
-        placeholder={t('stepTwo.separatorPlaceholder', { ns: 'datasetCreation' })!}
+        placeholder={t('datasetCreation.stepTwo.separatorPlaceholder')!}
         {...props}
       />
     </FormField>
@@ -52,7 +52,7 @@ export const MaxLengthInput: FC<InputNumberProps> = (props) => {
   return (
     <FormField label={(
       <div className="system-sm-semibold mb-1">
-        {t('stepTwo.maxLength', { ns: 'datasetCreation' })}
+        {t('datasetCreation.stepTwo.maxLength')}
       </div>
     )}
     >
@@ -73,11 +73,11 @@ export const OverlapInput: FC<InputNumberProps> = (props) => {
   return (
     <FormField label={(
       <div className="mb-1 flex items-center">
-        <span className="system-sm-semibold">{t('stepTwo.overlap', { ns: 'datasetCreation' })}</span>
+        <span className="system-sm-semibold">{t('datasetCreation.stepTwo.overlap')}</span>
         <Tooltip
           popupContent={(
             <div className="max-w-[200px]">
-              {t('stepTwo.overlapTip', { ns: 'datasetCreation' })}
+              {t('datasetCreation.stepTwo.overlapTip')}
             </div>
           )}
         />
@@ -87,7 +87,7 @@ export const OverlapInput: FC<InputNumberProps> = (props) => {
       <InputNumber
         type="number"
         size="large"
-        placeholder={t('stepTwo.overlap', { ns: 'datasetCreation' }) || ''}
+        placeholder={t('datasetCreation.stepTwo.overlap') || ''}
         min={1}
         {...props}
       />

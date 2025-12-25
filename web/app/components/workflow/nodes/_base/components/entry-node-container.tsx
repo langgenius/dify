@@ -22,7 +22,7 @@ const EntryNodeContainer: FC<EntryNodeContainerProps> = ({
 
   const label = useMemo(() => {
     const translationKey = nodeType === StartNodeTypeEnum.Start ? 'entryNodeStatus' : 'triggerStatus'
-    return customLabel || t(`${translationKey}.enabled`, { ns: 'workflow' })
+    return customLabel || t(`workflow.${translationKey}.enabled`)
   }, [customLabel, nodeType, t])
 
   return (

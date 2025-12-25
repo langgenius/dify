@@ -31,16 +31,16 @@ const Connect = ({
         <div className="flex flex-col gap-y-1 pb-3 pt-1">
           <div className="system-md-semibold text-text-secondary">
             <span className="relative">
-              {t('onlineDrive.notConnected', { ns: 'datasetPipeline', name: nodeData.title })}
+              {t('datasetPipeline.onlineDrive.notConnected', { name: nodeData.title })}
               <Icon3Dots className="absolute -right-2.5 -top-1.5 size-4 text-text-secondary" />
             </span>
           </div>
           <div className="system-sm-regular text-text-tertiary">
-            {t('onlineDrive.notConnectedTip', { ns: 'datasetPipeline', name: nodeData.title })}
+            {t('datasetPipeline.onlineDrive.notConnectedTip', { name: nodeData.title })}
           </div>
         </div>
         <Button className="w-fit" variant="primary" onClick={onSetting}>
-          {t('stepOne.connect', { ns: 'datasetCreation' })}
+          {t('datasetCreation.stepOne.connect')}
         </Button>
       </div>
     </div>

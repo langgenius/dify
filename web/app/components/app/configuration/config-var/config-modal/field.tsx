@@ -25,7 +25,7 @@ const Field: FC<Props> = ({
         {isOptional && (
           <span className="system-xs-regular ml-1 text-text-tertiary">
             (
-            {t('variableConfig.optional', { ns: 'appDebug' })}
+            {t('appDebug.variableConfig.optional')}
             )
           </span>
         )}

@@ -41,12 +41,12 @@ const AgentLogNav = ({
                 variant="ghost-accent"
                 onClick={() => onShowAgentOrToolLog(first)}
               >
-                {t('nodes.agent.strategy.label', { ns: 'workflow' })}
+                {t('workflow.nodes.agent.strategy.label')}
               </Button>
             )
           : (
               <div className="system-xs-medium-uppercase flex items-center px-[5px] text-text-tertiary">
-                {t('nodes.agent.strategy.label', { ns: 'workflow' })}
+                {t('workflow.nodes.agent.strategy.label')}
               </div>
             )
       }

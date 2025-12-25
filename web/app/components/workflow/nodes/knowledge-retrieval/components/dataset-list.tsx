@@ -72,7 +72,7 @@ const DatasetList: FC<Props> = ({
           })
         : (
             <div className="cursor-default select-none rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary">
-              {t('datasetConfig.knowledgeTip', { ns: 'appDebug' })}
+              {t('appDebug.datasetConfig.knowledgeTip')}
             </div>
           )}
 

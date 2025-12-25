@@ -19,21 +19,21 @@ const Tabs = ({
     <div className="flex shrink-0 items-center gap-x-6 border-b-[0.5px] border-divider-subtle px-4">
       <Tab
         isActive={currentTab === 'RESULT'}
-        label={t('result', { ns: 'runLog' })}
+        label={t('runLog.result')}
         value="RESULT"
         workflowRunningData={workflowRunningData}
         onClick={switchTab}
       />
       <Tab
         isActive={currentTab === 'DETAIL'}
-        label={t('detail', { ns: 'runLog' })}
+        label={t('runLog.detail')}
         value="DETAIL"
         workflowRunningData={workflowRunningData}
         onClick={switchTab}
       />
       <Tab
         isActive={currentTab === 'TRACING'}
-        label={t('tracing', { ns: 'runLog' })}
+        label={t('runLog.tracing')}
         value="TRACING"
         workflowRunningData={workflowRunningData}
         onClick={switchTab}

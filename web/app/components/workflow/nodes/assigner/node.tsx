@@ -11,7 +11,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'nodes.assigner'
+const i18nPrefix = 'workflow.nodes.assigner'
 
 const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
   data,
@@ -29,7 +29,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         <div className="relative flex flex-col items-start gap-0.5 self-stretch px-3 py-1">
           <div className="flex flex-col items-start gap-1 self-stretch">
             <div className="flex items-center gap-1 self-stretch rounded-md bg-workflow-block-parma-bg px-[5px] py-1">
-              <div className="system-xs-medium flex-1 text-text-tertiary">{t(`${i18nPrefix}.varNotSet`, { ns: 'workflow' })}</div>
+              <div className="system-xs-medium flex-1 text-text-tertiary">{t(`${i18nPrefix}.varNotSet`)}</div>
             </div>
           </div>
         </div>
@@ -50,7 +50,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
               nodeType={node?.data.type}
               nodeTitle={node?.data.title}
               rightSlot={
-                value.operation && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${value.operation}`, { ns: 'workflow' })} />
+                value.operation && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${value.operation}`)} />
               }
             />
           )
@@ -73,7 +73,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         nodeType={node?.data.type}
         nodeTitle={node?.data.title}
         rightSlot={
-          writeMode && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any, { ns: 'workflow' }) as string} />
+          writeMode && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any) as string} />
         }
       />
     </div>

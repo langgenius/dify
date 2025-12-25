@@ -57,11 +57,11 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       ])
       setIsEditing(false)
       await updateTag(tagID, name)
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setName(name)
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setName(tag.name)
       const recoverList = tagList.map((tag) => {
         if (tag.id === tagID) {
@@ -86,7 +86,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
     try {
       setPending(true)
       await deleteTag(tagID)
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       const newList = tagList.filter(tag => tag.id !== tagID)
       setTagList([
         ...newList,
@@ -94,7 +94,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
       setPending(false)
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       setPending(false)
     }
   }
@@ -112,7 +112,7 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
             </div>
             <Tooltip
               popupContent={
-                <div>{t('common.tagBound', { ns: 'workflow' })}</div>
+                <div>{t('workflow.common.tagBound')}</div>
               }
               needsDelay
             >
@@ -146,9 +146,9 @@ const TagItemEditor: FC<TagItemEditorProps> = ({
         )}
       </div>
       <Confirm
-        title={`${t('tag.delete', { ns: 'common' })} "${tag.name}"`}
+        title={`${t('common.tag.delete')} "${tag.name}"`}
         isShow={showRemoveModal}
-        content={t('tag.deleteTip', { ns: 'common' })}
+        content={t('common.tag.deleteTip')}
         onConfirm={() => {
           handleRemove()
           setShowRemoveModal(false)

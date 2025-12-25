@@ -23,14 +23,14 @@ const HeaderTable: FC<HeaderTableProps> = ({
   const columns: ColumnConfig[] = [
     {
       key: 'name',
-      title: t('nodes.triggerWebhook.varName', { ns: 'workflow' }),
+      title: t('workflow.nodes.triggerWebhook.varName'),
       type: 'input',
       width: 'flex-1',
-      placeholder: t('nodes.triggerWebhook.varNamePlaceholder', { ns: 'workflow' }),
+      placeholder: t('workflow.nodes.triggerWebhook.varNamePlaceholder'),
     },
     {
       key: 'required',
-      title: t('nodes.triggerWebhook.required', { ns: 'workflow' }),
+      title: t('workflow.nodes.triggerWebhook.required'),
       type: 'switch',
       width: 'w-[88px]',
     },
@@ -68,7 +68,7 @@ const HeaderTable: FC<HeaderTableProps> = ({
       data={tableData}
       onChange={handleDataChange}
       readonly={readonly}
-      placeholder={t('nodes.triggerWebhook.noHeaders', { ns: 'workflow' })}
+      placeholder={t('workflow.nodes.triggerWebhook.noHeaders')}
       emptyRowData={emptyRowData}
       showHeader={true}
     />

@@ -42,7 +42,7 @@ const Category: FC<ICategoryProps> = ({
         onClick={() => onChange(allCategoriesEn)}
       >
         <ThumbsUp className="mr-1 h-3.5 w-3.5" />
-        {t('apps.allCategories', { ns: 'explore' })}
+        {t('explore.apps.allCategories')}
       </div>
       {list.filter(name => name !== allCategoriesEn).map(name => (
         <div
@@ -50,7 +50,7 @@ const Category: FC<ICategoryProps> = ({
           className={itemClassName(name === value)}
           onClick={() => onChange(name)}
         >
-          {(categoryI18n as any)[name] ? t(`category.${name}` as any, { ns: 'explore' }) as string : name}
+          {(categoryI18n as any)[name] ? t(`explore.category.${name}` as any) as string : name}
         </div>
       ))}
     </div>

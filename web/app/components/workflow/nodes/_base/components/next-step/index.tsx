@@ -53,7 +53,7 @@ const NextStep = ({
         return {
           branch: {
             ...branch,
-            name: data.type === BlockEnum.QuestionClassifier ? `${t('nodes.questionClassifiers.class', { ns: 'workflow' })} ${index + 1}` : branch.name,
+            name: data.type === BlockEnum.QuestionClassifier ? `${t('workflow.nodes.questionClassifiers.class')} ${index + 1}` : branch.name,
           },
           nextNodes,
         }
@@ -78,7 +78,7 @@ const NextStep = ({
         items.push({
           branch: {
             id: ErrorHandleTypeEnum.failBranch,
-            name: t('common.onFailure', { ns: 'workflow' }),
+            name: t('workflow.common.onFailure'),
           },
           nextNodes,
         })

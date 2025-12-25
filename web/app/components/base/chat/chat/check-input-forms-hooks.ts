@@ -36,12 +36,12 @@ export const useCheckInputsForms = () => {
     }
 
     if (hasEmptyInput) {
-      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
+      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
       return false
     }
 
     if (fileIsUploading) {
-      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
       return
     }
 

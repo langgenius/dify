@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 import { uploadFile } from '@/service/plugins'
 import Card from '../../../card'
 
-const i18nPrefix = 'installModal'
+const i18nPrefix = 'plugin.installModal'
 
 type Props = {
   isBundle: boolean
@@ -64,7 +64,6 @@ const Uploading: FC<Props> = ({
           <RiLoader2Line className="h-4 w-4 animate-spin-slow text-text-accent" />
           <div className="system-md-regular text-text-secondary">
             {t(`${i18nPrefix}.uploadingPackage`, {
-              ns: 'plugin',
               packageName: fileName,
             })}
           </div>
@@ -83,14 +82,14 @@ const Uploading: FC<Props> = ({
       {/* Action Buttons */}
       <div className="flex items-center justify-end gap-2 self-stretch p-6 pt-5">
         <Button variant="secondary" className="min-w-[72px]" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t('common.operation.cancel')}
         </Button>
         <Button
           variant="primary"
           className="min-w-[72px]"
           disabled
         >
-          {t(`${i18nPrefix}.install`, { ns: 'plugin' })}
+          {t(`${i18nPrefix}.install`)}
         </Button>
       </div>
     </>

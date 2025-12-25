@@ -53,7 +53,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
                 onClose?.()
               }}
             >
-              {t('iconPicker.cancel', { ns: 'app' })}
+              {t('app.iconPicker.cancel')}
             </Button>
             <Button
               disabled={selectedEmoji === '' || !selectedBackground}
@@ -63,7 +63,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
                 onSelect?.(selectedEmoji, selectedBackground!)
               }}
             >
-              {t('iconPicker.ok', { ns: 'app' })}
+              {t('app.iconPicker.ok')}
             </Button>
           </div>
         </Modal>

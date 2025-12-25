@@ -134,11 +134,11 @@ const ExternalKnowledgeAPICard: React.FC<ExternalKnowledgeAPICardProps> = ({ api
       {showConfirm && (
         <Confirm
           isShow={showConfirm}
-          title={`${t('deleteExternalAPIConfirmWarningContent.title.front', { ns: 'dataset' })} ${api.name}${t('deleteExternalAPIConfirmWarningContent.title.end', { ns: 'dataset' })}`}
+          title={`${t('dataset.deleteExternalAPIConfirmWarningContent.title.front')} ${api.name}${t('dataset.deleteExternalAPIConfirmWarningContent.title.end')}`}
           content={
             usageCount > 0
-              ? `${t('deleteExternalAPIConfirmWarningContent.content.front', { ns: 'dataset' })} ${usageCount} ${t('deleteExternalAPIConfirmWarningContent.content.end', { ns: 'dataset' })}`
-              : t('deleteExternalAPIConfirmWarningContent.noConnectionContent', { ns: 'dataset' })
+              ? `${t('dataset.deleteExternalAPIConfirmWarningContent.content.front')} ${usageCount} ${t('dataset.deleteExternalAPIConfirmWarningContent.content.end')}`
+              : t('dataset.deleteExternalAPIConfirmWarningContent.noConnectionContent')
           }
           type="warning"
           onConfirm={handleConfirmDelete}

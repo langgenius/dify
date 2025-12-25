@@ -45,9 +45,9 @@ const Citation = ({
           <Citations className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('feature.citation.title', { ns: 'appDebug' })}
+      title={t('appDebug.feature.citation.title')}
       value={!!features.citation?.enabled}
-      description={t('feature.citation.description', { ns: 'appDebug' })!}
+      description={t('appDebug.feature.citation.description')!}
       onChange={state => handleChange(FeatureEnum.citation, state)}
       disabled={disabled}
     />

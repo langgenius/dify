@@ -47,13 +47,13 @@ const ModalLikeWrap: FC<Props> = ({
           className="mr-2"
           onClick={onClose}
         >
-          {t('operation.cancel', { ns: 'common' })}
+          {t('common.operation.cancel')}
         </Button>
         <Button
           onClick={onConfirm}
           variant="primary"
         >
-          {t('operation.save', { ns: 'common' })}
+          {t('common.operation.save')}
         </Button>
       </div>
     </div>

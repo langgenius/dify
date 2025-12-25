@@ -20,7 +20,7 @@ type Props = {
   onSaved: () => void
 }
 
-const I18N_PREFIX = 'firecrawl'
+const I18N_PREFIX = 'datasetCreation.firecrawl'
 
 const DEFAULT_BASE_URL = 'https://api.firecrawl.dev'
 
@@ -46,11 +46,10 @@ const ConfigFirecrawlModal: FC<Props> = ({
       return
     let errorMsg = ''
     if (config.base_url && !((config.base_url.startsWith('http://') || config.base_url.startsWith('https://'))))
-      errorMsg = t('errorMsg.urlError', { ns: 'common' })
+      errorMsg = t('common.errorMsg.urlError')
     if (!errorMsg) {
       if (!config.api_key) {
-        errorMsg = t('errorMsg.fieldRequired', {
-          ns: 'common',
+        errorMsg = t('common.errorMsg.fieldRequired', {
           field: 'API Key',
         })
       }
@@ -79,7 +78,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
       await createDataSourceApiKeyBinding(postData)
       Toast.notify({
         type: 'success',
-        message: t('api.success', { ns: 'common' }),
+        message: t('common.api.success'),
       })
     }
     finally {
@@ -96,7 +95,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
           <div className="mx-2 max-h-[calc(100vh-120px)] w-[640px] overflow-y-auto rounded-2xl bg-components-panel-bg shadow-xl">
             <div className="px-8 pt-8">
               <div className="mb-4 flex items-center justify-between">
-                <div className="system-xl-semibold text-text-primary">{t(`${I18N_PREFIX}.configFirecrawl`, { ns: 'datasetCreation' })}</div>
+                <div className="system-xl-semibold text-text-primary">{t(`${I18N_PREFIX}.configFirecrawl`)}</div>
               </div>
 
               <div className="space-y-4">
@@ -106,7 +105,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
                   isRequired
                   value={config.api_key}
                   onChange={handleConfigChange('api_key')}
-                  placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`, { ns: 'datasetCreation' })!}
+                  placeholder={t(`${I18N_PREFIX}.apiKeyPlaceholder`)!}
                 />
                 <Field
                   label="Base URL"
@@ -118,7 +117,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
               </div>
               <div className="my-8 flex h-8 items-center justify-between">
                 <a className="flex items-center space-x-1 text-xs font-normal leading-[18px] text-text-accent" target="_blank" href="https://www.firecrawl.dev/account">
-                  <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`, { ns: 'datasetCreation' })}</span>
+                  <span>{t(`${I18N_PREFIX}.getApiKeyLinkText`)}</span>
                   <LinkExternal02 className="h-3 w-3" />
                 </a>
                 <div className="flex">
@@ -127,7 +126,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
                     className="mr-2"
                     onClick={onCancel}
                   >
-                    {t('operation.cancel', { ns: 'common' })}
+                    {t('common.operation.cancel')}
                   </Button>
                   <Button
                     variant="primary"
@@ -135,7 +134,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
                     onClick={handleSave}
                     loading={isSaving}
                   >
-                    {t('operation.save', { ns: 'common' })}
+                    {t('common.operation.save')}
                   </Button>
                 </div>
 
@@ -144,7 +143,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
             <div className="border-t-[0.5px] border-t-divider-regular">
               <div className="flex items-center justify-center bg-background-section-burn py-3 text-xs text-text-tertiary">
                 <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
-                {t('modelProvider.encrypted.front', { ns: 'common' })}
+                {t('common.modelProvider.encrypted.front')}
                 <a
                   className="mx-1 text-text-accent"
                   target="_blank"
@@ -153,7 +152,7 @@ const ConfigFirecrawlModal: FC<Props> = ({
                 >
                   PKCS1_OAEP
                 </a>
-                {t('modelProvider.encrypted.back', { ns: 'common' })}
+                {t('common.modelProvider.encrypted.back')}
               </div>
             </div>
           </div>

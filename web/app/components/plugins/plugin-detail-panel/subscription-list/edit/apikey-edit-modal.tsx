@@ -84,14 +84,14 @@ const MultiSteps = ({ currentStep, onStepClick }: { currentStep: EditStep, onSte
     <div className="mb-6 flex w-1/3 items-center gap-2">
       <StatusStep
         isActive={currentStep === EditStep.EditCredentials}
-        text={t('modal.steps.verify', { ns: 'pluginTrigger' })}
+        text={t('pluginTrigger.modal.steps.verify')}
         onClick={() => onStepClick?.(EditStep.EditCredentials)}
         clickable={currentStep === EditStep.EditConfiguration}
       />
       <div className="h-px w-3 shrink-0 bg-divider-deep"></div>
       <StatusStep
         isActive={currentStep === EditStep.EditConfiguration}
-        text={t('modal.steps.configuration', { ns: 'pluginTrigger' })}
+        text={t('pluginTrigger.modal.steps.configuration')}
       />
     </div>
   )
@@ -145,14 +145,14 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         onSuccess: () => {
           Toast.notify({
             type: 'success',
-            message: t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }),
+            message: t('pluginTrigger.modal.apiKey.verify.success'),
           })
           // Only save credentials if any field was modified (not all hidden)
           setVerifiedCredentials(areAllCredentialsHidden(credentials) ? null : credentials)
           setCurrentStep(EditStep.EditConfiguration)
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('modal.apiKey.verify.error', { ns: 'pluginTrigger' })
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.apiKey.verify.error')
           Toast.notify({
             type: 'error',
             message: errorMessage,
@@ -194,13 +194,13 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
         onSuccess: () => {
           Toast.notify({
             type: 'success',
-            message: t('subscription.list.item.actions.edit.success', { ns: 'pluginTrigger' }),
+            message: t('pluginTrigger.subscription.list.item.actions.edit.success'),
           })
           refetch?.()
           onClose()
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('subscription.list.item.actions.edit.error', { ns: 'pluginTrigger' })
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.list.item.actions.edit.error')
           Toast.notify({
             type: 'error',
             message: errorMessage,
@@ -220,21 +220,21 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
   const basicFormSchemas: FormSchema[] = useMemo(() => [
     {
       name: 'subscription_name',
-      label: t('modal.form.subscriptionName.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.subscriptionName.placeholder', { ns: 'pluginTrigger' }),
+      label: t('pluginTrigger.modal.form.subscriptionName.label'),
+      placeholder: t('pluginTrigger.modal.form.subscriptionName.placeholder'),
       type: FormTypeEnum.textInput,
       required: true,
       default: subscription.name,
     },
     {
       name: 'callback_url',
-      label: t('modal.form.callbackUrl.label', { ns: 'pluginTrigger' }),
-      placeholder: t('modal.form.callbackUrl.placeholder', { ns: 'pluginTrigger' }),
+      label: t('pluginTrigger.modal.form.callbackUrl.label'),
+      placeholder: t('pluginTrigger.modal.form.callbackUrl.placeholder'),
       type: FormTypeEnum.textInput,
       required: false,
       default: subscription.endpoint || '',
       disabled: true,
-      tooltip: t('modal.form.callbackUrl.tooltip', { ns: 'pluginTrigger' }),
+      tooltip: t('pluginTrigger.modal.form.callbackUrl.tooltip'),
       showCopy: true,
     },
   ], [t, subscription.name, subscription.endpoint])
@@ -274,9 +274,9 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   const getConfirmButtonText = () => {
     if (currentStep === EditStep.EditCredentials)
-      return isVerifying ? t('modal.common.verifying', { ns: 'pluginTrigger' }) : t('modal.common.verify', { ns: 'pluginTrigger' })
+      return isVerifying ? t('pluginTrigger.modal.common.verifying') : t('pluginTrigger.modal.common.verify')
 
-    return isUpdating ? t('operation.saving', { ns: 'common' }) : t('operation.save', { ns: 'common' })
+    return isUpdating ? t('common.operation.saving') : t('common.operation.save')
   }
 
   const handleBack = () => {
@@ -286,14 +286,14 @@ export const ApiKeyEditModal = ({ onClose, subscription, pluginDetail }: Props) 
 
   return (
     <Modal
-      title={t('subscription.list.item.actions.edit.title', { ns: 'pluginTrigger' })}
+      title={t('pluginTrigger.subscription.list.item.actions.edit.title')}
       confirmButtonText={getConfirmButtonText()}
       onClose={onClose}
       onCancel={onClose}
       onConfirm={handleConfirm}
       disabled={isUpdating || isVerifying}
       showExtraButton={currentStep === EditStep.EditConfiguration}
-      extraButtonText={t('modal.common.back', { ns: 'pluginTrigger' })}
+      extraButtonText={t('pluginTrigger.modal.common.back')}
       extraButtonVariant="secondary"
       onExtraButtonClick={handleBack}
       clickOutsideNotClose

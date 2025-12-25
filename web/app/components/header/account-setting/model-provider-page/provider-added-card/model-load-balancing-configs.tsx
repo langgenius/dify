@@ -155,14 +155,14 @@ const ModelLoadBalancingConfigs = ({
           </div>
           <div className="grow">
             <div className="flex items-center gap-1 text-sm text-text-primary">
-              {t('modelProvider.loadBalancing', { ns: 'common' })}
+              {t('common.modelProvider.loadBalancing')}
               <Tooltip
-                popupContent={t('modelProvider.loadBalancingInfo', { ns: 'common' })}
+                popupContent={t('common.modelProvider.loadBalancingInfo')}
                 popupClassName="max-w-[300px]"
                 triggerClassName="w-3 h-3"
               />
             </div>
-            <div className="text-xs text-text-tertiary">{t('modelProvider.loadBalancingDescription', { ns: 'common' })}</div>
+            <div className="text-xs text-text-tertiary">{t('common.modelProvider.loadBalancingDescription')}</div>
           </div>
           {
             withSwitch && (
@@ -190,16 +190,16 @@ const ModelLoadBalancingConfigs = ({
                             <CooldownTimer secondsRemaining={config.ttl} onFinish={() => clearCountdown(index)} />
                           )
                         : (
-                            <Tooltip popupContent={t('modelProvider.apiKeyStatusNormal', { ns: 'common' })}>
+                            <Tooltip popupContent={t('common.modelProvider.apiKeyStatusNormal')}>
                               <Indicator color={credential?.not_allowed_to_use ? 'gray' : 'green'} />
                             </Tooltip>
                           )}
                     </div>
                     <div className="mr-1 text-[13px] text-text-secondary">
-                      {isProviderManaged ? t('modelProvider.defaultConfig', { ns: 'common' }) : config.name}
+                      {isProviderManaged ? t('common.modelProvider.defaultConfig') : config.name}
                     </div>
                     {isProviderManaged && providerFormSchemaPredefined && (
-                      <Badge className="ml-2">{t('modelProvider.providerManaged', { ns: 'common' })}</Badge>
+                      <Badge className="ml-2">{t('common.modelProvider.providerManaged')}</Badge>
                     )}
                     {
                       credential?.from_enterprise && (
@@ -211,7 +211,7 @@ const ModelLoadBalancingConfigs = ({
                     {!isProviderManaged && (
                       <>
                         <div className="flex items-center gap-1 opacity-0 transition-opacity group-hover:opacity-100">
-                          <Tooltip popupContent={t('operation.remove', { ns: 'common' })}>
+                          <Tooltip popupContent={t('common.operation.remove')}>
                             <span
                               className="flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-components-button-secondary-bg text-text-tertiary transition-colors hover:bg-components-button-secondary-bg-hover"
                               onClick={() => updateConfigEntry(index, () => undefined)}
@@ -255,7 +255,7 @@ const ModelLoadBalancingConfigs = ({
           draftConfig.enabled && validDraftConfigList.length < 2 && (
             <div className="flex h-[34px] items-center rounded-b-xl border-t border-t-divider-subtle bg-components-panel-bg px-6 text-xs text-text-secondary">
               <AlertTriangle className="mr-1 h-3 w-3 text-[#f79009]" />
-              {t('modelProvider.loadBalancingLeastKeyWarning', { ns: 'common' })}
+              {t('common.modelProvider.loadBalancingLeastKeyWarning')}
             </div>
           )
         }
@@ -267,7 +267,7 @@ const ModelLoadBalancingConfigs = ({
             <div
               className={cn('text-gradient text-sm font-semibold leading-tight', s.textGradient)}
             >
-              {t('modelProvider.upgradeForLoadBalancing', { ns: 'common' })}
+              {t('common.modelProvider.upgradeForLoadBalancing')}
             </div>
             <UpgradeBtn />
           </div>

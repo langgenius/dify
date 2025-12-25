@@ -262,7 +262,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       setHasMore(messageRes.has_more)
 
       const newAllChatItems = [
-        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('dateTimeFormat', { ns: 'appLog' }) as string),
+        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string),
         ...allChatItems,
       ]
       setAllChatItems(newAllChatItems)
@@ -369,11 +369,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         return item
       }))
 
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
   }, [allChatItems, appDetail?.id, t])
@@ -436,7 +436,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         messageRes.data,
         detail.id,
         timezone!,
-        t('dateTimeFormat', { ns: 'appLog' }) as string,
+        t('appLog.dateTimeFormat') as string,
       )
 
       // Check for duplicate messages
@@ -462,7 +462,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               retryRes.data,
               detail.id,
               timezone!,
-              t('dateTimeFormat', { ns: 'appLog' }) as string,
+              t('appLog.dateTimeFormat') as string,
             )
 
             const retryUniqueItems = retryItems.filter(item => !existingIds.has(item.id))
@@ -653,7 +653,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3">
         <div className="shrink-0">
-          <div className="system-xs-semibold-uppercase mb-0.5 text-text-primary">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
+          <div className="system-xs-semibold-uppercase mb-0.5 text-text-primary">{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
           {isChatMode && (
             <div className="system-2xs-regular-uppercase flex items-center text-text-secondary">
               <Tooltip
@@ -665,7 +665,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
+            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
@@ -691,7 +691,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? (
               <div className="px-6 py-4">
                 <div className="flex h-[18px] items-center space-x-3">
-                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('table.header.output', { ns: 'appLog' })}</div>
+                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('appLog.table.header.output')}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -759,7 +759,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 {hasMore && isLoading && (
                   <div className="sticky left-0 right-0 top-0 z-10 bg-primary-50/40 py-3 text-center">
                     <div className="system-xs-regular text-text-tertiary">
-                      {t('detail.loading', { ns: 'appLog' })}
+                      {t('appLog.detail.loading')}
                       ...
                     </div>
                   </div>
@@ -836,11 +836,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
   }
@@ -849,11 +849,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
   }
@@ -884,11 +884,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
   }
@@ -896,11 +896,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       return false
     }
   }
@@ -1037,7 +1037,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         popupContent={(
           <span className="inline-flex items-center text-xs text-text-tertiary">
             <RiEditFill className="mr-1 h-3 w-3" />
-            {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+            {`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         )}
         popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
@@ -1058,14 +1058,14 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
             <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.endUser', { ns: 'appLog' })}</td>
-            {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>}
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.messageCount', { ns: 'appLog' }) : t('table.header.output', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.userRate', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.adminRate', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.updatedTime', { ns: 'appLog' })}</td>
-            <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.time', { ns: 'appLog' })}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.endUser')}</td>
+            {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.status')}</td>}
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.userRate')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.adminRate')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.updatedTime')}</td>
+            <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.time')}</td>
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -1087,7 +1087,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   )}
                 </td>
                 <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                  {renderTdValue(leftValue || t('table.empty.noChat', { ns: 'appLog' }), !leftValue, isChatMode && log.annotated)}
+                  {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
                 </td>
                 <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
                 {isChatflow && (
@@ -1096,7 +1096,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </td>
                 )}
                 <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
-                  {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('table.empty.noOutput', { ns: 'appLog' })), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
+                  {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
                 </td>
                 <td className="p-3 pr-2">
                   {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
@@ -1118,8 +1118,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                         </>
                       )}
                 </td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
               </tr>
             )
           })}

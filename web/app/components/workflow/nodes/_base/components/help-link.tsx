@@ -19,7 +19,7 @@ const HelpLink = ({
 
   return (
     <TooltipPlus
-      popupContent={t('userProfile.helpCenter', { ns: 'common' })}
+      popupContent={t('common.userProfile.helpCenter')}
     >
       <a
         href={link}

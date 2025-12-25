@@ -6,7 +6,7 @@ const FooterTips = () => {
 
   return (
     <div className="system-xs-regular flex grow flex-col justify-end p-4 pt-2 text-text-tertiary">
-      {t('testRun.tooltip', { ns: 'datasetPipeline' })}
+      {t('datasetPipeline.testRun.tooltip')}
     </div>
   )
 }

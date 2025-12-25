@@ -103,15 +103,15 @@ const PlanComp: FC<Props> = ({
         <div className="mt-1 flex items-center">
           <div className="grow">
             <div className="mb-1 flex items-center gap-1">
-              <div className="system-md-semibold-uppercase text-text-primary">{t(`plans.${type}.name`, { ns: 'billing' })}</div>
+              <div className="system-md-semibold-uppercase text-text-primary">{t(`billing.plans.${type}.name`)}</div>
             </div>
-            <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`plans.${type}.for`, { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-util-colors-gray-gray-600">{t(`billing.plans.${type}.for`)}</div>
           </div>
           <div className="flex shrink-0 items-center gap-1">
             {enableEducationPlan && (!isEducationAccount || isAboutToExpire) && (
               <Button variant="ghost" onClick={handleVerify} disabled={isPending}>
                 <RiGraduationCapLine className="mr-1 h-4 w-4" />
-                {t('toVerified', { ns: 'education' })}
+                {t('education.toVerified')}
                 {isPending && <Loading className="ml-1 animate-spin-slow" />}
               </Button>
             )}
@@ -131,37 +131,37 @@ const PlanComp: FC<Props> = ({
         <AppsInfo />
         <UsageInfo
           Icon={RiGroupLine}
-          name={t('usagePage.teamMembers', { ns: 'billing' })}
+          name={t('billing.usagePage.teamMembers')}
           usage={usage.teamMembers}
           total={total.teamMembers}
         />
         <UsageInfo
           Icon={RiBook2Line}
-          name={t('usagePage.documentsUploadQuota', { ns: 'billing' })}
+          name={t('billing.usagePage.documentsUploadQuota')}
           usage={usage.documentsUploadQuota}
           total={total.documentsUploadQuota}
         />
         <VectorSpaceInfo />
         <UsageInfo
           Icon={RiFileEditLine}
-          name={t('usagePage.annotationQuota', { ns: 'billing' })}
+          name={t('billing.usagePage.annotationQuota')}
           usage={usage.annotatedResponse}
           total={total.annotatedResponse}
         />
         <UsageInfo
           Icon={TriggerAll}
-          name={t('usagePage.triggerEvents', { ns: 'billing' })}
+          name={t('billing.usagePage.triggerEvents')}
           usage={usage.triggerEvents}
           total={total.triggerEvents}
-          tooltip={t('plansCommon.triggerEvents.tooltip', { ns: 'billing' }) as string}
+          tooltip={t('billing.plansCommon.triggerEvents.tooltip') as string}
           resetInDays={triggerEventsResetInDays}
         />
         <UsageInfo
           Icon={ApiAggregate}
-          name={t('plansCommon.apiRateLimit', { ns: 'billing' })}
+          name={t('billing.plansCommon.apiRateLimit')}
           usage={usage.apiRateLimit}
           total={total.apiRateLimit}
-          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('plansCommon.apiRateLimitTooltip', { ns: 'billing' }) as string}
+          tooltip={total.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
           resetInDays={apiRateLimitResetInDays}
         />
 
@@ -170,8 +170,8 @@ const PlanComp: FC<Props> = ({
         showLink
         email={userProfile.email}
         isShow={showModal}
-        title={t('rejectTitle', { ns: 'education' })}
-        content={t('rejectContent', { ns: 'education' })}
+        title={t('education.rejectTitle')}
+        content={t('education.rejectContent')}
         onConfirm={() => setShowModal(false)}
         onCancel={() => setShowModal(false)}
       />

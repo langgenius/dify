@@ -30,15 +30,15 @@ const ChangePasswordForm = () => {
 
   const valid = useCallback(() => {
     if (!password.trim()) {
-      showErrorMessage(t('error.passwordEmpty', { ns: 'login' }))
+      showErrorMessage(t('login.error.passwordEmpty'))
       return false
     }
     if (!validPassword.test(password)) {
-      showErrorMessage(t('error.passwordInvalid', { ns: 'login' }))
+      showErrorMessage(t('login.error.passwordInvalid'))
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t('account.notEqual', { ns: 'common' }))
+      showErrorMessage(t('common.account.notEqual'))
       return false
     }
     return true
@@ -62,7 +62,7 @@ const ChangePasswordForm = () => {
 
         Toast.notify({
           type: 'success',
-          message: t('api.actionSuccess', { ns: 'common' }),
+          message: t('common.api.actionSuccess'),
         })
         router.replace('/apps')
       }
@@ -84,10 +84,10 @@ const ChangePasswordForm = () => {
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
           <h2 className="title-4xl-semi-bold text-text-primary">
-            {t('changePassword', { ns: 'login' })}
+            {t('login.changePassword')}
           </h2>
           <p className="body-md-regular mt-2 text-text-secondary">
-            {t('changePasswordTip', { ns: 'login' })}
+            {t('login.changePasswordTip')}
           </p>
         </div>
 
@@ -96,7 +96,7 @@ const ChangePasswordForm = () => {
             {/* Password */}
             <div className="mb-5">
               <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
-                {t('account.newPassword', { ns: 'common' })}
+                {t('common.account.newPassword')}
               </label>
               <div className="relative mt-1">
                 <Input
@@ -104,16 +104,16 @@ const ChangePasswordForm = () => {
                   type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
+                  placeholder={t('login.passwordPlaceholder') || ''}
                 />
 
               </div>
-              <div className="body-xs-regular mt-1 text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
+              <div className="body-xs-regular mt-1 text-text-secondary">{t('login.error.passwordInvalid')}</div>
             </div>
             {/* Confirm Password */}
             <div className="mb-5">
               <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
-                {t('account.confirmPassword', { ns: 'common' })}
+                {t('common.account.confirmPassword')}
               </label>
               <div className="relative mt-1">
                 <Input
@@ -121,7 +121,7 @@ const ChangePasswordForm = () => {
                   type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t('confirmPasswordPlaceholder', { ns: 'login' }) || ''}
+                  placeholder={t('login.confirmPasswordPlaceholder') || ''}
                 />
               </div>
             </div>
@@ -132,7 +132,7 @@ const ChangePasswordForm = () => {
                 onClick={handleSubmit}
                 disabled={isPending || !password || !confirmPassword}
               >
-                {t('changePasswordBtn', { ns: 'login' })}
+                {t('login.changePasswordBtn')}
               </Button>
             </div>
           </div>

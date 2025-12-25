@@ -98,14 +98,14 @@ export default function Drawer({
                       onCancel?.()
                     }}
                   >
-                    {t('operation.cancel', { ns: 'common' })}
+                    {t('common.operation.cancel')}
                   </Button>
                   <Button
                     onClick={() => {
                       onOk?.()
                     }}
                   >
-                    {t('operation.save', { ns: 'common' })}
+                    {t('common.operation.save')}
                   </Button>
                 </div>
               ))}

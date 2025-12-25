@@ -42,7 +42,7 @@ const ConditionDate = ({
           {
             value
               ? dayjs(value * 1000).tz(timezone).format('MMMM DD YYYY HH:mm A')
-              : t('nodes.knowledgeRetrieval.metadata.panel.datePlaceholder', { ns: 'workflow' })
+              : t('workflow.nodes.knowledgeRetrieval.metadata.panel.datePlaceholder')
           }
         </div>
         {

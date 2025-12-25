@@ -30,7 +30,7 @@ const Statistics = ({
           {documentCount ?? '--'}
         </div>
         <div className="system-2xs-medium-uppercase text-text-tertiary">
-          {t('datasetMenus.documents', { ns: 'common' })}
+          {t('common.datasetMenus.documents')}
         </div>
       </div>
       <div className="py-2 pl-0.5 pr-1.5">
@@ -56,7 +56,7 @@ const Statistics = ({
           }
         >
           <div className="system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary">
-            <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
+            <span>{t('common.datasetMenus.relatedApp')}</span>
             <RiInformation2Line className="size-3" />
           </div>
         </Tooltip>

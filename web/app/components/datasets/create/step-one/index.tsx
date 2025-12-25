@@ -171,7 +171,7 @@ const StepOne = ({
               {
                 shouldShowDataSourceTypeList && (
                   <div className={cn(s.stepHeader, 'system-md-semibold text-text-secondary')}>
-                    {t('steps.one', { ns: 'datasetCreation' })}
+                    {t('datasetCreation.steps.one')}
                   </div>
                 )
               }
@@ -195,10 +195,10 @@ const StepOne = ({
                     >
                       <span className={cn(s.datasetIcon)} />
                       <span
-                        title={t('stepOne.dataSourceType.file', { ns: 'datasetCreation' })!}
+                        title={t('datasetCreation.stepOne.dataSourceType.file')!}
                         className="truncate"
                       >
-                        {t('stepOne.dataSourceType.file', { ns: 'datasetCreation' })}
+                        {t('datasetCreation.stepOne.dataSourceType.file')}
                       </span>
                     </div>
                     <div
@@ -218,10 +218,10 @@ const StepOne = ({
                     >
                       <span className={cn(s.datasetIcon, s.notion)} />
                       <span
-                        title={t('stepOne.dataSourceType.notion', { ns: 'datasetCreation' })!}
+                        title={t('datasetCreation.stepOne.dataSourceType.notion')!}
                         className="truncate"
                       >
-                        {t('stepOne.dataSourceType.notion', { ns: 'datasetCreation' })}
+                        {t('datasetCreation.stepOne.dataSourceType.notion')}
                       </span>
                     </div>
                     {(ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL) && (
@@ -242,10 +242,10 @@ const StepOne = ({
                       >
                         <span className={cn(s.datasetIcon, s.web)} />
                         <span
-                          title={t('stepOne.dataSourceType.web', { ns: 'datasetCreation' })!}
+                          title={t('datasetCreation.stepOne.dataSourceType.web')!}
                           className="truncate"
                         >
-                          {t('stepOne.dataSourceType.web', { ns: 'datasetCreation' })}
+                          {t('datasetCreation.stepOne.dataSourceType.web')}
                         </span>
                       </div>
                     )}
@@ -271,7 +271,7 @@ const StepOne = ({
                   <div className="flex max-w-[640px] justify-end gap-2">
                     <Button disabled={nextDisabled} variant="primary" onClick={onStepChange}>
                       <span className="flex gap-0.5 px-[10px]">
-                        <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
+                        <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
                         <RiArrowRightLine className="size-4" />
                       </span>
                     </Button>
@@ -309,7 +309,7 @@ const StepOne = ({
                       <div className="flex max-w-[640px] justify-end gap-2">
                         <Button disabled={isShowVectorSpaceFull || !notionPages.length} variant="primary" onClick={onStepChange}>
                           <span className="flex gap-0.5 px-[10px]">
-                            <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
+                            <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
                             <RiArrowRightLine className="size-4" />
                           </span>
                         </Button>
@@ -340,7 +340,7 @@ const StepOne = ({
                   <div className="flex max-w-[640px] justify-end gap-2">
                     <Button disabled={isShowVectorSpaceFull || !websitePages.length} variant="primary" onClick={onStepChange}>
                       <span className="flex gap-0.5 px-[10px]">
-                        <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
+                        <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
                         <RiArrowRightLine className="size-4" />
                       </span>
                     </Button>
@@ -352,7 +352,7 @@ const StepOne = ({
                   <div className="my-8 h-px max-w-[640px] bg-divider-regular" />
                   <span className="inline-flex cursor-pointer items-center text-[13px] leading-4 text-text-accent" onClick={modalShowHandle}>
                     <RiFolder6Line className="mr-1 size-4" />
-                    {t('stepOne.emptyDatasetCreation', { ns: 'datasetCreation' })}
+                    {t('datasetCreation.stepOne.emptyDatasetCreation')}
                   </span>
                 </>
               )}
@@ -374,8 +374,8 @@ const StepOne = ({
             <PlanUpgradeModal
               show
               onClose={hidePlanUpgradeModal}
-              title={t('upgrade.uploadMultiplePages.title', { ns: 'billing' })!}
-              description={t('upgrade.uploadMultiplePages.description', { ns: 'billing' })!}
+              title={t('billing.upgrade.uploadMultiplePages.title')!}
+              description={t('billing.upgrade.uploadMultiplePages.description')!}
             />
           )}
         </div>

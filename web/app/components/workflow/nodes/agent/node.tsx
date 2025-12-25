@@ -72,7 +72,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       {inputs.agent_strategy_name
         ? (
             <SettingItem
-              label={t('nodes.agent.strategy.shortLabel', { ns: 'workflow' })}
+              label={t('workflow.nodes.agent.strategy.shortLabel')}
               status={
                 currentStrategyStatus && !currentStrategyStatus.isExistInPlugin
                   ? 'error'
@@ -80,8 +80,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
               }
               tooltip={
                 (currentStrategyStatus && !currentStrategyStatus.isExistInPlugin)
-                  ? t('nodes.agent.strategyNotInstallTooltip', {
-                      ns: 'workflow',
+                  ? t('workflow.nodes.agent.strategyNotInstallTooltip', {
                       plugin: pluginDetail?.declaration.label
                         ? renderI18nObject(pluginDetail?.declaration.label)
                         : undefined,
@@ -93,12 +92,12 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
               {inputs.agent_strategy_label}
             </SettingItem>
           )
-        : <SettingItem label={t('nodes.agent.strategyNotSet', { ns: 'workflow' })} />}
+        : <SettingItem label={t('workflow.nodes.agent.strategyNotSet')} />}
       {models.length > 0 && (
         <Group
           label={(
             <GroupLabel className="mt-1">
-              {t('nodes.agent.model', { ns: 'workflow' })}
+              {t('workflow.nodes.agent.model')}
             </GroupLabel>
           )}
         >
@@ -115,7 +114,7 @@ const AgentNode: FC<NodeProps<AgentNodeType>> = (props) => {
       {tools.length > 0 && (
         <Group label={(
           <GroupLabel className="mt-1">
-            {t('nodes.agent.toolbox', { ns: 'workflow' })}
+            {t('workflow.nodes.agent.toolbox')}
           </GroupLabel>
         )}
         >

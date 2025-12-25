@@ -77,16 +77,16 @@ const PluginTasks = () => {
 
   const tip = useMemo(() => {
     if (isInstallingWithError)
-      return t('task.installingWithError', { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength, errorLength: errorPluginsLength })
+      return t('plugin.task.installingWithError', { installingLength: runningPluginsLength, successLength: successPluginsLength, errorLength: errorPluginsLength })
     if (isInstallingWithSuccess)
-      return t('task.installingWithSuccess', { ns: 'plugin', installingLength: runningPluginsLength, successLength: successPluginsLength })
+      return t('plugin.task.installingWithSuccess', { installingLength: runningPluginsLength, successLength: successPluginsLength })
     if (isInstalling)
-      return t('task.installing', { ns: 'plugin' })
+      return t('plugin.task.installing')
     if (isFailed)
-      return t('task.installedError', { ns: 'plugin', errorLength: errorPluginsLength })
+      return t('plugin.task.installedError', { errorLength: errorPluginsLength })
     if (isSuccess)
-      return t('task.installSuccess', { ns: 'plugin', successLength: successPluginsLength })
-    return t('task.installed', { ns: 'plugin' })
+      return t('plugin.task.installSuccess', { successLength: successPluginsLength })
+    return t('plugin.task.installed')
   }, [
     errorPluginsLength,
     isFailed,
@@ -188,7 +188,7 @@ const PluginTasks = () => {
             {runningPlugins.length > 0 && (
               <>
                 <div className="system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary">
-                  {t('task.installing', { ns: 'plugin' })}
+                  {t('plugin.task.installing')}
                   {' '}
                   (
                   {runningPlugins.length}
@@ -212,7 +212,7 @@ const PluginTasks = () => {
                           {runningPlugin.labels[language]}
                         </div>
                         <div className="system-xs-regular text-text-tertiary">
-                          {t('task.installing', { ns: 'plugin' })}
+                          {t('plugin.task.installing')}
                         </div>
                       </div>
                     </div>
@@ -225,7 +225,7 @@ const PluginTasks = () => {
             {successPlugins.length > 0 && (
               <>
                 <div className="system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary">
-                  {t('task.installed', { ns: 'plugin' })}
+                  {t('plugin.task.installed')}
                   {' '}
                   (
                   {successPlugins.length}
@@ -236,7 +236,7 @@ const PluginTasks = () => {
                     variant="ghost"
                     onClick={() => handleClearAllWithModal()}
                   >
-                    {t('task.clearAll', { ns: 'plugin' })}
+                    {t('plugin.task.clearAll')}
                   </Button>
                 </div>
                 <div className="max-h-[200px] overflow-y-auto">
@@ -257,7 +257,7 @@ const PluginTasks = () => {
                           {successPlugin.labels[language]}
                         </div>
                         <div className="system-xs-regular text-text-success">
-                          {successPlugin.message || t('task.installed', { ns: 'plugin' })}
+                          {successPlugin.message || t('plugin.task.installed')}
                         </div>
                       </div>
                     </div>
@@ -270,14 +270,14 @@ const PluginTasks = () => {
             {errorPlugins.length > 0 && (
               <>
                 <div className="system-sm-semibold-uppercase sticky top-0 flex h-7 items-center justify-between px-2 pt-1 text-text-secondary">
-                  {t('task.installError', { ns: 'plugin', errorLength: errorPlugins.length })}
+                  {t('plugin.task.installError', { errorLength: errorPlugins.length })}
                   <Button
                     className="shrink-0"
                     size="small"
                     variant="ghost"
                     onClick={() => handleClearErrorsWithModal()}
                   >
-                    {t('task.clearAll', { ns: 'plugin' })}
+                    {t('plugin.task.clearAll')}
                   </Button>
                 </div>
                 <div className="max-h-[200px] overflow-y-auto">
@@ -307,7 +307,7 @@ const PluginTasks = () => {
                         variant="ghost"
                         onClick={() => handleClearSingleWithModal(errorPlugin.taskId, errorPlugin.plugin_unique_identifier)}
                       >
-                        {t('operation.clear', { ns: 'common' })}
+                        {t('common.operation.clear')}
                       </Button>
                     </div>
                   ))}

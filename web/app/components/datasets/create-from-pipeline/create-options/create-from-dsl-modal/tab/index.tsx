@@ -17,11 +17,11 @@ const Tab = ({
   const tabs = [
     {
       key: CreateFromDSLModalTab.FROM_FILE,
-      label: t('importFromDSLFile', { ns: 'app' }),
+      label: t('app.importFromDSLFile'),
     },
     {
       key: CreateFromDSLModalTab.FROM_URL,
-      label: t('importFromDSLUrl', { ns: 'app' }),
+      label: t('app.importFromDSLUrl'),
     },
   ]
 

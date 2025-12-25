@@ -27,7 +27,7 @@ const MCPServerParamItem = ({
       <Textarea
         className="h-8 resize-none"
         value={value}
-        placeholder={t('mcp.server.modal.parametersPlaceholder', { ns: 'tools' })}
+        placeholder={t('tools.mcp.server.modal.parametersPlaceholder')}
         onChange={e => onChange(e.target.value)}
       >
       </Textarea>

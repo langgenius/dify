@@ -24,11 +24,11 @@ const Operation = ({
   const { t } = useTranslation()
   const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
-    owner: t('members.owner', { ns: 'common' }),
-    admin: t('members.admin', { ns: 'common' }),
-    editor: t('members.editor', { ns: 'common' }),
-    normal: t('members.normal', { ns: 'common' }),
-    dataset_operator: t('members.datasetOperator', { ns: 'common' }),
+    owner: t('common.members.owner'),
+    admin: t('common.members.admin'),
+    editor: t('common.members.editor'),
+    normal: t('common.members.normal'),
+    dataset_operator: t('common.members.datasetOperator'),
   }
   const roleList = useMemo(() => {
     if (operatorRole === 'owner') {
@@ -54,7 +54,7 @@ const Operation = ({
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch {
 
@@ -67,7 +67,7 @@ const Operation = ({
         body: { role },
       })
       onOperate()
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
     }
     catch {
 
@@ -106,8 +106,8 @@ const Operation = ({
                               : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                           }
                           <div>
-                            <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`members.${toHump(role)}` as any, { ns: 'common' })}</div>
-                            <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`members.${toHump(role)}Tip` as any, { ns: 'common' })}</div>
+                            <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`common.members.${toHump(role)}` as any)}</div>
+                            <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`common.members.${toHump(role)}Tip` as any)}</div>
                           </div>
                         </div>
                       </MenuItem>
@@ -119,8 +119,8 @@ const Operation = ({
                     <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
                       <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                       <div>
-                        <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
-                        <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+                        <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('common.members.removeFromTeam')}</div>
+                        <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('common.members.removeFromTeamTip')}</div>
                       </div>
                     </div>
                   </div>

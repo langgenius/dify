@@ -74,14 +74,14 @@ const ProviderCardComponent: FC<Props> = ({
           variant="primary"
           onClick={showInstallFromMarketplace}
         >
-          {t('detailPanel.operation.install', { ns: 'plugin' })}
+          {t('plugin.detailPanel.operation.install')}
         </Button>
         <Button
           className="grow"
           variant="secondary"
         >
           <a href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)} target="_blank" className="flex items-center gap-0.5">
-            {t('detailPanel.operation.detail', { ns: 'plugin' })}
+            {t('plugin.detailPanel.operation.detail')}
             <RiArrowRightUpLine className="h-4 w-4" />
           </a>
         </Button>

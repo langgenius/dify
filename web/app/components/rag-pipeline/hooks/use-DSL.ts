@@ -46,7 +46,7 @@ export const useDSL = () => {
       URL.revokeObjectURL(url)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('app.exportFailed') })
     }
     finally {
       setExporting(false)
@@ -72,7 +72,7 @@ export const useDSL = () => {
       } as any)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('app.exportFailed') })
     }
   }, [eventEmitter, handleExportDSL, notify, t, workflowStore])
 

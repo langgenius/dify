@@ -94,7 +94,7 @@ const BlockInput: FC<IBlockInputProps> = ({
       if (!isValid) {
         Toast.notify({
           type: 'error',
-          message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: errorKey }) as string,
+          message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }) as string,
         })
         return
       }

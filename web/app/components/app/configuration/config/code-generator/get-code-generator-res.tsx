@@ -28,7 +28,7 @@ import s from '../automatic/style.module.css'
 import { GeneratorType } from '../automatic/types'
 import useGenData from '../automatic/use-gen-data'
 
-const i18nPrefix = 'generate'
+const i18nPrefix = 'appDebug.generate'
 export type IGetCodeGeneratorResProps = {
   flowId: string
   nodeId: string
@@ -97,9 +97,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
     if (instruction.trim() === '') {
       Toast.notify({
         type: 'error',
-        message: t('errorMsg.fieldRequired', {
-          ns: 'common',
-          field: t('code.instruction', { ns: 'appDebug' }),
+        message: t('common.errorMsg.fieldRequired', {
+          field: t('appDebug.code.instruction'),
         }),
       })
       return false
@@ -193,7 +192,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className="text-[13px] text-text-tertiary">{t('codegen.loading', { ns: 'appDebug' })}</div>
+      <div className="text-[13px] text-text-tertiary">{t('appDebug.codegen.loading')}</div>
     </div>
   )
 
@@ -206,8 +205,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       <div className="relative flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('codegen.title', { ns: 'appDebug' })}</div>
-            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('codegen.description', { ns: 'appDebug' })}</div>
+            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.codegen.title')}</div>
+            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('appDebug.codegen.description')}</div>
           </div>
           <div className="mb-4">
             <ModelParameterModal
@@ -224,7 +223,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
           </div>
           <div>
             <div className="text-[0px]">
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('codegen.instruction', { ns: 'appDebug' })}</div>
+              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('appDebug.codegen.instruction')}</div>
               <InstructionEditor
                 editorKey={editorKey}
                 value={instruction}
@@ -240,7 +239,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
             />
 
             <div className="mt-7 flex justify-end space-x-2">
-              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`, { ns: 'appDebug' })}</Button>
+              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`)}</Button>
               <Button
                 className="flex space-x-1"
                 variant="primary"
@@ -248,7 +247,7 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
                 disabled={isLoading}
               >
                 <Generator className="h-4 w-4" />
-                <span className="text-xs font-semibold ">{t('codegen.generate', { ns: 'appDebug' })}</span>
+                <span className="text-xs font-semibold ">{t('appDebug.codegen.generate')}</span>
               </Button>
             </div>
           </div>
@@ -270,8 +269,8 @@ export const GetCodeGeneratorResModal: FC<IGetCodeGeneratorResProps> = (
       </div>
       {isShowConfirmOverwrite && (
         <Confirm
-          title={t('codegen.overwriteConfirmTitle', { ns: 'appDebug' })}
-          content={t('codegen.overwriteConfirmMessage', { ns: 'appDebug' })}
+          title={t('appDebug.codegen.overwriteConfirmTitle')}
+          content={t('appDebug.codegen.overwriteConfirmMessage')}
           isShow
           onConfirm={() => {
             hideShowConfirmOverwrite()

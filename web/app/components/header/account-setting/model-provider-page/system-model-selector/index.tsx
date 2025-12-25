@@ -101,7 +101,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
       },
     })
     if (res.result === 'success') {
-      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
       setOpen(false)
 
       changedModelTypes.forEach((modelType) => {
@@ -136,18 +136,18 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           size="small"
         >
           <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
-          {t('modelProvider.systemModelSettings', { ns: 'common' })}
+          {t('common.modelProvider.systemModelSettings')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[60]">
         <div className="w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg pt-4 shadow-xl">
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.systemReasoningModel.key', { ns: 'common' })}
+              {t('common.modelProvider.systemReasoningModel.key')}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
+                    {t('common.modelProvider.systemReasoningModel.tip')}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -163,11 +163,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.embeddingModel.key', { ns: 'common' })}
+              {t('common.modelProvider.embeddingModel.key')}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.embeddingModel.tip', { ns: 'common' })}
+                    {t('common.modelProvider.embeddingModel.tip')}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -183,11 +183,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.rerankModel.key', { ns: 'common' })}
+              {t('common.modelProvider.rerankModel.key')}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.rerankModel.tip', { ns: 'common' })}
+                    {t('common.modelProvider.rerankModel.tip')}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -203,11 +203,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.speechToTextModel.key', { ns: 'common' })}
+              {t('common.modelProvider.speechToTextModel.key')}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.speechToTextModel.tip', { ns: 'common' })}
+                    {t('common.modelProvider.speechToTextModel.tip')}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -223,11 +223,11 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
           </div>
           <div className="px-6 py-1">
             <div className="flex h-8 items-center text-[13px] font-medium text-text-primary">
-              {t('modelProvider.ttsModel.key', { ns: 'common' })}
+              {t('common.modelProvider.ttsModel.key')}
               <Tooltip
                 popupContent={(
                   <div className="w-[261px] text-text-tertiary">
-                    {t('modelProvider.ttsModel.tip', { ns: 'common' })}
+                    {t('common.modelProvider.ttsModel.tip')}
                   </div>
                 )}
                 triggerClassName="ml-0.5 w-4 h-4 shrink-0"
@@ -245,7 +245,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
             <Button
               onClick={() => setOpen(false)}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
             <Button
               className="ml-2"
@@ -253,7 +253,7 @@ const SystemModel: FC<SystemModelSelectorProps> = ({
               onClick={handleSave}
               disabled={!isCurrentWorkspaceManager}
             >
-              {t('operation.save', { ns: 'common' })}
+              {t('common.operation.save')}
             </Button>
           </div>
         </div>

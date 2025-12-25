@@ -14,7 +14,7 @@ type Props = {
   workflowsInUse: number
 }
 
-const tPrefix = 'subscription.list.item.actions.deleteConfirm'
+const tPrefix = 'pluginTrigger.subscription.list.item.actions.deleteConfirm'
 
 export const DeleteConfirm = (props: Props) => {
   const { onClose, isShow, currentId, currentName, workflowsInUse } = props
@@ -27,7 +27,7 @@ export const DeleteConfirm = (props: Props) => {
     if (workflowsInUse > 0 && inputName !== currentName) {
       Toast.notify({
         type: 'error',
-        message: t(`${tPrefix}.confirmInputWarning`, { ns: 'pluginTrigger' }),
+        message: t(`${tPrefix}.confirmInputWarning`),
         // temporarily
         className: 'z-[10000001]',
       })
@@ -37,7 +37,7 @@ export const DeleteConfirm = (props: Props) => {
       onSuccess: () => {
         Toast.notify({
           type: 'success',
-          message: t(`${tPrefix}.success`, { ns: 'pluginTrigger', name: currentName }),
+          message: t(`${tPrefix}.success`, { name: currentName }),
           className: 'z-[10000001]',
         })
         refetch?.()
@@ -46,7 +46,7 @@ export const DeleteConfirm = (props: Props) => {
       onError: (error: any) => {
         Toast.notify({
           type: 'error',
-          message: error?.message || t(`${tPrefix}.error`, { ns: 'pluginTrigger', name: currentName }),
+          message: error?.message || t(`${tPrefix}.error`, { name: currentName }),
           className: 'z-[10000001]',
         })
       },
@@ -54,21 +54,21 @@ export const DeleteConfirm = (props: Props) => {
   }
   return (
     <Confirm
-      title={t(`${tPrefix}.title`, { ns: 'pluginTrigger', name: currentName })}
-      confirmText={t(`${tPrefix}.confirm`, { ns: 'pluginTrigger' })}
+      title={t(`${tPrefix}.title`, { name: currentName })}
+      confirmText={t(`${tPrefix}.confirm`)}
       content={workflowsInUse > 0
         ? (
             <>
-              {t(`${tPrefix}.contentWithApps`, { ns: 'pluginTrigger', count: workflowsInUse })}
-              <div className="system-sm-medium mb-2 mt-6 text-text-secondary">{t(`${tPrefix}.confirmInputTip`, { ns: 'pluginTrigger', name: currentName })}</div>
+              {t(`${tPrefix}.contentWithApps`, { count: workflowsInUse })}
+              <div className="system-sm-medium mb-2 mt-6 text-text-secondary">{t(`${tPrefix}.confirmInputTip`, { name: currentName })}</div>
               <Input
                 value={inputName}
                 onChange={e => setInputName(e.target.value)}
-                placeholder={t(`${tPrefix}.confirmInputPlaceholder`, { ns: 'pluginTrigger', name: currentName })}
+                placeholder={t(`${tPrefix}.confirmInputPlaceholder`, { name: currentName })}
               />
             </>
           )
-        : t(`${tPrefix}.content`, { ns: 'pluginTrigger' })}
+        : t(`${tPrefix}.content`)}
       isShow={isShow}
       isLoading={isDeleting}
       isDisabled={isDeleting}

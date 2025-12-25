@@ -58,7 +58,7 @@ const TagsFilter = ({
           )}
           >
             {
-              !selectedTagsLength && t('allTags', { ns: 'pluginTags' })
+              !selectedTagsLength && t('pluginTags.allTags')
             }
             {
               !!selectedTagsLength && value.map(val => getTagLabel(val)).slice(0, 2).join(',')
@@ -94,7 +94,7 @@ const TagsFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder={t('searchTags', { ns: 'pluginTags' })}
+              placeholder={t('pluginTags.searchTags')}
             />
           </div>
           <div className="max-h-[448px] overflow-y-auto p-1">

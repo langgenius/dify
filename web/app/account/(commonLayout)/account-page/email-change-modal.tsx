@@ -209,9 +209,9 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
       </div>
       {step === STEP.start && (
         <>
-          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('account.changeEmail.title', { ns: 'common' })}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('common.account.changeEmail.title')}</div>
           <div className="space-y-0.5 pb-2 pt-1">
-            <div className="body-md-medium text-text-warning">{t('account.changeEmail.authTip', { ns: 'common' })}</div>
+            <div className="body-md-medium text-text-warning">{t('common.account.changeEmail.authTip')}</div>
             <div className="body-md-regular text-text-secondary">
               <Trans
                 i18nKey="common.account.changeEmail.content1"
@@ -227,20 +227,20 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               variant="primary"
               onClick={sendCodeToOriginEmail}
             >
-              {t('account.changeEmail.sendVerifyCode', { ns: 'common' })}
+              {t('common.account.changeEmail.sendVerifyCode')}
             </Button>
             <Button
               className="!w-full"
               onClick={onClose}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
           </div>
         </>
       )}
       {step === STEP.verifyOrigin && (
         <>
-          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('account.changeEmail.verifyEmail', { ns: 'common' })}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('common.account.changeEmail.verifyEmail')}</div>
           <div className="space-y-0.5 pb-2 pt-1">
             <div className="body-md-regular text-text-secondary">
               <Trans
@@ -251,10 +251,10 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             </div>
           </div>
           <div className="pt-3">
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('common.account.changeEmail.codeLabel')}</div>
             <Input
               className="!w-full"
-              placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
+              placeholder={t('common.account.changeEmail.codePlaceholder')}
               value={code}
               onChange={e => setCode(e.target.value)}
               maxLength={6}
@@ -267,46 +267,46 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               variant="primary"
               onClick={handleVerifyOriginEmail}
             >
-              {t('account.changeEmail.continue', { ns: 'common' })}
+              {t('common.account.changeEmail.continue')}
             </Button>
             <Button
               className="!w-full"
               onClick={onClose}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
           </div>
           <div className="system-xs-regular mt-3 flex items-center gap-1 text-text-tertiary">
-            <span>{t('account.changeEmail.resendTip', { ns: 'common' })}</span>
+            <span>{t('common.account.changeEmail.resendTip')}</span>
             {time > 0 && (
-              <span>{t('account.changeEmail.resendCount', { ns: 'common', count: time })}</span>
+              <span>{t('common.account.changeEmail.resendCount', { count: time })}</span>
             )}
             {!time && (
-              <span onClick={sendCodeToOriginEmail} className="system-xs-medium cursor-pointer text-text-accent-secondary">{t('account.changeEmail.resend', { ns: 'common' })}</span>
+              <span onClick={sendCodeToOriginEmail} className="system-xs-medium cursor-pointer text-text-accent-secondary">{t('common.account.changeEmail.resend')}</span>
             )}
           </div>
         </>
       )}
       {step === STEP.newEmail && (
         <>
-          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('account.changeEmail.newEmail', { ns: 'common' })}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('common.account.changeEmail.newEmail')}</div>
           <div className="space-y-0.5 pb-2 pt-1">
-            <div className="body-md-regular text-text-secondary">{t('account.changeEmail.content3', { ns: 'common' })}</div>
+            <div className="body-md-regular text-text-secondary">{t('common.account.changeEmail.content3')}</div>
           </div>
           <div className="pt-3">
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('account.changeEmail.emailLabel', { ns: 'common' })}</div>
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('common.account.changeEmail.emailLabel')}</div>
             <Input
               className="!w-full"
-              placeholder={t('account.changeEmail.emailPlaceholder', { ns: 'common' })}
+              placeholder={t('common.account.changeEmail.emailPlaceholder')}
               value={mail}
               onChange={e => handleNewEmailValueChange(e.target.value)}
               destructive={newEmailExited || unAvailableEmail}
             />
             {newEmailExited && (
-              <div className="body-xs-regular mt-1 py-0.5 text-text-destructive">{t('account.changeEmail.existingEmail', { ns: 'common' })}</div>
+              <div className="body-xs-regular mt-1 py-0.5 text-text-destructive">{t('common.account.changeEmail.existingEmail')}</div>
             )}
             {unAvailableEmail && (
-              <div className="body-xs-regular mt-1 py-0.5 text-text-destructive">{t('account.changeEmail.unAvailableEmail', { ns: 'common' })}</div>
+              <div className="body-xs-regular mt-1 py-0.5 text-text-destructive">{t('common.account.changeEmail.unAvailableEmail')}</div>
             )}
           </div>
           <div className="mt-3 space-y-2">
@@ -316,20 +316,20 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               variant="primary"
               onClick={sendCodeToNewEmail}
             >
-              {t('account.changeEmail.sendVerifyCode', { ns: 'common' })}
+              {t('common.account.changeEmail.sendVerifyCode')}
             </Button>
             <Button
               className="!w-full"
               onClick={onClose}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
           </div>
         </>
       )}
       {step === STEP.verifyNew && (
         <>
-          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('account.changeEmail.verifyNew', { ns: 'common' })}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('common.account.changeEmail.verifyNew')}</div>
           <div className="space-y-0.5 pb-2 pt-1">
             <div className="body-md-regular text-text-secondary">
               <Trans
@@ -340,10 +340,10 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
             </div>
           </div>
           <div className="pt-3">
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('account.changeEmail.codeLabel', { ns: 'common' })}</div>
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('common.account.changeEmail.codeLabel')}</div>
             <Input
               className="!w-full"
-              placeholder={t('account.changeEmail.codePlaceholder', { ns: 'common' })}
+              placeholder={t('common.account.changeEmail.codePlaceholder')}
               value={code}
               onChange={e => setCode(e.target.value)}
               maxLength={6}
@@ -356,22 +356,22 @@ const EmailChangeModal = ({ onClose, email, show }: Props) => {
               variant="primary"
               onClick={submitNewEmail}
             >
-              {t('account.changeEmail.changeTo', { ns: 'common', email: mail })}
+              {t('common.account.changeEmail.changeTo', { email: mail })}
             </Button>
             <Button
               className="!w-full"
               onClick={onClose}
             >
-              {t('operation.cancel', { ns: 'common' })}
+              {t('common.operation.cancel')}
             </Button>
           </div>
           <div className="system-xs-regular mt-3 flex items-center gap-1 text-text-tertiary">
-            <span>{t('account.changeEmail.resendTip', { ns: 'common' })}</span>
+            <span>{t('common.account.changeEmail.resendTip')}</span>
             {time > 0 && (
-              <span>{t('account.changeEmail.resendCount', { ns: 'common', count: time })}</span>
+              <span>{t('common.account.changeEmail.resendCount', { count: time })}</span>
             )}
             {!time && (
-              <span onClick={sendCodeToNewEmail} className="system-xs-medium cursor-pointer text-text-accent-secondary">{t('account.changeEmail.resend', { ns: 'common' })}</span>
+              <span onClick={sendCodeToNewEmail} className="system-xs-medium cursor-pointer text-text-accent-secondary">{t('common.account.changeEmail.resend')}</span>
             )}
           </div>
         </>

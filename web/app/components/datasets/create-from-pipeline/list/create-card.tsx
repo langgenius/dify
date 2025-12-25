@@ -22,7 +22,7 @@ const CreateCard = () => {
           const { id } = data
           Toast.notify({
             type: 'success',
-            message: t('creation.successTip', { ns: 'datasetPipeline' }),
+            message: t('datasetPipeline.creation.successTip'),
           })
           invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
@@ -34,7 +34,7 @@ const CreateCard = () => {
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+          message: t('datasetPipeline.creation.errorTip'),
         })
       },
     })
@@ -50,11 +50,11 @@ const CreateCard = () => {
           <RiAddCircleLine className="size-5 text-text-quaternary group-hover:text-text-accent" />
         </div>
         <div className="system-md-semibold truncate text-text-primary">
-          {t('creation.createFromScratch.title', { ns: 'datasetPipeline' })}
+          {t('datasetPipeline.creation.createFromScratch.title')}
         </div>
       </div>
       <p className="system-xs-regular line-clamp-3 px-4 py-1 text-text-tertiary">
-        {t('creation.createFromScratch.description', { ns: 'datasetPipeline' })}
+        {t('datasetPipeline.creation.createFromScratch.description')}
       </p>
     </div>
   )

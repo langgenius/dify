@@ -100,12 +100,12 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       setShowEditModal(false)
       notify({
         type: 'success',
-        message: t('editDone', { ns: 'app' }),
+        message: t('app.editDone'),
       })
       setAppDetail(app)
     }
     catch {
-      notify({ type: 'error', message: t('editFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('app.editFailed') })
     }
   }, [appDetail, notify, setAppDetail, t])
 
@@ -124,14 +124,14 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       setShowDuplicateModal(false)
       notify({
         type: 'success',
-        message: t('newApp.appCreated', { ns: 'app' }),
+        message: t('app.newApp.appCreated'),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       onPlanInfoChanged()
       getRedirection(true, newApp, replace)
     }
     catch {
-      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
     }
   }
 
@@ -152,7 +152,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       URL.revokeObjectURL(url)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('app.exportFailed') })
     }
   }
 
@@ -181,7 +181,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       setSecretEnvList(list)
     }
     catch {
-      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
+      notify({ type: 'error', message: t('app.exportFailed') })
     }
   }
 
@@ -190,7 +190,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       return
     try {
       await deleteApp(appDetail.id)
-      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
+      notify({ type: 'success', message: t('app.appDeleted') })
       onPlanInfoChanged()
       setAppDetail()
       replace('/apps')
@@ -198,7 +198,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     catch (e: any) {
       notify({
         type: 'error',
-        message: `${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`,
+        message: `${t('app.appDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}`,
       })
     }
     setShowConfirmDelete(false)
@@ -212,7 +212,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const primaryOperations = [
     {
       id: 'edit',
-      title: t('editApp', { ns: 'app' }),
+      title: t('app.editApp'),
       icon: <RiEditLine />,
       onClick: () => {
         setOpen(false)
@@ -222,7 +222,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     },
     {
       id: 'duplicate',
-      title: t('duplicate', { ns: 'app' }),
+      title: t('app.duplicate'),
       icon: <RiFileCopy2Line />,
       onClick: () => {
         setOpen(false)
@@ -232,7 +232,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     },
     {
       id: 'export',
-      title: t('export', { ns: 'app' }),
+      title: t('app.export'),
       icon: <RiFileDownloadLine />,
       onClick: exportCheck,
     },
@@ -243,7 +243,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     ...(appDetail.mode === AppModeEnum.ADVANCED_CHAT || appDetail.mode === AppModeEnum.WORKFLOW)
       ? [{
           id: 'import',
-          title: t('common.importDSL', { ns: 'workflow' }),
+          title: t('workflow.common.importDSL'),
           icon: <RiFileUploadLine />,
           onClick: () => {
             setOpen(false)
@@ -263,7 +263,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
     // Delete operation
     {
       id: 'delete',
-      title: t('operation.delete', { ns: 'common' }),
+      title: t('common.operation.delete'),
       icon: <RiDeleteBinLine />,
       onClick: () => {
         setOpen(false)
@@ -277,7 +277,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
   const switchOperation = (appDetail.mode === AppModeEnum.COMPLETION || appDetail.mode === AppModeEnum.CHAT)
     ? {
         id: 'switch',
-        title: t('switch', { ns: 'app' }),
+        title: t('app.switch'),
         icon: <RiExchange2Line />,
         onClick: () => {
           setOpen(false)
@@ -331,14 +331,14 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
                 </div>
                 <div className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary">
                   {appDetail.mode === AppModeEnum.ADVANCED_CHAT
-                    ? t('types.advanced', { ns: 'app' })
+                    ? t('app.types.advanced')
                     : appDetail.mode === AppModeEnum.AGENT_CHAT
-                      ? t('types.agent', { ns: 'app' })
+                      ? t('app.types.agent')
                       : appDetail.mode === AppModeEnum.CHAT
-                        ? t('types.chatbot', { ns: 'app' })
+                        ? t('app.types.chatbot')
                         : appDetail.mode === AppModeEnum.COMPLETION
-                          ? t('types.completion', { ns: 'app' })
-                          : t('types.workflow', { ns: 'app' })}
+                          ? t('app.types.completion')
+                          : t('app.types.workflow')}
                 </div>
               </div>
             )}
@@ -364,7 +364,7 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
             />
             <div className="flex flex-1 flex-col items-start justify-center overflow-hidden">
               <div className="system-md-semibold w-full truncate text-text-secondary">{appDetail.name}</div>
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('types.advanced', { ns: 'app' }) : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('types.agent', { ns: 'app' }) : appDetail.mode === AppModeEnum.CHAT ? t('types.chatbot', { ns: 'app' }) : appDetail.mode === AppModeEnum.COMPLETION ? t('types.completion', { ns: 'app' }) : t('types.workflow', { ns: 'app' })}</div>
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{appDetail.mode === AppModeEnum.ADVANCED_CHAT ? t('app.types.advanced') : appDetail.mode === AppModeEnum.AGENT_CHAT ? t('app.types.agent') : appDetail.mode === AppModeEnum.CHAT ? t('app.types.chatbot') : appDetail.mode === AppModeEnum.COMPLETION ? t('app.types.completion') : t('app.types.workflow')}</div>
             </div>
           </div>
           {/* description */}
@@ -438,8 +438,8 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
       )}
       {showConfirmDelete && (
         <Confirm
-          title={t('deleteAppConfirmTitle', { ns: 'app' })}
-          content={t('deleteAppConfirmContent', { ns: 'app' })}
+          title={t('app.deleteAppConfirmTitle')}
+          content={t('app.deleteAppConfirmContent')}
           isShow={showConfirmDelete}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}
@@ -462,8 +462,8 @@ const AppInfo = ({ expand, onlyShowDetail = false, openState = false, onDetailEx
         <Confirm
           type="info"
           isShow={showExportWarning}
-          title={t('sidebar.exportWarning', { ns: 'workflow' })}
-          content={t('sidebar.exportWarningDesc', { ns: 'workflow' })}
+          title={t('workflow.sidebar.exportWarning')}
+          content={t('workflow.sidebar.exportWarningDesc')}
           onConfirm={handleConfirmExport}
           onCancel={() => setShowExportWarning(false)}
         />
