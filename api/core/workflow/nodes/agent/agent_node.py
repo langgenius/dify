@@ -234,22 +234,15 @@ class AgentNode(Node[AgentNodeData]):
                     )
 
                     for segment in segment_group.value:
-                        if isinstance(segment, ArrayFileSegment):
-                            for file in segment.value:
+                        if isinstance(segment, (ArrayFileSegment, FileSegment)):
+                            files = segment.value if isinstance(segment, ArrayFileSegment) else [segment.value]
+                            for file in files:
                                 if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
                                     file_content = file_manager.to_prompt_message_content(
                                         file, image_detail_config=vision_detail
                                     )
                                     contents.append(file_content.model_dump())
                                     has_file = True
-                        elif isinstance(segment, FileSegment):
-                            file = segment.value
-                            if file.type in {FileType.IMAGE, FileType.VIDEO, FileType.AUDIO, FileType.DOCUMENT}:
-                                file_content = file_manager.to_prompt_message_content(
-                                    file, image_detail_config=vision_detail
-                                )
-                                contents.append(file_content.model_dump())
-                                has_file = True
                         else:
                             text = segment.text
                             if text:
