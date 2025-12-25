@@ -3,6 +3,7 @@ import type {
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import type { ModelProviderQuotaGetPaid } from '../utils'
 import {
   RiArrowRightSLine,
   RiInformation2Fill,
@@ -28,7 +29,6 @@ import {
 } from '../utils'
 import CredentialPanel from './credential-panel'
 import ModelList from './model-list'
-import QuotaPanel from './quota-panel'
 
 export const UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST = 'UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST'
 type ProviderAddedCardProps = {
@@ -49,7 +49,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
   const systemConfig = provider.system_configuration
   const hasModelList = fetched && !!modelList.length
   const { isCurrentWorkspaceManager } = useAppContext()
-  const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider) && !IS_CE_EDITION
+  const showQuota = systemConfig.enabled && [...MODEL_PROVIDER_QUOTA_GET_PAID].includes(provider.provider as ModelProviderQuotaGetPaid) && !IS_CE_EDITION
   const showCredential = configurationMethods.includes(ConfigurationMethodEnum.predefinedModel) && isCurrentWorkspaceManager
 
   const getModelList = async (providerName: string) => {
@@ -104,13 +104,6 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             }
           </div>
         </div>
-        {
-          showQuota && (
-            <QuotaPanel
-              provider={provider}
-            />
-          )
-        }
         {
           showCredential && (
             <CredentialPanel

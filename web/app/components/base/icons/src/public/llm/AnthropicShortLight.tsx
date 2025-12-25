@@ -1,20 +1,20 @@
 // GENERATE BY script
 // DON NOT EDIT IT MANUALLY
 
-import type { IconData } from '@/app/components/base/icons/IconBase'
 import * as React from 'react'
+import data from './AnthropicShortLight.json'
 import IconBase from '@/app/components/base/icons/IconBase'
-import data from './MlflowIconBig.json'
+import type { IconData } from '@/app/components/base/icons/IconBase'
 
 const Icon = (
   {
     ref,
     ...props
   }: React.SVGProps<SVGSVGElement> & {
-    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>
+    ref?: React.RefObject<React.RefObject<HTMLOrSVGElement>>;
   },
 ) => <IconBase {...props} ref={ref} data={data as IconData} />
 
-Icon.displayName = 'MlflowIconBig'
+Icon.displayName = 'AnthropicShortLight'
 
 export default Icon
