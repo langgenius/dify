@@ -134,24 +134,8 @@ async function getKeysFromLanguage(language) {
             return
           }
 
-          const nestedKeys = []
-          const iterateKeys = (obj, prefix = '') => {
-            for (const key in obj) {
-              const nestedKey = prefix ? `${prefix}.${key}` : key
-              if (typeof obj[key] === 'object' && obj[key] !== null && !Array.isArray(obj[key])) {
-                // This is an object (but not array), recurse into it but don't add it as a key
-                iterateKeys(obj[key], nestedKey)
-              }
-              else {
-                // This is a leaf node (string, number, boolean, array, etc.), add it as a key
-                nestedKeys.push(nestedKey)
-              }
-            }
-          }
-          iterateKeys(translationObj)
-
-          // Fixed: accumulate keys instead of overwriting
-          const fileKeys = nestedKeys.map(key => `${camelCaseFileName}.${key}`)
+          // Flat structure: just get all keys directly
+          const fileKeys = Object.keys(translationObj).map(key => `${camelCaseFileName}.${key}`)
           allKeys.push(...fileKeys)
         }
         catch (error) {
@@ -190,35 +174,15 @@ async function removeExtraKeysFromFile(language, fileName, extraKeys) {
 
     let modified = false
 
-    // Remove each extra key
+    // Remove each extra key (flat structure - direct property deletion)
     for (const keyToRemove of fileSpecificKeys) {
-      const keyParts = keyToRemove.split('.')
-      let current = translationObj
-
-      // Navigate to the parent of the key to remove
-      for (let i = 0; i < keyParts.length; i++) {
-        const part = keyParts[i]
-        if (i === keyParts.length - 1) {
-          // This is the key to remove
-          if (current && typeof current === 'object' && part in current) {
-            delete current[part]
-            console.log(`🗑️  Removed key: ${keyToRemove}`)
-            modified = true
-          }
-          else {
-            console.log(`⚠️  Could not find key: ${keyToRemove}`)
-          }
-        }
-        else {
-          // Navigate deeper
-          if (current && typeof current === 'object' && part in current) {
-            current = current[part]
-          }
-          else {
-            console.log(`⚠️  Could not find key path: ${keyToRemove}`)
-            break
-          }
-        }
+      if (keyToRemove in translationObj) {
+        delete translationObj[keyToRemove]
+        console.log(`🗑️  Removed key: ${keyToRemove}`)
+        modified = true
+      }
+      else {
+        console.log(`⚠️  Could not find key: ${keyToRemove}`)
       }
     }
 

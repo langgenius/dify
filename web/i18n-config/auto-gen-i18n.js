@@ -162,89 +162,24 @@ async function translateText(source, toLanguage) {
   }
 }
 
-async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
+async function translateMissingKeys(sourceObj, targetObject, toLanguage) {
   const skippedKeys = []
   const translatedKeys = []
 
-  const entries = Object.keys(sourceObj)
-
-  const processArray = async (sourceArray, targetArray, parentKey) => {
-    for (let i = 0; i < sourceArray.length; i++) {
-      const item = sourceArray[i]
-      const pathKey = `${parentKey}[${i}]`
-
-      const existingTarget = targetArray[i]
-
-      if (typeof item === 'object' && item !== null) {
-        const targetChild = (Array.isArray(existingTarget) || typeof existingTarget === 'object') ? existingTarget : (Array.isArray(item) ? [] : {})
-        const childResult = await translateMissingKeyDeeply(item, targetChild, toLanguage)
-        targetArray[i] = targetChild
-        skippedKeys.push(...childResult.skipped.map(k => `${pathKey}.${k}`))
-        translatedKeys.push(...childResult.translated.map(k => `${pathKey}.${k}`))
-      }
-      else {
-        if (existingTarget !== undefined)
-          continue
-
-        const translationResult = await translateText(item, toLanguage)
-        targetArray[i] = translationResult.value ?? ''
-        if (translationResult.skipped)
-          skippedKeys.push(`${pathKey}: ${item}`)
-        else
-          translatedKeys.push(pathKey)
-      }
-    }
-  }
-
-  for (const key of entries) {
+  for (const key of Object.keys(sourceObj)) {
     const sourceValue = sourceObj[key]
     const targetValue = targetObject[key]
 
-    if (targetValue === undefined) {
-      if (Array.isArray(sourceValue)) {
-        const translatedArray = []
-        await processArray(sourceValue, translatedArray, key)
-        targetObject[key] = translatedArray
-      }
-      else if (typeof sourceValue === 'object' && sourceValue !== null) {
-        targetObject[key] = {}
-        const result = await translateMissingKeyDeeply(sourceValue, targetObject[key], toLanguage)
-        skippedKeys.push(...result.skipped.map(k => `${key}.${k}`))
-        translatedKeys.push(...result.translated.map(k => `${key}.${k}`))
-      }
-      else {
-        const translationResult = await translateText(sourceValue, toLanguage)
-        targetObject[key] = translationResult.value ?? ''
-        if (translationResult.skipped)
-          skippedKeys.push(`${key}: ${sourceValue}`)
-        else
-          translatedKeys.push(key)
-      }
-    }
-    else if (Array.isArray(sourceValue)) {
-      const targetArray = Array.isArray(targetValue) ? targetValue : []
-      await processArray(sourceValue, targetArray, key)
-      targetObject[key] = targetArray
-    }
-    else if (typeof sourceValue === 'object' && sourceValue !== null) {
-      const targetChild = targetValue && typeof targetValue === 'object' ? targetValue : {}
-      targetObject[key] = targetChild
-      const result = await translateMissingKeyDeeply(sourceValue, targetChild, toLanguage)
-      skippedKeys.push(...result.skipped.map(k => `${key}.${k}`))
-      translatedKeys.push(...result.translated.map(k => `${key}.${k}`))
-    }
-    else {
-      // Overwrite when type is different or value is missing to keep structure in sync
-      const shouldUpdate = typeof targetValue !== typeof sourceValue || targetValue === undefined || targetValue === null
-      if (shouldUpdate) {
-        const translationResult = await translateText(sourceValue, toLanguage)
-        targetObject[key] = translationResult.value ?? ''
-        if (translationResult.skipped)
-          skippedKeys.push(`${key}: ${sourceValue}`)
-        else
-          translatedKeys.push(key)
-      }
-    }
+    // Skip if target already has this key
+    if (targetValue !== undefined)
+      continue
+
+    const translationResult = await translateText(sourceValue, toLanguage)
+    targetObject[key] = translationResult.value ?? ''
+    if (translationResult.skipped)
+      skippedKeys.push(`${key}: ${sourceValue}`)
+    else
+      translatedKeys.push(key)
   }
 
   return { skipped: skippedKeys, translated: translatedKeys }
@@ -268,7 +203,7 @@ async function autoGenTrans(fileName, toGenLanguage, isDryRun = false) {
     }
 
     console.log(`\n🌍 Processing ${fileName} for ${toGenLanguage}...`)
-    const result = await translateMissingKeyDeeply(fullKeyContent, toGenOutPut, toGenLanguage)
+    const result = await translateMissingKeys(fullKeyContent, toGenOutPut, toGenLanguage)
 
     // Generate summary report
     console.log(`\n📊 Translation Summary for ${fileName} -> ${toGenLanguage}:`)
