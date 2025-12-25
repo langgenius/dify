@@ -18,7 +18,7 @@ import type {
   ProcessRuleResponse,
 } from '@/models/datasets'
 import { useMutation } from '@tanstack/react-query'
-import groupBy from 'lodash-es/groupBy'
+import { groupBy } from 'es-toolkit/compat'
 import { post } from '../base'
 import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from '../datasets'
 

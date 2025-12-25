@@ -6,7 +6,7 @@ import type { AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyM
 import dayjs from 'dayjs'
 import Decimal from 'decimal.js'
 import ReactECharts from 'echarts-for-react'
-import { get } from 'lodash-es'
+import { get } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Basic from '@/app/components/app-sidebar/basic'

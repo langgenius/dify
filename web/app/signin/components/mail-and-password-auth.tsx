@@ -1,5 +1,5 @@
 import type { ResponseError } from '@/service/fetch'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'

@@ -1,7 +1,7 @@
 'use client'
 
 import { RiExternalLinkLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import {
   useRouter,
   useSearchParams,

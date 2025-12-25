@@ -8,8 +8,8 @@ import type {
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
+import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { intersectionBy } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'

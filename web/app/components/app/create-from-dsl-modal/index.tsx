@@ -3,7 +3,7 @@
 import type { MouseEventHandler } from 'react'
 import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
