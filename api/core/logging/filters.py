@@ -2,31 +2,32 @@
 
 import contextlib
 import logging
-import uuid
 
 import flask
+
+from core.logging.context import get_request_id, get_trace_id
 
 
 class TraceContextFilter(logging.Filter):
     """
     Filter that adds trace_id and span_id to log records.
-    Integrates with OpenTelemetry when available, falls back to request_id.
+    Integrates with OpenTelemetry when available, falls back to ContextVar-based trace_id.
     """
 
     def filter(self, record: logging.LogRecord) -> bool:
         # Get trace context from OpenTelemetry
         trace_id, span_id = self._get_otel_context()
 
-        # Set trace_id (fallback to request_id if no OTEL context)
+        # Set trace_id (fallback to ContextVar if no OTEL context)
         if trace_id:
             record.trace_id = trace_id
         else:
-            record.trace_id = self._get_or_create_request_trace_id()
+            record.trace_id = get_trace_id()
 
         record.span_id = span_id or ""
 
         # For backward compatibility, also set req_id
-        record.req_id = self._get_request_id()
+        record.req_id = get_request_id()
 
         return True
 
@@ -44,28 +45,6 @@ class TraceContextFilter(logging.Filter):
                     span_id = f"{ctx.span_id:016x}" if ctx.span_id != INVALID_SPAN_ID else ""
                     return trace_id, span_id
         return "", ""
-
-    def _get_request_id(self) -> str:
-        """Get request ID from Flask context."""
-        if flask.has_request_context():
-            if hasattr(flask.g, "request_id"):
-                return flask.g.request_id
-            flask.g.request_id = uuid.uuid4().hex[:10]
-            return flask.g.request_id
-        return ""
-
-    def _get_or_create_request_trace_id(self) -> str:
-        """Get or create a trace_id derived from request context."""
-        if flask.has_request_context():
-            if hasattr(flask.g, "_trace_id"):
-                return flask.g._trace_id
-            # Derive trace_id from request_id for consistency
-            request_id = self._get_request_id()
-            if request_id:
-                # Generate a 32-char hex trace_id from request_id
-                flask.g._trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, request_id).hex
-                return flask.g._trace_id
-        return ""
 
 
 class IdentityContextFilter(logging.Filter):

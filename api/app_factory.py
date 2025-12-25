@@ -25,7 +25,10 @@ def create_flask_app_with_configs() -> DifyApp:
     # add before request hook
     @dify_app.before_request
     def before_request():
-        # add an unique identifier to each request
+        # Initialize logging context for this request
+        from core.logging.context import init_request_context
+
+        init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
     # add after request hook for injecting trace headers from OpenTelemetry span context

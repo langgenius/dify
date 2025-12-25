@@ -133,8 +133,8 @@ def generate_traceparent_header() -> str | None:
     """
     Generate a W3C traceparent header from the current context.
 
-    Uses OpenTelemetry context if available, otherwise generates new IDs
-    based on the Flask request context.
+    Uses OpenTelemetry context if available, otherwise uses the
+    ContextVar-based trace_id from the logging context.
 
     Format: {version}-{trace_id}-{span_id}-{flags}
     Example: 00-5b8aa5a2d2c872e8321cf37308d69df2-051581bf3bb55c45-01
@@ -151,17 +151,10 @@ def generate_traceparent_header() -> str | None:
     if trace_id and span_id:
         return f"00-{trace_id}-{span_id}-01"
 
-    # Fallback: generate new trace context
-    try:
-        import flask
+    # Fallback: use ContextVar-based trace_id or generate new one
+    from core.logging.context import get_trace_id as get_logging_trace_id
 
-        if flask.has_request_context() and hasattr(flask.g, "request_id"):
-            # Derive trace_id from request_id for consistency
-            trace_id = uuid.uuid5(uuid.NAMESPACE_DNS, flask.g.request_id).hex
-        else:
-            trace_id = uuid.uuid4().hex
-    except Exception:
-        trace_id = uuid.uuid4().hex
+    trace_id = get_logging_trace_id() or uuid.uuid4().hex
 
     # Generate a new span_id (16 hex chars)
     span_id = uuid.uuid4().hex[:16]

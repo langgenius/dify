@@ -3,10 +3,7 @@
 import logging
 import os
 import sys
-import uuid
 from logging.handlers import RotatingFileHandler
-
-import flask
 
 from configs import dify_config
 from dify_app import DifyApp
@@ -106,13 +103,13 @@ class _TextFormatter(logging.Formatter):
 
 
 def get_request_id() -> str:
-    """Get or create request ID for current request context."""
-    if flask.has_request_context():
-        if getattr(flask.g, "request_id", None):
-            return flask.g.request_id
-        flask.g.request_id = uuid.uuid4().hex[:10]
-        return flask.g.request_id
-    return ""
+    """Get request ID for current request context.
+
+    Deprecated: Use core.logging.context.get_request_id() directly.
+    """
+    from core.logging.context import get_request_id as _get_request_id
+
+    return _get_request_id()
 
 
 # Backward compatibility aliases
@@ -120,11 +117,11 @@ class RequestIdFilter(logging.Filter):
     """Deprecated: Use TraceContextFilter from core.logging.filters instead."""
 
     def filter(self, record: logging.LogRecord) -> bool:
-        from core.helper.trace_id_helper import get_trace_id_from_otel_context
+        from core.logging.context import get_request_id as _get_request_id
+        from core.logging.context import get_trace_id as _get_trace_id
 
-        trace_id = get_trace_id_from_otel_context() or ""
-        record.req_id = get_request_id() if flask.has_request_context() else ""
-        record.trace_id = trace_id
+        record.req_id = _get_request_id()
+        record.trace_id = _get_trace_id()
         return True
 
 

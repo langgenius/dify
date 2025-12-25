@@ -6,7 +6,11 @@ from unittest import mock
 
 class TestTraceContextFilter:
     def test_sets_empty_trace_id_without_context(self):
+        from core.logging.context import clear_request_context
         from core.logging.filters import TraceContextFilter
+
+        # Ensure no context is set
+        clear_request_context()
 
         filter = TraceContextFilter()
         record = logging.LogRecord(
@@ -25,6 +29,36 @@ class TestTraceContextFilter:
         assert hasattr(record, "trace_id")
         assert hasattr(record, "span_id")
         assert hasattr(record, "req_id")
+        # Without context, IDs should be empty
+        assert record.trace_id == ""
+        assert record.req_id == ""
+
+    def test_sets_trace_id_from_context(self):
+        """Test that trace_id and req_id are set from ContextVar when initialized."""
+        from core.logging.context import init_request_context
+        from core.logging.filters import TraceContextFilter
+
+        # Initialize context (no Flask needed!)
+        init_request_context()
+
+        filter = TraceContextFilter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="",
+            lineno=0,
+            msg="test",
+            args=(),
+            exc_info=None,
+        )
+
+        filter.filter(record)
+
+        # With context initialized, IDs should be set
+        assert record.trace_id != ""
+        assert len(record.trace_id) == 32
+        assert record.req_id != ""
+        assert len(record.req_id) == 10
 
     def test_filter_always_returns_true(self):
         from core.logging.filters import TraceContextFilter
