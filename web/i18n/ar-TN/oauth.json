@@ -1,25 +1,19 @@
 {
-  "tips": {
-    "loggedIn": "يريد هذا التطبيق الوصول إلى المعلومات التالية من حساب Dify Cloud الخاص بك.",
-    "notLoggedIn": "يريد هذا التطبيق الوصول إلى حساب Dify Cloud الخاص بك",
-    "needLogin": "يرجى تسجيل الدخول للتفويض",
-    "common": "نحن نحترم خصوصيتك وسنستخدم هذه المعلومات فقط لتحسين تجربتك مع أدوات المطورين لدينا."
-  },
   "connect": "الاتصال بـ",
   "continue": "متابعة",
-  "switchAccount": "تبديل الحساب",
+  "error.authAppInfoFetchFailed": "فشل جلب معلومات التطبيق للتفويض",
+  "error.authorizeFailed": "فشل التفويض",
+  "error.invalidParams": "معلمات غير صالحة",
   "login": "تسجيل الدخول",
-  "scopes": {
-    "name": "الاسم",
-    "email": "البريد الإلكتروني",
-    "avatar": "الصورة الرمزية",
-    "languagePreference": "تفضيل اللغة",
-    "timezone": "المنطقة الزمنية"
-  },
-  "error": {
-    "invalidParams": "معلمات غير صالحة",
-    "authorizeFailed": "فشل التفويض",
-    "authAppInfoFetchFailed": "فشل جلب معلومات التطبيق للتفويض"
-  },
+  "scopes.avatar": "الصورة الرمزية",
+  "scopes.email": "البريد الإلكتروني",
+  "scopes.languagePreference": "تفضيل اللغة",
+  "scopes.name": "الاسم",
+  "scopes.timezone": "المنطقة الزمنية",
+  "switchAccount": "تبديل الحساب",
+  "tips.common": "نحن نحترم خصوصيتك وسنستخدم هذه المعلومات فقط لتحسين تجربتك مع أدوات المطورين لدينا.",
+  "tips.loggedIn": "يريد هذا التطبيق الوصول إلى المعلومات التالية من حساب Dify Cloud الخاص بك.",
+  "tips.needLogin": "يرجى تسجيل الدخول للتفويض",
+  "tips.notLoggedIn": "يريد هذا التطبيق الوصول إلى حساب Dify Cloud الخاص بك",
   "unknownApp": "تطبيق غير معروف"
 }

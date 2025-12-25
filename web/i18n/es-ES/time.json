@@ -1,42 +1,32 @@
 {
-  "daysInWeek": {
-    "Sun": "Sol",
-    "Thu": "Jue",
-    "Tue": "Mar",
-    "Sat": "Sáb",
-    "Mon": "Mon",
-    "Fri": "Viernes",
-    "Wed": "Miércoles"
-  },
-  "months": {
-    "August": "Agosto",
-    "September": "Septiembre",
-    "April": "Abril",
-    "February": "Febrero",
-    "January": "Enero",
-    "November": "Noviembre",
-    "October": "octubre",
-    "May": "Mayo",
-    "June": "Junio",
-    "December": "Diciembre",
-    "July": "Julio",
-    "March": "Marzo"
-  },
-  "operation": {
-    "ok": "De acuerdo",
-    "pickDate": "Seleccionar fecha",
-    "cancel": "Cancelar",
-    "now": "Ahora"
-  },
-  "title": {
-    "pickTime": "Elegir hora"
-  },
+  "dateFormats.display": "MMMM D, AAAA",
+  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
+  "dateFormats.input": "AAAA-MM-DD",
+  "dateFormats.output": "AAAA-MM-DD",
+  "dateFormats.outputWithTime": "AAAA-MM-DDTHH:mm:ss.SSSZ",
+  "daysInWeek.Fri": "Viernes",
+  "daysInWeek.Mon": "Mon",
+  "daysInWeek.Sat": "Sáb",
+  "daysInWeek.Sun": "Sol",
+  "daysInWeek.Thu": "Jue",
+  "daysInWeek.Tue": "Mar",
+  "daysInWeek.Wed": "Miércoles",
   "defaultPlaceholder": "Elige una hora...",
-  "dateFormats": {
-    "input": "AAAA-MM-DD",
-    "output": "AAAA-MM-DD",
-    "display": "MMMM D, AAAA",
-    "outputWithTime": "AAAA-MM-DDTHH:mm:ss.SSSZ",
-    "displayWithTime": "MMMM D, YYYY hh:mm A"
-  }
+  "months.April": "Abril",
+  "months.August": "Agosto",
+  "months.December": "Diciembre",
+  "months.February": "Febrero",
+  "months.January": "Enero",
+  "months.July": "Julio",
+  "months.June": "Junio",
+  "months.March": "Marzo",
+  "months.May": "Mayo",
+  "months.November": "Noviembre",
+  "months.October": "octubre",
+  "months.September": "Septiembre",
+  "operation.cancel": "Cancelar",
+  "operation.now": "Ahora",
+  "operation.ok": "De acuerdo",
+  "operation.pickDate": "Seleccionar fecha",
+  "title.pickTime": "Elegir hora"
 }

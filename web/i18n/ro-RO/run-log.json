@@ -1,29 +1,23 @@
 {
-  "input": "INTRARE",
-  "result": "REZULTAT",
-  "detail": "DETALIU",
-  "tracing": "URMĂRIRE",
-  "resultPanel": {
-    "status": "STARE",
-    "time": "TIMP SCURS",
-    "tokens": "TOTAL TOKENI"
-  },
-  "meta": {
-    "title": "METADATE",
-    "status": "Stare",
-    "version": "Versiune",
-    "executor": "Executor",
-    "startTime": "Timp de început",
-    "time": "Timp scurs",
-    "tokens": "Total tokeni",
-    "steps": "Pași de rulare"
-  },
-  "resultEmpty": {
-    "title": "Această rulare generează doar format JSON,",
-    "tipLeft": "vă rugăm să mergeți la ",
-    "link": "panoul de detalii",
-    "tipRight": " pentru a o vizualiza."
-  },
   "actionLogs": "Jurnale de acțiuni",
-  "circularInvocationTip": "Există o invocare circulară a instrumentelor/nodurilor în fluxul de lucru curent."
+  "circularInvocationTip": "Există o invocare circulară a instrumentelor/nodurilor în fluxul de lucru curent.",
+  "detail": "DETALIU",
+  "input": "INTRARE",
+  "meta.executor": "Executor",
+  "meta.startTime": "Timp de început",
+  "meta.status": "Stare",
+  "meta.steps": "Pași de rulare",
+  "meta.time": "Timp scurs",
+  "meta.title": "METADATE",
+  "meta.tokens": "Total tokeni",
+  "meta.version": "Versiune",
+  "result": "REZULTAT",
+  "resultEmpty.link": "panoul de detalii",
+  "resultEmpty.tipLeft": "vă rugăm să mergeți la ",
+  "resultEmpty.tipRight": " pentru a o vizualiza.",
+  "resultEmpty.title": "Această rulare generează doar format JSON,",
+  "resultPanel.status": "STARE",
+  "resultPanel.time": "TIMP SCURS",
+  "resultPanel.tokens": "TOTAL TOKENI",
+  "tracing": "URMĂRIRE"
 }

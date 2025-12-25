@@ -1,29 +1,23 @@
 {
-  "input": "GİRİŞ",
-  "result": "SONUÇ",
-  "detail": "DETAY",
-  "tracing": "İZLEME",
-  "resultPanel": {
-    "status": "DURUM",
-    "time": "GEÇEN ZAMAN",
-    "tokens": "TOPLAM TOKEN"
-  },
-  "meta": {
-    "title": "METADATA",
-    "status": "Durum",
-    "version": "Sürüm",
-    "executor": "Yürütücü",
-    "startTime": "Başlama Zamanı",
-    "time": "Geçen Zaman",
-    "tokens": "Toplam Token",
-    "steps": "Çalıştırma Adımları"
-  },
-  "resultEmpty": {
-    "title": "Bu çalıştırma sadece JSON formatında çıktı verdi,",
-    "tipLeft": "lütfen ",
-    "link": "detay paneli",
-    "tipRight": "ne gidin ve görüntüleyin."
-  },
   "actionLogs": "Eylem Günlükleri",
-  "circularInvocationTip": "Geçerli iş akışında araçların/düğümlerin döngüsel olarak çağrılması vardır."
+  "circularInvocationTip": "Geçerli iş akışında araçların/düğümlerin döngüsel olarak çağrılması vardır.",
+  "detail": "DETAY",
+  "input": "GİRİŞ",
+  "meta.executor": "Yürütücü",
+  "meta.startTime": "Başlama Zamanı",
+  "meta.status": "Durum",
+  "meta.steps": "Çalıştırma Adımları",
+  "meta.time": "Geçen Zaman",
+  "meta.title": "METADATA",
+  "meta.tokens": "Toplam Token",
+  "meta.version": "Sürüm",
+  "result": "SONUÇ",
+  "resultEmpty.link": "detay paneli",
+  "resultEmpty.tipLeft": "lütfen ",
+  "resultEmpty.tipRight": "ne gidin ve görüntüleyin.",
+  "resultEmpty.title": "Bu çalıştırma sadece JSON formatında çıktı verdi,",
+  "resultPanel.status": "DURUM",
+  "resultPanel.time": "GEÇEN ZAMAN",
+  "resultPanel.tokens": "TOPLAM TOKEN",
+  "tracing": "İZLEME"
 }
