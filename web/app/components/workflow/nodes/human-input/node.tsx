@@ -43,20 +43,30 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
           </div>
         </div>
       )}
-      {userActions.length > 0 && (
-        <div className="space-y-0.5 py-1">
-          {userActions.map(userAction => (
-            <div key={userAction.id} className="relative flex flex-row-reverse items-center px-4 py-1">
-              <span className="system-xs-semibold-uppercase truncate text-text-secondary">{userAction.id}</span>
-              <NodeSourceHandle
-                {...props}
-                handleId={userAction.id}
-                handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2"
-              />
-            </div>
-          ))}
+      <div className="space-y-0.5 py-1">
+        {userActions.length > 0 && (
+          <>
+            {userActions.map(userAction => (
+              <div key={userAction.id} className="relative flex flex-row-reverse items-center px-4 py-1">
+                <span className="system-xs-semibold-uppercase truncate text-text-secondary">{userAction.id}</span>
+                <NodeSourceHandle
+                  {...props}
+                  handleId={userAction.id}
+                  handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2"
+                />
+              </div>
+            ))}
+          </>
+        )}
+        <div className="relative flex flex-row-reverse items-center px-4 py-1">
+          <div className="system-xs-semibold-uppercase truncate text-text-secondary">Timeout</div>
+          <NodeSourceHandle
+            {...props}
+            handleId="timeout"
+            handleClassName="!top-1/2 !-right-[9px] !-translate-y-1/2"
+          />
         </div>
-      )}
+      </div>
     </>
   )
 }
