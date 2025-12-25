@@ -395,7 +395,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
             )}
 
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className={`z-20 ${popupClassName}`}>
+      <PortalToFollowElemContent className={`z-[1002] ${popupClassName}`}>
         <div
           className={cn('max-h-60 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm', popupInnerClassName)}
         >
