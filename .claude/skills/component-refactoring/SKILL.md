@@ -393,7 +393,7 @@ Identify:
 - Line count
 - Features detected (state, effects, API, etc.)
 
-### Step 2: Plan
+### Step 3: Plan
 
 Create a refactoring plan based on detected features:
 
@@ -405,7 +405,7 @@ Create a refactoring plan based on detected features:
 | `lineCount > 300` | Split into sub-components |
 | `maxComplexity > 50` | Simplify conditional logic |
 
-### Step 3: Execute Incrementally
+### Step 4: Execute Incrementally
 
 1. **Extract one piece at a time**
 2. **Run tests after each extraction**
@@ -423,7 +423,7 @@ For each extraction:
   └────────────────────────────────────────┘
 ```
 
-### Step 4: Verify
+### Step 5: Verify
 
 After refactoring:
 
@@ -488,4 +488,3 @@ const useButtonState = () => {
 
 - `frontend-testing` - For testing refactored components
 - `web/testing/testing.md` - Testing specification
-
