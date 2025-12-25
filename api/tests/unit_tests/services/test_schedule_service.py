@@ -799,7 +799,7 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
     def test_sync_schedule_update_existing(self, mock_select, mock_service, mock_db):
-        """Test updating existing schedule."""
+        """Test updating existing schedule when config has changed."""
         mock_session = MagicMock()
         mock_db.engine = MagicMock()
         mock_session.__enter__ = MagicMock(return_value=mock_session)
@@ -810,14 +810,16 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
             mock_existing_plan.id = "existing-plan-id"
             mock_existing_plan.node_id = "start"
+            mock_existing_plan.cron_expression = "30 10 * * *"  # Old cron expression
+            mock_existing_plan.timezone = "UTC"  # Old timezone
             # Mock execute to return existing plan
             mock_session.execute.return_value.scalars.return_value.all.return_value = [mock_existing_plan]
 
-            # Mock extract_all_schedule_configs to return a config with same node_id
+            # Mock extract_all_schedule_configs to return a config with same node_id but different config
             mock_config = Mock(spec=ScheduleConfig)
             mock_config.node_id = "start"
-            mock_config.cron_expression = "0 12 * * *"
-            mock_config.timezone = "America/New_York"
+            mock_config.cron_expression = "0 12 * * *"  # Changed
+            mock_config.timezone = "America/New_York"  # Changed
             mock_service.extract_all_schedule_configs.return_value = [mock_config]
 
             mock_updated_plan = Mock(spec=WorkflowSchedulePlan)
@@ -838,6 +840,42 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             assert updates_obj.node_id == "start"
             assert updates_obj.cron_expression == "0 12 * * *"
             assert updates_obj.timezone == "America/New_York"
+            mock_session.commit.assert_called_once()
+
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.ScheduleService")
+    @patch("events.event_handlers.sync_workflow_schedule_when_app_published.select")
+    def test_sync_schedule_skip_update_when_unchanged(self, mock_select, mock_service, mock_db):
+        """Test skipping update when schedule config has not changed."""
+        mock_session = MagicMock()
+        mock_db.engine = MagicMock()
+        mock_session.__enter__ = MagicMock(return_value=mock_session)
+        mock_session.__exit__ = MagicMock(return_value=None)
+        Session = MagicMock(return_value=mock_session)
+
+        with patch("events.event_handlers.sync_workflow_schedule_when_app_published.Session", Session):
+            mock_existing_plan = Mock(spec=WorkflowSchedulePlan)
+            mock_existing_plan.id = "existing-plan-id"
+            mock_existing_plan.node_id = "start"
+            mock_existing_plan.cron_expression = "0 12 * * *"
+            mock_existing_plan.timezone = "America/New_York"
+            # Mock execute to return existing plan
+            mock_session.execute.return_value.scalars.return_value.all.return_value = [mock_existing_plan]
+
+            # Mock extract_all_schedule_configs to return identical config
+            mock_config = Mock(spec=ScheduleConfig)
+            mock_config.node_id = "start"
+            mock_config.cron_expression = "0 12 * * *"  # Same
+            mock_config.timezone = "America/New_York"  # Same
+            mock_service.extract_all_schedule_configs.return_value = [mock_config]
+
+            workflow = Mock(spec=Workflow)
+            result = sync_schedule_from_workflow("tenant-id", "app-id", workflow)
+
+            # Should return the existing plan without calling update
+            assert len(result) == 1
+            assert result[0] == mock_existing_plan
+            mock_service.update_schedule.assert_not_called()
             mock_session.commit.assert_called_once()
 
     @patch("events.event_handlers.sync_workflow_schedule_when_app_published.db")
@@ -926,10 +964,14 @@ class TestSyncScheduleFromWorkflow(unittest.TestCase):
             mock_existing_daily = Mock(spec=WorkflowSchedulePlan)
             mock_existing_daily.id = "existing-daily-id"
             mock_existing_daily.node_id = "daily-schedule"
+            mock_existing_daily.cron_expression = "0 10 * * *"  # Old cron expression
+            mock_existing_daily.timezone = "UTC"
 
             mock_existing_monthly = Mock(spec=WorkflowSchedulePlan)
             mock_existing_monthly.id = "existing-monthly-id"
             mock_existing_monthly.node_id = "monthly-schedule"
+            mock_existing_monthly.cron_expression = "0 9 1 * *"
+            mock_existing_monthly.timezone = "UTC"
 
             mock_session.execute.return_value.scalars.return_value.all.return_value = [
                 mock_existing_daily,

@@ -93,19 +93,26 @@ def sync_schedule_from_workflow(tenant_id: str, app_id: str, workflow: Workflow)
                 result_plans.append(new_plan)
                 logger.info("Created schedule plan for app %s, node %s", app_id, config.node_id)
             elif config.node_id in updated_node_ids:
-                # Update existing schedule plan
+                # Update existing schedule plan only if config changed
                 existing_plan = existing_plans_map[config.node_id]
-                updates = SchedulePlanUpdate(
-                    node_id=config.node_id,
-                    cron_expression=config.cron_expression,
-                    timezone=config.timezone,
-                )
-                updated_plan = ScheduleService.update_schedule(
-                    session=session,
-                    schedule_id=existing_plan.id,
-                    updates=updates,
-                )
-                result_plans.append(updated_plan)
+                if (
+                    existing_plan.cron_expression != config.cron_expression
+                    or existing_plan.timezone != config.timezone
+                ):
+                    logger.info("Updating schedule plan for app %s, node %s", app_id, config.node_id)
+                    updates = SchedulePlanUpdate(
+                        node_id=config.node_id,
+                        cron_expression=config.cron_expression,
+                        timezone=config.timezone,
+                    )
+                    updated_plan = ScheduleService.update_schedule(
+                        session=session,
+                        schedule_id=existing_plan.id,
+                        updates=updates,
+                    )
+                    result_plans.append(updated_plan)
+                else:
+                    result_plans.append(existing_plan)
 
         session.commit()
         return result_plans
