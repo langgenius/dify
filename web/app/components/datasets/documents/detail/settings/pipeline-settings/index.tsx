@@ -1,7 +1,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

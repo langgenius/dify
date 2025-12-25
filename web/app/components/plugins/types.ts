@@ -131,7 +131,7 @@ export type ParametersSchema = {
   scope: any
   required: boolean
   multiple: boolean
-  default?: string[]
+  default?: string | string[]
   min: any
   max: any
   precision: any

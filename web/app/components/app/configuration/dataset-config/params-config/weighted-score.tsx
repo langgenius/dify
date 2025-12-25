@@ -1,4 +1,4 @@
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Slider from '@/app/components/base/slider'

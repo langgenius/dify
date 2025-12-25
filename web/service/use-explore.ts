@@ -12,11 +12,6 @@ type ExploreAppListData = {
   allList: App[]
 }
 
-export const exploreAppListInitialData: ExploreAppListData = {
-  categories: [],
-  allList: [],
-}
-
 export const useExploreAppList = () => {
   return useQuery<ExploreAppListData>({
     queryKey: [NAME_SPACE, 'appList'],
@@ -27,7 +22,6 @@ export const useExploreAppList = () => {
         allList: [...recommended_apps].sort((a, b) => a.position - b.position),
       }
     },
-    placeholderData: exploreAppListInitialData,
   })
 }
 

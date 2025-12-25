@@ -9,8 +9,8 @@ import type {
   MultipleRetrievalConfig,
 } from './types'
 import type { DataSet } from '@/models/datasets'
+import { isEqual } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { isEqual } from 'lodash-es'
 import {
   useCallback,
   useEffect,
