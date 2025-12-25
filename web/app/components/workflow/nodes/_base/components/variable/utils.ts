@@ -15,6 +15,7 @@ import type { QuestionClassifierNodeType } from '../../../question-classifier/ty
 import type { TemplateTransformNodeType } from '../../../template-transform/types'
 import type { ToolNodeType } from '../../../tool/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { HumanInputNodeType } from '@/app/components/workflow/nodes/human-input/types'
 import type { CaseItem, Condition } from '@/app/components/workflow/nodes/if-else/types'
 import type { Field as StructField } from '@/app/components/workflow/nodes/llm/types'
 import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
@@ -49,6 +50,7 @@ import {
   TOOL_OUTPUT_STRUCT,
 } from '@/app/components/workflow/constants'
 import DataSourceNodeDefault from '@/app/components/workflow/nodes/data-source/default'
+import HumanInputNodeDefault from '@/app/components/workflow/nodes/human-input/default'
 import ToolNodeDefault from '@/app/components/workflow/nodes/tool/default'
 import PluginTriggerNodeDefault from '@/app/components/workflow/nodes/trigger-plugin/default'
 import {
@@ -622,6 +624,17 @@ const formatItem = (
     case BlockEnum.TriggerPlugin: {
       const outputSchema = PluginTriggerNodeDefault.getOutputVars?.(
         data as PluginTriggerNodeType,
+        allPluginInfoList,
+        [],
+        { schemaTypeDefinitions },
+      ) || []
+      res.vars = outputSchema
+      break
+    }
+
+    case BlockEnum.HumanInput: {
+      const outputSchema = HumanInputNodeDefault.getOutputVars?.(
+        data as HumanInputNodeType,
         allPluginInfoList,
         [],
         { schemaTypeDefinitions },

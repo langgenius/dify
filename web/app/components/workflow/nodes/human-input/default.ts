@@ -1,7 +1,7 @@
-import type { NodeDefault } from '../../types'
+import type { NodeDefault, Var } from '../../types'
 import type { HumanInputNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, VarType } from '@/app/components/workflow/types'
 // import { DeliveryMethodType, UserActionButtonType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 
@@ -13,11 +13,22 @@ const metaData = genNodeMetaData({
   type: BlockEnum.HumanInput,
 })
 
+const buildOutputVars = (variables: string[]): Var[] => {
+  return variables.map((variable) => {
+    return {
+      variable,
+      type: VarType.string,
+    }
+  })
+}
+
 const nodeDefault: NodeDefault<HumanInputNodeType> = {
   metaData,
   defaultValue: {
     delivery_methods: [],
     user_actions: [],
+    form_content: '',
+    inputs: [],
     timeout: 3,
     timeout_unit: 'day',
   },
@@ -45,6 +56,10 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
       isValid: !errorMessages,
       errorMessage: errorMessages,
     }
+  },
+  getOutputVars(payload, _allPluginInfoList, _ragVars) {
+    const variables = payload.inputs.map(input => input.output_variable_name)
+    return buildOutputVars(variables)
   },
 }
 

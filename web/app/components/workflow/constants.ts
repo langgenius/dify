@@ -128,6 +128,7 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.ListFilter,
   BlockEnum.Agent,
   BlockEnum.DataSource,
+  BlockEnum.HumanInput,
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [

@@ -116,7 +116,7 @@ export const useWorkflowVariables = () => {
       schemaTypeDefinitions,
       preferSchemaType,
     })
-  }, [workflowStore, getVarType, schemaTypeDefinitions, buildInTools, customTools, workflowTools, mcpTools])
+  }, [workflowStore, schemaTypeDefinitions, buildInTools, customTools, workflowTools, mcpTools])
 
   return {
     getNodeAvailableVars,

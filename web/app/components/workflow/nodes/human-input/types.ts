@@ -2,7 +2,6 @@ import type {
   CommonNodeType,
   InputVarType,
   ValueSelector,
-  Variable,
 } from '@/app/components/workflow/types'
 
 export type HumanInputNodeType = CommonNodeType & {
@@ -12,7 +11,6 @@ export type HumanInputNodeType = CommonNodeType & {
   user_actions: UserAction[]
   timeout: number
   timeout_unit: 'hour' | 'day'
-  outputs: Variable[]
 }
 
 export enum DeliveryMethodType {
