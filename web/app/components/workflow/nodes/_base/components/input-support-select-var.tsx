@@ -101,7 +101,7 @@ const Editor: FC<Props> = ({
               }
               if (node.data.type === BlockEnum.Start) {
                 acc.sys = {
-                  title: t('blocks.start', { ns: 'workflow' }),
+                  title: t('workflow.blocks.start'),
                   type: BlockEnum.Start,
                 }
               }
@@ -120,7 +120,7 @@ const Editor: FC<Props> = ({
         {isFocus && (
           <div className={cn('absolute z-10', insertVarTipToLeft ? 'left-[-12px] top-1.5' : ' right-1 top-[-9px]')}>
             <Tooltip
-              popupContent={`${t('common.insertVarTip', { ns: 'workflow' })}`}
+              popupContent={`${t('workflow.common.insertVarTip')}`}
             >
               <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
                 <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />

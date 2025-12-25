@@ -15,12 +15,12 @@ export default function IntegrationsPage() {
 
   const integrateMap = {
     google: {
-      name: t('integrations.google', { ns: 'common' }),
-      description: t('integrations.googleAccount', { ns: 'common' }),
+      name: t('common.integrations.google'),
+      description: t('common.integrations.googleAccount'),
     },
     github: {
-      name: t('integrations.github', { ns: 'common' }),
-      description: t('integrations.githubAccount', { ns: 'common' }),
+      name: t('common.integrations.github'),
+      description: t('common.integrations.githubAccount'),
     },
   }
 
@@ -30,7 +30,7 @@ export default function IntegrationsPage() {
   return (
     <>
       <div className="mb-8">
-        <div className={titleClassName}>{t('integrations.connected', { ns: 'common' })}</div>
+        <div className={titleClassName}>{t('common.integrations.connected')}</div>
         {
           integrates.map((integrate) => {
             const info = integrateMap[integrate.provider]
@@ -51,7 +51,7 @@ export default function IntegrationsPage() {
                       target="_blank"
                       rel="noopener noreferrer"
                     >
-                      {t('integrations.connect', { ns: 'common' })}
+                      {t('common.integrations.connect')}
                     </Link>
                   )
                 }

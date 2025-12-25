@@ -8,10 +8,10 @@ const GlobalInputs = () => {
   return (
     <div className="flex items-center gap-x-1">
       <span className="system-sm-semibold-uppercase text-text-secondary">
-        {t('inputFieldPanel.globalInputs.title', { ns: 'datasetPipeline' })}
+        {t('datasetPipeline.inputFieldPanel.globalInputs.title')}
       </span>
       <Tooltip
-        popupContent={t('inputFieldPanel.globalInputs.tooltip', { ns: 'datasetPipeline' })}
+        popupContent={t('datasetPipeline.inputFieldPanel.globalInputs.tooltip')}
         popupClassName="w-[240px]"
       />
     </div>

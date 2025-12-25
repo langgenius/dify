@@ -19,7 +19,7 @@ const ShowPanel: FC<Props> = ({
     ...payload,
     schema: {
       ...payload.schema,
-      description: t('structOutput.LLMResponse', { ns: 'app' }),
+      description: t('app.structOutput.LLMResponse'),
     },
   }
   return (

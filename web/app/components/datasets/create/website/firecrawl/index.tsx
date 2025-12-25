@@ -17,8 +17,8 @@ import OptionsWrap from '../base/options-wrap'
 import UrlInput from '../base/url-input'
 import Options from './options'
 
-const ERROR_I18N_PREFIX = 'errorMsg'
-const I18N_PREFIX = 'stepOne.website'
+const ERROR_I18N_PREFIX = 'common.errorMsg'
+const I18N_PREFIX = 'datasetCreation.stepOne.website'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -61,18 +61,16 @@ const FireCrawl: FC<Props> = ({
     let errorMsg = ''
     if (!url) {
       errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
-        ns: 'common',
         field: 'url',
       })
     }
 
     if (!errorMsg && !((url.startsWith('http://') || url.startsWith('https://'))))
-      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`, { ns: 'common' })
+      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`)
 
     if (!errorMsg && (crawlOptions.limit === null || crawlOptions.limit === undefined || crawlOptions.limit === '')) {
       errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
-        ns: 'common',
-        field: t(`${I18N_PREFIX}.limit`, { ns: 'datasetCreation' }),
+        field: t(`${I18N_PREFIX}.limit`),
       })
     }
 
@@ -166,7 +164,7 @@ const FireCrawl: FC<Props> = ({
       onJobIdChange(jobId)
       const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
       if (isError) {
-        setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
+        setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
       }
       else {
         setCrawlResult(data)
@@ -175,7 +173,7 @@ const FireCrawl: FC<Props> = ({
       }
     }
     catch (e) {
-      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' })!)
+      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`)!)
       console.log(e)
     }
     finally {
@@ -187,9 +185,9 @@ const FireCrawl: FC<Props> = ({
     <div>
       <Header
         onClickConfiguration={handleSetting}
-        title={t(`${I18N_PREFIX}.firecrawlTitle`, { ns: 'datasetCreation' })}
-        buttonText={t(`${I18N_PREFIX}.configureFirecrawl`, { ns: 'datasetCreation' })}
-        docTitle={t(`${I18N_PREFIX}.firecrawlDoc`, { ns: 'datasetCreation' })}
+        title={t(`${I18N_PREFIX}.firecrawlTitle`)}
+        buttonText={t(`${I18N_PREFIX}.configureFirecrawl`)}
+        docTitle={t(`${I18N_PREFIX}.firecrawlDoc`)}
         docLink="https://docs.firecrawl.dev/introduction"
       />
       <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0">
@@ -212,7 +210,7 @@ const FireCrawl: FC<Props> = ({
                 />
               )}
             {showError && (
-              <ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />
+              <ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
             )}
             {isCrawlFinished && !showError
               && (

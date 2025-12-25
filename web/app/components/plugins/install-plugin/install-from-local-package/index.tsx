@@ -13,7 +13,7 @@ import ReadyToInstallBundle from '../install-bundle/ready-to-install'
 import ReadyToInstallPackage from './ready-to-install'
 import Uploading from './steps/uploading'
 
-const i18nPrefix = 'installModal'
+const i18nPrefix = 'plugin.installModal'
 
 type InstallFromLocalPackageProps = {
   file: File
@@ -43,15 +43,15 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
-      return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
+      return t(`${i18nPrefix}.uploadFailed`)
     if (isBundle && step === InstallStep.installed)
-      return t(`${i18nPrefix}.installComplete`, { ns: 'plugin' })
+      return t(`${i18nPrefix}.installComplete`)
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
+      return t(`${i18nPrefix}.installedSuccessfully`)
     if (step === InstallStep.installFailed)
-      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
+      return t(`${i18nPrefix}.installFailed`)
 
-    return t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
+    return t(`${i18nPrefix}.installPlugin`)
   }, [isBundle, step, t])
 
   const { getIconUrl } = useGetIcon()

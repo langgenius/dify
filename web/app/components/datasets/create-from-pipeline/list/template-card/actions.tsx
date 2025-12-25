@@ -32,7 +32,7 @@ const Actions = ({
         className="grow gap-x-0.5"
       >
         <RiAddLine className="size-4" />
-        <span className="px-0.5">{t('operations.choose', { ns: 'datasetPipeline' })}</span>
+        <span className="px-0.5">{t('datasetPipeline.operations.choose')}</span>
       </Button>
       <Button
         variant="secondary"
@@ -40,7 +40,7 @@ const Actions = ({
         className="grow gap-x-0.5"
       >
         <RiArrowRightUpLine className="size-4" />
-        <span className="px-0.5">{t('operations.details', { ns: 'datasetPipeline' })}</span>
+        <span className="px-0.5">{t('datasetPipeline.operations.details')}</span>
       </Button>
       {
         showMoreOperations && (

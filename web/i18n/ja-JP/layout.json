@@ -1,4 +1,6 @@
 {
-  "sidebar.collapseSidebar": "サイドバーを折りたたむ",
-  "sidebar.expandSidebar": "サイドバーを展開する"
+  "sidebar": {
+    "expandSidebar": "サイドバーを展開する",
+    "collapseSidebar": "サイドバーを折りたたむ"
+  }
 }

@@ -61,7 +61,7 @@ const useMetadataDocument = ({
     await doAddMetaData(payload)
     Toast.notify({
       type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
+      message: t('common.api.actionSuccess'),
     })
   }, [checkName, doAddMetaData, t])
 
@@ -77,7 +77,7 @@ const useMetadataDocument = ({
     setIsEdit(false)
     Toast.notify({
       type: 'success',
-      message: t('api.actionSuccess', { ns: 'common' }),
+      message: t('common.api.actionSuccess'),
     })
   }
 

@@ -125,13 +125,13 @@ const FormItem: FC<Props> = ({
           {payload.hide === true
             ? (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t('panel.optional_and_hidden', { ns: 'workflow' })}
+                  {t('workflow.panel.optional_and_hidden')}
                 </span>
               )
             : (
                 !payload.required && (
                   <span className="system-xs-regular text-text-tertiary">
-                    {t('panel.optional', { ns: 'workflow' })}
+                    {t('workflow.panel.optional')}
                   </span>
                 )
               )}
@@ -323,7 +323,7 @@ const FormItem: FC<Props> = ({
                   value={item}
                   title={(
                     <span>
-                      {t('variableConfig.content', { ns: 'appDebug' })}
+                      {t('appDebug.variableConfig.content')}
                       {' '}
                       {index + 1}
                       {' '}

@@ -85,8 +85,7 @@ const Details = ({
                 className="system-2xs-medium-uppercase truncate text-text-tertiary"
                 title={pipelineTemplateInfo.created_by}
               >
-                {t('details.createdBy', {
-                  ns: 'datasetPipeline',
+                {t('datasetPipeline.details.createdBy', {
                   author: pipelineTemplateInfo.created_by,
                 })}
               </div>
@@ -103,17 +102,17 @@ const Details = ({
             className="w-full gap-x-0.5"
           >
             <RiAddLine className="size-4" />
-            <span className="px-0.5">{t('operations.useTemplate', { ns: 'datasetPipeline' })}</span>
+            <span className="px-0.5">{t('datasetPipeline.operations.useTemplate')}</span>
           </Button>
         </div>
         <div className="flex flex-col gap-y-1 px-4 py-2">
           <div className="flex h-6 items-center gap-x-0.5">
             <span className="system-sm-semibold-uppercase text-text-secondary">
-              {t('details.structure', { ns: 'datasetPipeline' })}
+              {t('datasetPipeline.details.structure')}
             </span>
             <Tooltip
               popupClassName="max-w-[240px]"
-              popupContent={t('details.structureTooltip', { ns: 'datasetPipeline' })}
+              popupContent={t('datasetPipeline.details.structureTooltip')}
             />
           </div>
           <ChunkStructureCard {...chunkStructureConfig[pipelineTemplateInfo.chunk_structure]} />

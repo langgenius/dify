@@ -76,8 +76,8 @@ export default function AccountAbout({
           <div className="text-xs font-medium text-text-tertiary">
             {
               isLatest
-                ? t('about.latestAvailable', { ns: 'common', version: langGeniusVersionInfo.latest_version })
-                : t('about.nowAvailable', { ns: 'common', version: langGeniusVersionInfo.latest_version })
+                ? t('common.about.latestAvailable', { version: langGeniusVersionInfo.latest_version })
+                : t('common.about.nowAvailable', { version: langGeniusVersionInfo.latest_version })
             }
           </div>
           <div className="flex items-center">
@@ -87,7 +87,7 @@ export default function AccountAbout({
                 target="_blank"
                 rel="noopener noreferrer"
               >
-                {t('about.changeLog', { ns: 'common' })}
+                {t('common.about.changeLog')}
               </Link>
             </Button>
             {
@@ -98,7 +98,7 @@ export default function AccountAbout({
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {t('about.updateNow', { ns: 'common' })}
+                    {t('common.about.updateNow')}
                   </Link>
                 </Button>
               )

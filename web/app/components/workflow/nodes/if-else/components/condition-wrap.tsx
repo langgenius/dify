@@ -177,7 +177,7 @@ const ConditionWrap: FC<Props> = ({
                               disabled={readOnly}
                             >
                               <RiAddLine className="mr-1 h-3.5 w-3.5" />
-                              {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
+                              {t('workflow.nodes.ifElse.addSubVariable')}
                             </Button>
                           )}
                           hideChecked
@@ -204,7 +204,7 @@ const ConditionWrap: FC<Props> = ({
                         onMouseLeave={() => setWillDeleteCaseId('')}
                       >
                         <RiDeleteBinLine className="mr-1 h-3.5 w-3.5" />
-                        {t('operation.remove', { ns: 'common' })}
+                        {t('common.operation.remove')}
                       </Button>
                     )
                   }
@@ -224,7 +224,7 @@ const ConditionWrap: FC<Props> = ({
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
           <RiAddLine className="mr-1 h-3.5 w-3.5" />
-          {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
+          {t('workflow.nodes.ifElse.addSubVariable')}
         </Button>
       )}
     </>

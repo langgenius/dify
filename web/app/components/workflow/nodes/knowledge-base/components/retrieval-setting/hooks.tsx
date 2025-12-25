@@ -21,8 +21,8 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
     return {
       id: RetrievalSearchMethodEnum.semantic,
       icon: VectorSearch as any,
-      title: t('retrieval.semantic_search.title', { ns: 'dataset' }),
-      description: t('retrieval.semantic_search.description', { ns: 'dataset' }),
+      title: t('dataset.retrieval.semantic_search.title'),
+      description: t('dataset.retrieval.semantic_search.description'),
       effectColor: 'purple',
     }
   }, [t])
@@ -30,8 +30,8 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
     return {
       id: RetrievalSearchMethodEnum.fullText,
       icon: FullTextSearch as any,
-      title: t('retrieval.full_text_search.title', { ns: 'dataset' }),
-      description: t('retrieval.full_text_search.description', { ns: 'dataset' }),
+      title: t('dataset.retrieval.full_text_search.title'),
+      description: t('dataset.retrieval.full_text_search.description'),
       effectColor: 'purple',
     }
   }, [t])
@@ -39,8 +39,8 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
     return {
       id: RetrievalSearchMethodEnum.hybrid,
       icon: HybridSearch as any,
-      title: t('retrieval.hybrid_search.title', { ns: 'dataset' }),
-      description: t('retrieval.hybrid_search.description', { ns: 'dataset' }),
+      title: t('dataset.retrieval.hybrid_search.title'),
+      description: t('dataset.retrieval.hybrid_search.description'),
       effectColor: 'purple',
     }
   }, [t])
@@ -48,8 +48,8 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
     return {
       id: RetrievalSearchMethodEnum.keywordSearch,
       icon: HybridSearch as any,
-      title: t('retrieval.keyword_search.title', { ns: 'dataset' }),
-      description: t('retrieval.keyword_search.description', { ns: 'dataset' }),
+      title: t('dataset.retrieval.keyword_search.title'),
+      description: t('dataset.retrieval.keyword_search.description'),
       effectColor: 'purple',
     }
   }, [t])
@@ -57,15 +57,15 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const WeightedScoreModeOption: HybridSearchModeOption = useMemo(() => {
     return {
       id: HybridSearchModeEnum.WeightedScore,
-      title: t('weightedScore.title', { ns: 'dataset' }),
-      description: t('weightedScore.description', { ns: 'dataset' }),
+      title: t('dataset.weightedScore.title'),
+      description: t('dataset.weightedScore.description'),
     }
   }, [t])
   const RerankModelModeOption: HybridSearchModeOption = useMemo(() => {
     return {
       id: HybridSearchModeEnum.RerankingModel,
-      title: t('modelProvider.rerankModel.key', { ns: 'common' }),
-      description: t('modelProvider.rerankModel.tip', { ns: 'common' }),
+      title: t('common.modelProvider.rerankModel.key'),
+      description: t('common.modelProvider.rerankModel.tip'),
     }
   }, [t])
 

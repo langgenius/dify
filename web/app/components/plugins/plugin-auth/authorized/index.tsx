@@ -117,7 +117,7 @@ const Authorized = ({
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       onUpdate?.()
       setDeleteCredentialId(null)
@@ -144,7 +144,7 @@ const Authorized = ({
       await setPluginDefaultCredential(id)
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       onUpdate?.()
     }
@@ -164,7 +164,7 @@ const Authorized = ({
       await updatePluginCredential(payload)
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       onUpdate?.()
     }
@@ -203,12 +203,12 @@ const Authorized = ({
 &nbsp;
                     {
                       credentials.length > 1
-                        ? t('auth.authorizations', { ns: 'plugin' })
-                        : t('auth.authorization', { ns: 'plugin' })
+                        ? t('plugin.auth.authorizations')
+                        : t('plugin.auth.authorization')
                     }
                     {
                       !!unavailableCredentials.length && (
-                        ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
+                        ` (${unavailableCredentials.length} ${t('plugin.auth.unavailable')})`
                       )
                     }
                     <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
@@ -332,7 +332,7 @@ const Authorized = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
+            title={t('datasetDocuments.list.delete.title')}
             isDisabled={doingAction}
             onCancel={closeConfirm}
             onConfirm={handleConfirm}

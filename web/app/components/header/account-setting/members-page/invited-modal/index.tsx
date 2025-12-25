@@ -42,19 +42,19 @@ const InvitedModal = ({
           </div>
           <XMarkIcon className="h-4 w-4 cursor-pointer" onClick={onCancel} />
         </div>
-        <div className="mb-1 text-xl font-semibold text-text-primary">{t('members.invitationSent', { ns: 'common' })}</div>
+        <div className="mb-1 text-xl font-semibold text-text-primary">{t('common.members.invitationSent')}</div>
         {!IS_CE_EDITION && (
-          <div className="mb-10 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
+          <div className="mb-10 text-sm text-text-tertiary">{t('common.members.invitationSentTip')}</div>
         )}
         {IS_CE_EDITION && (
           <>
-            <div className="mb-5 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
+            <div className="mb-5 text-sm text-text-tertiary">{t('common.members.invitationSentTip')}</div>
             <div className="mb-9 flex flex-col gap-2">
               {
                 !!successInvitationResults.length
                 && (
                   <>
-                    <div className="font-Medium py-2 text-sm text-text-primary">{t('members.invitationLink', { ns: 'common' })}</div>
+                    <div className="font-Medium py-2 text-sm text-text-primary">{t('common.members.invitationLink')}</div>
                     {successInvitationResults.map(item =>
                       <InvitationLink key={item.email} value={item} />)}
                   </>
@@ -64,7 +64,7 @@ const InvitedModal = ({
                 !!failedInvitationResults.length
                 && (
                   <>
-                    <div className="font-Medium py-2 text-sm text-text-primary">{t('members.failedInvitationEmails', { ns: 'common' })}</div>
+                    <div className="font-Medium py-2 text-sm text-text-primary">{t('common.members.failedInvitationEmails')}</div>
                     <div className="flex flex-wrap justify-between gap-y-1">
                       {
                         failedInvitationResults.map(item => (
@@ -94,7 +94,7 @@ const InvitedModal = ({
             onClick={onCancel}
             variant="primary"
           >
-            {t('members.ok', { ns: 'common' })}
+            {t('common.members.ok')}
           </Button>
         </div>
       </Modal>

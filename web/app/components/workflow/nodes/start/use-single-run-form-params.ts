@@ -51,7 +51,7 @@ const useSingleRunFormParams = ({
 
     forms.push(
       {
-        label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
+        label: t('workflow.nodes.llm.singleRun.variable')!,
         inputs,
         values: runInputData,
         onChange: setRunInputData,

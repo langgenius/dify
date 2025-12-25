@@ -71,10 +71,10 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
 
   const confirmButtonText = useMemo(() => {
     if (authorizationStatus === AuthorizationStatusEnum.Pending)
-      return t('modal.common.authorizing', { ns: 'pluginTrigger' })
+      return t('pluginTrigger.modal.common.authorizing')
     if (authorizationStatus === AuthorizationStatusEnum.Success)
-      return t('modal.oauth.authorization.waitingJump', { ns: 'pluginTrigger' })
-    return t('auth.saveAndAuth', { ns: 'plugin' })
+      return t('pluginTrigger.modal.oauth.authorization.waitingJump')
+    return t('plugin.auth.saveAndAuth')
   }, [authorizationStatus, t])
 
   const getErrorMessage = (error: unknown, fallback: string) => {
@@ -97,7 +97,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
           if (callbackData) {
             Toast.notify({
               type: 'success',
-              message: t('modal.oauth.authorization.authSuccess', { ns: 'pluginTrigger' }),
+              message: t('pluginTrigger.modal.oauth.authorization.authSuccess'),
             })
             onClose()
             showOAuthCreateModal(response.subscription_builder)
@@ -108,7 +108,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         setAuthorizationStatus(AuthorizationStatusEnum.Failed)
         Toast.notify({
           type: 'error',
-          message: t('modal.oauth.authorization.authFailed', { ns: 'pluginTrigger' }),
+          message: t('pluginTrigger.modal.oauth.authorization.authFailed'),
         })
       },
     })
@@ -146,13 +146,13 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
         onClose()
         Toast.notify({
           type: 'success',
-          message: t('modal.oauth.remove.success', { ns: 'pluginTrigger' }),
+          message: t('pluginTrigger.modal.oauth.remove.success'),
         })
       },
       onError: (error: unknown) => {
         Toast.notify({
           type: 'error',
-          message: getErrorMessage(error, t('modal.oauth.remove.failed', { ns: 'pluginTrigger' })),
+          message: getErrorMessage(error, t('pluginTrigger.modal.oauth.remove.failed')),
         })
       },
     })
@@ -188,7 +188,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
           onClose()
           Toast.notify({
             type: 'success',
-            message: t('modal.oauth.save.success', { ns: 'pluginTrigger' }),
+            message: t('pluginTrigger.modal.oauth.save.success'),
           })
         }
       },
@@ -197,10 +197,10 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
 
   return (
     <Modal
-      title={t('modal.oauth.title', { ns: 'pluginTrigger' })}
+      title={t('pluginTrigger.modal.oauth.title')}
       confirmButtonText={confirmButtonText}
-      cancelButtonText={t('auth.saveOnly', { ns: 'plugin' })}
-      extraButtonText={t('operation.cancel', { ns: 'common' })}
+      cancelButtonText={t('plugin.auth.saveOnly')}
+      extraButtonText={t('common.operation.cancel')}
       showExtraButton
       clickOutsideNotClose
       extraButtonVariant="secondary"
@@ -217,19 +217,19 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
               // disabled={disabled || doingAction || !editValues}
               onClick={handleRemove}
             >
-              {t('operation.remove', { ns: 'common' })}
+              {t('common.operation.remove')}
             </Button>
           </div>
         )
       }
     >
-      <div className="system-sm-medium mb-2 text-text-secondary">{t('subscription.addType.options.oauth.clientTitle', { ns: 'pluginTrigger' })}</div>
+      <div className="system-sm-medium mb-2 text-text-secondary">{t('pluginTrigger.subscription.addType.options.oauth.clientTitle')}</div>
       {oauthConfig?.system_configured && (
         <div className="mb-4 flex w-full items-start justify-between gap-2">
           {[ClientTypeEnum.Default, ClientTypeEnum.Custom].map(option => (
             <OptionCard
               key={option}
-              title={t(`subscription.addType.options.oauth.${option}`, { ns: 'pluginTrigger' })}
+              title={t(`pluginTrigger.subscription.addType.options.oauth.${option}`)}
               onSelect={() => setClientType(option)}
               selected={clientType === option}
               className="flex-1"
@@ -244,7 +244,7 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
           </div>
           <div className="flex-1 text-text-secondary">
             <div className="system-sm-regular whitespace-pre-wrap leading-4">
-              {t('modal.oauthRedirectInfo', { ns: 'pluginTrigger' })}
+              {t('pluginTrigger.modal.oauthRedirectInfo')}
             </div>
             <div className="system-sm-medium my-1.5 break-all leading-4">
               {oauthConfig.redirect_uri}
@@ -256,12 +256,12 @@ export const OAuthClientSettingsModal = ({ oauthConfig, onClose, showOAuthCreate
                 navigator.clipboard.writeText(oauthConfig.redirect_uri)
                 Toast.notify({
                   type: 'success',
-                  message: t('actionMsg.copySuccessfully', { ns: 'common' }),
+                  message: t('common.actionMsg.copySuccessfully'),
                 })
               }}
             >
               <RiClipboardLine className="mr-1 h-[14px] w-[14px]" />
-              {t('operation.copy', { ns: 'common' })}
+              {t('common.operation.copy')}
             </Button>
           </div>
         </div>

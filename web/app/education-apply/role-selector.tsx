@@ -14,15 +14,15 @@ const RoleSelector = ({
   const options = [
     {
       key: 'Student',
-      value: t('form.schoolRole.option.student', { ns: 'education' }),
+      value: t('education.form.schoolRole.option.student'),
     },
     {
       key: 'Teacher',
-      value: t('form.schoolRole.option.teacher', { ns: 'education' }),
+      value: t('education.form.schoolRole.option.teacher'),
     },
     {
       key: 'School-Administrator',
-      value: t('form.schoolRole.option.administrator', { ns: 'education' }),
+      value: t('education.form.schoolRole.option.administrator'),
     },
   ]
 

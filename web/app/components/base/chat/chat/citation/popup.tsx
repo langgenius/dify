@@ -79,7 +79,7 @@ const Popup: FC<PopupProps> = ({
                               href={`/datasets/${source.dataset_id}/documents/${source.document_id}`}
                               className="hidden h-[18px] items-center text-xs text-text-accent group-hover:flex"
                             >
-                              {t('chat.citation.linkToDataset', { ns: 'common' })}
+                              {t('common.chat.citation.linkToDataset')}
                               <ArrowUpRight className="ml-1 h-3 w-3" />
                             </Link>
                           )
@@ -90,17 +90,17 @@ const Popup: FC<PopupProps> = ({
                         showHitInfo && (
                           <div className="system-xs-medium mt-2 flex flex-wrap items-center text-text-quaternary">
                             <Tooltip
-                              text={t('chat.citation.characters', { ns: 'common' })}
+                              text={t('common.chat.citation.characters')}
                               data={source.word_count}
                               icon={<TypeSquare className="mr-1 h-3 w-3" />}
                             />
                             <Tooltip
-                              text={t('chat.citation.hitCount', { ns: 'common' })}
+                              text={t('common.chat.citation.hitCount')}
                               data={source.hit_count}
                               icon={<Target04 className="mr-1 h-3 w-3" />}
                             />
                             <Tooltip
-                              text={t('chat.citation.vectorHash', { ns: 'common' })}
+                              text={t('common.chat.citation.vectorHash')}
                               data={source.index_node_hash?.substring(0, 7)}
                               icon={<BezierCurve03 className="mr-1 h-3 w-3" />}
                             />

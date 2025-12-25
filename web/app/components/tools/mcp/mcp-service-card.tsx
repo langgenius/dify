@@ -172,7 +172,7 @@ function MCPServiceCard({
                 </div>
                 <div className="group w-full">
                   <div className="system-md-semibold min-w-0 overflow-hidden text-ellipsis break-normal text-text-secondary group-hover:text-text-primary">
-                    {t('mcp.server.title', { ns: 'tools' })}
+                    {t('tools.mcp.server.title')}
                   </div>
                 </div>
               </div>
@@ -180,8 +180,8 @@ function MCPServiceCard({
                 <Indicator color={serverActivated ? 'green' : 'yellow'} />
                 <div className={`${serverActivated ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                   {serverActivated
-                    ? t('overview.status.running', { ns: 'appOverview' })
-                    : t('overview.status.disable', { ns: 'appOverview' })}
+                    ? t('appOverview.overview.status.running')
+                    : t('appOverview.overview.status.disable')}
                 </div>
               </div>
               <Tooltip
@@ -190,19 +190,19 @@ function MCPServiceCard({
                     ? (
                         appUnpublished
                           ? (
-                              t('mcp.server.publishTip', { ns: 'tools' })
+                              t('tools.mcp.server.publishTip')
                             )
                           : missingStartNode
                             ? (
                                 <>
                                   <div className="mb-1 text-xs font-normal text-text-secondary">
-                                    {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
+                                    {t('appOverview.overview.appInfo.enableTooltip.description')}
                                   </div>
                                   <div
                                     className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
                                     onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
                                   >
-                                    {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
+                                    {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
                                   </div>
                                 </>
                               )
@@ -222,7 +222,7 @@ function MCPServiceCard({
             {!isMinimalState && (
               <div className="flex flex-col items-start justify-center self-stretch">
                 <div className="system-xs-medium pb-1 text-text-tertiary">
-                  {t('mcp.server.url', { ns: 'tools' })}
+                  {t('tools.mcp.server.url')}
                 </div>
                 <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
                   <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
@@ -239,7 +239,7 @@ function MCPServiceCard({
                       <Divider type="vertical" className="!mx-0.5 !h-3.5 shrink-0" />
                       {isCurrentWorkspaceManager && (
                         <Tooltip
-                          popupContent={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
+                          popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
                         >
                           <div
                             className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
@@ -266,7 +266,7 @@ function MCPServiceCard({
 
                 <div className="flex items-center justify-center gap-[1px]">
                   <RiEditLine className="h-3.5 w-3.5" />
-                  <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('mcp.server.edit', { ns: 'tools' }) : t('mcp.server.addDescription', { ns: 'tools' })}</div>
+                  <div className="system-xs-medium px-[3px] text-text-tertiary">{serverPublished ? t('tools.mcp.server.edit') : t('tools.mcp.server.addDescription')}</div>
                 </div>
               </Button>
             </div>
@@ -287,8 +287,8 @@ function MCPServiceCard({
       {showConfirmDelete && (
         <Confirm
           type="warning"
-          title={t('overview.appInfo.regenerate', { ns: 'appOverview' })}
-          content={t('mcp.server.reGen', { ns: 'tools' })}
+          title={t('appOverview.overview.appInfo.regenerate')}
+          content={t('tools.mcp.server.reGen')}
           isShow={showConfirmDelete}
           onConfirm={() => {
             onGenCode()

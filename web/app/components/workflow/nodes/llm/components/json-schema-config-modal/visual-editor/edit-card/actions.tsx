@@ -21,7 +21,7 @@ const Actions: FC<ActionsProps> = ({
 
   return (
     <div className="flex items-center gap-x-0.5">
-      <Tooltip popupContent={t('nodes.llm.jsonSchema.addChildField', { ns: 'workflow' })}>
+      <Tooltip popupContent={t('workflow.nodes.llm.jsonSchema.addChildField')}>
         <button
           type="button"
           className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary disabled:cursor-not-allowed disabled:text-text-disabled"
@@ -31,7 +31,7 @@ const Actions: FC<ActionsProps> = ({
           <RiAddCircleLine className="h-4 w-4" />
         </button>
       </Tooltip>
-      <Tooltip popupContent={t('operation.edit', { ns: 'common' })}>
+      <Tooltip popupContent={t('common.operation.edit')}>
         <button
           type="button"
           className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
@@ -40,7 +40,7 @@ const Actions: FC<ActionsProps> = ({
           <RiEditLine className="h-4 w-4" />
         </button>
       </Tooltip>
-      <Tooltip popupContent={t('operation.remove', { ns: 'common' })}>
+      <Tooltip popupContent={t('common.operation.remove')}>
         <button
           type="button"
           className="flex h-6 w-6 items-center justify-center rounded-md text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"

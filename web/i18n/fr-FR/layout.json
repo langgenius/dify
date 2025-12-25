@@ -1,4 +1,6 @@
 {
-  "sidebar.collapseSidebar": "Réduire la barre latérale",
-  "sidebar.expandSidebar": "Développer la barre latérale"
+  "sidebar": {
+    "collapseSidebar": "Réduire la barre latérale",
+    "expandSidebar": "Développer la barre latérale"
+  }
 }

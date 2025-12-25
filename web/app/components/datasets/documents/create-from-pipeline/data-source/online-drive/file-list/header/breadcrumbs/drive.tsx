@@ -25,7 +25,7 @@ const Drive = ({
         onClick={handleBackToRoot}
         disabled={breadcrumbs.length === 0}
       >
-        {t('onlineDrive.breadcrumbs.allFiles', { ns: 'datasetPipeline' })}
+        {t('datasetPipeline.onlineDrive.breadcrumbs.allFiles')}
       </button>
       {breadcrumbs.length > 0 && <span className="system-xs-regular text-divider-deep">/</span>}
     </>

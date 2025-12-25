@@ -83,7 +83,7 @@ const LinkEditorComponent = ({
                       className="mr-0.5 h-6 w-[196px] appearance-none rounded-sm bg-transparent p-1 text-[13px] text-components-input-text-filled outline-none"
                       value={url}
                       onChange={e => setUrl(e.target.value)}
-                      placeholder={t('nodes.note.editor.enterUrl', { ns: 'workflow' }) || ''}
+                      placeholder={t('workflow.nodes.note.editor.enterUrl') || ''}
                       autoFocus
                     />
                     <Button
@@ -92,7 +92,7 @@ const LinkEditorComponent = ({
                       disabled={!url}
                       onClick={() => handleSaveLink(url)}
                     >
-                      {t('operation.ok', { ns: 'common' })}
+                      {t('common.operation.ok')}
                     </Button>
                   </>
                 )
@@ -108,7 +108,7 @@ const LinkEditorComponent = ({
                     >
                       <RiExternalLinkLine className="mr-1 h-3 w-3" />
                       <div className="mr-1">
-                        {t('nodes.note.editor.openLink', { ns: 'workflow' })}
+                        {t('workflow.nodes.note.editor.openLink')}
                       </div>
                       <div
                         title={escape(url)}
@@ -126,14 +126,14 @@ const LinkEditorComponent = ({
                       }}
                     >
                       <RiEditLine className="mr-1 h-3 w-3" />
-                      {t('operation.edit', { ns: 'common' })}
+                      {t('common.operation.edit')}
                     </div>
                     <div
                       className="flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={handleUnlink}
                     >
                       <RiLinkUnlinkM className="mr-1 h-3 w-3" />
-                      {t('nodes.note.editor.unlink', { ns: 'workflow' })}
+                      {t('workflow.nodes.note.editor.unlink')}
                     </div>
                   </>
                 )

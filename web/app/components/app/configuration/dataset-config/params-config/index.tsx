@@ -63,7 +63,7 @@ const ParamsConfig = ({
         && tempDataSetConfigs.reranking_mode === RerankingModeEnum.RerankingModel
         && !isCurrentRerankModelValid
       ) {
-        errMsg = t('datasetConfig.rerankModelRequired', { ns: 'appDebug' })
+        errMsg = t('appDebug.datasetConfig.rerankModelRequired')
       }
     }
     if (errMsg) {
@@ -123,7 +123,7 @@ const ParamsConfig = ({
         disabled={disabled}
       >
         <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
-        {t('retrievalSettings', { ns: 'dataset' })}
+        {t('dataset.retrievalSettings')}
       </Button>
       {
         rerankSettingModalOpen && (
@@ -148,9 +148,9 @@ const ParamsConfig = ({
                   setRerankSettingModalOpen(false)
                 }}
               >
-                {t('operation.cancel', { ns: 'common' })}
+                {t('common.operation.cancel')}
               </Button>
-              <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+              <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('common.operation.save')}</Button>
             </div>
           </Modal>
         )

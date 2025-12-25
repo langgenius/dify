@@ -20,7 +20,7 @@ const Actions = ({
         onClick={onProcess}
         disabled={runDisabled}
       >
-        {t('operations.saveAndProcess', { ns: 'datasetPipeline' })}
+        {t('datasetPipeline.operations.saveAndProcess')}
       </Button>
     </div>
   )

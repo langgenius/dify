@@ -28,9 +28,9 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
         {subscriptionCount > 0 && (
           <div className="flex h-8 shrink-0 items-center gap-1">
             <span className="system-sm-semibold-uppercase text-text-secondary">
-              {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
+              {t('pluginTrigger.subscription.listNum', { num: subscriptionCount })}
             </span>
-            <Tooltip popupContent={t('subscription.list.tip', { ns: 'pluginTrigger' })} />
+            <Tooltip popupContent={t('pluginTrigger.subscription.list.tip')} />
           </div>
         )}
         <CreateSubscriptionButton

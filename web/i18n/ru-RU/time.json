@@ -1,32 +1,42 @@
 {
-  "dateFormats.display": "MMMM D, YYYY",
-  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
-  "dateFormats.input": "ГГГГ-ММ-ДД",
-  "dateFormats.output": "ГГГГ-ММ-ДД",
-  "dateFormats.outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
-  "daysInWeek.Fri": "Свободно",
-  "daysInWeek.Mon": "Мой",
-  "daysInWeek.Sat": "Суббота",
-  "daysInWeek.Sun": "Солнце",
-  "daysInWeek.Thu": "Четверг",
-  "daysInWeek.Tue": "Вторник",
-  "daysInWeek.Wed": "Сряда",
+  "daysInWeek": {
+    "Mon": "Мой",
+    "Tue": "Вторник",
+    "Sat": "Суббота",
+    "Sun": "Солнце",
+    "Thu": "Четверг",
+    "Wed": "Сряда",
+    "Fri": "Свободно"
+  },
+  "months": {
+    "March": "Март",
+    "May": "Май",
+    "April": "Апрель",
+    "July": "Июль",
+    "January": "Январь",
+    "August": "Август",
+    "December": "Декабрь",
+    "February": "Февраль",
+    "September": "Сентябрь",
+    "October": "Октябрь",
+    "June": "Июнь",
+    "November": "Ноябрь"
+  },
+  "operation": {
+    "ok": "Хорошо",
+    "pickDate": "Выберите дату",
+    "now": "Теперь",
+    "cancel": "Отмена"
+  },
+  "title": {
+    "pickTime": "Выберите время"
+  },
   "defaultPlaceholder": "Выберите время...",
-  "months.April": "Апрель",
-  "months.August": "Август",
-  "months.December": "Декабрь",
-  "months.February": "Февраль",
-  "months.January": "Январь",
-  "months.July": "Июль",
-  "months.June": "Июнь",
-  "months.March": "Март",
-  "months.May": "Май",
-  "months.November": "Ноябрь",
-  "months.October": "Октябрь",
-  "months.September": "Сентябрь",
-  "operation.cancel": "Отмена",
-  "operation.now": "Теперь",
-  "operation.ok": "Хорошо",
-  "operation.pickDate": "Выберите дату",
-  "title.pickTime": "Выберите время"
+  "dateFormats": {
+    "display": "MMMM D, YYYY",
+    "outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
+    "displayWithTime": "MMMM D, YYYY hh:mm A",
+    "output": "ГГГГ-ММ-ДД",
+    "input": "ГГГГ-ММ-ДД"
+  }
 }

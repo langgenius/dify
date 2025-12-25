@@ -30,8 +30,7 @@ const ImageUploader = () => {
       />
       <div className="flex flex-wrap gap-1">
         <Tooltip
-          popupContent={t('imageUploader.tooltip', {
-            ns: 'datasetHitTesting',
+          popupContent={t('datasetHitTesting.imageUploader.tooltip', {
             size: fileUploadConfig.imageFileSizeLimit,
             batchCount: fileUploadConfig.imageFileBatchLimit,
           })}
@@ -49,8 +48,7 @@ const ImageUploader = () => {
             </div>
             {files.length === 0 && (
               <span className="system-sm-regular text-text-quaternary group-hover:text-text-tertiary">
-                {t('imageUploader.tip', {
-                  ns: 'datasetHitTesting',
+                {t('datasetHitTesting.imageUploader.tip', {
                   size: fileUploadConfig.imageFileSizeLimit,
                   batchCount: fileUploadConfig.imageFileBatchLimit,
                 })}

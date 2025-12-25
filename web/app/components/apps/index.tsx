@@ -7,7 +7,7 @@ import List from './list'
 const Apps = () => {
   const { t } = useTranslation()
 
-  useDocumentTitle(t('menus.apps', { ns: 'common' }))
+  useDocumentTitle(t('common.menus.apps'))
   useEducationInit()
 
   return (

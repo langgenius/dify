@@ -15,7 +15,7 @@ const AppDetail: FC<IAppDetail> = ({ children }) => {
   const router = useRouter()
   const { isCurrentWorkspaceDatasetOperator } = useAppContext()
   const { t } = useTranslation()
-  useDocumentTitle(t('menus.appDetail', { ns: 'common' }))
+  useDocumentTitle(t('common.menus.appDetail'))
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)

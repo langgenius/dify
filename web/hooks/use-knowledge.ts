@@ -10,7 +10,7 @@ export const useKnowledge = () => {
 
   const formatIndexingMethod = useCallback((indexingMethod: string, isEco?: boolean) => {
     if (isEco)
-      return t('indexingMethod.invertedIndex', { ns: 'dataset' })
+      return t('dataset.indexingMethod.invertedIndex')
 
     return t(`dataset.indexingMethod.${indexingMethod}` as any) as string
   }, [t])

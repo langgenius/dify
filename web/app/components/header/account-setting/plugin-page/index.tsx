@@ -20,7 +20,7 @@ const PluginPage = () => {
       </div>
       <div className="fixed bottom-0 flex h-[42px] w-[472px] items-center bg-white text-xs text-gray-500">
         <LockClosedIcon className="mr-1 h-3 w-3" />
-        {t('provider.encrypted.front', { ns: 'common' })}
+        {t('common.provider.encrypted.front')}
         <Link
           className="mx-1 text-primary-600"
           target="_blank"
@@ -29,7 +29,7 @@ const PluginPage = () => {
         >
           PKCS1_OAEP
         </Link>
-        {t('provider.encrypted.back', { ns: 'common' })}
+        {t('common.provider.encrypted.back')}
       </div>
     </div>
   )

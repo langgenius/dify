@@ -49,7 +49,7 @@ const EmbeddingModel = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('form.embeddingModel', { ns: 'datasetSettings' }),
+        title: t('datasetSettings.form.embeddingModel'),
       }}
     >
       <ModelSelector

@@ -62,9 +62,9 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         }}
         onClear={() => setQueryParams({ ...queryParams, annotation_status: 'all' })}
         items={[
-          { value: 'all', name: t('filter.annotation.all', { ns: 'appLog' }) },
-          { value: 'annotated', name: t('filter.annotation.annotated', { ns: 'appLog', count: data?.count }) },
-          { value: 'not_annotated', name: t('filter.annotation.not_annotated', { ns: 'appLog' }) },
+          { value: 'all', name: t('appLog.filter.annotation.all') },
+          { value: 'annotated', name: t('appLog.filter.annotation.annotated', { count: data?.count }) },
+          { value: 'not_annotated', name: t('appLog.filter.annotation.not_annotated') },
         ]}
       />
       <Input
@@ -72,7 +72,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
         showLeftIcon
         showClearIcon
         value={queryParams.keyword}
-        placeholder={t('operation.search', { ns: 'common' })!}
+        placeholder={t('common.operation.search')!}
         onChange={(e) => {
           setQueryParams({ ...queryParams, keyword: e.target.value })
         }}
@@ -85,8 +85,8 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
             order={queryParams.sort_by?.startsWith('-') ? '-' : ''}
             value={queryParams.sort_by?.replace('-', '') || 'created_at'}
             items={[
-              { value: 'created_at', name: t('table.header.time', { ns: 'appLog' }) },
-              { value: 'updated_at', name: t('table.header.updatedTime', { ns: 'appLog' }) },
+              { value: 'created_at', name: t('appLog.table.header.time') },
+              { value: 'updated_at', name: t('appLog.table.header.updatedTime') },
             ]}
             onSelect={(value) => {
               setQueryParams({ ...queryParams, sort_by: value as string })

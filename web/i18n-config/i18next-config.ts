@@ -36,7 +36,7 @@ import tools from '../i18n/en-US/tools.json'
 import workflow from '../i18n/en-US/workflow.json'
 
 // @keep-sorted
-export const namespaces = {
+export const messagesEN = {
   app,
   appAnnotation,
   appApi,
@@ -69,8 +69,6 @@ export const namespaces = {
   workflow,
 }
 
-export type Namespaces = typeof namespaces
-
 // pluginTrigger -> plugin-trigger
 
 export type KebabCase<S extends string> = S extends `${infer T}${infer U}`
@@ -83,7 +81,7 @@ export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
   ? `${T}${Capitalize<CamelCase<U>>}`
   : S
 
-export type KeyPrefix = keyof typeof namespaces
+export type KeyPrefix = keyof typeof messagesEN
 export type Namespace = KebabCase<KeyPrefix>
 
 const requireSilent = async (lang: Locale, namespace: Namespace) => {
@@ -98,29 +96,25 @@ const requireSilent = async (lang: Locale, namespace: Namespace) => {
   return res
 }
 
-const NAMESPACES = Object.keys(namespaces).map(kebabCase) as Namespace[]
+const NAMESPACES = Object.keys(messagesEN).map(kebabCase) as Namespace[]
 
-// Load a single namespace for a language
-export const loadNamespace = async (lang: Locale, ns: Namespace) => {
-  const camelNs = camelCase(ns) as KeyPrefix
-  if (i18n.hasResourceBundle(lang, camelNs))
-    return
-
-  const resource = await requireSilent(lang, ns)
-  i18n.addResourceBundle(lang, camelNs, resource, true, true)
-}
-
-// Load all namespaces for a language (used when switching language)
 export const loadLangResources = async (lang: Locale) => {
-  await Promise.all(
-    NAMESPACES.map(ns => loadNamespace(lang, ns)),
+  const modules = await Promise.all(
+    NAMESPACES.map(ns => requireSilent(lang, ns)),
   )
+  const resources = modules.reduce((acc, mod, index) => {
+    acc[camelCase(NAMESPACES[index])] = mod
+    return acc
+  }, {} as Record<string, any>)
+  return resources
 }
 
-// Initial resources: only load common namespace for en-US
+// Load en-US resources first to make sure fallback works
 const getInitialTranslations = () => {
   return {
-    'en-US': namespaces,
+    'en-US': {
+      translation: messagesEN,
+    },
   }
 }
 
@@ -129,16 +123,16 @@ if (!i18n.isInitialized) {
     lng: undefined,
     fallbackLng: 'en-US',
     resources: getInitialTranslations(),
-    defaultNS: 'common',
-    ns: Object.keys(namespaces),
-    keySeparator: false,
   })
 }
 
 export const changeLanguage = async (lng?: Locale) => {
   if (!lng)
     return
-  await loadLangResources(lng)
+  if (!i18n.hasResourceBundle(lng, 'translation')) {
+    const resource = await loadLangResources(lng)
+    i18n.addResourceBundle(lng, 'translation', resource, true, true)
+  }
   await i18n.changeLanguage(lng)
 }
 

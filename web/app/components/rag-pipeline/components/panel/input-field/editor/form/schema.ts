@@ -26,16 +26,16 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
   const commonSchema = z.object({
     type: InputTypeEnum,
     variable: z.string().nonempty({
-      message: t('varKeyError.canNoBeEmpty', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
+      message: t('appDebug.varKeyError.canNoBeEmpty', { key: t('appDebug.variableConfig.varName') }),
     }).max(MAX_VAR_KEY_LENGTH, {
-      message: t('varKeyError.tooLong', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
+      message: t('appDebug.varKeyError.tooLong', { key: t('appDebug.variableConfig.varName') }),
     }).regex(/^(?!\d)\w+/, {
-      message: t('varKeyError.notStartWithNumber', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
+      message: t('appDebug.varKeyError.notStartWithNumber', { key: t('appDebug.variableConfig.varName') }),
     }).regex(/^[a-z_]\w{0,29}$/i, {
-      message: t('varKeyError.notValid', { ns: 'appDebug', key: t('variableConfig.varName', { ns: 'appDebug' }) }),
+      message: t('appDebug.varKeyError.notValid', { key: t('appDebug.variableConfig.varName') }),
     }),
     label: z.string().nonempty({
-      message: t('variableConfig.errorMsg.labelNameRequired', { ns: 'appDebug' }),
+      message: t('appDebug.variableConfig.errorMsg.labelNameRequired'),
     }),
     required: z.boolean(),
     tooltips: z.string().optional(),
@@ -56,11 +56,11 @@ export const createInputFieldSchema = (type: PipelineInputVarType, t: TFunction,
   if (type === PipelineInputVarType.select) {
     return z.object({
       options: z.array(z.string()).nonempty({
-        message: t('variableConfig.errorMsg.atLeastOneOption', { ns: 'appDebug' }),
+        message: t('appDebug.variableConfig.errorMsg.atLeastOneOption'),
       }).refine(
         arr => new Set(arr).size === arr.length,
         {
-          message: t('variableConfig.errorMsg.optionRepeat', { ns: 'appDebug' }),
+          message: t('appDebug.variableConfig.errorMsg.optionRepeat'),
         },
       ),
       default: z.string().optional(),

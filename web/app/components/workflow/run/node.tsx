@@ -98,16 +98,16 @@ const NodePanel: FC<Props> = ({
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
-    let text = t('common.input', { ns: 'workflow' })
+    let text = t('workflow.common.input')
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('nodes.loop.initialLoopVariables', { ns: 'workflow' })
+      text = t('workflow.nodes.loop.initialLoopVariables')
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
-  const processDataTitle = t('common.processData', { ns: 'workflow' }).toLocaleUpperCase()
+  const processDataTitle = t('workflow.common.processData').toLocaleUpperCase()
   const outputTitle = useMemo(() => {
-    let text = t('common.output', { ns: 'workflow' })
+    let text = t('workflow.common.output')
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('nodes.loop.finalLoopVariables', { ns: 'workflow' })
+      text = t('workflow.nodes.loop.finalLoopVariables')
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
@@ -204,7 +204,7 @@ const NodePanel: FC<Props> = ({
             <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status="stopped">
-                  {t('tracing.stopBy', { ns: 'workflow', user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                  {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
                 </StatusContainer>
               )}
               {(nodeInfo.status === 'exception') && (
@@ -215,7 +215,7 @@ const NodePanel: FC<Props> = ({
                     target="_blank"
                     className="text-text-accent"
                   >
-                    {t('common.learnMore', { ns: 'workflow' })}
+                    {t('workflow.common.learnMore')}
                   </a>
                 </StatusContainer>
               )}

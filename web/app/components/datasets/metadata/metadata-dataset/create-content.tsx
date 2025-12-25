@@ -11,7 +11,7 @@ import OptionCard from '../../../workflow/nodes/_base/components/option-card'
 import { DataType } from '../types'
 import Field from './field'
 
-const i18nPrefix = 'metadata.createMetadata'
+const i18nPrefix = 'dataset.metadata.createMetadata'
 
 export type Props = {
   onClose?: () => void
@@ -46,19 +46,19 @@ const CreateContent: FC<Props> = ({
 
   return (
     <ModalLikeWrap
-      title={t(`${i18nPrefix}.title`, { ns: 'dataset' })}
+      title={t(`${i18nPrefix}.title`)}
       onClose={onClose}
       onConfirm={handleSave}
       hideCloseBtn={hasBack}
       beforeHeader={hasBack && (
         <div className="relative left-[-4px] mb-1 flex cursor-pointer items-center space-x-1 py-1 text-text-accent" onClick={onBack}>
           <RiArrowLeftLine className="size-4" />
-          <div className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`, { ns: 'dataset' })}</div>
+          <div className="system-xs-semibold-uppercase">{t(`${i18nPrefix}.back`)}</div>
         </div>
       )}
     >
       <div className="space-y-3">
-        <Field label={t(`${i18nPrefix}.type`, { ns: 'dataset' })}>
+        <Field label={t(`${i18nPrefix}.type`)}>
           <div className="grid grid-cols-3 gap-2">
             <OptionCard
               title="String"
@@ -77,11 +77,11 @@ const CreateContent: FC<Props> = ({
             />
           </div>
         </Field>
-        <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })}>
+        <Field label={t(`${i18nPrefix}.name`)}>
           <Input
             value={name}
             onChange={handleNameChange}
-            placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
+            placeholder={t(`${i18nPrefix}.namePlaceholder`)}
           />
         </Field>
       </div>

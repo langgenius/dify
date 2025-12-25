@@ -19,8 +19,8 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
 
   return (
     <Field
-      title={t('nodes.llm.reasoningFormat.title', { ns: 'workflow' })}
-      tooltip={t('nodes.llm.reasoningFormat.tooltip', { ns: 'workflow' })}
+      title={t('workflow.nodes.llm.reasoningFormat.title')}
+      tooltip={t('workflow.nodes.llm.reasoningFormat.tooltip')}
       operations={(
         // ON = separated, OFF = tagged
         <Switch

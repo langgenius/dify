@@ -59,14 +59,14 @@ const Editor: FC<Props> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
             return false
           }
         }
 
         for (let i = 0; i < externalDataToolsConfig.length; i++) {
           if (externalDataToolsConfig[i].variable === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: externalDataToolsConfig[i].variable }) })
+            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: externalDataToolsConfig[i].variable }) })
             return false
           }
         }
@@ -79,7 +79,7 @@ const Editor: FC<Props> = ({
     <div className={cn(className, s.gradientBorder, 'relative')}>
       <div className="rounded-xl bg-white">
         <div className={cn(s.boxHeader, 'flex h-11 items-center justify-between rounded-tl-xl rounded-tr-xl bg-white pb-1 pl-4 pr-3 pt-2 hover:shadow-xs')}>
-          <div className="text-sm font-semibold uppercase text-indigo-800">{t(`agent.${isFirstPrompt ? 'firstPrompt' : 'nextIteration'}`, { ns: 'appDebug' })}</div>
+          <div className="text-sm font-semibold uppercase text-indigo-800">{t(`appDebug.agent.${isFirstPrompt ? 'firstPrompt' : 'nextIteration'}`)}</div>
           <div className={cn(s.optionWrap, 'items-center space-x-1')}>
             {!isCopied
               ? (

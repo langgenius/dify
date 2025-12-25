@@ -50,7 +50,7 @@ export const usePluginAuthAction = (
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       onUpdate?.()
       setDeleteCredentialId(null)
@@ -77,7 +77,7 @@ export const usePluginAuthAction = (
       await setPluginDefaultCredential(id)
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       onUpdate?.()
     }
@@ -97,7 +97,7 @@ export const usePluginAuthAction = (
       await updatePluginCredential(payload)
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       onUpdate?.()
     }

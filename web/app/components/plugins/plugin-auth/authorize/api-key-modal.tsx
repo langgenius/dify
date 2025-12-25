@@ -64,7 +64,7 @@ const ApiKeyModal = ({
       {
         type: FormTypeEnum.textInput,
         name: '__name__',
-        label: t('auth.authorizationName', { ns: 'plugin' }),
+        label: t('plugin.auth.authorizationName'),
         required: false,
       },
       ...mergedData,
@@ -115,7 +115,7 @@ const ApiKeyModal = ({
       }
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
 
       onClose?.()
@@ -129,8 +129,8 @@ const ApiKeyModal = ({
   return (
     <Modal
       size="md"
-      title={t('auth.useApiAuth', { ns: 'plugin' })}
-      subTitle={t('auth.useApiAuthDesc', { ns: 'plugin' })}
+      title={t('plugin.auth.useApiAuth')}
+      subTitle={t('plugin.auth.useApiAuthDesc')}
       onClose={onClose}
       onCancel={onClose}
       footerSlot={

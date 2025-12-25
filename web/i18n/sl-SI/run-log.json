@@ -1,23 +1,29 @@
 {
-  "actionLogs": "Dnevniki dejanj",
-  "circularInvocationTip": "V trenutnem poteku dela obstaja krožno sklicevanje orodij / vozlišč.",
-  "detail": "PODROBNOSTI",
   "input": "VNOS",
-  "meta.executor": "Izvajalec",
-  "meta.startTime": "Čas začetka",
-  "meta.status": "Status",
-  "meta.steps": "Koraki izvajanja",
-  "meta.time": "Pretečeni čas",
-  "meta.title": "METAPODATKI",
-  "meta.tokens": "Skupni žetoni",
-  "meta.version": "Različica",
   "result": "REZULTAT",
-  "resultEmpty.link": "panel podrobnosti",
-  "resultEmpty.tipLeft": "prosimo, pojdite na ",
-  "resultEmpty.tipRight": " za ogled.",
-  "resultEmpty.title": "Ta zagon je izpisal samo format JSON,",
-  "resultPanel.status": "STATUS",
-  "resultPanel.time": "PRETEČENI ČAS",
-  "resultPanel.tokens": "SKUPNI ŽETONI",
-  "tracing": "SLEDENJE"
+  "detail": "PODROBNOSTI",
+  "tracing": "SLEDENJE",
+  "resultPanel": {
+    "status": "STATUS",
+    "time": "PRETEČENI ČAS",
+    "tokens": "SKUPNI ŽETONI"
+  },
+  "meta": {
+    "title": "METAPODATKI",
+    "status": "Status",
+    "version": "Različica",
+    "executor": "Izvajalec",
+    "startTime": "Čas začetka",
+    "time": "Pretečeni čas",
+    "tokens": "Skupni žetoni",
+    "steps": "Koraki izvajanja"
+  },
+  "resultEmpty": {
+    "title": "Ta zagon je izpisal samo format JSON,",
+    "tipLeft": "prosimo, pojdite na ",
+    "link": "panel podrobnosti",
+    "tipRight": " za ogled."
+  },
+  "actionLogs": "Dnevniki dejanj",
+  "circularInvocationTip": "V trenutnem poteku dela obstaja krožno sklicevanje orodij / vozlišč."
 }

@@ -132,7 +132,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
                     )}
                     {showCount && selectedCount > 0 && (
                       <Badge uppercase>
-                        {t('operation.selectCount', { ns: 'common', count: selectedCount })}
+                        {t('common.operation.selectCount', { count: selectedCount })}
                       </Badge>
                     )}
                   </div>
@@ -141,8 +141,8 @@ const CheckboxList: FC<CheckboxListProps> = ({
                   <div className="system-sm-medium-uppercase flex-1 leading-6 text-text-secondary">
                     {
                       filteredOptions.length > 0
-                        ? t('operation.searchCount', { ns: 'common', count: filteredOptions.length, content: title })
-                        : t('operation.noSearchCount', { ns: 'common', content: title })
+                        ? t('common.operation.searchCount', { count: filteredOptions.length, content: title })
+                        : t('common.operation.noSearchCount', { content: title })
                     }
                   </div>
                 )}
@@ -150,7 +150,7 @@ const CheckboxList: FC<CheckboxListProps> = ({
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder={t('placeholder.search', { ns: 'common' })}
+                placeholder={t('common.placeholder.search')}
                 className="w-40"
               />
             )}
@@ -168,11 +168,11 @@ const CheckboxList: FC<CheckboxListProps> = ({
                     ? (
                         <div className="flex flex-col items-center justify-center gap-2">
                           <Image alt="search menu" src={SearchMenu} width={32} />
-                          <span className="system-sm-regular text-text-secondary">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
-                          <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('operation.resetKeywords', { ns: 'common' })}</Button>
+                          <span className="system-sm-regular text-text-secondary">{t('common.operation.noSearchResults', { content: title })}</span>
+                          <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('common.operation.resetKeywords')}</Button>
                         </div>
                       )
-                    : t('noData', { ns: 'common' })}
+                    : t('common.noData')}
                 </div>
               )
             : (

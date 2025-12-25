@@ -341,7 +341,7 @@ const VarReferencePicker: FC<Props> = ({
       )
     }
     if (!isValidVar && hasValue)
-      return t('errorMsg.invalidVariable', { ns: 'workflow' })
+      return t('workflow.errorMsg.invalidVariable')
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
@@ -574,11 +574,11 @@ const VarReferencePicker: FC<Props> = ({
                                             ? (
                                                 <div className="flex items-center">
                                                   <RiLoader4Line className="mr-1 h-3.5 w-3.5 animate-spin text-text-secondary" />
-                                                  <span>{placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })}</span>
+                                                  <span>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</span>
                                                 </div>
                                               )
                                             : (
-                                                placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
+                                                placeholder ?? t('workflow.common.setVarValuePlaceholder')
                                               )}
                                         </div>
                                       )}

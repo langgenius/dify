@@ -63,7 +63,7 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
     <form className="flex flex-col gap-4 self-stretch">
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">{t('externalAPIPanelTitle', { ns: 'dataset' })}</label>
+          <label className="system-sm-semibold text-text-secondary">{t('dataset.externalAPIPanelTitle')}</label>
         </div>
         {apiItems.length > 0
           ? (
@@ -79,18 +79,18 @@ const ExternalApiSelection: React.FC<ExternalApiSelectionProps> = ({ external_kn
           : (
               <Button variant="tertiary" onClick={handleAddNewAPI} className="justify-start gap-0.5">
                 <RiAddLine className="h-4 w-4 text-text-tertiary" />
-                <span className="system-sm-regular text-text-tertiary">{t('noExternalKnowledge', { ns: 'dataset' })}</span>
+                <span className="system-sm-regular text-text-tertiary">{t('dataset.noExternalKnowledge')}</span>
               </Button>
             )}
       </div>
       <div className="flex flex-col gap-1 self-stretch">
         <div className="flex flex-col self-stretch">
-          <label className="system-sm-semibold text-text-secondary">{t('externalKnowledgeId', { ns: 'dataset' })}</label>
+          <label className="system-sm-semibold text-text-secondary">{t('dataset.externalKnowledgeId')}</label>
         </div>
         <Input
           value={external_knowledge_id}
           onChange={e => onChange({ external_knowledge_id: e.target.value, external_knowledge_api_id })}
-          placeholder={t('externalKnowledgeIdPlaceholder', { ns: 'dataset' }) ?? ''}
+          placeholder={t('dataset.externalKnowledgeIdPlaceholder') ?? ''}
         />
       </div>
     </form>

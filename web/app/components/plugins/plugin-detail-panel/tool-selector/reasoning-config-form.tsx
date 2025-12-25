@@ -223,7 +223,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
               <Tooltip
                 popupContent={(
                   <div className="system-xs-medium text-text-secondary">
-                    {t('nodes.agent.clickToViewParameterSchema', { ns: 'workflow' })}
+                    {t('workflow.nodes.agent.clickToViewParameterSchema')}
                   </div>
                 )}
                 asChild={false}
@@ -239,7 +239,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
 
           </div>
           <div className="flex cursor-pointer items-center gap-1 rounded-[6px] border border-divider-subtle bg-background-default-lighter px-2 py-1 hover:bg-state-base-hover" onClick={() => handleAutomatic(variable, !auto, type)}>
-            <span className="system-xs-medium text-text-secondary">{t('detailPanel.toolSelector.auto', { ns: 'plugin' })}</span>
+            <span className="system-xs-medium text-text-secondary">{t('plugin.detailPanel.toolSelector.auto')}</span>
             <Switch
               size="xs"
               defaultValue={!!auto}
@@ -345,7 +345,7 @@ const ReasoningConfigForm: React.FC<Props> = ({
             rel="noopener noreferrer"
             className="inline-flex items-center text-xs text-text-accent"
           >
-            {t('howToGet', { ns: 'tools' })}
+            {t('tools.howToGet')}
             <RiArrowRightUpLine className="ml-1 h-3 w-3" />
           </a>
         )}

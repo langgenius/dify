@@ -82,8 +82,8 @@ const Card = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={getLocalizedText(label)} />
-              {isPartner && <Partner className="ml-0.5 h-4 w-4" text={t('marketplace.partnerTip', { ns: 'plugin' })} />}
-              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
+              {isPartner && <Partner className="ml-0.5 h-4 w-4" text={t('plugin.marketplace.partnerTip')} />}
+              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('plugin.marketplace.verifiedTip')} />}
               {titleLeft}
               {' '}
               {/* This can be version badge */}
@@ -107,7 +107,7 @@ const Card = ({
           <div className="relative flex h-8 items-center gap-x-2 px-3 after:absolute after:bottom-0 after:left-0 after:right-0 after:top-0 after:bg-toast-warning-bg after:opacity-40">
             <RiAlertFill className="h-3 w-3 shrink-0 text-text-warning-secondary" />
             <p className="system-xs-regular z-10 grow text-text-secondary">
-              {t('installModal.installWarning', { ns: 'plugin' })}
+              {t('plugin.installModal.installWarning')}
             </p>
           </div>
         )}

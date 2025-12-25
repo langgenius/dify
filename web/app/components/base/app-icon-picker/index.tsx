@@ -45,8 +45,8 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
   const { t } = useTranslation()
 
   const tabs = [
-    { key: 'emoji', label: t('iconPicker.emoji', { ns: 'app' }), icon: <span className="text-lg">🤖</span> },
-    { key: 'image', label: t('iconPicker.image', { ns: 'app' }), icon: <RiImageCircleAiLine className="size-4" /> },
+    { key: 'emoji', label: t('app.iconPicker.emoji'), icon: <span className="text-lg">🤖</span> },
+    { key: 'image', label: t('app.iconPicker.image'), icon: <RiImageCircleAiLine className="size-4" /> },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
 
@@ -144,11 +144,11 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       <Divider className="m-0" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
         <Button className="w-full" onClick={() => onClose?.()}>
-          {t('iconPicker.cancel', { ns: 'app' })}
+          {t('app.iconPicker.cancel')}
         </Button>
 
         <Button variant="primary" className="w-full" disabled={uploading} loading={uploading} onClick={handleSelect}>
-          {t('iconPicker.ok', { ns: 'app' })}
+          {t('app.iconPicker.ok')}
         </Button>
       </div>
     </Modal>

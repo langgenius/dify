@@ -33,7 +33,7 @@ const DefaultValue = ({
   return (
     <div className="px-4 pt-2">
       <div className="body-xs-regular mb-2 text-text-tertiary">
-        {t('nodes.common.errorHandle.defaultValue.desc', { ns: 'workflow' })}
+        {t('workflow.nodes.common.errorHandle.defaultValue.desc')}
         &nbsp;
         <a
           href={docLink('/guides/workflow/error-handling/README', {
@@ -42,7 +42,7 @@ const DefaultValue = ({
           target="_blank"
           className="text-text-accent"
         >
-          {t('common.learnMore', { ns: 'workflow' })}
+          {t('workflow.common.learnMore')}
         </a>
       </div>
       <div className="space-y-1">

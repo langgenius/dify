@@ -24,7 +24,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
         variant="secondary"
         className={cn(open && 'bg-state-base-hover')}
       >
-        {t('modelProvider.loadPresets', { ns: 'common' })}
+        {t('common.modelProvider.loadPresets')}
         <RiArrowDownSLine className="ml-0.5 h-3.5 w-3.5" />
       </Button>
     )

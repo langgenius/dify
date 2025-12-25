@@ -61,15 +61,15 @@ const EducationApplyAge = () => {
     }).then((res) => {
       if (res.message === 'success') {
         setShowModal({
-          title: t('successTitle', { ns: 'education' }),
-          desc: t('successContent', { ns: 'education' }),
+          title: t('education.successTitle'),
+          desc: t('education.successContent'),
           onConfirm: handleModalConfirm,
         })
       }
       else {
         notify({
           type: 'error',
-          message: t('submitError', { ns: 'education' }),
+          message: t('education.submitError'),
         })
       }
     })
@@ -90,13 +90,13 @@ const EducationApplyAge = () => {
         </div>
         <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
           <div className="mb-2 flex h-[192px] flex-col justify-end pb-4 pt-3 text-text-primary-on-surface">
-            <div className="title-5xl-bold mb-2 shadow-xs">{t('toVerified', { ns: 'education' })}</div>
+            <div className="title-5xl-bold mb-2 shadow-xs">{t('education.toVerified')}</div>
             <div className="system-md-medium shadow-xs">
-              {t('toVerifiedTip.front', { ns: 'education' })}
+              {t('education.toVerifiedTip.front')}
 &nbsp;
-              <span className="system-md-semibold underline">{t('toVerifiedTip.coupon', { ns: 'education' })}</span>
+              <span className="system-md-semibold underline">{t('education.toVerifiedTip.coupon')}</span>
 &nbsp;
-              {t('toVerifiedTip.end', { ns: 'education' })}
+              {t('education.toVerifiedTip.end')}
             </div>
           </div>
           <div className="mb-7">
@@ -104,7 +104,7 @@ const EducationApplyAge = () => {
           </div>
           <div className="mb-7">
             <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
-              {t('form.schoolName.title', { ns: 'education' })}
+              {t('education.form.schoolName.title')}
             </div>
             <SearchInput
               value={schoolName}
@@ -113,7 +113,7 @@ const EducationApplyAge = () => {
           </div>
           <div className="mb-7">
             <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
-              {t('form.schoolRole.title', { ns: 'education' })}
+              {t('education.form.schoolRole.title')}
             </div>
             <RoleSelector
               value={role}
@@ -122,17 +122,17 @@ const EducationApplyAge = () => {
           </div>
           <div className="mb-7">
             <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
-              {t('form.terms.title', { ns: 'education' })}
+              {t('education.form.terms.title')}
             </div>
             <div className="system-md-regular mb-1 text-text-tertiary">
-              {t('form.terms.desc.front', { ns: 'education' })}
+              {t('education.form.terms.desc.front')}
 &nbsp;
-              <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.termsOfService', { ns: 'education' })}</a>
+              <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('education.form.terms.desc.termsOfService')}</a>
 &nbsp;
-              {t('form.terms.desc.and', { ns: 'education' })}
+              {t('education.form.terms.desc.and')}
 &nbsp;
-              <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.privacyPolicy', { ns: 'education' })}</a>
-              {t('form.terms.desc.end', { ns: 'education' })}
+              <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('education.form.terms.desc.privacyPolicy')}</a>
+              {t('education.form.terms.desc.end')}
             </div>
             <div className="system-md-regular py-2 text-text-primary">
               <div className="mb-2 flex">
@@ -141,7 +141,7 @@ const EducationApplyAge = () => {
                   checked={ageChecked}
                   onCheck={() => setAgeChecked(!ageChecked)}
                 />
-                {t('form.terms.option.age', { ns: 'education' })}
+                {t('education.form.terms.option.age')}
               </div>
               <div className="flex">
                 <Checkbox
@@ -149,7 +149,7 @@ const EducationApplyAge = () => {
                   checked={inSchoolChecked}
                   onCheck={() => setInSchoolChecked(!inSchoolChecked)}
                 />
-                {t('form.terms.option.inSchool', { ns: 'education' })}
+                {t('education.form.terms.option.inSchool')}
               </div>
             </div>
           </div>
@@ -158,7 +158,7 @@ const EducationApplyAge = () => {
             disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
             onClick={handleSubmit}
           >
-            {t('submit', { ns: 'education' })}
+            {t('education.submit')}
           </Button>
           <div className="mb-4 mt-5 h-px bg-gradient-to-r from-[rgba(16,24,40,0.08)]"></div>
           <a
@@ -166,7 +166,7 @@ const EducationApplyAge = () => {
             href={docLink('/getting-started/dify-for-education')}
             target="_blank"
           >
-            {t('learn', { ns: 'education' })}
+            {t('education.learn')}
             <RiExternalLinkLine className="ml-1 h-3 w-3" />
           </a>
         </div>

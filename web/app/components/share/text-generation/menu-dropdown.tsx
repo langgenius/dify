@@ -86,7 +86,7 @@ const MenuDropdown: FC<Props> = ({
           <div className="w-[224px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
             <div className="p-1">
               <div className={cn('system-md-regular flex cursor-pointer items-center rounded-lg py-1.5 pl-3 pr-2 text-text-secondary')}>
-                <div className="grow">{t('theme.theme', { ns: 'common' })}</div>
+                <div className="grow">{t('common.theme.theme')}</div>
                 <ThemeSwitcher />
               </div>
             </div>
@@ -94,7 +94,7 @@ const MenuDropdown: FC<Props> = ({
             <div className="p-1">
               {data?.privacy_policy && (
                 <a href={data.privacy_policy} target="_blank" className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">
-                  <span className="grow">{t('chat.privacyPolicyMiddle', { ns: 'share' })}</span>
+                  <span className="grow">{t('share.chat.privacyPolicyMiddle')}</span>
                 </a>
               )}
               <div
@@ -104,7 +104,7 @@ const MenuDropdown: FC<Props> = ({
                 }}
                 className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
               >
-                {t('userProfile.about', { ns: 'common' })}
+                {t('common.userProfile.about')}
               </div>
             </div>
             {!(hideLogout || webAppAccessMode === AccessMode.EXTERNAL_MEMBERS || webAppAccessMode === AccessMode.PUBLIC) && (
@@ -113,7 +113,7 @@ const MenuDropdown: FC<Props> = ({
                   onClick={handleLogout}
                   className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
                 >
-                  {t('userProfile.logout', { ns: 'common' })}
+                  {t('common.userProfile.logout')}
                 </div>
               </div>
             )}

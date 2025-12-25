@@ -35,18 +35,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
       return
     }
     if (!emailRegex.test(email)) {
       Toast.notify({
         type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
+        message: t('login.error.emailInValid'),
       })
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('error.passwordEmpty', { ns: 'login' }) })
+      Toast.notify({ type: 'error', message: t('login.error.passwordEmpty') })
       return
     }
 
@@ -90,7 +90,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
       if ((error as ResponseError).code === 'authentication_failed') {
         Toast.notify({
           type: 'error',
-          message: t('error.invalidEmailOrPassword', { ns: 'login' }),
+          message: t('login.error.invalidEmailOrPassword'),
         })
       }
     }
@@ -103,7 +103,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     <form onSubmit={noop}>
       <div className="mb-3">
         <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
-          {t('email', { ns: 'login' })}
+          {t('login.email')}
         </label>
         <div className="mt-1">
           <Input
@@ -113,7 +113,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
             id="email"
             type="email"
             autoComplete="email"
-            placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+            placeholder={t('login.emailPlaceholder') || ''}
             tabIndex={1}
           />
         </div>
@@ -121,14 +121,14 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
       <div className="mb-3">
         <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</span>
+          <span className="system-md-semibold text-text-secondary">{t('login.password')}</span>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
             tabIndex={isEmailSetup ? 0 : -1}
             aria-disabled={!isEmailSetup}
           >
-            {t('forget', { ns: 'login' })}
+            {t('login.forget')}
           </Link>
         </label>
         <div className="relative mt-1">
@@ -142,7 +142,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
             }}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
-            placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
+            placeholder={t('login.passwordPlaceholder') || ''}
             tabIndex={2}
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
@@ -165,7 +165,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           disabled={isLoading || !email || !password}
           className="w-full"
         >
-          {t('signBtn', { ns: 'login' })}
+          {t('login.signBtn')}
         </Button>
       </div>
     </form>

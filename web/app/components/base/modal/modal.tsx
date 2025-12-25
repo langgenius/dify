@@ -103,7 +103,7 @@ const Modal = ({
                       onClick={onExtraButtonClick}
                       disabled={disabled}
                     >
-                      {extraButtonText || t('operation.remove', { ns: 'common' })}
+                      {extraButtonText || t('common.operation.remove')}
                     </Button>
                     <div className="mx-3 h-4 w-[1px] bg-divider-regular"></div>
                   </>
@@ -113,7 +113,7 @@ const Modal = ({
                 onClick={onCancel}
                 disabled={disabled}
               >
-                {cancelButtonText || t('operation.cancel', { ns: 'common' })}
+                {cancelButtonText || t('common.operation.cancel')}
               </Button>
               <Button
                 className="ml-2"
@@ -121,7 +121,7 @@ const Modal = ({
                 onClick={onConfirm}
                 disabled={disabled}
               >
-                {confirmButtonText || t('operation.save', { ns: 'common' })}
+                {confirmButtonText || t('common.operation.save')}
               </Button>
             </div>
           </div>

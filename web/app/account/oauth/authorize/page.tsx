@@ -50,23 +50,23 @@ export default function OAuthAuthorize() {
   const SCOPE_INFO_MAP: Record<string, { icon: React.ComponentType<{ className?: string }>, label: string }> = {
     'read:name': {
       icon: RiInfoCardLine,
-      label: t('scopes.name', { ns: 'oauth' }),
+      label: t('oauth.scopes.name'),
     },
     'read:email': {
       icon: RiMailLine,
-      label: t('scopes.email', { ns: 'oauth' }),
+      label: t('oauth.scopes.email'),
     },
     'read:avatar': {
       icon: RiAccountCircleLine,
-      label: t('scopes.avatar', { ns: 'oauth' }),
+      label: t('oauth.scopes.avatar'),
     },
     'read:interface_language': {
       icon: RiTranslate2,
-      label: t('scopes.languagePreference', { ns: 'oauth' }),
+      label: t('oauth.scopes.languagePreference'),
     },
     'read:timezone': {
       icon: RiGlobalLine,
-      label: t('scopes.timezone', { ns: 'oauth' }),
+      label: t('oauth.scopes.timezone'),
     },
   }
 
@@ -106,7 +106,7 @@ export default function OAuthAuthorize() {
     catch (err: any) {
       Toast.notify({
         type: 'error',
-        message: `${t('error.authorizeFailed', { ns: 'oauth' })}: ${err.message}`,
+        message: `${t('oauth.error.authorizeFailed')}: ${err.message}`,
       })
     }
   }
@@ -117,7 +117,7 @@ export default function OAuthAuthorize() {
       hasNotifiedRef.current = true
       Toast.notify({
         type: 'error',
-        message: invalidParams ? t('error.invalidParams', { ns: 'oauth' }) : t('error.authAppInfoFetchFailed', { ns: 'oauth' }),
+        message: invalidParams ? t('oauth.error.invalidParams') : t('oauth.error.authAppInfoFetchFailed'),
         duration: 0,
       })
     }
@@ -141,11 +141,11 @@ export default function OAuthAuthorize() {
 
       <div className={`mb-4 mt-5 flex flex-col gap-2 ${isLoggedIn ? 'pb-2' : ''}`}>
         <div className="title-4xl-semi-bold">
-          {isLoggedIn && <div className="text-text-primary">{t('connect', { ns: 'oauth' })}</div>}
-          <div className="text-[var(--color-saas-dify-blue-inverted)]">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })}</div>
-          {!isLoggedIn && <div className="text-text-primary">{t('tips.notLoggedIn', { ns: 'oauth' })}</div>}
+          {isLoggedIn && <div className="text-text-primary">{t('oauth.connect')}</div>}
+          <div className="text-[var(--color-saas-dify-blue-inverted)]">{authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('oauth.unknownApp')}</div>
+          {!isLoggedIn && <div className="text-text-primary">{t('oauth.tips.notLoggedIn')}</div>}
         </div>
-        <div className="body-md-regular text-text-secondary">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('unknownApp', { ns: 'oauth' })} ${t('tips.loggedIn', { ns: 'oauth' })}` : t('tips.needLogin', { ns: 'oauth' })}</div>
+        <div className="body-md-regular text-text-secondary">{isLoggedIn ? `${authAppInfo?.app_label[language] || authAppInfo?.app_label?.en_US || t('oauth.unknownApp')} ${t('oauth.tips.loggedIn')}` : t('oauth.tips.needLogin')}</div>
       </div>
 
       {isLoggedIn && userProfile && (
@@ -157,7 +157,7 @@ export default function OAuthAuthorize() {
               <div className="system-xs-regular text-text-tertiary">{userProfile.email}</div>
             </div>
           </div>
-          <Button variant="tertiary" size="small" onClick={onLoginSwitchClick}>{t('switchAccount', { ns: 'oauth' })}</Button>
+          <Button variant="tertiary" size="small" onClick={onLoginSwitchClick}>{t('oauth.switchAccount')}</Button>
         </div>
       )}
 
@@ -178,12 +178,12 @@ export default function OAuthAuthorize() {
       <div className="flex flex-col items-center gap-2 pt-4">
         {!isLoggedIn
           ? (
-              <Button variant="primary" size="large" className="w-full" onClick={onLoginSwitchClick}>{t('login', { ns: 'oauth' })}</Button>
+              <Button variant="primary" size="large" className="w-full" onClick={onLoginSwitchClick}>{t('oauth.login')}</Button>
             )
           : (
               <>
-                <Button variant="primary" size="large" className="w-full" onClick={onAuthorize} disabled={!client_id || !redirect_uri || isError || authorizing} loading={authorizing}>{t('continue', { ns: 'oauth' })}</Button>
-                <Button size="large" className="w-full" onClick={() => router.push('/apps')}>{t('operation.cancel', { ns: 'common' })}</Button>
+                <Button variant="primary" size="large" className="w-full" onClick={onAuthorize} disabled={!client_id || !redirect_uri || isError || authorizing} loading={authorizing}>{t('oauth.continue')}</Button>
+                <Button size="large" className="w-full" onClick={() => router.push('/apps')}>{t('common.operation.cancel')}</Button>
               </>
             )}
       </div>
@@ -199,7 +199,7 @@ export default function OAuthAuthorize() {
           </defs>
         </svg>
       </div>
-      <div className="system-xs-regular mt-3 text-text-tertiary">{t('tips.common', { ns: 'oauth' })}</div>
+      <div className="system-xs-regular mt-3 text-text-tertiary">{t('oauth.tips.common')}</div>
     </div>
   )
 }

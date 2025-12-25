@@ -46,7 +46,7 @@ const UninstalledItem = ({
           className="system-xs-medium cursor-pointer pl-1.5 text-components-button-secondary-accent-text"
           onClick={showInstallModal}
         >
-          {t('installAction', { ns: 'plugin' })}
+          {t('plugin.installAction')}
         </div>
         {isShowInstallModal && (
           <InstallFromMarketplace

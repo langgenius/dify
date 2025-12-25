@@ -130,13 +130,13 @@ const ToolItem = ({
       )}
       {!isError && !uninstalled && !versionMismatch && noAuth && (
         <Button variant="secondary" size="small">
-          {t('notAuthorized', { ns: 'tools' })}
+          {t('tools.notAuthorized')}
           <Indicator className="ml-2" color="orange" />
         </Button>
       )}
       {!isError && !uninstalled && !versionMismatch && authRemoved && (
         <Button variant="secondary" size="small">
-          {t('auth.authRemoved', { ns: 'plugin' })}
+          {t('plugin.auth.authRemoved')}
           <Indicator className="ml-2" color="red" />
         </Button>
       )}
@@ -147,9 +147,9 @@ const ToolItem = ({
             uniqueIdentifier={installInfo}
             tooltip={(
               <ToolTipContent
-                title={t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}
+                title={t('plugin.detailPanel.toolSelector.unsupportedTitle')}
               >
-                {`${t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })} ${t('detailPanel.toolSelector.unsupportedContent2', { ns: 'plugin' })}`}
+                {`${t('plugin.detailPanel.toolSelector.unsupportedContent')} ${t('plugin.detailPanel.toolSelector.unsupportedContent2')}`}
               </ToolTipContent>
             )}
             onChange={() => {

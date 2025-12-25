@@ -6,7 +6,7 @@ import { BlockEnum, VarType } from '../../types'
 import { comparisonOperatorNotRequireValue } from '../if-else/utils'
 import { OrderBy } from './types'
 
-const i18nPrefix = 'errorMsg'
+const i18nPrefix = 'workflow.errorMsg'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Utilities,
@@ -40,18 +40,18 @@ const nodeDefault: NodeDefault<ListFilterNodeType> = {
     const { variable, var_type, filter_by, item_var_type } = payload
 
     if (!errorMessages && !variable?.length)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.inputVar', { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.inputVar') })
 
     // Check filter condition
     if (!errorMessages && filter_by?.enabled) {
       if (var_type === VarType.arrayFile && !filter_by.conditions[0]?.key)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.filterConditionKey', { ns: 'workflow' }) })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionKey') })
 
       if (!errorMessages && !filter_by.conditions[0]?.comparison_operator)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.filterConditionComparisonOperator', { ns: 'workflow' }) })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonOperator') })
 
       if (!errorMessages && !comparisonOperatorNotRequireValue(filter_by.conditions[0]?.comparison_operator) && (item_var_type === VarType.boolean ? filter_by.conditions[0]?.value === undefined : !filter_by.conditions[0]?.value))
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.listFilter.filterConditionComparisonValue', { ns: 'workflow' }) })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.listFilter.filterConditionComparisonValue') })
     }
 
     return {

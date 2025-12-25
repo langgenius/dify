@@ -14,7 +14,7 @@ import useMatchSchemaType, { getMatchedSchemaType } from '../_base/components/va
 import ToolForm from './components/tool-form'
 import useConfig from './use-config'
 
-const i18nPrefix = 'nodes.tool'
+const i18nPrefix = 'workflow.nodes.tool'
 
 const Panel: FC<NodePanelProps<ToolNodeType>> = ({
   id,
@@ -57,7 +57,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           {toolInputVarSchema.length > 0 && (
             <Field
               className="px-4"
-              title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
+              title={t(`${i18nPrefix}.inputVars`)}
             >
               <ToolForm
                 readOnly={readOnly}
@@ -80,7 +80,7 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
           {toolSettingSchema.length > 0 && (
             <>
               <OutputVars
-                title={t(`${i18nPrefix}.settings`, { ns: 'workflow' })}
+                title={t(`${i18nPrefix}.settings`)}
                 collapsed={collapsed}
                 onCollapse={setCollapsed}
               >
@@ -104,19 +104,19 @@ const Panel: FC<NodePanelProps<ToolNodeType>> = ({
             <VarItem
               name="text"
               type="string"
-              description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.text`)}
               isIndent={hasObjectOutput}
             />
             <VarItem
               name="files"
               type="array[file]"
-              description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.files.title`)}
               isIndent={hasObjectOutput}
             />
             <VarItem
               name="json"
               type="array[object]"
-              description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.json`)}
               isIndent={hasObjectOutput}
             />
             {outputSchema.map((outputItem) => {

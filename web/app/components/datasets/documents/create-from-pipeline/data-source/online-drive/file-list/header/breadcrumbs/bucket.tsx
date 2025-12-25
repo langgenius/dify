@@ -31,7 +31,7 @@ const Bucket = ({
   return (
     <>
       <Tooltip
-        popupContent={t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
+        popupContent={t('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')}
       >
         <button
           type="button"

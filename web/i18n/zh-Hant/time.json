@@ -1,32 +1,42 @@
 {
-  "dateFormats.display": "MMMM D, YYYY",
-  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
-  "dateFormats.input": "YYYY-MM-DD",
-  "dateFormats.output": "YYYY-MM-DD",
-  "dateFormats.outputWithTime": "YYYY年MM月DD日 HH:mm:ss.SSSZ",
-  "daysInWeek.Fri": "五",
-  "daysInWeek.Mon": "一",
-  "daysInWeek.Sat": "六",
-  "daysInWeek.Sun": "日",
-  "daysInWeek.Thu": "四",
-  "daysInWeek.Tue": "二",
-  "daysInWeek.Wed": "三",
+  "daysInWeek": {
+    "Sun": "日",
+    "Mon": "一",
+    "Tue": "二",
+    "Wed": "三",
+    "Thu": "四",
+    "Fri": "五",
+    "Sat": "六"
+  },
+  "months": {
+    "January": "一月",
+    "June": "六月",
+    "March": "三月",
+    "February": "二月",
+    "August": "八月",
+    "April": "四月",
+    "May": "五月",
+    "July": "七月",
+    "November": "十一月",
+    "December": "十二月",
+    "September": "九月",
+    "October": "十月"
+  },
+  "operation": {
+    "cancel": "取消",
+    "now": "現在",
+    "ok": "好",
+    "pickDate": "選擇日期"
+  },
+  "title": {
+    "pickTime": "選擇時間"
+  },
   "defaultPlaceholder": "選擇一個時間...",
-  "months.April": "四月",
-  "months.August": "八月",
-  "months.December": "十二月",
-  "months.February": "二月",
-  "months.January": "一月",
-  "months.July": "七月",
-  "months.June": "六月",
-  "months.March": "三月",
-  "months.May": "五月",
-  "months.November": "十一月",
-  "months.October": "十月",
-  "months.September": "九月",
-  "operation.cancel": "取消",
-  "operation.now": "現在",
-  "operation.ok": "好",
-  "operation.pickDate": "選擇日期",
-  "title.pickTime": "選擇時間"
+  "dateFormats": {
+    "display": "MMMM D, YYYY",
+    "output": "YYYY-MM-DD",
+    "displayWithTime": "MMMM D, YYYY hh:mm A",
+    "input": "YYYY-MM-DD",
+    "outputWithTime": "YYYY年MM月DD日 HH:mm:ss.SSSZ"
+  }
 }

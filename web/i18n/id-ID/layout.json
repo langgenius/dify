@@ -1,4 +1,6 @@
 {
-  "sidebar.collapseSidebar": "Ciutkan Bilah Sisi",
-  "sidebar.expandSidebar": "Perluas Bilah Sisi"
+  "sidebar": {
+    "expandSidebar": "Perluas Bilah Sisi",
+    "collapseSidebar": "Ciutkan Bilah Sisi"
+  }
 }

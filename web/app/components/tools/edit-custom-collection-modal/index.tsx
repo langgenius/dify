@@ -145,10 +145,10 @@ const EditCustomCollectionModal: FC<Props> = ({
 
     let errorMessage = ''
     if (!postData.provider)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.name', { ns: 'tools' }) })
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.name') })
 
     if (!postData.schema)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.schema', { ns: 'tools' }) })
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.schema') })
 
     if (errorMessage) {
       Toast.notify({
@@ -188,7 +188,7 @@ const EditCustomCollectionModal: FC<Props> = ({
         isShow
         positionCenter={isAdd && !positionLeft}
         onHide={onHide}
-        title={t(`createTool.${isAdd ? 'title' : 'editTitle'}`, { ns: 'tools' })!}
+        title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
         dialogClassName={dialogClassName}
         panelClassName="mt-2 !w-[640px]"
         maxWidthClassName="!max-w-[640px]"
@@ -199,7 +199,7 @@ const EditCustomCollectionModal: FC<Props> = ({
             <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
               <div>
                 <div className="system-sm-medium py-2 text-text-primary">
-                  {t('createTool.name', { ns: 'tools' })}
+                  {t('tools.createTool.name')}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
                 </div>
@@ -207,7 +207,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                   <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" icon={emoji.content} background={emoji.background} />
                   <Input
                     className="h-10 grow"
-                    placeholder={t('createTool.toolNamePlaceHolder', { ns: 'tools' })!}
+                    placeholder={t('tools.createTool.toolNamePlaceHolder')!}
                     value={customCollection.provider}
                     onChange={(e) => {
                       const newCollection = produce(customCollection, (draft) => {
@@ -224,7 +224,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                 <div className="flex items-center justify-between">
                   <div className="flex items-center">
                     <div className="system-sm-medium py-2 text-text-primary">
-                      {t('createTool.schema', { ns: 'tools' })}
+                      {t('tools.createTool.schema')}
                       <span className="ml-1 text-red-500">*</span>
                     </div>
                     <div className="mx-2 h-3 w-px bg-divider-regular"></div>
@@ -234,7 +234,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                       rel="noopener noreferrer"
                       className="flex h-[18px] items-center space-x-1  text-text-accent"
                     >
-                      <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
+                      <div className="text-xs font-normal">{t('tools.createTool.viewSchemaSpec')}</div>
                       <LinkExternal02 className="h-3 w-3" />
                     </a>
                   </div>
@@ -245,22 +245,22 @@ const EditCustomCollectionModal: FC<Props> = ({
                   className="h-[240px] resize-none"
                   value={schema}
                   onChange={e => setSchema(e.target.value)}
-                  placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
+                  placeholder={t('tools.createTool.schemaPlaceHolder')!}
                 />
               </div>
 
               {/* Available Tools  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.availableTools.title', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.availableTools.title')}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                   <table className="system-xs-regular w-full text-text-secondary">
                     <thead className="uppercase text-text-tertiary">
                       <tr className={cn(paramsSchemas.length > 0 && 'border-b', 'border-divider-regular')}>
-                        <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.name', { ns: 'tools' })}</th>
-                        <th className="w-[236px] p-2 pl-3 font-medium">{t('createTool.availableTools.description', { ns: 'tools' })}</th>
-                        <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.method', { ns: 'tools' })}</th>
-                        <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.path', { ns: 'tools' })}</th>
-                        <th className="w-[54px] p-2 pl-3 font-medium">{t('createTool.availableTools.action', { ns: 'tools' })}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.name')}</th>
+                        <th className="w-[236px] p-2 pl-3 font-medium">{t('tools.createTool.availableTools.description')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.method')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.path')}</th>
+                        <th className="w-[54px] p-2 pl-3 font-medium">{t('tools.createTool.availableTools.action')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -278,7 +278,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                                 setIsShowTestApi(true)
                               }}
                             >
-                              {t('createTool.availableTools.test', { ns: 'tools' })}
+                              {t('tools.createTool.availableTools.test')}
                             </Button>
                           </td>
                         </tr>
@@ -290,7 +290,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Authorization method */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.authMethod.title')}</div>
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
                   <div className="system-xs-regular text-text-primary">{t(`tools.createTool.authMethod.types.${credential.auth_type}` as any) as string}</div>
                   <RiSettings2Line className="h-4 w-4 text-text-secondary" />
@@ -299,13 +299,13 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Labels */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.toolInput.label')}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
 
               {/* Privacy Policy */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.privacyPolicy')}</div>
                 <Input
                   value={customCollection.privacy_policy}
                   onChange={(e) => {
@@ -315,12 +315,12 @@ const EditCustomCollectionModal: FC<Props> = ({
                     setCustomCollection(newCollection)
                   }}
                   className="h-10 grow"
-                  placeholder={t('createTool.privacyPolicyPlaceholder', { ns: 'tools' }) || ''}
+                  placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''}
                 />
               </div>
 
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.customDisclaimer', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.customDisclaimer')}</div>
                 <Input
                   value={customCollection.custom_disclaimer}
                   onChange={(e) => {
@@ -330,7 +330,7 @@ const EditCustomCollectionModal: FC<Props> = ({
                     setCustomCollection(newCollection)
                   }}
                   className="h-10 grow"
-                  placeholder={t('createTool.customDisclaimerPlaceholder', { ns: 'tools' }) || ''}
+                  placeholder={t('tools.createTool.customDisclaimerPlaceholder') || ''}
                 />
               </div>
 
@@ -338,12 +338,12 @@ const EditCustomCollectionModal: FC<Props> = ({
             <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
               {
                 isEdit && (
-                  <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+                  <Button variant="warning" onClick={onRemove}>{t('common.operation.delete')}</Button>
                 )
               }
               <div className="flex space-x-2 ">
-                <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
-                <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+                <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
+                <Button variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
               </div>
             </div>
             {showEmojiPicker && (

@@ -29,13 +29,13 @@ export default function Form({
 
   const handleSubmit = useCallback(async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
+      Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
       return
     }
     if (!emailRegex.test(email)) {
       Toast.notify({
         type: 'error',
-        message: t('error.emailInValid', { ns: 'login' }),
+        message: t('login.error.emailInValid'),
       })
       return
     }
@@ -48,7 +48,7 @@ export default function Form({
     <form onSubmit={noop}>
       <div className="mb-3">
         <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
-          {t('email', { ns: 'login' })}
+          {t('login.email')}
         </label>
         <div className="mt-1">
           <Input
@@ -57,7 +57,7 @@ export default function Form({
             id="email"
             type="email"
             autoComplete="email"
-            placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
+            placeholder={t('login.emailPlaceholder') || ''}
             tabIndex={1}
           />
         </div>
@@ -70,25 +70,25 @@ export default function Form({
           disabled={isPending || !email}
           className="w-full"
         >
-          {t('signup.verifyMail', { ns: 'login' })}
+          {t('login.signup.verifyMail')}
         </Button>
       </div>
       <Split className="mb-5 mt-4" />
 
       <div className="text-[13px] font-medium leading-4 text-text-secondary">
-        <span>{t('signup.haveAccount', { ns: 'login' })}</span>
+        <span>{t('login.signup.haveAccount')}</span>
         <Link
           className="text-text-accent"
           href="/signin"
         >
-          {t('signup.signIn', { ns: 'login' })}
+          {t('login.signup.signIn')}
         </Link>
       </div>
 
       {!systemFeatures.branding.enabled && (
         <>
           <div className="system-xs-regular mt-3 block w-full text-text-tertiary">
-            {t('tosDesc', { ns: 'login' })}
+            {t('login.tosDesc')}
               &nbsp;
             <Link
               className="system-xs-medium text-text-secondary hover:underline"
@@ -96,7 +96,7 @@ export default function Form({
               rel="noopener noreferrer"
               href="https://dify.ai/terms"
             >
-              {t('tos', { ns: 'login' })}
+              {t('login.tos')}
             </Link>
               &nbsp;&&nbsp;
             <Link
@@ -105,7 +105,7 @@ export default function Form({
               rel="noopener noreferrer"
               href="https://dify.ai/privacy"
             >
-              {t('pp', { ns: 'login' })}
+              {t('login.pp')}
             </Link>
           </div>
         </>

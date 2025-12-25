@@ -321,7 +321,7 @@ const VarReferenceVars: FC<Props> = ({
                 showLeftIcon
                 showClearIcon
                 value={searchText}
-                placeholder={t('common.searchVar', { ns: 'workflow' }) || ''}
+                placeholder={t('workflow.common.searchVar') || ''}
                 onChange={e => setSearchText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onClear={() => setSearchText('')}
@@ -376,7 +376,7 @@ const VarReferenceVars: FC<Props> = ({
                     {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
                       <div className="relative mt-[14px] flex  items-center space-x-1">
                         <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
-                        <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
+                        <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('workflow.debug.lastOutput')}</div>
                         <div className="h-0  shrink-0 grow border border-divider-subtle"></div>
                       </div>
                     )}
@@ -385,7 +385,7 @@ const VarReferenceVars: FC<Props> = ({
               }
             </div>
           )
-        : <div className="mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500">{t('common.noVar', { ns: 'workflow' })}</div>}
+        : <div className="mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500">{t('workflow.common.noVar')}</div>}
       {
         showManageInputField && (
           <ManageInputField

@@ -1,23 +1,29 @@
 {
-  "actionLogs": "บันทึกการดําเนินการ",
-  "circularInvocationTip": "มีการเรียกใช้เครื่องมือ/โหนดแบบวงกลมในเวิร์กโฟลว์ปัจจุบัน",
-  "detail": "รายละเอียด",
   "input": "อินพุต",
-  "meta.executor": "ผู้ปฏิบัติการ",
-  "meta.startTime": "เวลาเริ่มต้น",
-  "meta.status": "สถานะ",
-  "meta.steps": "เรียกใช้ขั้นตอน",
-  "meta.time": "เวลาที่ผ่านไป",
-  "meta.title": "ข้อมูลเมตา",
-  "meta.tokens": "โทเค็นทั้งหมด",
-  "meta.version": "เวอร์ชัน",
   "result": "ผล",
-  "resultEmpty.link": "แผงรายละเอียด",
-  "resultEmpty.tipLeft": "กรุณาไปที่",
-  "resultEmpty.tipRight": "ดูมัน",
-  "resultEmpty.title": "เรียกใช้เฉพาะรูปแบบ JSON เอาต์พุต",
-  "resultPanel.status": "สถานะ",
-  "resultPanel.time": "เวลาที่ผ่านไป",
-  "resultPanel.tokens": "โทเค็นทั้งหมด",
-  "tracing": "ติดตาม"
+  "detail": "รายละเอียด",
+  "tracing": "ติดตาม",
+  "resultPanel": {
+    "status": "สถานะ",
+    "time": "เวลาที่ผ่านไป",
+    "tokens": "โทเค็นทั้งหมด"
+  },
+  "meta": {
+    "title": "ข้อมูลเมตา",
+    "status": "สถานะ",
+    "version": "เวอร์ชัน",
+    "executor": "ผู้ปฏิบัติการ",
+    "startTime": "เวลาเริ่มต้น",
+    "time": "เวลาที่ผ่านไป",
+    "tokens": "โทเค็นทั้งหมด",
+    "steps": "เรียกใช้ขั้นตอน"
+  },
+  "resultEmpty": {
+    "title": "เรียกใช้เฉพาะรูปแบบ JSON เอาต์พุต",
+    "tipLeft": "กรุณาไปที่",
+    "link": "แผงรายละเอียด",
+    "tipRight": "ดูมัน"
+  },
+  "circularInvocationTip": "มีการเรียกใช้เครื่องมือ/โหนดแบบวงกลมในเวิร์กโฟลว์ปัจจุบัน",
+  "actionLogs": "บันทึกการดําเนินการ"
 }

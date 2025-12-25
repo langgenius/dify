@@ -41,35 +41,35 @@ const ToolPicker: FC<Props> = ({
   const tabs = [
     {
       key: PLUGIN_TYPE_SEARCH_MAP.all,
-      name: t('category.all', { ns: 'plugin' }),
+      name: t('plugin.category.all'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.model,
-      name: t('category.models', { ns: 'plugin' }),
+      name: t('plugin.category.models'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.tool,
-      name: t('category.tools', { ns: 'plugin' }),
+      name: t('plugin.category.tools'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.agent,
-      name: t('category.agents', { ns: 'plugin' }),
+      name: t('plugin.category.agents'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.extension,
-      name: t('category.extensions', { ns: 'plugin' }),
+      name: t('plugin.category.extensions'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      name: t('category.datasources', { ns: 'plugin' }),
+      name: t('plugin.category.datasources'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.trigger,
-      name: t('category.triggers', { ns: 'plugin' }),
+      name: t('plugin.category.triggers'),
     },
     {
       key: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      name: t('category.bundles', { ns: 'plugin' }),
+      name: t('plugin.category.bundles'),
     },
   ]
 
@@ -141,7 +141,7 @@ const ToolPicker: FC<Props> = ({
               onSearchChange={setQuery}
               tags={tags}
               onTagsChange={setTags}
-              placeholder={t('searchTools', { ns: 'plugin' })!}
+              placeholder={t('plugin.searchTools')!}
               inputClassName="w-full"
             />
           </div>

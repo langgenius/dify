@@ -42,11 +42,11 @@ const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTyp
 
 const MODAL_TITLE_KEY_MAP: Record<
   SupportedCreationMethods,
-  'modal.apiKey.title' | 'modal.oauth.title' | 'modal.manual.title'
+  'pluginTrigger.modal.apiKey.title' | 'pluginTrigger.modal.oauth.title' | 'pluginTrigger.modal.manual.title'
 > = {
-  [SupportedCreationMethods.APIKEY]: 'modal.apiKey.title',
-  [SupportedCreationMethods.OAUTH]: 'modal.oauth.title',
-  [SupportedCreationMethods.MANUAL]: 'modal.manual.title',
+  [SupportedCreationMethods.APIKEY]: 'pluginTrigger.modal.apiKey.title',
+  [SupportedCreationMethods.OAUTH]: 'pluginTrigger.modal.oauth.title',
+  [SupportedCreationMethods.MANUAL]: 'pluginTrigger.modal.manual.title',
 }
 
 enum ApiKeyStep {
@@ -96,9 +96,9 @@ const MultiSteps = ({ currentStep }: { currentStep: ApiKeyStep }) => {
   const { t } = useTranslation()
   return (
     <div className="mb-6 flex w-1/3 items-center gap-2">
-      <StatusStep isActive={currentStep === ApiKeyStep.Verify} text={t('modal.steps.verify', { ns: 'pluginTrigger' })} />
+      <StatusStep isActive={currentStep === ApiKeyStep.Verify} text={t('pluginTrigger.modal.steps.verify')} />
       <div className="h-px w-3 shrink-0 bg-divider-deep"></div>
-      <StatusStep isActive={currentStep === ApiKeyStep.Configuration} text={t('modal.steps.configuration', { ns: 'pluginTrigger' })} />
+      <StatusStep isActive={currentStep === ApiKeyStep.Configuration} text={t('pluginTrigger.modal.steps.configuration')} />
     </div>
   )
 }
@@ -158,7 +158,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         console.error('createBuilder error:', error)
         Toast.notify({
           type: 'error',
-          message: t('modal.errors.createFailed', { ns: 'pluginTrigger' }),
+          message: t('pluginTrigger.modal.errors.createFailed'),
         })
       }
     }
@@ -175,7 +175,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         console.warn('callback_url is private or local address', subscriptionBuilder.endpoint)
         subscriptionFormRef.current?.setFields([{
           name: 'callback_url',
-          warnings: [t('modal.form.callbackUrl.privateAddressWarning', { ns: 'pluginTrigger' })],
+          warnings: [t('pluginTrigger.modal.form.callbackUrl.privateAddressWarning')],
         }])
       }
       else {
@@ -197,7 +197,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         },
         {
           onError: async (error: unknown) => {
-            const errorMessage = await parsePluginErrorMessage(error) || t('modal.errors.updateFailed', { ns: 'pluginTrigger' })
+            const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.errors.updateFailed')
             console.error('Failed to update subscription builder:', error)
             Toast.notify({
               type: 'error',
@@ -252,12 +252,12 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         onSuccess: () => {
           Toast.notify({
             type: 'success',
-            message: t('modal.apiKey.verify.success', { ns: 'pluginTrigger' }),
+            message: t('pluginTrigger.modal.apiKey.verify.success'),
           })
           setCurrentStep(ApiKeyStep.Configuration)
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('modal.apiKey.verify.error', { ns: 'pluginTrigger' })
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.modal.apiKey.verify.error')
           apiKeyCredentialsFormRef.current?.setFields([{
             name: Object.keys(credentials)[0],
             errors: [errorMessage],
@@ -308,13 +308,13 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
         onSuccess: () => {
           Toast.notify({
             type: 'success',
-            message: t('subscription.createSuccess', { ns: 'pluginTrigger' }),
+            message: t('pluginTrigger.subscription.createSuccess'),
           })
           onClose()
           refetch?.()
         },
         onError: async (error: unknown) => {
-          const errorMessage = await parsePluginErrorMessage(error) || t('subscription.createFailed', { ns: 'pluginTrigger' })
+          const errorMessage = await parsePluginErrorMessage(error) || t('pluginTrigger.subscription.createFailed')
           Toast.notify({
             type: 'error',
             message: errorMessage,
@@ -340,14 +340,14 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
   const confirmButtonText = useMemo(() => {
     if (currentStep === ApiKeyStep.Verify)
-      return isVerifyingCredentials ? t('modal.common.verifying', { ns: 'pluginTrigger' }) : t('modal.common.verify', { ns: 'pluginTrigger' })
+      return isVerifyingCredentials ? t('pluginTrigger.modal.common.verifying') : t('pluginTrigger.modal.common.verify')
 
-    return isBuilding ? t('modal.common.creating', { ns: 'pluginTrigger' }) : t('modal.common.create', { ns: 'pluginTrigger' })
+    return isBuilding ? t('pluginTrigger.modal.common.creating') : t('pluginTrigger.modal.common.create')
   }, [currentStep, isVerifyingCredentials, isBuilding, t])
 
   return (
     <Modal
-      title={t(MODAL_TITLE_KEY_MAP[createType], { ns: 'pluginTrigger' })}
+      title={t(MODAL_TITLE_KEY_MAP[createType])}
       confirmButtonText={confirmButtonText}
       onClose={onClose}
       onCancel={onClose}
@@ -381,20 +381,20 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
             formSchemas={[
               {
                 name: 'subscription_name',
-                label: t('modal.form.subscriptionName.label', { ns: 'pluginTrigger' }),
-                placeholder: t('modal.form.subscriptionName.placeholder', { ns: 'pluginTrigger' }),
+                label: t('pluginTrigger.modal.form.subscriptionName.label'),
+                placeholder: t('pluginTrigger.modal.form.subscriptionName.placeholder'),
                 type: FormTypeEnum.textInput,
                 required: true,
               },
               {
                 name: 'callback_url',
-                label: t('modal.form.callbackUrl.label', { ns: 'pluginTrigger' }),
-                placeholder: t('modal.form.callbackUrl.placeholder', { ns: 'pluginTrigger' }),
+                label: t('pluginTrigger.modal.form.callbackUrl.label'),
+                placeholder: t('pluginTrigger.modal.form.callbackUrl.placeholder'),
                 type: FormTypeEnum.textInput,
                 required: false,
                 default: subscriptionBuilder?.endpoint || '',
                 disabled: true,
-                tooltip: t('modal.form.callbackUrl.tooltip', { ns: 'pluginTrigger' }),
+                tooltip: t('pluginTrigger.modal.form.callbackUrl.tooltip'),
                 showCopy: true,
               },
             ]}
@@ -450,7 +450,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
               <div className="mb-6">
                 <div className="mb-3 flex items-center gap-2">
                   <div className="system-xs-medium-uppercase text-text-tertiary">
-                    {t('modal.manual.logs.title', { ns: 'pluginTrigger' })}
+                    {t('pluginTrigger.modal.manual.logs.title')}
                   </div>
                   <div className="h-px flex-1 bg-gradient-to-r from-divider-regular to-transparent" />
                 </div>
@@ -460,7 +460,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
                     <RiLoader2Line className="h-full w-full animate-spin" />
                   </div>
                   <div className="system-xs-regular text-text-tertiary">
-                    {t('modal.manual.logs.loading', { ns: 'pluginTrigger', pluginName: detail?.name || '' })}
+                    {t('pluginTrigger.modal.manual.logs.loading', { pluginName: detail?.name || '' })}
                   </div>
                 </div>
                 <LogViewer logs={logData?.logs || []} />

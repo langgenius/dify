@@ -30,13 +30,13 @@ const ToolListTreeView: FC<Props> = ({
   const { t } = useTranslation()
   const getI18nGroupName = useCallback((name: string) => {
     if (name === CUSTOM_GROUP_NAME)
-      return t('tabs.customTool', { ns: 'workflow' })
+      return t('workflow.tabs.customTool')
 
     if (name === WORKFLOW_GROUP_NAME)
-      return t('tabs.workflowTool', { ns: 'workflow' })
+      return t('workflow.tabs.workflowTool')
 
     if (name === AGENT_GROUP_NAME)
-      return t('tabs.agent', { ns: 'workflow' })
+      return t('workflow.tabs.agent')
 
     return name
   }, [t])

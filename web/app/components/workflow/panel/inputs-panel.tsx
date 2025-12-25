@@ -130,7 +130,7 @@ const InputsPanel = ({ onRun }: Props) => {
           className="w-full"
           onClick={doRun}
         >
-          {t('singleRun.startRun', { ns: 'workflow' })}
+          {t('workflow.singleRun.startRun')}
         </Button>
       </div>
     </>

@@ -50,21 +50,21 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
     if (!chunk_structure) {
       return {
         isValid: false,
-        errorMessage: t('nodes.knowledgeBase.chunkIsRequired', { ns: 'workflow' }),
+        errorMessage: t('workflow.nodes.knowledgeBase.chunkIsRequired'),
       }
     }
 
     if (index_chunk_variable_selector.length === 0) {
       return {
         isValid: false,
-        errorMessage: t('nodes.knowledgeBase.chunksVariableIsRequired', { ns: 'workflow' }),
+        errorMessage: t('workflow.nodes.knowledgeBase.chunksVariableIsRequired'),
       }
     }
 
     if (!indexing_technique) {
       return {
         isValid: false,
-        errorMessage: t('nodes.knowledgeBase.indexMethodIsRequired', { ns: 'workflow' }),
+        errorMessage: t('workflow.nodes.knowledgeBase.indexMethodIsRequired'),
       }
     }
 
@@ -72,13 +72,13 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
       if (!embedding_model || !embedding_model_provider) {
         return {
           isValid: false,
-          errorMessage: t('nodes.knowledgeBase.embeddingModelIsRequired', { ns: 'workflow' }),
+          errorMessage: t('workflow.nodes.knowledgeBase.embeddingModelIsRequired'),
         }
       }
       else if (!currentEmbeddingModel) {
         return {
           isValid: false,
-          errorMessage: t('nodes.knowledgeBase.embeddingModelIsInvalid', { ns: 'workflow' }),
+          errorMessage: t('workflow.nodes.knowledgeBase.embeddingModelIsInvalid'),
         }
       }
     }
@@ -86,7 +86,7 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
     if (!retrieval_model || !search_method) {
       return {
         isValid: false,
-        errorMessage: t('nodes.knowledgeBase.retrievalSettingIsRequired', { ns: 'workflow' }),
+        errorMessage: t('workflow.nodes.knowledgeBase.retrievalSettingIsRequired'),
       }
     }
 
@@ -94,13 +94,13 @@ const nodeDefault: NodeDefault<KnowledgeBaseNodeType> = {
       if (!reranking_model || !reranking_model.reranking_provider_name || !reranking_model.reranking_model_name) {
         return {
           isValid: false,
-          errorMessage: t('nodes.knowledgeBase.rerankingModelIsRequired', { ns: 'workflow' }),
+          errorMessage: t('workflow.nodes.knowledgeBase.rerankingModelIsRequired'),
         }
       }
       else if (!currentRerankingModel) {
         return {
           isValid: false,
-          errorMessage: t('nodes.knowledgeBase.rerankingModelIsInvalid', { ns: 'workflow' }),
+          errorMessage: t('workflow.nodes.knowledgeBase.rerankingModelIsInvalid'),
         }
       }
     }

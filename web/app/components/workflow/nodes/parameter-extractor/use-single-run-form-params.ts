@@ -11,7 +11,7 @@ import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import useNodeCrud from '../_base/hooks/use-node-crud'
 import { findVariableWhenOnLLMVision } from '../utils'
 
-const i18nPrefix = 'nodes.parameterExtractor'
+const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
 type Params = {
   id: string
@@ -86,9 +86,9 @@ const useSingleRunFormParams = ({
 
     forms.push(
       {
-        label: t('nodes.llm.singleRun.variable', { ns: 'workflow' })!,
+        label: t('workflow.nodes.llm.singleRun.variable')!,
         inputs: [{
-          label: t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })!,
+          label: t(`${i18nPrefix}.inputVar`)!,
           variable: 'query',
           type: InputVarType.paragraph,
           required: true,
@@ -103,7 +103,7 @@ const useSingleRunFormParams = ({
 
       forms.push(
         {
-          label: t('nodes.llm.vision', { ns: 'workflow' })!,
+          label: t('workflow.nodes.llm.vision')!,
           inputs: [{
             label: currentVariable?.variable as any,
             variable: '#files#',

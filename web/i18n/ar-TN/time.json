@@ -1,32 +1,42 @@
 {
-  "dateFormats.display": "MMMM D, YYYY",
-  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
-  "dateFormats.input": "YYYY-MM-DD",
-  "dateFormats.output": "YYYY-MM-DD",
-  "dateFormats.outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
-  "daysInWeek.Fri": "الجمعة",
-  "daysInWeek.Mon": "الاثنين",
-  "daysInWeek.Sat": "السبت",
-  "daysInWeek.Sun": "الأحد",
-  "daysInWeek.Thu": "الخميس",
-  "daysInWeek.Tue": "الثلاثاء",
-  "daysInWeek.Wed": "الأربعاء",
+  "daysInWeek": {
+    "Sun": "الأحد",
+    "Mon": "الاثنين",
+    "Tue": "الثلاثاء",
+    "Wed": "الأربعاء",
+    "Thu": "الخميس",
+    "Fri": "الجمعة",
+    "Sat": "السبت"
+  },
+  "months": {
+    "January": "يناير",
+    "February": "فبراير",
+    "March": "مارس",
+    "April": "أبريل",
+    "May": "مايو",
+    "June": "يونيو",
+    "July": "يوليو",
+    "August": "أغسطس",
+    "September": "سبتمبر",
+    "October": "أكتوبر",
+    "November": "نوفمبر",
+    "December": "ديسمبر"
+  },
+  "operation": {
+    "now": "الآن",
+    "ok": "موافق",
+    "cancel": "إلغاء",
+    "pickDate": "اختر التاريخ"
+  },
+  "title": {
+    "pickTime": "اختر الوقت"
+  },
   "defaultPlaceholder": "اختر وقتًا...",
-  "months.April": "أبريل",
-  "months.August": "أغسطس",
-  "months.December": "ديسمبر",
-  "months.February": "فبراير",
-  "months.January": "يناير",
-  "months.July": "يوليو",
-  "months.June": "يونيو",
-  "months.March": "مارس",
-  "months.May": "مايو",
-  "months.November": "نوفمبر",
-  "months.October": "أكتوبر",
-  "months.September": "سبتمبر",
-  "operation.cancel": "إلغاء",
-  "operation.now": "الآن",
-  "operation.ok": "موافق",
-  "operation.pickDate": "اختر التاريخ",
-  "title.pickTime": "اختر الوقت"
+  "dateFormats": {
+    "display": "MMMM D, YYYY",
+    "displayWithTime": "MMMM D, YYYY hh:mm A",
+    "input": "YYYY-MM-DD",
+    "output": "YYYY-MM-DD",
+    "outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ"
+  }
 }

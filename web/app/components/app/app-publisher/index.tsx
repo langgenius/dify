@@ -162,11 +162,11 @@ const AppPublisher = ({
 
   const disabledFunctionTooltip = useMemo(() => {
     if (!publishedAt)
-      return t('notPublishedYet', { ns: 'app' })
+      return t('app.notPublishedYet')
     if (missingStartNode)
-      return t('noUserInputNode', { ns: 'app' })
+      return t('app.noUserInputNode')
     if (noAccessPermission)
-      return t('noAccessPermission', { ns: 'app' })
+      return t('app.noAccessPermission')
   }, [missingStartNode, noAccessPermission, publishedAt])
 
   useEffect(() => {
@@ -256,7 +256,7 @@ const AppPublisher = ({
 
   const hasPublishedVersion = !!publishedAt
   const workflowToolDisabled = !hasPublishedVersion || !workflowToolAvailable
-  const workflowToolMessage = workflowToolDisabled ? t('common.workflowAsToolDisabledHint', { ns: 'workflow' }) : undefined
+  const workflowToolMessage = workflowToolDisabled ? t('workflow.common.workflowAsToolDisabledHint') : undefined
   const showStartNodeLimitHint = Boolean(startNodeLimitExceeded)
   const upgradeHighlightStyle = useMemo(() => ({
     background: 'linear-gradient(97deg, var(--components-input-border-active-prompt-1, rgba(11, 165, 236, 0.95)) -3.64%, var(--components-input-border-active-prompt-2, rgba(21, 90, 239, 0.95)) 45.14%)',
@@ -282,7 +282,7 @@ const AppPublisher = ({
             className="py-2 pl-3 pr-2"
             disabled={disabled}
           >
-            {t('common.publish', { ns: 'workflow' })}
+            {t('workflow.common.publish')}
             <RiArrowDownSLine className="h-4 w-4 text-components-button-primary-text" />
           </Button>
         </PortalToFollowElemTrigger>
@@ -290,13 +290,13 @@ const AppPublisher = ({
           <div className="w-[320px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5">
             <div className="p-4 pt-3">
               <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
-                {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
+                {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
               </div>
               {publishedAt
                 ? (
                     <div className="flex items-center justify-between">
                       <div className="system-sm-medium flex items-center text-text-secondary">
-                        {t('common.publishedAt', { ns: 'workflow' })}
+                        {t('workflow.common.publishedAt')}
                         {' '}
                         {formatTimeFromNow(publishedAt)}
                       </div>
@@ -307,14 +307,14 @@ const AppPublisher = ({
                           onClick={handleRestore}
                           disabled={published}
                         >
-                          {t('common.restore', { ns: 'workflow' })}
+                          {t('workflow.common.restore')}
                         </Button>
                       )}
                     </div>
                   )
                 : (
                     <div className="system-sm-medium flex items-center text-text-secondary">
-                      {t('common.autoSaved', { ns: 'workflow' })}
+                      {t('workflow.common.autoSaved')}
                       {' '}
                       ·
                       {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
@@ -338,10 +338,10 @@ const AppPublisher = ({
                       >
                         {
                           published
-                            ? t('common.published', { ns: 'workflow' })
+                            ? t('workflow.common.published')
                             : (
                                 <div className="flex gap-1">
-                                  <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
+                                  <span>{t('workflow.common.publishUpdate')}</span>
                                   <div className="flex gap-0.5">
                                     {PUBLISH_SHORTCUT.map(key => (
                                       <span key={key} className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">
@@ -359,11 +359,11 @@ const AppPublisher = ({
                             className="text-sm font-semibold leading-5 text-transparent"
                             style={upgradeHighlightStyle}
                           >
-                            <span className="block">{t('publishLimit.startNodeTitlePrefix', { ns: 'workflow' })}</span>
-                            <span className="block">{t('publishLimit.startNodeTitleSuffix', { ns: 'workflow' })}</span>
+                            <span className="block">{t('workflow.publishLimit.startNodeTitlePrefix')}</span>
+                            <span className="block">{t('workflow.publishLimit.startNodeTitleSuffix')}</span>
                           </p>
                           <p className="mt-1 text-xs leading-4 text-text-secondary">
-                            {t('publishLimit.startNodeDesc', { ns: 'workflow' })}
+                            {t('workflow.publishLimit.startNodeDesc')}
                           </p>
                           <UpgradeBtn
                             isShort
@@ -382,7 +382,7 @@ const AppPublisher = ({
                     {systemFeatures.webapp_auth.enabled && (
                       <div className="p-4 pt-3">
                         <div className="flex h-6 items-center">
-                          <p className="system-xs-medium text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</p>
+                          <p className="system-xs-medium text-text-tertiary">{t('app.publishApp.title')}</p>
                         </div>
                         <div
                           className="flex h-8 cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2 hover:bg-primary-50 hover:text-text-accent"
@@ -393,12 +393,12 @@ const AppPublisher = ({
                           <div className="flex grow items-center gap-x-1.5 overflow-hidden pr-1">
                             <AccessModeDisplay mode={appDetail?.access_mode} />
                           </div>
-                          {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
+                          {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('app.publishApp.notSet')}</p>}
                           <div className="flex h-4 w-4 shrink-0 items-center justify-center">
                             <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
                           </div>
                         </div>
-                        {!isAppAccessSet && <p className="system-xs-regular mt-1 text-text-warning">{t('publishApp.notSetDesc', { ns: 'app' })}</p>}
+                        {!isAppAccessSet && <p className="system-xs-regular mt-1 text-text-warning">{t('app.publishApp.notSetDesc')}</p>}
                       </div>
                     )}
                     {
@@ -412,7 +412,7 @@ const AppPublisher = ({
                               link={appURL}
                               icon={<RiPlayCircleLine className="h-4 w-4" />}
                             >
-                              {t('common.runApp', { ns: 'workflow' })}
+                              {t('workflow.common.runApp')}
                             </SuggestedAction>
                           </Tooltip>
                           {appDetail?.mode === AppModeEnum.WORKFLOW || appDetail?.mode === AppModeEnum.COMPLETION
@@ -424,7 +424,7 @@ const AppPublisher = ({
                                     link={`${appURL}${appURL.includes('?') ? '&' : '?'}mode=batch`}
                                     icon={<RiPlayList2Line className="h-4 w-4" />}
                                   >
-                                    {t('common.batchRunApp', { ns: 'workflow' })}
+                                    {t('workflow.common.batchRunApp')}
                                   </SuggestedAction>
                                 </Tooltip>
                               )
@@ -437,7 +437,7 @@ const AppPublisher = ({
                                   disabled={!publishedAt}
                                   icon={<CodeBrowser className="h-4 w-4" />}
                                 >
-                                  {t('common.embedIntoSite', { ns: 'workflow' })}
+                                  {t('workflow.common.embedIntoSite')}
                                 </SuggestedAction>
                               )}
                           <Tooltip triggerClassName="flex" disabled={!disabledFunctionButton} popupContent={disabledFunctionTooltip} asChild={false}>
@@ -450,17 +450,17 @@ const AppPublisher = ({
                               disabled={disabledFunctionButton}
                               icon={<RiPlanetLine className="h-4 w-4" />}
                             >
-                              {t('common.openInExplore', { ns: 'workflow' })}
+                              {t('workflow.common.openInExplore')}
                             </SuggestedAction>
                           </Tooltip>
-                          <Tooltip triggerClassName="flex" disabled={!!publishedAt && !missingStartNode} popupContent={!publishedAt ? t('notPublishedYet', { ns: 'app' }) : t('noUserInputNode', { ns: 'app' })} asChild={false}>
+                          <Tooltip triggerClassName="flex" disabled={!!publishedAt && !missingStartNode} popupContent={!publishedAt ? t('app.notPublishedYet') : t('app.noUserInputNode')} asChild={false}>
                             <SuggestedAction
                               className="flex-1"
                               disabled={!publishedAt || missingStartNode}
                               link="./develop"
                               icon={<RiTerminalBoxLine className="h-4 w-4" />}
                             >
-                              {t('common.accessAPIReference', { ns: 'workflow' })}
+                              {t('workflow.common.accessAPIReference')}
                             </SuggestedAction>
                           </Tooltip>
                           {appDetail?.mode === AppModeEnum.WORKFLOW && (

@@ -1,28 +1,42 @@
 {
-  "appCard.addToWorkspace": "Zum Arbeitsbereich hinzufügen",
-  "appCard.customize": "Anpassen",
-  "appCustomize.nameRequired": "App-Name ist erforderlich",
-  "appCustomize.subTitle": "App-Symbol & Name",
-  "appCustomize.title": "App aus {{name}} erstellen",
-  "apps.allCategories": "Alle Kategorien",
-  "apps.description": "Nutzen Sie diese Vorlagen-Apps sofort oder passen Sie Ihre eigenen Apps basierend auf den Vorlagen an.",
-  "apps.title": "Apps von Dify erkunden",
-  "category.Agent": "Agent",
-  "category.Assistant": "Assistent",
-  "category.Entertainment": "Unterhaltung",
-  "category.HR": "Personalwesen",
-  "category.Programming": "Programmieren",
-  "category.Translate": "Übersetzen",
-  "category.Workflow": "Arbeitsablauf",
-  "category.Writing": "Schreiben",
-  "sidebar.action.delete": "Löschen",
-  "sidebar.action.pin": "Anheften",
-  "sidebar.action.rename": "Umbenennen",
-  "sidebar.action.unpin": "Lösen",
-  "sidebar.chat": "Chat",
-  "sidebar.delete.content": "Sind Sie sicher, dass Sie diese App löschen möchten?",
-  "sidebar.delete.title": "App löschen",
-  "sidebar.discovery": "Entdeckung",
-  "sidebar.workspace": "Arbeitsbereich",
-  "title": "Entdecken"
+  "title": "Entdecken",
+  "sidebar": {
+    "discovery": "Entdeckung",
+    "chat": "Chat",
+    "workspace": "Arbeitsbereich",
+    "action": {
+      "pin": "Anheften",
+      "unpin": "Lösen",
+      "rename": "Umbenennen",
+      "delete": "Löschen"
+    },
+    "delete": {
+      "title": "App löschen",
+      "content": "Sind Sie sicher, dass Sie diese App löschen möchten?"
+    }
+  },
+  "apps": {
+    "title": "Apps von Dify erkunden",
+    "description": "Nutzen Sie diese Vorlagen-Apps sofort oder passen Sie Ihre eigenen Apps basierend auf den Vorlagen an.",
+    "allCategories": "Alle Kategorien"
+  },
+  "appCard": {
+    "addToWorkspace": "Zum Arbeitsbereich hinzufügen",
+    "customize": "Anpassen"
+  },
+  "appCustomize": {
+    "title": "App aus {{name}} erstellen",
+    "subTitle": "App-Symbol & Name",
+    "nameRequired": "App-Name ist erforderlich"
+  },
+  "category": {
+    "Assistant": "Assistent",
+    "Writing": "Schreiben",
+    "Translate": "Übersetzen",
+    "Programming": "Programmieren",
+    "HR": "Personalwesen",
+    "Agent": "Agent",
+    "Workflow": "Arbeitsablauf",
+    "Entertainment": "Unterhaltung"
+  }
 }

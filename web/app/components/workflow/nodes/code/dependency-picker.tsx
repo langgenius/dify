@@ -59,7 +59,7 @@ const DependencyPicker: FC<Props> = ({
               showLeftIcon
               showClearIcon
               value={searchText}
-              placeholder={t('nodes.code.searchDependencies', { ns: 'workflow' }) || ''}
+              placeholder={t('workflow.nodes.code.searchDependencies') || ''}
               onChange={e => setSearchText(e.target.value)}
               onClear={() => setSearchText('')}
               autoFocus

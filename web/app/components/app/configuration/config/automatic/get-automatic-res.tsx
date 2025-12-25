@@ -41,7 +41,7 @@ import s from './style.module.css'
 import { GeneratorType } from './types'
 import useGenData from './use-gen-data'
 
-const i18nPrefix = 'generate'
+const i18nPrefix = 'appDebug.generate'
 export type IGetAutomaticResProps = {
   mode: AppModeEnum
   isShow: boolean
@@ -159,9 +159,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
     if (instruction.trim() === '') {
       Toast.notify({
         type: 'error',
-        message: t('errorMsg.fieldRequired', {
-          ns: 'common',
-          field: t('generate.instruction', { ns: 'appDebug' }),
+        message: t('common.errorMsg.fieldRequired', {
+          field: t('appDebug.generate.instruction'),
         }),
       })
       return false
@@ -195,7 +194,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
   const renderLoading = (
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
-      <div className="text-[13px] text-text-tertiary">{t('generate.loading', { ns: 'appDebug' })}</div>
+      <div className="text-[13px] text-text-tertiary">{t('appDebug.generate.loading')}</div>
     </div>
   )
 
@@ -290,8 +289,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       <div className="flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
-            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('generate.title', { ns: 'appDebug' })}</div>
-            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('generate.description', { ns: 'appDebug' })}</div>
+            <div className={`text-lg font-bold leading-[28px] ${s.textGradient}`}>{t('appDebug.generate.title')}</div>
+            <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('appDebug.generate.description')}</div>
           </div>
           <div>
             <ModelParameterModal
@@ -309,7 +308,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {isBasicMode && (
             <div className="mt-4">
               <div className="flex items-center">
-                <div className="mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary">{t('generate.tryIt', { ns: 'appDebug' })}</div>
+                <div className="mr-3 shrink-0 text-xs font-semibold uppercase leading-[18px] text-text-tertiary">{t('appDebug.generate.tryIt')}</div>
                 <div
                   className="h-px grow"
                   style={{
@@ -334,7 +333,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
           {/* inputs */}
           <div className="mt-4">
             <div>
-              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('generate.instruction', { ns: 'appDebug' })}</div>
+              <div className="system-sm-semibold-uppercase mb-1.5 text-text-secondary">{t('appDebug.generate.instruction')}</div>
               {isBasicMode
                 ? (
                     <InstructionEditorInBasic
@@ -365,7 +364,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
             />
 
             <div className="mt-7 flex justify-end space-x-2">
-              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`, { ns: 'appDebug' })}</Button>
+              <Button onClick={onClose}>{t(`${i18nPrefix}.dismiss`)}</Button>
               <Button
                 className="flex space-x-1"
                 variant="primary"
@@ -373,7 +372,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                 disabled={isLoading}
               >
                 <Generator className="h-4 w-4" />
-                <span className="text-xs font-semibold">{t('generate.generate', { ns: 'appDebug' })}</span>
+                <span className="text-xs font-semibold">{t('appDebug.generate.generate')}</span>
               </Button>
             </div>
           </div>
@@ -397,8 +396,8 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
         {isShowAutoPromptResPlaceholder() && <ResPlaceholder />}
         {isShowConfirmOverwrite && (
           <Confirm
-            title={t('generate.overwriteTitle', { ns: 'appDebug' })}
-            content={t('generate.overwriteMessage', { ns: 'appDebug' })}
+            title={t('appDebug.generate.overwriteTitle')}
+            content={t('appDebug.generate.overwriteMessage')}
             isShow
             onConfirm={() => {
               hideShowConfirmOverwrite()

@@ -213,7 +213,7 @@ export const ProviderContextProvider = ({
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
           Toast.notify({
             type: 'info',
-            message: t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }),
+            message: t('common.provider.anthropicHosted.trialQuotaTip'),
             duration: 60000,
             onClose: () => {
               localStorage.setItem('anthropic_quota_notice', 'true')

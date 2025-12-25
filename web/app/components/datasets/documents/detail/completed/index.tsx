@@ -133,9 +133,9 @@ const Completed: FC<ICompletedProps> = ({
   const childSegmentListRef = useRef<HTMLDivElement>(null)
   const needScrollToBottom = useRef(false)
   const statusList = useRef<Item[]>([
-    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) },
-    { value: 0, name: t('list.status.disabled', { ns: 'datasetDocuments' }) },
-    { value: 1, name: t('list.status.enabled', { ns: 'datasetDocuments' }) },
+    { value: 'all', name: t('datasetDocuments.list.index.all') },
+    { value: 0, name: t('datasetDocuments.list.status.disabled') },
+    { value: 1, name: t('datasetDocuments.list.status.enabled') },
   ])
 
   const { run: handleSearch } = useDebounceFn(() => {
@@ -267,7 +267,7 @@ const Completed: FC<ICompletedProps> = ({
     const operationApi = enable ? enableSegment : disableSegment
     await operationApi({ datasetId, documentId, segmentIds: segId ? [segId] : selectedSegmentIds }, {
       onSuccess: () => {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         for (const seg of segments) {
           if (segId ? seg.id === segId : selectedSegmentIds.includes(seg.id))
             seg.enabled = enable
@@ -276,7 +276,7 @@ const Completed: FC<ICompletedProps> = ({
         refreshChunkListWithStatusChanged()
       },
       onError: () => {
-        notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+        notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       },
     })
   }, [datasetId, documentId, selectedSegmentIds, segments, disableSegment, enableSegment, t, notify, refreshChunkListWithStatusChanged])
@@ -286,13 +286,13 @@ const Completed: FC<ICompletedProps> = ({
   const onDelete = useCallback(async (segId?: string) => {
     await deleteSegment({ datasetId, documentId, segmentIds: segId ? [segId] : selectedSegmentIds }, {
       onSuccess: () => {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         resetList()
         if (!segId)
           setSelectedSegmentIds([])
       },
       onError: () => {
-        notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+        notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
       },
     })
   }, [datasetId, documentId, selectedSegmentIds, deleteSegment, resetList, t, notify])
@@ -327,16 +327,16 @@ const Completed: FC<ICompletedProps> = ({
     const params: SegmentUpdater = { content: '', attachment_ids: [] }
     if (docForm === ChunkingMode.qa) {
       if (!question.trim())
-        return notify({ type: 'error', message: t('segment.questionEmpty', { ns: 'datasetDocuments' }) })
+        return notify({ type: 'error', message: t('datasetDocuments.segment.questionEmpty') })
       if (!answer.trim())
-        return notify({ type: 'error', message: t('segment.answerEmpty', { ns: 'datasetDocuments' }) })
+        return notify({ type: 'error', message: t('datasetDocuments.segment.answerEmpty') })
 
       params.content = question
       params.answer = answer
     }
     else {
       if (!question.trim())
-        return notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
+        return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
 
       params.content = question
     }
@@ -347,7 +347,7 @@ const Completed: FC<ICompletedProps> = ({
     if (attachments.length) {
       const notAllUploaded = attachments.some(item => !item.uploadedId)
       if (notAllUploaded)
-        return notify({ type: 'error', message: t('segment.allFilesUploaded', { ns: 'datasetDocuments' }) })
+        return notify({ type: 'error', message: t('datasetDocuments.segment.allFilesUploaded') })
       params.attachment_ids = attachments.map(item => item.uploadedId!)
     }
 
@@ -357,7 +357,7 @@ const Completed: FC<ICompletedProps> = ({
     eventEmitter?.emit('update-segment')
     await updateSegment({ datasetId, documentId, segmentId, body: params }, {
       onSuccess(res) {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         if (!needRegenerate)
           onCloseSegmentDetail()
         for (const seg of segments) {
@@ -427,14 +427,14 @@ const Completed: FC<ICompletedProps> = ({
       const total = segmentListData?.total ? formatNumber(segmentListData.total) : '--'
       const count = total === '--' ? 0 : segmentListData!.total
       const translationKey = (docForm === ChunkingMode.parentChild && parentMode === 'paragraph')
-        ? 'segment.parentChunks'
-        : 'segment.chunks'
-      return `${total} ${t(translationKey, { count, ns: 'datasetDocuments' })}`
+        ? 'datasetDocuments.segment.parentChunks'
+        : 'datasetDocuments.segment.chunks'
+      return `${total} ${t(translationKey, { count })}`
     }
     else {
       const total = typeof segmentListData?.total === 'number' ? formatNumber(segmentListData.total) : 0
       const count = segmentListData?.total || 0
-      return `${total} ${t('segment.searchResults', { ns: 'datasetDocuments', count })}`
+      return `${total} ${t('datasetDocuments.segment.searchResults', { count })}`
     }
   }, [segmentListData, docForm, parentMode, searchValue, selectedStatus, t])
 
@@ -464,14 +464,14 @@ const Completed: FC<ICompletedProps> = ({
       { datasetId, documentId, segmentId, childChunkId },
       {
         onSuccess: () => {
-          notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+          notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
           if (parentMode === 'paragraph')
             resetList()
           else
             resetChildList()
         },
         onError: () => {
-          notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+          notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
         },
       },
     )
@@ -530,14 +530,14 @@ const Completed: FC<ICompletedProps> = ({
   ) => {
     const params: SegmentUpdater = { content: '' }
     if (!content.trim())
-      return notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
+      return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
 
     params.content = content
 
     eventEmitter?.emit('update-child-segment')
     await updateChildSegment({ datasetId, documentId, segmentId, childChunkId, body: params }, {
       onSuccess: (res) => {
-        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
         onCloseChildSegmentDetail()
         if (parentMode === 'paragraph') {
           for (const seg of segments) {

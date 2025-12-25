@@ -43,7 +43,7 @@ const AppTypeSelector = ({ value, onChange }: AppSelectorProps) => {
             {value && value.length > 0 && (
               <button
                 type="button"
-                aria-label={t('operation.clear', { ns: 'common' })}
+                aria-label={t('common.operation.clear')}
                 className="group h-4 w-4"
                 onClick={(e) => {
                   e.stopPropagation()
@@ -138,7 +138,7 @@ function AppTypeSelectTrigger({ values }: { readonly values: AppSelectorProps['v
       )}
       >
         <RiFilter3Line className="h-4 w-4 text-text-tertiary" />
-        <div className="system-sm-medium min-w-[65px] grow text-center text-text-tertiary">{t('typeSelector.all', { ns: 'app' })}</div>
+        <div className="system-sm-medium min-w-[65px] grow text-center text-text-tertiary">{t('app.typeSelector.all')}</div>
         <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
       </div>
     )
@@ -191,15 +191,15 @@ export function AppTypeLabel({ type, className }: AppTypeLabelProps) {
   const { t } = useTranslation()
   let label = ''
   if (type === AppModeEnum.CHAT)
-    label = t('typeSelector.chatbot', { ns: 'app' })
+    label = t('app.typeSelector.chatbot')
   if (type === AppModeEnum.AGENT_CHAT)
-    label = t('typeSelector.agent', { ns: 'app' })
+    label = t('app.typeSelector.agent')
   if (type === AppModeEnum.COMPLETION)
-    label = t('typeSelector.completion', { ns: 'app' })
+    label = t('app.typeSelector.completion')
   if (type === AppModeEnum.ADVANCED_CHAT)
-    label = t('typeSelector.advanced', { ns: 'app' })
+    label = t('app.typeSelector.advanced')
   if (type === AppModeEnum.WORKFLOW)
-    label = t('typeSelector.workflow', { ns: 'app' })
+    label = t('app.typeSelector.workflow')
 
   return <span className={className}>{label}</span>
 }

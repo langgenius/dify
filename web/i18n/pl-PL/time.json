@@ -1,32 +1,42 @@
 {
-  "dateFormats.display": "MMMM D, YYYY",
-  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
-  "dateFormats.input": "RRRR-MM-DD",
-  "dateFormats.output": "RRRR-MM-DD",
-  "dateFormats.outputWithTime": "RRRR-MM-DDTHH:mm:ss.SSSZ",
-  "daysInWeek.Fri": "Wolny",
-  "daysInWeek.Mon": "Mon",
-  "daysInWeek.Sat": "Sat",
-  "daysInWeek.Sun": "Słońce",
-  "daysInWeek.Thu": "Czw",
-  "daysInWeek.Tue": "Wtorek",
-  "daysInWeek.Wed": "Środa",
+  "daysInWeek": {
+    "Thu": "Czw",
+    "Tue": "Wtorek",
+    "Mon": "Mon",
+    "Sun": "Słońce",
+    "Fri": "Wolny",
+    "Sat": "Sat",
+    "Wed": "Środa"
+  },
+  "months": {
+    "July": "lipiec",
+    "January": "Styczeń",
+    "August": "Sierpień",
+    "February": "Luty",
+    "October": "Październik",
+    "April": "Kwiecień",
+    "December": "Grudzień",
+    "March": "Marzec",
+    "May": "Maj",
+    "September": "Wrzesień",
+    "June": "Czerwiec",
+    "November": "Listopad"
+  },
+  "operation": {
+    "cancel": "Anuluj",
+    "pickDate": "Wybierz datę",
+    "now": "Teraz",
+    "ok": "OK"
+  },
+  "title": {
+    "pickTime": "Wybierz czas"
+  },
   "defaultPlaceholder": "Wybierz czas...",
-  "months.April": "Kwiecień",
-  "months.August": "Sierpień",
-  "months.December": "Grudzień",
-  "months.February": "Luty",
-  "months.January": "Styczeń",
-  "months.July": "lipiec",
-  "months.June": "Czerwiec",
-  "months.March": "Marzec",
-  "months.May": "Maj",
-  "months.November": "Listopad",
-  "months.October": "Październik",
-  "months.September": "Wrzesień",
-  "operation.cancel": "Anuluj",
-  "operation.now": "Teraz",
-  "operation.ok": "OK",
-  "operation.pickDate": "Wybierz datę",
-  "title.pickTime": "Wybierz czas"
+  "dateFormats": {
+    "output": "RRRR-MM-DD",
+    "displayWithTime": "MMMM D, YYYY hh:mm A",
+    "display": "MMMM D, YYYY",
+    "input": "RRRR-MM-DD",
+    "outputWithTime": "RRRR-MM-DDTHH:mm:ss.SSSZ"
+  }
 }

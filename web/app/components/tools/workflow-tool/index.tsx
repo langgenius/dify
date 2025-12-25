@@ -55,19 +55,19 @@ const WorkflowToolAsModal: FC<Props> = ({
   const reservedOutputParameters: WorkflowToolProviderOutputParameter[] = [
     {
       name: 'text',
-      description: t('nodes.tool.outputVars.text', { ns: 'workflow' }),
+      description: t('workflow.nodes.tool.outputVars.text'),
       type: VarType.string,
       reserved: true,
     },
     {
       name: 'files',
-      description: t('nodes.tool.outputVars.files.title', { ns: 'workflow' }),
+      description: t('workflow.nodes.tool.outputVars.files.title'),
       type: VarType.arrayFile,
       reserved: true,
     },
     {
       name: 'json',
-      description: t('nodes.tool.outputVars.json', { ns: 'workflow' }),
+      description: t('workflow.nodes.tool.outputVars.json'),
       type: VarType.arrayObject,
       reserved: true,
     },
@@ -104,13 +104,13 @@ const WorkflowToolAsModal: FC<Props> = ({
   const onConfirm = () => {
     let errorMessage = ''
     if (!label)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.name', { ns: 'tools' }) })
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.name') })
 
     if (!name)
-      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.nameForToolCall', { ns: 'tools' }) })
+      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.nameForToolCall') })
 
     if (!isNameValid(name))
-      errorMessage = t('createTool.nameForToolCall', { ns: 'tools' }) + t('createTool.nameForToolCallTip', { ns: 'tools' })
+      errorMessage = t('tools.createTool.nameForToolCall') + t('tools.createTool.nameForToolCallTip')
 
     if (errorMessage) {
       Toast.notify({
@@ -152,7 +152,7 @@ const WorkflowToolAsModal: FC<Props> = ({
       <Drawer
         isShow
         onHide={onHide}
-        title={t('common.workflowAsTool', { ns: 'workflow' })!}
+        title={t('workflow.common.workflowAsTool')!}
         panelClassName="mt-2 !w-[640px]"
         maxWidthClassName="!max-w-[640px]"
         height="calc(100vh - 16px)"
@@ -163,7 +163,7 @@ const WorkflowToolAsModal: FC<Props> = ({
               {/* name & icon */}
               <div>
                 <div className="system-sm-medium py-2 text-text-primary">
-                  {t('createTool.name', { ns: 'tools' })}
+                  {t('tools.createTool.name')}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
                 </div>
@@ -171,7 +171,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                   <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" iconType="emoji" icon={emoji.content} background={emoji.background} />
                   <Input
                     className="h-10 grow"
-                    placeholder={t('createTool.toolNamePlaceHolder', { ns: 'tools' })!}
+                    placeholder={t('tools.createTool.toolNamePlaceHolder')!}
                     value={label}
                     onChange={e => setLabel(e.target.value)}
                   />
@@ -180,46 +180,46 @@ const WorkflowToolAsModal: FC<Props> = ({
               {/* name for tool call */}
               <div>
                 <div className="system-sm-medium flex items-center py-2 text-text-primary">
-                  {t('createTool.nameForToolCall', { ns: 'tools' })}
+                  {t('tools.createTool.nameForToolCall')}
                   {' '}
                   <span className="ml-1 text-red-500">*</span>
                   <Tooltip
                     popupContent={(
                       <div className="w-[180px]">
-                        {t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })}
+                        {t('tools.createTool.nameForToolCallPlaceHolder')}
                       </div>
                     )}
                   />
                 </div>
                 <Input
                   className="h-10"
-                  placeholder={t('createTool.nameForToolCallPlaceHolder', { ns: 'tools' })!}
+                  placeholder={t('tools.createTool.nameForToolCallPlaceHolder')!}
                   value={name}
                   onChange={e => setName(e.target.value)}
                 />
                 {!isNameValid(name) && (
-                  <div className="text-xs leading-[18px] text-red-500">{t('createTool.nameForToolCallTip', { ns: 'tools' })}</div>
+                  <div className="text-xs leading-[18px] text-red-500">{t('tools.createTool.nameForToolCallTip')}</div>
                 )}
               </div>
               {/* description */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.description', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.description')}</div>
                 <Textarea
-                  placeholder={t('createTool.descriptionPlaceholder', { ns: 'tools' }) || ''}
+                  placeholder={t('tools.createTool.descriptionPlaceholder') || ''}
                   value={description}
                   onChange={e => setDescription(e.target.value)}
                 />
               </div>
               {/* Tool Input  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.title', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.toolInput.title')}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                   <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
                     <thead className="uppercase text-text-tertiary">
                       <tr className="border-b border-divider-regular">
-                        <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.toolInput.name', { ns: 'tools' })}</th>
-                        <th className="w-[102px] p-2 pl-3 font-medium">{t('createTool.toolInput.method', { ns: 'tools' })}</th>
-                        <th className="p-2 pl-3 font-medium">{t('createTool.toolInput.description', { ns: 'tools' })}</th>
+                        <th className="w-[156px] p-2 pl-3 font-medium">{t('tools.createTool.toolInput.name')}</th>
+                        <th className="w-[102px] p-2 pl-3 font-medium">{t('tools.createTool.toolInput.method')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolInput.description')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -229,7 +229,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                             <div className="text-[13px] leading-[18px]">
                               <div title={item.name} className="flex">
                                 <span className="truncate font-medium text-text-primary">{item.name}</span>
-                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
+                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
                               </div>
                               <div className="text-text-tertiary">{item.type}</div>
                             </div>
@@ -241,7 +241,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                               )}
                               >
                                 <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
-                                  {t('createTool.toolInput.methodParameter', { ns: 'tools' })}
+                                  {t('tools.createTool.toolInput.methodParameter')}
                                 </div>
                               </div>
                             )}
@@ -253,7 +253,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                             <input
                               type="text"
                               className="w-full appearance-none bg-transparent text-[13px] font-normal leading-[18px] text-text-secondary caret-primary-600 outline-none placeholder:text-text-quaternary"
-                              placeholder={t('createTool.toolInput.descriptionPlaceholder', { ns: 'tools' })!}
+                              placeholder={t('tools.createTool.toolInput.descriptionPlaceholder')!}
                               value={item.description}
                               onChange={e => handleParameterChange('description', e.target.value, index)}
                             />
@@ -266,13 +266,13 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tool Output  */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolOutput.title', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.toolOutput.title')}</div>
                 <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
                   <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
                     <thead className="uppercase text-text-tertiary">
                       <tr className="border-b border-divider-regular">
-                        <th className="w-[156px] p-2 pl-3 font-medium">{t('createTool.name', { ns: 'tools' })}</th>
-                        <th className="p-2 pl-3 font-medium">{t('createTool.toolOutput.description', { ns: 'tools' })}</th>
+                        <th className="w-[156px] p-2 pl-3 font-medium">{t('tools.createTool.name')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolOutput.description')}</th>
                       </tr>
                     </thead>
                     <tbody>
@@ -282,14 +282,14 @@ const WorkflowToolAsModal: FC<Props> = ({
                             <div className="text-[13px] leading-[18px]">
                               <div title={item.name} className="flex items-center">
                                 <span className="truncate font-medium text-text-primary">{item.name}</span>
-                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('createTool.toolOutput.reserved', { ns: 'tools' }) : ''}</span>
+                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('tools.createTool.toolOutput.reserved') : ''}</span>
                                 {
                                   !item.reserved && isOutputParameterReserved(item.name)
                                     ? (
                                         <Tooltip
                                           popupContent={(
                                             <div className="w-[180px]">
-                                              {t('createTool.toolOutput.reservedParameterDuplicateTip', { ns: 'tools' })}
+                                              {t('tools.createTool.toolOutput.reservedParameterDuplicateTip')}
                                             </div>
                                           )}
                                         >
@@ -313,26 +313,26 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tags */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.toolInput.label')}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
               {/* Privacy Policy */}
               <div>
-                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.privacyPolicy')}</div>
                 <Input
                   className="h-10"
                   value={privacyPolicy}
                   onChange={e => setPrivacyPolicy(e.target.value)}
-                  placeholder={t('createTool.privacyPolicyPlaceholder', { ns: 'tools' }) || ''}
+                  placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''}
                 />
               </div>
             </div>
             <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
               {!isAdd && onRemove && (
-                <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
+                <Button variant="warning" onClick={onRemove}>{t('common.operation.delete')}</Button>
               )}
               <div className="flex space-x-2 ">
-                <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
                 <Button
                   variant="primary"
                   onClick={() => {
@@ -342,7 +342,7 @@ const WorkflowToolAsModal: FC<Props> = ({
                       setShowModal(true)
                   }}
                 >
-                  {t('operation.save', { ns: 'common' })}
+                  {t('common.operation.save')}
                 </Button>
               </div>
             </div>

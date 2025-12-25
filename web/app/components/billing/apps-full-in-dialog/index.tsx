@@ -45,17 +45,17 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         {!isTeam && (
           <div>
             <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
-              {t('apps.fullTip1', { ns: 'billing' })}
+              {t('billing.apps.fullTip1')}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip1des', { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-text-tertiary">{t('billing.apps.fullTip1des')}</div>
           </div>
         )}
         {isTeam && (
           <div>
             <div className={cn('title-xl-semi-bold mb-1', s.textGradient)}>
-              {t('apps.fullTip2', { ns: 'billing' })}
+              {t('billing.apps.fullTip2')}
             </div>
-            <div className="system-xs-regular text-text-tertiary">{t('apps.fullTip2des', { ns: 'billing' })}</div>
+            <div className="system-xs-regular text-text-tertiary">{t('billing.apps.fullTip2des')}</div>
           </div>
         )}
         {(plan.type === Plan.sandbox || plan.type === Plan.professional) && (
@@ -64,14 +64,14 @@ const AppsFull: FC<{ loc: string, className?: string }> = ({
         {plan.type !== Plan.sandbox && plan.type !== Plan.professional && (
           <Button variant="secondary-accent">
             <a target="_blank" rel="noopener noreferrer" href={mailToSupport(userProfile.email, plan.type, langGeniusVersionInfo.current_version)}>
-              {t('apps.contactUs', { ns: 'billing' })}
+              {t('billing.apps.contactUs')}
             </a>
           </Button>
         )}
       </div>
       <div className="flex flex-col gap-2">
         <div className="system-xs-medium flex items-center justify-between text-text-secondary">
-          <div>{t('usagePage.buildApps', { ns: 'billing' })}</div>
+          <div>{t('billing.usagePage.buildApps')}</div>
           <div>
             {usage}
             /

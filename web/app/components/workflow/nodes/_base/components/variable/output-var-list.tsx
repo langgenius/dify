@@ -51,7 +51,7 @@ const OutputVarList: FC<Props> = ({
     if (existingVariables.some(key => key.variable?.trim() === newKey.trim())) {
       setToastHandler(Toast.notify({
         type: 'error',
-        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
+        message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
       }))
     }
     else {

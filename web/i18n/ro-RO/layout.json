@@ -1,4 +1,6 @@
 {
-  "sidebar.collapseSidebar": "Restrângere bară laterală",
-  "sidebar.expandSidebar": "Extindeți bara laterală"
+  "sidebar": {
+    "collapseSidebar": "Restrângere bară laterală",
+    "expandSidebar": "Extindeți bara laterală"
+  }
 }

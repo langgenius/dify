@@ -226,7 +226,7 @@ export const useChat = (
     setSuggestQuestions([])
 
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
+      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
       return false
     }
 

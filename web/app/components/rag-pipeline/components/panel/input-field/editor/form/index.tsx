@@ -100,7 +100,7 @@ const InputFieldForm = ({
       </div>
       <div className="flex items-center justify-end gap-x-2 p-4 pt-2">
         <Button variant="secondary" onClick={onCancel}>
-          {t('operation.cancel', { ns: 'common' })}
+          {t('common.operation.cancel')}
         </Button>
         <inputFieldForm.AppForm>
           <inputFieldForm.Actions />

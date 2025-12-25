@@ -88,7 +88,7 @@ const OAuthClientSettings = ({
       })
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
 
       onClose?.()
@@ -115,7 +115,7 @@ const OAuthClientSettings = ({
       await deletePluginOAuthCustomClient()
       notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       onClose?.()
       onUpdate?.()
@@ -131,10 +131,10 @@ const OAuthClientSettings = ({
   const __oauth_client__ = useStore(form.store, s => s.values.__oauth_client__)
   return (
     <Modal
-      title={t('auth.oauthClientSettings', { ns: 'plugin' })}
-      confirmButtonText={t('auth.saveAndAuth', { ns: 'plugin' })}
-      cancelButtonText={t('auth.saveOnly', { ns: 'plugin' })}
-      extraButtonText={t('operation.cancel', { ns: 'common' })}
+      title={t('plugin.auth.oauthClientSettings')}
+      confirmButtonText={t('plugin.auth.saveAndAuth')}
+      cancelButtonText={t('plugin.auth.saveOnly')}
+      extraButtonText={t('common.operation.cancel')}
       showExtraButton
       extraButtonVariant="secondary"
       onExtraButtonClick={onClose}
@@ -151,7 +151,7 @@ const OAuthClientSettings = ({
               disabled={disabled || doingAction || !editValues}
               onClick={handleRemove}
             >
-              {t('operation.remove', { ns: 'common' })}
+              {t('common.operation.remove')}
             </Button>
           </div>
         )

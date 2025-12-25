@@ -23,7 +23,7 @@ const Conversion = () => {
         if (res.status === 'success') {
           Toast.notify({
             type: 'success',
-            message: t('conversion.successMessage', { ns: 'datasetPipeline' }),
+            message: t('datasetPipeline.conversion.successMessage'),
           })
           setShowConfirmModal(false)
           invalidDatasetDetail()
@@ -31,14 +31,14 @@ const Conversion = () => {
         else if (res.status === 'failed') {
           Toast.notify({
             type: 'error',
-            message: t('conversion.errorMessage', { ns: 'datasetPipeline' }),
+            message: t('datasetPipeline.conversion.errorMessage'),
           })
         }
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('conversion.errorMessage', { ns: 'datasetPipeline' }),
+          message: t('datasetPipeline.conversion.errorMessage'),
         })
       },
     })
@@ -58,11 +58,11 @@ const Conversion = () => {
         <div className="flex max-w-[480px] flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">
             <div className="title-4xl-semi-bold text-text-primary">
-              {t('conversion.title', { ns: 'datasetPipeline' })}
+              {t('datasetPipeline.conversion.title')}
             </div>
             <div className="body-md-medium">
-              <span className="text-text-secondary">{t('conversion.descriptionChunk1', { ns: 'datasetPipeline' })}</span>
-              <span className="text-text-tertiary">{t('conversion.descriptionChunk2', { ns: 'datasetPipeline' })}</span>
+              <span className="text-text-secondary">{t('datasetPipeline.conversion.descriptionChunk1')}</span>
+              <span className="text-text-tertiary">{t('datasetPipeline.conversion.descriptionChunk2')}</span>
             </div>
           </div>
           <div className="flex items-center gap-x-4">
@@ -71,10 +71,10 @@ const Conversion = () => {
               className="w-32"
               onClick={handleShowConfirmModal}
             >
-              {t('operations.convert', { ns: 'datasetPipeline' })}
+              {t('datasetPipeline.operations.convert')}
             </Button>
             <span className="system-xs-regular text-text-warning">
-              {t('conversion.warning', { ns: 'datasetPipeline' })}
+              {t('datasetPipeline.conversion.warning')}
             </span>
           </div>
         </div>
@@ -88,8 +88,8 @@ const Conversion = () => {
       </div>
       {showConfirmModal && (
         <Confirm
-          title={t('conversion.confirm.title', { ns: 'datasetPipeline' })}
-          content={t('conversion.confirm.content', { ns: 'datasetPipeline' })}
+          title={t('datasetPipeline.conversion.confirm.title')}
+          content={t('datasetPipeline.conversion.confirm.content')}
           isShow={showConfirmModal}
           onConfirm={handleConvert}
           onCancel={handleCancelConversion}

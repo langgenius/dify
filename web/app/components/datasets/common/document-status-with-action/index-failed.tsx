@@ -64,8 +64,8 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
   return (
     <StatusWithAction
       type="warning"
-      description={`${errorDocs?.total} ${t('docsFailedNotice', { ns: 'dataset' })}`}
-      actionText={t('retry', { ns: 'dataset' })}
+      description={`${errorDocs?.total} ${t('dataset.docsFailedNotice')}`}
+      actionText={t('dataset.retry')}
       disabled={indexState.value === 'retry'}
       onAction={indexState.value === 'error' ? onRetryErrorDocs : noop}
     />

@@ -58,10 +58,10 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
           {/* Header */}
           <div className="mb-6">
             <h3 className="title-2xl-semi-bold mb-2 text-text-primary">
-              {t('onboarding.title', { ns: 'workflow' })}
+              {t('workflow.onboarding.title')}
             </h3>
             <div className="body-xs-regular leading-4 text-text-tertiary">
-              {t('onboarding.description', { ns: 'workflow' })}
+              {t('workflow.onboarding.description')}
               {' '}
               <a
                 href={docLink('/guides/workflow/node/start')}
@@ -69,10 +69,10 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
                 rel="noopener noreferrer"
                 className="hover:text-text-accent-hover cursor-pointer text-text-accent underline"
               >
-                {t('onboarding.learnMore', { ns: 'workflow' })}
+                {t('workflow.onboarding.learnMore')}
               </a>
               {' '}
-              {t('onboarding.aboutStartNode', { ns: 'workflow' })}
+              {t('workflow.onboarding.aboutStartNode')}
             </div>
           </div>
 
@@ -87,11 +87,11 @@ const WorkflowOnboardingModal: FC<WorkflowOnboardingModalProps> = ({
       {/* ESC tip below modal */}
       {isShow && (
         <div className="body-xs-regular pointer-events-none fixed left-1/2 top-1/2 z-[70] flex -translate-x-1/2 translate-y-[165px] items-center gap-1 text-text-quaternary">
-          <span>{t('onboarding.escTip.press', { ns: 'workflow' })}</span>
+          <span>{t('workflow.onboarding.escTip.press')}</span>
           <kbd className="system-kbd inline-flex h-4 min-w-4 items-center justify-center rounded bg-components-kbd-bg-gray px-1 text-text-tertiary">
-            {t('onboarding.escTip.key', { ns: 'workflow' })}
+            {t('workflow.onboarding.escTip.key')}
           </kbd>
-          <span>{t('onboarding.escTip.toDismiss', { ns: 'workflow' })}</span>
+          <span>{t('workflow.onboarding.escTip.toDismiss')}</span>
         </div>
       )}
     </>

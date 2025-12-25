@@ -1,4 +1,3 @@
-import type { TFunction } from 'i18next'
 import { upload } from '@/service/base'
 
 /**
@@ -8,14 +7,14 @@ import { upload } from '@/service/base'
  * @param t - Translation function
  * @returns Localized error message
  */
-export const getImageUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
+export const getImageUploadErrorMessage = (error: any, defaultMessage: string, t: (key: string) => string): string => {
   const errorCode = error?.response?.code
 
   if (errorCode === 'forbidden')
     return error?.response?.message
 
   if (errorCode === 'file_extension_blocked')
-    return t('fileUploader.fileExtensionBlocked', { ns: 'common' })
+    return t('common.fileUploader.fileExtensionBlocked')
 
   return defaultMessage
 }

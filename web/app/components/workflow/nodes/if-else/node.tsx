@@ -10,7 +10,7 @@ import ConditionFilesListValue from './components/condition-files-list-value'
 import ConditionValue from './components/condition-value'
 import { isEmptyRelatedOperator } from './utils'
 
-const i18nPrefix = 'nodes.ifElse'
+const i18nPrefix = 'workflow.nodes.ifElse'
 
 const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   const { data } = props
@@ -38,7 +38,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
   }, [])
   const conditionNotSet = (
     <div className="flex h-6 items-center space-x-1 rounded-md bg-workflow-block-parma-bg px-1 text-xs font-normal text-text-secondary">
-      {t(`${i18nPrefix}.conditionNotSetup`, { ns: 'workflow' })}
+      {t(`${i18nPrefix}.conditionNotSetup`)}
     </div>
   )
 
@@ -82,7 +82,7 @@ const IfElseNode: FC<NodeProps<IfElseNodeType>> = (props) => {
                       : conditionNotSet
                   }
                   {i !== caseItem.conditions.length - 1 && (
-                    <div className="absolute bottom-[-10px] right-1 z-10 text-[10px] font-medium uppercase leading-4 text-text-accent">{t(`${i18nPrefix}.${caseItem.logical_operator}`, { ns: 'workflow' })}</div>
+                    <div className="absolute bottom-[-10px] right-1 z-10 text-[10px] font-medium uppercase leading-4 text-text-accent">{t(`${i18nPrefix}.${caseItem.logical_operator}`)}</div>
                   )}
                 </div>
               ))}

@@ -81,7 +81,7 @@ const VariableTag = ({
           handleVariableJump()
         }
       }}
-      errorMsg={!isValid ? t('errorMsg.invalidVariable', { ns: 'workflow' }) : undefined}
+      errorMsg={!isValid ? t('workflow.errorMsg.invalidVariable') : undefined}
       isExceptionVariable={isException}
     />
   )

@@ -39,18 +39,17 @@ const ImageUploader = () => {
         <div className="system-sm-medium flex items-center justify-center gap-x-2 text-text-secondary">
           <RiUploadCloud2Line className="size-5 text-text-tertiary" />
           <div>
-            <span>{t('imageUploader.button', { ns: 'dataset' })}</span>
+            <span>{t('dataset.imageUploader.button')}</span>
             <span
               className="ml-1 cursor-pointer text-text-accent"
               onClick={selectHandle}
             >
-              {t('imageUploader.browse', { ns: 'dataset' })}
+              {t('dataset.imageUploader.browse')}
             </span>
           </div>
         </div>
         <div className="system-xs-regular">
-          {t('imageUploader.tip', {
-            ns: 'dataset',
+          {t('dataset.imageUploader.tip', {
             size: fileUploadConfig.imageFileSizeLimit,
             supportTypes: ACCEPT_TYPES.join(', '),
             batchCount: fileUploadConfig.imageFileBatchLimit,

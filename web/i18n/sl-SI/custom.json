@@ -1,22 +1,30 @@
 {
-  "app.changeLogoTip": "Format SVG ali PNG z minimalno velikostjo 80x80px",
-  "app.title": "Prilagodi blagovno znamko glave aplikacije",
-  "apply": "Uporabi",
-  "change": "Spremeni",
   "custom": "Prilagoditev",
-  "customize.contactUs": " kontaktirajte nas ",
-  "customize.prefix": "Za prilagoditev logotipa blagovne znamke znotraj aplikacije, prosimo,",
-  "customize.suffix": "za nadgradnjo na Enterprise izdajo.",
-  "restore": "Obnovi privzete nastavitve",
-  "upgradeTip.des": "Nadgradite svoj načrt, da prilagodite svojo blagovno znamko",
-  "upgradeTip.prefix": "Nadgradite svoj načrt za",
-  "upgradeTip.suffix": "prilagoditev vaše blagovne znamke.",
-  "upgradeTip.title": "Nadgradite svoj načrt",
+  "upgradeTip": {
+    "prefix": "Nadgradite svoj načrt za",
+    "suffix": "prilagoditev vaše blagovne znamke.",
+    "des": "Nadgradite svoj načrt, da prilagodite svojo blagovno znamko",
+    "title": "Nadgradite svoj načrt"
+  },
+  "webapp": {
+    "title": "Prilagodi blagovno znamko spletne aplikacije",
+    "removeBrand": "Odstrani Powered by Dify",
+    "changeLogo": "Spremeni sliko Powered by Brand",
+    "changeLogoTip": "Format SVG ali PNG z minimalno velikostjo 40x40px"
+  },
+  "app": {
+    "title": "Prilagodi blagovno znamko glave aplikacije",
+    "changeLogoTip": "Format SVG ali PNG z minimalno velikostjo 80x80px"
+  },
   "upload": "Naloži",
-  "uploadedFail": "Nalaganje slike ni uspelo, prosimo, poskusite znova.",
   "uploading": "Nalagam",
-  "webapp.changeLogo": "Spremeni sliko Powered by Brand",
-  "webapp.changeLogoTip": "Format SVG ali PNG z minimalno velikostjo 40x40px",
-  "webapp.removeBrand": "Odstrani Powered by Dify",
-  "webapp.title": "Prilagodi blagovno znamko spletne aplikacije"
+  "uploadedFail": "Nalaganje slike ni uspelo, prosimo, poskusite znova.",
+  "change": "Spremeni",
+  "apply": "Uporabi",
+  "restore": "Obnovi privzete nastavitve",
+  "customize": {
+    "contactUs": " kontaktirajte nas ",
+    "prefix": "Za prilagoditev logotipa blagovne znamke znotraj aplikacije, prosimo,",
+    "suffix": "za nadgradnjo na Enterprise izdajo."
+  }
 }

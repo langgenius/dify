@@ -149,7 +149,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
-            Toast.notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
+            Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
             return false
           }
         }
@@ -238,12 +238,12 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={(
         <div className="flex items-center">
-          <div className="mr-1">{t('variableTitle', { ns: 'appDebug' })}</div>
+          <div className="mr-1">{t('appDebug.variableTitle')}</div>
           {!readonly && (
             <Tooltip
               popupContent={(
                 <div className="w-[180px]">
-                  {t('variableTip', { ns: 'appDebug' })}
+                  {t('appDebug.variableTip')}
                 </div>
               )}
             />
@@ -255,7 +255,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     >
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
-          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('notSetVar', { ns: 'appDebug' })}</div>
+          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.notSetVar')}</div>
         </div>
       )}
       {hasVar && (
@@ -307,8 +307,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       {isShowDeleteContextVarModal && (
         <Confirm
           isShow={isShowDeleteContextVarModal}
-          title={t('feature.dataSet.queryVariable.deleteContextVarTitle', { ns: 'appDebug', varName: promptVariables[removeIndex as number]?.name })}
-          content={t('feature.dataSet.queryVariable.deleteContextVarTip', { ns: 'appDebug' })}
+          title={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle', { varName: promptVariables[removeIndex as number]?.name })}
+          content={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip')}
           onConfirm={() => {
             didRemoveVar(removeIndex as number)
             hideDeleteContextVarModal()

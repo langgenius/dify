@@ -162,7 +162,7 @@ const ItemComponent = ({ index, style, data }: ListChildComponentProps<{
             hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
             onClick={() => handlePreview(index)}
           >
-            {t('dataSource.notion.selector.preview', { ns: 'common' })}
+            {t('common.dataSource.notion.selector.preview')}
           </div>
         )
       }
@@ -297,7 +297,7 @@ const PageSelector = ({
   if (!currentDataList.length) {
     return (
       <div className="flex h-[296px] items-center justify-center text-[13px] text-text-tertiary">
-        {t('dataSource.notion.selector.noSearchResult', { ns: 'common' })}
+        {t('common.dataSource.notion.selector.noSearchResult')}
       </div>
     )
   }

@@ -53,7 +53,7 @@ const ConfigCredential: FC<Props> = ({
   const handleSave = async () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: field.label[language] || field.label.en_US }) })
+        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: field.label[language] || field.label.en_US }) })
         return
       }
     }
@@ -71,8 +71,8 @@ const ConfigCredential: FC<Props> = ({
     <Drawer
       isShow
       onHide={onCancel}
-      title={t('auth.setupModalTitle', { ns: 'tools' }) as string}
-      titleDescription={t('auth.setupModalTitleDescription', { ns: 'tools' }) as string}
+      title={t('tools.auth.setupModalTitle') as string}
+      titleDescription={t('tools.auth.setupModalTitleDescription') as string}
       panelClassName="mt-[64px] mb-2 !w-[420px] border-components-panel-border"
       maxWidthClassName="!max-w-[420px]"
       height="calc(100vh - 64px)"
@@ -102,7 +102,7 @@ const ConfigCredential: FC<Props> = ({
                             rel="noopener noreferrer"
                             className="inline-flex items-center text-xs text-text-accent"
                           >
-                            {t('howToGet', { ns: 'tools' })}
+                            {t('tools.howToGet')}
                             <LinkExternal02 className="ml-1 h-3 w-3" />
                           </a>
                         )
@@ -111,12 +111,12 @@ const ConfigCredential: FC<Props> = ({
                   <div className={cn((collection.is_team_authorization && !isHideRemoveBtn) ? 'justify-between' : 'justify-end', 'mt-2 flex ')}>
                     {
                       (collection.is_team_authorization && !isHideRemoveBtn) && (
-                        <Button onClick={onRemove}>{t('operation.remove', { ns: 'common' })}</Button>
+                        <Button onClick={onRemove}>{t('common.operation.remove')}</Button>
                       )
                     }
                     <div className="flex space-x-2">
-                      <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
-                      <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+                      <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
+                      <Button loading={isLoading || isSaving} disabled={isLoading || isSaving} variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
                     </div>
                   </div>
                 </>

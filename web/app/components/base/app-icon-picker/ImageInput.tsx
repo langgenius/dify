@@ -106,10 +106,10 @@ const ImageInput: FC<UploaderProps> = ({
                   <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
                   <div className="mb-[2px] text-sm font-medium">
                     <span className="pointer-events-none">
-                      {t('imageInput.dropImageHere', { ns: 'common' })}
+                      {t('common.imageInput.dropImageHere')}
 &nbsp;
                     </span>
-                    <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('imageInput.browse', { ns: 'common' })}</button>
+                    <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
                     <input
                       ref={inputRef}
                       type="file"
@@ -119,7 +119,7 @@ const ImageInput: FC<UploaderProps> = ({
                       onChange={handleLocalFileInput}
                     />
                   </div>
-                  <div className="pointer-events-none">{t('imageInput.supportedFormats', { ns: 'common' })}</div>
+                  <div className="pointer-events-none">{t('common.imageInput.supportedFormats')}</div>
                 </>
               )
             : handleShowImage()

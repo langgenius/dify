@@ -1,24 +1,38 @@
 {
-  "common.confirmPublish": "Confirm Publish",
-  "common.confirmPublishContent": "After successfully publishing the knowledge pipeline, the chunk structure of this knowledge base cannot be modified. Are you sure you want to publish it?",
-  "common.goToAddDocuments": "Go to add documents",
-  "common.preparingDataSource": "Preparing Data Source",
-  "common.processing": "Processing",
-  "common.publishAs": "Publish as a Customized Pipeline Template",
-  "common.publishAsPipeline.description": "Knowledge description",
-  "common.publishAsPipeline.descriptionPlaceholder": "Please enter the description of this Knowledge Pipeline. (Optional) ",
-  "common.publishAsPipeline.name": "Pipeline name & icon",
-  "common.publishAsPipeline.namePlaceholder": "Please enter the name of this Knowledge Pipeline. (Required) ",
-  "common.reRun": "Re-run",
-  "common.testRun": "Test Run",
-  "inputField.create": "Create user input field",
-  "inputField.manage": "Manage",
-  "publishToast.desc": "When the pipeline is not published, you can modify the chunk structure in the knowledge base node, and the pipeline orchestration and changes will be automatically saved as a draft.",
-  "publishToast.title": "This pipeline has not yet been published",
-  "ragToolSuggestions.noRecommendationPlugins": "No recommended plugins, find more in <CustomLink>Marketplace</CustomLink>",
-  "ragToolSuggestions.title": "Suggestions for RAG",
-  "result.resultPreview.error": "Error occurred during execution",
-  "result.resultPreview.footerTip": "In test run mode, preview up to {{count}} chunks",
-  "result.resultPreview.loading": "Processing...Please wait",
-  "result.resultPreview.viewDetails": "View details"
+  "common": {
+    "goToAddDocuments": "Go to add documents",
+    "publishAs": "Publish as a Customized Pipeline Template",
+    "confirmPublish": "Confirm Publish",
+    "confirmPublishContent": "After successfully publishing the knowledge pipeline, the chunk structure of this knowledge base cannot be modified. Are you sure you want to publish it?",
+    "publishAsPipeline": {
+      "name": "Pipeline name & icon",
+      "namePlaceholder": "Please enter the name of this Knowledge Pipeline. (Required) ",
+      "description": "Knowledge description",
+      "descriptionPlaceholder": "Please enter the description of this Knowledge Pipeline. (Optional) "
+    },
+    "testRun": "Test Run",
+    "preparingDataSource": "Preparing Data Source",
+    "reRun": "Re-run",
+    "processing": "Processing"
+  },
+  "inputField": {
+    "create": "Create user input field",
+    "manage": "Manage"
+  },
+  "publishToast": {
+    "title": "This pipeline has not yet been published",
+    "desc": "When the pipeline is not published, you can modify the chunk structure in the knowledge base node, and the pipeline orchestration and changes will be automatically saved as a draft."
+  },
+  "result": {
+    "resultPreview": {
+      "loading": "Processing...Please wait",
+      "error": "Error occurred during execution",
+      "viewDetails": "View details",
+      "footerTip": "In test run mode, preview up to {{count}} chunks"
+    }
+  },
+  "ragToolSuggestions": {
+    "title": "Suggestions for RAG",
+    "noRecommendationPlugins": "No recommended plugins, find more in <CustomLink>Marketplace</CustomLink>"
+  }
 }

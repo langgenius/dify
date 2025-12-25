@@ -11,28 +11,22 @@ import { i18n } from '.'
 
 // https://locize.com/blog/next-13-app-dir-i18n/
 const initI18next = async (lng: Locale, ns: Namespace) => {
-  const camelNs = camelCase(ns) as KeyPrefix
   const i18nInstance = createInstance()
   await i18nInstance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: Locale, namespace: string) => {
-      const kebabNs = namespace.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
-      return import(`../i18n/${language}/${kebabNs}.json`)
-    }))
+    .use(resourcesToBackend((language: Locale, namespace: Namespace) => import(`../i18n/${language}/${namespace}.json`)))
     .init({
       lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
-      ns: camelNs,
-      defaultNS: camelNs,
+      ns,
       fallbackLng: 'en-US',
     })
   return i18nInstance
 }
 
 export async function getTranslation(lng: Locale, ns: Namespace) {
-  const camelNs = camelCase(ns) as KeyPrefix
   const i18nextInstance = await initI18next(lng, ns)
   return {
-    t: i18nextInstance.getFixedT(lng, camelNs),
+    t: i18nextInstance.getFixedT(lng, 'translation', camelCase(ns) as KeyPrefix),
     i18n: i18nextInstance,
   }
 }

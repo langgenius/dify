@@ -18,7 +18,7 @@ import KeyValue from './components/key-value'
 import Timeout from './components/timeout'
 import useConfig from './use-config'
 
-const i18nPrefix = 'nodes.http'
+const i18nPrefix = 'workflow.nodes.http'
 
 const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   id,
@@ -58,7 +58,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     <div className="pt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.api`, { ns: 'workflow' })}
+          title={t(`${i18nPrefix}.api`)}
           required
           operations={(
             <div className="flex">
@@ -68,8 +68,8 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
               >
                 {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t(`${i18nPrefix}.authorization.authorization`, { ns: 'workflow' })}
-                  <span className="ml-1 text-text-secondary">{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`, { ns: 'workflow' })}</span>
+                  {t(`${i18nPrefix}.authorization.authorization`)}
+                  <span className="ml-1 text-text-secondary">{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
                 </div>
               </div>
               <div
@@ -78,7 +78,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
               >
                 {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
                 <div className="text-xs font-medium text-text-tertiary">
-                  {t(`${i18nPrefix}.curl.title`, { ns: 'workflow' })}
+                  {t(`${i18nPrefix}.curl.title`)}
                 </div>
               </div>
             </div>
@@ -94,7 +94,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.headers`, { ns: 'workflow' })}
+          title={t(`${i18nPrefix}.headers`)}
         >
           <KeyValue
             nodeId={id}
@@ -105,7 +105,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.params`, { ns: 'workflow' })}
+          title={t(`${i18nPrefix}.params`)}
         >
           <KeyValue
             nodeId={id}
@@ -116,7 +116,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.body`, { ns: 'workflow' })}
+          title={t(`${i18nPrefix}.body`)}
           required
         >
           <EditBody
@@ -127,8 +127,8 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.verifySSL.title`, { ns: 'workflow' })}
-          tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`, { ns: 'workflow' })}
+          title={t(`${i18nPrefix}.verifySSL.title`)}
+          tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`)}
           operations={(
             <Switch
               defaultValue={!!inputs.ssl_verify}
@@ -163,22 +163,22 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
             <VarItem
               name="body"
               type="string"
-              description={t(`${i18nPrefix}.outputVars.body`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.body`)}
             />
             <VarItem
               name="status_code"
               type="number"
-              description={t(`${i18nPrefix}.outputVars.statusCode`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.statusCode`)}
             />
             <VarItem
               name="headers"
               type="object"
-              description={t(`${i18nPrefix}.outputVars.headers`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.headers`)}
             />
             <VarItem
               name="files"
               type="Array[File]"
-              description={t(`${i18nPrefix}.outputVars.files`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.files`)}
             />
           </>
         </OutputVars>

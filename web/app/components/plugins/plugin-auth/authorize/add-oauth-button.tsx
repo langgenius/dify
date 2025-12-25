@@ -95,7 +95,7 @@ const AddOAuthButton = ({
           </div>
           <div className="w-0 grow">
             <div className="system-sm-regular mb-1.5">
-              {t('auth.clientInfo', { ns: 'plugin' })}
+              {t('plugin.auth.clientInfo')}
             </div>
             {
               redirect_uri && (
@@ -136,15 +136,15 @@ const AddOAuthButton = ({
     if (is_system_oauth_params_exists) {
       result.unshift({
         name: '__oauth_client__',
-        label: t('auth.oauthClient', { ns: 'plugin' }),
+        label: t('plugin.auth.oauthClient'),
         type: FormTypeEnum.radio,
         options: [
           {
-            label: t('auth.default', { ns: 'plugin' }),
+            label: t('plugin.auth.default'),
             value: 'default',
           },
           {
-            label: t('auth.custom', { ns: 'plugin' }),
+            label: t('plugin.auth.custom'),
             value: 'custom',
           },
         ],
@@ -213,7 +213,7 @@ const AddOAuthButton = ({
                       buttonVariant === 'primary' && 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
                     )}
                   >
-                    {t('auth.custom', { ns: 'plugin' })}
+                    {t('plugin.auth.custom')}
                   </Badge>
                 )
               }
@@ -248,7 +248,7 @@ const AddOAuthButton = ({
             className="w-full"
           >
             <RiEqualizer2Line className="mr-0.5 h-4 w-4" />
-            {t('auth.setupOAuth', { ns: 'plugin' })}
+            {t('plugin.auth.setupOAuth')}
           </Button>
         )
       }

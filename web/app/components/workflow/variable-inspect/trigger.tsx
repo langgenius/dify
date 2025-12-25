@@ -71,7 +71,7 @@ const VariableInspectTrigger: FC = () => {
             setShowVariableInspectPanel(true)
           }}
         >
-          {t('debug.variableInspect.trigger.normal', { ns: 'workflow' })}
+          {t('workflow.debug.variableInspect.trigger.normal')}
         </div>
       )}
       {!isRunning && currentVars.length > 0 && (
@@ -84,7 +84,7 @@ const VariableInspectTrigger: FC = () => {
               setShowVariableInspectPanel(true)
             }}
           >
-            {t('debug.variableInspect.trigger.cached', { ns: 'workflow' })}
+            {t('workflow.debug.variableInspect.trigger.cached')}
           </div>
           <div
             className={cn('system-xs-medium flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 text-text-tertiary shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent hover:text-text-accent', nodesReadOnly && 'cursor-not-allowed text-text-disabled hover:bg-transparent hover:text-text-disabled')}
@@ -94,7 +94,7 @@ const VariableInspectTrigger: FC = () => {
               handleClearAll()
             }}
           >
-            {t('debug.variableInspect.trigger.clear', { ns: 'workflow' })}
+            {t('workflow.debug.variableInspect.trigger.clear')}
           </div>
         </>
       )}
@@ -105,11 +105,11 @@ const VariableInspectTrigger: FC = () => {
             onClick={() => setShowVariableInspectPanel(true)}
           >
             <RiLoader2Line className="h-4 w-4 animate-spin" />
-            <span className="text-text-accent">{t('debug.variableInspect.trigger.running', { ns: 'workflow' })}</span>
+            <span className="text-text-accent">{t('workflow.debug.variableInspect.trigger.running')}</span>
           </div>
           {isPreviewRunning && (
             <Tooltip
-              popupContent={t('debug.variableInspect.trigger.stop', { ns: 'workflow' })}
+              popupContent={t('workflow.debug.variableInspect.trigger.stop')}
             >
               <div
                 className="flex h-6 cursor-pointer items-center rounded-md border-[0.5px] border-effects-highlight bg-components-actionbar-bg px-1 shadow-lg backdrop-blur-sm hover:bg-components-actionbar-bg-accent"

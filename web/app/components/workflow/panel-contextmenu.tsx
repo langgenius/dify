@@ -44,7 +44,7 @@ const PanelContextmenu = () => {
       <div
         className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
       >
-        {t('common.addBlock', { ns: 'workflow' })}
+        {t('workflow.common.addBlock')}
       </div>
     )
   }
@@ -77,7 +77,7 @@ const PanelContextmenu = () => {
             handlePaneContextmenuCancel()
           }}
         >
-          {t('nodes.note.addNote', { ns: 'workflow' })}
+          {t('workflow.nodes.note.addNote')}
         </div>
         <div
           className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
@@ -86,7 +86,7 @@ const PanelContextmenu = () => {
             handlePaneContextmenuCancel()
           }}
         >
-          {t('common.run', { ns: 'workflow' })}
+          {t('workflow.common.run')}
           <ShortcutsName keys={['alt', 'r']} />
         </div>
       </div>
@@ -104,7 +104,7 @@ const PanelContextmenu = () => {
             }
           }}
         >
-          {t('common.pasteHere', { ns: 'workflow' })}
+          {t('workflow.common.pasteHere')}
           <ShortcutsName keys={['ctrl', 'v']} />
         </div>
       </div>
@@ -114,13 +114,13 @@ const PanelContextmenu = () => {
           className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => exportCheck?.()}
         >
-          {t('export', { ns: 'app' })}
+          {t('app.export')}
         </div>
         <div
           className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => setShowImportDSLModal(true)}
         >
-          {t('common.importDSL', { ns: 'workflow' })}
+          {t('workflow.common.importDSL')}
         </div>
       </div>
     </div>

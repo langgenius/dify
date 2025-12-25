@@ -28,7 +28,7 @@ type LoadedProps = {
   onFailed: (message?: string) => void
 }
 
-const i18nPrefix = 'installModal'
+const i18nPrefix = 'plugin.installModal'
 
 const Loaded: React.FC<LoadedProps> = ({
   updatePayload,
@@ -144,7 +144,7 @@ const Loaded: React.FC<LoadedProps> = ({
   return (
     <>
       <div className="system-md-regular text-text-secondary">
-        <p>{t(`${i18nPrefix}.readyToInstall`, { ns: 'plugin' })}</p>
+        <p>{t(`${i18nPrefix}.readyToInstall`)}</p>
       </div>
       <div className="flex flex-wrap content-start items-start gap-1 self-stretch rounded-2xl bg-background-section-burn p-2">
         <Card
@@ -162,7 +162,7 @@ const Loaded: React.FC<LoadedProps> = ({
       <div className="mt-4 flex items-center justify-end gap-2 self-stretch">
         {!isInstalling && (
           <Button variant="secondary" className="min-w-[72px]" onClick={onBack}>
-            {t('installModal.back', { ns: 'plugin' })}
+            {t('plugin.installModal.back')}
           </Button>
         )}
         <Button
@@ -172,7 +172,7 @@ const Loaded: React.FC<LoadedProps> = ({
           disabled={isInstalling || isLoading}
         >
           {isInstalling && <RiLoader2Line className="h-4 w-4 animate-spin-slow" />}
-          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`, { ns: 'plugin' })}</span>
+          <span>{t(`${i18nPrefix}.${isInstalling ? 'installing' : 'install'}`)}</span>
         </Button>
       </div>
     </>

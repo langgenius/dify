@@ -45,15 +45,15 @@ const WeightedScore = ({
         />
         <div className="mt-3 flex justify-between">
           <div className="system-xs-semibold-uppercase flex w-[90px] shrink-0 items-center text-util-colors-blue-light-blue-light-500">
-            <div className="mr-1 truncate uppercase" title={t('weightedScore.semantic', { ns: 'dataset' }) || ''}>
-              {t('weightedScore.semantic', { ns: 'dataset' })}
+            <div className="mr-1 truncate uppercase" title={t('dataset.weightedScore.semantic') || ''}>
+              {t('dataset.weightedScore.semantic')}
             </div>
             {formatNumber(value.value[0])}
           </div>
           <div className="system-xs-semibold-uppercase flex w-[90px] shrink-0 items-center justify-end text-util-colors-teal-teal-500">
             {formatNumber(value.value[1])}
-            <div className="ml-1 truncate uppercase" title={t('weightedScore.keyword', { ns: 'dataset' }) || ''}>
-              {t('weightedScore.keyword', { ns: 'dataset' })}
+            <div className="ml-1 truncate uppercase" title={t('dataset.weightedScore.keyword') || ''}>
+              {t('dataset.weightedScore.keyword')}
             </div>
           </div>
         </div>

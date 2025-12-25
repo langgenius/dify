@@ -6,7 +6,7 @@ import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { AppModeEnum } from '@/types/app'
 import { ReasoningModeType } from './types'
 
-const i18nPrefix = ''
+const i18nPrefix = 'workflow'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Transform,
@@ -33,32 +33,32 @@ const nodeDefault: NodeDefault<ParameterExtractorNodeType> = {
   checkValid(payload: ParameterExtractorNodeType, t: any) {
     let errorMessages = ''
     if (!errorMessages && (!payload.query || payload.query.length === 0))
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.inputVar`, { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.inputVar`) })
 
     if (!errorMessages && !payload.model.provider)
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.model`, { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.model`) })
 
     if (!errorMessages && (!payload.parameters || payload.parameters.length === 0))
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.extractParameters`, { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.extractParameters`) })
 
     if (!errorMessages) {
       payload.parameters.forEach((param) => {
         if (errorMessages)
           return
         if (!param.name) {
-          errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.namePlaceholder`, { ns: 'workflow' }) })
+          errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.namePlaceholder`) })
           return
         }
         if (!param.type) {
-          errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.typePlaceholder`, { ns: 'workflow' }) })
+          errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.typePlaceholder`) })
           return
         }
         if (!param.description)
-          errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder`, { ns: 'workflow' }) })
+          errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.parameterExtractor.addExtractParameterContent.descriptionPlaceholder`) })
       })
     }
     if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
-      errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}errorMsg.fields.visionVariable`, { ns: 'workflow' }) })
+      errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.errorMsg.fields.visionVariable`) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

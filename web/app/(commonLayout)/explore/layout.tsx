@@ -7,7 +7,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 
 const ExploreLayout: FC<PropsWithChildren> = ({ children }) => {
   const { t } = useTranslation()
-  useDocumentTitle(t('menus.explore', { ns: 'common' }))
+  useDocumentTitle(t('common.menus.explore'))
   return (
     <ExploreClient>
       {children}

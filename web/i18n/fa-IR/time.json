@@ -1,32 +1,42 @@
 {
-  "dateFormats.display": "MMMM D, YYYY",
-  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
-  "dateFormats.input": "YYYY-MM-DD",
-  "dateFormats.output": "YYYY-MM-DD",
-  "dateFormats.outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
-  "daysInWeek.Fri": "جمعه",
-  "daysInWeek.Mon": "مون",
-  "daysInWeek.Sat": "شنبه",
-  "daysInWeek.Sun": "خورشید",
-  "daysInWeek.Thu": "پنج‌شنبه",
-  "daysInWeek.Tue": "سه شنبه",
-  "daysInWeek.Wed": "چهارشنبه",
+  "daysInWeek": {
+    "Sat": "شنبه",
+    "Sun": "خورشید",
+    "Mon": "مون",
+    "Wed": "چهارشنبه",
+    "Fri": "جمعه",
+    "Tue": "سه شنبه",
+    "Thu": "پنج‌شنبه"
+  },
+  "months": {
+    "October": "اکتبر",
+    "February": "فوریه",
+    "September": "سپتامبر",
+    "July": "جولای",
+    "August": "اوت",
+    "January": "ژانویه",
+    "April": "آوریل",
+    "November": "نوامبر",
+    "March": "مارس",
+    "May": "مه",
+    "June": "ژوئن",
+    "December": "دسامبر"
+  },
+  "operation": {
+    "pickDate": "تاریخ را انتخاب کنید",
+    "ok": "خوب",
+    "now": "حالا",
+    "cancel": "لغو"
+  },
+  "title": {
+    "pickTime": "زمان انتخاب کنید"
+  },
   "defaultPlaceholder": "زمانی را انتخاب کنید...",
-  "months.April": "آوریل",
-  "months.August": "اوت",
-  "months.December": "دسامبر",
-  "months.February": "فوریه",
-  "months.January": "ژانویه",
-  "months.July": "جولای",
-  "months.June": "ژوئن",
-  "months.March": "مارس",
-  "months.May": "مه",
-  "months.November": "نوامبر",
-  "months.October": "اکتبر",
-  "months.September": "سپتامبر",
-  "operation.cancel": "لغو",
-  "operation.now": "حالا",
-  "operation.ok": "خوب",
-  "operation.pickDate": "تاریخ را انتخاب کنید",
-  "title.pickTime": "زمان انتخاب کنید"
+  "dateFormats": {
+    "output": "YYYY-MM-DD",
+    "input": "YYYY-MM-DD",
+    "display": "MMMM D, YYYY",
+    "displayWithTime": "MMMM D, YYYY hh:mm A",
+    "outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ"
+  }
 }

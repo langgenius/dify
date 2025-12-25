@@ -10,7 +10,7 @@ import { InstallStep } from '../../types'
 import useHideLogic from '../hooks/use-hide-logic'
 import ReadyToInstall from './ready-to-install'
 
-const i18nPrefix = 'installModal'
+const i18nPrefix = 'plugin.installModal'
 
 export enum InstallType {
   fromLocal = 'fromLocal',
@@ -42,11 +42,11 @@ const InstallBundle: FC<Props> = ({
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
-      return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
+      return t(`${i18nPrefix}.uploadFailed`)
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installComplete`, { ns: 'plugin' })
+      return t(`${i18nPrefix}.installComplete`)
 
-    return t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
+    return t(`${i18nPrefix}.installPlugin`)
   }, [step, t])
 
   return (

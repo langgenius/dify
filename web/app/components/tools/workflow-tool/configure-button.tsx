@@ -166,7 +166,7 @@ const WorkflowToolConfigureButton = ({
       getDetail(workflowAppId)
       Toast.notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       setShowModal(false)
     }
@@ -187,7 +187,7 @@ const WorkflowToolConfigureButton = ({
       getDetail(workflowAppId)
       Toast.notify({
         type: 'success',
-        message: t('api.actionSuccess', { ns: 'common' }),
+        message: t('common.api.actionSuccess'),
       })
       setShowModal(false)
     }
@@ -214,14 +214,14 @@ const WorkflowToolConfigureButton = ({
                 >
                   <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                   <div
-                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
+                    title={t('workflow.common.workflowAsTool') || ''}
                     className={cn('system-sm-medium shrink grow basis-0 truncate text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
                   >
-                    {t('common.workflowAsTool', { ns: 'workflow' })}
+                    {t('workflow.common.workflowAsTool')}
                   </div>
                   {!published && (
                     <span className="system-2xs-medium-uppercase shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary">
-                      {t('common.configureRequired', { ns: 'workflow' })}
+                      {t('workflow.common.configureRequired')}
                     </span>
                   )}
                 </div>
@@ -232,10 +232,10 @@ const WorkflowToolConfigureButton = ({
                 >
                   <RiHammerLine className="h-4 w-4 text-text-tertiary" />
                   <div
-                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
+                    title={t('workflow.common.workflowAsTool') || ''}
                     className="system-sm-medium shrink grow basis-0 truncate text-text-tertiary"
                   >
-                    {t('common.workflowAsTool', { ns: 'workflow' })}
+                    {t('workflow.common.workflowAsTool')}
                   </div>
                 </div>
               )}
@@ -253,7 +253,7 @@ const WorkflowToolConfigureButton = ({
                   onClick={() => setShowModal(true)}
                   disabled={!isCurrentWorkspaceManager || disabled}
                 >
-                  {t('common.configure', { ns: 'workflow' })}
+                  {t('workflow.common.configure')}
                   {outdated && <Indicator className="ml-1" color="yellow" />}
                 </Button>
                 <Button
@@ -262,13 +262,13 @@ const WorkflowToolConfigureButton = ({
                   onClick={() => router.push('/tools?category=workflow')}
                   disabled={disabled}
                 >
-                  {t('common.manageInTools', { ns: 'workflow' })}
+                  {t('workflow.common.manageInTools')}
                   <RiArrowRightUpLine className="ml-1 h-4 w-4" />
                 </Button>
               </div>
               {outdated && (
                 <div className="mt-1 text-xs leading-[18px] text-text-warning">
-                  {t('common.workflowAsToolTip', { ns: 'workflow' })}
+                  {t('workflow.common.workflowAsToolTip')}
                 </div>
               )}
             </div>

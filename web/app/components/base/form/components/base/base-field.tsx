@@ -120,7 +120,7 @@ const BaseField = ({
       help,
     ].map(v => getTranslatedContent({ content: v, render: renderI18nObject }))
     if (!results[1])
-      results[1] = t('placeholder.input', { ns: 'common' })
+      results[1] = t('common.placeholder.input')
     return results
   }, [label, placeholder, tooltip, description, help, renderI18nObject])
 
@@ -257,12 +257,12 @@ const BaseField = ({
                 disabled={disabled || isDynamicOptionsLoading}
                 placeholder={
                   isDynamicOptionsLoading
-                    ? t('dynamicSelect.loading', { ns: 'common' })
+                    ? t('common.dynamicSelect.loading')
                     : translatedPlaceholder
                 }
                 {...(dynamicOptionsError
-                  ? { popupProps: { title: t('dynamicSelect.error', { ns: 'common' }), titleClassName: 'text-text-destructive-secondary' } }
-                  : (!dynamicOptions.length ? { popupProps: { title: t('dynamicSelect.noData', { ns: 'common' }) } } : {}))}
+                  ? { popupProps: { title: t('common.dynamicSelect.error'), titleClassName: 'text-text-destructive-secondary' } }
+                  : (!dynamicOptions.length ? { popupProps: { title: t('common.dynamicSelect.noData') } } : {}))}
                 triggerPopupSameWidth
                 multiple={multiple}
               />

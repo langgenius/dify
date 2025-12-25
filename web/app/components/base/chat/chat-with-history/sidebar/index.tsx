@@ -113,7 +113,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
       <div className="shrink-0 px-3 py-4">
         <Button variant="secondary-accent" disabled={isResponding} className="w-full justify-center" onClick={handleNewConversation}>
           <RiEditBoxLine className="mr-1 h-4 w-4" />
-          {t('chat.newChat', { ns: 'share' })}
+          {t('share.chat.newChat')}
         </Button>
       </div>
       <div className="h-0 grow space-y-2 overflow-y-auto px-3 pt-4">
@@ -122,7 +122,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
           <div className="mb-4">
             <List
               isPin
-              title={t('chat.pinnedTitle', { ns: 'share' }) || ''}
+              title={t('share.chat.pinnedTitle') || ''}
               list={pinnedConversationList}
               onChangeConversation={handleChangeConversation}
               onOperate={handleOperate}
@@ -132,7 +132,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
         )}
         {!!conversationList.length && (
           <List
-            title={(pinnedConversationList.length && t('chat.unpinnedTitle', { ns: 'share' })) || ''}
+            title={(pinnedConversationList.length && t('share.chat.unpinnedTitle')) || ''}
             list={conversationList}
             onChangeConversation={handleChangeConversation}
             onOperate={handleOperate}
@@ -154,7 +154,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
               'flex shrink-0 items-center gap-1.5 px-1',
             )}
             >
-              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('share.chat.poweredBy')}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                   ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -167,8 +167,8 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
         </div>
         {!!showConfirm && (
           <Confirm
-            title={t('chat.deleteConversation.title', { ns: 'share' })}
-            content={t('chat.deleteConversation.content', { ns: 'share' }) || ''}
+            title={t('share.chat.deleteConversation.title')}
+            content={t('share.chat.deleteConversation.content') || ''}
             isShow
             onCancel={handleCancelConfirm}
             onConfirm={handleDelete}

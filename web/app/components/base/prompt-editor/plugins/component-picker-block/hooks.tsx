@@ -43,12 +43,12 @@ export const usePromptOptions = (
   const promptOptions: PickerBlockMenuOption[] = []
   if (contextBlock?.show) {
     promptOptions.push(new PickerBlockMenuOption({
-      key: t('promptEditor.context.item.title', { ns: 'common' }),
+      key: t('common.promptEditor.context.item.title'),
       group: 'prompt context',
       render: ({ isSelected, onSelect, onSetHighlight }) => {
         return (
           <PromptMenuItem
-            title={t('promptEditor.context.item.title', { ns: 'common' })}
+            title={t('common.promptEditor.context.item.title')}
             icon={<File05 className="h-4 w-4 text-[#6938EF]" />}
             disabled={!contextBlock.selectable}
             isSelected={isSelected}
@@ -68,12 +68,12 @@ export const usePromptOptions = (
   if (queryBlock?.show) {
     promptOptions.push(
       new PickerBlockMenuOption({
-        key: t('promptEditor.query.item.title', { ns: 'common' }),
+        key: t('common.promptEditor.query.item.title'),
         group: 'prompt query',
         render: ({ isSelected, onSelect, onSetHighlight }) => {
           return (
             <PromptMenuItem
-              title={t('promptEditor.query.item.title', { ns: 'common' })}
+              title={t('common.promptEditor.query.item.title')}
               icon={<UserEdit02 className="h-4 w-4 text-[#FD853A]" />}
               disabled={!queryBlock.selectable}
               isSelected={isSelected}
@@ -94,12 +94,12 @@ export const usePromptOptions = (
   if (historyBlock?.show) {
     promptOptions.push(
       new PickerBlockMenuOption({
-        key: t('promptEditor.history.item.title', { ns: 'common' }),
+        key: t('common.promptEditor.history.item.title'),
         group: 'prompt history',
         render: ({ isSelected, onSelect, onSetHighlight }) => {
           return (
             <PromptMenuItem
-              title={t('promptEditor.history.item.title', { ns: 'common' })}
+              title={t('common.promptEditor.history.item.title')}
               icon={<MessageClockCircle className="h-4 w-4 text-[#DD2590]" />}
               disabled={!historyBlock.selectable}
               isSelected={isSelected}
@@ -161,12 +161,12 @@ export const useVariableOptions = (
 
   const addOption = useMemo(() => {
     return new PickerBlockMenuOption({
-      key: t('promptEditor.variable.modal.add', { ns: 'common' }),
+      key: t('common.promptEditor.variable.modal.add'),
       group: 'prompt variable',
       render: ({ queryString, isSelected, onSelect, onSetHighlight }) => {
         return (
           <VariableMenuItem
-            title={t('promptEditor.variable.modal.add', { ns: 'common' })}
+            title={t('common.promptEditor.variable.modal.add')}
             icon={<BracketsX className="h-[14px] w-[14px] text-text-accent" />}
             queryString={queryString}
             isSelected={isSelected}
@@ -239,12 +239,12 @@ export const useExternalToolOptions = (
 
   const addOption = useMemo(() => {
     return new PickerBlockMenuOption({
-      key: t('promptEditor.variable.modal.addTool', { ns: 'common' }),
+      key: t('common.promptEditor.variable.modal.addTool'),
       group: 'external tool',
       render: ({ queryString, isSelected, onSelect, onSetHighlight }) => {
         return (
           <VariableMenuItem
-            title={t('promptEditor.variable.modal.addTool', { ns: 'common' })}
+            title={t('common.promptEditor.variable.modal.addTool')}
             icon={<Tool03 className="h-[14px] w-[14px] text-text-accent" />}
             extraElement={<ArrowUpRight className="h-3 w-3 text-text-tertiary" />}
             queryString={queryString}

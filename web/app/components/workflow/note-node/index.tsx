@@ -115,7 +115,7 @@ const NoteNode = ({
             >
               <NoteEditor
                 containerElement={ref.current}
-                placeholder={t('nodes.note.editor.placeholder', { ns: 'workflow' }) || ''}
+                placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
                 onChange={handleEditorChange}
                 setShortcutsEnabled={setShortcutsEnabled}
               />

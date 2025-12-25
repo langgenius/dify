@@ -83,7 +83,7 @@ const List = ({
         href={getMarketplaceUrl('', { category })}
         target="_blank"
       >
-        <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
+        <span>{t('plugin.findMoreInMarketplace')}</span>
         <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
       </Link>
     )
@@ -98,14 +98,14 @@ const List = ({
           className={cn('system-sm-medium sticky z-10 flex h-8 cursor-pointer justify-between px-4 py-1 text-text-primary', stickyClassName, !disableMaxWidth && maxWidthClassName)}
           onClick={handleHeadClick}
         >
-          <span>{t('fromMarketplace', { ns: 'plugin' })}</span>
+          <span>{t('plugin.fromMarketplace')}</span>
           <Link
             href={urlWithSearchText}
             target="_blank"
             className="flex items-center text-text-accent-light-mode-only"
             onClick={e => e.stopPropagation()}
           >
-            <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
+            <span>{t('plugin.searchInMarketplace')}</span>
             <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
           </Link>
         </div>
@@ -127,7 +127,7 @@ const List = ({
               className="system-sm-medium flex h-4 shrink-0 items-center text-text-accent-light-mode-only"
             >
               <RiSearchLine className="mr-0.5 h-3 w-3" />
-              <span>{t('searchInMarketplace', { ns: 'plugin' })}</span>
+              <span>{t('plugin.searchInMarketplace')}</span>
             </Link>
             <div className="h-[2px] w-[90px] bg-gradient-to-l from-[rgba(255,255,255,0.01)] to-[rgba(16,24,40,0.08)]"></div>
           </div>

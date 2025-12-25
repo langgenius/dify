@@ -60,7 +60,7 @@ const Item = ({
               size="small"
               onClick={() => handleNodeSelect(nodeId)}
             >
-              {t('common.jumpToNode', { ns: 'workflow' })}
+              {t('workflow.common.jumpToNode')}
             </Button>
             <div
               className={cn(

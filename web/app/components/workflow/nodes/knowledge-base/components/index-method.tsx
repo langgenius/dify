@@ -52,7 +52,7 @@ const IndexMethod = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('stepTwo.indexMode', { ns: 'datasetCreation' }),
+        title: t('datasetCreation.stepTwo.indexMode'),
       }}
     >
       <div className="space-y-1">
@@ -67,8 +67,8 @@ const IndexMethod = ({
               )}
             />
           )}
-          title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
-          description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
+          title={t('datasetCreation.stepTwo.qualified')}
+          description={t('datasetSettings.form.indexMethodHighQualityTip')}
           onClick={handleIndexMethodChange}
           isRecommended
           effectColor="orange"
@@ -87,15 +87,15 @@ const IndexMethod = ({
                   )}
                 />
               )}
-              title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
-              description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
+              title={t('datasetSettings.form.indexMethodEconomy')}
+              description={t('datasetSettings.form.indexMethodEconomyTip', { count: keywordNumber })}
               onClick={handleIndexMethodChange}
               effectColor="blue"
             >
               <div className="flex items-center">
                 <div className="flex grow items-center">
                   <div className="system-xs-medium truncate text-text-secondary">
-                    {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
+                    {t('datasetSettings.form.numberOfKeywords')}
                   </div>
                   <Tooltip
                     popupContent="number of keywords"

@@ -79,7 +79,7 @@ const VarItem: FC<Props> = ({
               ? (
                   <>
                     {payload.required && (
-                      <div className="mr-2 text-xs font-normal text-text-tertiary">{t('nodes.start.required', { ns: 'workflow' })}</div>
+                      <div className="mr-2 text-xs font-normal text-text-tertiary">{t('workflow.nodes.start.required')}</div>
                     )}
                     <InputVarTypeIcon type={payload.type} className="h-3.5 w-3.5 text-text-tertiary" />
                   </>

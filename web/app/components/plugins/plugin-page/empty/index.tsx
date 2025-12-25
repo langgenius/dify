@@ -42,23 +42,23 @@ const Empty = () => {
 
   const text = useMemo(() => {
     if (pluginList?.plugins.length === 0)
-      return t('list.noInstalled', { ns: 'plugin' })
+      return t('plugin.list.noInstalled')
     if (filters.categories.length > 0 || filters.tags.length > 0 || filters.searchQuery)
-      return t('list.notFound', { ns: 'plugin' })
+      return t('plugin.list.notFound')
   }, [pluginList?.plugins.length, t, filters.categories.length, filters.tags.length, filters.searchQuery])
 
   const [installMethods, setInstallMethods] = useState<InstallMethod[]>([])
   useEffect(() => {
     const methods = []
     if (enable_marketplace)
-      methods.push({ icon: MagicBox, text: t('source.marketplace', { ns: 'plugin' }), action: 'marketplace' })
+      methods.push({ icon: MagicBox, text: t('plugin.source.marketplace'), action: 'marketplace' })
 
     if (plugin_installation_permission.restrict_to_marketplace_only) {
       setInstallMethods(methods)
     }
     else {
-      methods.push({ icon: Github, text: t('source.github', { ns: 'plugin' }), action: 'github' })
-      methods.push({ icon: FileZip, text: t('source.local', { ns: 'plugin' }), action: 'local' })
+      methods.push({ icon: Github, text: t('plugin.source.github'), action: 'github' })
+      methods.push({ icon: FileZip, text: t('plugin.source.local'), action: 'local' })
       setInstallMethods(methods)
     }
   }, [plugin_installation_permission, enable_marketplace, t])

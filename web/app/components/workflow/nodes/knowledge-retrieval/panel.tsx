@@ -17,7 +17,7 @@ import MetadataFilter from './components/metadata/metadata-filter'
 import RetrievalConfig from './components/retrieval-config'
 import useConfig from './use-config'
 
-const i18nPrefix = 'nodes.knowledgeRetrieval'
+const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
 
 const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   id,
@@ -66,7 +66,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
   return (
     <div className="pt-2">
       <div className="space-y-4 px-4 pb-2">
-        <Field title={t(`${i18nPrefix}.queryText`, { ns: 'workflow' })}>
+        <Field title={t(`${i18nPrefix}.queryText`)}>
           <VarReferencePicker
             nodeId={id}
             readonly={readOnly}
@@ -78,7 +78,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         </Field>
 
         {showImageQueryVarSelector && (
-          <Field title={t(`${i18nPrefix}.queryAttachment`, { ns: 'workflow' })}>
+          <Field title={t(`${i18nPrefix}.queryAttachment`)}>
             <VarReferencePicker
               nodeId={id}
               readonly={readOnly}
@@ -91,7 +91,7 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
         )}
 
         <Field
-          title={t(`${i18nPrefix}.knowledge`, { ns: 'workflow' })}
+          title={t(`${i18nPrefix}.knowledge`)}
           required
           operations={(
             <div className="flex items-center space-x-1">
@@ -155,38 +155,38 @@ const Panel: FC<NodePanelProps<KnowledgeRetrievalNodeType>> = ({
             <VarItem
               name="result"
               type="Array[Object]"
-              description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
+              description={t(`${i18nPrefix}.outputVars.output`)}
               subItems={[
                 {
                   name: 'content',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.content`, { ns: 'workflow' }),
+                  description: t(`${i18nPrefix}.outputVars.content`),
                 },
                 // url, title, link like bing search reference result: link, link page title, link page icon
                 {
                   name: 'title',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.title`, { ns: 'workflow' }),
+                  description: t(`${i18nPrefix}.outputVars.title`),
                 },
                 {
                   name: 'url',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.url`, { ns: 'workflow' }),
+                  description: t(`${i18nPrefix}.outputVars.url`),
                 },
                 {
                   name: 'icon',
                   type: 'string',
-                  description: t(`${i18nPrefix}.outputVars.icon`, { ns: 'workflow' }),
+                  description: t(`${i18nPrefix}.outputVars.icon`),
                 },
                 {
                   name: 'metadata',
                   type: 'object',
-                  description: t(`${i18nPrefix}.outputVars.metadata`, { ns: 'workflow' }),
+                  description: t(`${i18nPrefix}.outputVars.metadata`),
                 },
                 {
                   name: 'files',
                   type: 'Array[File]',
-                  description: t(`${i18nPrefix}.outputVars.files`, { ns: 'workflow' }),
+                  description: t(`${i18nPrefix}.outputVars.files`),
                 },
               ]}
             />

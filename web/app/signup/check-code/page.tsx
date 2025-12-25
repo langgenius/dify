@@ -29,14 +29,14 @@ export default function CheckCode() {
       if (!code.trim()) {
         Toast.notify({
           type: 'error',
-          message: t('checkCode.emptyCode', { ns: 'login' }),
+          message: t('login.checkCode.emptyCode'),
         })
         return
       }
       if (!/\d{6}/.test(code)) {
         Toast.notify({
           type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
+          message: t('login.checkCode.invalidCode'),
         })
         return
       }
@@ -50,7 +50,7 @@ export default function CheckCode() {
       else {
         Toast.notify({
           type: 'error',
-          message: t('checkCode.invalidCode', { ns: 'login' }),
+          message: t('login.checkCode.invalidCode'),
         })
       }
     }
@@ -80,21 +80,21 @@ export default function CheckCode() {
         <RiMailSendFill className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('checkCode.checkYourEmail', { ns: 'login' })}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.checkCode.checkYourEmail')}</h2>
         <p className="body-md-regular mt-2 text-text-secondary">
           <span>
-            {t('checkCode.tipsPrefix', { ns: 'login' })}
+            {t('login.checkCode.tipsPrefix')}
             <strong>{email}</strong>
           </span>
           <br />
-          {t('checkCode.validTime', { ns: 'login' })}
+          {t('login.checkCode.validTime')}
         </p>
       </div>
 
       <form action="">
-        <label htmlFor="code" className="system-md-semibold mb-1 text-text-secondary">{t('checkCode.verificationCode', { ns: 'login' })}</label>
-        <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className="mt-1" placeholder={t('checkCode.verificationCodePlaceholder', { ns: 'login' }) as string} />
-        <Button loading={loading} disabled={loading} className="my-3 w-full" variant="primary" onClick={verify}>{t('checkCode.verify', { ns: 'login' })}</Button>
+        <label htmlFor="code" className="system-md-semibold mb-1 text-text-secondary">{t('login.checkCode.verificationCode')}</label>
+        <Input value={code} onChange={e => setVerifyCode(e.target.value)} maxLength={6} className="mt-1" placeholder={t('login.checkCode.verificationCodePlaceholder') as string} />
+        <Button loading={loading} disabled={loading} className="my-3 w-full" variant="primary" onClick={verify}>{t('login.checkCode.verify')}</Button>
         <Countdown onResend={resendCode} />
       </form>
       <div className="py-2">
@@ -104,7 +104,7 @@ export default function CheckCode() {
         <div className="bg-background-default-dimm inline-block rounded-full p-1">
           <RiArrowLeftLine size={12} />
         </div>
-        <span className="system-xs-regular ml-2">{t('back', { ns: 'login' })}</span>
+        <span className="system-xs-regular ml-2">{t('login.back')}</span>
       </div>
     </div>
   )

@@ -71,10 +71,10 @@ const SwitchCredentialInLoadBalancing = ({
           )
         }
         {
-          authRemoved && t('modelProvider.auth.authRemoved', { ns: 'common' })
+          authRemoved && t('common.modelProvider.auth.authRemoved')
         }
         {
-          (unavailable || empty) && t('auth.credentialUnavailableInButton', { ns: 'plugin' })
+          (unavailable || empty) && t('plugin.auth.credentialUnavailableInButton')
         }
         {
           !authRemoved && !unavailable && !empty && customModelCredential?.credential_name
@@ -91,7 +91,7 @@ const SwitchCredentialInLoadBalancing = ({
       return (
         <Tooltip
           asChild
-          popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}
+          popupContent={t('plugin.auth.credentialUnavailable')}
         >
           {Item}
         </Tooltip>
@@ -132,7 +132,7 @@ const SwitchCredentialInLoadBalancing = ({
       onItemClick={handleItemClick}
       enableAddModelCredential
       showItemSelectedIcon
-      popupTitle={t('modelProvider.auth.modelCredentials', { ns: 'common' })}
+      popupTitle={t('common.modelProvider.auth.modelCredentials')}
       triggerOnlyOpenModal={!credentials?.length}
     />
   )

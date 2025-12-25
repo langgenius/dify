@@ -1233,7 +1233,7 @@ export const toNodeAvailableVars = ({
         : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
-      title: t('nodes.iteration.currentIteration', { ns: 'workflow' }),
+      title: t('workflow.nodes.iteration.currentIteration'),
       vars: [
         {
           variable: 'item',

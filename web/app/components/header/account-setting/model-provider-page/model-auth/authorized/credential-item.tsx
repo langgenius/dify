@@ -96,7 +96,7 @@ const CredentialItem = ({
           <div className="ml-2 hidden shrink-0 items-center group-hover:flex">
             {
               !disableEdit && !credential.not_allowed_to_use && (
-                <Tooltip popupContent={t('operation.edit', { ns: 'common' })}>
+                <Tooltip popupContent={t('common.operation.edit')}>
                   <ActionButton
                     disabled={disabled}
                     onClick={(e) => {
@@ -111,7 +111,7 @@ const CredentialItem = ({
             }
             {
               !disableDelete && (
-                <Tooltip popupContent={disableDeleteWhenSelected ? disableDeleteTip : t('operation.delete', { ns: 'common' })}>
+                <Tooltip popupContent={disableDeleteWhenSelected ? disableDeleteTip : t('common.operation.delete')}>
                   <ActionButton
                     className="hover:bg-transparent"
                     onClick={(e) => {
@@ -139,7 +139,7 @@ const CredentialItem = ({
 
   if (credential.not_allowed_to_use) {
     return (
-      <Tooltip popupContent={t('auth.customCredentialUnavailable', { ns: 'plugin' })}>
+      <Tooltip popupContent={t('plugin.auth.customCredentialUnavailable')}>
         {Item}
       </Tooltip>
     )

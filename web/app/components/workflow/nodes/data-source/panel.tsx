@@ -61,7 +61,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             }}
             fieldProps={{
               fieldTitleProps: {
-                title: t('nodes.tool.inputVars', { ns: 'workflow' }),
+                title: t('workflow.nodes.tool.inputVars'),
               },
               supportCollapse: true,
             }}
@@ -90,7 +90,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
             }}
             fieldProps={{
               fieldTitleProps: {
-                title: t('nodes.dataSource.supportedFileFormats', { ns: 'workflow' }),
+                title: t('workflow.nodes.dataSource.supportedFileFormats'),
               },
             }}
           >
@@ -98,7 +98,7 @@ const Panel: FC<NodePanelProps<DataSourceNodeType>> = ({ id, data }) => {
               <TagInput
                 items={fileExtensions}
                 onChange={handleFileExtensionsChange}
-                placeholder={t('nodes.dataSource.supportedFileFormatsPlaceholder', { ns: 'workflow' })}
+                placeholder={t('workflow.nodes.dataSource.supportedFileFormatsPlaceholder')}
                 inputClassName="bg-transparent"
                 disableAdd={nodesReadOnly}
                 disableRemove={nodesReadOnly}

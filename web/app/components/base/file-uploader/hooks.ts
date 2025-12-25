@@ -60,8 +60,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         if (fileSize > imgSizeLimit) {
           notify({
             type: 'error',
-            message: t('fileUploader.uploadFromComputerLimit', {
-              ns: 'common',
+            message: t('common.fileUploader.uploadFromComputerLimit', {
               type: SupportUploadFileTypes.image,
               size: formatFileSize(imgSizeLimit),
             }),
@@ -75,8 +74,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         if (fileSize > docSizeLimit) {
           notify({
             type: 'error',
-            message: t('fileUploader.uploadFromComputerLimit', {
-              ns: 'common',
+            message: t('common.fileUploader.uploadFromComputerLimit', {
               type: SupportUploadFileTypes.document,
               size: formatFileSize(docSizeLimit),
             }),
@@ -89,8 +87,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         if (fileSize > audioSizeLimit) {
           notify({
             type: 'error',
-            message: t('fileUploader.uploadFromComputerLimit', {
-              ns: 'common',
+            message: t('common.fileUploader.uploadFromComputerLimit', {
               type: SupportUploadFileTypes.audio,
               size: formatFileSize(audioSizeLimit),
             }),
@@ -103,8 +100,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         if (fileSize > videoSizeLimit) {
           notify({
             type: 'error',
-            message: t('fileUploader.uploadFromComputerLimit', {
-              ns: 'common',
+            message: t('common.fileUploader.uploadFromComputerLimit', {
               type: SupportUploadFileTypes.video,
               size: formatFileSize(videoSizeLimit),
             }),
@@ -178,7 +174,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
           notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
@@ -225,7 +221,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
         url: res.url,
       }
       if (!isAllowedFileExtension(res.name, res.mime_type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-        notify({ type: 'error', message: `${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${newFile.type}` })
+        notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${newFile.type}` })
         handleRemoveFile(uploadingFile.id)
       }
       if (!checkSizeLimit(newFile.supportFileType, newFile.size))
@@ -233,7 +229,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
       else
         handleUpdateFile(newFile)
     }).catch(() => {
-      notify({ type: 'error', message: t('fileUploader.pasteFileLinkInvalid', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.fileUploader.pasteFileLinkInvalid') })
       handleRemoveFile(uploadingFile.id)
     })
   }, [checkSizeLimit, handleAddFile, handleUpdateFile, notify, t, handleRemoveFile, fileConfig?.allowed_file_types, fileConfig.allowed_file_extensions, startProgressTimer, params.token])
@@ -252,11 +248,11 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const handleLocalFileUpload = useCallback((file: File) => {
     // Check file upload enabled
     if (!noNeedToCheckEnable && !fileConfig.enabled) {
-      notify({ type: 'error', message: t('fileUploader.uploadDisabled', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.fileUploader.uploadDisabled') })
       return
     }
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
-      notify({ type: 'error', message: `${t('fileUploader.fileExtensionNotSupport', { ns: 'common' })} ${file.type}` })
+      notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${file.type}` })
       return
     }
     const allowedFileTypes = fileConfig.allowed_file_types
@@ -291,7 +287,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
             notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
@@ -302,7 +298,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
     reader.addEventListener(
       'error',
       () => {
-        notify({ type: 'error', message: t('fileUploader.uploadFromComputerReadError', { ns: 'common' }) })
+        notify({ type: 'error', message: t('common.fileUploader.uploadFromComputerReadError') })
       },
       false,
     )

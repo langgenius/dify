@@ -29,7 +29,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
           className="truncate text-[13px] text-text-tertiary"
           title="Configure model"
         >
-          {t('detailPanel.configureModel', { ns: 'plugin' })}
+          {t('plugin.detailPanel.configureModel')}
         </div>
       </div>
       <div className="flex h-4 w-4 shrink-0 items-center justify-center">

@@ -136,7 +136,7 @@ const Card = ({
         />
       </div>
       <div className="system-xs-medium flex h-4 items-center pl-3 text-text-tertiary">
-        {t('auth.connectedWorkspace', { ns: 'plugin' })}
+        {t('plugin.auth.connectedWorkspace')}
         <div className="ml-3 h-[1px] grow bg-divider-subtle"></div>
       </div>
       {
@@ -158,7 +158,7 @@ const Card = ({
         !credentials_list.length && (
           <div className="p-3 pt-1">
             <div className="system-xs-regular flex h-10 items-center justify-center rounded-[10px] bg-background-section text-text-tertiary">
-              {t('auth.emptyAuth', { ns: 'plugin' })}
+              {t('plugin.auth.emptyAuth')}
             </div>
           </div>
         )
@@ -167,7 +167,7 @@ const Card = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title={t('list.delete.title', { ns: 'datasetDocuments' })}
+            title={t('datasetDocuments.list.delete.title')}
             isDisabled={doingAction}
             onCancel={closeConfirm}
             onConfirm={handleConfirm}

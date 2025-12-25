@@ -58,12 +58,12 @@ const RetrievalSetting = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('form.retrievalSetting.title', { ns: 'datasetSettings' }),
+        title: t('datasetSettings.form.retrievalSetting.title'),
         subTitle: (
           <div className="body-xs-regular flex items-center text-text-tertiary">
-            <a target="_blank" rel="noopener noreferrer" href="https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings" className="text-text-accent">{t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}</a>
+            <a target="_blank" rel="noopener noreferrer" href="https://docs.dify.ai/guides/knowledge-base/create-knowledge-and-upload-documents#id-4-retrieval-settings" className="text-text-accent">{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
             &nbsp;
-            {t('nodes.knowledgeBase.aboutRetrieval', { ns: 'workflow' })}
+            {t('workflow.nodes.knowledgeBase.aboutRetrieval')}
           </div>
         ),
       }}

@@ -20,7 +20,7 @@ const SearchBox: React.FC<SearchBoxProps> = ({
       className="bg-components-input-bg-normal"
       showLeftIcon
       value={searchQuery}
-      placeholder={t('search', { ns: 'plugin' })}
+      placeholder={t('plugin.search')}
       onChange={(e) => {
         onChange(e.target.value)
       }}

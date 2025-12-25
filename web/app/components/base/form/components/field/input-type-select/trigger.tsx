@@ -29,7 +29,7 @@ const Trigger = ({
             </>
           )
         : (
-            <span className="grow p-1">{t('placeholder.select', { ns: 'common' })}</span>
+            <span className="grow p-1">{t('common.placeholder.select')}</span>
           )}
       <RiArrowDownSLine
         className={cn(

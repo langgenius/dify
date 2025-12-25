@@ -82,7 +82,7 @@ const ZoomInOut: FC = () => {
     [
       {
         key: ZoomType.zoomToFit,
-        text: t('operator.zoomToFit', { ns: 'workflow' }),
+        text: t('workflow.operator.zoomToFit'),
       },
     ],
   ]
@@ -142,7 +142,7 @@ const ZoomInOut: FC = () => {
           )}
           >
             <TipPopup
-              title={t('operator.zoomOut', { ns: 'workflow' })}
+              title={t('workflow.operator.zoomOut')}
               shortcuts={['ctrl', '-']}
             >
               <div
@@ -163,7 +163,7 @@ const ZoomInOut: FC = () => {
               %
             </div>
             <TipPopup
-              title={t('operator.zoomIn', { ns: 'workflow' })}
+              title={t('workflow.operator.zoomIn')}
               shortcuts={['ctrl', '+']}
             >
               <div

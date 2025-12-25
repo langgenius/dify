@@ -99,7 +99,7 @@ const FileUploadSetting: FC<Props> = ({
     <div>
       {!inFeaturePanel && (
         <Field
-          title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}
+          title={t('appDebug.variableConfig.file.supportFileTypes')}
         >
           <div className="space-y-1">
             {
@@ -123,12 +123,12 @@ const FileUploadSetting: FC<Props> = ({
         </Field>
       )}
       <Field
-        title={t('variableConfig.uploadFileTypes', { ns: 'appDebug' })}
+        title={t('appDebug.variableConfig.uploadFileTypes')}
         className="mt-4"
       >
         <div className="grid grid-cols-3 gap-2">
           <OptionCard
-            title={t('variableConfig.localUpload', { ns: 'appDebug' })}
+            title={t('appDebug.variableConfig.localUpload')}
             selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.local_file)}
             onSelect={handleUploadMethodChange(TransferMethod.local_file)}
           />
@@ -138,7 +138,7 @@ const FileUploadSetting: FC<Props> = ({
             onSelect={handleUploadMethodChange(TransferMethod.remote_url)}
           />
           <OptionCard
-            title={t('variableConfig.both', { ns: 'appDebug' })}
+            title={t('appDebug.variableConfig.both')}
             selected={allowed_file_upload_methods.includes(TransferMethod.local_file) && allowed_file_upload_methods.includes(TransferMethod.remote_url)}
             onSelect={handleUploadMethodChange(TransferMethod.all)}
           />
@@ -147,12 +147,11 @@ const FileUploadSetting: FC<Props> = ({
       {isMultiple && (
         <Field
           className="mt-4"
-          title={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
+          title={t('appDebug.variableConfig.maxNumberOfUploads')!}
         >
           <div>
             <div className="body-xs-regular mb-1.5 text-text-tertiary">
-              {t('variableConfig.maxNumberTip', {
-                ns: 'appDebug',
+              {t('appDebug.variableConfig.maxNumberTip', {
                 imgLimit: formatFileSize(imgSizeLimit),
                 docLimit: formatFileSize(docSizeLimit),
                 audioLimit: formatFileSize(audioSizeLimit),
@@ -171,7 +170,7 @@ const FileUploadSetting: FC<Props> = ({
       )}
       {inFeaturePanel && !hideSupportFileType && (
         <Field
-          title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}
+          title={t('appDebug.variableConfig.file.supportFileTypes')}
           className="mt-4"
         >
           <div className="space-y-1">

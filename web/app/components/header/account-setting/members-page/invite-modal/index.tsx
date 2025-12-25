@@ -74,7 +74,7 @@ const InviteModal = ({
       catch { }
     }
     else {
-      notify({ type: 'error', message: t('members.emailInvalid', { ns: 'common' }) })
+      notify({ type: 'error', message: t('common.members.emailInvalid') })
     }
     setIsSubmitted()
   }, [isLimitExceeded, emails, role, locale, onCancel, onSend, notify, t, isSubmitting])
@@ -83,10 +83,10 @@ const InviteModal = ({
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
         <div className="mb-2 flex justify-between">
-          <div className="text-xl font-semibold text-text-primary">{t('members.inviteTeamMember', { ns: 'common' })}</div>
+          <div className="text-xl font-semibold text-text-primary">{t('common.members.inviteTeamMember')}</div>
           <RiCloseLine className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
         </div>
-        <div className="mb-3 text-[13px] text-text-tertiary">{t('members.inviteTeamMemberTip', { ns: 'common' })}</div>
+        <div className="mb-3 text-[13px] text-text-tertiary">{t('common.members.inviteTeamMemberTip')}</div>
         {!isEmailSetup && (
           <div className="grow basis-0 overflow-y-auto pb-4">
             <div className="relative mb-1 rounded-xl border border-components-panel-border p-2 shadow-xs">
@@ -96,7 +96,7 @@ const InviteModal = ({
                   <RiErrorWarningFill className="h-5 w-5 text-text-warning" />
                 </div>
                 <div className="system-xs-medium text-text-primary">
-                  <span>{t('members.emailNotSetup', { ns: 'common' })}</span>
+                  <span>{t('common.members.emailNotSetup')}</span>
                 </div>
               </div>
             </div>
@@ -104,7 +104,7 @@ const InviteModal = ({
         )}
 
         <div>
-          <div className="mb-2 text-sm font-medium text-text-primary">{t('members.email', { ns: 'common' })}</div>
+          <div className="mb-2 text-sm font-medium text-text-primary">{t('common.members.email')}</div>
           <div className="mb-8 flex h-36 flex-col items-stretch">
             <ReactMultiEmail
               className={cn('h-full w-full border-components-input-border-active !bg-components-input-bg-normal px-3 pt-2 outline-none', 'appearance-none overflow-y-auto rounded-lg text-sm !text-text-primary')}
@@ -120,7 +120,7 @@ const InviteModal = ({
                   </span>
                 </div>
               )}
-              placeholder={t('members.emailPlaceholder', { ns: 'common' }) || ''}
+              placeholder={t('common.members.emailPlaceholder') || ''}
             />
             <div className={
               cn('system-xs-regular flex items-center justify-end text-text-tertiary', (isLimited && usedSize > licenseLimit.workspace_members.limit) ? 'text-text-destructive' : '')
@@ -128,7 +128,7 @@ const InviteModal = ({
             >
               <span>{usedSize}</span>
               <span>/</span>
-              <span>{isLimited ? licenseLimit.workspace_members.limit : t('license.unlimited', { ns: 'common' })}</span>
+              <span>{isLimited ? licenseLimit.workspace_members.limit : t('common.license.unlimited')}</span>
             </div>
           </div>
           <div className="mb-6">
@@ -141,7 +141,7 @@ const InviteModal = ({
             disabled={!emails.length || isLimitExceeded || isSubmitting}
             variant="primary"
           >
-            {t('members.sendInvite', { ns: 'common' })}
+            {t('common.members.sendInvite')}
           </Button>
         </div>
       </Modal>

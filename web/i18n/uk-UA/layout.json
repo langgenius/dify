@@ -1,4 +1,6 @@
 {
-  "sidebar.collapseSidebar": "Згорнути бічну панель",
-  "sidebar.expandSidebar": "Розгорнути бічну панель"
+  "sidebar": {
+    "collapseSidebar": "Згорнути бічну панель",
+    "expandSidebar": "Розгорнути бічну панель"
+  }
 }

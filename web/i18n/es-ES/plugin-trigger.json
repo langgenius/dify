@@ -1,114 +1,184 @@
 {
-  "events.actionNum": "{{num}} {{event}} INCLUIDO",
-  "events.description": "Eventos a los que este complemento de activación puede suscribirse",
-  "events.empty": "No hay eventos disponibles",
-  "events.event": "Evento",
-  "events.events": "Eventos",
-  "events.item.noParameters": "Sin parámetros",
-  "events.item.parameters": "parámetros {{count}}",
-  "events.output": "Salida",
-  "events.title": "Eventos Disponibles",
-  "modal.apiKey.configuration.description": "Configura los parámetros de tu suscripción",
-  "modal.apiKey.configuration.title": "Configurar suscripción",
-  "modal.apiKey.title": "Crear con clave API",
-  "modal.apiKey.verify.description": "Por favor, proporciona tus credenciales de API para verificar el acceso",
-  "modal.apiKey.verify.error": "La verificación de las credenciales falló. Por favor, revisa tu clave API.",
-  "modal.apiKey.verify.success": "Credenciales verificadas con éxito",
-  "modal.apiKey.verify.title": "Verificar credenciales",
-  "modal.common.authorize": "Autorizar",
-  "modal.common.authorizing": "Autorizando...",
-  "modal.common.back": "Atrás",
-  "modal.common.cancel": "Cancelar",
-  "modal.common.create": "Crear",
-  "modal.common.creating": "Creando...",
-  "modal.common.next": "Siguiente",
-  "modal.common.verify": "Verificar",
-  "modal.common.verifying": "Verificando...",
-  "modal.errors.authFailed": "Autorización fallida",
-  "modal.errors.createFailed": "No se pudo crear la suscripción",
-  "modal.errors.networkError": "Error de red, por favor intenta de nuevo",
-  "modal.errors.verifyFailed": "No se pudieron verificar las credenciales",
-  "modal.form.callbackUrl.description": "Esta URL recibirá eventos de webhook",
-  "modal.form.callbackUrl.label": "URL de retorno de llamada",
-  "modal.form.callbackUrl.placeholder": "Generando...",
-  "modal.form.callbackUrl.privateAddressWarning": "Esta URL parece ser una dirección interna, lo que puede hacer que las solicitudes del webhook fallen. Puede cambiar TRIGGER_URL a una dirección pública.",
-  "modal.form.callbackUrl.tooltip": "Proporcione un endpoint accesible públicamente que pueda recibir solicitudes de devolución de llamada del proveedor del activador.",
-  "modal.form.subscriptionName.label": "Nombre de la suscripción",
-  "modal.form.subscriptionName.placeholder": "Ingrese el nombre de la suscripción",
-  "modal.form.subscriptionName.required": "Se requiere el nombre de la suscripción",
-  "modal.manual.description": "Configura tu suscripción al webhook manualmente",
-  "modal.manual.logs.loading": "Esperando solicitud de {{pluginName}}...",
-  "modal.manual.logs.request": "Solicitud",
-  "modal.manual.logs.title": "Registros de solicitudes",
-  "modal.manual.title": "Configuración manual",
-  "modal.oauth.authorization.authFailed": "Error al obtener la información de autorización OAuth",
-  "modal.oauth.authorization.authSuccess": "Autorización exitosa",
-  "modal.oauth.authorization.authorizeButton": "Autorizar con {{provider}}",
-  "modal.oauth.authorization.description": "Autoriza a Dify para acceder a tu cuenta",
-  "modal.oauth.authorization.redirectUrl": "URL de redirección",
-  "modal.oauth.authorization.redirectUrlHelp": "Utiliza esta URL en la configuración de tu aplicación OAuth",
-  "modal.oauth.authorization.title": "Autorización OAuth",
-  "modal.oauth.authorization.waitingAuth": "Esperando autorización...",
-  "modal.oauth.authorization.waitingJump": "Autorizado, esperando para saltar",
-  "modal.oauth.configuration.description": "Configura los parámetros de tu suscripción después de la autorización",
-  "modal.oauth.configuration.failed": "La configuración de OAuth falló",
-  "modal.oauth.configuration.success": "Configuración de OAuth exitosa",
-  "modal.oauth.configuration.title": "Configurar suscripción",
-  "modal.oauth.remove.failed": "Error al eliminar OAuth",
-  "modal.oauth.remove.success": "Eliminación de OAuth exitosa",
-  "modal.oauth.save.success": "Configuración de OAuth guardada con éxito",
-  "modal.oauth.title": "Crear con OAuth",
-  "modal.oauthRedirectInfo": "Dado que no se encontraron secretos de cliente del sistema para este proveedor de herramientas, es necesario configurarlo manualmente; para redirect_uri, por favor use",
-  "modal.steps.configuration": "Configuración",
-  "modal.steps.verify": "Verificar",
-  "node.status.warning": "Desconectar",
-  "subscription.addType.description": "Elige cómo quieres crear tu suscripción de activador",
-  "subscription.addType.options.apikey.description": "Crear suscripción automáticamente usando credenciales de API",
-  "subscription.addType.options.apikey.title": "Crear con clave API",
-  "subscription.addType.options.manual.description": "Pega la URL para crear una nueva suscripción",
-  "subscription.addType.options.manual.tip": "Configurar la URL en la plataforma de terceros manualmente",
-  "subscription.addType.options.manual.title": "Configuración manual",
-  "subscription.addType.options.oauth.clientSettings": "Configuración del cliente OAuth",
-  "subscription.addType.options.oauth.clientTitle": "Cliente OAuth",
-  "subscription.addType.options.oauth.custom": "Personalizado",
-  "subscription.addType.options.oauth.default": "predeterminado",
-  "subscription.addType.options.oauth.description": "Autorizar con una plataforma de terceros para crear una suscripción",
-  "subscription.addType.options.oauth.title": "Crear con OAuth",
-  "subscription.addType.title": "Añadir suscripción",
-  "subscription.createButton.apiKey": "Nueva suscripción con clave API",
-  "subscription.createButton.manual": "Pega la URL para crear una nueva suscripción",
-  "subscription.createButton.oauth": "Nueva suscripción con OAuth",
-  "subscription.createFailed": "No se pudo crear la suscripción",
-  "subscription.createSuccess": "Suscripción creada con éxito",
-  "subscription.empty.button": "Nueva suscripción",
-  "subscription.empty.title": "Sin suscripciones",
-  "subscription.list.addButton": "Agregar",
-  "subscription.list.item.actions.delete": "Eliminar",
-  "subscription.list.item.actions.deleteConfirm.cancel": "Cancelar",
-  "subscription.list.item.actions.deleteConfirm.confirm": "Confirmar eliminación",
-  "subscription.list.item.actions.deleteConfirm.confirmInputPlaceholder": "Introduce \"{{name}}\" para confirmar.",
-  "subscription.list.item.actions.deleteConfirm.confirmInputTip": "Por favor, introduzca “{{name}}” para confirmar.",
-  "subscription.list.item.actions.deleteConfirm.confirmInputWarning": "Por favor, ingrese el nombre correcto para confirmar.",
-  "subscription.list.item.actions.deleteConfirm.content": "Una vez eliminada, esta suscripción no se puede recuperar. Por favor, confirme.",
-  "subscription.list.item.actions.deleteConfirm.contentWithApps": "La suscripción actual está referenciada por {{count}} aplicaciones. Eliminarla hará que las aplicaciones configuradas dejen de recibir eventos de suscripción.",
-  "subscription.list.item.actions.deleteConfirm.error": "Error al eliminar la suscripción {{name}}",
-  "subscription.list.item.actions.deleteConfirm.success": "Suscripción {{name}} eliminada con éxito",
-  "subscription.list.item.actions.deleteConfirm.title": "¿Eliminar {{name}}?",
-  "subscription.list.item.credentialType.api_key": "Clave de API",
-  "subscription.list.item.credentialType.oauth2": "OAuth",
-  "subscription.list.item.credentialType.unauthorized": "Manual",
-  "subscription.list.item.disabled": "Desactivado",
-  "subscription.list.item.enabled": "Habilitado",
-  "subscription.list.item.noUsed": "No se utilizó ningún flujo de trabajo",
-  "subscription.list.item.status.active": "activo",
-  "subscription.list.item.status.inactive": "inactivo",
-  "subscription.list.item.usedByNum": "Utilizado por {{num}} flujos de trabajo",
-  "subscription.list.tip": "Recibir eventos mediante suscripción",
-  "subscription.list.title": "Suscripciones",
-  "subscription.listNum": "suscripciones de {{num}}",
-  "subscription.maxCount": "Máximo {{num}} suscripciones",
-  "subscription.noSubscriptionSelected": "No se ha seleccionado ninguna suscripción",
-  "subscription.selectPlaceholder": "Seleccionar suscripción",
-  "subscription.subscriptionRemoved": "Suscripción eliminada",
-  "subscription.title": "Suscripciones"
+  "subscription": {
+    "title": "Suscripciones",
+    "listNum": "suscripciones de {{num}}",
+    "empty": {
+      "title": "Sin suscripciones",
+      "button": "Nueva suscripción"
+    },
+    "createButton": {
+      "oauth": "Nueva suscripción con OAuth",
+      "apiKey": "Nueva suscripción con clave API",
+      "manual": "Pega la URL para crear una nueva suscripción"
+    },
+    "createSuccess": "Suscripción creada con éxito",
+    "createFailed": "No se pudo crear la suscripción",
+    "maxCount": "Máximo {{num}} suscripciones",
+    "selectPlaceholder": "Seleccionar suscripción",
+    "noSubscriptionSelected": "No se ha seleccionado ninguna suscripción",
+    "subscriptionRemoved": "Suscripción eliminada",
+    "list": {
+      "title": "Suscripciones",
+      "addButton": "Agregar",
+      "tip": "Recibir eventos mediante suscripción",
+      "item": {
+        "enabled": "Habilitado",
+        "disabled": "Desactivado",
+        "credentialType": {
+          "api_key": "Clave de API",
+          "oauth2": "OAuth",
+          "unauthorized": "Manual"
+        },
+        "actions": {
+          "delete": "Eliminar",
+          "deleteConfirm": {
+            "title": "¿Eliminar {{name}}?",
+            "success": "Suscripción {{name}} eliminada con éxito",
+            "error": "Error al eliminar la suscripción {{name}}",
+            "content": "Una vez eliminada, esta suscripción no se puede recuperar. Por favor, confirme.",
+            "contentWithApps": "La suscripción actual está referenciada por {{count}} aplicaciones. Eliminarla hará que las aplicaciones configuradas dejen de recibir eventos de suscripción.",
+            "confirm": "Confirmar eliminación",
+            "cancel": "Cancelar",
+            "confirmInputWarning": "Por favor, ingrese el nombre correcto para confirmar.",
+            "confirmInputPlaceholder": "Introduce \"{{name}}\" para confirmar.",
+            "confirmInputTip": "Por favor, introduzca “{{name}}” para confirmar."
+          }
+        },
+        "status": {
+          "active": "activo",
+          "inactive": "inactivo"
+        },
+        "usedByNum": "Utilizado por {{num}} flujos de trabajo",
+        "noUsed": "No se utilizó ningún flujo de trabajo"
+      }
+    },
+    "addType": {
+      "title": "Añadir suscripción",
+      "description": "Elige cómo quieres crear tu suscripción de activador",
+      "options": {
+        "apikey": {
+          "title": "Crear con clave API",
+          "description": "Crear suscripción automáticamente usando credenciales de API"
+        },
+        "oauth": {
+          "title": "Crear con OAuth",
+          "description": "Autorizar con una plataforma de terceros para crear una suscripción",
+          "clientSettings": "Configuración del cliente OAuth",
+          "clientTitle": "Cliente OAuth",
+          "default": "predeterminado",
+          "custom": "Personalizado"
+        },
+        "manual": {
+          "title": "Configuración manual",
+          "description": "Pega la URL para crear una nueva suscripción",
+          "tip": "Configurar la URL en la plataforma de terceros manualmente"
+        }
+      }
+    }
+  },
+  "modal": {
+    "steps": {
+      "verify": "Verificar",
+      "configuration": "Configuración"
+    },
+    "common": {
+      "cancel": "Cancelar",
+      "back": "Atrás",
+      "next": "Siguiente",
+      "create": "Crear",
+      "verify": "Verificar",
+      "authorize": "Autorizar",
+      "creating": "Creando...",
+      "verifying": "Verificando...",
+      "authorizing": "Autorizando..."
+    },
+    "oauthRedirectInfo": "Dado que no se encontraron secretos de cliente del sistema para este proveedor de herramientas, es necesario configurarlo manualmente; para redirect_uri, por favor use",
+    "apiKey": {
+      "title": "Crear con clave API",
+      "verify": {
+        "title": "Verificar credenciales",
+        "description": "Por favor, proporciona tus credenciales de API para verificar el acceso",
+        "error": "La verificación de las credenciales falló. Por favor, revisa tu clave API.",
+        "success": "Credenciales verificadas con éxito"
+      },
+      "configuration": {
+        "title": "Configurar suscripción",
+        "description": "Configura los parámetros de tu suscripción"
+      }
+    },
+    "oauth": {
+      "title": "Crear con OAuth",
+      "authorization": {
+        "title": "Autorización OAuth",
+        "description": "Autoriza a Dify para acceder a tu cuenta",
+        "redirectUrl": "URL de redirección",
+        "redirectUrlHelp": "Utiliza esta URL en la configuración de tu aplicación OAuth",
+        "authorizeButton": "Autorizar con {{provider}}",
+        "waitingAuth": "Esperando autorización...",
+        "authSuccess": "Autorización exitosa",
+        "authFailed": "Error al obtener la información de autorización OAuth",
+        "waitingJump": "Autorizado, esperando para saltar"
+      },
+      "configuration": {
+        "title": "Configurar suscripción",
+        "description": "Configura los parámetros de tu suscripción después de la autorización",
+        "success": "Configuración de OAuth exitosa",
+        "failed": "La configuración de OAuth falló"
+      },
+      "remove": {
+        "success": "Eliminación de OAuth exitosa",
+        "failed": "Error al eliminar OAuth"
+      },
+      "save": {
+        "success": "Configuración de OAuth guardada con éxito"
+      }
+    },
+    "manual": {
+      "title": "Configuración manual",
+      "description": "Configura tu suscripción al webhook manualmente",
+      "logs": {
+        "title": "Registros de solicitudes",
+        "request": "Solicitud",
+        "loading": "Esperando solicitud de {{pluginName}}..."
+      }
+    },
+    "form": {
+      "subscriptionName": {
+        "label": "Nombre de la suscripción",
+        "placeholder": "Ingrese el nombre de la suscripción",
+        "required": "Se requiere el nombre de la suscripción"
+      },
+      "callbackUrl": {
+        "label": "URL de retorno de llamada",
+        "description": "Esta URL recibirá eventos de webhook",
+        "tooltip": "Proporcione un endpoint accesible públicamente que pueda recibir solicitudes de devolución de llamada del proveedor del activador.",
+        "placeholder": "Generando...",
+        "privateAddressWarning": "Esta URL parece ser una dirección interna, lo que puede hacer que las solicitudes del webhook fallen. Puede cambiar TRIGGER_URL a una dirección pública."
+      }
+    },
+    "errors": {
+      "createFailed": "No se pudo crear la suscripción",
+      "verifyFailed": "No se pudieron verificar las credenciales",
+      "authFailed": "Autorización fallida",
+      "networkError": "Error de red, por favor intenta de nuevo"
+    }
+  },
+  "events": {
+    "title": "Eventos Disponibles",
+    "description": "Eventos a los que este complemento de activación puede suscribirse",
+    "empty": "No hay eventos disponibles",
+    "event": "Evento",
+    "events": "Eventos",
+    "actionNum": "{{num}} {{event}} INCLUIDO",
+    "item": {
+      "parameters": "parámetros {{count}}",
+      "noParameters": "Sin parámetros"
+    },
+    "output": "Salida"
+  },
+  "node": {
+    "status": {
+      "warning": "Desconectar"
+    }
+  }
 }

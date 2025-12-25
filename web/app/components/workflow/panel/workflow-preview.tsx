@@ -119,7 +119,7 @@ const WorkflowPreview = () => {
               )}
               onClick={() => switchTab('INPUT')}
             >
-              {t('input', { ns: 'runLog' })}
+              {t('runLog.input')}
             </div>
           )}
           <div
@@ -134,7 +134,7 @@ const WorkflowPreview = () => {
               switchTab('RESULT')
             }}
           >
-            {t('result', { ns: 'runLog' })}
+            {t('runLog.result')}
           </div>
           <div
             className={cn(
@@ -148,7 +148,7 @@ const WorkflowPreview = () => {
               switchTab('DETAIL')
             }}
           >
-            {t('detail', { ns: 'runLog' })}
+            {t('runLog.detail')}
           </div>
           <div
             className={cn(
@@ -162,7 +162,7 @@ const WorkflowPreview = () => {
               switchTab('TRACING')
             }}
           >
-            {t('tracing', { ns: 'runLog' })}
+            {t('runLog.tracing')}
           </div>
         </div>
         <div className={cn(
@@ -191,11 +191,11 @@ const WorkflowPreview = () => {
                       copy(content)
                     else
                       copy(JSON.stringify(content))
-                    Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+                    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
                   }}
                 >
                   <RiClipboardLine className="h-3.5 w-3.5" />
-                  <div>{t('operation.copy', { ns: 'common' })}</div>
+                  <div>{t('common.operation.copy')}</div>
                 </Button>
               )}
             </>

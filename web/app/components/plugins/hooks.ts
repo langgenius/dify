@@ -61,7 +61,7 @@ export const useCategories = (translateFromOut?: TFunction, isSingle?: boolean) 
       if (category === PluginCategoryEnum.agent) {
         return {
           name: PluginCategoryEnum.agent,
-          label: isSingle ? t('categorySingle.agent', { ns: 'plugin' }) : t('category.agents', { ns: 'plugin' }),
+          label: isSingle ? t('plugin.categorySingle.agent') : t('plugin.category.agents'),
         }
       }
       return {
@@ -92,8 +92,8 @@ export const PLUGIN_PAGE_TABS_MAP = {
 export const usePluginPageTabs = () => {
   const { t } = useTranslation()
   const tabs = [
-    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('menus.plugins', { ns: 'common' }) },
-    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('menus.exploreMarketplace', { ns: 'common' }) },
+    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('common.menus.plugins') },
+    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('common.menus.exploreMarketplace') },
   ]
   return tabs
 }

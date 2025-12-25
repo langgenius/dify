@@ -14,14 +14,14 @@ const InfoPanel = () => {
         </div>
         <p className="flex flex-col items-start gap-2 self-stretch">
           <span className="system-xl-semibold self-stretch text-text-secondary">
-            {t('connectDatasetIntro.title', { ns: 'dataset' })}
+            {t('dataset.connectDatasetIntro.title')}
           </span>
           <span className="system-sm-regular text-text-tertiary">
-            {t('connectDatasetIntro.content.front', { ns: 'dataset' })}
+            {t('dataset.connectDatasetIntro.content.front')}
             <a className="system-sm-regular ml-1 text-text-accent" href={docLink('/guides/knowledge-base/external-knowledge-api')} target="_blank" rel="noopener noreferrer">
-              {t('connectDatasetIntro.content.link', { ns: 'dataset' })}
+              {t('dataset.connectDatasetIntro.content.link')}
             </a>
-            {t('connectDatasetIntro.content.end', { ns: 'dataset' })}
+            {t('dataset.connectDatasetIntro.content.end')}
           </span>
           <a
             className="system-sm-regular self-stretch text-text-accent"
@@ -29,7 +29,7 @@ const InfoPanel = () => {
             target="_blank"
             rel="noopener noreferrer"
           >
-            {t('connectDatasetIntro.learnMore', { ns: 'dataset' })}
+            {t('dataset.connectDatasetIntro.learnMore')}
           </a>
         </p>
       </div>

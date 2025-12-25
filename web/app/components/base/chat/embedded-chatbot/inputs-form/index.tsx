@@ -43,12 +43,12 @@ const InputsFormNode = ({
         )}
         >
           <Message3Fill className="h-6 w-6 shrink-0" />
-          <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
+          <div className="system-xl-semibold grow text-text-secondary">{t('share.chat.chatSettingsTitle')}</div>
           {collapsed && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
+            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('common.operation.edit')}</Button>
           )}
           {!collapsed && currentConversationId && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('operation.close', { ns: 'common' })}</Button>
+            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('common.operation.close')}</Button>
           )}
         </div>
         {!collapsed && (
@@ -70,7 +70,7 @@ const InputsFormNode = ({
                   : {}
               }
             >
-              {t('chat.startChat', { ns: 'share' })}
+              {t('share.chat.startChat')}
             </Button>
           </div>
         )}

@@ -161,7 +161,7 @@ const PipelineSettings = ({
   }
 
   if (isError)
-    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
+    return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
 
   return (
     <div
@@ -169,7 +169,7 @@ const PipelineSettings = ({
     >
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
-          <LeftHeader title={t('documentSettings.title', { ns: 'datasetPipeline' })} />
+          <LeftHeader title={t('datasetPipeline.documentSettings.title')} />
           <div className="grow overflow-y-auto">
             <ProcessDocuments
               ref={formRef}

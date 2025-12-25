@@ -232,7 +232,7 @@ const ConditionItem = ({
                               </div>
                             </div>
                           )
-                        : <div className="system-sm-regular text-left text-components-input-text-placeholder">{t('placeholder.select', { ns: 'common' })}</div>
+                        : <div className="system-sm-regular text-left text-components-input-text-placeholder">{t('common.placeholder.select')}</div>
                     )}
                     hideChecked
                   />

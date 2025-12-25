@@ -52,7 +52,7 @@ const TemplateCard = ({
     if (!pipelineTemplateInfo) {
       Toast.notify({
         type: 'error',
-        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+        message: t('datasetPipeline.creation.errorTip'),
       })
       return
     }
@@ -63,7 +63,7 @@ const TemplateCard = ({
       onSuccess: async (newDataset) => {
         Toast.notify({
           type: 'success',
-          message: t('creation.successTip', { ns: 'datasetPipeline' }),
+          message: t('datasetPipeline.creation.successTip'),
         })
         invalidDatasetList()
         if (newDataset.pipeline_id)
@@ -78,7 +78,7 @@ const TemplateCard = ({
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
+          message: t('datasetPipeline.creation.errorTip'),
         })
       },
     })
@@ -114,13 +114,13 @@ const TemplateCard = ({
         })
         Toast.notify({
           type: 'success',
-          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
+          message: t('datasetPipeline.exportDSL.successTip'),
         })
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
+          message: t('datasetPipeline.exportDSL.errorTip'),
         })
       },
     })
@@ -176,8 +176,8 @@ const TemplateCard = ({
       )}
       {showDeleteConfirm && (
         <Confirm
-          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
-          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
+          title={t('datasetPipeline.deletePipeline.title')}
+          content={t('datasetPipeline.deletePipeline.content')}
           isShow={showDeleteConfirm}
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}

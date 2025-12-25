@@ -41,7 +41,7 @@ const StartBlocks = ({
     const normalizedSearch = searchText.toLowerCase()
     const getDisplayName = (blockType: BlockEnum) => {
       if (blockType === BlockEnumValues.TriggerWebhook)
-        return t('customWebhook', { ns: 'workflow' })
+        return t('workflow.customWebhook')
 
       return t(`workflow.blocks.${blockType}` as any) as string
     }
@@ -82,7 +82,7 @@ const StartBlocks = ({
           />
           <div className="system-md-medium mb-1 text-text-primary">
             {block.type === BlockEnumValues.TriggerWebhook
-              ? t('customWebhook', { ns: 'workflow' })
+              ? t('workflow.customWebhook')
               : t(`workflow.blocks.${block.type}` as any) as string}
           </div>
           <div className="system-xs-regular text-text-secondary">
@@ -90,9 +90,9 @@ const StartBlocks = ({
           </div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className="system-xs-regular mb-1 mt-1 text-text-tertiary">
-              {t('author', { ns: 'tools' })}
+              {t('tools.author')}
               {' '}
-              {t('difyTeam', { ns: 'workflow' })}
+              {t('workflow.difyTeam')}
             </div>
           )}
         </div>
@@ -109,7 +109,7 @@ const StartBlocks = ({
         <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
           <span className="truncate">{t(`workflow.blocks.${block.type}` as any) as string}</span>
           {block.type === BlockEnumValues.Start && (
-            <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
+            <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{t('workflow.blocks.originalStartNode')}</span>
           )}
         </div>
       </div>

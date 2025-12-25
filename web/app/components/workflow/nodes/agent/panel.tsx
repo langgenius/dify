@@ -15,7 +15,7 @@ import Split from '../_base/components/split'
 import { AgentFeature } from './types'
 import useConfig from './use-config'
 
-const i18nPrefix = 'nodes.agent'
+const i18nPrefix = 'workflow.nodes.agent'
 
 export function strategyParamToCredientialForm(param: StrategyParamItem): CredentialFormSchema {
   return {
@@ -49,9 +49,9 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
     <div className="my-2">
       <Field
         required
-        title={t('nodes.agent.strategy.label', { ns: 'workflow' })}
+        title={t('workflow.nodes.agent.strategy.label')}
         className="px-4 py-2"
-        tooltip={t('nodes.agent.strategy.tooltip', { ns: 'workflow' })}
+        tooltip={t('workflow.nodes.agent.strategy.tooltip')}
       >
         <AgentStrategy
           strategy={inputs.agent_strategy_name
@@ -104,22 +104,22 @@ const AgentPanel: FC<NodePanelProps<AgentNodeType>> = (props) => {
           <VarItem
             name="text"
             type="String"
-            description={t(`${i18nPrefix}.outputVars.text`, { ns: 'workflow' })}
+            description={t(`${i18nPrefix}.outputVars.text`)}
           />
           <VarItem
             name="usage"
             type="object"
-            description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
+            description={t(`${i18nPrefix}.outputVars.usage`)}
           />
           <VarItem
             name="files"
             type="Array[File]"
-            description={t(`${i18nPrefix}.outputVars.files.title`, { ns: 'workflow' })}
+            description={t(`${i18nPrefix}.outputVars.files.title`)}
           />
           <VarItem
             name="json"
             type="Array[Object]"
-            description={t(`${i18nPrefix}.outputVars.json`, { ns: 'workflow' })}
+            description={t(`${i18nPrefix}.outputVars.json`)}
           />
           {outputSchema.map(({ name, type, description }) => (
             <VarItem

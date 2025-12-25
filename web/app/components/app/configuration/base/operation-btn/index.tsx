@@ -37,7 +37,7 @@ const OperationBtn: FC<IOperationBtnProps> = ({
         {iconMap[type]}
       </div>
       <div className="text-xs font-medium">
-        {actionName || t(`operation.${type}`, { ns: 'common' })}
+        {actionName || t(`common.operation.${type}`)}
       </div>
     </div>
   )

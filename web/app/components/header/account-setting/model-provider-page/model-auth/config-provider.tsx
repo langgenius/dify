@@ -37,7 +37,7 @@ const ConfigProvider = ({
   const notAllowCustomCredential = provider.allow_custom_token === false
 
   const renderTrigger = useCallback(() => {
-    const text = hasCredential ? t('operation.config', { ns: 'common' }) : t('operation.setup', { ns: 'common' })
+    const text = hasCredential ? t('common.operation.config') : t('common.operation.setup')
     const Item = (
       <Button
         className="flex grow"
@@ -55,7 +55,7 @@ const ConfigProvider = ({
       return (
         <Tooltip
           asChild
-          popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}
+          popupContent={t('plugin.auth.credentialUnavailable')}
         >
           {Item}
         </Tooltip>
@@ -71,7 +71,7 @@ const ConfigProvider = ({
       currentCustomConfigurationModelFixedFields={currentCustomConfigurationModelFixedFields}
       items={[
         {
-          title: t('modelProvider.auth.apiKeys', { ns: 'common' }),
+          title: t('common.modelProvider.auth.apiKeys'),
           credentials: available_credentials ?? [],
           selectedCredential: {
             credential_id: current_credential_id ?? '',
