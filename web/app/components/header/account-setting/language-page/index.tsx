@@ -1,6 +1,7 @@
 'use client'
 
 import type { Item } from '@/app/components/base/select'
+import type { Locale } from '@/i18n-config'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -32,7 +33,7 @@ export default function LanguagePage() {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
       notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
 
-      setLocaleOnClient(item.value.toString())
+      setLocaleOnClient(item.value.toString() as Locale)
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })

@@ -141,7 +141,7 @@ const RuleDetail: FC<{
       <FieldInfo
         label={t('datasetSettings.form.retrievalSetting.title')}
         // displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
-        displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
+        displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title` as any) as string}
         valueIcon={(
           <Image
             className="size-4"

@@ -1,5 +1,5 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import {
   useCallback,
   useState,

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { RiAlertFill } from '@remixicon/react'
-import { camelCase } from 'lodash-es'
+import { camelCase } from 'es-toolkit/compat'
 import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -82,7 +82,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   ),
                 }}
                 values={{
-                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`),
+                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string,
                   alternativePluginId,
                 }}
               />
@@ -91,7 +91,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           {
             hasValidDeprecatedReason && !alternativePluginId && (
               <span>
-                {t(`${i18nPrefix}.onlyReason`, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`) })}
+                {t(`${i18nPrefix}.onlyReason` as any, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string }) as string}
               </span>
             )
           }

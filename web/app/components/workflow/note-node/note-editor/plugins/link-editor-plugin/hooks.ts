@@ -5,11 +5,11 @@ import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext
 import {
   mergeRegister,
 } from '@lexical/utils'
+import { escape } from 'es-toolkit/compat'
 import {
   CLICK_COMMAND,
   COMMAND_PRIORITY_LOW,
 } from 'lexical'
-import { escape } from 'lodash-es'
 import {
   useCallback,
   useEffect,

@@ -78,6 +78,7 @@ const translation = {
     pathParams: 'パスパラメータ',
     query: 'クエリ',
     toc: '内容',
+    noContent: 'コンテンツなし',
   },
   regenerate: '再生',
 }

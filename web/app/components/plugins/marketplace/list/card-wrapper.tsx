@@ -1,5 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { Locale } from '@/i18n-config'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
@@ -17,7 +18,7 @@ import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '..
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
-  locale?: string
+  locale?: Locale
 }
 const CardWrapperComponent = ({
   plugin,
