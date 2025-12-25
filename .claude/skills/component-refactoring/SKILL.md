@@ -1,43 +1,35 @@
 ---
 name: component-refactoring
-description: Guidelines for refactoring high-complexity React components in Dify frontend. Triggers on complexity reduction, code splitting, hook extraction, or refactoring requests for components with complexity > 50.
+description: Refactor high-complexity React components in Dify frontend. Use when `pnpm analyze-component --json` shows complexity > 50 or lineCount > 300, when the user asks for code splitting, hook extraction, or complexity reduction, or when `pnpm analyze-component` warns to refactor before testing; avoid for simple/well-structured components, third-party wrappers, or when the user explicitly wants testing without refactoring.
 ---
 
 # Dify Component Refactoring Skill
 
-This skill provides guidelines for refactoring high-complexity React components in the Dify frontend codebase.
+Refactor high-complexity React components in the Dify frontend codebase with the patterns and workflow below.
 
 > **Complexity Threshold**: Components with complexity > 50 (measured by `pnpm analyze-component`) should be refactored before testing.
 
-## When to Apply This Skill
-
-Apply this skill when:
-
-- Component complexity score > 50 (from `pnpm analyze-component --json`)
-- Component line count > 300
-- User requests to refactor a complex component
-- User mentions code splitting, hook extraction, or complexity reduction
-- Test generation suggests refactoring first
-
-**Do NOT apply** when:
-
-- Component is simple and well-structured
-- User explicitly wants to test without refactoring
-- Component is a third-party wrapper
-
 ## Quick Reference
 
-### Commands
+### Commands (run from `web/`)
+
+Use paths relative to `web/` (e.g., `app/components/...`).
+Use `refactor-component` for refactoring prompts and `analyze-component` for testing prompts and metrics.
 
 ```bash
-# Generate refactoring prompt for AI assistant
+cd web
+
+# Generate refactoring prompt
 pnpm refactor-component <path>
 
-# Output analysis as JSON
+# Output refactoring analysis as JSON
 pnpm refactor-component <path> --json
 
-# Analyze for testing (after refactoring)
+# Generate testing prompt (after refactoring)
 pnpm analyze-component <path>
+
+# Output testing analysis as JSON
+pnpm analyze-component <path> --json
 ```
 
 ### Complexity Analysis
@@ -408,7 +400,7 @@ Create a refactoring plan based on detected features:
 ### Step 4: Execute Incrementally
 
 1. **Extract one piece at a time**
-2. **Run tests after each extraction**
+2. **Run lint, type-check, and tests after each extraction**
 3. **Verify functionality before next step**
 
 ```
@@ -417,8 +409,9 @@ For each extraction:
   │ 1. Extract code                        │
   │ 2. Run: pnpm lint:fix                  │
   │ 3. Run: pnpm type-check:tsgo           │
-  │ 4. Test functionality manually         │
-  │ 5. PASS? → Next extraction             │
+  │ 4. Run: pnpm test                      │
+  │ 5. Test functionality manually         │
+  │ 6. PASS? → Next extraction             │
   │    FAIL? → Fix before continuing       │
   └────────────────────────────────────────┘
 ```
