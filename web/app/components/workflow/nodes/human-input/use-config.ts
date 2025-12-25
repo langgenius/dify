@@ -1,5 +1,6 @@
 import type { DeliveryMethod, HumanInputNodeType, UserAction } from './types'
 import { produce } from 'immer'
+import { useState } from 'react'
 import {
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
@@ -10,6 +11,7 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const { inputs, setInputs } = useNodeCrud<HumanInputNodeType>(id, payload)
   const formContentHook = useFormContent(id, payload)
+  const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
 
   const handleDeliveryMethodChange = (methods: DeliveryMethod[]) => {
     setInputs({
@@ -60,6 +62,8 @@ const useConfig = (id: string, payload: HumanInputNodeType) => {
     handleUserActionChange,
     handleUserActionDelete,
     handleTimeoutChange,
+    structuredOutputCollapsed,
+    setStructuredOutputCollapsed,
     ...formContentHook,
   }
 }

@@ -2,6 +2,7 @@
 import type { LexicalCommand } from 'lexical'
 import type { FC } from 'react'
 import type { FormInputItem } from '../types'
+import type { Node, NodeOutPutVar } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
@@ -12,7 +13,6 @@ import { cn } from '@/utils/classnames'
 import { useWorkflowVariableType } from '../../../hooks'
 import { BlockEnum } from '../../../types'
 import { isMac } from '../../../utils'
-import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import AddInputField from './add-input-field'
 
 type FormContentProps = {
@@ -25,6 +25,8 @@ type FormContentProps = {
   onFormInputItemRemove: (varName: string) => void
   editorKey: number
   isExpand: boolean
+  availableVars: NodeOutPutVar[]
+  availableNodes: Node[]
 }
 
 const Key: FC<{ children: React.ReactNode, className?: string }> = ({ children, className }) => {
@@ -45,16 +47,10 @@ const FormContent: FC<FormContentProps> = ({
   onFormInputItemRemove,
   editorKey,
   isExpand,
+  availableVars,
+  availableNodes,
 }) => {
   const { t } = useTranslation()
-  const filterVar = () => true
-  const {
-    availableVars,
-    availableNodesWithParent: availableNodes,
-  } = useAvailableVarList(nodeId, {
-    onlyLeafNodeVar: false,
-    filterVar,
-  })
 
   const getVarType = useWorkflowVariableType()
 

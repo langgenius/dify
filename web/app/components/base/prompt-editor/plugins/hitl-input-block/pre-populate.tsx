@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import type { ValueSelector } from '@/app/components/workflow/types'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import Textarea from '../../../textarea'
 import TagLabel from './tag-label'
@@ -76,6 +77,9 @@ const PrePopulate: FC<Props> = ({
     onChange: onValueSelectorChange!,
     readonly: false,
     zIndex: 1000000, // bigger than shortcut plugin popup
+    filterVar: (varPayload: Var) => {
+      return [VarType.string, VarType.number, VarType.secret].includes(varPayload.type)
+    },
   }
 
   const isShowPlaceholder = !onPlaceholderClicked && (isVariable ? (!valueSelector || valueSelector.length === 0) : !value)

@@ -17,6 +17,8 @@ import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
+import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { useStore } from '@/app/components/workflow/store'
 import { VarType } from '@/app/components/workflow/types'
@@ -49,6 +51,8 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     handleFormInputItemRename,
     handleFormInputItemRemove,
     editorKey,
+    structuredOutputCollapsed,
+    setStructuredOutputCollapsed,
   } = useConfig(id, data)
 
   const { availableVars, availableNodesWithParent } = useAvailableVarList(id, {
@@ -122,6 +126,8 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           onFormInputItemRename={handleFormInputItemRename}
           onFormInputItemRemove={handleFormInputItemRemove}
           isExpand={isExpandFormContent}
+          availableVars={availableVars}
+          availableNodes={availableNodesWithParent}
         />
       </div>
       {/* user actions */}
@@ -154,7 +160,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           <div className="space-y-2">
             {inputs.user_actions.map((action, index) => (
               <UserActionItem
-                key={index}
+                key={action.id}
                 data={action}
                 onChange={data => handleUserActionChange(index, data)}
                 onDelete={handleUserActionDelete}
@@ -175,6 +181,23 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           onChange={handleTimeoutChange}
         />
       </div>
+      {/* output vars */}
+      <Split />
+      <OutputVars
+        collapsed={structuredOutputCollapsed}
+        onCollapse={setStructuredOutputCollapsed}
+      >
+        {
+          inputs.inputs.map(input => (
+            <VarItem
+              key={input.output_variable_name}
+              name={input.output_variable_name}
+              type={VarType.string}
+              description="Form input value"
+            />
+          ))
+        }
+      </OutputVars>
 
       {isPreview && (
         <FormContentPreview
