@@ -11,18 +11,16 @@ import { i18n } from '.'
 
 // https://locize.com/blog/next-13-app-dir-i18n/
 const initI18next = async (lng: Locale, ns: Namespace) => {
-  const camelNs = camelCase(ns) as KeyPrefix
   const i18nInstance = createInstance()
   await i18nInstance
     .use(initReactI18next)
     .use(resourcesToBackend((language: Locale, namespace: string) => {
-      const kebabNs = namespace.replace(/[A-Z]/g, m => `-${m.toLowerCase()}`)
-      return import(`../i18n/${language}/${kebabNs}.json`)
+      return import(`../i18n/${language}/${namespace}.json`)
     }))
     .init({
       lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
-      ns: camelNs,
-      defaultNS: camelNs,
+      ns,
+      defaultNS: ns,
       fallbackLng: 'en-US',
     })
   return i18nInstance
