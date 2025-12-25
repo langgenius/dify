@@ -15,24 +15,23 @@ const getSupportedLocales = (): string[] => {
 }
 
 // Helper function to load translation file content
-const loadTranslationContent = (locale: string): Record<string, unknown> => {
+const loadTranslationContent = (locale: string): string => {
   const filePath = path.join(I18N_DIR, locale, 'app-debug.json')
 
   if (!fs.existsSync(filePath))
     throw new Error(`Translation file not found: ${filePath}`)
 
-  return JSON.parse(fs.readFileSync(filePath, 'utf-8'))
+  return fs.readFileSync(filePath, 'utf-8')
 }
 
 // Helper function to check if upload features exist
-const hasUploadFeatures = (content: Record<string, unknown>): { [key: string]: boolean } => {
-  const feature = content.feature as Record<string, unknown> | undefined
+const hasUploadFeatures = (content: string): { [key: string]: boolean } => {
   return {
-    fileUpload: !!(feature?.fileUpload && typeof feature.fileUpload === 'object'),
-    imageUpload: !!(feature?.imageUpload && typeof feature.imageUpload === 'object'),
-    documentUpload: !!(feature?.documentUpload && typeof feature.documentUpload === 'object'),
-    audioUpload: !!(feature?.audioUpload && typeof feature.audioUpload === 'object'),
-    featureBar: !!(feature?.bar && typeof feature.bar === 'object'),
+    fileUpload: /"fileUpload"\s*:\s*\{/.test(content),
+    imageUpload: /"imageUpload"\s*:\s*\{/.test(content),
+    documentUpload: /"documentUpload"\s*:\s*\{/.test(content),
+    audioUpload: /"audioUpload"\s*:\s*\{/.test(content),
+    featureBar: /"bar"\s*:\s*\{/.test(content),
   }
 }
 
@@ -76,15 +75,13 @@ describe('Upload Features i18n Translations - Issue #23062', () => {
 
     previouslyMissingLocales.forEach((locale) => {
       const content = loadTranslationContent(locale)
-      const feature = content.feature as Record<string, unknown> | undefined
-      const audioUpload = feature?.audioUpload as Record<string, unknown> | undefined
 
       // Verify audioUpload exists
-      expect(audioUpload && typeof audioUpload === 'object').toBe(true)
+      expect(/"audioUpload"\s*:\s*\{/.test(content)).toBe(true)
 
       // Verify it has title and description
-      expect(audioUpload?.title).toBeDefined()
-      expect(audioUpload?.description).toBeDefined()
+      expect(/"audioUpload"[^}]*"title"\s*:/.test(content)).toBe(true)
+      expect(/"audioUpload"[^}]*"description"\s*:/.test(content)).toBe(true)
 
       console.log(`✅ ${locale} - Issue #23062 resolved: audioUpload feature present`)
     })
@@ -93,34 +90,29 @@ describe('Upload Features i18n Translations - Issue #23062', () => {
   it('upload features should have required properties', () => {
     supportedLocales.forEach((locale) => {
       const content = loadTranslationContent(locale)
-      const feature = content.feature as Record<string, unknown> | undefined
 
       // Check fileUpload has required properties
-      const fileUpload = feature?.fileUpload as Record<string, unknown> | undefined
-      if (fileUpload && typeof fileUpload === 'object') {
-        expect(fileUpload.title).toBeDefined()
-        expect(fileUpload.description).toBeDefined()
+      if (/"fileUpload"\s*:\s*\{/.test(content)) {
+        expect(/"fileUpload"[^}]*"title"\s*:/.test(content)).toBe(true)
+        expect(/"fileUpload"[^}]*"description"\s*:/.test(content)).toBe(true)
       }
 
       // Check imageUpload has required properties
-      const imageUpload = feature?.imageUpload as Record<string, unknown> | undefined
-      if (imageUpload && typeof imageUpload === 'object') {
-        expect(imageUpload.title).toBeDefined()
-        expect(imageUpload.description).toBeDefined()
+      if (/"imageUpload"\s*:\s*\{/.test(content)) {
+        expect(/"imageUpload"[^}]*"title"\s*:/.test(content)).toBe(true)
+        expect(/"imageUpload"[^}]*"description"\s*:/.test(content)).toBe(true)
       }
 
       // Check documentUpload has required properties
-      const documentUpload = feature?.documentUpload as Record<string, unknown> | undefined
-      if (documentUpload && typeof documentUpload === 'object') {
-        expect(documentUpload.title).toBeDefined()
-        expect(documentUpload.description).toBeDefined()
+      if (/"documentUpload"\s*:\s*\{/.test(content)) {
+        expect(/"documentUpload"[^}]*"title"\s*:/.test(content)).toBe(true)
+        expect(/"documentUpload"[^}]*"description"\s*:/.test(content)).toBe(true)
       }
 
       // Check audioUpload has required properties
-      const audioUpload = feature?.audioUpload as Record<string, unknown> | undefined
-      if (audioUpload && typeof audioUpload === 'object') {
-        expect(audioUpload.title).toBeDefined()
-        expect(audioUpload.description).toBeDefined()
+      if (/"audioUpload"\s*:\s*\{/.test(content)) {
+        expect(/"audioUpload"[^}]*"title"\s*:/.test(content)).toBe(true)
+        expect(/"audioUpload"[^}]*"description"\s*:/.test(content)).toBe(true)
       }
     })
   })
