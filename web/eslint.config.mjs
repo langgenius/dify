@@ -3,6 +3,7 @@ import antfu from '@antfu/eslint-config'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
+// import difyI18n from './eslint-rules/index.js'
 
 export default antfu(
   {
@@ -155,4 +156,15 @@ export default antfu(
       'tailwindcss/migration-from-tailwind-2': 'warn',
     },
   },
+  // dify i18n namespace migration
+  // {
+  //   files: ['**/*.ts', '**/*.tsx'],
+  //   ignores: ['eslint-rules/**', 'i18n/**', 'i18n-config/**'],
+  //   plugins: {
+  //     'dify-i18n': difyI18n,
+  //   },
+  //   rules: {
+  //     'dify-i18n/no-legacy-namespace-prefix': 'error',
+  //   },
+  // },
 )

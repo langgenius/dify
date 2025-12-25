@@ -1,25 +1,19 @@
 {
-  "tips": {
-    "notLoggedIn": "Este aplicativo quer acessar sua conta do Dify Cloud",
-    "loggedIn": "Este aplicativo quer acessar as seguintes informações da sua conta Dify Cloud.",
-    "common": "Respeitamos sua privacidade e usaremos essas informações apenas para melhorar sua experiência com nossas ferramentas de desenvolvedor.",
-    "needLogin": "Por favor, faça login para autorizar"
-  },
-  "scopes": {
-    "email": "Email",
-    "avatar": "Avatar",
-    "languagePreference": "Preferência de Idioma",
-    "timezone": "Fuso horário",
-    "name": "Nome"
-  },
-  "error": {
-    "authorizeFailed": "Autorização falhou",
-    "authAppInfoFetchFailed": "Falha ao buscar informações do aplicativo para autorização",
-    "invalidParams": "Parâmetros inválidos"
-  },
-  "login": "Entrar",
-  "switchAccount": "Mudar Conta",
-  "unknownApp": "Aplicativo Desconhecido",
+  "connect": "Conectar a",
   "continue": "Continue",
-  "connect": "Conectar a"
+  "error.authAppInfoFetchFailed": "Falha ao buscar informações do aplicativo para autorização",
+  "error.authorizeFailed": "Autorização falhou",
+  "error.invalidParams": "Parâmetros inválidos",
+  "login": "Entrar",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "Email",
+  "scopes.languagePreference": "Preferência de Idioma",
+  "scopes.name": "Nome",
+  "scopes.timezone": "Fuso horário",
+  "switchAccount": "Mudar Conta",
+  "tips.common": "Respeitamos sua privacidade e usaremos essas informações apenas para melhorar sua experiência com nossas ferramentas de desenvolvedor.",
+  "tips.loggedIn": "Este aplicativo quer acessar as seguintes informações da sua conta Dify Cloud.",
+  "tips.needLogin": "Por favor, faça login para autorizar",
+  "tips.notLoggedIn": "Este aplicativo quer acessar sua conta do Dify Cloud",
+  "unknownApp": "Aplicativo Desconhecido"
 }

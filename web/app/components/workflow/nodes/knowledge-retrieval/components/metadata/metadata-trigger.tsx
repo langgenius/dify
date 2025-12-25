@@ -46,7 +46,7 @@ const MetadataTrigger = ({
           size="small"
         >
           <RiFilter3Line className="mr-1 h-3.5 w-3.5" />
-          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.conditions')}
+          {t('nodes.knowledgeRetrieval.metadata.panel.conditions', { ns: 'workflow' })}
           <div className="system-2xs-medium-uppercase ml-1 flex items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary">
             {metadataFilteringConditions?.conditions.length || 0}
           </div>

@@ -1,29 +1,23 @@
 {
-  "input": "INPUT",
-  "result": "RESULT",
-  "detail": "DETAIL",
-  "tracing": "TRACING",
-  "resultPanel": {
-    "status": "STATUS",
-    "time": "ELAPSED TIME",
-    "tokens": "TOTAL TOKENS"
-  },
-  "meta": {
-    "title": "METADATA",
-    "status": "Status",
-    "version": "Version",
-    "executor": "Executor",
-    "startTime": "Start Time",
-    "time": "Elapsed Time",
-    "tokens": "Total Tokens",
-    "steps": "Run Steps"
-  },
-  "resultEmpty": {
-    "title": "This run only output JSON format,",
-    "tipLeft": "please go to the ",
-    "link": "detail panel",
-    "tipRight": " view it."
-  },
   "actionLogs": "Action Logs",
-  "circularInvocationTip": "There is circular invocation of tools/nodes in the current workflow."
+  "circularInvocationTip": "There is circular invocation of tools/nodes in the current workflow.",
+  "detail": "DETAIL",
+  "input": "INPUT",
+  "meta.executor": "Executor",
+  "meta.startTime": "Start Time",
+  "meta.status": "Status",
+  "meta.steps": "Run Steps",
+  "meta.time": "Elapsed Time",
+  "meta.title": "METADATA",
+  "meta.tokens": "Total Tokens",
+  "meta.version": "Version",
+  "result": "RESULT",
+  "resultEmpty.link": "detail panel",
+  "resultEmpty.tipLeft": "please go to the ",
+  "resultEmpty.tipRight": " view it.",
+  "resultEmpty.title": "This run only output JSON format,",
+  "resultPanel.status": "STATUS",
+  "resultPanel.time": "ELAPSED TIME",
+  "resultPanel.tokens": "TOTAL TOKENS",
+  "tracing": "TRACING"
 }

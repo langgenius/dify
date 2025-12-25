@@ -79,7 +79,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteApp(app.id)
-      notify({ type: 'success', message: t('app.appDeleted') })
+      notify({ type: 'success', message: t('appDeleted', { ns: 'app' }) })
       if (onRefresh)
         onRefresh()
       onPlanInfoChanged()
@@ -87,7 +87,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     catch (e: any) {
       notify({
         type: 'error',
-        message: `${t('app.appDeleteFailed')}${'message' in e ? `: ${e.message}` : ''}`,
+        message: `${t('appDeleteFailed', { ns: 'app' })}${'message' in e ? `: ${e.message}` : ''}`,
       })
     }
     setShowConfirmDelete(false)
@@ -116,7 +116,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setShowEditModal(false)
       notify({
         type: 'success',
-        message: t('app.editDone'),
+        message: t('editDone', { ns: 'app' }),
       })
       if (onRefresh)
         onRefresh()
@@ -124,7 +124,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     catch (e: any) {
       notify({
         type: 'error',
-        message: e.message || t('app.editFailed'),
+        message: e.message || t('editFailed', { ns: 'app' }),
       })
     }
   }, [app.id, notify, onRefresh, t])
@@ -142,7 +142,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setShowDuplicateModal(false)
       notify({
         type: 'success',
-        message: t('app.newApp.appCreated'),
+        message: t('newApp.appCreated', { ns: 'app' }),
       })
       localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
       if (onRefresh)
@@ -151,7 +151,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       getRedirection(isCurrentWorkspaceEditor, newApp, push)
     }
     catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
   }
 
@@ -170,7 +170,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       URL.revokeObjectURL(url)
     }
     catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
   }
 
@@ -189,7 +189,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       setSecretEnvList(list)
     }
     catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
   }
 
@@ -269,14 +269,14 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
     return (
       <div className="relative flex w-full flex-col py-1" onMouseLeave={onMouseLeave}>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickSettings}>
-          <span className="system-sm-regular text-text-secondary">{t('app.editApp')}</span>
+          <span className="system-sm-regular text-text-secondary">{t('editApp', { ns: 'app' })}</span>
         </button>
         <Divider className="my-1" />
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickDuplicate}>
-          <span className="system-sm-regular text-text-secondary">{t('app.duplicate')}</span>
+          <span className="system-sm-regular text-text-secondary">{t('duplicate', { ns: 'app' })}</span>
         </button>
         <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickExport}>
-          <span className="system-sm-regular text-text-secondary">{t('app.export')}</span>
+          <span className="system-sm-regular text-text-secondary">{t('export', { ns: 'app' })}</span>
         </button>
         {(app.mode === AppModeEnum.COMPLETION || app.mode === AppModeEnum.CHAT) && (
           <>
@@ -286,7 +286,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
               className="mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover"
               onClick={onClickSwitch}
             >
-              <span className="text-sm leading-5 text-text-secondary">{t('app.switch')}</span>
+              <span className="text-sm leading-5 text-text-secondary">{t('switch', { ns: 'app' })}</span>
             </button>
           </>
         )}
@@ -297,7 +297,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="system-sm-regular text-text-secondary">{t('app.openInExplore')}</span>
+                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -305,7 +305,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
                   <>
                     <Divider className="my-1" />
                     <button type="button" className="mx-1 flex h-8 cursor-pointer items-center gap-2 rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickInstalledApp}>
-                      <span className="system-sm-regular text-text-secondary">{t('app.openInExplore')}</span>
+                      <span className="system-sm-regular text-text-secondary">{t('openInExplore', { ns: 'app' })}</span>
                     </button>
                   </>
                 )
@@ -316,7 +316,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           systemFeatures.webapp_auth.enabled && isCurrentWorkspaceEditor && (
             <>
               <button type="button" className="mx-1 flex h-8 cursor-pointer items-center rounded-lg px-3 hover:bg-state-base-hover" onClick={onClickAccessControl}>
-                <span className="text-sm leading-5 text-text-secondary">{t('app.accessControl')}</span>
+                <span className="text-sm leading-5 text-text-secondary">{t('accessControl', { ns: 'app' })}</span>
               </button>
               <Divider className="my-1" />
             </>
@@ -328,7 +328,7 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           onClick={onClickDelete}
         >
           <span className="system-sm-regular text-text-secondary group-hover:text-text-destructive">
-            {t('common.operation.delete')}
+            {t('operation.delete', { ns: 'common' })}
           </span>
         </button>
       </div>
@@ -343,9 +343,9 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
   const EditTimeText = useMemo(() => {
     const timeText = formatTime({
       date: (app.updated_at || app.created_at) * 1000,
-      dateFormat: `${t('datasetDocuments.segment.dateTimeFormat')}`,
+      dateFormat: `${t('segment.dateTimeFormat', { ns: 'datasetDocuments' })}`,
     })
-    return `${t('datasetDocuments.segment.editedAt')} ${timeText}`
+    return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${timeText}`
   }, [app.updated_at, app.created_at])
 
   return (
@@ -380,22 +380,22 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
           </div>
           <div className="flex h-5 w-5 shrink-0 items-center justify-center">
             {app.access_mode === AccessMode.PUBLIC && (
-              <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.anyone')}>
+              <Tooltip asChild={false} popupContent={t('accessItemsDescription.anyone', { ns: 'app' })}>
                 <RiGlobalLine className="h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.specific')}>
+              <Tooltip asChild={false} popupContent={t('accessItemsDescription.specific', { ns: 'app' })}>
                 <RiLockLine className="h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.ORGANIZATION && (
-              <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.organization')}>
+              <Tooltip asChild={false} popupContent={t('accessItemsDescription.organization', { ns: 'app' })}>
                 <RiBuildingLine className="h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
             {app.access_mode === AccessMode.EXTERNAL_MEMBERS && (
-              <Tooltip asChild={false} popupContent={t('app.accessItemsDescription.external')}>
+              <Tooltip asChild={false} popupContent={t('accessItemsDescription.external', { ns: 'app' })}>
                 <RiVerifiedBadgeLine className="h-4 w-4 text-text-quaternary" />
               </Tooltip>
             )}
@@ -500,8 +500,8 @@ const AppCard = ({ app, onRefresh }: AppCardProps) => {
       )}
       {showConfirmDelete && (
         <Confirm
-          title={t('app.deleteAppConfirmTitle')}
-          content={t('app.deleteAppConfirmContent')}
+          title={t('deleteAppConfirmTitle', { ns: 'app' })}
+          content={t('deleteAppConfirmContent', { ns: 'app' })}
           isShow={showConfirmDelete}
           onConfirm={onConfirmDelete}
           onCancel={() => setShowConfirmDelete(false)}

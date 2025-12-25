@@ -20,7 +20,7 @@ type DeprecationNoticeProps = {
   textClassName?: string
 }
 
-const i18nPrefix = 'plugin.detailPanel.deprecation'
+const i18nPrefix = 'detailPanel.deprecation'
 
 const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   status,
@@ -97,7 +97,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           }
           {
             !hasValidDeprecatedReason && (
-              <span>{t(`${i18nPrefix}.noReason`)}</span>
+              <span>{t(`${i18nPrefix}.noReason`, { ns: 'plugin' })}</span>
             )
           }
         </div>

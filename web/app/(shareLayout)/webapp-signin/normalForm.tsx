@@ -60,8 +60,8 @@ const NormalForm = () => {
               <RiContractLine className="h-5 w-5" />
               <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('login.licenseLost')}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('login.licenseLostTip')}</p>
+            <p className="system-sm-medium text-text-primary">{t('licenseLost', { ns: 'login' })}</p>
+            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseLostTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -76,8 +76,8 @@ const NormalForm = () => {
               <RiContractLine className="h-5 w-5" />
               <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('login.licenseExpired')}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('login.licenseExpiredTip')}</p>
+            <p className="system-sm-medium text-text-primary">{t('licenseExpired', { ns: 'login' })}</p>
+            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseExpiredTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -92,8 +92,8 @@ const NormalForm = () => {
               <RiContractLine className="h-5 w-5" />
               <RiErrorWarningFill className="absolute -right-1 -top-1 h-4 w-4 text-text-warning-secondary" />
             </div>
-            <p className="system-sm-medium text-text-primary">{t('login.licenseInactive')}</p>
-            <p className="system-xs-regular mt-1 text-text-tertiary">{t('login.licenseInactiveTip')}</p>
+            <p className="system-sm-medium text-text-primary">{t('licenseInactive', { ns: 'login' })}</p>
+            <p className="system-xs-regular mt-1 text-text-tertiary">{t('licenseInactiveTip', { ns: 'login' })}</p>
           </div>
         </div>
       </div>
@@ -104,8 +104,8 @@ const NormalForm = () => {
     <>
       <div className="mx-auto mt-8 w-full">
         <div className="mx-auto w-full">
-          <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('login.pageTitleForE') : t('login.pageTitle')}</h2>
-          <p className="body-md-regular mt-2 text-text-tertiary">{t('login.welcome')}</p>
+          <h2 className="title-4xl-semi-bold text-text-primary">{systemFeatures.branding.enabled ? t('pageTitleForE', { ns: 'login' }) : t('pageTitle', { ns: 'login' })}</h2>
+          <p className="body-md-regular mt-2 text-text-tertiary">{t('welcome', { ns: 'login' })}</p>
         </div>
         <div className="relative">
           <div className="mt-6 flex flex-col gap-3">
@@ -122,7 +122,7 @@ const NormalForm = () => {
                 <div className="h-px w-full bg-gradient-to-r from-background-gradient-mask-transparent via-divider-regular to-background-gradient-mask-transparent"></div>
               </div>
               <div className="relative flex justify-center">
-                <span className="system-xs-medium-uppercase px-2 text-text-tertiary">{t('login.or')}</span>
+                <span className="system-xs-medium-uppercase px-2 text-text-tertiary">{t('or', { ns: 'login' })}</span>
               </div>
             </div>
           )}
@@ -134,7 +134,7 @@ const NormalForm = () => {
                     <MailAndCodeAuth />
                     {systemFeatures.enable_email_password_login && (
                       <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('password') }}>
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('login.usePassword')}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('usePassword', { ns: 'login' })}</span>
                       </div>
                     )}
                   </>
@@ -144,7 +144,7 @@ const NormalForm = () => {
                     <MailAndPasswordAuth isEmailSetup={systemFeatures.is_email_setup} />
                     {systemFeatures.enable_email_code_login && (
                       <div className="cursor-pointer py-1 text-center" onClick={() => { updateAuthType('code') }}>
-                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('login.useVerificationCode')}</span>
+                        <span className="system-xs-medium text-components-button-secondary-accent-text">{t('useVerificationCode', { ns: 'login' })}</span>
                       </div>
                     )}
                   </>
@@ -158,8 +158,8 @@ const NormalForm = () => {
                 <div className="shadows-shadow-lg mb-2 flex h-10 w-10 items-center justify-center rounded-xl bg-components-card-bg shadow">
                   <RiDoorLockLine className="h-5 w-5" />
                 </div>
-                <p className="system-sm-medium text-text-primary">{t('login.noLoginMethod')}</p>
-                <p className="system-xs-regular mt-1 text-text-tertiary">{t('login.noLoginMethodTip')}</p>
+                <p className="system-sm-medium text-text-primary">{t('noLoginMethod', { ns: 'login' })}</p>
+                <p className="system-xs-regular mt-1 text-text-tertiary">{t('noLoginMethodTip', { ns: 'login' })}</p>
               </div>
               <div className="relative my-2 py-2">
                 <div className="absolute inset-0 flex items-center" aria-hidden="true">
@@ -171,7 +171,7 @@ const NormalForm = () => {
           {!systemFeatures.branding.enabled && (
             <>
               <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
-                {t('login.tosDesc')}
+                {t('tosDesc', { ns: 'login' })}
               &nbsp;
                 <Link
                   className="system-xs-medium text-text-secondary hover:underline"
@@ -179,7 +179,7 @@ const NormalForm = () => {
                   rel="noopener noreferrer"
                   href="https://dify.ai/terms"
                 >
-                  {t('login.tos')}
+                  {t('tos', { ns: 'login' })}
                 </Link>
               &nbsp;&&nbsp;
                 <Link
@@ -188,18 +188,18 @@ const NormalForm = () => {
                   rel="noopener noreferrer"
                   href="https://dify.ai/privacy"
                 >
-                  {t('login.pp')}
+                  {t('pp', { ns: 'login' })}
                 </Link>
               </div>
               {IS_CE_EDITION && (
                 <div className="w-hull system-xs-regular mt-2 block text-text-tertiary">
-                  {t('login.goToInit')}
+                  {t('goToInit', { ns: 'login' })}
               &nbsp;
                   <Link
                     className="system-xs-medium text-text-secondary hover:underline"
                     href="/install"
                   >
-                    {t('login.setAdminAccount')}
+                    {t('setAdminAccount', { ns: 'login' })}
                   </Link>
                 </div>
               )}

@@ -25,9 +25,9 @@ const LongTimeRangePicker: FC<Props> = ({
   const handleSelect = React.useCallback((item: Item) => {
     const id = item.value
     const value = periodMapping[id]?.value ?? '-1'
-    const name = item.name || t('appLog.filter.period.allTime')
+    const name = item.name || t('filter.period.allTime', { ns: 'appLog' })
     if (value === -1) {
-      onSelect({ name: t('appLog.filter.period.allTime'), query: undefined })
+      onSelect({ name: t('filter.period.allTime', { ns: 'appLog' }), query: undefined })
     }
     else if (value === 0) {
       const startOfToday = today.startOf('day').format(queryDateFormat)

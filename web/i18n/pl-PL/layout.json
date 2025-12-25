@@ -1,6 +1,4 @@
 {
-  "sidebar": {
-    "expandSidebar": "Rozwiń pasek boczny",
-    "collapseSidebar": "Zwiń pasek boczny"
-  }
+  "sidebar.collapseSidebar": "Zwiń pasek boczny",
+  "sidebar.expandSidebar": "Rozwiń pasek boczny"
 }

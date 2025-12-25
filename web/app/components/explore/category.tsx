@@ -7,7 +7,11 @@ import { ThumbsUp } from '@/app/components/base/icons/src/vender/line/alertsAndF
 import exploreI18n from '@/i18n/en-US/explore.json'
 import { cn } from '@/utils/classnames'
 
-const categoryI18n = exploreI18n.category
+const categoryI18n = Object.fromEntries(
+  Object.entries(exploreI18n)
+    .filter(([key]) => key.startsWith('category.'))
+    .map(([key, value]) => [key.replace('category.', ''), value]),
+)
 
 export type ICategoryProps = {
   className?: string
@@ -42,7 +46,7 @@ const Category: FC<ICategoryProps> = ({
         onClick={() => onChange(allCategoriesEn)}
       >
         <ThumbsUp className="mr-1 h-3.5 w-3.5" />
-        {t('explore.apps.allCategories')}
+        {t('apps.allCategories', { ns: 'explore' })}
       </div>
       {list.filter(name => name !== allCategoriesEn).map(name => (
         <div

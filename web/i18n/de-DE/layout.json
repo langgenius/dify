@@ -1,6 +1,4 @@
 {
-  "sidebar": {
-    "collapseSidebar": "Seitenleiste einklappen",
-    "expandSidebar": "Seitenleiste erweitern"
-  }
+  "sidebar.collapseSidebar": "Seitenleiste einklappen",
+  "sidebar.expandSidebar": "Seitenleiste erweitern"
 }

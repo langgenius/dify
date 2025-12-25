@@ -5,7 +5,7 @@ import { BlockEnum } from '@/app/components/workflow/types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 import { VarType } from '../../types'
 
-const i18nPrefix = 'workflow'
+const i18nPrefix = ''
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Transform,
@@ -26,13 +26,13 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     const validateVariables = (variables: any[], field: string) => {
       variables.forEach((variable) => {
         if (!variable || variable.length === 0)
-          errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(field) })
+          errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(field) })
       })
     }
 
     if (group_enabled) {
       if (!groups || groups.length === 0) {
-        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
+        errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.variableAssigner.title`, { ns: 'workflow' }) })
       }
       else if (!errorMessages) {
         groups.forEach((group) => {
@@ -42,7 +42,7 @@ const nodeDefault: NodeDefault<VariableAssignerNodeType> = {
     }
     else {
       if (!variables || variables.length === 0)
-        errorMessages = t(`${i18nPrefix}.errorMsg.fieldRequired`, { field: t(`${i18nPrefix}.nodes.variableAssigner.title`) })
+        errorMessages = t(`${i18nPrefix}errorMsg.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}nodes.variableAssigner.title`, { ns: 'workflow' }) })
       else if (!errorMessages)
         validateVariables(variables, `${i18nPrefix}.errorMsg.fields.variableValue`)
     }

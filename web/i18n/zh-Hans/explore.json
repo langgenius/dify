@@ -1,42 +1,28 @@
 {
-  "title": "探索",
-  "sidebar": {
-    "discovery": "发现",
-    "chat": "智聊",
-    "workspace": "工作区",
-    "action": {
-      "pin": "置顶",
-      "unpin": "取消置顶",
-      "rename": "重命名",
-      "delete": "删除"
-    },
-    "delete": {
-      "title": "删除程序",
-      "content": "您确定要删除此程序吗？"
-    }
-  },
-  "apps": {
-    "title": "探索应用",
-    "description": "使用这些模板应用程序，或根据模板自定义您自己的应用程序。",
-    "allCategories": "推荐"
-  },
-  "appCard": {
-    "addToWorkspace": "添加到工作区",
-    "customize": "自定义"
-  },
-  "appCustomize": {
-    "title": "从 {{name}} 创建应用程序",
-    "subTitle": "应用程序图标和名称",
-    "nameRequired": "应用程序名称不能为空"
-  },
-  "category": {
-    "Agent": "Agent",
-    "Assistant": "助手",
-    "Writing": "写作",
-    "Translate": "翻译",
-    "Programming": "编程",
-    "HR": "人力资源",
-    "Workflow": "工作流",
-    "Entertainment": "娱乐"
-  }
+  "appCard.addToWorkspace": "添加到工作区",
+  "appCard.customize": "自定义",
+  "appCustomize.nameRequired": "应用程序名称不能为空",
+  "appCustomize.subTitle": "应用程序图标和名称",
+  "appCustomize.title": "从 {{name}} 创建应用程序",
+  "apps.allCategories": "推荐",
+  "apps.description": "使用这些模板应用程序，或根据模板自定义您自己的应用程序。",
+  "apps.title": "探索应用",
+  "category.Agent": "Agent",
+  "category.Assistant": "助手",
+  "category.Entertainment": "娱乐",
+  "category.HR": "人力资源",
+  "category.Programming": "编程",
+  "category.Translate": "翻译",
+  "category.Workflow": "工作流",
+  "category.Writing": "写作",
+  "sidebar.action.delete": "删除",
+  "sidebar.action.pin": "置顶",
+  "sidebar.action.rename": "重命名",
+  "sidebar.action.unpin": "取消置顶",
+  "sidebar.chat": "智聊",
+  "sidebar.delete.content": "您确定要删除此程序吗？",
+  "sidebar.delete.title": "删除程序",
+  "sidebar.discovery": "发现",
+  "sidebar.workspace": "工作区",
+  "title": "探索"
 }

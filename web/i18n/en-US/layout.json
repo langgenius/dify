@@ -1,6 +1,4 @@
 {
-  "sidebar": {
-    "expandSidebar": "Expand Sidebar",
-    "collapseSidebar": "Collapse Sidebar"
-  }
+  "sidebar.collapseSidebar": "Collapse Sidebar",
+  "sidebar.expandSidebar": "Expand Sidebar"
 }

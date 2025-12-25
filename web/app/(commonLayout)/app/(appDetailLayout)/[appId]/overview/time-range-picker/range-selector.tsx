@@ -42,7 +42,7 @@ const RangeSelector: FC<Props> = ({
   const renderTrigger = useCallback((item: Item | null, isOpen: boolean) => {
     return (
       <div className={cn('flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pl-3 pr-2', isOpen && 'bg-state-base-hover-alt')}>
-        <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('appLog.filter.period.custom') : item?.name}</div>
+        <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('filter.period.custom', { ns: 'appLog' }) : item?.name}</div>
         <RiArrowDownSLine className={cn('size-4 text-text-quaternary', isOpen && 'text-text-secondary')} />
       </div>
     )

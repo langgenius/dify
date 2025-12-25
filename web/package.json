@@ -181,6 +181,7 @@
     "@types/sortablejs": "^1.15.8",
     "@types/uuid": "^10.0.0",
     "@typescript-eslint/parser": "^8.50.0",
+    "@typescript-eslint/utils": "^8.50.1",
     "@typescript/native-preview": "^7.0.0-dev",
     "@vitejs/plugin-react": "^5.1.2",
     "@vitest/coverage-v8": "4.0.16",

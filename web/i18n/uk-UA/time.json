@@ -1,42 +1,32 @@
 {
-  "daysInWeek": {
-    "Thu": "Четвер",
-    "Fri": "Вільний",
-    "Sun": "Сонце",
-    "Tue": "Вівторок",
-    "Mon": "Мон",
-    "Sat": "Субота",
-    "Wed": "Середа"
-  },
-  "months": {
-    "August": "Серпень",
-    "January": "Січень",
-    "October": "Жовтень",
-    "June": "Червень",
-    "September": "Вересень",
-    "February": "Лютий",
-    "November": "Листопад",
-    "July": "Липень",
-    "May": "Травень",
-    "December": "Грудень",
-    "April": "Квітень",
-    "March": "Березень"
-  },
-  "operation": {
-    "cancel": "Скасувати",
-    "pickDate": "Виберіть дату",
-    "now": "Тепер",
-    "ok": "Добре"
-  },
-  "title": {
-    "pickTime": "Виберіть час"
-  },
+  "dateFormats.display": "MMMM D, YYYY",
+  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
+  "dateFormats.input": "РРРР-ММ-ДД",
+  "dateFormats.output": "РРРР-ММ-ДД",
+  "dateFormats.outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
+  "daysInWeek.Fri": "Вільний",
+  "daysInWeek.Mon": "Мон",
+  "daysInWeek.Sat": "Субота",
+  "daysInWeek.Sun": "Сонце",
+  "daysInWeek.Thu": "Четвер",
+  "daysInWeek.Tue": "Вівторок",
+  "daysInWeek.Wed": "Середа",
   "defaultPlaceholder": "Виберіть час...",
-  "dateFormats": {
-    "displayWithTime": "MMMM D, YYYY hh:mm A",
-    "output": "РРРР-ММ-ДД",
-    "display": "MMMM D, YYYY",
-    "outputWithTime": "YYYY-MM-DDTHH:mm:ss.SSSZ",
-    "input": "РРРР-ММ-ДД"
-  }
+  "months.April": "Квітень",
+  "months.August": "Серпень",
+  "months.December": "Грудень",
+  "months.February": "Лютий",
+  "months.January": "Січень",
+  "months.July": "Липень",
+  "months.June": "Червень",
+  "months.March": "Березень",
+  "months.May": "Травень",
+  "months.November": "Листопад",
+  "months.October": "Жовтень",
+  "months.September": "Вересень",
+  "operation.cancel": "Скасувати",
+  "operation.now": "Тепер",
+  "operation.ok": "Добре",
+  "operation.pickDate": "Виберіть дату",
+  "title.pickTime": "Виберіть час"
 }

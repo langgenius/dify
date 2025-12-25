@@ -36,7 +36,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           className="block"
         >
           <div className={cn('flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-3 py-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-            <div className="mr-2 grow text-sm leading-5 text-text-primary">{t('common.members.invitedAsRole', { role: t(`common.members.${toHump(value)}` as any) })}</div>
+            <div className="mr-2 grow text-sm leading-5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(`common.members.${toHump(value)}` as any) })}</div>
             <RiArrowDownSLine className="h-4 w-4 shrink-0 text-text-secondary" />
           </div>
         </PortalToFollowElemTrigger>
@@ -51,8 +51,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                 }}
               >
                 <div className="relative pl-5">
-                  <div className="text-sm leading-5 text-text-secondary">{t('common.members.normal')}</div>
-                  <div className="text-xs leading-[18px] text-text-tertiary">{t('common.members.normalTip')}</div>
+                  <div className="text-sm leading-5 text-text-secondary">{t('members.normal', { ns: 'common' })}</div>
+                  <div className="text-xs leading-[18px] text-text-tertiary">{t('members.normalTip', { ns: 'common' })}</div>
                   {value === 'normal' && <Check className="absolute left-0 top-0.5 h-4 w-4 text-text-accent" />}
                 </div>
               </div>
@@ -64,8 +64,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                 }}
               >
                 <div className="relative pl-5">
-                  <div className="text-sm leading-5 text-text-secondary">{t('common.members.editor')}</div>
-                  <div className="text-xs leading-[18px] text-text-tertiary">{t('common.members.editorTip')}</div>
+                  <div className="text-sm leading-5 text-text-secondary">{t('members.editor', { ns: 'common' })}</div>
+                  <div className="text-xs leading-[18px] text-text-tertiary">{t('members.editorTip', { ns: 'common' })}</div>
                   {value === 'editor' && <Check className="absolute left-0 top-0.5 h-4 w-4 text-text-accent" />}
                 </div>
               </div>
@@ -77,8 +77,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                 }}
               >
                 <div className="relative pl-5">
-                  <div className="text-sm leading-5 text-text-secondary">{t('common.members.admin')}</div>
-                  <div className="text-xs leading-[18px] text-text-tertiary">{t('common.members.adminTip')}</div>
+                  <div className="text-sm leading-5 text-text-secondary">{t('members.admin', { ns: 'common' })}</div>
+                  <div className="text-xs leading-[18px] text-text-tertiary">{t('members.adminTip', { ns: 'common' })}</div>
                   {value === 'admin' && <Check className="absolute left-0 top-0.5 h-4 w-4 text-text-accent" />}
                 </div>
               </div>
@@ -91,8 +91,8 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
                   }}
                 >
                   <div className="relative pl-5">
-                    <div className="text-sm leading-5 text-text-secondary">{t('common.members.datasetOperator')}</div>
-                    <div className="text-xs leading-[18px] text-text-tertiary">{t('common.members.datasetOperatorTip')}</div>
+                    <div className="text-sm leading-5 text-text-secondary">{t('members.datasetOperator', { ns: 'common' })}</div>
+                    <div className="text-xs leading-[18px] text-text-tertiary">{t('members.datasetOperatorTip', { ns: 'common' })}</div>
                     {value === 'dataset_operator' && <Check className="absolute left-0 top-0.5 h-4 w-4 text-text-accent" />}
                   </div>
                 </div>

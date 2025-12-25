@@ -73,7 +73,7 @@ const PlanUpgradeModal: FC<Props> = ({
         <Button
           onClick={onClose}
         >
-          {t('billing.triggerLimitModal.dismiss')}
+          {t('triggerLimitModal.dismiss', { ns: 'billing' })}
         </Button>
         <UpgradeBtn
           size="custom"

@@ -65,8 +65,9 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (hasReservedConflict) {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', {
-          key: t('appDebug.variableConfig.varName'),
+        message: t('varKeyError.keyAlreadyExists', {
+          ns: 'appDebug',
+          key: t('variableConfig.varName', { ns: 'appDebug' }),
         }),
       })
       return false
@@ -81,7 +82,8 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (crossScopeConflict) {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', {
+        message: t('varKeyError.keyAlreadyExists', {
+          ns: 'appDebug',
           key: crossScopeConflict.sanitizedName,
         }),
       })
@@ -91,8 +93,9 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
     if (hasDuplicateStr(sanitizedEntries.map(entry => entry.sanitizedName))) {
       Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', {
-          key: t('appDebug.variableConfig.varName'),
+        message: t('varKeyError.keyAlreadyExists', {
+          ns: 'appDebug',
+          key: t('variableConfig.varName', { ns: 'appDebug' }),
         }),
       })
       return false
@@ -104,7 +107,7 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
         Toast.notify({
           type: 'error',
           message: t(`appDebug.varKeyError.${errorMessageKey}` as any, {
-            key: t('appDebug.variableConfig.varName'),
+            key: t('variableConfig.varName', { ns: 'appDebug' }),
           }) as string,
         })
         return false

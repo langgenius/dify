@@ -41,18 +41,18 @@ const EconomicalRetrievalMethodConfig: FC<Props> = ({
           <div className="flex flex-wrap text-xs font-normal leading-[18px]">
             {value.reranking_model.reranking_model_name && (
               <div className="mr-8 flex space-x-1">
-                <div className="text-gray-500">{t('common.modelProvider.rerankModel.key')}</div>
+                <div className="text-gray-500">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
                 <div className="font-medium text-gray-800">{value.reranking_model.reranking_model_name}</div>
               </div>
             )}
 
             <div className="mr-8 flex space-x-1">
-              <div className="text-gray-500">{t('appDebug.datasetConfig.top_k')}</div>
+              <div className="text-gray-500">{t('datasetConfig.top_k', { ns: 'appDebug' })}</div>
               <div className="font-medium text-gray-800">{value.top_k}</div>
             </div>
 
             <div className="mr-8 flex space-x-1">
-              <div className="text-gray-500">{t('appDebug.datasetConfig.score_threshold')}</div>
+              <div className="text-gray-500">{t('datasetConfig.score_threshold', { ns: 'appDebug' })}</div>
               <div className="font-medium text-gray-800">{value.score_threshold}</div>
             </div>
           </div>

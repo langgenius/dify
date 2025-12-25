@@ -48,12 +48,12 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
 
   const btnText = useMemo(() => {
     if (isCurrent)
-      return t('billing.plansCommon.currentPlan')
+      return t('plansCommon.currentPlan', { ns: 'billing' })
 
     return ({
-      [Plan.sandbox]: t('billing.plansCommon.startForFree'),
-      [Plan.professional]: t('billing.plansCommon.startBuilding'),
-      [Plan.team]: t('billing.plansCommon.getStarted'),
+      [Plan.sandbox]: t('plansCommon.startForFree', { ns: 'billing' }),
+      [Plan.professional]: t('plansCommon.startBuilding', { ns: 'billing' }),
+      [Plan.team]: t('plansCommon.getStarted', { ns: 'billing' }),
     })[plan]
   }, [isCurrent, plan, t])
 
@@ -67,7 +67,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
     if (!isCurrentWorkspaceManager) {
       Toast.notify({
         type: 'error',
-        message: t('billing.buyPermissionDeniedTip'),
+        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
         className: 'z-[1001]',
       })
       return
@@ -111,7 +111,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
                 isMostPopularPlan && (
                   <div className="flex items-center justify-center bg-saas-dify-blue-static px-1.5 py-1">
                     <span className="system-2xs-semibold-uppercase text-text-primary-on-surface">
-                      {t('billing.plansCommon.mostPopular')}
+                      {t('plansCommon.mostPopular', { ns: 'billing' })}
                     </span>
                   </div>
                 )
@@ -123,7 +123,7 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
           {isFreePlan && (
-            <span className="title-4xl-semi-bold text-text-primary">{t('billing.plansCommon.free')}</span>
+            <span className="title-4xl-semi-bold text-text-primary">{t('plansCommon.free', { ns: 'billing' })}</span>
           )}
           {!isFreePlan && (
             <>
@@ -138,8 +138,8 @@ const CloudPlanItem: FC<CloudPlanItemProps> = ({
                 {isYear ? planInfo.price * 10 : planInfo.price}
               </span>
               <span className="system-md-regular pb-0.5 text-text-tertiary">
-                {t('billing.plansCommon.priceTip')}
-                {t(`billing.plansCommon.${!isYear ? 'month' : 'year'}`)}
+                {t('plansCommon.priceTip', { ns: 'billing' })}
+                {t(`plansCommon.${!isYear ? 'month' : 'year'}`, { ns: 'billing' })}
               </span>
             </>
           )}

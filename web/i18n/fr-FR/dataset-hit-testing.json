@@ -1,38 +1,28 @@
 {
-  "title": "Test de Récupération",
-  "desc": "Testez l'effet d'impact de la Connaissance basée sur le texte de la requête donnée.",
-  "dateTimeFormat": "JJ/MM/AAAA hh:mm A",
-  "table": {
-    "header": {
-      "source": "Source",
-      "time": "Temps",
-      "queryContent": "Contenu de la requête"
-    }
-  },
-  "input": {
-    "title": "Texte source",
-    "placeholder": "Veuillez entrer un texte, une phrase déclarative courte est recommandée.",
-    "countWarning": "Jusqu'à 200 caractères.",
-    "indexWarning": "Connaissances de haute qualité uniquement.",
-    "testing": "Test"
-  },
-  "hit": {
-    "title": "PARAGRAPHES DE RÉCUPÉRATION",
-    "emptyTip": "Les résultats des tests de récupération s'afficheront ici"
-  },
-  "noRecentTip": "Aucun résultat de requête récent ici",
-  "viewChart": "Voir GRAPHIQUE VECTORIEL",
-  "settingTitle": "Réglage de récupération",
-  "viewDetail": "Voir les détails",
-  "hitChunks": "Appuyez sur {{num}} morceaux enfants",
-  "records": "Archives",
   "chunkDetail": "Détail du morceau",
-  "open": "Ouvrir",
+  "dateTimeFormat": "JJ/MM/AAAA hh:mm A",
+  "desc": "Testez l'effet d'impact de la Connaissance basée sur le texte de la requête donnée.",
+  "hit.emptyTip": "Les résultats des tests de récupération s'afficheront ici",
+  "hit.title": "PARAGRAPHES DE RÉCUPÉRATION",
+  "hitChunks": "Appuyez sur {{num}} morceaux enfants",
+  "imageUploader.dropZoneTip": "Faites glisser le fichier ici pour le télécharger",
+  "imageUploader.singleChunkAttachmentLimitTooltip": "Le nombre de pièces jointes à bloc unique ne peut pas dépasser {{limit}}",
+  "imageUploader.tip": "Téléchargez ou glissez-déposez des images (Max {{batchCount}}, {{size}} Mo chacune)",
+  "imageUploader.tooltip": "Télécharger des images (Max {{batchCount}}, {{size}} Mo chacune)",
+  "input.countWarning": "Jusqu'à 200 caractères.",
+  "input.indexWarning": "Connaissances de haute qualité uniquement.",
+  "input.placeholder": "Veuillez entrer un texte, une phrase déclarative courte est recommandée.",
+  "input.testing": "Test",
+  "input.title": "Texte source",
   "keyword": "Mots-clés",
-  "imageUploader": {
-    "tip": "Téléchargez ou glissez-déposez des images (Max {{batchCount}}, {{size}} Mo chacune)",
-    "tooltip": "Télécharger des images (Max {{batchCount}}, {{size}} Mo chacune)",
-    "dropZoneTip": "Faites glisser le fichier ici pour le télécharger",
-    "singleChunkAttachmentLimitTooltip": "Le nombre de pièces jointes à bloc unique ne peut pas dépasser {{limit}}"
-  }
+  "noRecentTip": "Aucun résultat de requête récent ici",
+  "open": "Ouvrir",
+  "records": "Archives",
+  "settingTitle": "Réglage de récupération",
+  "table.header.queryContent": "Contenu de la requête",
+  "table.header.source": "Source",
+  "table.header.time": "Temps",
+  "title": "Test de Récupération",
+  "viewChart": "Voir GRAPHIQUE VECTORIEL",
+  "viewDetail": "Voir les détails"
 }

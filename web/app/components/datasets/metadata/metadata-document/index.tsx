@@ -11,7 +11,7 @@ import useMetadataDocument from '../hooks/use-metadata-document'
 import InfoGroup from './info-group'
 import NoData from './no-data'
 
-const i18nPrefix = 'dataset.metadata.documentMetadata'
+const i18nPrefix = 'metadata.documentMetadata'
 
 type Props = {
   datasetId: string
@@ -52,26 +52,26 @@ const MetadataDocument: FC<Props> = ({
         ? (
             <div className="pl-2">
               <InfoGroup
-                title={t('dataset.metadata.metadata')}
+                title={t('metadata.metadata', { ns: 'dataset' })}
                 uppercaseTitle={false}
-                titleTooltip={t(`${i18nPrefix}.metadataToolTip`)}
+                titleTooltip={t(`${i18nPrefix}.metadataToolTip`, { ns: 'dataset' })}
                 list={isEdit ? tempList : list}
                 dataSetId={datasetId}
                 headerRight={embeddingAvailable && (isEdit
                   ? (
                       <div className="flex space-x-1">
                         <Button variant="ghost" size="small" onClick={handleCancel}>
-                          <div>{t('common.operation.cancel')}</div>
+                          <div>{t('operation.cancel', { ns: 'common' })}</div>
                         </Button>
                         <Button variant="primary" size="small" onClick={handleSave}>
-                          <div>{t('common.operation.save')}</div>
+                          <div>{t('operation.save', { ns: 'common' })}</div>
                         </Button>
                       </div>
                     )
                   : (
                       <Button variant="ghost" size="small" onClick={startToEdit}>
                         <RiEditLine className="mr-1 size-3.5 cursor-pointer text-text-tertiary" />
-                        <div>{t('common.operation.edit')}</div>
+                        <div>{t('operation.edit', { ns: 'common' })}</div>
                       </Button>
                     ))}
                 isEdit={isEdit}
@@ -107,13 +107,13 @@ const MetadataDocument: FC<Props> = ({
       {/* Old Metadata */}
       <InfoGroup
         className="pl-2"
-        title={t(`${i18nPrefix}.documentInformation`)}
+        title={t(`${i18nPrefix}.documentInformation`, { ns: 'dataset' })}
         list={originInfo}
         dataSetId={datasetId}
       />
       <InfoGroup
         className="pl-2"
-        title={t(`${i18nPrefix}.technicalParameters`)}
+        title={t(`${i18nPrefix}.technicalParameters`, { ns: 'dataset' })}
         list={technicalParameters}
         dataSetId={datasetId}
       />

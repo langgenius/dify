@@ -1,38 +1,28 @@
 {
-  "title": "Retrieval Test",
-  "settingTitle": "Retrieval Setting",
-  "desc": "Test the hitting effect of the Knowledge based on the given query text.",
-  "dateTimeFormat": "MM/DD/YYYY hh:mm A",
-  "records": "Records",
-  "table": {
-    "header": {
-      "source": "Source",
-      "queryContent": "Query Content",
-      "time": "Time"
-    }
-  },
-  "input": {
-    "title": "Source text",
-    "placeholder": "Please enter a text, a short declarative sentence is recommended.",
-    "countWarning": "Up to 200 characters.",
-    "indexWarning": "High quality Knowledge only.",
-    "testing": "Test"
-  },
-  "hit": {
-    "title": "{{num}} Retrieved Chunks",
-    "emptyTip": "Retrieval Testing results will show here"
-  },
-  "noRecentTip": "No recent query results here",
-  "viewChart": "View VECTOR CHART",
-  "viewDetail": "View Detail",
   "chunkDetail": "Chunk Detail",
+  "dateTimeFormat": "MM/DD/YYYY hh:mm A",
+  "desc": "Test the hitting effect of the Knowledge based on the given query text.",
+  "hit.emptyTip": "Retrieval Testing results will show here",
+  "hit.title": "{{num}} Retrieved Chunks",
   "hitChunks": "Hit {{num}} child chunks",
-  "open": "Open",
+  "imageUploader.dropZoneTip": "Drag file here to upload",
+  "imageUploader.singleChunkAttachmentLimitTooltip": "The number of single chunk attachments cannot exceed {{limit}}",
+  "imageUploader.tip": "Upload or drop images (Max {{batchCount}}, {{size}}MB each)",
+  "imageUploader.tooltip": "Upload images (Max {{batchCount}}, {{size}}MB each)",
+  "input.countWarning": "Up to 200 characters.",
+  "input.indexWarning": "High quality Knowledge only.",
+  "input.placeholder": "Please enter a text, a short declarative sentence is recommended.",
+  "input.testing": "Test",
+  "input.title": "Source text",
   "keyword": "Keywords",
-  "imageUploader": {
-    "tip": "Upload or drop images (Max {{batchCount}}, {{size}}MB each)",
-    "tooltip": "Upload images (Max {{batchCount}}, {{size}}MB each)",
-    "dropZoneTip": "Drag file here to upload",
-    "singleChunkAttachmentLimitTooltip": "The number of single chunk attachments cannot exceed {{limit}}"
-  }
+  "noRecentTip": "No recent query results here",
+  "open": "Open",
+  "records": "Records",
+  "settingTitle": "Retrieval Setting",
+  "table.header.queryContent": "Query Content",
+  "table.header.source": "Source",
+  "table.header.time": "Time",
+  "title": "Retrieval Test",
+  "viewChart": "View VECTOR CHART",
+  "viewDetail": "View Detail"
 }

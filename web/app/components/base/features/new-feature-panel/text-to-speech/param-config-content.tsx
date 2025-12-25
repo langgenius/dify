@@ -36,14 +36,14 @@ const VoiceParamConfig = ({
   let languageItem = languages.find(item => item.value === text2speech?.language)
   if (languages && !languageItem)
     languageItem = languages[0]
-  const localLanguagePlaceholder = languageItem?.name || t('common.placeholder.select')
+  const localLanguagePlaceholder = languageItem?.name || t('placeholder.select', { ns: 'common' })
 
   const language = languageItem?.value
   const { data: voiceItems } = useAppVoices(appId, language)
   let voiceItem = voiceItems?.find(item => item.value === text2speech?.voice)
   if (voiceItems && !voiceItem)
     voiceItem = voiceItems[0]
-  const localVoicePlaceholder = voiceItem?.name || t('common.placeholder.select')
+  const localVoicePlaceholder = voiceItem?.name || t('placeholder.select', { ns: 'common' })
 
   const handleChange = (value: Record<string, string>) => {
     const {
@@ -66,16 +66,16 @@ const VoiceParamConfig = ({
   return (
     <>
       <div className="mb-4 flex items-center justify-between">
-        <div className="system-xl-semibold text-text-primary">{t('appDebug.voice.voiceSettings.title')}</div>
+        <div className="system-xl-semibold text-text-primary">{t('voice.voiceSettings.title', { ns: 'appDebug' })}</div>
         <div className="cursor-pointer p-1" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <div className="mb-3">
         <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
-          {t('appDebug.voice.voiceSettings.language')}
+          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
           <Tooltip
             popupContent={(
               <div className="w-[180px]">
-                {t('appDebug.voice.voiceSettings.resolutionTooltip').split('\n').map(item => (
+                {t('voice.voiceSettings.resolutionTooltip', { ns: 'appDebug' }).split('\n').map(item => (
                   <div key={item}>
                     {item}
                   </div>
@@ -148,7 +148,7 @@ const VoiceParamConfig = ({
       </div>
       <div className="mb-3">
         <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
-          {t('appDebug.voice.voiceSettings.voice')}
+          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <div className="flex items-center gap-1">
           <Listbox
@@ -225,7 +225,7 @@ const VoiceParamConfig = ({
       </div>
       <div>
         <div className="system-sm-semibold mb-1 py-1 text-text-secondary">
-          {t('appDebug.voice.voiceSettings.autoPlay')}
+          {t('voice.voiceSettings.autoPlay', { ns: 'appDebug' })}
         </div>
         <Switch
           className="shrink-0"

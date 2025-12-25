@@ -62,7 +62,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">
-        {t('appOverview.overview.disableTooltip.triggerMode', { feature: featureName })}
+        {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
       </div>
       <div
         className="cursor-pointer text-xs font-medium text-text-accent hover:underline"
@@ -71,19 +71,19 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
           window.open(triggerDocUrl, '_blank')
         }}
       >
-        {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+        {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
       </div>
     </div>
   ), [t, triggerDocUrl])
 
   const disableWebAppTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('appOverview.overview.appInfo.title'))
+    ? buildTriggerModeMessage(t('overview.appInfo.title', { ns: 'appOverview' }))
     : null
   const disableApiTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('appOverview.overview.apiInfo.title'))
+    ? buildTriggerModeMessage(t('overview.apiInfo.title', { ns: 'appOverview' }))
     : null
   const disableMcpTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('tools.mcp.server.title'))
+    ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
 
   const updateAppDetail = async () => {

@@ -1,29 +1,23 @@
 {
-  "resultPanel": {
-    "time": "WAKTU BERLALU",
-    "tokens": "TOTAL TOKEN",
-    "status": "KEADAAN"
-  },
-  "meta": {
-    "version": "Versi",
-    "startTime": "Waktu Mulai",
-    "status": "Keadaan",
-    "executor": "Pelaksana",
-    "time": "Waktu yang telah berlalu",
-    "steps": "Jalankan Langkah-langkah",
-    "title": "METADATA",
-    "tokens": "Total Token"
-  },
-  "resultEmpty": {
-    "link": "Panel Detail",
-    "tipRight": "lihat itu.",
-    "title": "Eksekusi ini hanya mengeluarkan format JSON,",
-    "tipLeft": "silakan pergi ke"
-  },
   "actionLogs": "Log Tindakan",
-  "tracing": "MENELUSURI",
+  "circularInvocationTip": "Ada pemanggilan melingkar alat/simpul dalam alur kerja saat ini.",
   "detail": "DETAIL",
-  "result": "HASIL",
   "input": "MASUKAN",
-  "circularInvocationTip": "Ada pemanggilan melingkar alat/simpul dalam alur kerja saat ini."
+  "meta.executor": "Pelaksana",
+  "meta.startTime": "Waktu Mulai",
+  "meta.status": "Keadaan",
+  "meta.steps": "Jalankan Langkah-langkah",
+  "meta.time": "Waktu yang telah berlalu",
+  "meta.title": "METADATA",
+  "meta.tokens": "Total Token",
+  "meta.version": "Versi",
+  "result": "HASIL",
+  "resultEmpty.link": "Panel Detail",
+  "resultEmpty.tipLeft": "silakan pergi ke",
+  "resultEmpty.tipRight": "lihat itu.",
+  "resultEmpty.title": "Eksekusi ini hanya mengeluarkan format JSON,",
+  "resultPanel.status": "KEADAAN",
+  "resultPanel.time": "WAKTU BERLALU",
+  "resultPanel.tokens": "TOTAL TOKEN",
+  "tracing": "MENELUSURI"
 }

@@ -260,10 +260,10 @@ const ToolSelector: FC<Props> = ({
               isError={(!currentProvider || !currentTool) && !inMarketPlace}
               errorTip={(
                 <div className="max-w-[240px] space-y-1 text-xs">
-                  <h3 className="font-semibold text-text-primary">{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledTitle') : t('plugin.detailPanel.toolSelector.unsupportedTitle')}</h3>
-                  <p className="tracking-tight text-text-secondary">{currentTool ? t('plugin.detailPanel.toolSelector.uninstalledContent') : t('plugin.detailPanel.toolSelector.unsupportedContent')}</p>
+                  <h3 className="font-semibold text-text-primary">{currentTool ? t('detailPanel.toolSelector.uninstalledTitle', { ns: 'plugin' }) : t('detailPanel.toolSelector.unsupportedTitle', { ns: 'plugin' })}</h3>
+                  <p className="tracking-tight text-text-secondary">{currentTool ? t('detailPanel.toolSelector.uninstalledContent', { ns: 'plugin' }) : t('detailPanel.toolSelector.unsupportedContent', { ns: 'plugin' })}</p>
                   <p>
-                    <Link href="/plugins" className="tracking-tight text-text-accent">{t('plugin.detailPanel.toolSelector.uninstalledLink')}</Link>
+                    <Link href="/plugins" className="tracking-tight text-text-accent">{t('detailPanel.toolSelector.uninstalledLink', { ns: 'plugin' })}</Link>
                   </p>
                 </div>
               )}
@@ -274,12 +274,12 @@ const ToolSelector: FC<Props> = ({
         <PortalToFollowElemContent className="z-10">
           <div className={cn('relative max-h-[642px] min-h-20 w-[361px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur pb-4 shadow-lg backdrop-blur-sm', 'overflow-y-auto pb-2')}>
             <>
-              <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t(`plugin.detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`)}</div>
+              <div className="system-xl-semibold px-4 pb-1 pt-3.5 text-text-primary">{t(`detailPanel.toolSelector.${isEdit ? 'toolSetting' : 'title'}`, { ns: 'plugin' })}</div>
               {/* base form */}
               <div className="flex flex-col gap-3 px-4 py-2">
                 <div className="flex flex-col gap-1">
                   <div className="system-sm-semibold flex h-6 items-center justify-between text-text-secondary">
-                    {t('plugin.detailPanel.toolSelector.toolLabel')}
+                    {t('detailPanel.toolSelector.toolLabel', { ns: 'plugin' })}
                     <ReadmeEntrance pluginDetail={currentProvider as any} showShortTip className="pb-0" />
                   </div>
                   <ToolPicker
@@ -304,10 +304,10 @@ const ToolSelector: FC<Props> = ({
                   />
                 </div>
                 <div className="flex flex-col gap-1">
-                  <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('plugin.detailPanel.toolSelector.descriptionLabel')}</div>
+                  <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('detailPanel.toolSelector.descriptionLabel', { ns: 'plugin' })}</div>
                   <Textarea
                     className="resize-none"
-                    placeholder={t('plugin.detailPanel.toolSelector.descriptionPlaceholder')}
+                    placeholder={t('detailPanel.toolSelector.descriptionPlaceholder', { ns: 'plugin' })}
                     value={value?.extra?.description || ''}
                     onChange={handleDescriptionChange}
                     disabled={!value?.provider_name}
@@ -348,30 +348,30 @@ const ToolSelector: FC<Props> = ({
                         setCurrType(value)
                       }}
                       options={[
-                        { value: 'settings', text: t('plugin.detailPanel.toolSelector.settings')! },
-                        { value: 'params', text: t('plugin.detailPanel.toolSelector.params')! },
+                        { value: 'settings', text: t('detailPanel.toolSelector.settings', { ns: 'plugin' })! },
+                        { value: 'params', text: t('detailPanel.toolSelector.params', { ns: 'plugin' })! },
                       ]}
                     />
                   )}
                   {nodeId && showTabSlider && currType === 'params' && (
                     <div className="px-4 py-2">
-                      <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
-                      <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
+                      <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
+                      <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
                     </div>
                   )}
                   {/* user settings only */}
                   {userSettingsOnly && (
                     <div className="p-4 pb-1">
-                      <div className="system-sm-semibold-uppercase text-text-primary">{t('plugin.detailPanel.toolSelector.settings')}</div>
+                      <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.settings', { ns: 'plugin' })}</div>
                     </div>
                   )}
                   {/* reasoning config only */}
                   {nodeId && reasoningConfigOnly && (
                     <div className="mb-1 p-4 pb-1">
-                      <div className="system-sm-semibold-uppercase text-text-primary">{t('plugin.detailPanel.toolSelector.params')}</div>
+                      <div className="system-sm-semibold-uppercase text-text-primary">{t('detailPanel.toolSelector.params', { ns: 'plugin' })}</div>
                       <div className="pb-1">
-                        <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip1')}</div>
-                        <div className="system-xs-regular text-text-tertiary">{t('plugin.detailPanel.toolSelector.paramsTip2')}</div>
+                        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip1', { ns: 'plugin' })}</div>
+                        <div className="system-xs-regular text-text-tertiary">{t('detailPanel.toolSelector.paramsTip2', { ns: 'plugin' })}</div>
                       </div>
                     </div>
                   )}

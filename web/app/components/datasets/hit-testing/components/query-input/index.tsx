@@ -197,7 +197,7 @@ const QueryInput = ({
         className="w-[88px]"
       >
         <RiPlayCircleLine className="mr-1 size-4" />
-        {t('datasetHitTesting.input.testing')}
+        {t('input.testing', { ns: 'datasetHitTesting' })}
       </Button>
     )
   }, [isExternal, externalRetrievalTestingOnSubmit, onSubmit, text, loading, t, images, isAllUploaded])
@@ -207,7 +207,7 @@ const QueryInput = ({
       <div className="flex h-full flex-col overflow-hidden rounded-[10px] bg-background-section-burn">
         <div className="relative flex shrink-0 items-center justify-between p-1.5 pb-1 pl-3">
           <span className="system-sm-semibold-uppercase text-text-secondary">
-            {t('datasetHitTesting.input.title')}
+            {t('input.title', { ns: 'datasetHitTesting' })}
           </span>
           {isExternal
             ? (
@@ -218,7 +218,7 @@ const QueryInput = ({
                 >
                   <RiEqualizer2Line className="h-3.5 w-3.5 text-components-button-secondary-text" />
                   <div className="flex items-center justify-center gap-1 px-[3px]">
-                    <span className="system-xs-medium text-components-button-secondary-text">{t('datasetHitTesting.settingTitle')}</span>
+                    <span className="system-xs-medium text-components-button-secondary-text">{t('settingTitle', { ns: 'datasetHitTesting' })}</span>
                   </div>
                 </Button>
               )

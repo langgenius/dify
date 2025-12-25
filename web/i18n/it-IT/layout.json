@@ -1,6 +1,4 @@
 {
-  "sidebar": {
-    "expandSidebar": "Espandi barra laterale",
-    "collapseSidebar": "Comprimi la barra laterale"
-  }
+  "sidebar.collapseSidebar": "Comprimi la barra laterale",
+  "sidebar.expandSidebar": "Espandi barra laterale"
 }

@@ -1,42 +1,32 @@
 {
-  "daysInWeek": {
-    "Wed": "Quarta-feira",
-    "Tue": "Terça-feira",
-    "Sun": "Sol",
-    "Thu": "Quinta-feira",
-    "Fri": "Sexta",
-    "Sat": "Sábado",
-    "Mon": "Mon"
-  },
-  "months": {
-    "May": "Maio",
-    "February": "Fevereiro",
-    "April": "abril",
-    "September": "Setembro",
-    "March": "Março",
-    "December": "Dezembro",
-    "November": "Novembro",
-    "October": "Outubro",
-    "July": "Julho",
-    "August": "Agosto",
-    "June": "junho",
-    "January": "Janeiro"
-  },
-  "operation": {
-    "pickDate": "Escolher Data",
-    "ok": "OK",
-    "cancel": "Cancelar",
-    "now": "Agora"
-  },
-  "title": {
-    "pickTime": "Escolha o Horário"
-  },
+  "dateFormats.display": "MMMM D, YYYY",
+  "dateFormats.displayWithTime": "MMMM D, YYYY hh:mm A",
+  "dateFormats.input": "AAAA-MM-DD",
+  "dateFormats.output": "AAAA-MM-DD",
+  "dateFormats.outputWithTime": "AAAA-MM-DDTHH:mm:ss.SSSZ",
+  "daysInWeek.Fri": "Sexta",
+  "daysInWeek.Mon": "Mon",
+  "daysInWeek.Sat": "Sábado",
+  "daysInWeek.Sun": "Sol",
+  "daysInWeek.Thu": "Quinta-feira",
+  "daysInWeek.Tue": "Terça-feira",
+  "daysInWeek.Wed": "Quarta-feira",
   "defaultPlaceholder": "Escolha um horário...",
-  "dateFormats": {
-    "input": "AAAA-MM-DD",
-    "output": "AAAA-MM-DD",
-    "outputWithTime": "AAAA-MM-DDTHH:mm:ss.SSSZ",
-    "displayWithTime": "MMMM D, YYYY hh:mm A",
-    "display": "MMMM D, YYYY"
-  }
+  "months.April": "abril",
+  "months.August": "Agosto",
+  "months.December": "Dezembro",
+  "months.February": "Fevereiro",
+  "months.January": "Janeiro",
+  "months.July": "Julho",
+  "months.June": "junho",
+  "months.March": "Março",
+  "months.May": "Maio",
+  "months.November": "Novembro",
+  "months.October": "Outubro",
+  "months.September": "Setembro",
+  "operation.cancel": "Cancelar",
+  "operation.now": "Agora",
+  "operation.ok": "OK",
+  "operation.pickDate": "Escolher Data",
+  "title.pickTime": "Escolha o Horário"
 }
