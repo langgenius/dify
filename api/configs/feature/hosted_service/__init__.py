@@ -351,6 +351,42 @@ class HostedAnthropicConfig(BaseSettings):
     )
 
 
+class HostedTongyiConfig(BaseSettings):
+    """
+    Configuration for hosted Tongyi service
+    """
+
+    HOSTED_TONGYI_API_KEY: str | None = Field(
+        description="API key for hosted Tongyi service",
+        default=None,
+    )
+
+    HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT: bool = Field(
+        description="Use international endpoint for hosted Tongyi service",
+        default=False,
+    )
+
+    HOSTED_TONGYI_TRIAL_ENABLED: bool = Field(
+        description="Enable trial access to hosted Anthropic service",
+        default=False,
+    )
+
+    HOSTED_TONGYI_PAID_ENABLED: bool = Field(
+        description="Enable paid access to hosted Anthropic service",
+        default=False,
+    )
+
+    HOSTED_TONGYI_TRIAL_MODELS: str = Field(
+        description="Comma-separated list of available models for trial access",
+        default="",
+    )
+
+    HOSTED_TONGYI_PAID_MODELS: str = Field(
+        description="Comma-separated list of available models for paid access",
+        default="",
+    )
+
+
 class HostedMinmaxConfig(BaseSettings):
     """
     Configuration for hosted Minmax service
@@ -442,6 +478,7 @@ class HostedServiceConfig(
     HostedOpenAiConfig,
     HostedSparkConfig,
     HostedZhipuAIConfig,
+    HostedTongyiConfig,
     # moderation
     HostedModerationConfig,
     # credit config

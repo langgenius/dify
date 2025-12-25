@@ -59,6 +59,7 @@ class HostingConfiguration:
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/gemini/google"] = self.init_gemini()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/x/x"] = self.init_xai()
         self.provider_map[f"{DEFAULT_PLUGIN_ID}/deepseek/deepseek"] = self.init_deepseek()
+        self.provider_map[f"{DEFAULT_PLUGIN_ID}/tongyi/tongyi"] = self.init_tongyi()
 
         self.moderation_config = self.init_moderation_config()
 
@@ -211,6 +212,34 @@ class HostingConfiguration:
 
             if dify_config.HOSTED_ANTHROPIC_API_BASE:
                 credentials["anthropic_api_url"] = dify_config.HOSTED_ANTHROPIC_API_BASE
+
+            return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
+
+        return HostingProvider(
+            enabled=False,
+            quota_unit=quota_unit,
+        )
+
+    def init_tongyi(self) -> HostingProvider:
+        quota_unit = QuotaUnit.CREDITS
+        quotas: list[HostingQuota] = []
+
+        if dify_config.HOSTED_TONGYI_TRIAL_ENABLED:
+            hosted_quota_limit = 0
+            trail_models = self.parse_restrict_models_from_env("HOSTED_TONGYI_TRIAL_MODELS")
+            trial_quota = TrialHostingQuota(quota_limit=hosted_quota_limit, restrict_models=trail_models)
+            quotas.append(trial_quota)
+
+        if dify_config.HOSTED_ANTHROPIC_PAID_ENABLED:
+            paid_models = self.parse_restrict_models_from_env("HOSTED_ANTHROPIC_PAID_MODELS")
+            paid_quota = PaidHostingQuota(restrict_models=paid_models)
+            quotas.append(paid_quota)
+
+        if len(quotas) > 0:
+            credentials = {
+                "dashscope_api_key": dify_config.HOSTED_TONGYI_API_KEY,
+                "use_international_endpoint": dify_config.HOSTED_TONGYI_USE_INTERNATIONAL_ENDPOINT,
+            }
 
             return HostingProvider(enabled=True, credentials=credentials, quota_unit=quota_unit, quotas=quotas)
 
