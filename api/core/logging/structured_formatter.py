@@ -54,8 +54,8 @@ class StructuredJSONFormatter(logging.Formatter):
         }
 
         # Trace context (from TraceContextFilter)
-        trace_id = getattr(record, "trace_id", "") or ""
-        span_id = getattr(record, "span_id", "") or ""
+        trace_id = getattr(record, "trace_id", "")
+        span_id = getattr(record, "span_id", "")
 
         if trace_id:
             log_dict["trace_id"] = trace_id
