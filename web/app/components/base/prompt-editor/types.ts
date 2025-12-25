@@ -84,11 +84,15 @@ export type WorkflowVariableBlockType = {
 export type HITLInputBlockType = {
   show?: boolean
   nodeId: string
-  nodeTitle: string
   formInputs?: FormInputItem[]
+  variables?: NodeOutPutVar[]
+  workflowNodesMap?: Record<string, Pick<Node['data'], 'title' | 'type' | 'height' | 'width' | 'position'>>
+  getVarType?: GetVarType
   onFormInputsChange?: (inputs: FormInputItem[]) => void
   onFormInputItemRemove: (varName: string) => void
   onFormInputItemRename: (payload: FormInputItem, oldName: string) => void
+  onInsert?: () => void
+  onDelete?: () => void
 }
 
 export type MenuTextMatch = {

@@ -14,9 +14,8 @@ import { isMac } from '../../../utils'
 import { useBoolean } from 'ahooks'
 import { cn } from '@/utils/classnames'
 
-type Props = {
+type FormContentProps = {
   nodeId: string
-  nodeTitle: string
   value: string
   onChange: (value: string) => void
   formInputs: FormInputItem[]
@@ -35,9 +34,8 @@ const CtrlKey: FC = () => {
   return <Key className={cn('mr-0', !isMac() && 'w-7')}>{isMac() ? '⌘' : 'Ctrl'}</Key>
 }
 
-const FormContent: FC<Props> = ({
+const FormContent: FC<FormContentProps> = ({
   nodeId,
-  nodeTitle,
   value,
   onChange,
   formInputs,
@@ -67,7 +65,6 @@ const FormContent: FC<Props> = ({
       onInsert(INSERT_HITL_INPUT_BLOCK_COMMAND, {
         variableName: payload.output_variable_name,
         nodeId,
-        nodeTitle,
         formInputs: newFormInputs,
         onFormInputsChange,
         onFormInputItemRename,
@@ -91,6 +88,23 @@ const FormContent: FC<Props> = ({
     setFalse: setBlur,
   }] = useBoolean(false)
 
+  const workflowNodesMap = availableNodes.reduce((acc: any, node) => {
+    acc[node.id] = {
+      title: node.data.title,
+      type: node.data.type,
+      width: node.width,
+      height: node.height,
+      position: node.position,
+    }
+    if (node.data.type === BlockEnum.Start) {
+      acc.sys = {
+        title: t('workflow.blocks.start'),
+        type: BlockEnum.Start,
+      }
+    }
+    return acc
+  }, {})
+
   return (
     <div className={cn('flex grow flex-col rounded-[10px] border border-components-input-bg-normal bg-components-input-bg-normal pt-1', isFocus && 'border-components-input-border-active bg-components-input-bg-active', !isFocus && 'pb-[32px]')}>
       <PromptEditor
@@ -105,31 +119,18 @@ const FormContent: FC<Props> = ({
           show: true,
           formInputs,
           nodeId,
-          nodeTitle,
           onFormInputsChange,
           onFormInputItemRename,
           onFormInputItemRemove,
+          variables: availableVars || [],
+          workflowNodesMap,
+          getVarType,
         }}
         workflowVariableBlock={{
           show: true,
           variables: availableVars || [],
           getVarType: getVarType as any,
-          workflowNodesMap: availableNodes.reduce((acc: any, node) => {
-            acc[node.id] = {
-              title: node.data.title,
-              type: node.data.type,
-              width: node.width,
-              height: node.height,
-              position: node.position,
-            }
-            if (node.data.type === BlockEnum.Start) {
-              acc.sys = {
-                title: t('workflow.blocks.start'),
-                type: BlockEnum.Start,
-              }
-            }
-            return acc
-          }, {}),
+          workflowNodesMap,
         }}
         editable
         shortcutPopups={[{

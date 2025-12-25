@@ -4,29 +4,43 @@ import { DELETE_HITL_INPUT_BLOCK_COMMAND } from './'
 import ComponentUi from './component-ui'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import { produce } from 'immer'
+import type { WorkflowNodesMap } from '../workflow-variable-block/node'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Type } from '@/app/components/workflow/nodes/llm/types'
 
-type Props = {
+type HITLInputComponentProps = {
   nodeKey: string
   nodeId: string
-  nodeTitle: string
   varName: string
   formInputs?: FormInputItem[]
   onChange: (inputs: FormInputItem[]) => void
   onRename: (payload: FormInputItem, oldName: string) => void
   onRemove: (varName: string) => void
+  workflowNodesMap: WorkflowNodesMap
+  environmentVariables?: Var[]
+  conversationVariables?: Var[]
+  ragVariables?: Var[]
+  getVarType?: (payload: {
+    nodeId: string,
+    valueSelector: ValueSelector,
+  }) => Type
 }
 
-const HITLInputComponent: FC<Props> = ({
+const HITLInputComponent: FC<HITLInputComponentProps> = ({
   nodeKey,
   nodeId,
-  nodeTitle,
   varName,
   formInputs = [],
   onChange,
   onRename,
   onRemove,
+  workflowNodesMap = {},
+  getVarType,
+  environmentVariables,
+  conversationVariables,
+  ragVariables,
 }) => {
-  const [ref, isSelected] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
+  const [ref] = useSelectOrDelete(nodeKey, DELETE_HITL_INPUT_BLOCK_COMMAND)
   const payload = formInputs.find(item => item.output_variable_name === varName)
 
   const handleChange = useCallback((newPayload: FormInputItem) => {
@@ -50,13 +64,16 @@ const HITLInputComponent: FC<Props> = ({
     >
       <ComponentUi
         nodeId={nodeId}
-        nodeTitle={nodeTitle}
         varName={varName}
-        isSelected={isSelected}
         formInput={payload}
         onChange={handleChange}
         onRename={onRename}
         onRemove={onRemove}
+        workflowNodesMap={workflowNodesMap}
+        getVarType={getVarType}
+        environmentVariables={environmentVariables}
+        conversationVariables={conversationVariables}
+        ragVariables={ragVariables}
       />
     </div>
   )

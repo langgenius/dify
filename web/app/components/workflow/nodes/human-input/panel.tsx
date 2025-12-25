@@ -115,7 +115,6 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           nodeId={id}
           value={inputs.form_content}
           onChange={handleFormContentChange}
-          nodeTitle={inputs.title}
           formInputs={inputs.inputs}
           onFormInputsChange={handleFormInputsChange}
           onFormInputItemRename={handleFormInputItemRename}

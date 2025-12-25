@@ -1,45 +1,56 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useEffect, useRef } from 'react'
+import React, { useCallback, useEffect, useMemo, useRef } from 'react'
 import { VariableX } from '../../../icons/src/vender/workflow'
-import { VarBlockIcon } from '@/app/components/workflow/block-icon'
-import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
-import { Variable02 } from '../../../icons/src/vender/solid/development'
+import { InputVarType } from '@/app/components/workflow/types'
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
 import ActionButton from '../../../action-button'
 import { RiDeleteBinLine, RiEditLine } from '@remixicon/react'
 import InputField from './input-field'
 import { useBoolean } from 'ahooks'
 import Modal from '../../../modal'
+import type { WorkflowNodesMap } from '../workflow-variable-block/node'
+import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import type { Type } from '@/app/components/workflow/nodes/llm/types'
+import VariableBlock from './variable-block'
 
-type Props = {
+type HITLInputComponentUIProps = {
   nodeId: string
-  nodeTitle: string
   varName: string
-  isSelected: boolean
   formInput?: FormInputItem
   onChange: (input: FormInputItem) => void
   onRename: (payload: FormInputItem, oldName: string) => void
   onRemove: (varName: string) => void
+  workflowNodesMap: WorkflowNodesMap
+  environmentVariables?: Var[]
+  conversationVariables?: Var[]
+  ragVariables?: Var[]
+  getVarType?: (payload: {
+    nodeId: string,
+    valueSelector: ValueSelector,
+  }) => Type
 }
 
-const ComponentUI: FC<Props> = ({
+const HITLInputComponentUI: FC<HITLInputComponentUIProps> = ({
   nodeId,
-  nodeTitle,
   varName,
-  // isSelected,
   formInput = {
-    type: InputVarType.textInput,
+    type: InputVarType.paragraph,
     output_variable_name: varName,
     placeholder: {
       type: 'constant',
       selector: [],
       value: '',
     },
-  } as FormInputItem,
+  },
   onChange,
   onRename,
   onRemove,
+  workflowNodesMap = {},
+  getVarType,
+  environmentVariables,
+  conversationVariables,
+  ragVariables,
 }) => {
   const [isShowEditModal, {
     setTrue: showEditModal,
@@ -79,6 +90,10 @@ const ComponentUI: FC<Props> = ({
     hideEditModal()
   }, [hideEditModal, onChange, onRename, varName])
 
+  const isPlaceholderVariable = useMemo(() => {
+    return formInput.placeholder.type === 'variable'
+  }, [formInput.placeholder.type])
+
   return (
     <div
       className='relative flex h-8 w-full select-none items-center rounded-[8px] border-[1.5px] border-components-input-border-active bg-background-default-hover pl-1.5 pr-0.5'
@@ -92,18 +107,20 @@ const ComponentUI: FC<Props> = ({
       </div>
 
       <div className='flex w-full items-center justify-between'>
-        {/* Node info */}
-        <div className='flex h-[18px] items-center rounded-[5px] border-[0.5px] border-components-panel-border-subtle bg-components-badge-white-to-dark px-1 shadow-xs'>
-          <div className='flex items-center space-x-0.5 text-text-secondary'>
-            <VarBlockIcon type={BlockEnum.HumanInput} />
-            <div className='system-xs-medium'>{nodeTitle}</div>
-          </div>
-          <div className='system-xs-regular mx-px text-divider-deep'>/</div>
-          <div className='flex items-center space-x-0.5 text-text-accent'>
-            <Variable02 className='size-3.5' />
-            <div className='system-xs-medium'>{varName}</div>
-          </div>
-        </div>
+        {/* Placeholder Info */}
+        {isPlaceholderVariable && (
+          <VariableBlock
+            variables={formInput.placeholder.selector}
+            workflowNodesMap={workflowNodesMap}
+            getVarType={getVarType}
+            environmentVariables={environmentVariables}
+            conversationVariables={conversationVariables}
+            ragVariables={ragVariables}
+          />
+        )}
+        {!isPlaceholderVariable && (
+          <div className='system-xs-medium text-text-quaternary'>{formInput.placeholder.value}</div>
+        )}
 
         {/* Actions */}
         <div className='flex h-full items-center space-x-1 pr-[24px]'>
@@ -141,4 +158,4 @@ const ComponentUI: FC<Props> = ({
   )
 }
 
-export default React.memo(ComponentUI)
+export default React.memo(HITLInputComponentUI)

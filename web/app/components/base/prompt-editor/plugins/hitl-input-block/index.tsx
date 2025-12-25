@@ -8,7 +8,7 @@ import {
   createCommand,
 } from 'lexical'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { QueryBlockType } from '../../types'
+import type { HITLInputBlockType } from '../../types'
 import type {
   HITLNodeProps,
 } from './node'
@@ -20,6 +20,7 @@ import { mergeRegister } from '@lexical/utils'
 
 export const INSERT_HITL_INPUT_BLOCK_COMMAND = createCommand('INSERT_HITL_INPUT_BLOCK_COMMAND')
 export const DELETE_HITL_INPUT_BLOCK_COMMAND = createCommand('DELETE_HITL_INPUT_BLOCK_COMMAND')
+export const UPDATE_WORKFLOW_NODES_MAP = createCommand('UPDATE_WORKFLOW_NODES_MAP')
 
 export type HITLInputProps = {
   onInsert?: () => void
@@ -28,8 +29,16 @@ export type HITLInputProps = {
 const HITLInputBlock = memo(({
   onInsert,
   onDelete,
-}: QueryBlockType) => {
+  workflowNodesMap,
+  getVarType,
+}: HITLInputBlockType) => {
   const [editor] = useLexicalComposerContext()
+
+  useEffect(() => {
+    editor.update(() => {
+      editor.dispatchCommand(UPDATE_WORKFLOW_NODES_MAP, workflowNodesMap)
+    })
+  }, [editor, workflowNodesMap])
 
   useEffect(() => {
     if (!editor.hasNodes([HITLInputNode]))
@@ -41,7 +50,6 @@ const HITLInputBlock = memo(({
           const {
             variableName,
             nodeId,
-            nodeTitle,
             formInputs,
             onFormInputsChange,
             onFormInputItemRename,
@@ -50,11 +58,12 @@ const HITLInputBlock = memo(({
           const currentHITLNode = $createHITLInputNode(
             variableName,
             nodeId,
-            nodeTitle,
             formInputs,
             onFormInputsChange,
             onFormInputItemRename,
             onFormInputItemRemove,
+            workflowNodesMap,
+            getVarType,
           )
 
           $insertNodes([currentHITLNode])
