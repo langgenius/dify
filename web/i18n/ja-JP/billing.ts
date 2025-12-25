@@ -128,7 +128,7 @@ const translation = {
     messageRequest: {
       title: '{{count,number}}メッセージクレジット',
       titlePerMonth: '{{count,number}}メッセージクレジット/月',
-      tooltip: 'メッセージクレジットは、DifyでOpenAI、Anthropic、Gemini、Grok、DeepSeek、TONGYIなどのさまざまなモデルを簡単に試すために提供されています。クレジットはモデルの種類に基づいて消費されます。使い切ったら、独自のAPIキーに切り替えることができます。',
+      tooltip: 'メッセージクレジットは、DifyでOpenAI、Anthropic、Gemini、xAI、DeepSeek、Tongyiなどのさまざまなモデルを簡単に試すために提供されています。クレジットはモデルの種類に基づいて消費されます。使い切ったら、独自のAPIキーに切り替えることができます。',
     },
     annotatedResponse: {
       title: '{{count,number}}の注釈クォータ制限',

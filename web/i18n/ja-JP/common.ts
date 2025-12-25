@@ -451,7 +451,7 @@ const translation = {
       buyQuota: 'クォータを購入',
       priorityUse: '優先利用',
       removeKey: 'API キーを削除',
-      tip: 'メッセージ枠はOpen AI、Anthropic、Gemini、Grok、DeepSeek、TONGYIのモデルを使用することをサポートしています。無料枠は有料枠が使い果たされた後に消費されます。',
+      tip: 'メッセージ枠はOpenAI、Anthropic、Gemini、xAI、DeepSeek、Tongyiのモデルを使用することをサポートしています。無料枠は有料枠が使い果たされた後に消費されます。',
       modelSupported: 'このクォータは現在{{modelName}}に使用されでいます。',
       modelAPI: '{{modelName}} は現在 APIキーを使用しています。',
       modelNotSupported: '{{modelName}} 未インストール。',
