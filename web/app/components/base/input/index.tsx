@@ -1,5 +1,5 @@
 import type { VariantProps } from 'class-variance-authority'
-import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
+import type { CSSProperties } from 'react'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
 import { noop } from 'es-toolkit/compat'
@@ -35,8 +35,6 @@ export type InputProps = {
   unit?: string
 } & Omit<React.InputHTMLAttributes<HTMLInputElement>, 'size'> & VariantProps<typeof inputVariants>
 
-const removeLeadingZeros = (value: string) => value.replace(/^(-?)0+(?=\d)/, '$1')
-
 const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   size,
   disabled,
@@ -56,31 +54,7 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
   ...props
 }, ref) => {
   const { t } = useTranslation()
-  const handleNumberChange: ChangeEventHandler<HTMLInputElement> = (e) => {
-    if (value === 0) {
-      // remove leading zeros
-      const formattedValue = removeLeadingZeros(e.target.value)
-      if (e.target.value !== formattedValue)
-        e.target.value = formattedValue
-    }
-    onChange(e)
-  }
-  const handleNumberBlur: FocusEventHandler<HTMLInputElement> = (e) => {
-    // remove leading zeros
-    const formattedValue = removeLeadingZeros(e.target.value)
-    if (e.target.value !== formattedValue) {
-      e.target.value = formattedValue
-      onChange({
-        ...e,
-        type: 'change',
-        target: {
-          ...e.target,
-          value: formattedValue,
-        },
-      })
-    }
-    onBlur(e)
-  }
+
   return (
     <div className={cn('relative w-full', wrapperClassName)}>
       {showLeftIcon && <RiSearchLine className={cn('absolute left-2 top-1/2 h-4 w-4 -translate-y-1/2 text-components-input-text-placeholder')} />}
@@ -104,8 +78,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           ? (t('common.operation.search') || '')
           : (t('common.placeholder.input') || ''))}
         value={value}
-        onChange={props.type === 'number' ? handleNumberChange : onChange}
-        onBlur={props.type === 'number' ? handleNumberBlur : onBlur}
+        onChange={onChange}
+        onBlur={onBlur}
         disabled={disabled}
         {...props}
       />

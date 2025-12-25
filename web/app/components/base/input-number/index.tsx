@@ -92,7 +92,7 @@ export const InputNumber: FC<InputNumberProps> = (props) => {
         // disable default controller
         type="number"
         className={cn('no-spinner rounded-r-none', className)}
-        value={value ?? 0}
+        value={`${value ?? 0}`}
         max={max}
         min={min}
         disabled={disabled}
