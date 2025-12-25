@@ -48,7 +48,7 @@ describe('Billing', () => {
     refetchMock.mockResolvedValue({ data: 'https://billing' })
   })
 
-  it('hides the billing action when manager or billing is disabled', () => {
+  it('hides the billing action when user is not manager or billing is disabled', () => {
     isManager = false
     render(<Billing />)
     expect(screen.queryByRole('button', { name: /billing\.viewBillingTitle/ })).not.toBeInTheDocument()
