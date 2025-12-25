@@ -1,10 +1,14 @@
 'use client'
 import type { Member } from '@/models/common'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { CheckIcon, ChevronDownIcon } from '@heroicons/react/24/outline'
-import { Fragment, useMemo } from 'react'
+import { memo, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
 import { ToastContext } from '@/app/components/base/toast'
 import { useProviderContext } from '@/context/provider-context'
 import { deleteMemberOrCancelInvitation, updateMemberRole } from '@/service/common'
@@ -21,14 +25,15 @@ const Operation = ({
   operatorRole,
   onOperate,
 }: IOperationProps) => {
+  const [open, setOpen] = useState(false)
   const { t } = useTranslation()
   const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
-    owner: t('common.members.owner'),
-    admin: t('common.members.admin'),
-    editor: t('common.members.editor'),
-    normal: t('common.members.normal'),
-    dataset_operator: t('common.members.datasetOperator'),
+    owner: t('members.owner', { ns: 'common' }),
+    admin: t('members.admin', { ns: 'common' }),
+    editor: t('members.editor', { ns: 'common' }),
+    normal: t('members.normal', { ns: 'common' }),
+    dataset_operator: t('members.datasetOperator', { ns: 'common' }),
   }
   const roleList = useMemo(() => {
     if (operatorRole === 'owner') {
@@ -51,23 +56,25 @@ const Operation = ({
   const { notify } = useContext(ToastContext)
   const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
   const handleDeleteMemberOrCancelInvitation = async () => {
+    setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
 
     }
   }
   const handleUpdateMemberRole = async (role: string) => {
+    setOpen(false)
     try {
       await updateMemberRole({
         url: `/workspaces/current/members/${member.id}/update-role`,
         body: { role },
       })
       onOperate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
 
@@ -75,63 +82,50 @@ const Operation = ({
   }
 
   return (
-    <Menu as="div" className="relative h-full w-full">
-      {
-        ({ open }) => (
-          <>
-            <MenuButton className={cn('system-sm-regular group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-              {RoleMap[member.role] || RoleMap.normal}
-              <ChevronDownIcon className={cn('h-4 w-4 group-hover:block', open ? 'block' : 'hidden')} />
-            </MenuButton>
-            <Transition
-              as={Fragment}
-              enter="transition ease-out duration-100"
-              enterFrom="transform opacity-0 scale-95"
-              enterTo="transform opacity-100 scale-100"
-              leave="transition ease-in duration-75"
-              leaveFrom="transform opacity-100 scale-100"
-              leaveTo="transform opacity-0 scale-95"
-            >
-              <MenuItems
-                className={cn('absolute right-0 top-[52px] z-10 origin-top-right rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm')}
-              >
-                <div className="p-1">
+    <PortalToFollowElem
+      open={open}
+      onOpenChange={setOpen}
+      placement="bottom-end"
+      offset={{ mainAxis: 4 }}
+    >
+      <PortalToFollowElemTrigger asChild onClick={() => setOpen(prev => !prev)}>
+        <div className={cn('system-sm-regular group flex h-full w-full cursor-pointer items-center justify-between px-3 text-text-secondary hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
+          {RoleMap[member.role] || RoleMap.normal}
+          <ChevronDownIcon className={cn('h-4 w-4 shrink-0 group-hover:block', open ? 'block' : 'hidden')} />
+        </div>
+      </PortalToFollowElemTrigger>
+      <PortalToFollowElemContent className="z-[999]">
+        <div className={cn('inline-flex flex-col rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm')}>
+          <div className="p-1">
+            {
+              roleList.map(role => (
+                <div key={role} className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={() => handleUpdateMemberRole(role)}>
                   {
-                    roleList.map(role => (
-                      <MenuItem key={role}>
-                        <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={() => handleUpdateMemberRole(role)}>
-                          {
-                            role === member.role
-                              ? <CheckIcon className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
-                              : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
-                          }
-                          <div>
-                            <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`common.members.${toHump(role)}` as any)}</div>
-                            <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`common.members.${toHump(role)}Tip` as any)}</div>
-                          </div>
-                        </div>
-                      </MenuItem>
-                    ))
+                    role === member.role
+                      ? <CheckIcon className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
+                      : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                   }
-                </div>
-                <MenuItem>
-                  <div className="border-t border-divider-subtle p-1">
-                    <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
-                      <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
-                      <div>
-                        <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('common.members.removeFromTeam')}</div>
-                        <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('common.members.removeFromTeamTip')}</div>
-                      </div>
-                    </div>
+                  <div>
+                    <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`members.${toHump(role)}` as any, { ns: 'common' })}</div>
+                    <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`members.${toHump(role)}Tip` as any, { ns: 'common' })}</div>
                   </div>
-                </MenuItem>
-              </MenuItems>
-            </Transition>
-          </>
-        )
-      }
-    </Menu>
+                </div>
+              ))
+            }
+          </div>
+          <div className="border-t border-divider-subtle p-1">
+            <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
+              <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
+              <div>
+                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
+              </div>
+            </div>
+          </div>
+        </div>
+      </PortalToFollowElemContent>
+    </PortalToFollowElem>
   )
 }
 
-export default Operation
+export default memo(Operation)
