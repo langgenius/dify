@@ -25,8 +25,11 @@ import {
   CUSTOM_EDGE,
   NODE_WIDTH,
   NODE_WIDTH_X_OFFSET,
+  VIBE_ACCEPT_EVENT,
   VIBE_COMMAND_EVENT,
+  VIBE_REGENERATE_EVENT,
 } from '../constants'
+import { useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import {
   generateNewNode,
@@ -276,6 +279,7 @@ const buildToolParams = (parameters?: Tool['parameters']) => {
 export const useWorkflowVibe = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
   const language = useGetLanguage()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -290,6 +294,7 @@ export const useWorkflowVibe = () => {
 
   const [modelConfig, setModelConfig] = useState<Model | null>(null)
   const isGeneratingRef = useRef(false)
+  const lastInstructionRef = useRef<string>('')
 
   useEffect(() => {
     const storedModel = (() => {
@@ -408,7 +413,227 @@ export const useWorkflowVibe = () => {
     return map
   }, [nodesMetaDataMap])
 
-  const handleVibeCommand = useCallback(async (dsl?: string) => {
+  const applyFlowchartToWorkflow = useCallback(async (mermaidCode: string) => {
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+    const {
+      setShowVibePanel,
+    } = workflowStore.getState()
+
+    const parseResultToUse = parseMermaidFlowchart(mermaidCode, nodeTypeLookup, toolLookup)
+    if ('error' in parseResultToUse) {
+      switch (parseResultToUse.error) {
+        case 'missingNodeType':
+        case 'missingNodeDefinition':
+          Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+          setShowVibePanel(false)
+          return
+        case 'unknownNodeId':
+          Toast.notify({ type: 'error', message: t('workflow.vibe.unknownNodeId', { id: parseResultToUse.detail }) })
+          setShowVibePanel(false)
+          return
+        case 'unknownNodeType':
+          Toast.notify({ type: 'error', message: t('workflow.vibe.nodeTypeUnavailable', { type: parseResultToUse.detail }) })
+          setShowVibePanel(false)
+          return
+        case 'unknownTool':
+          Toast.notify({ type: 'error', message: t('workflow.vibe.toolUnavailable', { tool: parseResultToUse.detail }) })
+          setShowVibePanel(false)
+          return
+        case 'unsupportedEdgeLabel':
+          Toast.notify({ type: 'error', message: t('workflow.vibe.unsupportedEdgeLabel', { label: parseResultToUse.detail }) })
+          setShowVibePanel(false)
+          return
+        default:
+          Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+          setShowVibePanel(false)
+          return
+      }
+    }
+
+    if (!nodesMetaDataMap) {
+      Toast.notify({ type: 'error', message: t('workflow.vibe.nodesUnavailable') })
+      setShowVibePanel(false)
+      return
+    }
+
+    const existingStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
+    const newNodes: Node[] = []
+    const nodeIdMap = new Map<string, Node>()
+
+    parseResultToUse.nodes.forEach((nodeSpec) => {
+      if (nodeSpec.type === BlockEnum.Start && existingStartNode) {
+        nodeIdMap.set(nodeSpec.id, existingStartNode)
+        return
+      }
+
+      const nodeDefault = nodesMetaDataMap![nodeSpec.type]
+      if (!nodeDefault)
+        return
+
+      const defaultValue = nodeDefault.defaultValue || {}
+      const title = nodeSpec.title?.trim() || nodeDefault.metaData.title || defaultValue.title || nodeSpec.type
+
+      const toolDefaultValue = nodeSpec.toolKey ? toolLookup.get(nodeSpec.toolKey) : undefined
+      const desc = (toolDefaultValue?.tool_description || (defaultValue as { desc?: string }).desc || '') as string
+
+      const data = {
+        ...(defaultValue as Record<string, unknown>),
+        title,
+        desc,
+        type: nodeSpec.type,
+        selected: false,
+        ...(toolDefaultValue || {}),
+      }
+
+      const newNode = generateNewNode({
+        id: uuid4(),
+        type: getNodeCustomTypeByNodeDataType(nodeSpec.type),
+        data,
+        position: { x: 0, y: 0 },
+      }).newNode
+
+      newNodes.push(newNode)
+      nodeIdMap.set(nodeSpec.id, newNode)
+    })
+
+    if (!newNodes.length) {
+      Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+      return
+    }
+
+    const buildEdge = (
+      source: Node,
+      target: Node,
+      sourceHandle = 'source',
+      targetHandle = 'target',
+    ): Edge => ({
+      id: `${source.id}-${sourceHandle}-${target.id}-${targetHandle}`,
+      type: CUSTOM_EDGE,
+      source: source.id,
+      sourceHandle,
+      target: target.id,
+      targetHandle,
+      data: {
+        sourceType: source.data.type,
+        targetType: target.data.type,
+        isInIteration: false,
+        isInLoop: false,
+        _connectedNodeIsSelected: false,
+      },
+      zIndex: 0,
+    })
+
+    const newEdges: Edge[] = []
+    for (const edgeSpec of parseResultToUse.edges) {
+      const sourceNode = nodeIdMap.get(edgeSpec.sourceId)
+      const targetNode = nodeIdMap.get(edgeSpec.targetId)
+      if (!sourceNode || !targetNode)
+        continue
+
+      let sourceHandle = 'source'
+      if (sourceNode.data.type === BlockEnum.IfElse) {
+        const branchLabel = normalizeBranchLabel(edgeSpec.label)
+        if (branchLabel === 'true') {
+          sourceHandle = (sourceNode.data as { cases?: { case_id: string }[] })?.cases?.[0]?.case_id || 'true'
+        }
+        if (branchLabel === 'false') {
+          sourceHandle = 'false'
+        }
+      }
+
+      newEdges.push(buildEdge(sourceNode, targetNode, sourceHandle))
+    }
+
+    const bounds = nodes.reduce(
+      (acc, node) => {
+        const width = node.width ?? NODE_WIDTH
+        acc.maxX = Math.max(acc.maxX, node.position.x + width)
+        acc.minY = Math.min(acc.minY, node.position.y)
+        return acc
+      },
+      { maxX: 0, minY: 0 },
+    )
+
+    const baseX = nodes.length ? bounds.maxX + NODE_WIDTH_X_OFFSET : 0
+    const baseY = Number.isFinite(bounds.minY) ? bounds.minY : 0
+    const branchOffset = Math.max(120, NODE_WIDTH_X_OFFSET / 2)
+
+    const layoutNodeIds = new Set(newNodes.map(node => node.id))
+    const layoutEdges = newEdges.filter(edge =>
+      layoutNodeIds.has(edge.source) && layoutNodeIds.has(edge.target),
+    )
+
+    try {
+      const layout = await getLayoutByDagre(newNodes, layoutEdges)
+      const layoutedNodes = newNodes.map((node) => {
+        const info = layout.nodes.get(node.id)
+        if (!info)
+          return node
+        return {
+          ...node,
+          position: {
+            x: baseX + info.x,
+            y: baseY + info.y,
+          },
+        }
+      })
+      newNodes.splice(0, newNodes.length, ...layoutedNodes)
+    }
+    catch {
+      newNodes.forEach((node, index) => {
+        const row = Math.floor(index / 4)
+        const col = index % 4
+        node.position = {
+          x: baseX + col * NODE_WIDTH_X_OFFSET,
+          y: baseY + row * branchOffset,
+        }
+      })
+    }
+
+    const allNodes = [...nodes, ...newNodes]
+    const nodesConnectedMap = getNodesConnectedSourceOrTargetHandleIdsMap(
+      newEdges.map(edge => ({ type: 'add', edge })),
+      allNodes,
+    )
+
+    const updatedNodes = allNodes.map((node) => {
+      const connected = nodesConnectedMap[node.id]
+      if (!connected)
+        return node
+
+      return {
+        ...node,
+        data: {
+          ...node.data,
+          ...connected,
+          _connectedSourceHandleIds: dedupeHandles(connected._connectedSourceHandleIds),
+          _connectedTargetHandleIds: dedupeHandles(connected._connectedTargetHandleIds),
+        },
+      }
+    })
+
+    setNodes(updatedNodes)
+    setEdges([...edges, ...newEdges])
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNodes[0].id })
+    handleSyncWorkflowDraft()
+
+    workflowStore.setState(state => ({
+      ...state,
+      showVibePanel: false,
+      vibePanelMermaidCode: '',
+    }))
+  }, [
+    handleSyncWorkflowDraft,
+    nodeTypeLookup,
+    nodesMetaDataMap,
+    saveStateToHistory,
+    store,
+    t,
+    toolLookup,
+  ])
+
+  const handleVibeCommand = useCallback(async (dsl?: string, skipPanelPreview = false) => {
     if (getNodesReadOnly()) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.readOnly') })
       return
@@ -434,9 +659,22 @@ export const useWorkflowVibe = () => {
       return
     isGeneratingRef.current = true
 
+    if (!isMermaidFlowchart(trimmed))
+      lastInstructionRef.current = trimmed
+
+    workflowStore.setState(state => ({
+      ...state,
+      showVibePanel: true,
+      isVibeGenerating: true,
+      vibePanelMermaidCode: '',
+    }))
+
     try {
-      const { getNodes, setNodes, edges, setEdges } = store.getState()
+      const { getNodes } = store.getState()
       const nodes = getNodes()
+      const {
+        setIsVibeGenerating,
+      } = workflowStore.getState()
 
       const existingNodesPayload = nodes.map(node => ({
         id: node.id,
@@ -471,202 +709,27 @@ export const useWorkflowVibe = () => {
 
         if (error) {
           Toast.notify({ type: 'error', message: error })
+          setIsVibeGenerating(false)
           return
         }
 
         if (!flowchart) {
           Toast.notify({ type: 'error', message: t('workflow.vibe.missingFlowchart') })
+          setIsVibeGenerating(false)
           return
         }
 
         mermaidCode = flowchart
       }
 
-      const parseResult = parseMermaidFlowchart(mermaidCode, nodeTypeLookup, toolLookup)
-      if ('error' in parseResult) {
-        switch (parseResult.error) {
-          case 'missingNodeType':
-          case 'missingNodeDefinition':
-            Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
-            return
-          case 'unknownNodeId':
-            Toast.notify({ type: 'error', message: t('workflow.vibe.unknownNodeId', { id: parseResult.detail }) })
-            return
-          case 'unknownNodeType':
-            Toast.notify({ type: 'error', message: t('workflow.vibe.nodeTypeUnavailable', { type: parseResult.detail }) })
-            return
-          case 'unknownTool':
-            Toast.notify({ type: 'error', message: t('workflow.vibe.toolUnavailable', { tool: parseResult.detail }) })
-            return
-          case 'unsupportedEdgeLabel':
-            Toast.notify({ type: 'error', message: t('workflow.vibe.unsupportedEdgeLabel', { label: parseResult.detail }) })
-            return
-          default:
-            Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
-            return
-        }
-      }
+      workflowStore.setState(state => ({
+        ...state,
+        vibePanelMermaidCode: mermaidCode,
+        isVibeGenerating: false,
+      }))
 
-      const existingStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
-      const newNodes: Node[] = []
-      const nodeIdMap = new Map<string, Node>()
-
-      parseResult.nodes.forEach((nodeSpec) => {
-        if (nodeSpec.type === BlockEnum.Start && existingStartNode) {
-          nodeIdMap.set(nodeSpec.id, existingStartNode)
-          return
-        }
-
-        const nodeDefault = nodesMetaDataMap[nodeSpec.type]
-        if (!nodeDefault)
-          return
-
-        const defaultValue = nodeDefault.defaultValue || {}
-        const title = nodeSpec.title?.trim() || nodeDefault.metaData.title || defaultValue.title || nodeSpec.type
-
-        const toolDefaultValue = nodeSpec.toolKey ? toolLookup.get(nodeSpec.toolKey) : undefined
-        const desc = (toolDefaultValue?.tool_description || (defaultValue as { desc?: string }).desc || '') as string
-
-        const data = {
-          ...(defaultValue as Record<string, unknown>),
-          title,
-          desc,
-          type: nodeSpec.type,
-          selected: false,
-          ...(toolDefaultValue || {}),
-        }
-
-        const newNode = generateNewNode({
-          id: uuid4(),
-          type: getNodeCustomTypeByNodeDataType(nodeSpec.type),
-          data,
-          position: { x: 0, y: 0 },
-        }).newNode
-
-        newNodes.push(newNode)
-        nodeIdMap.set(nodeSpec.id, newNode)
-      })
-
-      if (!newNodes.length) {
-        Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
-        return
-      }
-
-      const buildEdge = (
-        source: Node,
-        target: Node,
-        sourceHandle = 'source',
-        targetHandle = 'target',
-      ): Edge => ({
-        id: `${source.id}-${sourceHandle}-${target.id}-${targetHandle}`,
-        type: CUSTOM_EDGE,
-        source: source.id,
-        sourceHandle,
-        target: target.id,
-        targetHandle,
-        data: {
-          sourceType: source.data.type,
-          targetType: target.data.type,
-          isInIteration: false,
-          isInLoop: false,
-          _connectedNodeIsSelected: false,
-        },
-        zIndex: 0,
-      })
-
-      const newEdges: Edge[] = []
-      for (const edgeSpec of parseResult.edges) {
-        const sourceNode = nodeIdMap.get(edgeSpec.sourceId)
-        const targetNode = nodeIdMap.get(edgeSpec.targetId)
-        if (!sourceNode || !targetNode)
-          continue
-
-        let sourceHandle = 'source'
-        if (sourceNode.data.type === BlockEnum.IfElse) {
-          const branchLabel = normalizeBranchLabel(edgeSpec.label)
-          if (branchLabel === 'true') {
-            sourceHandle = (sourceNode.data as { cases?: { case_id: string }[] })?.cases?.[0]?.case_id || 'true'
-          }
-          if (branchLabel === 'false') {
-            sourceHandle = 'false'
-          }
-        }
-
-        newEdges.push(buildEdge(sourceNode, targetNode, sourceHandle))
-      }
-
-      const bounds = nodes.reduce(
-        (acc, node) => {
-          const width = node.width ?? NODE_WIDTH
-          acc.maxX = Math.max(acc.maxX, node.position.x + width)
-          acc.minY = Math.min(acc.minY, node.position.y)
-          return acc
-        },
-        { maxX: 0, minY: 0 },
-      )
-
-      const baseX = nodes.length ? bounds.maxX + NODE_WIDTH_X_OFFSET : 0
-      const baseY = Number.isFinite(bounds.minY) ? bounds.minY : 0
-      const branchOffset = Math.max(120, NODE_WIDTH_X_OFFSET / 2)
-
-      const layoutNodeIds = new Set(newNodes.map(node => node.id))
-      const layoutEdges = newEdges.filter(edge =>
-        layoutNodeIds.has(edge.source) && layoutNodeIds.has(edge.target),
-      )
-
-      try {
-        const layout = await getLayoutByDagre(newNodes, layoutEdges)
-        const layoutedNodes = newNodes.map((node) => {
-          const info = layout.nodes.get(node.id)
-          if (!info)
-            return node
-          return {
-            ...node,
-            position: {
-              x: baseX + info.x,
-              y: baseY + info.y,
-            },
-          }
-        })
-        newNodes.splice(0, newNodes.length, ...layoutedNodes)
-      }
-      catch {
-        newNodes.forEach((node, index) => {
-          const row = Math.floor(index / 4)
-          const col = index % 4
-          node.position = {
-            x: baseX + col * NODE_WIDTH_X_OFFSET,
-            y: baseY + row * branchOffset,
-          }
-        })
-      }
-
-      const allNodes = [...nodes, ...newNodes]
-      const nodesConnectedMap = getNodesConnectedSourceOrTargetHandleIdsMap(
-        newEdges.map(edge => ({ type: 'add', edge })),
-        allNodes,
-      )
-
-      const updatedNodes = allNodes.map((node) => {
-        const connected = nodesConnectedMap[node.id]
-        if (!connected)
-          return node
-
-        return {
-          ...node,
-          data: {
-            ...node.data,
-            ...connected,
-            _connectedSourceHandleIds: dedupeHandles(connected._connectedSourceHandleIds),
-            _connectedTargetHandleIds: dedupeHandles(connected._connectedTargetHandleIds),
-          },
-        }
-      })
-
-      setNodes(updatedNodes)
-      setEdges([...edges, ...newEdges])
-      saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNodes[0].id })
-      handleSyncWorkflowDraft()
+      if (skipPanelPreview)
+        await applyFlowchartToWorkflow(mermaidCode)
     }
     finally {
       isGeneratingRef.current = false
@@ -685,17 +748,47 @@ export const useWorkflowVibe = () => {
     toolOptions,
   ])
 
+  const handleRegenerate = useCallback(async () => {
+    if (!lastInstructionRef.current) {
+      Toast.notify({ type: 'error', message: t('workflow.vibe.missingInstruction') })
+      return
+    }
+
+    await handleVibeCommand(lastInstructionRef.current, false)
+  }, [handleVibeCommand, t])
+
+  const handleAccept = useCallback(async (vibePanelMermaidCode: string | undefined) => {
+    if (!vibePanelMermaidCode) {
+      Toast.notify({ type: 'error', message: t('workflow.vibe.noFlowchart') })
+      return
+    }
+
+    await applyFlowchartToWorkflow(vibePanelMermaidCode)
+  }, [applyFlowchartToWorkflow, t])
+
   useEffect(() => {
     const handler = (event: CustomEvent<VibeCommandDetail>) => {
-      handleVibeCommand(event.detail?.dsl)
+      handleVibeCommand(event.detail?.dsl, false)
+    }
+
+    const regenerateHandler = () => {
+      handleRegenerate()
+    }
+
+    const acceptHandler = (event: CustomEvent<VibeCommandDetail>) => {
+      handleAccept(event.detail?.dsl)
     }
 
     document.addEventListener(VIBE_COMMAND_EVENT, handler as EventListener)
+    document.addEventListener(VIBE_REGENERATE_EVENT, regenerateHandler as EventListener)
+    document.addEventListener(VIBE_ACCEPT_EVENT, acceptHandler as EventListener)
 
     return () => {
       document.removeEventListener(VIBE_COMMAND_EVENT, handler as EventListener)
+      document.removeEventListener(VIBE_REGENERATE_EVENT, regenerateHandler as EventListener)
+      document.removeEventListener(VIBE_ACCEPT_EVENT, acceptHandler as EventListener)
     }
-  }, [handleVibeCommand])
+  }, [handleVibeCommand, handleRegenerate])
 
   return null
 }

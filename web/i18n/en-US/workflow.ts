@@ -134,6 +134,12 @@ const translation = {
     toolUnavailable: 'Tool "{{tool}}" is not available in this workspace.',
     unknownNodeId: 'Node "{{id}}" is used before it is defined.',
     unsupportedEdgeLabel: 'Unsupported edge label "{{label}}". Only true/false are allowed for if/else.',
+    panelTitle: 'Workflow Preview',
+    generatingFlowchart: 'Generating flowchart preview...',
+    noFlowchartYet: 'No flowchart preview available',
+    regenerate: 'Regenerate',
+    accept: 'Accept',
+    noFlowchart: 'No flowchart provided',
   },
   publishLimit: {
     startNodeTitlePrefix: 'Upgrade to',
