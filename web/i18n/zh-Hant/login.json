@@ -110,5 +110,6 @@
   "welcome": "👋 歡迎來到 Dify, 登入以繼續",
   "withGitHub": "使用 GitHub 登入",
   "withGoogle": "使用 Google 登入",
-  "withSSO": "繼續使用 SSO"
+  "withSSO": "繼續使用 SSO",
+  "error.redirectUrlMissing": "重新導向的 URL 缺失"
 }

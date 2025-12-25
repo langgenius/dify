@@ -110,5 +110,6 @@
   "welcome": "Dify'ye hoş geldiniz, devam etmek için lütfen giriş yapın.",
   "withGitHub": "GitHub ile devam et",
   "withGoogle": "Google ile devam et",
-  "withSSO": "TOA ile devam etme"
+  "withSSO": "TOA ile devam etme",
+  "error.redirectUrlMissing": "Yönlendirme URL'si eksik"
 }

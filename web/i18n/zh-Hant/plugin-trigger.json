@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "未選擇訂閱",
   "subscription.selectPlaceholder": "選擇訂閱",
   "subscription.subscriptionRemoved": "已取消訂閱",
-  "subscription.title": "訂閱"
+  "subscription.title": "訂閱",
+  "modal.errors.updateFailed": "更新訂閱失敗",
+  "subscription.list.item.actions.edit.error": "更新訂閱失敗",
+  "subscription.list.item.actions.edit.success": "訂閱更新成功",
+  "subscription.list.item.actions.edit.title": "編輯訂閱"
 }

@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Semantic",
   "weightedScore.semanticFirst": "Semantic primul",
   "weightedScore.title": "Scor ponderat",
-  "wordCount": " mii de cuvinte"
+  "wordCount": " mii de cuvinte",
+  "imageUploader.fileSizeLimitExceeded": "Dimensiunea fișierului depășește limita de {{size}}MB"
 }

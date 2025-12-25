@@ -110,5 +110,6 @@
   "welcome": "به Dify خوش آمدید، لطفا برای ادامه وارد شوید.",
   "withGitHub": "ادامه با GitHub",
   "withGoogle": "ادامه با Google",
-  "withSSO": "با SSO ادامه دهید"
+  "withSSO": "با SSO ادامه دهید",
+  "error.redirectUrlMissing": "آدرس URL برای هدایت وجود ندارد"
 }

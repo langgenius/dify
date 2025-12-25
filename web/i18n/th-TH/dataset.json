@@ -176,5 +176,6 @@
   "weightedScore.semantic": "ความหมาย",
   "weightedScore.semanticFirst": "ความหมายก่อน",
   "weightedScore.title": "คะแนนถ่วงน้ําหนัก",
-  "wordCount": "คํา k"
+  "wordCount": "คํา k",
+  "imageUploader.fileSizeLimitExceeded": "ขนาดไฟล์เกินขีดจำกัด {{size}}MB"
 }

@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Мовна підтримка для синтезу мовлення.",
   "voice.voiceSettings.title": "Налаштування голосу",
   "voice.voiceSettings.voice": "Голос",
-  "warningMessage.timeoutExceeded": "Результати не відображаються через тайм-аут. Будь ласка, зверніться до журналів, щоб отримати повні результати."
+  "warningMessage.timeoutExceeded": "Результати не відображаються через тайм-аут. Будь ласка, зверніться до журналів, щоб отримати повні результати.",
+  "code.instruction": "Інструкція"
 }

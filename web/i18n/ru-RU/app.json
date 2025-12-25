@@ -275,5 +275,9 @@
   "types.basic": "Основной",
   "types.chatbot": "Чат-бот",
   "types.completion": "Завершение",
-  "types.workflow": "Рабочий процесс"
+  "types.workflow": "Рабочий процесс",
+  "appNamePlaceholder": "Придумайте название для вашего приложения",
+  "gotoAnything.actions.slashTitle": "Команды",
+  "theme.switchDark": "Переключиться на тёмную тему",
+  "theme.switchLight": "Переключиться на светлую тему"
 }

@@ -67,5 +67,6 @@
   "play": "Predvajaj",
   "playing": "Predvajanje",
   "regenerate": "Regeneriraj",
-  "status": "Status"
+  "status": "Status",
+  "develop.noContent": "Brez vsebine"
 }

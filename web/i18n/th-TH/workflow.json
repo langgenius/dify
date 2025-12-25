@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "ชื่อเวอร์ชันนี้",
   "versionHistory.releaseNotesPlaceholder": "อธิบายว่าสิ่งที่เปลี่ยนแปลงไปคืออะไร",
   "versionHistory.restorationTip": "หลังจากการกู้คืนเวอร์ชันแล้ว ร่างปัจจุบันจะถูกเขียนทับ.",
-  "versionHistory.title": "เวอร์ชัน"
+  "versionHistory.title": "เวอร์ชัน",
+  "nodes.triggerSchedule.modeCron": "ครอน",
+  "nodes.triggerSchedule.modeVisual": "ภาพ",
+  "nodes.triggerSchedule.selectTime": "เลือกเวลา"
 }

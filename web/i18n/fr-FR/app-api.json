@@ -67,5 +67,6 @@
   "play": "Jouer",
   "playing": "Jouant",
   "regenerate": "Régénérer",
-  "status": "Statut"
+  "status": "Statut",
+  "develop.noContent": "Aucun contenu"
 }

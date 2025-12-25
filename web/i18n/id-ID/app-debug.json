@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Bahasa pendukung suara text-to-speech。",
   "voice.voiceSettings.title": "Pengaturan Suara",
   "voice.voiceSettings.voice": "Suara",
-  "warningMessage.timeoutExceeded": "Hasil tidak ditampilkan karena batas waktu. Silakan lihat log untuk mengumpulkan hasil lengkap."
+  "warningMessage.timeoutExceeded": "Hasil tidak ditampilkan karena batas waktu. Silakan lihat log untuk mengumpulkan hasil lengkap.",
+  "code.instruction": "Instruksi"
 }

@@ -275,5 +275,9 @@
   "types.basic": "Podstawowy",
   "types.chatbot": "Chatbot",
   "types.completion": "Zakończenie",
-  "types.workflow": "Przepływ pracy"
+  "types.workflow": "Przepływ pracy",
+  "appNamePlaceholder": "Nadaj swojej aplikacji nazwę",
+  "gotoAnything.actions.slashTitle": "Polecenia",
+  "theme.switchDark": "Przełącz na ciemny motyw",
+  "theme.switchLight": "Przełącz na jasny motyw"
 }

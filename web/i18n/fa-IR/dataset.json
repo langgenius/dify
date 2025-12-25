@@ -176,5 +176,6 @@
   "weightedScore.semantic": "معنایی",
   "weightedScore.semanticFirst": "اولویت معنایی",
   "weightedScore.title": "امتیاز وزنی",
-  "wordCount": " هزار کلمه"
+  "wordCount": " هزار کلمه",
+  "imageUploader.fileSizeLimitExceeded": "حجم فایل از محدودیت {{size}} مگابایت تجاوز کرده است"
 }

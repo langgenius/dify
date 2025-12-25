@@ -275,5 +275,9 @@
   "types.basic": "Dasar",
   "types.chatbot": "Chatbot",
   "types.completion": "Penyelesaian",
-  "types.workflow": "Alur Kerja"
+  "types.workflow": "Alur Kerja",
+  "appNamePlaceholder": "Beri nama pada aplikasi Anda",
+  "gotoAnything.actions.slashTitle": "Perintah",
+  "theme.switchDark": "Beralih ke tema gelap",
+  "theme.switchLight": "Beralih ke tema terang"
 }

@@ -200,5 +200,6 @@
   "toolRemoved": "تمت إزالة الأداة",
   "type.builtIn": "أدوات",
   "type.custom": "مخصص",
-  "type.workflow": "سير عمل"
+  "type.workflow": "سير عمل",
+  "auth.unauthorized": "غير مصرح"
 }

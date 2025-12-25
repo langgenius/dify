@@ -611,5 +611,12 @@
   "voiceInput.converting": "กําลังแปลงเป็นข้อความ...",
   "voiceInput.notAllow": "ไม่ได้รับอนุญาตไมโครโฟน",
   "voiceInput.speaking": "พูดเดี๋ยวนี้...",
-  "you": "คุณ"
+  "you": "คุณ",
+  "account.workspaceNamePlaceholder": "ใส่ชื่อพื้นที่ทำงาน",
+  "error": "ข้อผิดพลาด",
+  "loading": "กำลังโหลด",
+  "modelProvider.auth.credentialRemoved": "ข้อมูลรับรองถูกลบแล้ว",
+  "operation.back": "ย้อนกลับ",
+  "operation.imageDownloaded": "ดาวน์โหลดรูปภาพแล้ว",
+  "operation.saving": "กำลังบันทึก..."
 }

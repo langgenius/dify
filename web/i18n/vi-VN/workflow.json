@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Đặt tên cho phiên bản này",
   "versionHistory.releaseNotesPlaceholder": "Mô tả những gì đã thay đổi",
   "versionHistory.restorationTip": "Sau khi phục hồi phiên bản, bản nháp hiện tại sẽ bị ghi đè.",
-  "versionHistory.title": "Các phiên bản"
+  "versionHistory.title": "Các phiên bản",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Hình ảnh",
+  "nodes.triggerSchedule.selectTime": "Chọn thời gian"
 }

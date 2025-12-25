@@ -275,5 +275,9 @@
   "types.basic": "Bază",
   "types.chatbot": "Chatbot",
   "types.completion": "Finalizare",
-  "types.workflow": "Flux de lucru"
+  "types.workflow": "Flux de lucru",
+  "appNamePlaceholder": "Dă aplicației tale un nume",
+  "gotoAnything.actions.slashTitle": "Comenzi",
+  "theme.switchDark": "Comută la tema închisă",
+  "theme.switchLight": "Comută la tema deschisă"
 }

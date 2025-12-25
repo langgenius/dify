@@ -611,5 +611,12 @@
   "voiceInput.converting": "正在轉換為文字...",
   "voiceInput.notAllow": "麥克風未授權",
   "voiceInput.speaking": "現在講...",
-  "you": "你"
+  "you": "你",
+  "account.workspaceNamePlaceholder": "輸入工作區名稱",
+  "error": "錯誤",
+  "loading": "載入中",
+  "modelProvider.auth.credentialRemoved": "憑證已移除",
+  "operation.back": "返回",
+  "operation.imageDownloaded": "圖片已下載",
+  "operation.saving": "儲存中..."
 }

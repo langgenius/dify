@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Nommez cette version",
   "versionHistory.releaseNotesPlaceholder": "Décrivez ce qui a changé",
   "versionHistory.restorationTip": "Après la restauration de la version, le brouillon actuel sera écrasé.",
-  "versionHistory.title": "Versions"
+  "versionHistory.title": "Versions",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Visuel",
+  "nodes.triggerSchedule.selectTime": "Sélectionner l'heure"
 }

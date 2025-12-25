@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Wsparcie językowe głosu tekstu na mowę.",
   "voice.voiceSettings.title": "Ustawienia Głosu",
   "voice.voiceSettings.voice": "Głos",
-  "warningMessage.timeoutExceeded": "Wyniki nie są wyświetlane z powodu przekroczenia limitu czasu. Zapoznaj się z dziennikami, aby zebrać pełne wyniki."
+  "warningMessage.timeoutExceeded": "Wyniki nie są wyświetlane z powodu przekroczenia limitu czasu. Zapoznaj się z dziennikami, aby zebrać pełne wyniki.",
+  "code.instruction": "Instrukcja"
 }

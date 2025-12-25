@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "이름 바꾸기",
   "versionHistory.releaseNotesPlaceholder": "변경된 내용을 설명하세요.",
   "versionHistory.restorationTip": "버전 복원 후 현재 초안이 덮어쓰여질 것입니다.",
-  "versionHistory.title": "버전 기록"
+  "versionHistory.title": "버전 기록",
+  "nodes.triggerSchedule.modeCron": "크론",
+  "nodes.triggerSchedule.modeVisual": "시각적인",
+  "nodes.triggerSchedule.selectTime": "시간 선택"
 }

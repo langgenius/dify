@@ -200,5 +200,6 @@
   "toolRemoved": "Инструмент удален",
   "type.builtIn": "Встроенные",
   "type.custom": "Пользовательские",
-  "type.workflow": "Рабочий процесс"
+  "type.workflow": "Рабочий процесс",
+  "auth.unauthorized": "Несанкционированный"
 }

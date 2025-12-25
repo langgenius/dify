@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Bu versiyona isim ver",
   "versionHistory.releaseNotesPlaceholder": "Değişen şeyleri tanımlayın",
   "versionHistory.restorationTip": "Sürüm geri yüklemeden sonra, mevcut taslak üzerine yazılacak.",
-  "versionHistory.title": "Sürümler"
+  "versionHistory.title": "Sürümler",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Görsel",
+  "nodes.triggerSchedule.selectTime": "Zaman seç"
 }

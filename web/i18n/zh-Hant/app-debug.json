@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "文字轉語音音色支援語言。",
   "voice.voiceSettings.title": "音色設定",
   "voice.voiceSettings.voice": "音色",
-  "warningMessage.timeoutExceeded": "由於超時，不顯示結果。請參閱日誌以收集完整結果。"
+  "warningMessage.timeoutExceeded": "由於超時，不顯示結果。請參閱日誌以收集完整結果。",
+  "code.instruction": "指示"
 }

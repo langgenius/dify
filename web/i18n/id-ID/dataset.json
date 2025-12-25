@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Semantik",
   "weightedScore.semanticFirst": "Semantik pertama",
   "weightedScore.title": "Skor Tertimbang",
-  "wordCount": "K Kata-kata"
+  "wordCount": "K Kata-kata",
+  "imageUploader.fileSizeLimitExceeded": "Ukuran file melebihi batas {{size}}MB"
 }

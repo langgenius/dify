@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Ngữ nghĩa",
   "weightedScore.semanticFirst": "Ngữ nghĩa trước",
   "weightedScore.title": "Điểm số có trọng số",
-  "wordCount": " nghìn từ"
+  "wordCount": " nghìn từ",
+  "imageUploader.fileSizeLimitExceeded": "Kích thước tệp vượt quá giới hạn {{size}}MB"
 }

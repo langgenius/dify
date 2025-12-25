@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Numește această versiune",
   "versionHistory.releaseNotesPlaceholder": "Descrie ce s-a schimbat",
   "versionHistory.restorationTip": "După restaurarea versiunii, proiectul actual va fi suprascris.",
-  "versionHistory.title": "Versiuni"
+  "versionHistory.title": "Versiuni",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Vizual",
+  "nodes.triggerSchedule.selectTime": "Selectează ora"
 }

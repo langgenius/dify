@@ -200,5 +200,6 @@
   "toolRemoved": "工具已被移除",
   "type.builtIn": "內建",
   "type.custom": "自定義",
-  "type.workflow": "工作流"
+  "type.workflow": "工作流",
+  "auth.unauthorized": "未經授權"
 }

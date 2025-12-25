@@ -275,5 +275,9 @@
   "types.basic": "基本",
   "types.chatbot": "聊天助手",
   "types.completion": "文字生成",
-  "types.workflow": "工作流"
+  "types.workflow": "工作流",
+  "appNamePlaceholder": "為你的應用程式命名",
+  "gotoAnything.actions.slashTitle": "指令",
+  "theme.switchDark": "切換到深色主題",
+  "theme.switchLight": "切換到亮色主題"
 }

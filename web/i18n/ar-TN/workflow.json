@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "تسمية هذا الإصدار",
   "versionHistory.releaseNotesPlaceholder": "صف ما تغير",
   "versionHistory.restorationTip": "بعد استعادة الإصدار، سيتم استبدال المسودة الحالية.",
-  "versionHistory.title": "الإصدارات"
+  "versionHistory.title": "الإصدارات",
+  "nodes.triggerSchedule.modeCron": "كرون",
+  "nodes.triggerSchedule.modeVisual": "بصري",
+  "nodes.triggerSchedule.selectTime": "اختر الوقت"
 }

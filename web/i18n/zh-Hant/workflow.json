@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "給這個版本命名",
   "versionHistory.releaseNotesPlaceholder": "描述發生了什麼變化",
   "versionHistory.restorationTip": "版本恢復後，當前草稿將被覆蓋。",
-  "versionHistory.title": "版本"
+  "versionHistory.title": "版本",
+  "nodes.triggerSchedule.modeCron": "排程程式",
+  "nodes.triggerSchedule.modeVisual": "視覺的",
+  "nodes.triggerSchedule.selectTime": "選擇時間"
 }

@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Nessun abbonamento selezionato",
   "subscription.selectPlaceholder": "Seleziona abbonamento",
   "subscription.subscriptionRemoved": "Abbonamento rimosso",
-  "subscription.title": "Abbonamenti"
+  "subscription.title": "Abbonamenti",
+  "modal.errors.updateFailed": "Impossibile aggiornare l'abbonamento",
+  "subscription.list.item.actions.edit.error": "Impossibile aggiornare l'abbonamento",
+  "subscription.list.item.actions.edit.success": "Abbonamento aggiornato con successo",
+  "subscription.list.item.actions.edit.title": "Modifica abbonamento"
 }

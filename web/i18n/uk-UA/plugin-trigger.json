@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Підписка не обрана",
   "subscription.selectPlaceholder": "Виберіть підписку",
   "subscription.subscriptionRemoved": "Підписку видалено",
-  "subscription.title": "Підписки"
+  "subscription.title": "Підписки",
+  "modal.errors.updateFailed": "Не вдалося оновити підписку",
+  "subscription.list.item.actions.edit.error": "Не вдалося оновити підписку",
+  "subscription.list.item.actions.edit.success": "Підписку успішно оновлено",
+  "subscription.list.item.actions.edit.title": "Редагувати підписку"
 }

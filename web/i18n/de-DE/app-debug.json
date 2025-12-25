@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Text-zu-Sprache unterstützte Sprache.",
   "voice.voiceSettings.title": "Stimmeinstellungen",
   "voice.voiceSettings.voice": "Stimme",
-  "warningMessage.timeoutExceeded": "Die Ergebnisse werden aufgrund einer Zeitüberschreitung nicht angezeigt. Bitte beziehen Sie sich auf die Protokolle, um die vollständigen Ergebnisse zu erhalten."
+  "warningMessage.timeoutExceeded": "Die Ergebnisse werden aufgrund einer Zeitüberschreitung nicht angezeigt. Bitte beziehen Sie sich auf die Protokolle, um die vollständigen Ergebnisse zu erhalten.",
+  "code.instruction": "Anleitung"
 }

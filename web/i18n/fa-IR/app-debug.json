@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "زبان پشتیبانی از صدای متن به گفتار。",
   "voice.voiceSettings.title": "تنظیمات صدا",
   "voice.voiceSettings.voice": "صوتی",
-  "warningMessage.timeoutExceeded": "نتایج به دلیل مهلت زمانی نمایش داده نمی شوند. لطفا برای جمع آوری نتایج کامل به گزارش ها مراجعه کنید."
+  "warningMessage.timeoutExceeded": "نتایج به دلیل مهلت زمانی نمایش داده نمی شوند. لطفا برای جمع آوری نتایج کامل به گزارش ها مراجعه کنید.",
+  "code.instruction": "دستورالعمل"
 }

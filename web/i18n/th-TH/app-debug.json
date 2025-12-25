@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "ภาษาสนับสนุนเสียงแปลงข้อความเป็นคําพูด。",
   "voice.voiceSettings.title": "การตั้งค่าเสียง",
   "voice.voiceSettings.voice": "เสียง",
-  "warningMessage.timeoutExceeded": "ผลลัพธ์จะไม่แสดงเนื่องจากหมดเวลา โปรดดูบันทึกเพื่อรวบรวมผลลัพธ์ที่สมบูรณ์"
+  "warningMessage.timeoutExceeded": "ผลลัพธ์จะไม่แสดงเนื่องจากหมดเวลา โปรดดูบันทึกเพื่อรวบรวมผลลัพธ์ที่สมบูรณ์",
+  "code.instruction": "คำแนะนำ"
 }

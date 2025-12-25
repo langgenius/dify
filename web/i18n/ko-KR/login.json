@@ -110,5 +110,6 @@
   "welcome": "Dify 에 오신 것을 환영합니다. 계속하려면 로그인하세요.",
   "withGitHub": "GitHub 로 계속",
   "withGoogle": "Google 로 계속",
-  "withSSO": "SSO 로 계속하기"
+  "withSSO": "SSO 로 계속하기",
+  "error.redirectUrlMissing": "리디렉션 URL이 없습니다"
 }

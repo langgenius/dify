@@ -67,5 +67,6 @@
   "play": "Brincar",
   "playing": "Jogar",
   "regenerate": "Regenerar",
-  "status": "Status"
+  "status": "Status",
+  "develop.noContent": "Sem conteúdo"
 }

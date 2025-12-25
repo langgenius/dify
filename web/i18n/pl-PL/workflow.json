@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Nazwij tę wersję",
   "versionHistory.releaseNotesPlaceholder": "Opisz, co się zmieniło",
   "versionHistory.restorationTip": "Po przywróceniu wersji bieżący szkic zostanie nadpisany.",
-  "versionHistory.title": "Wersje"
+  "versionHistory.title": "Wersje",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Wizualny",
+  "nodes.triggerSchedule.selectTime": "Wybierz czas"
 }

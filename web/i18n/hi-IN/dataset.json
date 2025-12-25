@@ -176,5 +176,6 @@
   "weightedScore.semantic": "शब्दार्थ",
   "weightedScore.semanticFirst": "शब्दार्थ पहले",
   "weightedScore.title": "भारित स्कोर",
-  "wordCount": " के शब्द"
+  "wordCount": " के शब्द",
+  "imageUploader.fileSizeLimitExceeded": "फ़ाइल का आकार {{size}}MB सीमा से अधिक है"
 }

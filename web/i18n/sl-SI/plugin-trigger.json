@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Nobena naročnina ni izbrana",
   "subscription.selectPlaceholder": "Izberite naročnino",
   "subscription.subscriptionRemoved": "Naročnina odstranjena",
-  "subscription.title": "Naročnine"
+  "subscription.title": "Naročnine",
+  "modal.errors.updateFailed": "Posodobitev naročnine ni uspela",
+  "subscription.list.item.actions.edit.error": "Posodobitev naročnine ni uspela",
+  "subscription.list.item.actions.edit.success": "Naročnina je bila uspešno posodobljena",
+  "subscription.list.item.actions.edit.title": "Uredi naročnino"
 }

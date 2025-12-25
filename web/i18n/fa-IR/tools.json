@@ -200,5 +200,6 @@
   "toolRemoved": "ابزار حذف شد",
   "type.builtIn": "سفارشی شده",
   "type.custom": "سفارشی",
-  "type.workflow": "جریان کار"
+  "type.workflow": "جریان کار",
+  "auth.unauthorized": "غیرمجاز"
 }

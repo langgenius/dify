@@ -275,5 +275,9 @@
   "types.basic": "اساسی",
   "types.chatbot": "چت‌بات",
   "types.completion": "تکمیل",
-  "types.workflow": "گردش کار"
+  "types.workflow": "گردش کار",
+  "appNamePlaceholder": "به برنامه خود یک نام بدهید",
+  "gotoAnything.actions.slashTitle": "دستورات",
+  "theme.switchDark": "تغییر به حالت تاریک",
+  "theme.switchLight": "تغییر به حالت روشن"
 }

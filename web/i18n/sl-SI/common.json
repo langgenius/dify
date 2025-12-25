@@ -611,5 +611,12 @@
   "voiceInput.converting": "Pretvorba v besedilo ...",
   "voiceInput.notAllow": "Mikrofon ni pooblaščen",
   "voiceInput.speaking": "Spregovorite zdaj ...",
-  "you": "Ti"
+  "you": "Ti",
+  "account.workspaceNamePlaceholder": "Vnesite ime delovnega prostora",
+  "error": "Napaka",
+  "loading": "Nalaganje",
+  "modelProvider.auth.credentialRemoved": "Poverilnica odstranjena",
+  "operation.back": "Nazaj",
+  "operation.imageDownloaded": "Slika prenesena",
+  "operation.saving": "Shranjevanje..."
 }

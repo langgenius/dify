@@ -110,5 +110,6 @@
   "welcome": "Witaj w Dify, zaloguj się, aby kontynuować.",
   "withGitHub": "Kontynuuj za pomocą GitHub",
   "withGoogle": "Kontynuuj za pomocą Google",
-  "withSSO": "Kontynuuj logowanie jednokrotne"
+  "withSSO": "Kontynuuj logowanie jednokrotne",
+  "error.redirectUrlMissing": "Brak przekierowania URL"
 }

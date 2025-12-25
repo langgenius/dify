@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "هیچ اشتراکی انتخاب نشده است",
   "subscription.selectPlaceholder": "انتخاب اشتراک",
   "subscription.subscriptionRemoved": "اشتراک حذف شد",
-  "subscription.title": "اشتراک‌ها"
+  "subscription.title": "اشتراک‌ها",
+  "modal.errors.updateFailed": "به‌روزرسانی اشتراک ناموفق بود",
+  "subscription.list.item.actions.edit.error": "به‌روزرسانی اشتراک ناموفق بود",
+  "subscription.list.item.actions.edit.success": "اشتراک با موفقیت به‌روزرسانی شد",
+  "subscription.list.item.actions.edit.title": "ویرایش اشتراک"
 }

@@ -200,5 +200,6 @@
   "toolRemoved": "เครื่องมือถูกลบออก",
   "type.builtIn": "ในตัว",
   "type.custom": "ธรรมเนียม",
-  "type.workflow": "เวิร์กโฟลว์"
+  "type.workflow": "เวิร์กโฟลว์",
+  "auth.unauthorized": "ไม่ได้รับอนุญาต"
 }

@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Chưa chọn gói đăng ký",
   "subscription.selectPlaceholder": "Chọn gói đăng ký",
   "subscription.subscriptionRemoved": "Đã hủy đăng ký",
-  "subscription.title": "Đăng ký"
+  "subscription.title": "Đăng ký",
+  "modal.errors.updateFailed": "Cập nhật đăng ký thất bại",
+  "subscription.list.item.actions.edit.error": "Cập nhật đăng ký thất bại",
+  "subscription.list.item.actions.edit.success": "Cập nhật đăng ký thành công",
+  "subscription.list.item.actions.edit.title": "Chỉnh sửa đăng ký"
 }

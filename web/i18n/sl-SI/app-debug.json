@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Jezik glasovne podpore za pretvorbo besedila v govor。",
   "voice.voiceSettings.title": "Glasovne nastavitve",
   "voice.voiceSettings.voice": "Glas",
-  "warningMessage.timeoutExceeded": "Rezultati niso prikazani zaradi časovne omejitve. Prosimo, glejte dnevnike, da zberete popolne rezultate."
+  "warningMessage.timeoutExceeded": "Rezultati niso prikazani zaradi časovne omejitve. Prosimo, glejte dnevnike, da zberete popolne rezultate.",
+  "code.instruction": "Navodilo"
 }

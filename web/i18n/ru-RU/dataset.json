@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Семантика",
   "weightedScore.semanticFirst": "Семантика в первую очередь",
   "weightedScore.title": "Взвешенная оценка",
-  "wordCount": " тыс. слов"
+  "wordCount": " тыс. слов",
+  "imageUploader.fileSizeLimitExceeded": "Размер файла превышает лимит в {{size}} МБ"
 }

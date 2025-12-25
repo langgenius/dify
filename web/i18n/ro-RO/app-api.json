@@ -67,5 +67,6 @@
   "play": "Redă",
   "playing": "În redare",
   "regenerate": "Regenera",
-  "status": "Stare"
+  "status": "Stare",
+  "develop.noContent": "Fără conținut"
 }

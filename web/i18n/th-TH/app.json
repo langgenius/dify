@@ -275,5 +275,9 @@
   "types.basic": "พื้นฐาน",
   "types.chatbot": "แชทบอท",
   "types.completion": "เสร็จสมบูรณ์",
-  "types.workflow": "กระบวนการทำงาน"
+  "types.workflow": "กระบวนการทำงาน",
+  "appNamePlaceholder": "ตั้งชื่อแอปของคุณ",
+  "gotoAnything.actions.slashTitle": "คำสั่ง",
+  "theme.switchDark": "เปลี่ยนเป็นธีมมืด",
+  "theme.switchLight": "เปลี่ยนเป็นธีมสว่าง"
 }

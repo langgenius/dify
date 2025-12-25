@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Support de la langue pour la voix de synthèse de texte.",
   "voice.voiceSettings.title": "Paramètres de voix",
   "voice.voiceSettings.voice": "Voix",
-  "warningMessage.timeoutExceeded": "Les résultats ne s’affichent pas en raison d’un délai d’expiration. Veuillez vous référer aux journaux pour rassembler les résultats complets."
+  "warningMessage.timeoutExceeded": "Les résultats ne s’affichent pas en raison d’un délai d’expiration. Veuillez vous référer aux journaux pour rassembler les résultats complets.",
+  "code.instruction": "Instruction"
 }

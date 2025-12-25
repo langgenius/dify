@@ -275,5 +275,9 @@
   "types.basic": "Cơ bản",
   "types.chatbot": "Chatbot",
   "types.completion": "Hoàn thành",
-  "types.workflow": "Quy trình"
+  "types.workflow": "Quy trình",
+  "appNamePlaceholder": "Đặt tên cho ứng dụng của bạn",
+  "gotoAnything.actions.slashTitle": "Lệnh",
+  "theme.switchDark": "Chuyển sang chế độ tối",
+  "theme.switchLight": "Chuyển sang giao diện sáng"
 }

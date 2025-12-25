@@ -611,5 +611,12 @@
   "voiceInput.converting": "Metne dönüştürülüyor...",
   "voiceInput.notAllow": "mikrofon yetkilendirilmedi",
   "voiceInput.speaking": "Şimdi konuş...",
-  "you": "Sen"
+  "you": "Sen",
+  "account.workspaceNamePlaceholder": "Çalışma alanı adını girin",
+  "error": "Hata",
+  "loading": "Yükleniyor",
+  "modelProvider.auth.credentialRemoved": "Kimlik bilgisi kaldırıldı",
+  "operation.back": "Geri",
+  "operation.imageDownloaded": "Resim indirildi",
+  "operation.saving": "Kaydediliyor..."
 }

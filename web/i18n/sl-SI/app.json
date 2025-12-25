@@ -275,5 +275,9 @@
   "types.basic": "Osnoven",
   "types.chatbot": "Klepetalnik",
   "types.completion": "Dopolnjevanje",
-  "types.workflow": "Potek dela"
+  "types.workflow": "Potek dela",
+  "appNamePlaceholder": "Poimenujte svojo aplikacijo",
+  "gotoAnything.actions.slashTitle": "Ukazi",
+  "theme.switchDark": "Preklopi na temno temo",
+  "theme.switchLight": "Preklopi na svetlo temo"
 }

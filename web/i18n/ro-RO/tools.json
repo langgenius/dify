@@ -200,5 +200,6 @@
   "toolRemoved": "Instrument eliminat",
   "type.builtIn": "Incorporat",
   "type.custom": "Personalizat",
-  "type.workflow": "Flux de lucru"
+  "type.workflow": "Flux de lucru",
+  "auth.unauthorized": "Neautorizat"
 }

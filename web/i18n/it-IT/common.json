@@ -611,5 +611,12 @@
   "voiceInput.converting": "Conversione in testo...",
   "voiceInput.notAllow": "microfono non autorizzato",
   "voiceInput.speaking": "Parla ora...",
-  "you": "Tu"
+  "you": "Tu",
+  "account.workspaceNamePlaceholder": "Inserisci il nome dello spazio di lavoro",
+  "error": "Errore",
+  "loading": "Caricamento",
+  "modelProvider.auth.credentialRemoved": "Credenziale rimossa",
+  "operation.back": "Indietro",
+  "operation.imageDownloaded": "Immagine scaricata",
+  "operation.saving": "Salvataggio..."
 }

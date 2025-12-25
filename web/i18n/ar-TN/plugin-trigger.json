@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "لم يتم تحديد أي اشتراك",
   "subscription.selectPlaceholder": "حدد اشتراكًا",
   "subscription.subscriptionRemoved": "تمت إزالة الاشتراك",
-  "subscription.title": "الاشتراكات"
+  "subscription.title": "الاشتراكات",
+  "modal.errors.updateFailed": "فشل في تحديث الاشتراك",
+  "subscription.list.item.actions.edit.error": "فشل في تحديث الاشتراك",
+  "subscription.list.item.actions.edit.success": "تم تحديث الاشتراك بنجاح",
+  "subscription.list.item.actions.edit.title": "تعديل الاشتراك"
 }

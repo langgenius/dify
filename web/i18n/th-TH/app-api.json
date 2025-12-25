@@ -67,5 +67,6 @@
   "play": "เล่น",
   "playing": "เล่น",
   "regenerate": "สร้างใหม่",
-  "status": "สถานะ"
+  "status": "สถานะ",
+  "develop.noContent": "ไม่มีเนื้อหา"
 }

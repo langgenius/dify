@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "دعم لغة تحويل النص إلى كلام.",
   "voice.voiceSettings.title": "إعدادات الصوت",
   "voice.voiceSettings.voice": "صوت",
-  "warningMessage.timeoutExceeded": "لا يتم عرض النتائج بسبب المهلة. يرجى الرجوع إلى السجلات لجمع النتائج الكاملة."
+  "warningMessage.timeoutExceeded": "لا يتم عرض النتائج بسبب المهلة. يرجى الرجوع إلى السجلات لجمع النتائج الكاملة.",
+  "code.instruction": "تعليمات"
 }

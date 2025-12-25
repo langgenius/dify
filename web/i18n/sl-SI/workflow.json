@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Poimenujte to različico",
   "versionHistory.releaseNotesPlaceholder": "Opisujte, kaj se je spremenilo",
   "versionHistory.restorationTip": "Po obnovitvi različice bo trenutni osnutek prepisan.",
-  "versionHistory.title": "Različice"
+  "versionHistory.title": "Različice",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Vizualno",
+  "nodes.triggerSchedule.selectTime": "Izberi čas"
 }

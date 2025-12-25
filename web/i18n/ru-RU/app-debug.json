@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Язык, поддерживаемый преобразованием текста в речь.",
   "voice.voiceSettings.title": "Настройки голоса",
   "voice.voiceSettings.voice": "Голос",
-  "warningMessage.timeoutExceeded": "Результаты не отображаются из-за тайм-аута. Пожалуйста, обратитесь к журналам для получения полных результатов."
+  "warningMessage.timeoutExceeded": "Результаты не отображаются из-за тайм-аута. Пожалуйста, обратитесь к журналам для получения полных результатов.",
+  "code.instruction": "Инструкция"
 }

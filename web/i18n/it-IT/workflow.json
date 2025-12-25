@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Chiamare questa versione",
   "versionHistory.releaseNotesPlaceholder": "Descrivi cosa è cambiato",
   "versionHistory.restorationTip": "Dopo il ripristino della versione, la bozza attuale verrà sovrascritta.",
-  "versionHistory.title": "Versioni"
+  "versionHistory.title": "Versioni",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "visivo",
+  "nodes.triggerSchedule.selectTime": "Seleziona orario"
 }

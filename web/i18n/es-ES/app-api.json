@@ -67,5 +67,6 @@
   "play": "Reproducir",
   "playing": "Reproduciendo",
   "regenerate": "Regenerar",
-  "status": "Estado"
+  "status": "Estado",
+  "develop.noContent": "Sin contenido"
 }

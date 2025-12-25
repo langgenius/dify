@@ -611,5 +611,12 @@
   "voiceInput.converting": "Mengonversi ke teks...",
   "voiceInput.notAllow": "mikrofon tidak diizinkan",
   "voiceInput.speaking": "Bicaralah sekarang...",
-  "you": "Kamu"
+  "you": "Kamu",
+  "account.workspaceNamePlaceholder": "Masukkan nama ruang kerja",
+  "error": "Kesalahan",
+  "loading": "Memuat",
+  "modelProvider.auth.credentialRemoved": "Kredensial dihapus",
+  "operation.back": "Kembali",
+  "operation.imageDownloaded": "Gambar diunduh",
+  "operation.saving": "Menyimpan..."
 }

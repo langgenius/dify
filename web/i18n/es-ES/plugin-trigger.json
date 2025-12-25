@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "No se ha seleccionado ninguna suscripción",
   "subscription.selectPlaceholder": "Seleccionar suscripción",
   "subscription.subscriptionRemoved": "Suscripción eliminada",
-  "subscription.title": "Suscripciones"
+  "subscription.title": "Suscripciones",
+  "modal.errors.updateFailed": "No se pudo actualizar la suscripción",
+  "subscription.list.item.actions.edit.error": "No se pudo actualizar la suscripción",
+  "subscription.list.item.actions.edit.success": "Suscripción actualizada con éxito",
+  "subscription.list.item.actions.edit.title": "Editar suscripción"
 }

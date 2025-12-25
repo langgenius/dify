@@ -611,5 +611,12 @@
   "voiceInput.converting": "Konwertowanie na tekst...",
   "voiceInput.notAllow": "mikrofon nieautoryzowany",
   "voiceInput.speaking": "Mów teraz...",
-  "you": "Ty"
+  "you": "Ty",
+  "account.workspaceNamePlaceholder": "Wprowadź nazwę przestrzeni roboczej",
+  "error": "Błąd",
+  "loading": "Ładowanie",
+  "modelProvider.auth.credentialRemoved": "Poświadczenie usunięte",
+  "operation.back": "Wstecz",
+  "operation.imageDownloaded": "Obraz pobrany",
+  "operation.saving": "Zapisywanie..."
 }

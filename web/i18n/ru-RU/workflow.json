@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Назовите эту версию",
   "versionHistory.releaseNotesPlaceholder": "Опишите, что изменилось",
   "versionHistory.restorationTip": "После восстановления версии текущий черновик будет перезаписан.",
-  "versionHistory.title": "Версии"
+  "versionHistory.title": "Версии",
+  "nodes.triggerSchedule.modeCron": "Крон",
+  "nodes.triggerSchedule.modeVisual": "Визуальный",
+  "nodes.triggerSchedule.selectTime": "Выбрать время"
 }

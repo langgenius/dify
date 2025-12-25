@@ -611,5 +611,12 @@
   "voiceInput.converting": "텍스트로 변환 중...",
   "voiceInput.notAllow": "마이크가 허용되지 않았습니다",
   "voiceInput.speaking": "지금 말하고 있습니다...",
-  "you": "너"
+  "you": "너",
+  "account.workspaceNamePlaceholder": "워크스페이스 이름 입력",
+  "error": "오류",
+  "loading": "로딩 중",
+  "modelProvider.auth.credentialRemoved": "자격 증명이 제거되었습니다",
+  "operation.back": "뒤로",
+  "operation.imageDownloaded": "이미지 다운로드됨",
+  "operation.saving": "저장 중..."
 }

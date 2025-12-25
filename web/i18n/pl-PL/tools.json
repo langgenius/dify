@@ -200,5 +200,6 @@
   "toolRemoved": "Narzędzie usunięte",
   "type.builtIn": "Wbudowane",
   "type.custom": "Niestandardowe",
-  "type.workflow": "Przepływ pracy"
+  "type.workflow": "Przepływ pracy",
+  "auth.unauthorized": "Nieautoryzowany"
 }

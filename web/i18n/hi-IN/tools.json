@@ -200,5 +200,6 @@
   "toolRemoved": "उपकरण हटाया गया",
   "type.builtIn": "निर्मित",
   "type.custom": "कस्टम",
-  "type.workflow": "कार्यप्रवाह"
+  "type.workflow": "कार्यप्रवाह",
+  "auth.unauthorized": "अनधिकृत"
 }

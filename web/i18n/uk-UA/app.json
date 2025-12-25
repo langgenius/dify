@@ -275,5 +275,9 @@
   "types.basic": "Основні",
   "types.chatbot": "Чатбот",
   "types.completion": "Завершення",
-  "types.workflow": "Робочий процес"
+  "types.workflow": "Робочий процес",
+  "appNamePlaceholder": "Дайте вашому додатку назву",
+  "gotoAnything.actions.slashTitle": "Команди",
+  "theme.switchDark": "Переключитися на темну тему",
+  "theme.switchLight": "Переключитися на світлу тему"
 }

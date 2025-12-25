@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Hiçbir abonelik seçilmedi",
   "subscription.selectPlaceholder": "Abonelik seç",
   "subscription.subscriptionRemoved": "Abonelik kaldırıldı",
-  "subscription.title": "Abonelikler"
+  "subscription.title": "Abonelikler",
+  "modal.errors.updateFailed": "Abonelik güncellenemedi",
+  "subscription.list.item.actions.edit.error": "Abonelik güncellenemedi",
+  "subscription.list.item.actions.edit.success": "Abonelik başarıyla güncellendi",
+  "subscription.list.item.actions.edit.title": "Aboneliği Düzenle"
 }

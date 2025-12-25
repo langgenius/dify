@@ -176,5 +176,6 @@
   "weightedScore.semantic": "دلالي",
   "weightedScore.semanticFirst": "الدلالي أولاً",
   "weightedScore.title": "الدرجة المرجحة",
-  "wordCount": " ألف كلمة"
+  "wordCount": " ألف كلمة",
+  "imageUploader.fileSizeLimitExceeded": "حجم الملف يتجاوز الحد الأقصى {{size}} ميغابايت"
 }

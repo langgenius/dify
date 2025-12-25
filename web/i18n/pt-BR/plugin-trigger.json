@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Nenhuma assinatura selecionada",
   "subscription.selectPlaceholder": "Selecionar assinatura",
   "subscription.subscriptionRemoved": "Assinatura removida",
-  "subscription.title": "Assinaturas"
+  "subscription.title": "Assinaturas",
+  "modal.errors.updateFailed": "Falha ao atualizar a assinatura",
+  "subscription.list.item.actions.edit.error": "Falha ao atualizar a assinatura",
+  "subscription.list.item.actions.edit.success": "Assinatura atualizada com sucesso",
+  "subscription.list.item.actions.edit.title": "Editar Assinatura"
 }

@@ -67,5 +67,6 @@
   "play": "Oynat",
   "playing": "Oynatılıyor",
   "regenerate": "Yenilemek",
-  "status": "Durum"
+  "status": "Durum",
+  "develop.noContent": "İçerik yok"
 }

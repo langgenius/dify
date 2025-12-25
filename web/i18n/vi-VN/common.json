@@ -611,5 +611,12 @@
   "voiceInput.converting": "Chuyển đổi thành văn bản...",
   "voiceInput.notAllow": "micro không được ủy quyền",
   "voiceInput.speaking": "Hãy nói...",
-  "you": "Bạn"
+  "you": "Bạn",
+  "account.workspaceNamePlaceholder": "Nhập tên không gian làm việc",
+  "error": "Lỗi",
+  "loading": "Đang tải",
+  "modelProvider.auth.credentialRemoved": "Thông tin xác thực đã bị xóa",
+  "operation.back": "Quay lại",
+  "operation.imageDownloaded": "Hình ảnh đã được tải xuống",
+  "operation.saving": "Đang lưu..."
 }

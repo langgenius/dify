@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "कोई सदस्यता नहीं चुनी गई",
   "subscription.selectPlaceholder": "सदस्यता चुनें",
   "subscription.subscriptionRemoved": "सदस्यता हटा दी गई",
-  "subscription.title": "सदस्यताएँ"
+  "subscription.title": "सदस्यताएँ",
+  "modal.errors.updateFailed": "सब्सक्रिप्शन अपडेट करने में विफल",
+  "subscription.list.item.actions.edit.error": "सब्सक्रिप्शन अपडेट करने में विफल",
+  "subscription.list.item.actions.edit.success": "सब्सक्रिप्शन सफलतापूर्वक अपडेट किया गया",
+  "subscription.list.item.actions.edit.title": "सदस्यता संपादित करें"
 }

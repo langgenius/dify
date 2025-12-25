@@ -200,5 +200,6 @@
   "toolRemoved": "Alat dihapus",
   "type.builtIn": "Perkakas",
   "type.custom": "Adat",
-  "type.workflow": "Alur Kerja"
+  "type.workflow": "Alur Kerja",
+  "auth.unauthorized": "Tidak sah"
 }

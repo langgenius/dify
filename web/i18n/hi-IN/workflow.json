@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "इस संस्करण का नाम दें",
   "versionHistory.releaseNotesPlaceholder": "बताइए कि क्या बदला",
   "versionHistory.restorationTip": "संस्करण पुनर्स्थापन के बाद, वर्तमान ड्राफ्ट अधिलेखित किया जाएगा।",
-  "versionHistory.title": "संस्करण"
+  "versionHistory.title": "संस्करण",
+  "nodes.triggerSchedule.modeCron": "क्रॉन",
+  "nodes.triggerSchedule.modeVisual": "दृश्य",
+  "nodes.triggerSchedule.selectTime": "समय चुनें"
 }

@@ -611,5 +611,12 @@
   "voiceInput.converting": "در حال تبدیل به متن...",
   "voiceInput.notAllow": "میکروفون مجاز نیست",
   "voiceInput.speaking": "اکنون صحبت کنید...",
-  "you": "تو"
+  "you": "تو",
+  "account.workspaceNamePlaceholder": "نام فضای کاری را وارد کنید",
+  "error": "خطا",
+  "loading": "در حال بارگذاری",
+  "modelProvider.auth.credentialRemoved": "مدرک حذف شد",
+  "operation.back": "بازگشت",
+  "operation.imageDownloaded": "تصویر دانلود شد",
+  "operation.saving": "در حال ذخیره‌سازی..."
 }

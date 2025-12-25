@@ -110,5 +110,6 @@
   "welcome": "Bine ai venit la Dify, te rugăm să te autentifici pentru a continua.",
   "withGitHub": "Continuă cu GitHub",
   "withGoogle": "Continuă cu Google",
-  "withSSO": "Continuați cu SSO"
+  "withSSO": "Continuați cu SSO",
+  "error.redirectUrlMissing": "URL-ul de redirecționare lipsește"
 }

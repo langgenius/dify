@@ -67,5 +67,6 @@
   "play": "پخش",
   "playing": "در حال پخش",
   "regenerate": "بازسازی",
-  "status": "وضعیت"
+  "status": "وضعیت",
+  "develop.noContent": "هیچ محتوا"
 }

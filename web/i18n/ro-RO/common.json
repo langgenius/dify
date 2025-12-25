@@ -611,5 +611,12 @@
   "voiceInput.converting": "Se convertește la text...",
   "voiceInput.notAllow": "microfonul nu este autorizat",
   "voiceInput.speaking": "Vorbiți acum...",
-  "you": "Tu"
+  "you": "Tu",
+  "account.workspaceNamePlaceholder": "Introduceți numele spațiului de lucru",
+  "error": "Eroare",
+  "loading": "Se încarcă",
+  "modelProvider.auth.credentialRemoved": "Acreditiv eliminat",
+  "operation.back": "Înapoi",
+  "operation.imageDownloaded": "Imagine descărcată",
+  "operation.saving": "Se salvează..."
 }

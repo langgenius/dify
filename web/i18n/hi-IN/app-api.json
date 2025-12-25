@@ -67,5 +67,6 @@
   "play": "चलाएं",
   "playing": "चल रहा है",
   "regenerate": "पुनर्जन्म",
-  "status": "स्थिति"
+  "status": "स्थिति",
+  "develop.noContent": "कोई सामग्री नहीं"
 }

@@ -200,5 +200,6 @@
   "toolRemoved": "Інструмент видалено",
   "type.builtIn": "Вбудовані",
   "type.custom": "Користувацькі",
-  "type.workflow": "Робочий процес"
+  "type.workflow": "Робочий процес",
+  "auth.unauthorized": "Несанкціонований"
 }

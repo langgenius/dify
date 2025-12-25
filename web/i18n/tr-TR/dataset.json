@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Anlamsal",
   "weightedScore.semanticFirst": "Anlamsal Öncelikli",
   "weightedScore.title": "Ağırlıklı Puan",
-  "wordCount": " k kelime"
+  "wordCount": " k kelime",
+  "imageUploader.fileSizeLimitExceeded": "Dosya boyutu {{size}}MB sınırını aşıyor"
 }

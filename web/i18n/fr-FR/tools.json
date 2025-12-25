@@ -200,5 +200,6 @@
   "toolRemoved": "Outil supprimé",
   "type.builtIn": "Intégré",
   "type.custom": "Personnalisé",
-  "type.workflow": "Flux de travail"
+  "type.workflow": "Flux de travail",
+  "auth.unauthorized": "Non autorisé"
 }

@@ -200,5 +200,6 @@
   "toolRemoved": "Werkzeug entfernt",
   "type.builtIn": "Integriert",
   "type.custom": "Benutzerdefiniert",
-  "type.workflow": "Arbeitsablauf"
+  "type.workflow": "Arbeitsablauf",
+  "auth.unauthorized": "Unbefugt"
 }

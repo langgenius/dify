@@ -110,5 +110,6 @@
   "welcome": "Bienvenido a Dify, por favor inicia sesión para continuar.",
   "withGitHub": "Continuar con GitHub",
   "withGoogle": "Continuar con Google",
-  "withSSO": "Continuar con SSO"
+  "withSSO": "Continuar con SSO",
+  "error.redirectUrlMissing": "Falta la URL de redirección"
 }

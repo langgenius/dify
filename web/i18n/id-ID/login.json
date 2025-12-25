@@ -110,5 +110,6 @@
   "welcome": "👋 Selamat datang di Dify, silakan login untuk melanjutkan.",
   "withGitHub": "Lanjutkan dengan GitHub",
   "withGoogle": "Lanjutkan dengan Google",
-  "withSSO": "Lanjutkan dengan SSO"
+  "withSSO": "Lanjutkan dengan SSO",
+  "error.redirectUrlMissing": "URL pengalihan hilang"
 }

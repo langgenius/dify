@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "این نسخه را نامگذاری کنید",
   "versionHistory.releaseNotesPlaceholder": "شرح دهید چه چیزی تغییر کرده است",
   "versionHistory.restorationTip": "پس از بازیابی نسخه، پیش‌نویس فعلی بازنویسی خواهد شد.",
-  "versionHistory.title": "نسخه‌ها"
+  "versionHistory.title": "نسخه‌ها",
+  "nodes.triggerSchedule.modeCron": "کرون",
+  "nodes.triggerSchedule.modeVisual": "بینایی",
+  "nodes.triggerSchedule.selectTime": "انتخاب زمان"
 }

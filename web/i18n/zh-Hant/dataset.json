@@ -176,5 +176,6 @@
   "weightedScore.semantic": "語義",
   "weightedScore.semanticFirst": "語義優先",
   "weightedScore.title": "加權分數",
-  "wordCount": " 千字元"
+  "wordCount": " 千字元",
+  "imageUploader.fileSizeLimitExceeded": "檔案大小超過 {{size}}MB 限制"
 }

@@ -275,5 +275,9 @@
   "types.basic": "기초의",
   "types.chatbot": "챗봇",
   "types.completion": "완성",
-  "types.workflow": "워크플로우"
+  "types.workflow": "워크플로우",
+  "appNamePlaceholder": "앱 이름을 지어주세요",
+  "gotoAnything.actions.slashTitle": "명령어",
+  "theme.switchDark": "다크 모드로 전환",
+  "theme.switchLight": "라이트 테마로 전환"
 }

@@ -200,5 +200,6 @@
   "toolRemoved": "도구가 제거되었습니다",
   "type.builtIn": "내장",
   "type.custom": "커스텀",
-  "type.workflow": "워크플로우"
+  "type.workflow": "워크플로우",
+  "auth.unauthorized": "권한 없음"
 }

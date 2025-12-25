@@ -275,5 +275,9 @@
   "types.basic": "Basique",
   "types.chatbot": "Chatbot",
   "types.completion": "Terminaison",
-  "types.workflow": "Flux de travail"
+  "types.workflow": "Flux de travail",
+  "appNamePlaceholder": "Donnez un nom à votre application",
+  "gotoAnything.actions.slashTitle": "Commandes",
+  "theme.switchDark": "Passer au thème sombre",
+  "theme.switchLight": "Passer au thème clair"
 }

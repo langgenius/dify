@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "선택한 구독이 없습니다",
   "subscription.selectPlaceholder": "구독 선택",
   "subscription.subscriptionRemoved": "구독 취소됨",
-  "subscription.title": "구독"
+  "subscription.title": "구독",
+  "modal.errors.updateFailed": "구독 업데이트에 실패했습니다",
+  "subscription.list.item.actions.edit.error": "구독 업데이트에 실패했습니다",
+  "subscription.list.item.actions.edit.success": "구독이 성공적으로 업데이트되었습니다",
+  "subscription.list.item.actions.edit.title": "구독 편집"
 }

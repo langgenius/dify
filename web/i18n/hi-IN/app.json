@@ -275,5 +275,9 @@
   "types.basic": "मूलवर्ती",
   "types.chatbot": "चैटबॉट",
   "types.completion": "समाप्ति",
-  "types.workflow": "वर्कफ़्लो"
+  "types.workflow": "वर्कफ़्लो",
+  "appNamePlaceholder": "अपने ऐप को नाम दें",
+  "gotoAnything.actions.slashTitle": "कमांड",
+  "theme.switchDark": "डार्क थीम में बदलें",
+  "theme.switchLight": "लाइट थीम में स्विच करें"
 }

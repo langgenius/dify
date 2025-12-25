@@ -611,5 +611,12 @@
   "voiceInput.converting": "Преобразование в текст...",
   "voiceInput.notAllow": "микрофон не авторизован",
   "voiceInput.speaking": "Говорите сейчас...",
-  "you": "Ты"
+  "you": "Ты",
+  "account.workspaceNamePlaceholder": "Введите название рабочей области",
+  "error": "Ошибка",
+  "loading": "Загрузка",
+  "modelProvider.auth.credentialRemoved": "Учётные данные удалены",
+  "operation.back": "Назад",
+  "operation.imageDownloaded": "Изображение загружено",
+  "operation.saving": "Сохранение..."
 }

@@ -200,5 +200,6 @@
   "toolRemoved": "Công cụ đã bị xóa",
   "type.builtIn": "Tích hợp sẵn",
   "type.custom": "Tùy chỉnh",
-  "type.workflow": "Quy trình làm việc"
+  "type.workflow": "Quy trình làm việc",
+  "auth.unauthorized": "Không được phép"
 }

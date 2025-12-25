@@ -176,5 +176,6 @@
   "weightedScore.semantic": "의미론적",
   "weightedScore.semanticFirst": "의미론 우선",
   "weightedScore.title": "가중 점수",
-  "wordCount": " k 단어"
+  "wordCount": " k 단어",
+  "imageUploader.fileSizeLimitExceeded": "파일 크기가 {{size}}MB 제한을 초과합니다"
 }

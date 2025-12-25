@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Texto para voz timbre suporta idiomas.",
   "voice.voiceSettings.title": "voz As configurações",
   "voice.voiceSettings.voice": "voz",
-  "warningMessage.timeoutExceeded": "Os resultados não são exibidos devido ao tempo limite. Consulte os logs para obter os resultados completos."
+  "warningMessage.timeoutExceeded": "Os resultados não são exibidos devido ao tempo limite. Consulte os logs para obter os resultados completos.",
+  "code.instruction": "Instrução"
 }

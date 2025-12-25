@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Belum memilih langganan",
   "subscription.selectPlaceholder": "Pilih langganan",
   "subscription.subscriptionRemoved": "Langganan dihapus",
-  "subscription.title": "Langganan"
+  "subscription.title": "Langganan",
+  "modal.errors.updateFailed": "Gagal memperbarui langganan",
+  "subscription.list.item.actions.edit.error": "Gagal memperbarui langganan",
+  "subscription.list.item.actions.edit.success": "Langganan berhasil diperbarui",
+  "subscription.list.item.actions.edit.title": "Ubah Langganan"
 }

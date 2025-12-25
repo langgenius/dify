@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Chuyển đổi văn bản thành giọng nói hỗ trợ ngôn ngữ.",
   "voice.voiceSettings.title": "Cài đặt giọng nói",
   "voice.voiceSettings.voice": "Giọng nói",
-  "warningMessage.timeoutExceeded": "Kết quả không được hiển thị do hết thời gian chờ. Vui lòng tham khảo nhật ký để thu thập kết quả đầy đủ."
+  "warningMessage.timeoutExceeded": "Kết quả không được hiển thị do hết thời gian chờ. Vui lòng tham khảo nhật ký để thu thập kết quả đầy đủ.",
+  "code.instruction": "Hướng dẫn"
 }

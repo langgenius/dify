@@ -611,5 +611,12 @@
   "voiceInput.converting": "Перетворення на текст...",
   "voiceInput.notAllow": "мікрофон не авторизований",
   "voiceInput.speaking": "Говоріть зараз...",
-  "you": "Ти"
+  "you": "Ти",
+  "account.workspaceNamePlaceholder": "Введіть назву робочого простору",
+  "error": "Помилка",
+  "loading": "Завантаження",
+  "modelProvider.auth.credentialRemoved": "Облікові дані видалено",
+  "operation.back": "Назад",
+  "operation.imageDownloaded": "Зображення завантажено",
+  "operation.saving": "Збереження..."
 }

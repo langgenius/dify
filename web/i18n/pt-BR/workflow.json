@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Nomeie esta versão",
   "versionHistory.releaseNotesPlaceholder": "Descreva o que mudou",
   "versionHistory.restorationTip": "Após a restauração da versão, o rascunho atual será substituído.",
-  "versionHistory.title": "Versões"
+  "versionHistory.title": "Versões",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Visual",
+  "nodes.triggerSchedule.selectTime": "Selecionar horário"
 }

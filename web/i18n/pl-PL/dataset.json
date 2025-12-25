@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Semantyczne",
   "weightedScore.semanticFirst": "Najpierw semantyczne",
   "weightedScore.title": "Ważona ocena",
-  "wordCount": " k słów"
+  "wordCount": " k słów",
+  "imageUploader.fileSizeLimitExceeded": "Rozmiar pliku przekracza limit {{size}} MB"
 }

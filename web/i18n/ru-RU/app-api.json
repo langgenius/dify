@@ -67,5 +67,6 @@
   "play": "Запустить",
   "playing": "Запущено",
   "regenerate": "Регенерировать",
-  "status": "Статус"
+  "status": "Статус",
+  "develop.noContent": "Нет контента"
 }

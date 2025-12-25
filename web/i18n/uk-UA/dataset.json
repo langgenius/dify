@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Семантичний",
   "weightedScore.semanticFirst": "Спочатку семантичний",
   "weightedScore.title": "Зважена оцінка",
-  "wordCount": " тис. слів"
+  "wordCount": " тис. слів",
+  "imageUploader.fileSizeLimitExceeded": "Розмір файлу перевищує ліміт у {{size}} МБ"
 }

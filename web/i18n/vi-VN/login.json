@@ -110,5 +110,6 @@
   "welcome": "Chào mừng bạn đến với Dify, vui lòng đăng nhập để tiếp tục.",
   "withGitHub": "Tiếp tục với GitHub",
   "withGoogle": "Tiếp tục với Google",
-  "withSSO": "Tiếp tục với SSO"
+  "withSSO": "Tiếp tục với SSO",
+  "error.redirectUrlMissing": "URL chuyển hướng bị thiếu"
 }

@@ -67,5 +67,6 @@
   "play": "播放",
   "playing": "播放中",
   "regenerate": "重新生成",
-  "status": "狀態"
+  "status": "狀態",
+  "develop.noContent": "無內容"
 }

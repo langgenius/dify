@@ -275,5 +275,9 @@
   "types.basic": "Temel",
   "types.chatbot": "Chatbot",
   "types.completion": "Tamamlama",
-  "types.workflow": "Workflow"
+  "types.workflow": "Workflow",
+  "appNamePlaceholder": "Uygulamanıza bir isim verin",
+  "gotoAnything.actions.slashTitle": "Komutlar",
+  "theme.switchDark": "Koyu tema geçiş yap",
+  "theme.switchLight": "Aydınlık tema'ya geç"
 }

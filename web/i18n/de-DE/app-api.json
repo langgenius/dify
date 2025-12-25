@@ -67,5 +67,6 @@
   "play": "Abspielen",
   "playing": "Wiedergabe",
   "regenerate": "Erneuern",
-  "status": "Status"
+  "status": "Status",
+  "develop.noContent": "Kein Inhalt"
 }

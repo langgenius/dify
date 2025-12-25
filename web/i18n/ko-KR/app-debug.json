@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "텍스트 읽기 음성 언어를 지원합니다.",
   "voice.voiceSettings.title": "음성 설정",
   "voice.voiceSettings.voice": "음성",
-  "warningMessage.timeoutExceeded": "시간 초과로 인해 결과가 표시되지 않습니다. 전체 결과를 수집하려면 로그를 참조하십시오."
+  "warningMessage.timeoutExceeded": "시간 초과로 인해 결과가 표시되지 않습니다. 전체 결과를 수집하려면 로그를 참조하십시오.",
+  "code.instruction": "지침"
 }

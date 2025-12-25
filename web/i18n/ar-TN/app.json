@@ -275,5 +275,9 @@
   "types.basic": "أساسي",
   "types.chatbot": "روبوت دردشة",
   "types.completion": "إكمال",
-  "types.workflow": "سير العمل (Workflow)"
+  "types.workflow": "سير العمل (Workflow)",
+  "appNamePlaceholder": "اعطِ تطبيقك اسمًا",
+  "gotoAnything.actions.slashTitle": "الأوامر",
+  "theme.switchDark": "التبديل إلى الوضع الداكن",
+  "theme.switchLight": "التبديل إلى الوضع الفاتح"
 }

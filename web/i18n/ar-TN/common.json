@@ -611,5 +611,12 @@
   "voiceInput.converting": "التحويل إلى نص...",
   "voiceInput.notAllow": "الميكروفون غير مصرح به",
   "voiceInput.speaking": "تحدث الآن...",
-  "you": "أنت"
+  "you": "أنت",
+  "account.workspaceNamePlaceholder": "أدخل اسم مساحة العمل",
+  "error": "خطأ",
+  "loading": "جارٍ التحميل",
+  "modelProvider.auth.credentialRemoved": "تمت إزالة بيانات الاعتماد",
+  "operation.back": "عودة",
+  "operation.imageDownloaded": "تم تنزيل الصورة",
+  "operation.saving": "جارٍ الحفظ..."
 }

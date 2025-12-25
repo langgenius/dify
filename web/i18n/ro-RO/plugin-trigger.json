@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Nicio abonare selectată",
   "subscription.selectPlaceholder": "Selectați abonamentul",
   "subscription.subscriptionRemoved": "Abonament eliminat",
-  "subscription.title": "Abonamente"
+  "subscription.title": "Abonamente",
+  "modal.errors.updateFailed": "Actualizarea abonamentului a eșuat",
+  "subscription.list.item.actions.edit.error": "Actualizarea abonamentului a eșuat",
+  "subscription.list.item.actions.edit.success": "Abonamentul a fost actualizat cu succes",
+  "subscription.list.item.actions.edit.title": "Modifică abonamentul"
 }

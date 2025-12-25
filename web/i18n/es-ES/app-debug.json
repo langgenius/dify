@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Soporte de idioma para voz a texto.",
   "voice.voiceSettings.title": "Configuraciones de Voz",
   "voice.voiceSettings.voice": "Voz",
-  "warningMessage.timeoutExceeded": "Los resultados no se muestran debido al tiempo de espera. Consulte los registros para obtener resultados completos."
+  "warningMessage.timeoutExceeded": "Los resultados no se muestran debido al tiempo de espera. Consulte los registros para obtener resultados completos.",
+  "code.instruction": "Instrucción"
 }

@@ -67,5 +67,6 @@
   "play": "تشغيل",
   "playing": "جاري التشغيل",
   "regenerate": "إعادة إنشاء",
-  "status": "الحالة"
+  "status": "الحالة",
+  "develop.noContent": "لا يوجد محتوى"
 }

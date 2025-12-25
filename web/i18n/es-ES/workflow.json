@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Nombra esta versión",
   "versionHistory.releaseNotesPlaceholder": "Describe lo que cambió",
   "versionHistory.restorationTip": "Después de la restauración de la versión, el borrador actual será sobrescrito.",
-  "versionHistory.title": "Versiones"
+  "versionHistory.title": "Versiones",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Visual",
+  "nodes.triggerSchedule.selectTime": "Seleccionar hora"
 }

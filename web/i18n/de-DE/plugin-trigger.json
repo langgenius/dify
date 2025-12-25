@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "Kein Abonnement ausgewählt",
   "subscription.selectPlaceholder": "Abonnement auswählen",
   "subscription.subscriptionRemoved": "Abonnement entfernt",
-  "subscription.title": "Abonnements"
+  "subscription.title": "Abonnements",
+  "modal.errors.updateFailed": "Aktualisierung des Abonnements fehlgeschlagen",
+  "subscription.list.item.actions.edit.error": "Aktualisierung des Abonnements fehlgeschlagen",
+  "subscription.list.item.actions.edit.success": "Abonnement erfolgreich aktualisiert",
+  "subscription.list.item.actions.edit.title": "Abonnement bearbeiten"
 }

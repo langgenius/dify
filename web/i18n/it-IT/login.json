@@ -110,5 +110,6 @@
   "welcome": "Benvenuto su Dify, per favore accedi per continuare.",
   "withGitHub": "Continua con GitHub",
   "withGoogle": "Continua con Google",
-  "withSSO": "Continua con SSO"
+  "withSSO": "Continua con SSO",
+  "error.redirectUrlMissing": "L'URL di reindirizzamento è mancante"
 }

@@ -1034,5 +1034,8 @@
   "versionHistory.nameThisVersion": "Beri nama versi ini",
   "versionHistory.releaseNotesPlaceholder": "Menjelaskan apa yang berubah",
   "versionHistory.restorationTip": "Setelah pemulihan versi, draf saat ini akan ditimpa.",
-  "versionHistory.title": "Versi"
+  "versionHistory.title": "Versi",
+  "nodes.triggerSchedule.modeCron": "Cron",
+  "nodes.triggerSchedule.modeVisual": "Visual",
+  "nodes.triggerSchedule.selectTime": "Pilih waktu"
 }

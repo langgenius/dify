@@ -110,5 +110,6 @@
   "welcome": "Dify में आपका स्वागत है, कृपया जारी रखने के लिए लॉग इन करें।",
   "withGitHub": "GitHub के साथ जारी रखें",
   "withGoogle": "Google के साथ जारी रखें",
-  "withSSO": "एसएसओ के साथ जारी रखें"
+  "withSSO": "एसएसओ के साथ जारी रखें",
+  "error.redirectUrlMissing": "पुनःनिर्देश URL गायब है"
 }

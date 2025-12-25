@@ -611,5 +611,12 @@
   "voiceInput.converting": "पाठ में परिवर्तित हो रहा है...",
   "voiceInput.notAllow": "माइक्रोफोन अधिकृत नहीं है",
   "voiceInput.speaking": "अब बोलें...",
-  "you": "आप"
+  "you": "आप",
+  "account.workspaceNamePlaceholder": "वर्कस्पेस का नाम दर्ज करें",
+  "error": "त्रुटि",
+  "loading": "लोड हो रहा है",
+  "modelProvider.auth.credentialRemoved": "क्रेडेंशियल हटा दिया गया",
+  "operation.back": "वापस",
+  "operation.imageDownloaded": "छवि डाउनलोड की गई",
+  "operation.saving": "सेव हो रहा है..."
 }

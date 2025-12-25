@@ -67,5 +67,6 @@
   "play": "Chạy",
   "playing": "Đang chạy",
   "regenerate": "Tái tạo",
-  "status": "Trạng thái"
+  "status": "Trạng thái",
+  "develop.noContent": "Không có nội dung"
 }

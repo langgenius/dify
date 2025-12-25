@@ -386,5 +386,6 @@
   "voice.voiceSettings.resolutionTooltip": "Suport pentru limba de voce text-to-speech.",
   "voice.voiceSettings.title": "Setări Voce",
   "voice.voiceSettings.voice": "Voce",
-  "warningMessage.timeoutExceeded": "Rezultatele nu sunt afișate din cauza expirării. Vă rugăm să consultați jurnalele pentru a colecta rezultatele complete."
+  "warningMessage.timeoutExceeded": "Rezultatele nu sunt afișate din cauza expirării. Vă rugăm să consultați jurnalele pentru a colecta rezultatele complete.",
+  "code.instruction": "Instrucțiune"
 }

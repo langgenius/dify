@@ -110,5 +110,9 @@
   "subscription.noSubscriptionSelected": "ยังไม่ได้เลือกการสมัครสมาชิก",
   "subscription.selectPlaceholder": "เลือกการสมัครสมาชิก",
   "subscription.subscriptionRemoved": "ยกเลิกการสมัครแล้ว",
-  "subscription.title": "การสมัครสมาชิก"
+  "subscription.title": "การสมัครสมาชิก",
+  "modal.errors.updateFailed": "ไม่สามารถอัปเดตการสมัครสมาชิกได้",
+  "subscription.list.item.actions.edit.error": "ไม่สามารถอัปเดตการสมัครสมาชิกได้",
+  "subscription.list.item.actions.edit.success": "การสมัครสมาชิกอัปเดตเรียบร้อยแล้ว",
+  "subscription.list.item.actions.edit.title": "แก้ไขการสมัครสมาชิก"
 }

@@ -67,5 +67,6 @@
   "play": "Відтворити",
   "playing": "Відтворення",
   "regenerate": "Відновити",
-  "status": "Статус"
+  "status": "Статус",
+  "develop.noContent": "Немає вмісту"
 }

@@ -110,5 +110,6 @@
   "welcome": "Dobrodošli v Dify, prosimo, prijavite se za nadaljevanje.",
   "withGitHub": "Nadaljujte z GitHub",
   "withGoogle": "Nadaljujte z Google",
-  "withSSO": "Nadaljujte z enotno prijavo"
+  "withSSO": "Nadaljujte z enotno prijavo",
+  "error.redirectUrlMissing": "Preusmeritveni URL manjka"
 }

@@ -200,5 +200,6 @@
   "toolRemoved": "Orodje odstranjeno",
   "type.builtIn": "Vgrajena",
   "type.custom": "Prilagojena",
-  "type.workflow": "Potek dela"
+  "type.workflow": "Potek dela",
+  "auth.unauthorized": "Nepooblaščeno"
 }

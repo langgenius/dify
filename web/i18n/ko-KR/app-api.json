@@ -67,5 +67,6 @@
   "play": "실행",
   "playing": "실행 중",
   "regenerate": "재생성",
-  "status": "상태"
+  "status": "상태",
+  "develop.noContent": "내용 없음"
 }

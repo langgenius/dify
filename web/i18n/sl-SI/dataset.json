@@ -176,5 +176,6 @@
   "weightedScore.semantic": "Semantično",
   "weightedScore.semanticFirst": "Semantično najprej",
   "weightedScore.title": "Utežena ocena",
-  "wordCount": " tisoč besed"
+  "wordCount": " tisoč besed",
+  "imageUploader.fileSizeLimitExceeded": "Velikost datoteke presega omejitev {{size}} MB"
 }
