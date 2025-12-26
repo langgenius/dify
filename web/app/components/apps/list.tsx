@@ -13,7 +13,7 @@ import dynamic from 'next/dynamic'
 import {
   useRouter,
 } from 'next/navigation'
-import { useQueryState } from 'nuqs'
+import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -47,9 +47,10 @@ const List = () => {
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [activeTab, setActiveTab] = useQueryState('category', {
-    defaultValue: 'all',
-  })
+  const [activeTab, setActiveTab] = useQueryState(
+    'category',
+    parseAsString.withDefault('all').withOptions({ history: 'push' }),
+  )
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
