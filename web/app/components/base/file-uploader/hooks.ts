@@ -2,8 +2,8 @@ import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
+import { noop } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import { useParams } from 'next/navigation'
 import {
   useCallback,
@@ -174,7 +174,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
           notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
@@ -287,7 +287,7 @@ export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
             notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },

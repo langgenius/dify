@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiLoader2Line } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'

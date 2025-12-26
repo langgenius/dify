@@ -353,9 +353,7 @@ const translation = {
     visionSettings: {
       title: 'Cài đặt thị giác',
       resolution: 'Độ phân giải',
-      resolutionTooltip: `Độ phân giải thấp sẽ cho phép mô hình nhận một phiên bản hình ảnh 512 x 512 thấp hơn, và đại diện cho hình ảnh với ngân sách 65 token. Điều này cho phép API trả về phản hồi nhanh hơn và tiêu thụ ít token đầu vào cho các trường hợp sử dụng không yêu cầu chi tiết cao.
-      \n
-      Độ phân giải cao sẽ đầu tiên cho phép mô hình nhìn thấy hình ảnh thấp hơn và sau đó tạo ra các cắt chi tiết của hình ảnh đầu vào dưới dạng hình vuông 512px dựa trên kích thước hình ảnh đầu vào. Mỗi cắt chi tiết sử dụng hai lần ngân sách token cho tổng cộng 129 token.`,
+      resolutionTooltip: 'Độ phân giải thấp sẽ cho phép mô hình nhận một phiên bản hình ảnh 512 x 512 thấp hơn, và đại diện cho hình ảnh với ngân sách 65 token. Điều này cho phép API trả về phản hồi nhanh hơn và tiêu thụ ít token đầu vào cho các trường hợp sử dụng không yêu cầu chi tiết cao.\nĐộ phân giải cao sẽ đầu tiên cho phép mô hình nhìn thấy hình ảnh thấp hơn và sau đó tạo ra các cắt chi tiết của hình ảnh đầu vào dưới dạng hình vuông 512px dựa trên kích thước hình ảnh đầu vào. Mỗi cắt chi tiết sử dụng hai lần ngân sách token cho tổng cộng 129 token.',
       high: 'Cao',
       low: 'Thấp',
       uploadMethod: 'Phương thức tải lên',

@@ -1,7 +1,7 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { RiCloseLine, RiLock2Line } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

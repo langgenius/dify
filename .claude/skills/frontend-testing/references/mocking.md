@@ -242,32 +242,9 @@ describe('Component with Context', () => {
 })
 ```
 
-### 7. SWR / React Query
+### 7. React Query
 
 ```typescript
-// SWR
-vi.mock('swr', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-import useSWR from 'swr'
-const mockedUseSWR = vi.mocked(useSWR)
-
-describe('Component with SWR', () => {
-  it('should show loading state', () => {
-    mockedUseSWR.mockReturnValue({
-      data: undefined,
-      error: undefined,
-      isLoading: true,
-    })
-    
-    render(<Component />)
-    expect(screen.getByText(/loading/i)).toBeInTheDocument()
-  })
-})
-
-// React Query
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const createTestQueryClient = () => new QueryClient({
