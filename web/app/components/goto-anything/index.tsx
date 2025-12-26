@@ -237,13 +237,13 @@ const GotoAnything: FC<Props> = ({
           <div className="text-sm font-medium">
             {isCommandSearch
               ? (() => {
-                  const keyMap: Record<string, string> = {
-                    app: 'app.gotoAnything.emptyState.noAppsFound',
-                    plugin: 'app.gotoAnything.emptyState.noPluginsFound',
-                    knowledge: 'app.gotoAnything.emptyState.noKnowledgeBasesFound',
-                    node: 'app.gotoAnything.emptyState.noWorkflowNodesFound',
-                  }
-                  return t((keyMap[commandType] || 'app.gotoAnything.noResults') as any)
+                  const keyMap = {
+                    app: 'gotoAnything.emptyState.noAppsFound',
+                    plugin: 'gotoAnything.emptyState.noPluginsFound',
+                    knowledge: 'gotoAnything.emptyState.noKnowledgeBasesFound',
+                    node: 'gotoAnything.emptyState.noWorkflowNodesFound',
+                  } as const
+                  return t(keyMap[commandType as keyof typeof keyMap] || 'gotoAnything.noResults', { ns: 'app' })
                 })()
               : t('gotoAnything.noResults', { ns: 'app' })}
           </div>
@@ -403,14 +403,14 @@ const GotoAnything: FC<Props> = ({
                           <Command.Group
                             key={groupIndex}
                             heading={(() => {
-                              const typeMap: Record<string, string> = {
-                                'app': 'app.gotoAnything.groups.apps',
-                                'plugin': 'app.gotoAnything.groups.plugins',
-                                'knowledge': 'app.gotoAnything.groups.knowledgeBases',
-                                'workflow-node': 'app.gotoAnything.groups.workflowNodes',
-                                'command': 'app.gotoAnything.groups.commands',
-                              }
-                              return t((typeMap[type] || `${type}s`) as any)
+                              const typeMap = {
+                                'app': 'gotoAnything.groups.apps',
+                                'plugin': 'gotoAnything.groups.plugins',
+                                'knowledge': 'gotoAnything.groups.knowledgeBases',
+                                'workflow-node': 'gotoAnything.groups.workflowNodes',
+                                'command': 'gotoAnything.groups.commands',
+                              } as const
+                              return t(typeMap[type as keyof typeof typeMap] || `${type}s`, { ns: 'app' })
                             })()}
                             className="p-2 capitalize text-text-secondary"
                           >

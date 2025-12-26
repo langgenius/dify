@@ -42,11 +42,11 @@ const CREDENTIAL_TYPE_MAP: Record<SupportedCreationMethods, TriggerCredentialTyp
 
 const MODAL_TITLE_KEY_MAP: Record<
   SupportedCreationMethods,
-  'pluginTrigger.modal.apiKey.title' | 'pluginTrigger.modal.oauth.title' | 'pluginTrigger.modal.manual.title'
+  'modal.apiKey.title' | 'modal.oauth.title' | 'modal.manual.title'
 > = {
-  [SupportedCreationMethods.APIKEY]: 'pluginTrigger.modal.apiKey.title',
-  [SupportedCreationMethods.OAUTH]: 'pluginTrigger.modal.oauth.title',
-  [SupportedCreationMethods.MANUAL]: 'pluginTrigger.modal.manual.title',
+  [SupportedCreationMethods.APIKEY]: 'modal.apiKey.title',
+  [SupportedCreationMethods.OAUTH]: 'modal.oauth.title',
+  [SupportedCreationMethods.MANUAL]: 'modal.manual.title',
 }
 
 enum ApiKeyStep {
@@ -347,7 +347,7 @@ export const CommonCreateModal = ({ onClose, createType, builder }: Props) => {
 
   return (
     <Modal
-      title={t(MODAL_TITLE_KEY_MAP[createType])}
+      title={t(MODAL_TITLE_KEY_MAP[createType], { ns: 'pluginTrigger' })}
       confirmButtonText={confirmButtonText}
       onClose={onClose}
       onCancel={onClose}

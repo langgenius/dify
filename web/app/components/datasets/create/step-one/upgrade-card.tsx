@@ -24,7 +24,7 @@ const UpgradeCard: FC = () => {
         size="custom"
         isShort
         className="ml-3 !h-8 !rounded-lg px-2"
-        labelKey="billing.triggerLimitModal.upgrade"
+        labelKey="triggerLimitModal.upgrade"
         loc="upload-multiple-files"
         onClick={handleUpgrade}
       />

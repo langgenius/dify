@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import { upload } from '@/service/base'
 
 /**
@@ -7,7 +8,7 @@ import { upload } from '@/service/base'
  * @param t - Translation function
  * @returns Localized error message
  */
-export const getImageUploadErrorMessage = (error: any, defaultMessage: string, t: (key: string) => string): string => {
+export const getImageUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
   const errorCode = error?.response?.code
 
   if (errorCode === 'forbidden')

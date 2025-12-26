@@ -427,9 +427,9 @@ const Completed: FC<ICompletedProps> = ({
       const total = segmentListData?.total ? formatNumber(segmentListData.total) : '--'
       const count = total === '--' ? 0 : segmentListData!.total
       const translationKey = (docForm === ChunkingMode.parentChild && parentMode === 'paragraph')
-        ? 'datasetDocuments.segment.parentChunks'
-        : 'datasetDocuments.segment.chunks'
-      return `${total} ${t(translationKey, { count })}`
+        ? 'segment.parentChunks' as const
+        : 'segment.chunks' as const
+      return `${total} ${t(translationKey, { ns: 'datasetDocuments', count })}`
     }
     else {
       const total = typeof segmentListData?.total === 'number' ? formatNumber(segmentListData.total) : 0

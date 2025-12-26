@@ -108,27 +108,27 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
               {isSlashMode
                 ? (
                     (() => {
-                      const slashKeyMap: Record<string, string> = {
-                        '/theme': 'app.gotoAnything.actions.themeCategoryDesc',
-                        '/language': 'app.gotoAnything.actions.languageChangeDesc',
-                        '/account': 'app.gotoAnything.actions.accountDesc',
-                        '/feedback': 'app.gotoAnything.actions.feedbackDesc',
-                        '/docs': 'app.gotoAnything.actions.docDesc',
-                        '/community': 'app.gotoAnything.actions.communityDesc',
-                        '/zen': 'app.gotoAnything.actions.zenDesc',
-                      }
-                      return t((slashKeyMap[item.key] || item.description) as any)
+                      const slashKeyMap = {
+                        '/theme': 'gotoAnything.actions.themeCategoryDesc',
+                        '/language': 'gotoAnything.actions.languageChangeDesc',
+                        '/account': 'gotoAnything.actions.accountDesc',
+                        '/feedback': 'gotoAnything.actions.feedbackDesc',
+                        '/docs': 'gotoAnything.actions.docDesc',
+                        '/community': 'gotoAnything.actions.communityDesc',
+                        '/zen': 'gotoAnything.actions.zenDesc',
+                      } as const
+                      return t(slashKeyMap[item.key as keyof typeof slashKeyMap] || item.description, { ns: 'app' })
                     })()
                   )
                 : (
                     (() => {
-                      const keyMap: Record<string, string> = {
-                        '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
-                        '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
-                        '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
-                        '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
-                      }
-                      return t(keyMap[item.key] as any) as string
+                      const keyMap = {
+                        '@app': 'gotoAnything.actions.searchApplicationsDesc',
+                        '@plugin': 'gotoAnything.actions.searchPluginsDesc',
+                        '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
+                        '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
+                      } as const
+                      return t(keyMap[item.key as keyof typeof keyMap], { ns: 'app' })
                     })()
                   )}
             </span>

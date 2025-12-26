@@ -23,8 +23,8 @@ import Loading from '../components/base/loading'
 const accountFormSchema = z.object({
   email: z
     .string()
-    .min(1, { message: 'login.error.emailInValid' })
-    .email('login.error.emailInValid'),
+    .min(1, { message: 'error.emailInValid' })
+    .email('error.emailInValid'),
 })
 
 type AccountFormValues = z.infer<typeof accountFormSchema>
@@ -108,7 +108,7 @@ const ForgotPasswordForm = () => {
                           {...register('email')}
                           placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
                         />
-                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}` as any) as string}</span>}
+                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}` as any, { ns: 'login' })}</span>}
                       </div>
                     </div>
                   )}
