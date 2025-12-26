@@ -1,7 +1,7 @@
 import type { IPromptValuePanelProps } from './index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import { useStore } from '@/app/components/app/store'
 import ConfigContext from '@/context/debug-configuration'
 import { AppModeEnum, ModelModeType, Resolution } from '@/types/app'

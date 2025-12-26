@@ -4,7 +4,7 @@ import copy from 'copy-to-clipboard'
 import * as React from 'react'
 
 import { act } from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import Embedded from './index'
 
 vi.mock('./style.module.css', () => ({
