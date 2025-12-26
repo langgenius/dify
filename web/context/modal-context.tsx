@@ -312,13 +312,13 @@ export const ModalContextProvider = ({
     setShowOpeningModal(null)
   }
 
-  const handleShowPricingModal = () => {
+  const handleShowPricingModal = useCallback(() => {
     setPricingModalOpen(true)
-  }
+  }, [setPricingModalOpen])
 
-  const handleCancelPricingModal = () => {
+  const handleCancelPricingModal = useCallback(() => {
     setPricingModalOpen(false)
-  }
+  }, [setPricingModalOpen])
 
   return (
     <ModalContext.Provider value={{
