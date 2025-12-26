@@ -26,12 +26,19 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
 
     if (plan.type === Plan.team || plan.type === Plan.enterprise)
       return DocumentProcessingPriority.topPriority
+
+    return DocumentProcessingPriority.standard
   }, [plan])
 
   return (
     <Tooltip popupContent={(
       <div>
-        <div className="mb-1 text-xs font-semibold text-text-primary">{`${t('plansCommon.documentProcessingPriority', { ns: 'billing' })}: ${t(`plansCommon.priority.${priority}` as any, { ns: 'billing' }) as string}`}</div>
+        <div className="mb-1 text-xs font-semibold text-text-primary">
+          {t('plansCommon.documentProcessingPriority', { ns: 'billing' })}
+          :
+          {' '}
+          {t(`plansCommon.priority.${priority}`, { ns: 'billing' })}
+        </div>
         {
           priority !== DocumentProcessingPriority.topPriority && (
             <div className="text-xs text-text-secondary">{t('plansCommon.documentProcessingPriorityTip', { ns: 'billing' })}</div>
@@ -51,7 +58,7 @@ const PriorityLabel = ({ className }: PriorityLabelProps) => {
             <RiAedFill className="mr-0.5 size-3" />
           )
         }
-        <span>{t(`plansCommon.priority.${priority}` as any, { ns: 'billing' }) as string}</span>
+        <span>{t(`plansCommon.priority.${priority}`, { ns: 'billing' })}</span>
       </div>
     </Tooltip>
   )

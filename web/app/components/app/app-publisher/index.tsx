@@ -1,5 +1,6 @@
 import type { ModelAndParameter } from '../configuration/debug/types'
 import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import type { PublishWorkflowParams } from '@/types/workflow'
 import {
   RiArrowDownSLine,
@@ -53,7 +54,9 @@ import AccessControl from '../app-access-control'
 import PublishWithMultipleModel from './publish-with-multiple-model'
 import SuggestedAction from './suggested-action'
 
-const ACCESS_MODE_MAP: Record<AccessMode, { label: string, icon: React.ElementType }> = {
+type AccessModeLabel = I18nKeysByPrefix<'app', 'accessControlDialog.accessItems.'>
+
+const ACCESS_MODE_MAP: Record<AccessMode, { label: AccessModeLabel, icon: React.ElementType }> = {
   [AccessMode.ORGANIZATION]: {
     label: 'organization',
     icon: RiBuildingLine,
@@ -84,7 +87,7 @@ const AccessModeDisplay: React.FC<{ mode?: AccessMode }> = ({ mode }) => {
     <>
       <Icon className="h-4 w-4 shrink-0 text-text-secondary" />
       <div className="grow truncate">
-        <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}` as any, { ns: 'app' }) as string}</span>
+        <span className="system-sm-medium text-text-secondary">{t(`accessControlDialog.accessItems.${label}`, { ns: 'app' })}</span>
       </div>
     </>
   )

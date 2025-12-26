@@ -138,7 +138,7 @@ const InstallForm = () => {
                         placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
                         className="system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                       />
-                      {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}` as any, { ns: 'login' })}</span>}
+                      {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}` as 'error.emailInValid', { ns: 'login' })}</span>}
                     </div>
 
                   </div>
@@ -154,7 +154,7 @@ const InstallForm = () => {
                         className="system-sm-regular w-full appearance-none rounded-md border border-transparent bg-components-input-bg-normal px-3 py-[7px] text-components-input-text-filled caret-primary-600 outline-none placeholder:text-components-input-text-placeholder hover:border-components-input-border-hover hover:bg-components-input-bg-hover focus:border-components-input-border-active focus:bg-components-input-bg-active focus:shadow-xs"
                       />
                     </div>
-                    {errors.name && <span className="text-sm text-red-400">{t(`${errors.name.message}` as any, { ns: 'login' })}</span>}
+                    {errors.name && <span className="text-sm text-red-400">{t(`${errors.name.message}` as 'error.nameEmpty', { ns: 'login' })}</span>}
                   </div>
 
                   <div className="mb-5">

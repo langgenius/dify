@@ -43,7 +43,7 @@ const LoopResultPanel: FC<Props> = ({
       <div className={cn(!noWrap && 'shrink-0 ', 'px-4 pt-3')}>
         <div className="flex h-8 shrink-0 items-center justify-between">
           <div className="system-xl-semibold truncate text-text-primary">
-            {t(`${i18nPrefix}.testRunLoop` as any, { ns: 'workflow' }) as string}
+            {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }
           </div>
           <div className="ml-2 shrink-0 cursor-pointer p-1" onClick={onHide}>
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />

@@ -42,6 +42,7 @@ import { GeneratorType } from './types'
 import useGenData from './use-gen-data'
 
 const i18nPrefix = 'generate'
+
 export type IGetAutomaticResProps = {
   mode: AppModeEnum
   isShow: boolean
@@ -131,17 +132,19 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
       icon: RiGitCommitLine,
       key: 'GitGud',
     },
-  ]
+  ] as const
 
   // eslint-disable-next-line sonarjs/no-nested-template-literals, sonarjs/no-nested-conditional
   const [instructionFromSessionStorage, setInstruction] = useSessionStorageState<string>(`improve-instruction-${flowId}${isBasicMode ? '' : `-${nodeId}${editorId ? `-${editorId}` : ''}`}`)
   const instruction = instructionFromSessionStorage || ''
   const [ideaOutput, setIdeaOutput] = useState<string>('')
 
+  type TemplateKey = typeof tryList[number]['key']
+
   const [editorKey, setEditorKey] = useState(`${flowId}-0`)
-  const handleChooseTemplate = useCallback((key: string) => {
+  const handleChooseTemplate = useCallback((key: TemplateKey) => {
     return () => {
-      const template = t(`generate.template.${key}.instruction` as any, { ns: 'appDebug' }) as string
+      const template = t(`generate.template.${key}.instruction` as const, { ns: 'appDebug' })
       setInstruction(template)
       setEditorKey(`${flowId}-${Date.now()}`)
     }
@@ -323,7 +326,7 @@ const GetAutomaticRes: FC<IGetAutomaticResProps> = ({
                   <TryLabel
                     key={item.key}
                     Icon={item.icon}
-                    text={t(`generate.template.${item.key}.name` as any, { ns: 'appDebug' }) as string}
+                    text={t(`generate.template.${item.key}.name`, { ns: 'appDebug' })}
                     onClick={handleChooseTemplate(item.key)}
                   />
                 ))}

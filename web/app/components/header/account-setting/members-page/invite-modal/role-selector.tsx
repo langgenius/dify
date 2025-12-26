@@ -11,17 +11,24 @@ import {
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
 
+const roleI18nKeyMap = {
+  normal: 'members.normal',
+  editor: 'members.editor',
+  admin: 'members.admin',
+  dataset_operator: 'members.datasetOperator',
+} as const
+
+export type RoleKey = keyof typeof roleI18nKeyMap
+
 export type RoleSelectorProps = {
-  value: string
-  onChange: (role: string) => void
+  value: RoleKey
+  onChange: (role: RoleKey) => void
 }
 
 const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
   const { datasetOperatorEnabled } = useProviderContext()
-
-  const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
 
   return (
     <PortalToFollowElem
@@ -36,7 +43,7 @@ const RoleSelector = ({ value, onChange }: RoleSelectorProps) => {
           className="block"
         >
           <div className={cn('flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal px-3 py-2 hover:bg-state-base-hover', open && 'bg-state-base-hover')}>
-            <div className="mr-2 grow text-sm leading-5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(`members.${toHump(value)}` as any, { ns: 'common' }) })}</div>
+            <div className="mr-2 grow text-sm leading-5 text-text-primary">{t('members.invitedAsRole', { ns: 'common', role: t(roleI18nKeyMap[value], { ns: 'common' }) })}</div>
             <RiArrowDownSLine className="h-4 w-4 shrink-0 text-text-secondary" />
           </div>
         </PortalToFollowElemTrigger>

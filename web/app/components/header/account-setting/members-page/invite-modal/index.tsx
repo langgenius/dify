@@ -1,4 +1,5 @@
 'use client'
+import type { RoleKey } from './role-selector'
 import type { InvitationResult } from '@/models/common'
 import { RiCloseLine, RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
@@ -47,7 +48,7 @@ const InviteModal = ({
   }, [licenseLimit, emails])
 
   const { locale } = useContext(I18n)
-  const [role, setRole] = useState<string>('normal')
+  const [role, setRole] = useState<RoleKey>('normal')
 
   const [isSubmitting, {
     setTrue: setIsSubmitting,

@@ -73,7 +73,7 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
               {isExternalProvider && t('externalTag', { ns: 'dataset' })}
               {!isExternalProvider && isPipelinePublished && dataset.doc_form && dataset.indexing_technique && (
                 <div className="flex items-center gap-x-2">
-                  <span>{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}` as any, { ns: 'dataset' }) as string}</span>
+                  <span>{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
                   <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
                 </div>
               )}

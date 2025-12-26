@@ -1,5 +1,6 @@
 'use client'
 import type { DocType } from '@/models/datasets'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useTranslation } from 'react-i18next'
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode } from '@/models/datasets'
@@ -86,7 +87,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'volume/issue/page_numbers': { label: t(`${fieldPrefix}.paper.volumeIssuePage`, { ns: 'datasetDocuments' }) },
         'doi': { label: t(`${fieldPrefix}.paper.DOI`, { ns: 'datasetDocuments' }) },
-        'topic/keywords': { label: t(`${fieldPrefix}.paper.topicKeywords` as any, { ns: 'datasetDocuments' }) as string },
+        'topic/keywords': { label: t(`${fieldPrefix}.paper.topicsKeywords`, { ns: 'datasetDocuments' }) },
         'abstract': {
           label: t(`${fieldPrefix}.paper.abstract`, { ns: 'datasetDocuments' }),
           inputType: 'textarea',
@@ -160,7 +161,7 @@ export const useMetadataMap = (): MetadataMap => {
         'end_date': { label: t(`${fieldPrefix}.IMChat.endDate`, { ns: 'datasetDocuments' }) },
         'participants': { label: t(`${fieldPrefix}.IMChat.participants`, { ns: 'datasetDocuments' }) },
         'topicKeywords': {
-          label: t(`${fieldPrefix}.IMChat.topicKeywords` as any, { ns: 'datasetDocuments' }) as string,
+          label: t(`${fieldPrefix}.IMChat.topicsKeywords`, { ns: 'datasetDocuments' }),
           inputType: 'textarea',
         },
         'fileType': { label: t(`${fieldPrefix}.IMChat.fileType`, { ns: 'datasetDocuments' }) },
@@ -193,7 +194,7 @@ export const useMetadataMap = (): MetadataMap => {
       allowEdit: false,
       subFieldsMap: {
         'title': { label: t(`${fieldPrefix}.notion.title`, { ns: 'datasetDocuments' }) },
-        'language': { label: t(`${fieldPrefix}.notion.lang` as any, { ns: 'datasetDocuments' }) as string, inputType: 'select' },
+        'language': { label: t(`${fieldPrefix}.notion.language`, { ns: 'datasetDocuments' }), inputType: 'select' },
         'author/creator': { label: t(`${fieldPrefix}.notion.author`, { ns: 'datasetDocuments' }) },
         'creation_date': { label: t(`${fieldPrefix}.notion.createdTime`, { ns: 'datasetDocuments' }) },
         'last_modified_date': {
@@ -201,7 +202,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'notion_page_link': { label: t(`${fieldPrefix}.notion.url`, { ns: 'datasetDocuments' }) },
         'category/tags': { label: t(`${fieldPrefix}.notion.tag`, { ns: 'datasetDocuments' }) },
-        'description': { label: t(`${fieldPrefix}.notion.desc` as any, { ns: 'datasetDocuments' }) as string },
+        'description': { label: t(`${fieldPrefix}.notion.description`, { ns: 'datasetDocuments' }) },
       },
     },
     synced_from_github: {
@@ -241,7 +242,7 @@ export const useMetadataMap = (): MetadataMap => {
         },
         'data_source_type': {
           label: t(`${fieldPrefix}.originInfo.source`, { ns: 'datasetDocuments' }),
-          render: value => t(`metadata.source.${value === 'notion_import' ? 'notion' : value}` as any, { ns: 'datasetDocuments' }) as string,
+          render: (value: I18nKeysByPrefix<'datasetDocuments', 'metadata.source.'> | 'notion_import') => t(`metadata.source.${value === 'notion_import' ? 'notion' : value}`, { ns: 'datasetDocuments' }),
         },
       },
     },
@@ -323,7 +324,7 @@ export const useLanguages = () => {
     cs: t(`${langPrefix}cs`, { ns: 'datasetDocuments' }),
     th: t(`${langPrefix}th`, { ns: 'datasetDocuments' }),
     id: t(`${langPrefix}id`, { ns: 'datasetDocuments' }),
-    ro: t(`${langPrefix}ro` as any, { ns: 'datasetDocuments' }) as string,
+    ro: t(`${langPrefix}ro`, { ns: 'datasetDocuments' }),
   }
 }
 

@@ -63,7 +63,7 @@ const RuleDetail = ({
       />
       <FieldInfo
         label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
-        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title` as any, { ns: 'dataset' }) as string}
+        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
         valueIcon={(
           <Image
             className="size-4"

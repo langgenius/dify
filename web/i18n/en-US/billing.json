@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "Free Features:",
   "plans.community.name": "Community",
   "plans.community.price": "Free",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "Contact Sales",
   "plans.enterprise.description": "For enterprise requiring organization-grade security, compliance, scalability, control and custom solutions",
   "plans.enterprise.features": [

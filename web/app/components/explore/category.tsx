@@ -48,7 +48,7 @@ const Category: FC<ICategoryProps> = ({
           className={itemClassName(name === value)}
           onClick={() => onChange(name)}
         >
-          {`category.${name}` in exploreI18n ? t(`category.${name}` as any, { ns: 'explore' }) as string : name}
+          {`category.${name}` in exploreI18n ? t(`category.${name}`, { ns: 'explore' }) : name}
         </div>
       ))}
     </div>

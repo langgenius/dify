@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { QueryParam } from './index'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
@@ -15,7 +16,9 @@ dayjs.extend(quarterOfYear)
 
 const today = dayjs()
 
-export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: string } } = {
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
+export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePeriodName } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
   3: { value: 28, name: 'last4weeks' },
@@ -50,7 +53,7 @@ const Filter: FC<IFilterProps> = ({ isChatMode, appId, queryParams, setQueryPara
           setQueryParams({ ...queryParams, period: item.value })
         }}
         onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}` as any, { ns: 'appLog' }) as string }))}
+        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
       />
       <Chip
         className="min-w-[150px]"

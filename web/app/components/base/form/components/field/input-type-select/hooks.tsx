@@ -1,3 +1,5 @@
+import type { InputType } from './types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   RiAlignLeft,
   RiCheckboxLine,
@@ -11,7 +13,9 @@ import { useTranslation } from 'react-i18next'
 import { PipelineInputVarType } from '@/models/pipeline'
 import { InputTypeEnum } from './types'
 
-const i18nFileTypeMap: Record<string, string> = {
+type VariableConfigKeySuffix = I18nKeysByPrefix<'appDebug', 'variableConfig.'>
+
+const i18nFileTypeMap: Partial<Record<InputType, VariableConfigKeySuffix>> = {
   'number': 'number',
   'file': 'single-file',
   'file-list': 'multi-files',
@@ -44,7 +48,7 @@ export const useInputTypeOptions = (supportFile: boolean) => {
   return options.map((value) => {
     return {
       value,
-      label: t(`variableConfig.${i18nFileTypeMap[value] || value}` as any, { ns: 'appDebug' }),
+      label: t(`variableConfig.${i18nFileTypeMap[value] || value}` as `variableConfig.${VariableConfigKeySuffix}`, { ns: 'appDebug' }),
       Icon: INPUT_TYPE_ICON[value],
       type: DATA_TYPE[value],
     }

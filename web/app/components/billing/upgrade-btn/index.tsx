@@ -1,5 +1,6 @@
 'use client'
 import type { CSSProperties, FC } from 'react'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -16,7 +17,7 @@ type Props = {
   isShort?: boolean
   onClick?: () => void
   loc?: string
-  labelKey?: string
+  labelKey?: I18nKeysWithPrefix<'billing', 'upgradeBtn.'>
 }
 
 const UpgradeBtn: FC<Props> = ({
@@ -47,7 +48,7 @@ const UpgradeBtn: FC<Props> = ({
   }
 
   const defaultBadgeLabel = t(isShort ? 'upgradeBtn.encourageShort' : 'upgradeBtn.encourage', { ns: 'billing' })
-  const label = labelKey ? t(labelKey as any, { ns: 'billing' }) : defaultBadgeLabel
+  const label = labelKey ? t(labelKey, { ns: 'billing' }) : defaultBadgeLabel
 
   if (isPlain) {
     return (

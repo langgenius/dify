@@ -127,7 +127,7 @@ const TagInput: FC<TagInputProps> = ({
                 setValue(e.target.value)
               }}
               onKeyDown={handleKeyDown}
-              placeholder={t((placeholder || (isSpecialMode ? 'model.params.stop_sequencesPlaceholder' : 'segment.addKeyWord')) as any, { ns: isSpecialMode ? 'common' : 'datasetDocuments' })}
+              placeholder={placeholder || (isSpecialMode ? t('model.params.stop_sequencesPlaceholder', { ns: 'common' }) : t('segment.addKeyWord', { ns: 'datasetDocuments' }))}
             />
           </div>
         )

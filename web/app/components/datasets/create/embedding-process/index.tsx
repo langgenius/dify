@@ -46,13 +46,13 @@ type Props = {
   batchId: string
   documents?: FullDocumentDetail[]
   indexingType?: string
-  retrievalMethod?: string
+  retrievalMethod?: RETRIEVE_METHOD
 }
 
 const RuleDetail: FC<{
   sourceData?: ProcessRuleResponse
   indexingType?: string
-  retrievalMethod?: string
+  retrievalMethod?: RETRIEVE_METHOD
 }> = ({ sourceData, indexingType, retrievalMethod }) => {
   const { t } = useTranslation()
 
@@ -141,7 +141,7 @@ const RuleDetail: FC<{
       <FieldInfo
         label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
         // displayedValue={t(`datasetSettings.form.retrievalSetting.${retrievalMethod}`) as string}
-        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title` as any, { ns: 'dataset' }) as string}
+        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
         valueIcon={(
           <Image
             className="size-4"

@@ -20,6 +20,15 @@ type IOperationProps = {
   onOperate: () => void
 }
 
+const roleI18nKeyMap = {
+  admin: { label: 'members.admin', tip: 'members.adminTip' },
+  editor: { label: 'members.editor', tip: 'members.editorTip' },
+  normal: { label: 'members.normal', tip: 'members.normalTip' },
+  dataset_operator: { label: 'members.datasetOperator', tip: 'members.datasetOperatorTip' },
+} as const
+
+type OperationRoleKey = keyof typeof roleI18nKeyMap
+
 const Operation = ({
   member,
   operatorRole,
@@ -35,26 +44,25 @@ const Operation = ({
     normal: t('members.normal', { ns: 'common' }),
     dataset_operator: t('members.datasetOperator', { ns: 'common' }),
   }
-  const roleList = useMemo(() => {
+  const roleList = useMemo((): OperationRoleKey[] => {
     if (operatorRole === 'owner') {
       return [
         'admin',
         'editor',
         'normal',
-        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     if (operatorRole === 'admin') {
       return [
         'editor',
         'normal',
-        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
   const { notify } = useContext(ToastContext)
-  const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
   const handleDeleteMemberOrCancelInvitation = async () => {
     setOpen(false)
     try {
@@ -106,8 +114,8 @@ const Operation = ({
                       : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                   }
                   <div>
-                    <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`members.${toHump(role)}` as any, { ns: 'common' })}</div>
-                    <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`members.${toHump(role)}Tip` as any, { ns: 'common' })}</div>
+                    <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
+                    <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
                   </div>
                 </div>
               ))

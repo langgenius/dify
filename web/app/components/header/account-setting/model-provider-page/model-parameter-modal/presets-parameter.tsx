@@ -10,6 +10,13 @@ import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { TONE_LIST } from '@/config'
 import { cn } from '@/utils/classnames'
 
+const toneI18nKeyMap = {
+  Creative: 'model.tone.Creative',
+  Balanced: 'model.tone.Balanced',
+  Precise: 'model.tone.Precise',
+  Custom: 'model.tone.Custom',
+} as const
+
 type PresetsParameterProps = {
   onSelect: (toneId: number) => void
 }
@@ -44,7 +51,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
       text: (
         <div className="flex h-full items-center">
           {getToneIcon(tone.id)}
-          {t(`model.tone.${tone.name}` as any, { ns: 'common' }) as string}
+          {t(toneI18nKeyMap[tone.name], { ns: 'common' })}
         </div>
       ),
     }

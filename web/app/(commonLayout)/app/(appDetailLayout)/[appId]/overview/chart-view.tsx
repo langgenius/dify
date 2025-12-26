@@ -1,5 +1,6 @@
 'use client'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
@@ -16,7 +17,9 @@ dayjs.extend(quarterOfYear)
 
 const today = dayjs()
 
-const TIME_PERIOD_MAPPING = [
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
+const TIME_PERIOD_MAPPING: { value: number, name: TimePeriodName }[] = [
   { value: 0, name: 'today' },
   { value: 7, name: 'last7days' },
   { value: 30, name: 'last30days' },

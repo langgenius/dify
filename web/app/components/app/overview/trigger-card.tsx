@@ -2,6 +2,7 @@
 import type { AppDetailResponse } from '@/models/app'
 import type { AppTrigger } from '@/service/use-tools'
 import type { AppSSO } from '@/types/app'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import Link from 'next/link'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,7 +24,7 @@ import { canFindTool } from '@/utils'
 
 export type ITriggerCardProps = {
   appInfo: AppDetailResponse & Partial<AppSSO>
-  onToggleResult?: (err: Error | null, message?: string) => void
+  onToggleResult?: (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => void
 }
 
 const getTriggerIcon = (trigger: AppTrigger, triggerPlugins: any[]) => {

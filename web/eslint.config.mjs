@@ -165,6 +165,7 @@ export default antfu(
       'dify-i18n': difyI18n,
     },
     rules: {
+      'dify-i18n/no-as-any-in-t': 'error',
       'dify-i18n/no-legacy-namespace-prefix': 'error',
       'dify-i18n/require-ns-option': 'error',
     },

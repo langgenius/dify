@@ -2,13 +2,16 @@
 import type { FC } from 'react'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { Item } from '@/app/components/base/select'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { SimpleSelect } from '@/app/components/base/select'
 
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
 type Props = {
-  periodMapping: { [key: string]: { value: number, name: string } }
+  periodMapping: { [key: string]: { value: number, name: TimePeriodName } }
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
 }
@@ -53,7 +56,7 @@ const LongTimeRangePicker: FC<Props> = ({
 
   return (
     <SimpleSelect
-      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}` as any, { ns: 'appLog' }) as string }))}
+      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
       className="mt-0 !w-40"
       notClearable={true}
       onSelect={handleSelect}

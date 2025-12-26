@@ -4,6 +4,7 @@ import type { IAppCardProps } from '@/app/components/app/overview/app-card'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -94,7 +95,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     catch (error) { console.error(error) }
   }
 
-  const handleCallbackResult = (err: Error | null, message?: string) => {
+  const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
 
     message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
@@ -104,7 +105,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
     notify({
       type,
-      message: t(`actionMsg.${message}` as any, { ns: 'common' }) as string,
+      message: t(`actionMsg.${message}`, { ns: 'common' }) as string,
     })
   }
 

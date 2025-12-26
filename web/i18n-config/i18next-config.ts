@@ -36,7 +36,7 @@ import tools from '../i18n/en-US/tools.json'
 import workflow from '../i18n/en-US/workflow.json'
 
 // @keep-sorted
-export const namespaces = {
+export const resources = {
   app,
   appAnnotation,
   appApi,
@@ -79,7 +79,8 @@ export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
   ? `${T}${Capitalize<CamelCase<U>>}`
   : S
 
-export type NamespaceCamelCase = keyof typeof namespaces
+export type Resources = typeof resources
+export type NamespaceCamelCase = keyof Resources
 export type NamespaceKebabCase = KebabCase<NamespaceCamelCase>
 
 const requireSilent = async (lang: Locale, namespace: NamespaceKebabCase) => {
@@ -94,7 +95,7 @@ const requireSilent = async (lang: Locale, namespace: NamespaceKebabCase) => {
   return res
 }
 
-const NAMESPACES = Object.keys(namespaces).map(kebabCase) as NamespaceKebabCase[]
+const NAMESPACES = Object.keys(resources).map(kebabCase) as NamespaceKebabCase[]
 
 // Load a single namespace for a language
 export const loadNamespace = async (lang: Locale, ns: NamespaceKebabCase) => {
@@ -116,7 +117,7 @@ export const loadLangResources = async (lang: Locale) => {
 // Initial resources: load en-US namespaces for fallback/default locale
 const getInitialTranslations = () => {
   return {
-    'en-US': namespaces,
+    'en-US': resources,
   }
 }
 
@@ -126,7 +127,7 @@ if (!i18n.isInitialized) {
     fallbackLng: 'en-US',
     resources: getInitialTranslations(),
     defaultNS: 'common',
-    ns: Object.keys(namespaces),
+    ns: Object.keys(resources),
     keySeparator: false,
   })
 }

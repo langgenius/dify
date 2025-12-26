@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { PeriodParamsWithTimeRange, TimeRange } from '@/app/components/app/overview/app-chart'
 import type { Item } from '@/app/components/base/select'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { RiArrowDownSLine, RiCheckLine } from '@remixicon/react'
 import dayjs from 'dayjs'
 import * as React from 'react'
@@ -12,9 +13,11 @@ import { cn } from '@/utils/classnames'
 
 const today = dayjs()
 
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
 type Props = {
   isCustomRange: boolean
-  ranges: { value: number, name: string }[]
+  ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParamsWithTimeRange) => void
 }
 
@@ -66,7 +69,7 @@ const RangeSelector: FC<Props> = ({
   }, [])
   return (
     <SimpleSelect
-      items={ranges.map(v => ({ ...v, name: t(`filter.period.${v.name}` as any, { ns: 'appLog' }) as string }))}
+      items={ranges.map(v => ({ ...v, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
       className="mt-0 !w-40"
       notClearable={true}
       onSelect={handleSelectRange}
