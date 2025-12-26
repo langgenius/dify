@@ -43,7 +43,7 @@ export type DeliveryMethod = {
   id: string
   type: DeliveryMethodType
   enabled: boolean
-  config?: EmailConfig | {} | null
+  config?: EmailConfig
 }
 
 export enum UserActionButtonType {

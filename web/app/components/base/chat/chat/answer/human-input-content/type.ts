@@ -10,6 +10,7 @@ export type HumanInputContentProps = {
   formData: HumanInputFormData
   executedAction?: ExecutedAction
   showEmailTip?: boolean
+  isEmailDebugMode?: boolean
   showDebugModeTip?: boolean
   showTimeout?: boolean
   expirationTime?: number

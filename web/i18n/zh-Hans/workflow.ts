@@ -124,6 +124,7 @@ const translation = {
     tagBound: '使用此标签的应用数量',
     humanInputWebappTip: '仅调试预览，用户在 Web 应用中看不到此内容。',
     humanInputEmailTip: '电子邮件（传递方式）发送到您配置的收件人。',
+    humanInputEmailTipInDebugMode: '电子邮件（传递方式）发送到 <email>{{email}}</email>',
   },
   publishLimit: {
     startNodeTitlePrefix: '升级以',

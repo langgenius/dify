@@ -124,6 +124,7 @@ const translation = {
     tagBound: 'Number of apps using this tag',
     humanInputWebappTip: 'Debug preview only, user will not see this in web app.',
     humanInputEmailTip: 'Email (Delivery Method) sent to your configured recipients',
+    humanInputEmailTipInDebugMode: 'Email (Delivery Method) sent to <email>{{email}}</email>',
   },
   publishLimit: {
     startNodeTitlePrefix: 'Upgrade to',

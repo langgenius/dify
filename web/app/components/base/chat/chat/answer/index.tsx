@@ -87,13 +87,16 @@ const Answer: FC<AnswerProps> = ({
     if (!deliveryMethodsConfig.length) {
       return {
         showEmailTip: false,
+        isEmailDebugMode: false,
         showDebugModeTip: false,
       }
     }
     const isWebappEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.WebApp && method.enabled)
     const isEmailEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.Email && method.enabled)
+    const isEmailDebugMode = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.Email && method.config?.debug_mode)
     return {
       showEmailTip: isEmailEnabled,
+      isEmailDebugMode,
       showDebugModeTip: !isWebappEnabled,
     }
   }, [getHumanInputNodeData, humanInputFormData?.node_id])
@@ -201,6 +204,7 @@ const Answer: FC<AnswerProps> = ({
               <HumanInputContent
                 formData={humanInputFormData}
                 showEmailTip={deliveryMethodsConfig.showEmailTip}
+                isEmailDebugMode={deliveryMethodsConfig.isEmailDebugMode}
                 showDebugModeTip={deliveryMethodsConfig.showDebugModeTip}
                 onSubmit={onHumanInputFormSubmit}
               />
