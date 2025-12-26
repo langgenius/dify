@@ -22,6 +22,7 @@ from core.workflow.nodes.human_input.entities import (
     TimeoutUnit,
     UserAction,
 )
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from models.human_input import (
     EmailExternalRecipientPayload,
@@ -181,6 +182,7 @@ class _DummyForm:
     submission_user_id: str | None = None
     submission_end_user_id: str | None = None
     completed_by_recipient_id: str | None = None
+    status: HumanInputFormStatus = HumanInputFormStatus.WAITING
 
 
 @dataclasses.dataclass

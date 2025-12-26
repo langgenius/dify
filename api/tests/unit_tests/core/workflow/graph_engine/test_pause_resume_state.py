@@ -12,7 +12,7 @@ from core.workflow.graph_events import (
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
-from core.workflow.nodes.base.entities import VariableSelector
+from core.workflow.nodes.base.entities import OutputVariableEntity
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
 from core.workflow.nodes.human_input.entities import HumanInputNodeData, UserAction
@@ -91,7 +91,6 @@ def _build_human_input_graph(
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
-    start_node.init_node_data(start_data.model_dump())
 
     human_data = HumanInputNodeData(
         title="human",
@@ -108,12 +107,11 @@ def _build_human_input_graph(
         graph_runtime_state=runtime_state,
         form_repository=form_repository,
     )
-    human_node.init_node_data(human_data.model_dump())
 
     end_data = EndNodeData(
         title="end",
         outputs=[
-            VariableSelector(variable="result", value_selector=["human", "action_id"]),
+            OutputVariableEntity(variable="result", value_selector=["human", "action_id"]),
         ],
         desc=None,
     )
@@ -123,7 +121,6 @@ def _build_human_input_graph(
         graph_init_params=params,
         graph_runtime_state=runtime_state,
     )
-    end_node.init_node_data(end_data.model_dump())
 
     return (
         Graph.new()
