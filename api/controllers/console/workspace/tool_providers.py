@@ -876,10 +876,6 @@ class ToolProviderMCPApi(Resource):
     def post(self):
         payload = MCPProviderCreatePayload.model_validate(console_ns.payload or {})
         user, tenant_id = current_account_with_tenant()
-        
-        # Parse and validate models
-        configuration = MCPConfiguration.model_validate(args["configuration"])
-        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
 
         # 1) Create provider in a short transaction (no network I/O inside)
         with session_factory.create_session() as session, session.begin():
@@ -902,10 +898,10 @@ class ToolProviderMCPApi(Resource):
         #    Perform network I/O outside any DB session to avoid holding locks.
         try:
             reconnect = MCPToolManageService.reconnect_with_url(
-                server_url=args["server_url"],
-                headers=args.get("headers") or {},
-                timeout=configuration.timeout,
-                sse_read_timeout=configuration.sse_read_timeout,
+                server_url=payload.server_url,
+                headers=payload.headers,
+                timeout=payload.configuration.timeout,
+                sse_read_timeout=payload.configuration.sse_read_timeout,
             )
             # Update just-created provider with authed/tools in a new short transaction
             with session_factory.create_session() as session, session.begin():
