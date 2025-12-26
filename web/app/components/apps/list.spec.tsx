@@ -59,6 +59,11 @@ vi.mock('./hooks/use-dsl-drag-drop', () => ({
 const mockSetActiveTab = vi.fn()
 vi.mock('nuqs', () => ({
   useQueryState: () => ['all', mockSetActiveTab],
+  parseAsString: {
+    withDefault: () => ({
+      withOptions: () => ({}),
+    }),
+  },
 }))
 
 // Mock service hooks - use object for mutable state (vi.mock is hoisted)
