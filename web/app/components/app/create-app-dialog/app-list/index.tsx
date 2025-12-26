@@ -5,6 +5,7 @@ import type { App } from '@/models/explore'
 import { RiRobot2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useRouter } from 'next/navigation'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -20,7 +21,6 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import ExploreContext from '@/context/explore-context'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
@@ -64,9 +64,8 @@ const Apps = ({
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
-  const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: allCategoriesEn,
-    disableSearchParams: true,
+  const [currCategory, setCurrCategory] = useQueryState('category', {
+    defaultValue: allCategoriesEn,
   })
 
   const {
