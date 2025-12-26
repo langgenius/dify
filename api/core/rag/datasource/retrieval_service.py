@@ -13,7 +13,7 @@ from core.model_runtime.entities.model_entities import ModelType
 from core.rag.data_post_processor.data_post_processor import DataPostProcessor
 from core.rag.datasource.keyword.keyword_factory import Keyword
 from core.rag.datasource.vdb.vector_factory import Vector
-from core.rag.embedding.retrieval import RetrievalSegments
+from core.rag.embedding.retrieval import RetrievalChildChunk, RetrievalSegments
 from core.rag.entities.metadata_entities import MetadataCondition
 from core.rag.index_processor.constant.doc_type import DocType
 from core.rag.index_processor.constant.index_type import IndexStructureType
@@ -416,12 +416,12 @@ class RetrievalService:
             child_index_node_ids = [i for i in child_index_node_ids if i]
             index_node_ids = [i for i in index_node_ids if i]
 
-            segment_ids = []
+            segment_ids: list[str] = []
             index_node_segments: list[DocumentSegment] = []
             segments: list[DocumentSegment] = []
-            attachment_map = {}
-            child_chunk_map: dict[Any, Any] = {}
-            doc_segment_map = {}
+            attachment_map: dict[str, list[dict[str, Any]]] = {}
+            child_chunk_map: dict[str, list[ChildChunk]] = {}
+            doc_segment_map: dict[str, list[str]] = {}
 
             with session_factory.create_session() as session:
                 attachments = cls.get_segment_attachment_infos(image_doc_ids, session)
@@ -502,7 +502,7 @@ class RetrievalService:
                                 "child_chunks": child_chunk_details,
                             }
                             segment_child_map[segment.id] = map_detail
-                        record = {
+                        record: dict[str, Any] = {
                             "segment": segment,
                         }
                         records.append(record)
@@ -510,13 +510,13 @@ class RetrievalService:
                     if segment.id not in include_segment_ids:
                         include_segment_ids.add(segment.id)
                         max_score = 0.0
-                        document = doc_to_document_map.get(segment.index_node_id)
-                        if document:
-                            max_score = max(max_score, document.metadata.get("score", 0.0))
+                        segment_document = doc_to_document_map.get(segment.index_node_id)
+                        if segment_document:
+                            max_score = max(max_score, segment_document.metadata.get("score", 0.0))
                         for attachment_info in attachment_infos:
-                            file_document = doc_to_document_map.get(attachment_info["id"])
-                            if file_document:
-                                max_score = max(max_score, file_document.metadata.get("score", 0.0))
+                            file_doc = doc_to_document_map.get(attachment_info["id"])
+                            if file_doc:
+                                max_score = max(max_score, file_doc.metadata.get("score", 0.0))
                         record = {
                             "segment": segment,
                             "score": max_score,
@@ -531,18 +531,26 @@ class RetrievalService:
                 if record["segment"].id in attachment_map:
                     record["files"] = attachment_map[record["segment"].id]  # type: ignore[assignment]
 
-            result = []
+            result: list[RetrievalSegments] = []
             for record in records:
                 # Extract segment
                 segment = record["segment"]
 
                 # Extract child_chunks, ensuring it's a list or None
-                child_chunks = record.get("child_chunks")
-                if not isinstance(child_chunks, list):
-                    child_chunks = None
-
-                if child_chunks:
-                    child_chunks = sorted(child_chunks, key=lambda x: x.get("score", 0.0), reverse=True)
+                raw_child_chunks = record.get("child_chunks")
+                child_chunks_list: list[RetrievalChildChunk] | None = None
+                if isinstance(raw_child_chunks, list):
+                    # Sort by score descending
+                    sorted_chunks = sorted(raw_child_chunks, key=lambda x: x.get("score", 0.0), reverse=True)
+                    child_chunks_list = [
+                        RetrievalChildChunk(
+                            id=chunk["id"],
+                            content=chunk["content"],
+                            score=chunk.get("score", 0.0),
+                            position=chunk["position"],
+                        )
+                        for chunk in sorted_chunks
+                    ]
 
                 # Extract files, ensuring it's a list or None
                 files = record.get("files")
@@ -559,11 +567,11 @@ class RetrievalService:
 
                 # Create RetrievalSegments object
                 retrieval_segment = RetrievalSegments(
-                    segment=segment, child_chunks=child_chunks, score=score, files=files
+                    segment=segment, child_chunks=child_chunks_list, score=score, files=files
                 )
                 result.append(retrieval_segment)
 
-            return sorted(result, key=lambda x: x.score, reverse=True)
+            return sorted(result, key=lambda x: x.score if x.score is not None else 0.0, reverse=True)
         except Exception as e:
             db.session.rollback()
             raise e
