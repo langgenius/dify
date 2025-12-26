@@ -432,7 +432,7 @@ class RetrievalService:
                         attachment_map[attachment["segment_id"]].append(attachment["attachment_info"])
                     else:
                         attachment_map[attachment["segment_id"]] = [attachment["attachment_info"]]
-                    if attachment["attachment_id"] in doc_segment_map:
+                    if attachment["segment_id"] in doc_segment_map:
                         doc_segment_map[attachment["segment_id"]].append(attachment["attachment_id"])
                     else:
                         doc_segment_map[attachment["segment_id"]] = [attachment["attachment_id"]]
