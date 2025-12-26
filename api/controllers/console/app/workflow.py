@@ -527,6 +527,146 @@ class WorkflowDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
+@console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form")
+class AdvancedChatDraftHumanInputFormApi(Resource):
+    @api.doc("get_advanced_chat_draft_human_input_form")
+    @api.doc(description="Get human input form preview for advanced chat workflow")
+    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def get(self, app_model: App, node_id: str):
+        """
+        Preview human input form content and placeholders
+        """
+        current_user, _ = current_account_with_tenant()
+        payload = request.get_json(silent=True) or {}
+        manual_inputs = payload.get("inputs") if isinstance(payload, dict) else {}
+        if manual_inputs is None:
+            manual_inputs = {}
+        if not isinstance(manual_inputs, dict):
+            raise ValueError("inputs must be an object")
+
+        workflow_service = WorkflowService()
+        preview = workflow_service.get_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            manual_inputs=manual_inputs,
+        )
+        return jsonable_encoder(preview)
+
+    @api.doc("submit_advanced_chat_draft_human_input_form")
+    @api.doc(description="Submit human input form preview for advanced chat workflow")
+    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @api.expect(
+        api.model(
+            "AdvancedChatHumanInputFormSubmitRequest",
+            {
+                "inputs": fields.Raw(required=True, description="Form input values"),
+                "action": fields.String(required=True, description="Selected action ID"),
+            },
+        )
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Submit human input form preview
+        """
+        current_user, _ = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("action", type=str, required=True, location="json")
+        )
+        args = parser.parse_args()
+        workflow_service = WorkflowService()
+        result = workflow_service.submit_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            form_inputs=args["inputs"],
+            action=args["action"],
+        )
+        return jsonable_encoder(result)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflows/draft/human-input/nodes/<string:node_id>/form")
+class WorkflowDraftHumanInputFormApi(Resource):
+    @api.doc("get_workflow_draft_human_input_form")
+    @api.doc(description="Get human input form preview for workflow")
+    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
+    def get(self, app_model: App, node_id: str):
+        """
+        Preview human input form content and placeholders
+        """
+        current_user, _ = current_account_with_tenant()
+        payload = request.get_json(silent=True) or {}
+        manual_inputs = payload.get("inputs") if isinstance(payload, dict) else {}
+        if manual_inputs is None:
+            manual_inputs = {}
+        if not isinstance(manual_inputs, dict):
+            raise ValueError("inputs must be an object")
+
+        workflow_service = WorkflowService()
+        preview = workflow_service.get_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            manual_inputs=manual_inputs,
+        )
+        return jsonable_encoder(preview)
+
+    @api.doc("submit_workflow_draft_human_input_form")
+    @api.doc(description="Submit human input form preview for workflow")
+    @api.doc(params={"app_id": "Application ID", "node_id": "Node ID"})
+    @api.expect(
+        api.model(
+            "WorkflowHumanInputFormSubmitRequest",
+            {
+                "inputs": fields.Raw(required=True, description="Form input values"),
+                "action": fields.String(required=True, description="Selected action ID"),
+            },
+        )
+    )
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    @edit_permission_required
+    def post(self, app_model: App, node_id: str):
+        """
+        Submit human input form preview
+        """
+        current_user, _ = current_account_with_tenant()
+        parser = (
+            reqparse.RequestParser()
+            .add_argument("inputs", type=dict, required=True, location="json")
+            .add_argument("action", type=str, required=True, location="json")
+        )
+        args = parser.parse_args()
+        workflow_service = WorkflowService()
+        result = workflow_service.submit_human_input_form_preview(
+            app_model=app_model,
+            account=current_user,
+            node_id=node_id,
+            form_inputs=args["inputs"],
+            action=args["action"],
+        )
+        return jsonable_encoder(result)
+
+
 @console_ns.route("/apps/<uuid:app_id>/workflows/draft/run")
 class DraftWorkflowRunApi(Resource):
     @console_ns.doc("run_draft_workflow")
