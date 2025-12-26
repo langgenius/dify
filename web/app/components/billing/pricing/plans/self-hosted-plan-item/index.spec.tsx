@@ -16,9 +16,9 @@ const featuresTranslations: Record<string, string[]> = {
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
-      if (options?.returnObjects)
-        return featuresTranslations[key] || []
       const prefix = options?.ns ? `${options.ns}.` : ''
+      if (options?.returnObjects)
+        return featuresTranslations[`${prefix}${key}`] || []
       return `${prefix}${key}`
     },
   }),
