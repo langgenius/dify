@@ -679,7 +679,7 @@ const Configuration: FC = () => {
               const toolInCollectionList = collectionList.find(c => tool.provider_id === c.id)
               return {
                 ...tool,
-                isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name) ?? false,
+                isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.provider_id === tool.provider_id && deletedTool.tool_name === tool.tool_name) ?? false,
                 notAuthor: toolInCollectionList?.is_team_authorization === false,
                 ...(tool.provider_type === 'builtin'
                   ? {
