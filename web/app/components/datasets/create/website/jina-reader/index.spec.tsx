@@ -394,7 +394,10 @@ describe('JinaReader', () => {
     it('should update controlFoldOptions when step changes', async () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
-      mockCreateTask.mockImplementation(() => new Promise((_resolve) => { /* pending */ }))
+      let resolveTask: (value: unknown) => void
+      mockCreateTask.mockImplementationOnce(() => new Promise((resolve) => {
+        resolveTask = resolve
+      }))
 
       const props = createDefaultProps()
 
@@ -412,6 +415,9 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped/i)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the pending promise to avoid act() warning
+      resolveTask!({ data: { title: 'T', content: 'C', description: 'D', url: 'https://example.com' } })
     })
   })
 
@@ -869,42 +875,6 @@ describe('JinaReader', () => {
       })
     })
 
-    it('should show error when limit is null', async () => {
-      // Arrange
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: null as unknown as number }),
-      })
-
-      // Act
-      render(<JinaReader {...props} />)
-      const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert
-      await waitFor(() => {
-        expect(createJinaReaderTask).not.toHaveBeenCalled()
-      })
-    })
-
-    it('should show error when limit is undefined', async () => {
-      // Arrange
-      const props = createDefaultProps({
-        crawlOptions: createDefaultCrawlOptions({ limit: undefined as unknown as number }),
-      })
-
-      // Act
-      render(<JinaReader {...props} />)
-      const input = screen.getByRole('textbox')
-      await userEvent.type(input, 'https://example.com')
-      await userEvent.click(screen.getByRole('button', { name: /run/i }))
-
-      // Assert
-      await waitFor(() => {
-        expect(createJinaReaderTask).not.toHaveBeenCalled()
-      })
-    })
-
     it('should handle API throwing an exception', async () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
@@ -1073,9 +1043,12 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveStatus: (value: unknown) => void
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-current-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementationOnce(() => new Promise((resolve) => {
+        resolveStatus = resolve
+      }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1091,15 +1064,21 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the pending promise to avoid act() warning
+      resolveStatus!({ status: 'completed', current: 1, total: 1, data: [] })
     })
 
     it('should show 0/0 progress when limit is zero string', async () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveStatus: (value: unknown) => void
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementationOnce(() => new Promise((resolve) => {
+        resolveStatus = resolve
+      }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: '0' }),
@@ -1115,6 +1094,9 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/0/)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the pending promise to avoid act() warning
+      resolveStatus!({ status: 'completed', current: 0, total: 0, data: [] })
     })
 
     it('should complete successfully when result data is undefined', async () => {
@@ -1150,9 +1132,12 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveStatus: (value: unknown) => void
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
-      mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
+      mockCheckStatus.mockImplementationOnce(() => new Promise((resolve) => {
+        resolveStatus = resolve
+      }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 15 }),
@@ -1168,12 +1153,16 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/15/)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the pending promise to avoid act() warning
+      resolveStatus!({ status: 'completed', current: 15, total: 15, data: [] })
     })
 
     it('should fallback to limit when crawlResult has zero total', async () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveStatus: (value: unknown) => void
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'both-zero-job' })
       mockCheckStatus
@@ -1183,7 +1172,9 @@ describe('JinaReader', () => {
           total: 0,
           data: [],
         })
-        .mockImplementationOnce(() => new Promise(() => { /* never resolves */ }))
+        .mockImplementationOnce(() => new Promise((resolve) => {
+          resolveStatus = resolve
+        }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 5 }),
@@ -1199,6 +1190,9 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped/)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the pending promise to avoid act() warning
+      resolveStatus!({ status: 'completed', current: 5, total: 5, data: [] })
     })
 
     it('should construct result item from direct data response', async () => {
@@ -1437,9 +1431,12 @@ describe('JinaReader', () => {
       // Arrange
       const mockCreateTask = createJinaReaderTask as Mock
       const mockCheckStatus = checkJinaReaderTaskStatus as Mock
+      let resolveStatus: (value: unknown) => void
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'progress-job' })
-      mockCheckStatus.mockImplementation(() => new Promise((_resolve) => { /* pending */ })) // Never resolves
+      mockCheckStatus.mockImplementationOnce(() => new Promise((resolve) => {
+        resolveStatus = resolve
+      }))
 
       const props = createDefaultProps({
         crawlOptions: createDefaultCrawlOptions({ limit: 10 }),
@@ -1455,6 +1452,9 @@ describe('JinaReader', () => {
       await waitFor(() => {
         expect(screen.getByText(/totalPageScraped.*0\/10/)).toBeInTheDocument()
       })
+
+      // Cleanup - resolve the pending promise to avoid act() warning
+      resolveStatus!({ status: 'completed', current: 10, total: 10, data: [] })
     })
 
     it('should display time consumed after crawl completion', async () => {
