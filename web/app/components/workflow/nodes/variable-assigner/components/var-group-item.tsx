@@ -96,7 +96,7 @@ const VarGroupItem: FC<Props> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: errorKey }) as string,
+        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
       })
       return
     }

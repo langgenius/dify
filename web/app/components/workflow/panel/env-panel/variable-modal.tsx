@@ -37,7 +37,7 @@ const VariableModal = ({
     if (!isValid) {
       notify({
         type: 'error',
-        message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }) as string,
+        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: t('env.modal.name', { ns: 'workflow' }) }),
       })
       return false
     }

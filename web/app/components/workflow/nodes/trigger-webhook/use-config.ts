@@ -106,10 +106,10 @@ const useConfig = (id: string, payload: WebhookTriggerNodeType) => {
       if (!isValid) {
         Toast.notify({
           type: 'error',
-          message: t(`varKeyError.${errorMessageKey}` as any, {
+          message: t(`varKeyError.${errorMessageKey}`, {
             ns: 'appDebug',
             key: t('variableConfig.varName', { ns: 'appDebug' }),
-          }) as string,
+          }),
         })
         return false
       }
