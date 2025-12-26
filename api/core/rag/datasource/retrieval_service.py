@@ -542,7 +542,7 @@ class RetrievalService:
                     child_chunks = None
 
                 if child_chunks:
-                    child_chunks = sorted(child_chunks, key=lambda x: x.get, reverse=True)
+                    child_chunks = sorted(child_chunks, key=lambda x: x.get("score", 0.0), reverse=True)
 
                 # Extract files, ensuring it's a list or None
                 files = record.get("files")
