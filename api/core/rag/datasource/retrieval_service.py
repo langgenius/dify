@@ -429,7 +429,7 @@ class RetrievalService:
 
                 for attachment in attachments:
                     segment_ids.append(attachment["segment_id"])
-                    attachment_map[attachment["segment_id"]] = attachment
+                    attachment_map[attachment["segment_id"]] = attachment["attachment_info"]
                     doc_segment_map[attachment["segment_id"]] = attachment["attachment_id"]
 
                 child_chunk_stmt = select(ChildChunk).where(ChildChunk.index_node_id.in_(child_index_node_ids))
