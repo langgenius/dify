@@ -44,7 +44,7 @@ cp -r en-US id-ID
 
 2. Modify the translation `.json` files in the new folder. Keep keys flat (for example, `dialog.title`).
 
-3. Add the new language to the `languages.ts` file.
+1. Add the new language to the `languages.ts` file.
 
 ```typescript
 export const languages = [
@@ -146,7 +146,7 @@ export const languages = [
 
 4. Don't forget to mark the supported field as `true` if the language is supported.
 
-5. Sometimes you might need to do some changes in the server side. Please change this file as well. 👇
+1. Sometimes you might need to do some changes in the server side. Please change this file as well. 👇
    https://github.com/langgenius/dify/blob/61e4bbabaf2758354db4073cbea09fdd21a5bec1/api/constants/languages.py#L5
 
 > Note: `I18nText` type is automatically derived from `LanguagesSupported`, so you don't need to manually add types.
