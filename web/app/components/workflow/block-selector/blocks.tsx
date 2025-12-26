@@ -1,4 +1,5 @@
 import type { NodeDefault } from '../types'
+import type { BlockClassificationEnum } from './types'
 import { groupBy } from 'es-toolkit/compat'
 import {
   memo,
@@ -66,7 +67,7 @@ const Blocks = ({
   }, [blocks, searchText, availableBlocksTypes])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
-  const renderGroup = useCallback((classification: string) => {
+  const renderGroup = useCallback((classification: BlockClassificationEnum) => {
     const list = groups[classification].sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
     const { getNodes } = store.getState()
     const nodes = getNodes()
@@ -85,7 +86,7 @@ const Blocks = ({
         {
           classification !== '-' && !!filteredList.length && (
             <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
-              {t(`tabs.${classification}` as any, { ns: 'workflow' }) as string}
+              {t(`tabs.${classification}`, { ns: 'workflow' })}
             </div>
           )
         }

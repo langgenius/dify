@@ -978,6 +978,7 @@
   "singleRun.testRun": "Test Run",
   "singleRun.testRunIteration": "Test Run Iteration",
   "singleRun.testRunLoop": "Test Run Loop",
+  "tabs.-": "Default",
   "tabs.addAll": "Add all",
   "tabs.agent": "Agent Strategy",
   "tabs.allAdded": "All added",

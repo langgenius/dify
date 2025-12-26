@@ -1,4 +1,5 @@
 import type { AvailableNodesMetaData } from '@/app/components/workflow/hooks-store/store'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { WORKFLOW_COMMON_NODES } from '@/app/components/workflow/constants/node'
@@ -42,8 +43,8 @@ export const useAvailableNodesMetaData = () => {
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
-    const title = t(`blocks.${metaData.type}` as any, { ns: 'workflow' }) as string
-    const description = t(`blocksAbout.${metaData.type}` as any, { ns: 'workflow' }) as string
+    const title = t(`blocks.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' })
+    const description = t(`blocksAbout.${metaData.type}` as I18nKeysWithPrefix<'workflow', 'blocksAbout.'>, { ns: 'workflow' })
     const helpLinkPath = `guides/workflow/node/${metaData.helpLinkUri}`
     return {
       ...node,

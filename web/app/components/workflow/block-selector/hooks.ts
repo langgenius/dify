@@ -17,7 +17,7 @@ export const useBlocks = () => {
   return BLOCKS.map((block) => {
     return {
       ...block,
-      title: t(`blocks.${block.type}` as any, { ns: 'workflow' }) as string,
+      title: t(`blocks.${block.type}`, { ns: 'workflow' }),
     }
   })
 }
@@ -28,7 +28,7 @@ export const useStartBlocks = () => {
   return START_BLOCKS.map((block) => {
     return {
       ...block,
-      title: t(`blocks.${block.type}` as any, { ns: 'workflow' }) as string,
+      title: t(`blocks.${block.type}`, { ns: 'workflow' }),
     }
   })
 }

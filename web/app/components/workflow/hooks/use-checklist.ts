@@ -13,6 +13,7 @@ import type {
 } from '../types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   useCallback,
   useMemo,
@@ -237,8 +238,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         list.push({
           id: `${type}-need-added`,
           type,
-          title: t(`blocks.${type}` as any, { ns: 'workflow' }) as string,
-          errorMessage: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as any, { ns: 'workflow' }) as string }),
+          title: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }),
+          errorMessage: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }),
           canNavigate: false,
         })
       }
@@ -409,7 +410,7 @@ export const useChecklistBeforePublish = () => {
       const type = isRequiredNodesType[i]
 
       if (!filteredNodes.find(node => node.data.type === type)) {
-        notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as any, { ns: 'workflow' }) as string }) })
+        notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }) })
         return false
       }
     }
