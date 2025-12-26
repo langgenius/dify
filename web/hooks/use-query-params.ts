@@ -175,7 +175,7 @@ const parseAsBundleInfo = createParser<BundleInfoQuery>({
 
 /**
  * Hook to manage plugin installation state via URL
- * @returns [installState, setInstallState] - Installation state and setter
+ * @returns [installState, setInstallState] - installState includes parsed packageId and bundleInfo
  *
  * @example
  * const [installState, setInstallState] = usePluginInstallation()
