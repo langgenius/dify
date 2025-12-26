@@ -121,7 +121,7 @@ export const MarketplaceContextProvider = ({
   const tagsFromSearchParams = getValidTagKeys(urlFilters.tags)
   const hasValidTags = !!tagsFromSearchParams.length
   const hasValidCategory = getValidCategoryKeys(urlFilters.category)
-  const categoryFromSearchParams = hasValidCategory || urlFilters.category || PLUGIN_TYPE_SEARCH_MAP.all
+  const categoryFromSearchParams = hasValidCategory || PLUGIN_TYPE_SEARCH_MAP.all
 
   const [searchPluginText, setSearchPluginText] = useState(queryFromSearchParams)
   const searchPluginTextRef = useRef(searchPluginText)
