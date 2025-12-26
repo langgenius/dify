@@ -507,6 +507,10 @@ export const useChat = (
         },
         onHumanInputRequired: ({ data }) => {
           responseItem.humanInputFormData = data
+          const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+          if (currentTracingIndex > -1) {
+            responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+          }
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -514,14 +518,8 @@ export const useChat = (
             parentId: params.parent_message_id,
           })
         },
-        onWorkflowPaused: ({ data }) => {
+        onWorkflowPaused: ({ data: _data }) => {
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
-          data.paused_nodes.forEach((nodeId) => {
-            const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === nodeId)
-            if (currentTracingIndex > -1) {
-              responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
-            }
-          })
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

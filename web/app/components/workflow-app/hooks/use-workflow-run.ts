@@ -21,7 +21,7 @@ import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { handleStream, post, ssePost } from '@/service/base'
+import { handleStream, post, sseGet, ssePost } from '@/service/base'
 import { ContentType } from '@/service/fetch'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
 import { stopWorkflowRun } from '@/service/workflow'
@@ -661,137 +661,145 @@ export const useWorkflowRun = () => {
       return
     }
 
+    const finalCallbacks: IOtherOptions = {
+      ...baseSseOptions,
+      getAbortController: (controller: AbortController) => {
+        abortControllerRef.current = controller
+      },
+      onWorkflowFinished: (params) => {
+        handleWorkflowFinished(params)
+
+        if (onWorkflowFinished)
+          onWorkflowFinished(params)
+        if (isInWorkflowDebug) {
+          fetchInspectVars({})
+          invalidAllLastRun()
+        }
+      },
+      onError: (params) => {
+        handleWorkflowFailed()
+
+        if (onError)
+          onError(params)
+      },
+      onNodeStarted: (params) => {
+        handleWorkflowNodeStarted(
+          params,
+          {
+            clientWidth,
+            clientHeight,
+          },
+        )
+
+        if (onNodeStarted)
+          onNodeStarted(params)
+      },
+      onNodeFinished: (params) => {
+        handleWorkflowNodeFinished(params)
+
+        if (onNodeFinished)
+          onNodeFinished(params)
+      },
+      onIterationStart: (params) => {
+        handleWorkflowNodeIterationStarted(
+          params,
+          {
+            clientWidth,
+            clientHeight,
+          },
+        )
+
+        if (onIterationStart)
+          onIterationStart(params)
+      },
+      onIterationNext: (params) => {
+        handleWorkflowNodeIterationNext(params)
+
+        if (onIterationNext)
+          onIterationNext(params)
+      },
+      onIterationFinish: (params) => {
+        handleWorkflowNodeIterationFinished(params)
+
+        if (onIterationFinish)
+          onIterationFinish(params)
+      },
+      onLoopStart: (params) => {
+        handleWorkflowNodeLoopStarted(
+          params,
+          {
+            clientWidth,
+            clientHeight,
+          },
+        )
+
+        if (onLoopStart)
+          onLoopStart(params)
+      },
+      onLoopNext: (params) => {
+        handleWorkflowNodeLoopNext(params)
+
+        if (onLoopNext)
+          onLoopNext(params)
+      },
+      onLoopFinish: (params) => {
+        handleWorkflowNodeLoopFinished(params)
+
+        if (onLoopFinish)
+          onLoopFinish(params)
+      },
+      onNodeRetry: (params) => {
+        handleWorkflowNodeRetry(params)
+
+        if (onNodeRetry)
+          onNodeRetry(params)
+      },
+      onAgentLog: (params) => {
+        handleWorkflowAgentLog(params)
+
+        if (onAgentLog)
+          onAgentLog(params)
+      },
+      onTextChunk: (params) => {
+        handleWorkflowTextChunk(params)
+      },
+      onTextReplace: (params) => {
+        handleWorkflowTextReplace(params)
+      },
+      onTTSChunk: (messageId: string, audio: string) => {
+        if (!audio || audio === '')
+          return
+        player?.playAudioWithAudio(audio, true)
+        AudioPlayerManager.getInstance().resetMsgId(messageId)
+      },
+      onTTSEnd: (messageId: string, audio: string) => {
+        player?.playAudioWithAudio(audio, false)
+      },
+      onWorkflowPaused: (params) => {
+        handleWorkflowPaused()
+        if (onWorkflowPaused)
+          onWorkflowPaused(params)
+        const url = `/workflow/${params.workflow_run_id}/events`
+        sseGet(
+          url,
+          {},
+          finalCallbacks,
+        )
+      },
+      onHumanInputRequired: (params) => {
+        handleWorkflowNodeHumanInputRequired(params)
+        if (onHumanInputRequired)
+          onHumanInputRequired(params)
+      },
+      ...restCallback,
+    }
+
     ssePost(
       url,
       {
         body: requestBody,
       },
-      {
-        ...baseSseOptions,
-        getAbortController: (controller: AbortController) => {
-          abortControllerRef.current = controller
-        },
-        onWorkflowFinished: (params) => {
-          handleWorkflowFinished(params)
-
-          if (onWorkflowFinished)
-            onWorkflowFinished(params)
-          if (isInWorkflowDebug) {
-            fetchInspectVars({})
-            invalidAllLastRun()
-          }
-        },
-        onError: (params) => {
-          handleWorkflowFailed()
-
-          if (onError)
-            onError(params)
-        },
-        onNodeStarted: (params) => {
-          handleWorkflowNodeStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onNodeStarted)
-            onNodeStarted(params)
-        },
-        onNodeFinished: (params) => {
-          handleWorkflowNodeFinished(params)
-
-          if (onNodeFinished)
-            onNodeFinished(params)
-        },
-        onIterationStart: (params) => {
-          handleWorkflowNodeIterationStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onIterationStart)
-            onIterationStart(params)
-        },
-        onIterationNext: (params) => {
-          handleWorkflowNodeIterationNext(params)
-
-          if (onIterationNext)
-            onIterationNext(params)
-        },
-        onIterationFinish: (params) => {
-          handleWorkflowNodeIterationFinished(params)
-
-          if (onIterationFinish)
-            onIterationFinish(params)
-        },
-        onLoopStart: (params) => {
-          handleWorkflowNodeLoopStarted(
-            params,
-            {
-              clientWidth,
-              clientHeight,
-            },
-          )
-
-          if (onLoopStart)
-            onLoopStart(params)
-        },
-        onLoopNext: (params) => {
-          handleWorkflowNodeLoopNext(params)
-
-          if (onLoopNext)
-            onLoopNext(params)
-        },
-        onLoopFinish: (params) => {
-          handleWorkflowNodeLoopFinished(params)
-
-          if (onLoopFinish)
-            onLoopFinish(params)
-        },
-        onNodeRetry: (params) => {
-          handleWorkflowNodeRetry(params)
-
-          if (onNodeRetry)
-            onNodeRetry(params)
-        },
-        onAgentLog: (params) => {
-          handleWorkflowAgentLog(params)
-
-          if (onAgentLog)
-            onAgentLog(params)
-        },
-        onTextChunk: (params) => {
-          handleWorkflowTextChunk(params)
-        },
-        onTextReplace: (params) => {
-          handleWorkflowTextReplace(params)
-        },
-        onTTSChunk: (messageId: string, audio: string) => {
-          if (!audio || audio === '')
-            return
-          player?.playAudioWithAudio(audio, true)
-          AudioPlayerManager.getInstance().resetMsgId(messageId)
-        },
-        onTTSEnd: (messageId: string, audio: string) => {
-          player?.playAudioWithAudio(audio, false)
-        },
-        onWorkflowPaused: (params) => {
-          handleWorkflowPaused()
-          if (onWorkflowPaused)
-            onWorkflowPaused(params)
-        },
-        onHumanInputRequired: (params) => {
-          handleWorkflowNodeHumanInputRequired(params)
-          if (onHumanInputRequired)
-            onHumanInputRequired(params)
-        },
-        ...restCallback,
-      },
+      finalCallbacks,
     )
   }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired])
 

@@ -304,30 +304,28 @@ const Operation: FC<OperationProps> = ({
             <Log logItem={item} />
           </div>
         )}
-        {!isOpeningStatement && (
+        {!isOpeningStatement && !humanInputFormData && (
           <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex">
-            {(config?.text_to_speech?.enabled) && !humanInputFormData && (
+            {(config?.text_to_speech?.enabled) && (
               <NewAudioButton
                 id={id}
                 value={content}
                 voice={config?.text_to_speech?.voice}
               />
             )}
-            {!humanInputFormData && (
-              <ActionButton onClick={() => {
-                copy(content)
-                Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-              }}
-              >
-                <RiClipboardLine className="h-4 w-4" />
-              </ActionButton>
-            )}
-            {!noChatInput && !humanInputFormData && (
+            <ActionButton onClick={() => {
+              copy(content)
+              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+            }}
+            >
+              <RiClipboardLine className="h-4 w-4" />
+            </ActionButton>
+            {!noChatInput && (
               <ActionButton onClick={() => onRegenerate?.(item)}>
                 <RiResetLeftLine className="h-4 w-4" />
               </ActionButton>
             )}
-            {(config?.supportAnnotation && config.annotation_reply?.enabled) && !humanInputFormData && (
+            {(config?.supportAnnotation && config.annotation_reply?.enabled) && (
               <AnnotationCtrlButton
                 appId={config?.appId || ''}
                 messageId={id}
