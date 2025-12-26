@@ -12,8 +12,8 @@ import {
   useWorkflowNodeLoopStarted,
   useWorkflowNodeRetry,
   useWorkflowNodeStarted,
+  useWorkflowPaused,
   useWorkflowStarted,
-  useWorkflowSuspended,
   useWorkflowTextChunk,
   useWorkflowTextReplace,
 } from '.'
@@ -34,7 +34,7 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowTextChunk } = useWorkflowTextChunk()
   const { handleWorkflowTextReplace } = useWorkflowTextReplace()
   const { handleWorkflowAgentLog } = useWorkflowAgentLog()
-  const { handleWorkflowSuspended } = useWorkflowSuspended()
+  const { handleWorkflowPaused } = useWorkflowPaused()
   const { handleWorkflowNodeHumanInputRequired } = useWorkflowNodeHumanInputRequired()
 
   return {
@@ -53,7 +53,7 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
     handleWorkflowAgentLog,
-    handleWorkflowSuspended,
+    handleWorkflowPaused,
     handleWorkflowNodeHumanInputRequired,
   }
 }

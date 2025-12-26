@@ -145,7 +145,7 @@ const NodePanel: FC<Props> = ({
               {nodeInfo.title}
             </div>
           </Tooltip>
-          {nodeInfo.status !== 'running' && !hideInfo && (
+          {!['running', 'paused'].includes(nodeInfo.status) && !hideInfo && (
             <div className="system-xs-regular shrink-0 text-text-tertiary">
               {nodeInfo.execution_metadata?.total_tokens ? `${getTokenCount(nodeInfo.execution_metadata?.total_tokens || 0)} tokens · ` : ''}
               {`${getTime(nodeInfo.elapsed_time || 0)}`}
@@ -160,7 +160,7 @@ const NodePanel: FC<Props> = ({
           {nodeInfo.status === 'stopped' && (
             <RiAlertFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
-          {nodeInfo.status === 'suspended' && (
+          {nodeInfo.status === 'paused' && (
             <RiPauseCircleFill className={cn('ml-2 h-4 w-4 shrink-0 text-text-warning-secondary', inMessage && 'h-3.5 w-3.5')} />
           )}
           {nodeInfo.status === 'exception' && (
@@ -233,8 +233,8 @@ const NodePanel: FC<Props> = ({
                   {nodeInfo.error}
                 </StatusContainer>
               )}
-              {(nodeInfo.status === 'suspended') && (
-                <StatusContainer status="suspended">
+              {(nodeInfo.status === 'paused') && (
+                <StatusContainer status="paused">
                   <div className="system-xs-regular text-text-warning">{t('workflow.nodes.humanInput.log.reasonContent')}</div>
                 </StatusContainer>
               )}

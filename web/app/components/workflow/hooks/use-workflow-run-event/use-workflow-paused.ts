@@ -3,10 +3,10 @@ import { useCallback } from 'react'
 import { useWorkflowStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 
-export const useWorkflowSuspended = () => {
+export const useWorkflowPaused = () => {
   const workflowStore = useWorkflowStore()
 
-  const handleWorkflowSuspended = useCallback(() => {
+  const handleWorkflowPaused = useCallback(() => {
     const {
       workflowRunningData,
       setWorkflowRunningData,
@@ -15,12 +15,12 @@ export const useWorkflowSuspended = () => {
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.result = {
         ...draft.result,
-        status: WorkflowRunningStatus.Suspended,
+        status: WorkflowRunningStatus.Paused,
       }
     }))
   }, [workflowStore])
 
   return {
-    handleWorkflowSuspended,
+    handleWorkflowPaused,
   }
 }

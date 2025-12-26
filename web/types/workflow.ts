@@ -168,15 +168,15 @@ export type WorkflowStartedResponse = {
   }
 }
 
-export type WorkflowSuspendedResponse = {
+export type WorkflowPausedResponse = {
   task_id: string
   workflow_run_id: string
   event: string
   data: {
-    id: string
-    workflow_id: string
-    created_at: number
-    suspended_at_node_ids: string[]
+    outputs: any // todo: remove any
+    paused_nodes: string[]
+    reasons: any[] // todo: remove any
+    workflow_run_id: string
   }
 }
 

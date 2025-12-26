@@ -103,6 +103,7 @@ const config = {
         'chat-bubble-bg': 'var(--color-chat-bubble-bg)',
         'chat-input-mask': 'var(--color-chat-input-mask)',
         'workflow-process-bg': 'var(--color-workflow-process-bg)',
+        'workflow-process-paused-bg': 'var(--color-workflow-process-paused-bg)',
         'workflow-run-failed-bg': 'var(--color-workflow-run-failed-bg)',
         'workflow-batch-failed-bg': 'var(--color-workflow-batch-failed-bg)',
         'mask-top2bottom-gray-50-to-transparent': 'var(--mask-top2bottom-gray-50-to-transparent)',

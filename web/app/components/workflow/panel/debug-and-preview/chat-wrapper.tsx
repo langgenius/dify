@@ -130,7 +130,7 @@ const ChatWrapper = (
 
   const inputDisabled = useMemo(() => {
     const latestMessage = chatList[chatList.length - 1]
-    return latestMessage?.isAnswer && (latestMessage.workflowProcess?.status === WorkflowRunningStatus.Suspended)
+    return latestMessage?.isAnswer && (latestMessage.workflowProcess?.status === WorkflowRunningStatus.Paused)
   }, [chatList])
 
   const { eventEmitter } = useEventEmitterContextContext()

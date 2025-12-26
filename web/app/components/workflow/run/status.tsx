@@ -43,7 +43,7 @@ const StatusPanel: FC<ResultProps> = ({
               status === 'succeeded' && 'text-util-colors-green-green-600',
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
-              (status === 'stopped' || status === 'suspended') && 'text-util-colors-warning-warning-600',
+              (status === 'stopped' || status === 'paused') && 'text-util-colors-warning-warning-600',
               status === 'running' && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
@@ -83,7 +83,7 @@ const StatusPanel: FC<ResultProps> = ({
                 <span>STOP</span>
               </>
             )}
-            {status === 'suspended' && (
+            {status === 'paused' && (
               <>
                 <Indicator color="yellow" />
                 <span>PENDING</span>
@@ -94,10 +94,10 @@ const StatusPanel: FC<ResultProps> = ({
         <div className="max-w-[152px] flex-[33%]">
           <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.time')}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
-            {(status === 'running' || status === 'suspended') && (
+            {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-16 rounded-sm bg-text-quaternary" />
             )}
-            {status !== 'running' && status !== 'suspended' && (
+            {status !== 'running' && status !== 'paused' && (
               <span>{time ? `${time?.toFixed(3)}s` : '-'}</span>
             )}
           </div>
@@ -105,10 +105,10 @@ const StatusPanel: FC<ResultProps> = ({
         <div className="flex-[33%]">
           <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.tokens')}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
-            {(status === 'running' || status === 'suspended') && (
+            {(status === 'running' || status === 'paused') && (
               <div className="h-2 w-20 rounded-sm bg-text-quaternary" />
             )}
-            {status !== 'running' && status !== 'suspended' && (
+            {status !== 'running' && status !== 'paused' && (
               <span>{`${tokens || 0} Tokens`}</span>
             )}
           </div>
@@ -157,7 +157,7 @@ const StatusPanel: FC<ResultProps> = ({
           </>
         )
       }
-      {status === 'suspended' && (
+      {status === 'paused' && (
         <>
           <div className="my-2 h-[0.5px] bg-divider-deep" />
           <div className="system-xs-medium space-y-1 text-text-warning">

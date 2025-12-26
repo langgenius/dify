@@ -90,7 +90,7 @@ export const useWorkflowRun = () => {
     handleWorkflowAgentLog,
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
-    handleWorkflowSuspended,
+    handleWorkflowPaused,
   } = useWorkflowRunEvent()
 
   const handleBackupDraft = useCallback(() => {
@@ -178,7 +178,7 @@ export const useWorkflowRun = () => {
       onNodeRetry,
       onAgentLog,
       onError,
-      onWorkflowSuspended,
+      onWorkflowPaused,
       onHumanInputRequired,
       onCompleted,
       ...restCallback
@@ -609,7 +609,7 @@ export const useWorkflowRun = () => {
             baseSseOptions.onTextReplace,
             baseSseOptions.onAgentLog,
             baseSseOptions.onHumanInputRequired,
-            baseSseOptions.onWorkflowSuspended,
+            baseSseOptions.onWorkflowPaused,
             baseSseOptions.onDataSourceNodeProcessing,
             baseSseOptions.onDataSourceNodeCompleted,
             baseSseOptions.onDataSourceNodeError,
@@ -780,10 +780,10 @@ export const useWorkflowRun = () => {
         onTTSEnd: (messageId: string, audio: string) => {
           player?.playAudioWithAudio(audio, false)
         },
-        onWorkflowSuspended: (params) => {
-          handleWorkflowSuspended()
-          if (onWorkflowSuspended)
-            onWorkflowSuspended(params)
+        onWorkflowPaused: (params) => {
+          handleWorkflowPaused()
+          if (onWorkflowPaused)
+            onWorkflowPaused(params)
         },
         onHumanInputRequired: (params) => {
           handleWorkflowNodeHumanInputRequired(params)
@@ -793,7 +793,7 @@ export const useWorkflowRun = () => {
         ...restCallback,
       },
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

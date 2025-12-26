@@ -22,8 +22,8 @@ import type {
   TextChunkResponse,
   TextReplaceResponse,
   WorkflowFinishedResponse,
+  WorkflowPausedResponse,
   WorkflowStartedResponse,
-  WorkflowSuspendedResponse,
 } from '@/types/workflow'
 import Cookies from 'js-cookie'
 import Toast from '@/app/components/base/toast'
@@ -73,7 +73,7 @@ export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
 
 export type IOHumanInputRequired = (humanInputRequired: HumanInputRequiredResponse) => void
-export type IOWorkflowSuspended = (workflowSuspended: WorkflowSuspendedResponse) => void
+export type IOWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
 export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
 export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
 export type IOnDataSourceNodeError = (dataSourceNodeError: DataSourceNodeErrorResponse) => void
@@ -113,7 +113,7 @@ export type IOtherOptions = {
   onLoopFinish?: IOnLoopFinished
   onAgentLog?: IOnAgentLog
   onHumanInputRequired?: IOHumanInputRequired
-  onWorkflowSuspended?: IOWorkflowSuspended
+  onWorkflowPaused?: IOWorkflowPaused
 
   // Pipeline data source node run
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing
@@ -197,7 +197,7 @@ export const handleStream = (
   onTextReplace?: IOnTextReplace,
   onAgentLog?: IOnAgentLog,
   onHumanInputRequired?: IOHumanInputRequired,
-  onWorkflowSuspended?: IOWorkflowSuspended,
+  onWorkflowPaused?: IOWorkflowPaused,
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
   onDataSourceNodeError?: IOnDataSourceNodeError,
@@ -323,7 +323,7 @@ export const handleStream = (
               onHumanInputRequired?.(bufferObj as HumanInputRequiredResponse)
             }
             else if (bufferObj.event === 'workflow_paused') {
-              onWorkflowSuspended?.(bufferObj as WorkflowSuspendedResponse)
+              onWorkflowPaused?.(bufferObj as WorkflowPausedResponse)
             }
             else if (bufferObj.event === 'datasource_processing') {
               onDataSourceNodeProcessing?.(bufferObj as DataSourceNodeProcessingResponse)
@@ -448,7 +448,7 @@ export const ssePost = async (
     onLoopNext,
     onLoopFinish,
     onHumanInputRequired,
-    onWorkflowSuspended,
+    onWorkflowPaused,
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
@@ -551,7 +551,7 @@ export const ssePost = async (
         onTextReplace,
         onAgentLog,
         onHumanInputRequired,
-        onWorkflowSuspended,
+        onWorkflowPaused,
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
@@ -598,7 +598,7 @@ export const sseGet = async (
     onLoopNext,
     onLoopFinish,
     onHumanInputRequired,
-    onWorkflowSuspended,
+    onWorkflowPaused,
     onDataSourceNodeProcessing,
     onDataSourceNodeCompleted,
     onDataSourceNodeError,
@@ -694,7 +694,7 @@ export const sseGet = async (
         onTextReplace,
         onAgentLog,
         onHumanInputRequired,
-        onWorkflowSuspended,
+        onWorkflowPaused,
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,

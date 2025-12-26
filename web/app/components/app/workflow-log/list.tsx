@@ -81,7 +81,7 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </div>
       )
     }
-    if (status === 'suspended') {
+    if (status === 'paused') {
       return (
         <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
           <Indicator color="yellow" />

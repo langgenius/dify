@@ -11,7 +11,7 @@ html[data-theme="dark"] {
     --color-workflow-process-bg: linear-gradient(90deg,
             rgba(24, 24, 27, 0.25) 0%,
             rgba(24, 24, 27, 0.04) 100%);
-    --color-workflow-process-suspended-bg: linear-gradient(90deg,
+    --color-workflow-process-paused-bg: linear-gradient(90deg,
             rgba(247, 144, 9, 0.14) 0%,
             rgba(247, 144, 9, 0.00) 100%);
     --color-workflow-process-failed-bg: linear-gradient(90deg,

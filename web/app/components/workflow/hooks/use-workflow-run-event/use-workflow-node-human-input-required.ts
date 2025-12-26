@@ -25,7 +25,7 @@ export const useWorkflowNodeHumanInputRequired = () => {
     const nodes = getNodes()
     const currentNodeIndex = nodes.findIndex(node => node.id === data.node_id)
     const newNodes = produce(nodes, (draft) => {
-      draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Suspended
+      draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Paused
       // draft[currentNodeIndex].data._waitingRun = false
       // store form data & input form schema
     })
@@ -35,10 +35,10 @@ export const useWorkflowNodeHumanInputRequired = () => {
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.result = {
         ...draft.result,
-        // status: WorkflowRunningStatus.Suspended, // human input required !== workflow  'Suspended'
+        // status: WorkflowRunningStatus.Paused, // human input required !== workflow  'Paused'
       }
     }))
-  }, [workflowStore])
+  }, [store, workflowStore])
 
   return {
     handleWorkflowNodeHumanInputRequired,

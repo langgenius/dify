@@ -35,7 +35,7 @@ const WorkflowProcessItem = ({
   const running = data.status === WorkflowRunningStatus.Running
   const succeeded = data.status === WorkflowRunningStatus.Succeeded
   const failed = data.status === WorkflowRunningStatus.Failed || data.status === WorkflowRunningStatus.Stopped
-  const suspended = data.status === WorkflowRunningStatus.Suspended
+  const paused = data.status === WorkflowRunningStatus.Paused
   const latestNode = data.tracing[data.tracing.length - 1]
 
   useEffect(() => {
@@ -53,9 +53,9 @@ const WorkflowProcessItem = ({
         running && !collapse && 'bg-background-section-burn',
         succeeded && !collapse && 'bg-state-success-hover',
         failed && !collapse && 'bg-state-destructive-hover',
-        suspended && !collapse && 'bg-state-warning-hover',
-        collapse && !failed && !suspended && 'bg-workflow-process-bg',
-        collapse && suspended && 'bg-workflow-process-suspended-bg',
+        paused && !collapse && 'bg-state-warning-hover',
+        collapse && !failed && !paused && 'bg-workflow-process-bg',
+        collapse && paused && 'bg-workflow-process-paused-bg',
         collapse && failed && 'bg-workflow-process-failed-bg',
       )}
     >
@@ -79,7 +79,7 @@ const WorkflowProcessItem = ({
           )
         }
         {
-          suspended && (
+          paused && (
             <RiPauseCircleFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-warning-secondary" />
           )
         }

@@ -514,9 +514,14 @@ export const useChat = (
             parentId: params.parent_message_id,
           })
         },
-        onWorkflowSuspended: ({ data }) => {
-          console.log(data.suspended_at_node_ids)
-          responseItem.workflowProcess!.status = WorkflowRunningStatus.Suspended
+        onWorkflowPaused: ({ data }) => {
+          responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
+          data.paused_nodes.forEach((nodeId) => {
+            const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === nodeId)
+            if (currentTracingIndex > -1) {
+              responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+            }
+          })
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

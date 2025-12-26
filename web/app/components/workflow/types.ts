@@ -351,7 +351,7 @@ export enum WorkflowRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Stopped = 'stopped',
-  Suspended = 'suspended',
+  Paused = 'paused',
 }
 
 export enum WorkflowVersion {
@@ -369,7 +369,7 @@ export enum NodeRunningStatus {
   Exception = 'exception',
   Retry = 'retry',
   Stopped = 'stopped',
-  Suspended = 'suspended',
+  Paused = 'paused',
 }
 
 export type OnNodeAdd = (
