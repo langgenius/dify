@@ -1732,7 +1732,9 @@ class UploadFile(TypeBase):
 
     # The `created_by_role` field indicates whether the file was created by an `Account` or an `EndUser`.
     # Its value is derived from the `CreatorUserRole` enumeration.
-    created_by_role: Mapped[CreatorUserRole] = mapped_column(String(255), nullable=False, server_default=sa.text("'account'"))
+    created_by_role: Mapped[CreatorUserRole] = mapped_column(
+        String(255), nullable=False, server_default=sa.text("'account'")
+    )
 
     # The `created_by` field stores the ID of the entity that created this upload file.
     #
