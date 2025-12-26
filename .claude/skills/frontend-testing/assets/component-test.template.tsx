@@ -198,7 +198,7 @@ describe('ComponentName', () => {
   })
 
   // --------------------------------------------------------------------------
-  // Async Operations (if component fetches data - useSWR, useQuery, fetch)
+  // Async Operations (if component fetches data - useQuery, fetch)
   // --------------------------------------------------------------------------
   // WHY: Async operations have 3 states users experience: loading, success, error
   describe('Async Operations', () => {

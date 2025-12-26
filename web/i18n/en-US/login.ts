@@ -64,6 +64,7 @@ const translation = {
     passwordInvalid: 'Password must contain letters and numbers, and the length must be greater than 8',
     registrationNotAllowed: 'Account not found. Please contact the system admin to register.',
     invalidEmailOrPassword: 'Invalid email or password.',
+    redirectUrlMissing: 'Redirect URL is missing',
   },
   license: {
     tip: 'Before starting Dify Community Edition, read the GitHub',

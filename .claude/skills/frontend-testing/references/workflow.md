@@ -35,7 +35,7 @@ When testing a **single component, hook, or utility**:
 2. Run `pnpm analyze-component <path>` (if available)
 3. Check complexity score and features detected
 4. Write the test file
-5. Run test: `pnpm test -- <file>.spec.tsx`
+5. Run test: `pnpm test <file>.spec.tsx`
 6. Fix any failures
 7. Verify coverage meets goals (100% function, >95% branch)
 ```
@@ -80,7 +80,7 @@ Process files in this recommended order:
 ```
 ┌─────────────────────────────────────────────┐
 │  1. Write test file                         │
-│  2. Run: pnpm test -- <file>.spec.tsx       │
+│  2. Run: pnpm test <file>.spec.tsx          │
 │  3. If FAIL → Fix immediately, re-run       │
 │  4. If PASS → Mark complete in todo list    │
 │  5. ONLY THEN proceed to next file          │
@@ -95,10 +95,10 @@ After all individual tests pass:
 
 ```bash
 # Run all tests in the directory together
-pnpm test -- path/to/directory/
+pnpm test path/to/directory/
 
 # Check coverage
-pnpm test -- --coverage path/to/directory/
+pnpm test:coverage path/to/directory/
 ```
 
 ## Component Complexity Guidelines
@@ -201,9 +201,9 @@ Run pnpm test  ← Multiple failures, hard to debug
 ```
 # GOOD: Incremental with verification
 Write component-a.spec.tsx
-Run pnpm test -- component-a.spec.tsx ✅
+Run pnpm test component-a.spec.tsx ✅
 Write component-b.spec.tsx
-Run pnpm test -- component-b.spec.tsx ✅
+Run pnpm test component-b.spec.tsx ✅
 ...continue...
 ```
 

@@ -5,7 +5,7 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'

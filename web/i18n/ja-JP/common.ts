@@ -1,4 +1,6 @@
 const translation = {
+  loading: '読み込み中',
+  error: 'エラー',
   theme: {
     theme: 'テーマ',
     light: '明るい',
@@ -68,6 +70,8 @@ const translation = {
     selectAll: 'すべて選択',
     deSelectAll: 'すべて選択解除',
     now: '今',
+    back: '戻る',
+    imageDownloaded: '画像がダウンロードされました',
     config: 'コンフィグ',
     yes: 'はい',
     no: 'いいえ',
@@ -248,6 +252,7 @@ const translation = {
     sendVerificationButton: '確認コードの送信',
     editWorkspaceInfo: 'ワークスペース情報を編集',
     workspaceName: 'ワークスペース名',
+    workspaceNamePlaceholder: 'ワークスペース名を入力',
     workspaceIcon: 'ワークスペースアイコン',
     changeEmail: {
       title: 'メールアドレスを変更',
@@ -512,6 +517,7 @@ const translation = {
       authorizationError: '認証エラー',
       apiKeys: 'APIキー',
       unAuthorized: '無許可',
+      credentialRemoved: '認証情報が削除されました',
       configModel: 'モデルを構成する',
       addApiKey: 'APIキーを追加してください',
       addCredential: '認証情報を追加する',

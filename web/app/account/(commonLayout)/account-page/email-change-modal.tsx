@@ -1,6 +1,6 @@
 import type { ResponseError } from '@/service/fetch'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useState } from 'react'

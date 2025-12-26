@@ -2,7 +2,7 @@
 
 import type { ReactNode, RefObject } from 'react'
 import type { FilterState } from './filter-management'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import {
   useMemo,
   useRef,

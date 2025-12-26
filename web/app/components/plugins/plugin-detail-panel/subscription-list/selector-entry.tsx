@@ -1,5 +1,5 @@
 'use client'
-import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import type { SimpleSubscription } from './types'
 import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,8 +8,9 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { SubscriptionList, SubscriptionListMode } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import { SubscriptionList } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { cn } from '@/utils/classnames'
+import { SubscriptionListMode } from './types'
 import { useSubscriptionList } from './use-subscription-list'
 
 type SubscriptionTriggerButtonProps = {

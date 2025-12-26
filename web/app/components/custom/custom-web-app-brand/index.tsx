@@ -68,7 +68,7 @@ const CustomWebAppBrand = () => {
         setFileId(res.id)
       },
       onErrorCallback: (error?: any) => {
-        const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t)
+        const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t as any)
         notify({ type: 'error', message: errorMessage })
         setUploadProgress(-1)
       },
