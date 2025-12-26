@@ -1,8 +1,9 @@
 """Tests for structured JSON formatter."""
 
-import json
 import logging
 import sys
+
+import orjson
 
 
 class TestStructuredJSONFormatter:
@@ -21,7 +22,7 @@ class TestStructuredJSONFormatter:
         )
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert log_dict["severity"] == "INFO"
         assert log_dict["service"] == "test-service"
@@ -54,7 +55,7 @@ class TestStructuredJSONFormatter:
                 exc_info=None,
             )
             output = formatter.format(record)
-            log_dict = json.loads(output)
+            log_dict = orjson.loads(output)
             assert log_dict["severity"] == expected_severity, f"Level {level} should map to {expected_severity}"
 
     def test_error_with_stack_trace(self):
@@ -78,7 +79,7 @@ class TestStructuredJSONFormatter:
         )
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert log_dict["severity"] == "ERROR"
         assert "stack_trace" in log_dict
@@ -105,7 +106,7 @@ class TestStructuredJSONFormatter:
         )
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert "stack_trace" not in log_dict
 
@@ -126,7 +127,7 @@ class TestStructuredJSONFormatter:
         record.span_id = "051581bf3bb55c45"
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert log_dict["trace_id"] == "5b8aa5a2d2c872e8321cf37308d69df2"
         assert log_dict["span_id"] == "051581bf3bb55c45"
@@ -149,7 +150,7 @@ class TestStructuredJSONFormatter:
         record.user_type = "admin"
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert "identity" in log_dict
         assert log_dict["identity"]["tenant_id"] == "t-global-corp"
@@ -171,7 +172,7 @@ class TestStructuredJSONFormatter:
         )
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert "identity" not in log_dict
 
@@ -191,7 +192,7 @@ class TestStructuredJSONFormatter:
         record.attributes = {"order_id": "ord-123", "amount": 99.99}
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert log_dict["attributes"]["order_id"] == "ord-123"
         assert log_dict["attributes"]["amount"] == 99.99
@@ -211,7 +212,7 @@ class TestStructuredJSONFormatter:
         )
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         assert log_dict["message"] == "User john logged in from 192.168.1.1"
 
@@ -230,7 +231,7 @@ class TestStructuredJSONFormatter:
         )
 
         output = formatter.format(record)
-        log_dict = json.loads(output)
+        log_dict = orjson.loads(output)
 
         # Verify ISO 8601 format with Z suffix
         ts = log_dict["ts"]
