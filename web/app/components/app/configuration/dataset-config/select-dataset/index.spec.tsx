@@ -1,5 +1,5 @@
 import type { DataSet } from '@/models/datasets'
-import { fireEvent, render, screen } from '@testing-library/react'
+import { act, fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
 
 import { describe, expect, it, vi } from 'vitest'
@@ -8,6 +8,17 @@ import { DatasetPermission } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from './index'
 
+vi.mock('@/i18n-config/i18next-config', () => ({
+  __esModule: true,
+  default: {
+    changeLanguage: vi.fn(),
+    addResourceBundle: vi.fn(),
+    use: vi.fn().mockReturnThis(),
+    init: vi.fn(),
+    addResource: vi.fn(),
+    hasResourceBundle: vi.fn().mockReturnValue(true),
+  },
+}))
 const mockUseInfiniteScroll = vi.fn()
 vi.mock('ahooks', async (importOriginal) => {
   const actual = await importOriginal()
@@ -69,7 +80,7 @@ describe('SelectDataSet', () => {
     vi.clearAllMocks()
   })
 
-  it('renders dataset entries, allows selection, and fires onSelect', () => {
+  it('renders dataset entries, allows selection, and fires onSelect', async () => {
     const datasetOne = makeDataset({
       id: 'set-1',
       name: 'Dataset One',
@@ -91,20 +102,26 @@ describe('SelectDataSet', () => {
     })
 
     const onSelect = vi.fn()
-    render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={[]} />)
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} onSelect={onSelect} selectedIds={[]} />)
+    })
 
     expect(screen.getByText('Dataset One')).toBeInTheDocument()
     expect(screen.getByText('Hidden Dataset')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('Dataset One'))
+    await act(async () => {
+      fireEvent.click(screen.getByText('Dataset One'))
+    })
     expect(screen.getByText('1 appDebug.feature.dataSet.selected')).toBeInTheDocument()
 
     const addButton = screen.getByRole('button', { name: 'common.operation.add' })
-    fireEvent.click(addButton)
+    await act(async () => {
+      fireEvent.click(addButton)
+    })
     expect(onSelect).toHaveBeenCalledWith([datasetOne])
   })
 
-  it('shows empty state when no datasets are available and disables add', () => {
+  it('shows empty state when no datasets are available and disables add', async () => {
     mockUseInfiniteDatasets.mockReturnValue({
       data: { pages: [{ data: [] }] },
       isLoading: false,
@@ -113,7 +130,9 @@ describe('SelectDataSet', () => {
       hasNextPage: false,
     })
 
-    render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
+    await act(async () => {
+      render(<SelectDataSet {...baseProps} onSelect={vi.fn()} selectedIds={[]} />)
+    })
 
     expect(screen.getByText('appDebug.feature.dataSet.noDataSet')).toBeInTheDocument()
     expect(screen.getByRole('link', { name: 'appDebug.feature.dataSet.toCreate' })).toHaveAttribute('href', '/datasets/create')
