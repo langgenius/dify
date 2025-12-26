@@ -36,8 +36,8 @@ export const useAvailableNodesMetaData = () => {
 
   const availableNodesMetaData = useMemo(() => mergedNodesMetaData.map((node) => {
     const { metaData } = node
-    const title = t(`blocks.${metaData.type}` as any, { ns: 'workflow' }) as string
-    const description = t(`blocksAbout.${metaData.type}` as any, { ns: 'workflow' }) as string
+    const title = t(`blocks.${metaData.type}`, { ns: 'workflow' })
+    const description = t(`blocksAbout.${metaData.type}`, { ns: 'workflow' })
     return {
       ...node,
       metaData: {

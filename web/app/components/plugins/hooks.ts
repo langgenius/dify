@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import type { CategoryKey, TagKey } from './constants'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,7 +9,7 @@ import {
 import { PluginCategoryEnum } from './types'
 
 export type Tag = {
-  name: string
+  name: TagKey
   label: string
 }
 
@@ -20,7 +21,7 @@ export const useTags = (translateFromOut?: TFunction) => {
     return tagKeys.map((tag) => {
       return {
         name: tag,
-        label: t(`tags.${tag}` as any, { ns: 'pluginTags' }) as string,
+        label: t(`tags.${tag}`, { ns: 'pluginTags' }),
       }
     })
   }, [t])
@@ -48,7 +49,7 @@ export const useTags = (translateFromOut?: TFunction) => {
 }
 
 type Category = {
-  name: string
+  name: CategoryKey
   label: string
 }
 
@@ -66,14 +67,14 @@ export const useCategories = (translateFromOut?: TFunction, isSingle?: boolean) 
       }
       return {
         name: category,
-        label: isSingle ? t(`categorySingle.${category}` as any, { ns: 'plugin' }) as string : t(`category.${category}s` as any, { ns: 'plugin' }) as string,
+        label: isSingle ? t(`categorySingle.${category}`, { ns: 'plugin' }) : t(`category.${category}s`, { ns: 'plugin' }),
       }
     })
   }, [t, isSingle])
 
   const categoriesMap = useMemo(() => {
     return categories.reduce((acc, category) => {
-      acc[category.name] = category as any
+      acc[category.name] = category
       return acc
     }, {} as Record<string, Category>)
   }, [categories])
