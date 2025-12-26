@@ -4,7 +4,6 @@ import secrets
 from flask import request
 from flask_restx import Resource
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from controllers.common.schema import register_schema_models
