@@ -326,6 +326,20 @@ export const useWorkflowVibe = () => {
     }
   }, [defaultModel])
 
+  const getLatestModelConfig = useCallback(() => {
+    if (typeof window === 'undefined')
+      return modelConfig
+    const stored = localStorage.getItem('auto-gen-model')
+    if (!stored)
+      return modelConfig
+    try {
+      return JSON.parse(stored) as Model
+    }
+    catch {
+      return modelConfig
+    }
+  }, [modelConfig])
+
   const availableNodesList = useMemo(() => {
     if (!nodesMetaDataMap)
       return []
@@ -650,7 +664,8 @@ export const useWorkflowVibe = () => {
       return
     }
 
-    if (!modelConfig && !isMermaidFlowchart(trimmed)) {
+    const latestModelConfig = getLatestModelConfig()
+    if (!latestModelConfig && !isMermaidFlowchart(trimmed)) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.modelUnavailable') })
       return
     }
@@ -667,6 +682,7 @@ export const useWorkflowVibe = () => {
       showVibePanel: true,
       isVibeGenerating: true,
       vibePanelMermaidCode: '',
+      vibePanelInstruction: trimmed,
     }))
 
     try {
@@ -701,7 +717,7 @@ export const useWorkflowVibe = () => {
       if (!isMermaidFlowchart(trimmed)) {
         const { error, flowchart } = await generateFlowchart({
           instruction: trimmed,
-          model_config: modelConfig,
+          model_config: latestModelConfig,
           available_nodes: availableNodesPayload,
           existing_nodes: existingNodesPayload,
           available_tools: toolsPayload,
@@ -738,7 +754,6 @@ export const useWorkflowVibe = () => {
     availableNodesList,
     getNodesReadOnly,
     handleSyncWorkflowDraft,
-    modelConfig,
     nodeTypeLookup,
     nodesMetaDataMap,
     saveStateToHistory,
@@ -746,6 +761,7 @@ export const useWorkflowVibe = () => {
     t,
     toolLookup,
     toolOptions,
+    getLatestModelConfig,
   ])
 
   const handleRegenerate = useCallback(async () => {
