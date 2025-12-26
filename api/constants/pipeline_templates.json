@@ -1266,6 +1266,14 @@
                     "main_content"
                   ]
                 },
+                "crawl_entire_domain": {
+                  "type": "variable",
+                  "value": [
+                    "rag",
+                    "1756907397615",
+                    "crawl_entire_domain"
+                  ]
+                },
                 "url": {
                   "type": "mixed",
                   "value": "{{#rag.1756907397615.firecrawl_url1#}}"
@@ -2241,6 +2249,14 @@
                     "rag",
                     "1756907397615",
                     "main_content"
+                  ]
+                },
+                "crawl_entire_domain": {
+                  "type": "variable",
+                  "value": [
+                    "rag",
+                    "1756907397615",
+                    "crawl_entire_domain"
                   ]
                 },
                 "url": {
@@ -4784,6 +4800,14 @@
                     "rag",
                     "1756907397615",
                     "main_content"
+                  ]
+                },
+                "crawl_entire_domain": {
+                  "type": "variable",
+                  "value": [
+                    "rag",
+                    "1756907397615",
+                    "crawl_entire_domain"
                   ]
                 },
                 "url": {
