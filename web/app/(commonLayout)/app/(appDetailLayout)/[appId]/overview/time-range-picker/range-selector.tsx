@@ -42,7 +42,7 @@ const RangeSelector: FC<Props> = ({
   const renderTrigger = useCallback((item: Item | null, isOpen: boolean) => {
     return (
       <div className={cn('flex h-8 cursor-pointer items-center space-x-1.5 rounded-lg bg-components-input-bg-normal pl-3 pr-2', isOpen && 'bg-state-base-hover-alt')}>
-        <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('appLog.filter.period.custom') : item?.name}</div>
+        <div className="system-sm-regular text-components-input-text-filled">{isCustomRange ? t('filter.period.custom', { ns: 'appLog' }) : item?.name}</div>
         <RiArrowDownSLine className={cn('size-4 text-text-quaternary', isOpen && 'text-text-secondary')} />
       </div>
     )
@@ -66,7 +66,7 @@ const RangeSelector: FC<Props> = ({
   }, [])
   return (
     <SimpleSelect
-      items={ranges.map(v => ({ ...v, name: t(`appLog.filter.period.${v.name}` as any) as string }))}
+      items={ranges.map(v => ({ ...v, name: t(`filter.period.${v.name}` as any, { ns: 'appLog' }) as string }))}
       className="mt-0 !w-40"
       notClearable={true}
       onSelect={handleSelectRange}

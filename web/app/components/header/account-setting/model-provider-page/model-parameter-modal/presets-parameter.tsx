@@ -24,7 +24,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
         variant="secondary"
         className={cn(open && 'bg-state-base-hover')}
       >
-        {t('common.modelProvider.loadPresets')}
+        {t('modelProvider.loadPresets', { ns: 'common' })}
         <RiArrowDownSLine className="ml-0.5 h-3.5 w-3.5" />
       </Button>
     )
@@ -44,7 +44,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
       text: (
         <div className="flex h-full items-center">
           {getToneIcon(tone.id)}
-          {t(`common.model.tone.${tone.name}` as any) as string}
+          {t(`model.tone.${tone.name}` as any, { ns: 'common' }) as string}
         </div>
       ),
     }

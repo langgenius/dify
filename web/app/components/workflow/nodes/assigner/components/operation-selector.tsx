@@ -34,7 +34,7 @@ type OperationSelectorProps = {
   writeModeTypesNum?: WriteMode[]
 }
 
-const i18nPrefix = 'workflow.nodes.assigner'
+const i18nPrefix = 'nodes.assigner'
 
 const OperationSelector: FC<OperationSelectorProps> = ({
   value,
@@ -72,7 +72,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
               className={`system-sm-regular overflow-hidden truncate text-ellipsis
                 ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
             >
-              {selectedItem?.name ? t(`${i18nPrefix}.operations.${selectedItem?.name}` as any) as string : t(`${i18nPrefix}.operations.title` as any) as string}
+              {selectedItem?.name ? t(`${i18nPrefix}.operations.${selectedItem?.name}` as any, { ns: 'workflow' }) as string : t(`${i18nPrefix}.operations.title` as any, { ns: 'workflow' }) as string}
             </span>
           </div>
           <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary ${disabled && 'text-components-input-text-placeholder'} ${open && 'text-text-secondary'}`} />
@@ -83,7 +83,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         <div className="flex w-[140px] flex-col items-start rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="flex flex-col items-start self-stretch p-1">
             <div className="flex items-start self-stretch px-3 pb-0.5 pt-1">
-              <div className="system-xs-medium-uppercase flex grow text-text-tertiary">{t(`${i18nPrefix}.operations.title` as any) as string}</div>
+              <div className="system-xs-medium-uppercase flex grow text-text-tertiary">{t(`${i18nPrefix}.operations.title` as any, { ns: 'workflow' }) as string}</div>
             </div>
             {items.map(item => (
               item.value === 'divider'
@@ -100,7 +100,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                       }}
                     >
                       <div className="flex min-h-5 grow items-center gap-1 px-1">
-                        <span className="system-sm-medium flex grow text-text-secondary">{t(`${i18nPrefix}.operations.${item.name}` as any) as string}</span>
+                        <span className="system-sm-medium flex grow text-text-secondary">{t(`${i18nPrefix}.operations.${item.name}` as any, { ns: 'workflow' }) as string}</span>
                       </div>
                       {item.value === value && (
                         <div className="flex items-center justify-center">

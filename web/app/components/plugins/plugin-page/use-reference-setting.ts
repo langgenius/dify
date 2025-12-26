@@ -31,7 +31,7 @@ const useReferenceSetting = () => {
       invalidateReferenceSettings()
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
     },
   })

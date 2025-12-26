@@ -9,7 +9,7 @@ import { VarType } from '../../types'
 import { ComparisonOperator, LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
 
-const i18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Logic,
@@ -32,14 +32,14 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
 
     payload.loop_variables?.forEach((variable) => {
       if (!variable.label)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
     })
 
     payload.break_conditions!.forEach((condition) => {
       if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
       if (!errorMessages && !condition.comparison_operator)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.ifElse.operator') })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.ifElse.operator', { ns: 'workflow' }) })
       if (!errorMessages) {
         if (condition.sub_variable_condition
           && ![ComparisonOperator.empty, ComparisonOperator.notEmpty].includes(condition.comparison_operator!)) {
@@ -54,11 +54,11 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
           })
 
           if (!isSet)
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
         }
         else {
           if (!isEmptyRelatedOperator(condition.comparison_operator!) && (condition.varType === VarType.boolean ? condition.value === undefined : !condition.value))
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
         }
       }
     })
@@ -69,7 +69,7 @@ const nodeDefault: NodeDefault<LoopNodeType> = {
       || payload.loop_count < 1
       || payload.loop_count > LOOP_NODE_MAX_COUNT
     )) {
-      errorMessages = t('workflow.nodes.loop.loopMaxCountError', { maxCount: LOOP_NODE_MAX_COUNT })
+      errorMessages = t('nodes.loop.loopMaxCountError', { ns: 'workflow', maxCount: LOOP_NODE_MAX_COUNT })
     }
 
     return {

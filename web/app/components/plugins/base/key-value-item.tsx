@@ -54,7 +54,7 @@ const KeyValueItem: FC<Props> = ({
         <span className={cn(valueMaxWidthClassName, ' system-xs-medium truncate text-text-secondary')}>
           {maskedValue || value}
         </span>
-        <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position="top">
+        <Tooltip popupContent={t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })} position="top">
           <ActionButton onClick={handleCopy}>
             <CopyIcon className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
           </ActionButton>

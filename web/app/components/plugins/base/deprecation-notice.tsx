@@ -20,7 +20,7 @@ type DeprecationNoticeProps = {
   textClassName?: string
 }
 
-const i18nPrefix = 'plugin.detailPanel.deprecation'
+const i18nPrefix = 'detailPanel.deprecation'
 
 const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   status,
@@ -82,7 +82,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   ),
                 }}
                 values={{
-                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string,
+                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any, { ns: 'plugin' }) as string,
                   alternativePluginId,
                 }}
               />
@@ -91,13 +91,13 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           {
             hasValidDeprecatedReason && !alternativePluginId && (
               <span>
-                {t(`${i18nPrefix}.onlyReason` as any, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any) as string }) as string}
+                {t(`${i18nPrefix}.onlyReason` as any, { ns: 'plugin', deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}` as any, { ns: 'plugin' }) as string }) as string}
               </span>
             )
           }
           {
             !hasValidDeprecatedReason && (
-              <span>{t(`${i18nPrefix}.noReason`)}</span>
+              <span>{t(`${i18nPrefix}.noReason`, { ns: 'plugin' })}</span>
             )
           }
         </div>

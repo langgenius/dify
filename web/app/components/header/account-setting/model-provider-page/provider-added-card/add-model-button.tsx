@@ -19,7 +19,7 @@ const AddModelButton: FC<AddModelButtonProps> = ({
       onClick={onClick}
     >
       <PlusCircle className="mr-1 h-3 w-3" />
-      {t('common.modelProvider.addModel')}
+      {t('modelProvider.addModel', { ns: 'common' })}
     </span>
   )
 }
