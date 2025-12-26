@@ -116,12 +116,11 @@ export default {
     return {
       // Track variable declarations
       VariableDeclarator(node) {
-        if (
-          node.id.type === 'Identifier'
-          && node.init
-          && node.init.type === 'Literal'
-          && typeof node.init.value === 'string'
-        ) {
+        if (node.id.type !== 'Identifier' || !node.init)
+          return
+
+        // Case 1: Static string literal
+        if (node.init.type === 'Literal' && typeof node.init.value === 'string') {
           variableValues.set(node.id.name, node.init.value)
 
           const extracted = removeNamespacePrefix(node.init.value)
@@ -132,6 +131,26 @@ export default {
               oldValue: node.init.value,
               newValue: extracted.newValue,
               ns: extracted.ns,
+            })
+          }
+        }
+
+        // Case 2: Template literal with static first quasi containing namespace prefix
+        // e.g., const i18nPrefix = `billing.plans.${plan}`
+        if (node.init.type === 'TemplateLiteral') {
+          const firstQuasi = node.init.quasis[0].value.raw
+          const extracted = extractNamespace(firstQuasi)
+          if (extracted) {
+            // Store the first quasi value for template literal analysis
+            variableValues.set(node.id.name, firstQuasi)
+
+            variablesToFix.set(node.id.name, {
+              node,
+              name: node.id.name,
+              oldValue: firstQuasi,
+              newValue: extracted.localKey,
+              ns: extracted.ns,
+              isTemplateLiteral: true,
             })
           }
         }
@@ -279,7 +298,18 @@ export default {
             // Fix variable declarations - remove namespace prefix
             for (const [, varInfo] of variablesToFix) {
               if (namespacesUsed.has(varInfo.ns) && varInfo.node.init) {
-                fixes.push(fixer.replaceText(varInfo.node.init, `'${varInfo.newValue}'`))
+                if (varInfo.isTemplateLiteral) {
+                  // For template literals, rebuild with updated first quasi
+                  const templateLiteral = varInfo.node.init
+                  const quasis = templateLiteral.quasis.map((q, i) =>
+                    i === 0 ? varInfo.newValue : q.value.raw,
+                  )
+                  const newTemplate = buildTemplateLiteral(quasis, templateLiteral.expressions)
+                  fixes.push(fixer.replaceText(varInfo.node.init, newTemplate))
+                }
+                else {
+                  fixes.push(fixer.replaceText(varInfo.node.init, `'${varInfo.newValue}'`))
+                }
               }
             }
 
