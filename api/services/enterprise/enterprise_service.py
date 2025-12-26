@@ -104,11 +104,11 @@ class EnterpriseService:
             response = EnterpriseRequest.send_request("POST", "/webapp/access-mode", json=data)
 
             return response.get("result", False)
-
+            
         @classmethod
         def cleanup_webapp(cls, app_id: str):
             if not app_id:
                 raise ValueError("app_id must be provided.")
 
-            body = {"appId": app_id}
-            EnterpriseRequest.send_request("DELETE", "/webapp/clean", json=body)
+            params = {"appId": app_id}
+            EnterpriseRequest.send_request("DELETE", "/webapp/clean", params=params)
