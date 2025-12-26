@@ -23,7 +23,6 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import click
-from sqlalchemy import delete, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -35,12 +34,7 @@ from libs.archive_storage import (
     build_workflow_run_prefix,
     get_archive_storage,
 )
-from models.trigger import WorkflowTriggerLog
 from models.workflow import (
-    WorkflowNodeExecutionModel,
-    WorkflowNodeExecutionOffload,
-    WorkflowPause,
-    WorkflowPauseReason,
     WorkflowRun,
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
@@ -312,14 +306,12 @@ class WorkflowRunArchiver:
                     return result
 
             # Extract data from all tables
-            table_data: dict[str, list[dict[str, Any]]] = {}
-            for table_name in self.ARCHIVED_TABLES:
-                records = self._extract_table_data(session, run.id, table_name)
-                table_data[table_name] = records
+            table_data = self._extract_data(session, run)
 
             if self.dry_run:
                 # In dry run, just report what would be archived
-                for table_name, records in table_data.items():
+                for table_name in self.ARCHIVED_TABLES:
+                    records = table_data.get(table_name, [])
                     result.tables.append(
                         TableStats(
                             table_name=table_name,
@@ -329,62 +321,64 @@ class WorkflowRunArchiver:
                         )
                     )
                 result.success = True
-                result.elapsed_time = time.time() - start_time
-                return result
+            else:
+                if storage is None:
+                    raise ArchiveStorageNotConfiguredError("Archive storage not configured")
 
-            # Serialize and upload each table
-            table_stats: list[TableStats] = []
-            for table_name, records in table_data.items():
-                key = self._get_table_key(run, table_name)
-                if storage.object_exists(key):
-                    # Reuse existing archived data to keep archiving idempotent.
-                    existing_data = storage.get_object(key)
-                    checksum = ArchiveStorage.compute_checksum(existing_data)
+                # Serialize and upload each table
+                table_stats: list[TableStats] = []
+                for table_name in self.ARCHIVED_TABLES:
+                    records = table_data.get(table_name, [])
+                    key = self._get_table_key(run, table_name)
+                    if storage.object_exists(key):
+                        # Reuse existing archived data to keep archiving idempotent.
+                        existing_data = storage.get_object(key)
+                        checksum = ArchiveStorage.compute_checksum(existing_data)
+                        table_stats.append(
+                            TableStats(
+                                table_name=table_name,
+                                row_count=len(ArchiveStorage.deserialize_from_jsonl_gz(existing_data)),
+                                checksum=checksum,
+                                size_bytes=len(existing_data),
+                            )
+                        )
+                        continue
+
+                    data = ArchiveStorage.serialize_to_jsonl_gz(records)
+                    checksum = storage.put_object(key, data)
+
                     table_stats.append(
                         TableStats(
                             table_name=table_name,
-                            row_count=len(ArchiveStorage.deserialize_from_jsonl_gz(existing_data)),
+                            row_count=len(records),
                             checksum=checksum,
-                            size_bytes=len(existing_data),
+                            size_bytes=len(data),
                         )
                     )
-                    continue
 
-                data = ArchiveStorage.serialize_to_jsonl_gz(records)
-                checksum = storage.put_object(key, data)
+                # Generate and upload manifest
+                manifest = self._generate_manifest(run, table_stats)
+                manifest_data = json.dumps(manifest, indent=2, default=str).encode("utf-8")
+                storage.put_object(manifest_key, manifest_data)
 
-                table_stats.append(
-                    TableStats(
-                        table_name=table_name,
-                        row_count=len(records),
-                        checksum=checksum,
-                        size_bytes=len(data),
-                    )
+                # Verify upload
+                if not self._verify_manifest(storage, run, manifest):
+                    raise Exception("Manifest verification failed")
+
+                # Mark as archived and delete source data
+                self._mark_archived(session, run.id)
+                deleted_counts = self._delete_archived_data(session, run)
+                session.commit()
+
+                logger.info(
+                    "Archived workflow run %s: tables=%s, deleted=%s",
+                    run.id,
+                    {s.table_name: s.row_count for s in table_stats},
+                    deleted_counts,
                 )
 
-            # Generate and upload manifest
-            manifest = self._generate_manifest(run, table_stats)
-            manifest_data = json.dumps(manifest, indent=2, default=str).encode("utf-8")
-            storage.put_object(manifest_key, manifest_data)
-
-            # Verify upload
-            if not self._verify_manifest(storage, run, manifest):
-                raise Exception("Manifest verification failed")
-
-            # Mark as archived and delete source data
-            self._mark_archived(session, run.id)
-            deleted_counts = self._delete_archived_data(session, run)
-            session.commit()
-
-            logger.info(
-                "Archived workflow run %s: tables=%s, deleted=%s",
-                run.id,
-                {s.table_name: s.row_count for s in table_stats},
-                deleted_counts,
-            )
-
-            result.tables = table_stats
-            result.success = True
+                result.tables = table_stats
+                result.success = True
 
         except Exception as e:
             logger.exception("Failed to archive workflow run %s", run.id)
@@ -394,59 +388,40 @@ class WorkflowRunArchiver:
         result.elapsed_time = time.time() - start_time
         return result
 
-    def _extract_table_data(
-        self,
-        session: Session,
-        run_id: str,
-        table_name: str,
-    ) -> list[dict[str, Any]]:
-        """Extract records from a table for the given workflow run."""
-        records: list[dict[str, Any]] = []
-
-        if table_name == "workflow_node_executions":
-            stmt = select(WorkflowNodeExecutionModel).where(
-                WorkflowNodeExecutionModel.workflow_run_id == run_id
-            )
-            for row in session.scalars(stmt):
-                records.append(self._model_to_dict(row))
-
-        elif table_name == "workflow_node_execution_offload":
-            # Get node execution IDs first
-            node_exec_stmt = select(WorkflowNodeExecutionModel.id).where(
-                WorkflowNodeExecutionModel.workflow_run_id == run_id
-            )
-            node_exec_ids = list(session.scalars(node_exec_stmt))
-
-            if node_exec_ids:
-                stmt = select(WorkflowNodeExecutionOffload).where(
-                    WorkflowNodeExecutionOffload.node_execution_id.in_(node_exec_ids)
-                )
-                for row in session.scalars(stmt):
-                    records.append(self._model_to_dict(row))
-
-        elif table_name == "workflow_pauses":
-            stmt = select(WorkflowPause).where(WorkflowPause.workflow_run_id == run_id)
-            for row in session.scalars(stmt):
-                records.append(self._model_to_dict(row))
-
-        elif table_name == "workflow_pause_reasons":
-            # Get pause IDs first
-            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id == run_id)
-            pause_ids = list(session.scalars(pause_stmt))
-
-            if pause_ids:
-                stmt = select(WorkflowPauseReason).where(
-                    WorkflowPauseReason.pause_id.in_(pause_ids)
-                )
-                for row in session.scalars(stmt):
-                    records.append(self._model_to_dict(row))
-
-        elif table_name == "workflow_trigger_logs":
-            stmt = select(WorkflowTriggerLog).where(WorkflowTriggerLog.workflow_run_id == run_id)
-            for row in session.scalars(stmt):
-                records.append(self._model_to_dict(row))
-
-        return records
+    def _extract_data(self, session: Session, run: WorkflowRun) -> dict[str, list[dict[str, Any]]]:
+        table_data: dict[str, list[dict[str, Any]]] = {}
+        node_exec_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_by_run_id(
+            session,
+            run.id,
+        )
+        node_exec_ids = [record.id for record in node_exec_records]
+        offload_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_offloads_by_execution_ids(
+            session,
+            node_exec_ids,
+        )
+        table_data["workflow_node_executions"] = [
+            self._model_to_dict(row) for row in node_exec_records
+        ]
+        table_data["workflow_node_execution_offload"] = [
+            self._model_to_dict(row) for row in offload_records
+        ]
+        repo = self._get_workflow_run_repo()
+        pause_records = repo.get_pause_records_by_run_id(session, run.id)
+        pause_ids = [pause.id for pause in pause_records]
+        pause_reason_records = repo.get_pause_reason_records_by_run_id(
+            session,
+            pause_ids,
+        )
+        table_data["workflow_pauses"] = [self._model_to_dict(row) for row in pause_records]
+        table_data["workflow_pause_reasons"] = [
+            self._model_to_dict(row) for row in pause_reason_records
+        ]
+        trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
+        trigger_records = trigger_repo.list_by_run_id(run.id)
+        table_data["workflow_trigger_logs"] = [
+            self._model_to_dict(row) for row in trigger_records
+        ]
+        return table_data
 
     def _model_to_dict(self, model: Any) -> dict[str, Any]:
         """Convert a SQLAlchemy model to a dictionary."""
@@ -550,44 +525,18 @@ class WorkflowRunArchiver:
 
     def _mark_archived(self, session: Session, run_id: str) -> None:
         """Mark a workflow run as archived."""
-        session.execute(
-            WorkflowRun.__table__.update()
-            .where(WorkflowRun.id == run_id)
-            .values(is_archived=True)
-        )
+        repo = self._get_workflow_run_repo()
+        repo.mark_runs_archived(session, [run_id])
 
     def _delete_archived_data(self, session: Session, run: WorkflowRun) -> dict[str, int]:
         """Delete archived data from the 5 tables."""
-        counts: dict[str, int] = {}
-
-        node_executions_deleted, offloads_deleted = self._delete_node_executions(session, [run])
-        counts["workflow_node_executions"] = node_executions_deleted
-        counts["workflow_node_execution_offload"] = offloads_deleted
-
-        # Get pause IDs for pause reasons deletion
-        pause_ids = list(
-            session.scalars(
-                select(WorkflowPause.id).where(WorkflowPause.workflow_run_id == run.id)
-            )
+        repo = self._get_workflow_run_repo()
+        return repo.delete_archived_run_related_data(
+            session,
+            [run],
+            delete_node_executions=self._delete_node_executions,
+            delete_trigger_logs=self._delete_trigger_logs,
         )
-
-        # Delete workflow_pause_reasons
-        if pause_ids:
-            result = session.execute(
-                delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
-            )
-            counts["workflow_pause_reasons"] = result.rowcount
-
-        # Delete workflow_pauses
-        result = session.execute(
-            delete(WorkflowPause).where(WorkflowPause.workflow_run_id == run.id)
-        )
-        counts["workflow_pauses"] = result.rowcount
-
-        # Delete workflow_trigger_logs
-        counts["workflow_trigger_logs"] = self._delete_trigger_logs(session, [run.id])
-
-        return counts
 
     def _delete_trigger_logs(self, session: Session, run_ids: Sequence[str]) -> int:
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)

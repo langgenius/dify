@@ -290,3 +290,84 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             result = cast(CursorResult, session.execute(stmt))
             session.commit()
             return result.rowcount
+
+    class RunContext(TypedDict):
+        run_id: str
+        tenant_id: str
+        app_id: str
+        workflow_id: str
+        triggered_from: str
+
+    @staticmethod
+    def delete_by_runs(session: Session, runs: Sequence[RunContext]) -> tuple[int, int]:
+        """
+        Delete node executions (and offloads) for the given workflow runs using indexed columns.
+
+        Uses the composite index on (tenant_id, app_id, workflow_id, triggered_from, workflow_run_id)
+        by filtering on those columns with tuple IN.
+        """
+        if not runs:
+            return 0, 0
+
+        tuple_values = [
+            (run["tenant_id"], run["app_id"], run["workflow_id"], run["triggered_from"], run["run_id"]) for run in runs
+        ]
+
+        node_execution_ids = session.scalars(
+            select(WorkflowNodeExecutionModel.id).where(
+                tuple_(
+                    WorkflowNodeExecutionModel.tenant_id,
+                    WorkflowNodeExecutionModel.app_id,
+                    WorkflowNodeExecutionModel.workflow_id,
+                    WorkflowNodeExecutionModel.triggered_from,
+                    WorkflowNodeExecutionModel.workflow_run_id,
+                ).in_(tuple_values)
+            )
+        ).all()
+
+        if not node_execution_ids:
+            return 0, 0
+
+        offloads_deleted = (
+            cast(
+                CursorResult,
+                session.execute(
+                    delete(WorkflowNodeExecutionOffload).where(
+                        WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+                    )
+                ),
+            ).rowcount
+            or 0
+        )
+
+        node_executions_deleted = (
+            cast(
+                CursorResult,
+                session.execute(
+                    delete(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.id.in_(node_execution_ids))
+                ),
+            ).rowcount
+            or 0
+        )
+
+        return node_executions_deleted, offloads_deleted
+
+    @staticmethod
+    def get_by_run_id(session: Session, run_id: str) -> Sequence[WorkflowNodeExecutionModel]:
+        stmt = select(WorkflowNodeExecutionModel).where(
+            WorkflowNodeExecutionModel.workflow_run_id == run_id
+        )
+        return list(session.scalars(stmt))
+
+    @staticmethod
+    def get_offloads_by_execution_ids(
+        session: Session,
+        node_execution_ids: Sequence[str],
+    ) -> Sequence[WorkflowNodeExecutionOffload]:
+        if not node_execution_ids:
+            return []
+
+        stmt = select(WorkflowNodeExecutionOffload).where(
+            WorkflowNodeExecutionOffload.node_execution_id.in_(node_execution_ids)
+        )
+        return list(session.scalars(stmt))

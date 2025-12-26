@@ -40,8 +40,10 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowPause as WorkflowPauseModel
-from models.workflow import WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowPauseReason, WorkflowRun
+from models.workflow import (
+    WorkflowPause as WorkflowPauseModel,
+)
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
@@ -356,6 +358,25 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
             return session.scalars(stmt).all()
 
+    def get_pause_records_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowPauseModel]:
+        stmt = select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == run_id)
+        return list(session.scalars(stmt))
+
+    def get_pause_reason_records_by_run_id(
+        self,
+        session: Session,
+        pause_ids: Sequence[str],
+    ) -> Sequence[WorkflowPauseReason]:
+        if not pause_ids:
+            return []
+
+        stmt = select(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+        return list(session.scalars(stmt))
+
     def delete_runs_with_related(
         self,
         runs: Sequence[WorkflowRun],
@@ -413,6 +434,67 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 "pauses": pauses_deleted,
                 "pause_reasons": pause_reasons_deleted,
             }
+
+    def delete_archived_run_related_data(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        if not runs:
+            return {
+                "node_executions": 0,
+                "offloads": 0,
+                "trigger_logs": 0,
+                "pauses": 0,
+                "pause_reasons": 0,
+            }
+
+        run_ids = [run.id for run in runs]
+        if delete_node_executions:
+            node_executions_deleted, offloads_deleted = delete_node_executions(session, runs)
+        else:
+            node_executions_deleted, offloads_deleted = 0, 0
+
+        pause_ids = session.scalars(
+            select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
+        ).all()
+        pause_reasons_deleted = 0
+        pauses_deleted = 0
+
+        if pause_ids:
+            pause_reasons_result = session.execute(
+                delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
+            )
+            pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
+            pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
+            pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
+
+        trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
+
+        return {
+            "node_executions": node_executions_deleted,
+            "offloads": offloads_deleted,
+            "trigger_logs": trigger_logs_deleted,
+            "pauses": pauses_deleted,
+            "pause_reasons": pause_reasons_deleted,
+        }
+
+    def mark_runs_archived(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> int:
+        if not run_ids:
+            return 0
+
+        result = session.execute(
+            WorkflowRun.__table__.update()
+            .where(WorkflowRun.id.in_(run_ids))
+            .values(is_archived=True)
+        )
+        return cast(CursorResult, result).rowcount or 0
 
     def create_workflow_pause(
         self,

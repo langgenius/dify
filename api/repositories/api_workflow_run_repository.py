@@ -42,7 +42,7 @@ from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowRun
+from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -275,6 +275,49 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         Delete workflow runs and their related records (node executions, offloads, app logs,
         trigger logs, pauses, pause reasons).
+        """
+        ...
+
+    def delete_archived_run_related_data(
+        self,
+        session: Session,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Delete archived workflow run related records (node executions, offloads, pauses, pause reasons,
+        trigger logs). This does not delete workflow runs or workflow app logs.
+        """
+        ...
+
+    def mark_runs_archived(
+        self,
+        session: Session,
+        run_ids: Sequence[str],
+    ) -> int:
+        """
+        Mark workflow runs as archived.
+        """
+        ...
+
+    def get_pause_records_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowPause]:
+        """
+        Fetch workflow pause records by workflow run ID.
+        """
+        ...
+
+    def get_pause_reason_records_by_run_id(
+        self,
+        session: Session,
+        pause_ids: Sequence[str],
+    ) -> Sequence[WorkflowPauseReason]:
+        """
+        Fetch workflow pause reason records by pause IDs.
         """
         ...
 
