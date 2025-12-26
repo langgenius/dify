@@ -95,7 +95,15 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
             />
           </div>
           <div className="flex items-center ">
-            <Button variant="ghost" className="flex items-center space-x-1 px-2 text-components-button-ghost-text" onClick={togglePreview}>
+            <Button
+              variant="ghost"
+              size="small"
+              className={cn(
+                'flex items-center space-x-1 px-2',
+                isPreview && 'bg-state-accent-active text-text-accent',
+              )}
+              onClick={togglePreview}
+            >
               <RiEyeLine className="size-3.5" />
               <div className="system-xs-medium">{t(`${i18nPrefix}.formContent.preview`)}</div>
             </Button>

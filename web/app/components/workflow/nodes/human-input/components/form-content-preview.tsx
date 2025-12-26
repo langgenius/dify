@@ -14,14 +14,14 @@ import { Note, rehypeNotes, rehypeVariable, Variable } from './variable-in-markd
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
-type Props = {
+type FormContentPreviewProps = {
   content: string
   formInputs: FormInputItem[]
   userActions: UserAction[]
   onClose: () => void
 }
 
-const FormContentPreview: FC<Props> = ({
+const FormContentPreview: FC<FormContentPreviewProps> = ({
   content,
   formInputs,
   userActions,
@@ -85,4 +85,5 @@ const FormContentPreview: FC<Props> = ({
     </div>
   )
 }
+
 export default React.memo(FormContentPreview)

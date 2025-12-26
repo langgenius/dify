@@ -29,7 +29,13 @@ export const Markdown = (props: MarkdownProps) => {
 
   return (
     <div className={cn('markdown-body', '!text-text-primary', props.className)}>
-      <ReactMarkdown pluginInfo={pluginInfo} latexContent={latexContent} customComponents={customComponents} customDisallowedElements={props.customDisallowedElements} />
+      <ReactMarkdown
+        pluginInfo={pluginInfo}
+        latexContent={latexContent}
+        customComponents={customComponents}
+        customDisallowedElements={props.customDisallowedElements}
+        rehypePlugins={props.rehypePlugins}
+      />
     </div>
   )
 }
