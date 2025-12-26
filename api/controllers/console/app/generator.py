@@ -55,12 +55,28 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
+class PreviousWorkflow(BaseModel):
+    """Previous workflow attempt for regeneration context."""
+
+    nodes: list[dict[str, Any]] = Field(default_factory=list, description="Previously generated nodes")
+    edges: list[dict[str, Any]] = Field(default_factory=list, description="Previously generated edges")
+    warnings: list[str] = Field(default_factory=list, description="Warnings from previous generation")
+
+
 class FlowchartGeneratePayload(BaseModel):
     instruction: str = Field(..., description="Workflow flowchart generation instruction")
     model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
     available_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Available node types")
     existing_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Existing workflow nodes")
     available_tools: list[dict[str, Any]] = Field(default_factory=list, description="Available tools")
+    selected_node_ids: list[str] = Field(default_factory=list, description="IDs of selected nodes for context")
+    # Phase 10: Regenerate with previous workflow context
+    previous_workflow: PreviousWorkflow | None = Field(default=None, description="Previous workflow for regeneration")
+    regenerate_mode: bool = Field(default=False, description="Whether this is a regeneration request")
+    # Language preference for generated content (node titles, descriptions)
+    language: str | None = Field(default=None, description="Preferred language for generated content")
+    # Available models that user has configured (for LLM/question-classifier nodes)
+    available_models: list[dict[str, Any]] = Field(default_factory=list, description="User's configured models")
 
 
 def reg(cls: type[BaseModel]):
@@ -267,7 +283,7 @@ class InstructionGenerateApi(Resource):
 @console_ns.route("/flowchart-generate")
 class FlowchartGenerateApi(Resource):
     @console_ns.doc("generate_workflow_flowchart")
-    @console_ns.doc(description="Generate workflow flowchart using LLM")
+    @console_ns.doc(description="Generate workflow flowchart using LLM with intent classification")
     @console_ns.expect(console_ns.models[FlowchartGeneratePayload.__name__])
     @console_ns.response(200, "Flowchart generated successfully")
     @console_ns.response(400, "Invalid request parameters")
@@ -280,6 +296,15 @@ class FlowchartGenerateApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         try:
+            # Convert PreviousWorkflow to dict if present
+            previous_workflow_dict = None
+            if args.previous_workflow:
+                previous_workflow_dict = {
+                    "nodes": args.previous_workflow.nodes,
+                    "edges": args.previous_workflow.edges,
+                    "warnings": args.previous_workflow.warnings,
+                }
+
             result = LLMGenerator.generate_workflow_flowchart(
                 tenant_id=current_tenant_id,
                 instruction=args.instruction,
@@ -287,6 +312,11 @@ class FlowchartGenerateApi(Resource):
                 available_nodes=args.available_nodes,
                 existing_nodes=args.existing_nodes,
                 available_tools=args.available_tools,
+                selected_node_ids=args.selected_node_ids,
+                previous_workflow=previous_workflow_dict,
+                regenerate_mode=args.regenerate_mode,
+                preferred_language=args.language,
+                available_models=args.available_models,
             )
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
