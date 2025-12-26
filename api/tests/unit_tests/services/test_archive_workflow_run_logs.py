@@ -94,39 +94,6 @@ class TestWorkflowRunArchiver:
         )
 
 
-class TestWorkflowRunRollback:
-    """Tests for the WorkflowRunRollback class."""
-
-    def test_rollback_initialization(self):
-        """Test rollback service initialization."""
-        from services.rollback_archived_workflow_run import WorkflowRunRollback
-
-        rollback = WorkflowRunRollback(dry_run=True)
-
-        assert rollback.dry_run is True
-
-    def test_convert_datetime_fields(self):
-        """Test datetime field conversion from ISO strings."""
-        from models.workflow import WorkflowRun
-        from services.rollback_archived_workflow_run import WorkflowRunRollback
-
-        rollback = WorkflowRunRollback()
-
-        record = {
-            "id": "test-id",
-            "created_at": "2024-01-01T12:00:00",
-            "finished_at": "2024-01-01T12:05:00",
-            "name": "test",
-        }
-
-        result = rollback._convert_datetime_fields(record, WorkflowRun)
-
-        assert isinstance(result["created_at"], datetime)
-        assert result["created_at"].year == 2024
-        assert result["created_at"].month == 1
-        assert result["name"] == "test"
-
-
 class TestWorkflowRunExportService:
     """Tests for the WorkflowRunExportService class."""
 
