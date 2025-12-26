@@ -31,11 +31,13 @@ import {
   isValidAccountSettingTab,
 } from '@/app/components/header/account-setting/constants'
 import {
+  EDUCATION_PRICING_SHOW_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
 } from '@/app/education-apply/constants'
 import { useAppContext } from '@/context/app-context'
 import { useProviderContext } from '@/context/provider-context'
 import {
+  clearQueryParams,
   useAccountSettingModal,
   usePricingModal,
 } from '@/hooks/use-query-params'
@@ -216,6 +218,15 @@ export const ModalContextProvider = ({
     if (!urlAccountModalState.isOpen)
       accountSettingCallbacksRef.current = null
   }, [urlAccountModalState.isOpen])
+
+  useEffect(() => {
+    if (!showPricingModal || typeof window === 'undefined')
+      return
+    const url = new URL(window.location.href)
+    if (url.searchParams.get('action') !== EDUCATION_PRICING_SHOW_ACTION)
+      return
+    clearQueryParams('action')
+  }, [showPricingModal])
 
   const { plan, isFetchedPlan } = useProviderContext()
   const {
