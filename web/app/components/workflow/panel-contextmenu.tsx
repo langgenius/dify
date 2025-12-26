@@ -1,13 +1,12 @@
+import { useClickAway } from 'ahooks'
 import {
   memo,
   useEffect,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
+import { cn } from '@/utils/classnames'
 import Divider from '../base/divider'
-import ShortcutsName from './shortcuts-name'
-import { useStore } from './store'
 import {
   useDSL,
   useNodesInteractions,
@@ -16,7 +15,8 @@ import {
 } from './hooks'
 import AddBlock from './operator/add-block'
 import { useOperator } from './operator/hooks'
-import { cn } from '@/utils/classnames'
+import ShortcutsName from './shortcuts-name'
+import { useStore } from './store'
 
 const PanelContextmenu = () => {
   const { t } = useTranslation()
@@ -42,7 +42,7 @@ const PanelContextmenu = () => {
   const renderTrigger = () => {
     return (
       <div
-        className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+        className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
       >
         {t('workflow.common.addBlock')}
       </div>
@@ -54,14 +54,14 @@ const PanelContextmenu = () => {
 
   return (
     <div
-      className='absolute z-[9] w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'
+      className="absolute z-[9] w-[200px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg"
       style={{
         left: panelMenu.left,
         top: panelMenu.top,
       }}
       ref={ref}
     >
-      <div className='p-1'>
+      <div className="p-1">
         <AddBlock
           renderTrigger={renderTrigger}
           offset={{
@@ -70,7 +70,7 @@ const PanelContextmenu = () => {
           }}
         />
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={(e) => {
             e.stopPropagation()
             handleAddNote()
@@ -80,7 +80,7 @@ const PanelContextmenu = () => {
           {t('workflow.nodes.note.addNote')}
         </div>
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => {
             handleStartWorkflowRun()
             handlePaneContextmenuCancel()
@@ -90,8 +90,8 @@ const PanelContextmenu = () => {
           <ShortcutsName keys={['alt', 'r']} />
         </div>
       </div>
-      <Divider className='m-0' />
-      <div className='p-1'>
+      <Divider className="m-0" />
+      <div className="p-1">
         <div
           className={cn(
             'flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary',
@@ -108,16 +108,16 @@ const PanelContextmenu = () => {
           <ShortcutsName keys={['ctrl', 'v']} />
         </div>
       </div>
-      <Divider className='m-0' />
-      <div className='p-1'>
+      <Divider className="m-0" />
+      <div className="p-1">
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => exportCheck?.()}
         >
           {t('app.export')}
         </div>
         <div
-          className='flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover'
+          className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
           onClick={() => setShowImportDSLModal(true)}
         >
           {t('workflow.common.importDSL')}

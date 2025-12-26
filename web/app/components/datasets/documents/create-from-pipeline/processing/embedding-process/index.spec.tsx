@@ -1,35 +1,37 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import EmbeddingProcess from './index'
+import type { Mock } from 'vitest'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
-import { DatasourceType, type InitialDocumentDetail } from '@/models/pipeline'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { Plan } from '@/app/components/billing/type'
-import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { DatasourceType } from '@/models/pipeline'
+import { RETRIEVE_METHOD } from '@/types/app'
+import EmbeddingProcess from './index'
 
 // ==========================================
 // Mock External Dependencies
 // ==========================================
 
 // Mock next/navigation
-const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockPush = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
 }))
 
 // Mock next/link
-jest.mock('next/link', () => {
-  return function MockLink({ children, href, ...props }: { children: React.ReactNode; href: string }) {
+vi.mock('next/link', () => ({
+  default: function MockLink({ children, href, ...props }: { children: React.ReactNode, href: string }) {
     return <a href={href} {...props}>{children}</a>
-  }
-})
+  },
+}))
 
 // Mock provider context
 let mockEnableBilling = false
 let mockPlanType: Plan = Plan.sandbox
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     enableBilling: mockEnableBilling,
     plan: { type: mockPlanType },
@@ -37,9 +39,9 @@ jest.mock('@/context/provider-context', () => ({
 }))
 
 // Mock useIndexingStatusBatch hook
-let mockFetchIndexingStatus: jest.Mock
+let mockFetchIndexingStatus: Mock
 let mockIndexingStatusData: IndexingStatusResponse[] = []
-jest.mock('@/service/knowledge/use-dataset', () => ({
+vi.mock('@/service/knowledge/use-dataset', () => ({
   useIndexingStatusBatch: () => ({
     mutateAsync: mockFetchIndexingStatus,
   }),
@@ -52,13 +54,13 @@ jest.mock('@/service/knowledge/use-dataset', () => ({
 }))
 
 // Mock useInvalidDocumentList hook
-const mockInvalidDocumentList = jest.fn()
-jest.mock('@/service/knowledge/use-document', () => ({
+const mockInvalidDocumentList = vi.fn()
+vi.mock('@/service/knowledge/use-document', () => ({
   useInvalidDocumentList: () => mockInvalidDocumentList,
 }))
 
 // Mock useDatasetApiAccessUrl hook
-jest.mock('@/hooks/use-api-access-url', () => ({
+vi.mock('@/hooks/use-api-access-url', () => ({
   useDatasetApiAccessUrl: () => 'https://docs.dify.ai/api-reference/datasets',
 }))
 
@@ -126,8 +128,8 @@ const createDefaultProps = (overrides: Partial<{
 
 describe('EmbeddingProcess', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    jest.useFakeTimers()
+    vi.clearAllMocks()
+    vi.useFakeTimers({ shouldAdvanceTime: true })
 
     // Reset deterministic ID counter for reproducible tests
     documentIdCounter = 0
@@ -138,7 +140,7 @@ describe('EmbeddingProcess', () => {
     mockIndexingStatusData = []
 
     // Setup default mock for fetchIndexingStatus
-    mockFetchIndexingStatus = jest.fn().mockImplementation((_, options) => {
+    mockFetchIndexingStatus = vi.fn().mockImplementation((_, options) => {
       options?.onSuccess?.({ data: mockIndexingStatusData })
       options?.onSettled?.()
       return Promise.resolve({ data: mockIndexingStatusData })
@@ -146,7 +148,7 @@ describe('EmbeddingProcess', () => {
   })
 
   afterEach(() => {
-    jest.useRealTimers()
+    vi.useRealTimers()
   })
 
   // ==========================================
@@ -549,7 +551,7 @@ describe('EmbeddingProcess', () => {
       const afterInitialCount = mockFetchIndexingStatus.mock.calls.length
 
       // Advance timer for next poll
-      jest.advanceTimersByTime(2500)
+      vi.advanceTimersByTime(2500)
 
       // Assert - should poll again
       await waitFor(() => {
@@ -576,7 +578,7 @@ describe('EmbeddingProcess', () => {
       const callCountAfterComplete = mockFetchIndexingStatus.mock.calls.length
 
       // Advance timer - polling should have stopped
-      jest.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(5000)
 
       // Assert - call count should not increase significantly after completion
       // Note: Due to React Strict Mode, there might be double renders
@@ -602,7 +604,7 @@ describe('EmbeddingProcess', () => {
       const callCountAfterError = mockFetchIndexingStatus.mock.calls.length
 
       // Advance timer
-      jest.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(5000)
 
       // Assert - should not poll significantly more after error state
       expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(callCountAfterError + 1)
@@ -627,7 +629,7 @@ describe('EmbeddingProcess', () => {
       const callCountAfterPaused = mockFetchIndexingStatus.mock.calls.length
 
       // Advance timer
-      jest.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(5000)
 
       // Assert - should not poll significantly more after paused state
       expect(mockFetchIndexingStatus.mock.calls.length).toBeLessThanOrEqual(callCountAfterPaused + 1)
@@ -655,7 +657,7 @@ describe('EmbeddingProcess', () => {
       unmount()
 
       // Advance timer
-      jest.advanceTimersByTime(5000)
+      vi.advanceTimersByTime(5000)
 
       // Assert - should not poll after unmount
       expect(mockFetchIndexingStatus.mock.calls.length).toBe(callCountBeforeUnmount)
@@ -921,7 +923,7 @@ describe('EmbeddingProcess', () => {
       const props = createDefaultProps({ documents: [] })
 
       // Suppress console errors for expected error
-      const consoleError = jest.spyOn(console, 'error').mockImplementation(Function.prototype as () => void)
+      const consoleError = vi.spyOn(console, 'error').mockImplementation(Function.prototype as () => void)
 
       // Act & Assert - explicitly assert the error behavior
       expect(() => {

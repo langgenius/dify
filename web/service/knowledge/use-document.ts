@@ -1,15 +1,15 @@
+import type { MetadataType, SortType } from '../datasets'
+import type { CommonResponse } from '@/models/common'
+import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
-import { del, get, patch } from '../base'
-import { useInvalid } from '../use-base'
-import type { MetadataType, SortType } from '../datasets'
-import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
-import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
-import { DocumentActionType } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
 import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
+import { DocumentActionType } from '@/models/datasets'
+import { del, get, patch } from '../base'
+import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
+import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'knowledge/document'
 
@@ -22,7 +22,7 @@ export const useDocumentList = (payload: {
     limit: number
     sort?: SortType
     status?: string
-  },
+  }
   refetchInterval?: number | false
 }) => {
   const { query, datasetId, refetchInterval } = payload

@@ -1,10 +1,11 @@
+import type { WorkflowProps } from '@/app/components/workflow'
 import {
   useCallback,
   useMemo,
 } from 'react'
 import { WorkflowWithInnerContext } from '@/app/components/workflow'
-import type { WorkflowProps } from '@/app/components/workflow'
-import RagPipelineChildren from './rag-pipeline-children'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import {
   useAvailableNodesMetaData,
   useDSL,
@@ -14,10 +15,9 @@ import {
   usePipelineRun,
   usePipelineStartRun,
 } from '../hooks'
-import { useWorkflowStore } from '@/app/components/workflow/store'
 import { useConfigsMap } from '../hooks/use-configs-map'
-import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInspectVarsCrud } from '../hooks/use-inspect-vars-crud'
+import RagPipelineChildren from './rag-pipeline-children'
 
 type RagPipelineMainProps = Pick<WorkflowProps, 'nodes' | 'edges' | 'viewport'>
 const RagPipelineMain = ({

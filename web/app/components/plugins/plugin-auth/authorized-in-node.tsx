@@ -1,17 +1,17 @@
+import type {
+  Credential,
+  PluginPayload,
+} from './types'
+import { RiArrowDownSLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
-import type {
-  Credential,
-  PluginPayload,
-} from './types'
 import {
   Authorized,
   usePluginAuth,
@@ -66,7 +66,7 @@ const AuthorizedInNode = ({
     }
     return (
       <Button
-        size='small'
+        size="small"
         className={cn(
           open && !removed && 'bg-components-button-ghost-bg-hover',
           removed && 'bg-transparent text-text-destructive',
@@ -74,7 +74,7 @@ const AuthorizedInNode = ({
         variant={(defaultUnavailable || unavailable) ? 'ghost' : 'secondary'}
       >
         <Indicator
-          className='mr-1.5'
+          className="mr-1.5"
           color={color as any}
         />
         {label}
@@ -124,9 +124,9 @@ const AuthorizedInNode = ({
       isOpen={isOpen}
       onOpenChange={setIsOpen}
       offset={4}
-      placement='bottom-end'
+      placement="bottom-end"
       triggerPopupSameWidth={false}
-      popupClassName='w-[360px]'
+      popupClassName="w-[360px]"
       disabled={disabled}
       disableSetDefault
       onItemClick={handleAuthorizationItemClick}

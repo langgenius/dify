@@ -1,3 +1,7 @@
+import type {
+  HybridSearchModeOption,
+  Option,
+} from './type'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -10,10 +14,6 @@ import {
   IndexMethodEnum,
   RetrievalSearchMethodEnum,
 } from '../../types'
-import type {
-  HybridSearchModeOption,
-  Option,
-} from './type'
 
 export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   const { t } = useTranslation()
@@ -70,13 +70,15 @@ export const useRetrievalSetting = (indexMethod?: IndexMethodEnum) => {
   }, [t])
 
   return useMemo(() => ({
-    options: indexMethod === IndexMethodEnum.ECONOMICAL ? [
-      InvertedIndexOption,
-    ] : [
-      VectorSearchOption,
-      FullTextSearchOption,
-      HybridSearchOption,
-    ],
+    options: indexMethod === IndexMethodEnum.ECONOMICAL
+      ? [
+          InvertedIndexOption,
+        ]
+      : [
+          VectorSearchOption,
+          FullTextSearchOption,
+          HybridSearchOption,
+        ],
     hybridSearchModeOptions: [
       WeightedScoreModeOption,
       RerankModelModeOption,

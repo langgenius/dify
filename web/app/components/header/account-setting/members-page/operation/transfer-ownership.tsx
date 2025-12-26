@@ -1,10 +1,10 @@
 'use client'
-import { Fragment } from 'react'
-import { useTranslation } from 'react-i18next'
+import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
-import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
+import { Fragment } from 'react'
+import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -37,8 +37,8 @@ const TransferOwnership = ({ onOperate }: Props) => {
               >
                 <div className="p-1">
                   <MenuItem>
-                    <div className='flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover' onClick={onOperate}>
-                      <div className='system-md-regular whitespace-nowrap text-text-secondary'>{t('common.members.transferOwnership')}</div>
+                    <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={onOperate}>
+                      <div className="system-md-regular whitespace-nowrap text-text-secondary">{t('common.members.transferOwnership')}</div>
                     </div>
                   </MenuItem>
                 </div>

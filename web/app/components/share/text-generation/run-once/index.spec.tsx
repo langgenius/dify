@@ -1,18 +1,19 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import RunOnce from './index'
 import type { PromptConfig, PromptVariable } from '@/models/debug'
 import type { SiteInfo } from '@/models/share'
 import type { VisionSettings } from '@/types/app'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Resolution, TransferMethod } from '@/types/app'
+import RunOnce from './index'
 
-jest.mock('@/hooks/use-breakpoints', () => {
+vi.mock('@/hooks/use-breakpoints', () => {
   const MediaType = {
     pc: 'pc',
     pad: 'pad',
     mobile: 'mobile',
   }
-  const mockUseBreakpoints = jest.fn(() => MediaType.pc)
+  const mockUseBreakpoints = vi.fn(() => MediaType.pc)
   return {
     __esModule: true,
     default: mockUseBreakpoints,
@@ -20,14 +21,14 @@ jest.mock('@/hooks/use-breakpoints', () => {
   }
 })
 
-jest.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
+vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
   __esModule: true,
-  default: ({ value, onChange }: { value?: string; onChange?: (val: string) => void }) => (
+  default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
     <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
   ),
 }))
 
-jest.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => {
+vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', () => {
   function TextGenerationImageUploaderMock({ onFilesChange }: { onFilesChange: (files: any[]) => void }) {
     useEffect(() => {
       onFilesChange([])
@@ -94,9 +95,9 @@ const setup = (overrides: {
   visionConfig?: VisionSettings
   runControl?: React.ComponentProps<typeof RunOnce>['runControl']
 } = {}) => {
-  const onInputsChange = jest.fn()
-  const onSend = jest.fn()
-  const onVisionFilesChange = jest.fn()
+  const onInputsChange = vi.fn()
+  const onSend = vi.fn()
+  const onVisionFilesChange = vi.fn()
   let inputsRefCapture: React.MutableRefObject<Record<string, any>> | null = null
 
   const Wrapper = () => {
@@ -212,7 +213,7 @@ describe('RunOnce', () => {
   })
 
   it('should display stop controls when runControl is provided', async () => {
-    const onStop = jest.fn()
+    const onStop = vi.fn()
     const runControl = {
       onStop,
       isStopping: false,
@@ -228,7 +229,7 @@ describe('RunOnce', () => {
 
   it('should disable stop button while runControl is stopping', async () => {
     const runControl = {
-      onStop: jest.fn(),
+      onStop: vi.fn(),
       isStopping: true,
     }
     const { onInputsChange } = setup({ runControl })

@@ -1,11 +1,11 @@
 import type { FC } from 'react'
-import React from 'react'
 import type { LLMNodeType } from './types'
+import type { NodeProps } from '@/app/components/workflow/types'
+import * as React from 'react'
 import {
   useTextGenerationCurrentProviderAndModelAndModelList,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import type { NodeProps } from '@/app/components/workflow/types'
 
 const Node: FC<NodeProps<LLMNodeType>> = ({
   data,
@@ -20,12 +20,12 @@ const Node: FC<NodeProps<LLMNodeType>> = ({
     return null
 
   return (
-    <div className='mb-1 px-3 py-1'>
+    <div className="mb-1 px-3 py-1">
       {hasSetModel && (
         <ModelSelector
           defaultModel={{ provider, model: modelId }}
           modelList={textGenerationModelList}
-          triggerClassName='!h-6 !rounded-md'
+          triggerClassName="!h-6 !rounded-md"
           readonly
         />
       )}

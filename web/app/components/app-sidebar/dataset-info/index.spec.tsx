@@ -1,27 +1,27 @@
-import React from 'react'
+import type { DataSet } from '@/models/datasets'
+import { RiEditLine } from '@remixicon/react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DatasetInfo from './index'
-import Dropdown from './dropdown'
-import Menu from './menu'
-import MenuItem from './menu-item'
-import type { DataSet } from '@/models/datasets'
+import * as React from 'react'
 import {
   ChunkingMode,
-  DataSourceType,
   DatasetPermission,
+  DataSourceType,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { RiEditLine } from '@remixicon/react'
+import Dropdown from './dropdown'
+import DatasetInfo from './index'
+import Menu from './menu'
+import MenuItem from './menu-item'
 
 let mockDataset: DataSet
 let mockIsDatasetOperator = false
-const mockReplace = jest.fn()
-const mockInvalidDatasetList = jest.fn()
-const mockInvalidDatasetDetail = jest.fn()
-const mockExportPipeline = jest.fn()
-const mockCheckIsUsedInApp = jest.fn()
-const mockDeleteDataset = jest.fn()
+const mockReplace = vi.fn()
+const mockInvalidDatasetList = vi.fn()
+const mockInvalidDatasetDetail = vi.fn()
+const mockExportPipeline = vi.fn()
+const mockCheckIsUsedInApp = vi.fn()
+const mockDeleteDataset = vi.fn()
 
 const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   id: 'dataset-1',
@@ -90,48 +90,48 @@ const createDataset = (overrides: Partial<DataSet> = {}): DataSet => ({
   ...overrides,
 })
 
-jest.mock('next/navigation', () => ({
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     replace: mockReplace,
   }),
 }))
 
-jest.mock('@/context/dataset-detail', () => ({
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset?: DataSet }) => unknown) => selector({ dataset: mockDataset }),
 }))
 
-jest.mock('@/context/app-context', () => ({
+vi.mock('@/context/app-context', () => ({
   useSelector: (selector: (state: { isCurrentWorkspaceDatasetOperator: boolean }) => unknown) =>
     selector({ isCurrentWorkspaceDatasetOperator: mockIsDatasetOperator }),
 }))
 
-jest.mock('@/service/knowledge/use-dataset', () => ({
+vi.mock('@/service/knowledge/use-dataset', () => ({
   datasetDetailQueryKeyPrefix: ['dataset', 'detail'],
   useInvalidDatasetList: () => mockInvalidDatasetList,
 }))
 
-jest.mock('@/service/use-base', () => ({
+vi.mock('@/service/use-base', () => ({
   useInvalid: () => mockInvalidDatasetDetail,
 }))
 
-jest.mock('@/service/use-pipeline', () => ({
+vi.mock('@/service/use-pipeline', () => ({
   useExportPipelineDSL: () => ({
     mutateAsync: mockExportPipeline,
   }),
 }))
 
-jest.mock('@/service/datasets', () => ({
+vi.mock('@/service/datasets', () => ({
   checkIsUsedInApp: (...args: unknown[]) => mockCheckIsUsedInApp(...args),
   deleteDataset: (...args: unknown[]) => mockDeleteDataset(...args),
 }))
 
-jest.mock('@/hooks/use-knowledge', () => ({
+vi.mock('@/hooks/use-knowledge', () => ({
   useKnowledge: () => ({
     formatIndexingTechniqueAndMethod: () => 'indexing-technique',
   }),
 }))
 
-jest.mock('@/app/components/datasets/rename-modal', () => ({
+vi.mock('@/app/components/datasets/rename-modal', () => ({
   __esModule: true,
   default: ({
     show,
@@ -160,7 +160,7 @@ const openMenu = async (user: ReturnType<typeof userEvent.setup>) => {
 
 describe('DatasetInfo', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockDataset = createDataset()
     mockIsDatasetOperator = false
   })
@@ -202,14 +202,14 @@ describe('DatasetInfo', () => {
 
 describe('MenuItem', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Event handling for menu item interactions.
   describe('Interactions', () => {
     it('should call handler when clicked', async () => {
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       // Arrange
       render(<MenuItem name="Edit" Icon={RiEditLine} handleClick={handleClick} />)
 
@@ -224,7 +224,7 @@ describe('MenuItem', () => {
 
 describe('Menu', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockDataset = createDataset()
   })
 
@@ -236,9 +236,9 @@ describe('Menu', () => {
       render(
         <Menu
           showDelete
-          openRenameModal={jest.fn()}
-          handleExportPipeline={jest.fn()}
-          detectIsUsedByApp={jest.fn()}
+          openRenameModal={vi.fn()}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
         />,
       )
 
@@ -254,9 +254,9 @@ describe('Menu', () => {
       render(
         <Menu
           showDelete={false}
-          openRenameModal={jest.fn()}
-          handleExportPipeline={jest.fn()}
-          detectIsUsedByApp={jest.fn()}
+          openRenameModal={vi.fn()}
+          handleExportPipeline={vi.fn()}
+          detectIsUsedByApp={vi.fn()}
         />,
       )
 
@@ -270,7 +270,7 @@ describe('Menu', () => {
 
 describe('Dropdown', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockDataset = createDataset({ pipeline_id: 'pipeline-1', runtime_mode: 'rag_pipeline' })
     mockIsDatasetOperator = false
     mockExportPipeline.mockResolvedValue({ data: 'pipeline-content' })
@@ -278,13 +278,13 @@ describe('Dropdown', () => {
     mockDeleteDataset.mockResolvedValue({})
     if (!('createObjectURL' in URL)) {
       Object.defineProperty(URL, 'createObjectURL', {
-        value: jest.fn(),
+        value: vi.fn(),
         writable: true,
       })
     }
     if (!('revokeObjectURL' in URL)) {
       Object.defineProperty(URL, 'revokeObjectURL', {
-        value: jest.fn(),
+        value: vi.fn(),
         writable: true,
       })
     }
@@ -323,8 +323,8 @@ describe('Dropdown', () => {
 
     it('should export pipeline when export is clicked', async () => {
       const user = userEvent.setup()
-      const anchorClickSpy = jest.spyOn(HTMLAnchorElement.prototype, 'click')
-      const createObjectURLSpy = jest.spyOn(URL, 'createObjectURL')
+      const anchorClickSpy = vi.spyOn(HTMLAnchorElement.prototype, 'click')
+      const createObjectURLSpy = vi.spyOn(URL, 'createObjectURL')
       // Arrange
       render(<Dropdown expand />)
 

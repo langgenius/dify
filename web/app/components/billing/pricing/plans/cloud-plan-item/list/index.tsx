@@ -1,9 +1,10 @@
-import React from 'react'
-import { type BasicPlan, Plan } from '../../../../type'
-import Item from './item'
+import type { BasicPlan } from '../../../../type'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
 import Divider from '@/app/components/base/divider'
+import { ALL_PLANS, NUM_INFINITE } from '../../../../config'
+import { Plan } from '../../../../type'
+import Item from './item'
 
 type ListProps = {
   plan: BasicPlan
@@ -17,7 +18,7 @@ const List = ({
   const planInfo = ALL_PLANS[plan]
 
   return (
-    <div className='flex flex-col gap-y-2.5 p-6'>
+    <div className="flex flex-col gap-y-2.5 p-6">
       <Item
         label={isFreePlan
           ? t('billing.plansCommon.messageRequest.title', { count: planInfo.messageRequest })
@@ -33,7 +34,7 @@ const List = ({
       <Item
         label={t('billing.plansCommon.buildApps', { count: planInfo.buildApps })}
       />
-      <Divider bgStyle='gradient' />
+      <Divider bgStyle="gradient" />
       <Item
         label={t('billing.plansCommon.documents', { count: planInfo.documents })}
         tooltip={t('billing.plansCommon.documentsTooltip') as string}
@@ -49,7 +50,7 @@ const List = ({
       <Item
         label={[t(`billing.plansCommon.priority.${planInfo.documentProcessingPriority}`), t('billing.plansCommon.documentProcessingPriority')].join('')}
       />
-      <Divider bgStyle='gradient' />
+      <Divider bgStyle="gradient" />
       <Item
         label={
           planInfo.triggerEvents === NUM_INFINITE
@@ -77,7 +78,7 @@ const List = ({
         }
         tooltip={t('billing.plansCommon.workflowExecution.tooltip') as string}
       />
-      <Divider bgStyle='gradient' />
+      <Divider bgStyle="gradient" />
       <Item
         label={t('billing.plansCommon.annotatedResponse.title', { count: planInfo.annotatedResponse })}
         tooltip={t('billing.plansCommon.annotatedResponse.tooltip') as string}
@@ -93,7 +94,7 @@ const List = ({
         }
         tooltip={planInfo.apiRateLimit === NUM_INFINITE ? undefined : t('billing.plansCommon.apiRateLimitTooltip') as string}
       />
-      <Divider bgStyle='gradient' />
+      <Divider bgStyle="gradient" />
       <Item
         label={t('billing.plansCommon.modelProviders')}
       />

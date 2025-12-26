@@ -1,19 +1,19 @@
-import { fireEvent, render, screen } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import ProcessDocuments from './index'
-import { PipelineInputVarType } from '@/models/pipeline'
 import type { RAGPipelineVariable } from '@/models/pipeline'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen } from '@testing-library/react'
+import { PipelineInputVarType } from '@/models/pipeline'
+import ProcessDocuments from './index'
 
 // Mock dataset detail context - required for useInputVariables hook
 const mockPipelineId = 'pipeline-123'
-jest.mock('@/context/dataset-detail', () => ({
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string } }) => string) =>
     selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock API call for pipeline processing params
-const mockParamsConfig = jest.fn()
-jest.mock('@/service/use-pipeline', () => ({
+const mockParamsConfig = vi.fn()
+vi.mock('@/service/use-pipeline', () => ({
   usePublishedPipelineProcessingParams: () => ({
     data: mockParamsConfig(),
     isFetching: false,
@@ -22,8 +22,8 @@ jest.mock('@/service/use-pipeline', () => ({
 
 // Mock Form component - internal dependencies (useAppForm, BaseField) are too complex
 // Keep the mock minimal and focused on testing the integration
-jest.mock('../../../../create-from-pipeline/process-documents/form', () => {
-  return function MockForm({
+vi.mock('../../../../create-from-pipeline/process-documents/form', () => ({
+  default: function MockForm({
     ref,
     initialData,
     configurations,
@@ -33,7 +33,7 @@ jest.mock('../../../../create-from-pipeline/process-documents/form', () => {
   }: {
     ref: React.RefObject<{ submit: () => void }>
     initialData: Record<string, unknown>
-    configurations: Array<{ variable: string; label: string; type: string }>
+    configurations: Array<{ variable: string, label: string, type: string }>
     schema: unknown
     onSubmit: (data: Record<string, unknown>) => void
     onPreview: () => void
@@ -69,8 +69,8 @@ jest.mock('../../../../create-from-pipeline/process-documents/form', () => {
         </button>
       </form>
     )
-  }
-})
+  },
+}))
 
 // Test utilities
 const createQueryClient = () =>
@@ -114,15 +114,15 @@ const createDefaultProps = (overrides: Partial<{
   lastRunInputData: {},
   isRunning: false,
   ref: { current: null } as React.RefObject<{ submit: () => void } | null>,
-  onProcess: jest.fn(),
-  onPreview: jest.fn(),
-  onSubmit: jest.fn(),
+  onProcess: vi.fn(),
+  onPreview: vi.fn(),
+  onSubmit: vi.fn(),
   ...overrides,
 })
 
 describe('ProcessDocuments', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     // Default: return empty variables
     mockParamsConfig.mockReturnValue({ variables: [] })
   })
@@ -253,7 +253,7 @@ describe('ProcessDocuments', () => {
       it('should expose submit method via ref', () => {
         // Arrange
         const ref = { current: null } as React.RefObject<{ submit: () => void } | null>
-        const onSubmit = jest.fn()
+        const onSubmit = vi.fn()
         const props = createDefaultProps({ ref, onSubmit })
 
         // Act
@@ -278,7 +278,7 @@ describe('ProcessDocuments', () => {
     describe('onProcess', () => {
       it('should call onProcess when Save and Process button is clicked', () => {
         // Arrange
-        const onProcess = jest.fn()
+        const onProcess = vi.fn()
         const props = createDefaultProps({ onProcess })
 
         // Act
@@ -291,7 +291,7 @@ describe('ProcessDocuments', () => {
 
       it('should not call onProcess when button is disabled due to isRunning', () => {
         // Arrange
-        const onProcess = jest.fn()
+        const onProcess = vi.fn()
         const props = createDefaultProps({ onProcess, isRunning: true })
 
         // Act
@@ -306,7 +306,7 @@ describe('ProcessDocuments', () => {
     describe('onPreview', () => {
       it('should call onPreview when preview button is clicked', () => {
         // Arrange
-        const onPreview = jest.fn()
+        const onPreview = vi.fn()
         const props = createDefaultProps({ onPreview })
 
         // Act
@@ -325,7 +325,7 @@ describe('ProcessDocuments', () => {
           createMockVariable({ variable: 'chunk_size', label: 'Chunk Size', type: PipelineInputVarType.number, default_value: '100' }),
         ]
         mockParamsConfig.mockReturnValue({ variables })
-        const onSubmit = jest.fn()
+        const onSubmit = vi.fn()
         const props = createDefaultProps({ onSubmit })
 
         // Act
@@ -477,7 +477,7 @@ describe('ProcessDocuments', () => {
           createMockVariable({ variable: 'field2', label: 'Field 2', type: PipelineInputVarType.number, default_value: '42' }),
         ]
         mockParamsConfig.mockReturnValue({ variables })
-        const onSubmit = jest.fn()
+        const onSubmit = vi.fn()
         const props = createDefaultProps({ onSubmit })
 
         // Act
@@ -527,8 +527,8 @@ describe('ProcessDocuments', () => {
         createMockVariable({ variable: 'setting', label: 'Setting', type: PipelineInputVarType.textInput, default_value: 'initial' }),
       ]
       mockParamsConfig.mockReturnValue({ variables })
-      const onProcess = jest.fn()
-      const onSubmit = jest.fn()
+      const onProcess = vi.fn()
+      const onSubmit = vi.fn()
       const props = createDefaultProps({ onProcess, onSubmit })
 
       // Act

@@ -1,12 +1,12 @@
 import type { ReactNode } from 'react'
+import type {
+  BoxProps,
+  GroupProps,
+} from '.'
 import { memo } from 'react'
 import {
   Box,
   Group,
-} from '.'
-import type {
-  BoxProps,
-  GroupProps,
 } from '.'
 
 export type BoxGroupProps = {
