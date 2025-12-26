@@ -39,7 +39,7 @@ describe('handleStream', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
 
       // Assert
-      expect(onData).toHaveBeenCalledWith('', false, {
+      expect(onData).toHaveBeenCalledWith('', true, {
         conversationId: undefined,
         messageId: '',
         errorMessage: 'Invalid response data',
@@ -80,7 +80,7 @@ describe('handleStream', () => {
       await new Promise(resolve => setTimeout(resolve, 50))
 
       // Assert
-      expect(onData).toHaveBeenCalledWith('', false, {
+      expect(onData).toHaveBeenCalledWith('', true, {
         conversationId: undefined,
         messageId: '',
         errorMessage: 'Invalid response data',
