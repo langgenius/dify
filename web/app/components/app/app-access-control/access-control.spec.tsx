@@ -1,17 +1,17 @@
+import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
+import type { App } from '@/types/app'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AccessControl from './index'
+import useAccessControlStore from '@/context/access-control-store'
+import { useGlobalPublicStore } from '@/context/global-public-context'
+import { AccessMode, SubjectType } from '@/models/access-control'
+import { defaultSystemFeatures } from '@/types/feature'
+import Toast from '../../base/toast'
 import AccessControlDialog from './access-control-dialog'
 import AccessControlItem from './access-control-item'
 import AddMemberOrGroupDialog from './add-member-or-group-pop'
+import AccessControl from './index'
 import SpecificGroupsOrMembers from './specific-groups-or-members'
-import useAccessControlStore from '@/context/access-control-store'
-import { useGlobalPublicStore } from '@/context/global-public-context'
-import type { AccessControlAccount, AccessControlGroup, Subject } from '@/models/access-control'
-import { AccessMode, SubjectType } from '@/models/access-control'
-import Toast from '../../base/toast'
-import { defaultSystemFeatures } from '@/types/feature'
-import type { App } from '@/types/app'
 
 const mockUseAppWhiteListSubjects = vi.fn()
 const mockUseSearchForWhiteListCandidates = vi.fn()
@@ -22,7 +22,7 @@ const mockUseUpdateAccessMode = vi.fn(() => ({
 }))
 
 vi.mock('@/context/app-context', () => ({
-  useSelector: <T,>(selector: (value: { userProfile: { email: string; id?: string; name?: string; avatar?: string; avatar_url?: string; is_password_set?: boolean } }) => T) => selector({
+  useSelector: <T,>(selector: (value: { userProfile: { email: string, id?: string, name?: string, avatar?: string, avatar_url?: string, is_password_set?: boolean } }) => T) => selector({
     userProfile: {
       id: 'current-user',
       name: 'Current User',

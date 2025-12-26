@@ -1,16 +1,17 @@
 import type { MockedFunction } from 'vitest'
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SettingsModal from './index'
 import { ToastContext } from '@/app/components/base/toast'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum } from '@/models/datasets'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum } from '@/models/datasets'
 import { updateDatasetSetting } from '@/service/datasets'
 import { useMembers } from '@/service/use-common'
-import { RETRIEVE_METHOD, type RetrievalConfig } from '@/types/app'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { RETRIEVE_METHOD } from '@/types/app'
+import SettingsModal from './index'
 
 const mockNotify = vi.fn()
 const mockOnCancel = vi.fn()
@@ -51,7 +52,7 @@ vi.mock('@/service/use-common', async () => ({
 
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({ isCurrentWorkspaceDatasetOperator: mockIsWorkspaceDatasetOperator }),
-  useSelector: <T,>(selector: (value: { userProfile: { id: string; name: string; email: string; avatar_url: string } }) => T) => selector({
+  useSelector: <T,>(selector: (value: { userProfile: { id: string, name: string, email: string, avatar_url: string } }) => T) => selector({
     userProfile: {
       id: 'user-1',
       name: 'User One',
@@ -95,8 +96,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
   __esModule: true,
-  default: ({ defaultModel }: { defaultModel?: { provider: string; model: string } }) => (
-    <div data-testid='model-selector'>
+  default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
+    <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
     </div>
   ),

@@ -2,7 +2,7 @@ import { render, screen } from '@testing-library/react'
 import { ActionButton, ActionButtonState } from './index'
 
 describe('ActionButton', () => {
-  test('renders button with default props', () => {
+  it('renders button with default props', () => {
     render(<ActionButton>Click me</ActionButton>)
     const button = screen.getByRole('button', { name: 'Click me' })
     expect(button).toBeInTheDocument()
@@ -10,25 +10,25 @@ describe('ActionButton', () => {
     expect(button.classList.contains('action-btn-m')).toBe(true)
   })
 
-  test('renders button with xs size', () => {
-    render(<ActionButton size='xs'>Small Button</ActionButton>)
+  it('renders button with xs size', () => {
+    render(<ActionButton size="xs">Small Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Small Button' })
     expect(button.classList.contains('action-btn-xs')).toBe(true)
   })
 
-  test('renders button with l size', () => {
-    render(<ActionButton size='l'>Large Button</ActionButton>)
+  it('renders button with l size', () => {
+    render(<ActionButton size="l">Large Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Large Button' })
     expect(button.classList.contains('action-btn-l')).toBe(true)
   })
 
-  test('renders button with xl size', () => {
-    render(<ActionButton size='xl'>Extra Large Button</ActionButton>)
+  it('renders button with xl size', () => {
+    render(<ActionButton size="xl">Extra Large Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Extra Large Button' })
     expect(button.classList.contains('action-btn-xl')).toBe(true)
   })
 
-  test('applies correct state classes', () => {
+  it('applies correct state classes', () => {
     const { rerender } = render(
       <ActionButton state={ActionButtonState.Destructive}>Destructive</ActionButton>,
     )
@@ -48,13 +48,13 @@ describe('ActionButton', () => {
     expect(button.classList.contains('action-btn-hover')).toBe(true)
   })
 
-  test('applies custom className', () => {
-    render(<ActionButton className='custom-class'>Custom Class</ActionButton>)
+  it('applies custom className', () => {
+    render(<ActionButton className="custom-class">Custom Class</ActionButton>)
     const button = screen.getByRole('button', { name: 'Custom Class' })
     expect(button.classList.contains('custom-class')).toBe(true)
   })
 
-  test('applies custom style', () => {
+  it('applies custom style', () => {
     render(
       <ActionButton styleCss={{ color: 'red', backgroundColor: 'blue' }}>
         Custom Style
@@ -67,8 +67,8 @@ describe('ActionButton', () => {
     })
   })
 
-  test('forwards additional button props', () => {
-    render(<ActionButton disabled data-testid='test-button'>Disabled Button</ActionButton>)
+  it('forwards additional button props', () => {
+    render(<ActionButton disabled data-testid="test-button">Disabled Button</ActionButton>)
     const button = screen.getByRole('button', { name: 'Disabled Button' })
     expect(button).toBeDisabled()
     expect(button).toHaveAttribute('data-testid', 'test-button')

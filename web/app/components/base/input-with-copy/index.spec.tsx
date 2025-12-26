@@ -1,5 +1,5 @@
-import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import InputWithCopy from './index'
 
 // Create a mock function that we can track using vi.hoisted
@@ -25,8 +25,8 @@ vi.mock('react-i18next', () => ({
   }),
 }))
 
-// Mock lodash-es debounce
-vi.mock('lodash-es', () => ({
+// Mock es-toolkit/compat debounce
+vi.mock('es-toolkit/compat', () => ({
   debounce: (fn: any) => fn,
 }))
 

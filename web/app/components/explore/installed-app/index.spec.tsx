@@ -1,7 +1,14 @@
 import type { Mock } from 'vitest'
+import type { InstalledApp as InstalledAppType } from '@/models/explore'
 import { render, screen, waitFor } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
+import { useContext } from 'use-context-selector'
+
+import { useWebAppStore } from '@/context/web-app-context'
 import { AccessMode } from '@/models/access-control'
+import { useGetUserCanAccessApp } from '@/service/access-control'
+import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams } from '@/service/use-explore'
+import { AppModeEnum } from '@/types/app'
+import InstalledApp from './index'
 
 // Mock external dependencies BEFORE imports
 vi.mock('use-context-selector', () => ({
@@ -19,13 +26,6 @@ vi.mock('@/service/use-explore', () => ({
   useGetInstalledAppParams: vi.fn(),
   useGetInstalledAppMeta: vi.fn(),
 }))
-
-import { useContext } from 'use-context-selector'
-import InstalledApp from './index'
-import { useWebAppStore } from '@/context/web-app-context'
-import { useGetUserCanAccessApp } from '@/service/access-control'
-import { useGetInstalledAppAccessModeByAppId, useGetInstalledAppMeta, useGetInstalledAppParams } from '@/service/use-explore'
-import type { InstalledApp as InstalledAppType } from '@/models/explore'
 
 /**
  * Mock child components for unit testing
@@ -69,7 +69,9 @@ vi.mock('@/app/components/base/chat/chat-with-history', () => ({
     className?: string
   }) => (
     <div data-testid="chat-with-history" className={className}>
-      Chat With History - {installedAppInfo?.id}
+      Chat With History -
+      {' '}
+      {installedAppInfo?.id}
     </div>
   ),
 }))

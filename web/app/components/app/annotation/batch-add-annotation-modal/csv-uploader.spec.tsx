@@ -1,7 +1,8 @@
-import React from 'react'
+import type { Props } from './csv-uploader'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import CSVUploader, { type Props } from './csv-uploader'
+import * as React from 'react'
 import { ToastContext } from '@/app/components/base/toast'
+import CSVUploader from './csv-uploader'
 
 describe('CSVUploader', () => {
   const notify = vi.fn()

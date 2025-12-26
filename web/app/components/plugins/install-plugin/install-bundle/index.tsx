@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import Modal from '@/app/components/base/modal'
-import React, { useCallback, useState } from 'react'
-import { InstallStep } from '../../types'
 import type { Dependency } from '../../types'
-import ReadyToInstall from './ready-to-install'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useHideLogic from '../hooks/use-hide-logic'
+import Modal from '@/app/components/base/modal'
 import { cn } from '@/utils/classnames'
+import { InstallStep } from '../../types'
+import useHideLogic from '../hooks/use-hide-logic'
+import ReadyToInstall from './ready-to-install'
 
 const i18nPrefix = 'plugin.installModal'
 
@@ -55,8 +56,8 @@ const InstallBundle: FC<Props> = ({
       className={cn(modalClassName, 'shadows-shadow-xl flex min-w-[560px] flex-col items-start rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg p-0')}
       closable
     >
-      <div className='flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6'>
-        <div className='title-2xl-semi-bold self-stretch text-text-primary'>
+      <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
+        <div className="title-2xl-semi-bold self-stretch text-text-primary">
           {getTitle()}
         </div>
       </div>

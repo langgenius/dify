@@ -1,16 +1,16 @@
 import type { Mock } from 'vitest'
 import type { ActionItem } from '../../app/components/goto-anything/actions/types'
 
+// Import after mocking to get mocked version
+import { matchAction } from '../../app/components/goto-anything/actions'
+import { slashCommandRegistry } from '../../app/components/goto-anything/actions/commands/registry'
+
 // Mock the entire actions module to avoid import issues
 vi.mock('../../app/components/goto-anything/actions', () => ({
   matchAction: vi.fn(),
 }))
 
 vi.mock('../../app/components/goto-anything/actions/commands/registry')
-
-// Import after mocking to get mocked version
-import { matchAction } from '../../app/components/goto-anything/actions'
-import { slashCommandRegistry } from '../../app/components/goto-anything/actions/commands/registry'
 
 // Implement the actual matchAction logic for testing
 const actualMatchAction = (query: string, actions: Record<string, ActionItem>) => {

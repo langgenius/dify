@@ -1,5 +1,5 @@
-import { VarType } from '../../types'
 import type { OutputVar } from './types'
+import { VarType } from '../../types'
 import { CodeLanguage } from './types'
 
 export const extractFunctionParams = (code: string, language: CodeLanguage) => {
@@ -68,7 +68,7 @@ export const extractReturnType = (code: string, language: CodeLanguage): OutputV
 
   const result: OutputVar = {}
 
-  const keyRegex = /['"]?(\w+)['"]?\s*:(?![^{]*})/g
+  const keyRegex = /['"]?(\w+)['"]?\s*:(?![^{]*\})/g
   const matches = returnContent.matchAll(keyRegex)
 
   for (const match of matches) {

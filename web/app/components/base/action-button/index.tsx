@@ -1,6 +1,7 @@
+import type { VariantProps } from 'class-variance-authority'
 import type { CSSProperties } from 'react'
-import React from 'react'
-import { type VariantProps, cva } from 'class-variance-authority'
+import { cva } from 'class-variance-authority'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 enum ActionButtonState {
@@ -53,9 +54,8 @@ function getActionButtonState(state: ActionButtonState) {
 const ActionButton = ({ className, size, state = ActionButtonState.Default, styleCss, children, ref, ...props }: ActionButtonProps) => {
   return (
     <button
-      type='button'
-      className={cn(actionButtonVariants({ className, size }),
-        getActionButtonState(state))}
+      type="button"
+      className={cn(actionButtonVariants({ className, size }), getActionButtonState(state))}
       ref={ref}
       style={styleCss}
       {...props}

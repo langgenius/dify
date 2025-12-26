@@ -1,10 +1,12 @@
-import React from 'react'
+import type { IPromptProps } from './index'
+import type { PromptItem, PromptVariable } from '@/models/debug'
 import { fireEvent, render, screen } from '@testing-library/react'
-import Prompt, { type IPromptProps } from './index'
-import ConfigContext from '@/context/debug-configuration'
+import * as React from 'react'
 import { MAX_PROMPT_MESSAGE_LENGTH } from '@/config'
-import { type PromptItem, PromptRole, type PromptVariable } from '@/models/debug'
+import ConfigContext from '@/context/debug-configuration'
+import { PromptRole } from '@/models/debug'
 import { AppModeEnum, ModelModeType } from '@/types/app'
+import Prompt from './index'
 
 type DebugConfiguration = {
   isAdvancedMode: boolean

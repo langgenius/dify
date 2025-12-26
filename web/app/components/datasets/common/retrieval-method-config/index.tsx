@@ -1,21 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import RetrievalParamConfig from '../retrieval-param-config'
 import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
-import { useProviderContext } from '@/context/provider-context'
-import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import { FullTextSearch, HybridSearch, VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { useProviderContext } from '@/context/provider-context'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
-import OptionCard from '../../settings/option-card'
-import { FullTextSearch, HybridSearch, VectorSearch } from '@/app/components/base/icons/src/vender/knowledge'
+import { RETRIEVE_METHOD } from '@/types/app'
 import { EffectColor } from '../../settings/chunk-structure/types'
+import OptionCard from '../../settings/option-card'
+import RetrievalParamConfig from '../retrieval-param-config'
 
 type Props = {
   disabled?: boolean
@@ -44,15 +45,15 @@ const RetrievalMethodConfig: FC<Props> = ({
         search_method: retrieveMethod,
         ...((!value.reranking_model.reranking_model_name || !value.reranking_model.reranking_provider_name)
           ? {
-            reranking_model: {
-              reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
-              reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
-            },
-            reranking_enable: !!isRerankDefaultModelValid,
-          }
+              reranking_model: {
+                reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
+                reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
+              },
+              reranking_enable: !!isRerankDefaultModelValid,
+            }
           : {
-            reranking_enable: true,
-          }),
+              reranking_enable: true,
+            }),
       })
     }
     if (retrieveMethod === RETRIEVE_METHOD.hybrid) {
@@ -61,44 +62,44 @@ const RetrievalMethodConfig: FC<Props> = ({
         search_method: retrieveMethod,
         ...((!value.reranking_model.reranking_model_name || !value.reranking_model.reranking_provider_name)
           ? {
-            reranking_model: {
-              reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
-              reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
-            },
-            reranking_enable: !!isRerankDefaultModelValid,
-            reranking_mode: isRerankDefaultModelValid ? RerankingModeEnum.RerankingModel : RerankingModeEnum.WeightedScore,
-          }
+              reranking_model: {
+                reranking_provider_name: isRerankDefaultModelValid ? rerankDefaultModel?.provider?.provider ?? '' : '',
+                reranking_model_name: isRerankDefaultModelValid ? rerankDefaultModel?.model ?? '' : '',
+              },
+              reranking_enable: !!isRerankDefaultModelValid,
+              reranking_mode: isRerankDefaultModelValid ? RerankingModeEnum.RerankingModel : RerankingModeEnum.WeightedScore,
+            }
           : {
-            reranking_enable: true,
-            reranking_mode: RerankingModeEnum.RerankingModel,
-          }),
+              reranking_enable: true,
+              reranking_mode: RerankingModeEnum.RerankingModel,
+            }),
         ...(!value.weights
           ? {
-            weights: {
-              weight_type: WeightedScoreEnum.Customized,
-              vector_setting: {
-                vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
-                embedding_provider_name: '',
-                embedding_model_name: '',
+              weights: {
+                weight_type: WeightedScoreEnum.Customized,
+                vector_setting: {
+                  vector_weight: DEFAULT_WEIGHTED_SCORE.other.semantic,
+                  embedding_provider_name: '',
+                  embedding_model_name: '',
+                },
+                keyword_setting: {
+                  keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
+                },
               },
-              keyword_setting: {
-                keyword_weight: DEFAULT_WEIGHTED_SCORE.other.keyword,
-              },
-            },
-          }
+            }
           : {}),
       })
     }
   }, [value, rerankDefaultModel, isRerankDefaultModelValid, onChange])
 
   return (
-    <div className='flex flex-col gap-y-2'>
+    <div className="flex flex-col gap-y-2">
       {supportRetrievalMethods.includes(RETRIEVE_METHOD.semantic) && (
         <OptionCard
           id={RETRIEVE_METHOD.semantic}
           disabled={disabled}
-          icon={<VectorSearch className='size-4' />}
-          iconActiveColor='text-util-colors-purple-purple-600'
+          icon={<VectorSearch className="size-4" />}
+          iconActiveColor="text-util-colors-purple-purple-600"
           title={t('dataset.retrieval.semantic_search.title')}
           description={t('dataset.retrieval.semantic_search.description')}
           isActive={value.search_method === RETRIEVE_METHOD.semantic}
@@ -106,7 +107,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           effectColor={EffectColor.purple}
           showEffectColor
           showChildren={value.search_method === RETRIEVE_METHOD.semantic}
-          className='gap-x-2'
+          className="gap-x-2"
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.semantic}
@@ -120,8 +121,8 @@ const RetrievalMethodConfig: FC<Props> = ({
         <OptionCard
           id={RETRIEVE_METHOD.fullText}
           disabled={disabled}
-          icon={<FullTextSearch className='size-4' />}
-          iconActiveColor='text-util-colors-purple-purple-600'
+          icon={<FullTextSearch className="size-4" />}
+          iconActiveColor="text-util-colors-purple-purple-600"
           title={t('dataset.retrieval.full_text_search.title')}
           description={t('dataset.retrieval.full_text_search.description')}
           isActive={value.search_method === RETRIEVE_METHOD.fullText}
@@ -129,7 +130,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           effectColor={EffectColor.purple}
           showEffectColor
           showChildren={value.search_method === RETRIEVE_METHOD.fullText}
-          className='gap-x-2'
+          className="gap-x-2"
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.fullText}
@@ -143,8 +144,8 @@ const RetrievalMethodConfig: FC<Props> = ({
         <OptionCard
           id={RETRIEVE_METHOD.hybrid}
           disabled={disabled}
-          icon={<HybridSearch className='size-4' />}
-          iconActiveColor='text-util-colors-purple-purple-600'
+          icon={<HybridSearch className="size-4" />}
+          iconActiveColor="text-util-colors-purple-purple-600"
           title={t('dataset.retrieval.hybrid_search.title')}
           description={t('dataset.retrieval.hybrid_search.description')}
           isActive={value.search_method === RETRIEVE_METHOD.hybrid}
@@ -153,7 +154,7 @@ const RetrievalMethodConfig: FC<Props> = ({
           showEffectColor
           isRecommended
           showChildren={value.search_method === RETRIEVE_METHOD.hybrid}
-          className='gap-x-2'
+          className="gap-x-2"
         >
           <RetrievalParamConfig
             type={RETRIEVE_METHOD.hybrid}

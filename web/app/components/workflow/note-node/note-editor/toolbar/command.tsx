@@ -1,19 +1,19 @@
 import {
-  memo,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
-import {
   RiBold,
   RiItalic,
   RiLink,
   RiListUnordered,
   RiStrikethrough,
 } from '@remixicon/react'
+import {
+  memo,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 import { useStore } from '../store'
 import { useCommand } from './hooks'
-import { cn } from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
 
 type CommandProps = {
   type: 'bold' | 'italic' | 'strikethrough' | 'link' | 'bullet'

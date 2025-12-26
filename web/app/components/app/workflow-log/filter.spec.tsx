@@ -7,11 +7,11 @@
  * - Keyword search
  */
 
-import { useState } from 'react'
+import type { QueryParam } from './index'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { useState } from 'react'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
-import type { QueryParam } from './index'
 
 // ============================================================================
 // Mocks
@@ -176,7 +176,7 @@ describe('Filter', () => {
       })
     })
 
-    test.each([
+    it.each([
       ['all', 'All'],
       ['succeeded', 'Success'],
       ['failed', 'Fail'],
@@ -392,7 +392,7 @@ describe('Filter', () => {
       expect(Object.keys(TIME_PERIOD_MAPPING)).toHaveLength(9)
     })
 
-    test.each([
+    it.each([
       ['1', 'today', 0],
       ['2', 'last7days', 7],
       ['3', 'last4weeks', 28],

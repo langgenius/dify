@@ -1,11 +1,12 @@
-import React, { type FC } from 'react'
+import type { FC } from 'react'
 import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDraftLine } from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
 import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Divider from '@/app/components/base/divider'
 import { cn } from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
-import Button from '@/app/components/base/button'
 
 const i18nPrefix = 'dataset.batchAction'
 type IBatchActionProps = {
@@ -45,68 +46,68 @@ const BatchAction: FC<IBatchActionProps> = ({
   }
   return (
     <div className={cn('pointer-events-none flex w-full justify-center gap-x-2', className)}>
-      <div className='pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5'>
-        <div className='inline-flex items-center gap-x-2 py-1 pl-2 pr-3'>
-          <span className='system-xs-medium flex h-5 w-5 items-center justify-center rounded-md bg-text-accent text-text-primary-on-surface'>
+      <div className="pointer-events-auto flex items-center gap-x-1 rounded-[10px] border border-components-actionbar-border-accent bg-components-actionbar-bg-accent p-1 shadow-xl shadow-shadow-shadow-5">
+        <div className="inline-flex items-center gap-x-2 py-1 pl-2 pr-3">
+          <span className="system-xs-medium flex h-5 w-5 items-center justify-center rounded-md bg-text-accent text-text-primary-on-surface">
             {selectedIds.length}
           </span>
-          <span className='system-sm-semibold text-text-accent'>{t(`${i18nPrefix}.selected`)}</span>
+          <span className="system-sm-semibold text-text-accent">{t(`${i18nPrefix}.selected`)}</span>
         </div>
-        <Divider type='vertical' className='mx-0.5 h-3.5 bg-divider-regular' />
+        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
         <Button
-          variant='ghost'
-          className='gap-x-0.5 px-3'
+          variant="ghost"
+          className="gap-x-0.5 px-3"
           onClick={onBatchEnable}
         >
-          <RiCheckboxCircleLine className='size-4' />
-          <span className='px-0.5'>{t(`${i18nPrefix}.enable`)}</span>
+          <RiCheckboxCircleLine className="size-4" />
+          <span className="px-0.5">{t(`${i18nPrefix}.enable`)}</span>
         </Button>
         <Button
-          variant='ghost'
-          className='gap-x-0.5 px-3'
+          variant="ghost"
+          className="gap-x-0.5 px-3"
           onClick={onBatchDisable}
         >
-          <RiCloseCircleLine className='size-4' />
-          <span className='px-0.5'>{t(`${i18nPrefix}.disable`)}</span>
+          <RiCloseCircleLine className="size-4" />
+          <span className="px-0.5">{t(`${i18nPrefix}.disable`)}</span>
         </Button>
         {onEditMetadata && (
           <Button
-            variant='ghost'
-            className='gap-x-0.5 px-3'
+            variant="ghost"
+            className="gap-x-0.5 px-3"
             onClick={onEditMetadata}
           >
-            <RiDraftLine className='size-4' />
-            <span className='px-0.5'>{t('dataset.metadata.metadata')}</span>
+            <RiDraftLine className="size-4" />
+            <span className="px-0.5">{t('dataset.metadata.metadata')}</span>
           </Button>
         )}
 
         {onArchive && (
           <Button
-            variant='ghost'
-            className='gap-x-0.5 px-3'
+            variant="ghost"
+            className="gap-x-0.5 px-3"
             onClick={onArchive}
           >
-            <RiArchive2Line className='size-4' />
-            <span className='px-0.5'>{t(`${i18nPrefix}.archive`)}</span>
+            <RiArchive2Line className="size-4" />
+            <span className="px-0.5">{t(`${i18nPrefix}.archive`)}</span>
           </Button>
         )}
         <Button
-          variant='ghost'
+          variant="ghost"
           destructive
-          className='gap-x-0.5 px-3'
+          className="gap-x-0.5 px-3"
           onClick={showDeleteConfirm}
         >
-          <RiDeleteBinLine className='size-4' />
-          <span className='px-0.5'>{t(`${i18nPrefix}.delete`)}</span>
+          <RiDeleteBinLine className="size-4" />
+          <span className="px-0.5">{t(`${i18nPrefix}.delete`)}</span>
         </Button>
 
-        <Divider type='vertical' className='mx-0.5 h-3.5 bg-divider-regular' />
+        <Divider type="vertical" className="mx-0.5 h-3.5 bg-divider-regular" />
         <Button
-          variant='ghost'
-          className='px-3'
+          variant="ghost"
+          className="px-3"
           onClick={onCancel}
         >
-          <span className='px-0.5'>{t(`${i18nPrefix}.cancel`)}</span>
+          <span className="px-0.5">{t(`${i18nPrefix}.cancel`)}</span>
         </Button>
       </div>
       {

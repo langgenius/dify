@@ -1,12 +1,13 @@
 import type { Mock } from 'vitest'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import EmbeddingProcess from './index'
 import type { DocumentIndexingStatus, IndexingStatusResponse } from '@/models/datasets'
-import { DatasourceType, type InitialDocumentDetail } from '@/models/pipeline'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { Plan } from '@/app/components/billing/type'
-import { RETRIEVE_METHOD } from '@/types/app'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { DatasourceType } from '@/models/pipeline'
+import { RETRIEVE_METHOD } from '@/types/app'
+import EmbeddingProcess from './index'
 
 // ==========================================
 // Mock External Dependencies
@@ -22,7 +23,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock next/link
 vi.mock('next/link', () => ({
-  default: function MockLink({ children, href, ...props }: { children: React.ReactNode; href: string }) {
+  default: function MockLink({ children, href, ...props }: { children: React.ReactNode, href: string }) {
     return <a href={href} {...props}>{children}</a>
   },
 }))

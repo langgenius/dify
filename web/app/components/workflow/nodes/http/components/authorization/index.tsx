@@ -1,19 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import React, { useCallback, useState } from 'react'
-import { produce } from 'immer'
 import type { Authorization as AuthorizationPayloadType } from '../../types'
-import { APIType, AuthorizationType } from '../../types'
-import RadioGroup from './radio-group'
+import type { Var } from '@/app/components/workflow/types'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import BaseInput from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { VarType } from '@/app/components/workflow/types'
-import type { Var } from '@/app/components/workflow/types'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import BaseInput from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'
+import { APIType, AuthorizationType } from '../../types'
+import RadioGroup from './radio-group'
 
 const i18nPrefix = 'workflow.nodes.http.authorization'
 
@@ -25,12 +26,12 @@ type Props = {
   onHide: () => void
 }
 
-const Field = ({ title, isRequired, children }: { title: string; isRequired?: boolean; children: React.JSX.Element }) => {
+const Field = ({ title, isRequired, children }: { title: string, isRequired?: boolean, children: React.JSX.Element }) => {
   return (
     <div>
-      <div className='text-[13px] font-medium leading-8 text-text-secondary'>
+      <div className="text-[13px] font-medium leading-8 text-text-secondary">
         {title}
-        {isRequired && <span className='ml-0.5 text-text-destructive'>*</span>}
+        {isRequired && <span className="ml-0.5 text-text-destructive">*</span>}
       </div>
       <div>{children}</div>
     </div>
@@ -120,7 +121,7 @@ const Authorization: FC<Props> = ({
       onClose={onHide}
     >
       <div>
-        <div className='space-y-2'>
+        <div className="space-y-2">
           <Field title={t(`${i18nPrefix}.authorizationType`)}>
             <RadioGroup
               options={[
@@ -155,9 +156,9 @@ const Authorization: FC<Props> = ({
               )}
 
               <Field title={t(`${i18nPrefix}.api-key-title`)} isRequired>
-                <div className='flex'>
+                <div className="flex">
                   <Input
-                    instanceId='http-api-key'
+                    instanceId="http-api-key"
                     className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
                     value={tempPayload.config?.api_key || ''}
                     onChange={handleAPIKeyChange}
@@ -165,16 +166,16 @@ const Authorization: FC<Props> = ({
                     availableNodes={availableNodesWithParent}
                     onFocusChange={setIsFocus}
                     placeholder={' '}
-                    placeholderClassName='!leading-[21px]'
+                    placeholderClassName="!leading-[21px]"
                   />
                 </div>
               </Field>
             </>
           )}
         </div>
-        <div className='mt-6 flex justify-end space-x-2'>
+        <div className="mt-6 flex justify-end space-x-2">
           <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
-          <Button variant='primary' onClick={handleConfirm}>{t('common.operation.save')}</Button>
+          <Button variant="primary" onClick={handleConfirm}>{t('common.operation.save')}</Button>
         </div>
       </div>
     </Modal>

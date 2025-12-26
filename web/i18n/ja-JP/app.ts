@@ -1,4 +1,9 @@
 const translation = {
+  theme: {
+    switchDark: 'ダークテーマに切り替え',
+    switchLight: 'ライトテーマに切り替え',
+  },
+  appNamePlaceholder: 'アプリに名前を付ける',
   createApp: 'アプリを作成する',
   types: {
     all: '全て',
@@ -295,6 +300,7 @@ const translation = {
     commandHint: '@ を入力してカテゴリ別に参照',
     slashHint: '/ を入力してすべてのコマンドを表示',
     actions: {
+      slashTitle: 'コマンド',
       searchApplications: 'アプリケーションを検索',
       searchApplicationsDesc: 'アプリケーションを検索してナビゲート',
       searchPlugins: 'プラグインを検索',

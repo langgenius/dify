@@ -23,14 +23,14 @@ const ChatVariableButton = ({ disabled }: { disabled: boolean }) => {
   return (
     <Button
       className={cn(
-        'p-2',
-        theme === 'dark' && showChatVariablePanel && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+        'rounded-lg border border-transparent p-2',
+        theme === 'dark' && showChatVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-sm',
       )}
       disabled={disabled}
       onClick={handleClick}
-      variant='ghost'
+      variant="ghost"
     >
-      <BubbleX className='h-4 w-4 text-components-button-secondary-text' />
+      <BubbleX className="h-4 w-4 text-components-button-secondary-text" />
     </Button>
   )
 }

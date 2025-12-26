@@ -1,12 +1,12 @@
 import type { MockInstance } from 'vitest'
-import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
-import Options from './index'
-import { CrawlStep } from '@/models/datasets'
 import type { RAGPipelineVariables } from '@/models/pipeline'
-import { PipelineInputVarType } from '@/models/pipeline'
-import Toast from '@/app/components/base/toast'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { BaseFieldType } from '@/app/components/base/form/form-scenarios/base/types'
+import Toast from '@/app/components/base/toast'
+import { CrawlStep } from '@/models/datasets'
+import { PipelineInputVarType } from '@/models/pipeline'
+import Options from './index'
 
 // ==========================================
 // Mock Modules
@@ -88,8 +88,7 @@ const createMockVariables = (count = 1): RAGPipelineVariables => {
     createMockVariable({
       variable: `variable_${i}`,
       label: `Label ${i}`,
-    }),
-  )
+    }))
 }
 
 const createMockConfiguration = (overrides?: Partial<any>): any => ({
@@ -796,8 +795,7 @@ describe('Options', () => {
     it('should handle many configurations', () => {
       // Arrange
       const manyConfigs = Array.from({ length: 10 }, (_, i) =>
-        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }),
-      )
+        createMockConfiguration({ variable: `field_${i}`, label: `Field ${i}` }))
       mockUseConfigurations.mockReturnValue(manyConfigs)
       const props = createDefaultProps()
 

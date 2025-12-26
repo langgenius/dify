@@ -1,8 +1,8 @@
 import type { MockedFunction } from 'vitest'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import FilePreview from './index'
 import type { CustomFile as File } from '@/models/datasets'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { fetchFilePreview } from '@/service/common'
+import FilePreview from './index'
 
 // Mock the fetchFilePreview service
 vi.mock('@/service/common', () => ({
@@ -31,7 +31,7 @@ const createMockFile = (overrides: Partial<File> = {}): File => {
 }
 
 // Helper to render FilePreview with default props
-const renderFilePreview = (props: Partial<{ file?: File; hidePreview: () => void }> = {}) => {
+const renderFilePreview = (props: Partial<{ file?: File, hidePreview: () => void }> = {}) => {
   const defaultProps = {
     file: createMockFile(),
     hidePreview: vi.fn(),
@@ -705,8 +705,7 @@ describe('FilePreview', () => {
     it('should handle rapid file changes', async () => {
       // Arrange
       const files = Array.from({ length: 5 }, (_, i) =>
-        createMockFile({ id: `file-${i}` }),
-      )
+        createMockFile({ id: `file-${i}` }))
 
       // Act
       const { rerender } = render(

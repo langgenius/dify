@@ -1,18 +1,18 @@
+import type { DefaultValueForm } from './types'
+import type {
+  CommonNodeType,
+} from '@/app/components/workflow/types'
 import {
   useCallback,
   useMemo,
   useState,
 } from 'react'
-import { ErrorHandleTypeEnum } from './types'
-import type { DefaultValueForm } from './types'
-import { getDefaultValue } from './utils'
-import type {
-  CommonNodeType,
-} from '@/app/components/workflow/types'
 import {
   useEdgesInteractions,
   useNodeDataUpdate,
 } from '@/app/components/workflow/hooks'
+import { ErrorHandleTypeEnum } from './types'
+import { getDefaultValue } from './utils'
 
 export const useDefaultValue = (
   id: string,
