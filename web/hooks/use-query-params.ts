@@ -184,7 +184,7 @@ const parseAsBundleInfo = createParser<BundleInfoQuery>({
  * setInstallState(null) // Clears installation params
  */
 export function usePluginInstallation() {
-  const [installState, setInstallStateState] = useQueryStates(
+  return useQueryStates(
     {
       packageId: parseAsPackageId,
       bundleInfo: parseAsBundleInfo,
@@ -196,32 +196,6 @@ export function usePluginInstallation() {
       },
     },
   )
-
-  const setInstallState = useCallback(
-    (state: { packageId?: string, bundleInfo?: BundleInfoQuery } | null) => {
-      if (!state) {
-        setInstallStateState(null)
-        return
-      }
-      const patch: { packageId?: string, bundleInfo?: BundleInfoQuery } = {}
-      if (state.packageId)
-        patch.packageId = state.packageId
-      if (state.bundleInfo)
-        patch.bundleInfo = state.bundleInfo
-      if (Object.keys(patch).length === 0)
-        return
-      setInstallStateState(patch)
-    },
-    [setInstallStateState],
-  )
-
-  return [
-    {
-      packageId: installState.packageId,
-      bundleInfo: installState.bundleInfo,
-    },
-    setInstallState,
-  ] as const
 }
 
 /**
