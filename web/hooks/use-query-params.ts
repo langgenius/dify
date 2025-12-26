@@ -13,7 +13,6 @@
  * - Use shallow routing to avoid unnecessary re-renders
  */
 
-import type { Options } from 'nuqs'
 import {
   createParser,
   parseAsArrayOf,
@@ -39,27 +38,18 @@ const parseAsPricingModal = createParser<boolean>({
 
 /**
  * Hook to manage pricing modal state via URL
- * @returns { isOpen, setIsOpen } - isOpen boolean and setter
+ * @returns [isOpen, setIsOpen] - Tuple like useState
  *
  * @example
- * const { isOpen, setIsOpen } = usePricingModal()
+ * const [isOpen, setIsOpen] = usePricingModal()
  * setIsOpen(true) // Sets ?pricing=open
  * setIsOpen(false) // Removes ?pricing
  */
 export function usePricingModal() {
-  const [isOpen, setIsOpenState] = useQueryState(
+  return useQueryState(
     PRICING_MODAL_QUERY_PARAM,
     parseAsPricingModal,
   )
-
-  const setIsOpen = useCallback(
-    (open: boolean, options?: Options) => {
-      setIsOpenState(open, options)
-    },
-    [setIsOpenState],
-  )
-
-  return { isOpen, setIsOpen }
 }
 
 /**

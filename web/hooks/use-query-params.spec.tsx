@@ -37,7 +37,7 @@ describe('useQueryParams hooks', () => {
       const { result } = renderWithAdapter(() => usePricingModal())
 
       // Act
-      const { isOpen } = result.current
+      const [isOpen] = result.current
 
       // Assert
       expect(isOpen).toBe(false)
@@ -51,7 +51,7 @@ describe('useQueryParams hooks', () => {
       )
 
       // Act
-      const { isOpen } = result.current
+      const [isOpen] = result.current
 
       // Assert
       expect(isOpen).toBe(true)
@@ -65,7 +65,7 @@ describe('useQueryParams hooks', () => {
       )
 
       // Act
-      const { isOpen } = result.current
+      const [isOpen] = result.current
 
       // Assert
       expect(isOpen).toBe(false)
@@ -77,7 +77,7 @@ describe('useQueryParams hooks', () => {
 
       // Act
       act(() => {
-        result.current.setIsOpen(true)
+        result.current[1](true)
       })
 
       // Assert
@@ -92,7 +92,7 @@ describe('useQueryParams hooks', () => {
 
       // Act
       act(() => {
-        result.current.setIsOpen(true)
+        result.current[1](true)
       })
 
       // Assert
@@ -110,7 +110,7 @@ describe('useQueryParams hooks', () => {
 
       // Act
       act(() => {
-        result.current.setIsOpen(false)
+        result.current[1](false)
       })
 
       // Assert
@@ -128,7 +128,7 @@ describe('useQueryParams hooks', () => {
 
       // Act
       act(() => {
-        result.current.setIsOpen(false)
+        result.current[1](false)
       })
 
       // Assert
@@ -143,7 +143,7 @@ describe('useQueryParams hooks', () => {
 
       // Act
       act(() => {
-        result.current.setIsOpen(true, { history: 'replace' })
+        result.current[1](true, { history: 'replace' })
       })
 
       // Assert
