@@ -40,11 +40,11 @@ const OutputVarList: FC<Props> = ({
   })
 
   const { run: validateVarInput } = useDebounceFn((existingVariables: typeof list, newKey: string) => {
-    const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-    if (!isValid) {
+    const result = checkKeys([newKey], true)
+    if (!result.isValid) {
       setToastHandler(Toast.notify({
         type: 'error',
-        message: t(`varKeyError.${errorMessageKey}` as any, { ns: 'appDebug', key: errorKey }),
+        message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
       }))
       return
     }

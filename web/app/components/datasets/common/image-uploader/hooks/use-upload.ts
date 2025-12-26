@@ -145,7 +145,7 @@ export const useUpload = () => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+          const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
           Toast.notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
@@ -187,7 +187,7 @@ export const useUpload = () => {
             })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
+            const errorMessage = getFileUploadErrorMessage(error, t('fileUploader.uploadFromComputerUploadError', { ns: 'common' }), t)
             Toast.notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },

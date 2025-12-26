@@ -155,7 +155,7 @@ const LocalFile = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t as any)
+        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
         notify({ type: 'error', message: errorMessage })
         updateFile(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
