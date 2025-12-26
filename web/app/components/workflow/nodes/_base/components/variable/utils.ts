@@ -1390,9 +1390,9 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
         payload.url,
         payload.headers,
         payload.params,
-        typeof payload.body.data === 'string'
+        typeof payload.body?.data === 'string'
           ? payload.body.data
-          : payload.body.data.map(d => d.value).join(''),
+          : (payload.body?.data?.map(d => d.value).join('') ?? ''),
       ])
       break
     }

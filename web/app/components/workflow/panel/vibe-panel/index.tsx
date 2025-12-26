@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
-import { RiClipboardLine } from '@remixicon/react'
+import { RiCheckLine, RiClipboardLine, RiInformation2Line, RiRefreshLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -39,6 +39,14 @@ const VibePanel: FC = () => {
 
   const vibePanelPreviewNodes = currentFlowGraph?.nodes || []
   const vibePanelPreviewEdges = currentFlowGraph?.edges || []
+  
+  const setVibePanelInstruction = useStore(s => s.setVibePanelInstruction)
+  const vibePanelIntent = useStore(s => s.vibePanelIntent)
+  const setVibePanelIntent = useStore(s => s.setVibePanelIntent)
+  const vibePanelMessage = useStore(s => s.vibePanelMessage)
+  const setVibePanelMessage = useStore(s => s.setVibePanelMessage)
+  const vibePanelSuggestions = useStore(s => s.vibePanelSuggestions)
+  const setVibePanelSuggestions = useStore(s => s.setVibePanelSuggestions)
 
   const localModel = localStorage.getItem('auto-gen-model')
     ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
@@ -97,13 +105,13 @@ const VibePanel: FC = () => {
   }, [workflowStore])
 
   const handleClose = useCallback(() => {
-    workflowStore.setState(state => ({
-      ...state,
-      showVibePanel: false,
-      vibePanelMermaidCode: '',
-      isVibeGenerating: false,
-    }))
-  }, [workflowStore])
+    setShowVibePanel(false)
+    setVibePanelMermaidCode('')
+    setIsVibeGenerating(false)
+    setVibePanelIntent('')
+    setVibePanelMessage('')
+    setVibePanelSuggestions([])
+  }, [setShowVibePanel, setVibePanelMermaidCode, setIsVibeGenerating, setVibePanelIntent, setVibePanelMessage, setVibePanelSuggestions])
 
   const handleGenerate = useCallback(() => {
     const event = new CustomEvent(VIBE_COMMAND_EVENT, {
@@ -124,6 +132,15 @@ const VibePanel: FC = () => {
     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
   }, [workflowStore, t])
 
+  const handleSuggestionClick = useCallback((suggestion: string) => {
+    setVibePanelInstruction(suggestion)
+    // Trigger generation with the suggestion
+    const event = new CustomEvent(VIBE_COMMAND_EVENT, {
+      detail: { dsl: suggestion },
+    })
+    document.dispatchEvent(event)
+  }, [setVibePanelInstruction])
+
   if (!showVibePanel)
     return null
 
@@ -131,6 +148,40 @@ const VibePanel: FC = () => {
     <div className="flex h-full w-0 grow flex-col items-center justify-center space-y-3">
       <Loading />
       <div className="text-[13px] text-text-tertiary">{t('workflow.vibe.generatingFlowchart')}</div>
+    </div>
+  )
+
+  const renderOffTopic = (
+    <div className="flex h-full w-0 grow flex-col items-center justify-center bg-background-default-subtle p-6">
+      <div className="flex max-w-[400px] flex-col items-center text-center">
+        <div className="mb-4 flex h-12 w-12 items-center justify-center rounded-full bg-state-warning-hover">
+          <RiInformation2Line className="h-6 w-6 text-text-warning" />
+        </div>
+        <div className="mb-2 text-base font-semibold text-text-primary">
+          {t('workflow.vibe.offTopicTitle')}
+        </div>
+        <div className="mb-6 text-sm text-text-secondary">
+          {vibePanelMessage || t('workflow.vibe.offTopicDefault')}
+        </div>
+        {vibePanelSuggestions.length > 0 && (
+          <div className="w-full">
+            <div className="mb-3 text-xs font-medium text-text-tertiary">
+              {t('workflow.vibe.trySuggestion')}
+            </div>
+            <div className="flex flex-col gap-2">
+              {vibePanelSuggestions.map((suggestion, index) => (
+                <button
+                  key={index}
+                  onClick={() => handleSuggestionClick(suggestion)}
+                  className="w-full rounded-lg border border-divider-regular bg-components-panel-bg px-4 py-2.5 text-left text-sm text-text-secondary transition-colors hover:border-components-button-primary-border hover:bg-state-accent-hover"
+                >
+                  {suggestion}
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
+      </div>
     </div>
   )
 
@@ -184,7 +235,8 @@ const VibePanel: FC = () => {
           </div>
         </div>
 
-        {!isVibeGenerating && vibePanelPreviewNodes.length > 0 && (
+        {!isVibeGenerating && vibePanelIntent === 'off_topic' && renderOffTopic}
+        {!isVibeGenerating && vibePanelIntent !== 'off_topic' && (vibePanelPreviewNodes.length > 0 || vibePanelMermaidCode) && (
           <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
             <div className="flex h-full flex-col">
               <div className="mb-3 flex shrink-0 items-center justify-between">
@@ -226,7 +278,7 @@ const VibePanel: FC = () => {
           </div>
         )}
         {isVibeGenerating && renderLoading}
-        {!isVibeGenerating && vibePanelPreviewNodes.length === 0 && <ResPlaceholder />}
+        {!isVibeGenerating && vibePanelIntent !== 'off_topic' && vibePanelPreviewNodes.length === 0 && !vibePanelMermaidCode && <ResPlaceholder />}
       </div>
     </Modal>
   )
