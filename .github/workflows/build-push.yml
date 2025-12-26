@@ -8,7 +8,7 @@ on:
       - "build/**"
       - "release/e-*"
       - "hotfix/**"
-      - "feature/hitl-frontend"
+      - "feat/hitl-frontend"
     tags:
       - "*"
 
