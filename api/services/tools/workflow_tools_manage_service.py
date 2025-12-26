@@ -3,8 +3,8 @@ import logging
 from datetime import datetime
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
 from core.helper.tool_provider_cache import ToolProviderListCache
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
@@ -64,25 +64,26 @@ class WorkflowToolManageService:
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            workflow_tool_provider = WorkflowToolProvider(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=workflow_app_id,
-                name=name,
-                label=label,
-                icon=json.dumps(icon),
-                description=description,
-                parameter_configuration=json.dumps([p.model_dump() for p in parameters]),
-                privacy_policy=privacy_policy,
-                version=workflow.version,
-            )
-            session.add(workflow_tool_provider)
+        workflow_tool_provider = WorkflowToolProvider(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=workflow_app_id,
+            name=name,
+            label=label,
+            icon=json.dumps(icon),
+            description=description,
+            parameter_configuration=json.dumps(parameters),
+            privacy_policy=privacy_policy,
+            version=workflow.version,
+        )
 
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:
             raise ValueError(str(e))
+
+        with session_factory.create_session() as session, session.begin():
+            session.add(workflow_tool_provider)
 
         if labels is not None:
             ToolLabelManager.update_tool_labels(

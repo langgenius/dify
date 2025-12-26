@@ -1,5 +1,6 @@
 import io
 from typing import Any, Literal
+import logging
 
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
@@ -16,6 +17,7 @@ from controllers.console.wraps import (
     is_admin_or_owner_required,
     setup_required,
 )
+from core.db.session_factory import session_factory
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
 from core.helper.tool_provider_cache import ToolProviderListCache
 from core.mcp.auth.auth_flow import auth, handle_callback
@@ -39,6 +41,8 @@ from services.tools.tool_labels_service import ToolLabelsService
 from services.tools.tools_manage_service import ToolCommonService
 from services.tools.tools_transform_service import ToolTransformService
 from services.tools.workflow_tools_manage_service import WorkflowToolManageService
+
+logger = logging.getLogger(__name__)
 
 
 class ToolProviderListQuery(BaseModel):
@@ -872,8 +876,13 @@ class ToolProviderMCPApi(Resource):
     def post(self):
         payload = MCPProviderCreatePayload.model_validate(console_ns.payload or {})
         user, tenant_id = current_account_with_tenant()
-        # Create provider in transaction
-        with Session(db.engine) as session, session.begin():
+        
+        # Parse and validate models
+        configuration = MCPConfiguration.model_validate(args["configuration"])
+        authentication = MCPAuthentication.model_validate(args["authentication"]) if args["authentication"] else None
+
+        # 1) Create provider in a short transaction (no network I/O inside)
+        with session_factory.create_session() as session, session.begin():
             service = MCPToolManageService(session=session)
             result = service.create_provider(
                 tenant_id=tenant_id,
@@ -889,7 +898,28 @@ class ToolProviderMCPApi(Resource):
                 authentication=payload.authentication,
             )
 
-        # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
+        # 2) Try to fetch tools immediately after creation so they appear without a second save.
+        #    Perform network I/O outside any DB session to avoid holding locks.
+        try:
+            reconnect = MCPToolManageService.reconnect_with_url(
+                server_url=args["server_url"],
+                headers=args.get("headers") or {},
+                timeout=configuration.timeout,
+                sse_read_timeout=configuration.sse_read_timeout,
+            )
+            # Update just-created provider with authed/tools in a new short transaction
+            with session_factory.create_session() as session, session.begin():
+                service = MCPToolManageService(session=session)
+                db_provider = service.get_provider(provider_id=result.id, tenant_id=tenant_id)
+                db_provider.authed = reconnect.authed
+                db_provider.tools = reconnect.tools
+
+                result = ToolTransformService.mcp_provider_to_user_provider(db_provider, for_list=True)
+        except Exception:
+            # Best-effort: if initial fetch fails (e.g., auth required), return created provider as-is
+            logger.warning("Failed to fetch MCP tools after creation", exc_info=True)
+
+        # Final cache invalidation to ensure list views are up to date
         ToolProviderListCache.invalidate_cache(tenant_id)
 
         return jsonable_encoder(result)

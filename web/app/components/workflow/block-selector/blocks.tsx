@@ -1,5 +1,5 @@
 import type { NodeDefault } from '../types'
-import { groupBy } from 'lodash-es'
+import { groupBy } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,
