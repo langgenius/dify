@@ -176,7 +176,7 @@ const DatasetConfig: FC = () => {
     }))
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+  const handleAddCondition = useCallback<HandleAddCondition>(({ id, name, type }) => {
     let operator: ComparisonOperator = ComparisonOperator.is
 
     if (type === MetadataFilteringVariableType.number)
@@ -184,6 +184,7 @@ const DatasetConfig: FC = () => {
 
     const newCondition = {
       id: uuid4(),
+      metadata_id: id, // Save metadata.id for reliable reference
       name,
       comparison_operator: operator,
     }
