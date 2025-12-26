@@ -91,7 +91,10 @@ export const canFindTool = (providerId: string, oldToolId?: string) => {
     || providerId === `langgenius/${oldToolId}_tool/${oldToolId}`
 }
 
+// Deprecated: Use clearQueryParams from hooks/use-query-params.ts instead
+/** @deprecated Use clearQueryParams from hooks/use-query-params.ts instead */
 export const removeSpecificQueryParam = (key: string | string[]) => {
+  console.warn('removeSpecificQueryParam is deprecated. Use clearQueryParams from hooks/use-query-params.ts instead.')
   const url = new URL(window.location.href)
   if (Array.isArray(key))
     key.forEach(k => url.searchParams.delete(k))

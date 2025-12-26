@@ -153,21 +153,11 @@ export const getMarketplaceListFilterType = (category: string) => {
   return 'plugin'
 }
 
+// Deprecated: Use useMarketplaceFilters hook from hooks/use-query-params.ts instead
+// This function is kept for backward compatibility but should not be used in new code
+/** @deprecated Use the useMarketplaceFilters hook from hooks/use-query-params.ts instead */
 export const updateSearchParams = (pluginsSearchParams: PluginsSearchParams) => {
-  const { query, category, tags } = pluginsSearchParams
-  const url = new URL(window.location.href)
-  const categoryChanged = url.searchParams.get('category') !== category
-  if (query)
-    url.searchParams.set('q', query)
-  else
-    url.searchParams.delete('q')
-  if (category)
-    url.searchParams.set('category', category)
-  else
-    url.searchParams.delete('category')
-  if (tags && tags.length)
-    url.searchParams.set('tags', tags.join(','))
-  else
-    url.searchParams.delete('tags')
-  history[`${categoryChanged ? 'pushState' : 'replaceState'}`]({}, '', url)
+  console.warn('updateSearchParams is deprecated. Use the useMarketplaceFilters hook from hooks/use-query-params.ts instead.')
+  // This is now handled by the useMarketplaceFilters hook
+  // Keeping the function for any legacy code that hasn't been migrated yet
 }

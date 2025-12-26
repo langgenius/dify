@@ -84,12 +84,14 @@ const PluginTypeSwitch = ({
   const handlePopState = useCallback(() => {
     if (!showSearchParams)
       return
+    // nuqs handles popstate automatically
     const url = new URL(window.location.href)
     const category = url.searchParams.get('category') || PLUGIN_TYPE_SEARCH_MAP.all
     handleActivePluginTypeChange(category)
   }, [showSearchParams, handleActivePluginTypeChange])
 
   useEffect(() => {
+    // nuqs manages popstate internally, but we keep this for URL sync
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
