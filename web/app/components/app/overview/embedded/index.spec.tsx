@@ -46,15 +46,6 @@ vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () =>
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => mockUseAppContext(),
 }))
-vi.mock('@/app/components/base/action-button', () => ({
-  __esModule: true,
-  default: ({ children, ...props }: React.ComponentProps<'button'>) => (
-    <button data-testid="embedded-copy-button" type="button" {...props}>
-      {children}
-    </button>
-  ),
-}))
-
 const mockWindowOpen = vi.spyOn(window, 'open').mockImplementation(() => null)
 const mockedCopy = vi.mocked(copy)
 
@@ -73,6 +64,13 @@ const baseProps = {
   className: 'custom-modal',
 }
 
+const getCopyButton = () => {
+  const buttons = screen.getAllByRole('button')
+  const actionButton = buttons.find(button => button.className.includes('action-btn'))
+  expect(actionButton).toBeDefined()
+  return actionButton!
+}
+
 describe('Embedded', () => {
   afterEach(() => {
     vi.clearAllMocks()
@@ -83,10 +81,12 @@ describe('Embedded', () => {
     mockWindowOpen.mockRestore()
   })
 
-  it('builds theme and copies iframe snippet', () => {
-    render(<Embedded {...baseProps} />)
+  it('builds theme and copies iframe snippet', async () => {
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
 
-    const actionButton = screen.getByTestId('embedded-copy-button')
+    const actionButton = getCopyButton()
     const innerDiv = actionButton.querySelector('div')
     act(() => {
       fireEvent.click(innerDiv ?? actionButton)
@@ -96,8 +96,10 @@ describe('Embedded', () => {
     expect(mockedCopy).toHaveBeenCalledWith(expect.stringContaining('/chatbot/token'))
   })
 
-  it('opens chrome plugin store link when chrome option selected', () => {
-    render(<Embedded {...baseProps} />)
+  it('opens chrome plugin store link when chrome option selected', async () => {
+    await act(async () => {
+      render(<Embedded {...baseProps} />)
+    })
 
     const optionButtons = document.body.querySelectorAll('[class*="option"]')
     expect(optionButtons.length).toBeGreaterThanOrEqual(3)
