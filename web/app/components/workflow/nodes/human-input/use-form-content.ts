@@ -45,7 +45,7 @@ const useFormContent = (id: string, payload: HumanInputNodeType) => {
     })
     setInputs(newInputs)
     setEditorKey(editorKey => editorKey + 1)
-  }, [setInputs, editorKey])
+  }, [setInputs])
 
   return {
     editorKey,

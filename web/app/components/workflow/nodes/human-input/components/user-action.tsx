@@ -12,13 +12,13 @@ import ButtonStyleDropdown from './button-style-dropdown'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
-type Props = {
+type UserActionItemProps = {
   data: UserAction
   onChange: (state: UserAction) => void
   onDelete: (id: string) => void
 }
 
-const UserActionItem: FC<Props> = ({
+const UserActionItem: FC<UserActionItemProps> = ({
   data,
   onChange,
   onDelete,

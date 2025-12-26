@@ -168,7 +168,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           <div className="space-y-2">
             {inputs.user_actions.map((action, index) => (
               <UserActionItem
-                key={action.id}
+                key={index}
                 data={action}
                 onChange={data => handleUserActionChange(index, data)}
                 onDelete={handleUserActionDelete}
