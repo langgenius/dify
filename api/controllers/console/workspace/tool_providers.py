@@ -1,6 +1,6 @@
 import io
-from typing import Any, Literal
 import logging
+from typing import Any, Literal
 
 from flask import make_response, redirect, request, send_file
 from flask_restx import Resource
