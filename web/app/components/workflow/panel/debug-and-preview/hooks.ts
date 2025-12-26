@@ -5,8 +5,8 @@ import type {
   Inputs,
 } from '@/app/components/base/chat/types'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
+import { uniqBy } from 'es-toolkit/compat'
 import { produce, setAutoFreeze } from 'immer'
-import { uniqBy } from 'lodash-es'
 import {
   useCallback,
   useEffect,

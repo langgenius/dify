@@ -286,12 +286,12 @@ class BuiltinToolManageService:
 
                     session.add(db_provider)
                     session.commit()
-
-                    # Invalidate tool providers cache
-                    ToolProviderListCache.invalidate_cache(tenant_id)
             except Exception as e:
                 session.rollback()
                 raise ValueError(str(e))
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id, "builtin")
         return {"result": "success"}
 
     @staticmethod

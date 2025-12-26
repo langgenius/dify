@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
-import { flatten, uniq } from 'lodash-es'
+import { flatten, uniq } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'

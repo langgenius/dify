@@ -26,7 +26,7 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Toast from '@/app/components/base/toast'
 import Res from '@/app/components/share/text-generation/result'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { appDefaultIconBackground, DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { appDefaultIconBackground, BATCH_CONCURRENCY, DEFAULT_VALUE_MAX_LEN } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
@@ -43,7 +43,7 @@ import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
 
-const GROUP_SIZE = 5 // to avoid RPM(Request per minute) limit. The group task finished then the next group.
+const GROUP_SIZE = BATCH_CONCURRENCY // to avoid RPM(Request per minute) limit. The group task finished then the next group.
 enum TaskStatus {
   pending = 'pending',
   running = 'running',
