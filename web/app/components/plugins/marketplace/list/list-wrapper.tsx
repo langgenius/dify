@@ -1,6 +1,7 @@
 'use client'
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
+import type { Locale } from '@/i18n-config'
 import { useEffect } from 'react'
 import Loading from '@/app/components/base/loading'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
@@ -12,7 +13,7 @@ type ListWrapperProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
-  locale: string
+  locale: Locale
 }
 const ListWrapper = ({
   marketplaceCollections,

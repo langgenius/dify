@@ -49,10 +49,10 @@ pnpm test
 pnpm test:watch
 
 # Run specific file
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 
 # Generate coverage report
-pnpm test -- --coverage
+pnpm test:coverage
 
 # Analyze component complexity
 pnpm analyze-component <path>
@@ -155,7 +155,7 @@ describe('ComponentName', () => {
 For each file:
   ┌────────────────────────────────────────┐
   │ 1. Write test                          │
-  │ 2. Run: pnpm test -- <file>.spec.tsx   │
+  │ 2. Run: pnpm test <file>.spec.tsx      │
   │ 3. PASS? → Mark complete, next file    │
   │    FAIL? → Fix first, then continue    │
   └────────────────────────────────────────┘
@@ -318,5 +318,5 @@ For more detailed information, refer to:
 
 - `web/vitest.config.ts` - Vitest configuration
 - `web/vitest.setup.ts` - Test environment setup
-- `web/testing/analyze-component.js` - Component analysis tool
+- `web/scripts/analyze-component.js` - Component analysis tool
 - Modules are not mocked automatically. Global mocks live in `web/vitest.setup.ts` (for example `react-i18next`, `next/image`); mock other modules like `ky` or `mime` locally in test files.

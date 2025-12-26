@@ -1,10 +1,11 @@
+import type { Locale } from '@/i18n-config'
 import {
   getLocaleOnServer,
-  useTranslation as translate,
+  getTranslation as translate,
 } from '@/i18n-config/server'
 
 type DescriptionProps = {
-  locale?: string
+  locale?: Locale
 }
 const Description = async ({
   locale: localeFromProps,

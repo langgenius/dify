@@ -1,6 +1,6 @@
 'use client'
 import type { MailSendResponse } from '@/service/use-common'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'

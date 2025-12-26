@@ -114,15 +114,15 @@ For the current file being tested:
 
 **Run these checks after EACH test file, not just at the end:**
 
-- [ ] Run `pnpm test -- path/to/file.spec.tsx` - **MUST PASS before next file**
+- [ ] Run `pnpm test path/to/file.spec.tsx` - **MUST PASS before next file**
 - [ ] Fix any failures immediately
 - [ ] Mark file as complete in todo list
 - [ ] Only then proceed to next file
 
 ### After All Files Complete
 
-- [ ] Run full directory test: `pnpm test -- path/to/directory/`
-- [ ] Check coverage report: `pnpm test -- --coverage`
+- [ ] Run full directory test: `pnpm test path/to/directory/`
+- [ ] Check coverage report: `pnpm test:coverage`
 - [ ] Run `pnpm lint:fix` on all test files
 - [ ] Run `pnpm type-check:tsgo`
 
@@ -186,16 +186,16 @@ Always test these scenarios:
 
 ```bash
 # Run specific test
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 
 # Run with coverage
-pnpm test -- --coverage path/to/file.spec.tsx
+pnpm test:coverage path/to/file.spec.tsx
 
 # Watch mode
-pnpm test:watch -- path/to/file.spec.tsx
+pnpm test:watch path/to/file.spec.tsx
 
 # Update snapshots (use sparingly)
-pnpm test -- -u path/to/file.spec.tsx
+pnpm test -u path/to/file.spec.tsx
 
 # Analyze component
 pnpm analyze-component path/to/component.tsx

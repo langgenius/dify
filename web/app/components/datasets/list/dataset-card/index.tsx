@@ -217,17 +217,17 @@ const DatasetCard = ({
                   {dataset.doc_form && (
                     <span
                       className="min-w-0 max-w-full truncate"
-                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}` as any) as string}
                     >
-                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}` as any) as string}
                     </span>
                   )}
                   {dataset.indexing_technique && (
                     <span
                       className="min-w-0 max-w-full truncate"
-                      title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                      title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method) as any}
                     >
-                      {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                      {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method) as any}
                     </span>
                   )}
                   {dataset.is_multimodal && (

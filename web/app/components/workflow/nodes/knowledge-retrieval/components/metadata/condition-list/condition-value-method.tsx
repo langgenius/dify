@@ -1,5 +1,5 @@
 import { RiArrowDownSLine } from '@remixicon/react'
-import { capitalize } from 'lodash-es'
+import { capitalize } from 'es-toolkit/compat'
 import { useState } from 'react'
 import Button from '@/app/components/base/button'
 import {
