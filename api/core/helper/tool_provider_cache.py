@@ -1,6 +1,6 @@
 import json
 import logging
-from typing import Any
+from typing import Any, cast
 
 from core.tools.entities.api_entities import ToolProviderTypeApiLiteral
 from extensions.ext_redis import redis_client, redis_fallback
@@ -50,7 +50,9 @@ class ToolProviderListCache:
             redis_client.delete(cache_key)
         else:
             # Invalidate all caches for this tenant
-            pattern = f"tool_providers:tenant_id:{tenant_id}:*"
-            keys = list(redis_client.scan_iter(pattern))
-            if keys:
-                redis_client.delete(*keys)
+            keys = ["builtin", "model", "api", "workflow", "mcp"]
+            pipeline = redis_client.pipeline()
+            for key in keys:
+                cache_key = ToolProviderListCache._generate_cache_key(tenant_id, cast(ToolProviderTypeApiLiteral, key))
+                pipeline.delete(cache_key)
+            pipeline.execute()
