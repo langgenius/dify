@@ -218,7 +218,7 @@ export const handleStream = (
               return
             }
             if (!bufferObj || typeof bufferObj !== 'object') {
-              onData('', false, {
+              onData('', isFirstMessage, {
                 conversationId: undefined,
                 messageId: '',
                 errorMessage: 'Invalid response data',
