@@ -49,7 +49,7 @@ import ConditionInput from './condition-input'
 import ConditionOperator from './condition-operator'
 import ConditionVarSelector from './condition-var-selector'
 
-const optionNameI18NPrefix = 'nodes.ifElse.optionName'
+const optionNameI18NPrefix = 'nodes.ifElse.optionName' as const
 
 type ConditionItemProps = {
   className?: string
@@ -168,13 +168,13 @@ const ConditionItem = ({
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}` as any, { ns: 'workflow' }) as string,
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
       if (fileAttr?.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}` as any, { ns: 'workflow' }) as string,
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
