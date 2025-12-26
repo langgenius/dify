@@ -1,7 +1,6 @@
 import type {
   CollectionsAndPluginsSearchParams,
   MarketplaceCollection,
-  PluginsSearchParams,
 } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -151,13 +150,4 @@ export const getMarketplaceListFilterType = (category: string) => {
     return 'bundle'
 
   return 'plugin'
-}
-
-// Deprecated: Use useMarketplaceFilters hook from hooks/use-query-params.ts instead
-// This function is kept for backward compatibility but should not be used in new code
-/** @deprecated Use the useMarketplaceFilters hook from hooks/use-query-params.ts instead */
-export const updateSearchParams = (pluginsSearchParams: PluginsSearchParams) => {
-  console.warn('updateSearchParams is deprecated. Use the useMarketplaceFilters hook from hooks/use-query-params.ts instead.')
-  // This is now handled by the useMarketplaceFilters hook
-  // Keeping the function for any legacy code that hasn't been migrated yet
 }
