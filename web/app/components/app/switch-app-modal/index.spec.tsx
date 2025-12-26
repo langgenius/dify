@@ -1,36 +1,36 @@
-import React from 'react'
+import type { App } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import SwitchAppModal from './index'
+import * as React from 'react'
 import { ToastContext } from '@/app/components/base/toast'
-import type { App } from '@/types/app'
-import { AppModeEnum } from '@/types/app'
 import { Plan } from '@/app/components/billing/type'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
+import { AppModeEnum } from '@/types/app'
+import SwitchAppModal from './index'
 
-const mockPush = jest.fn()
-const mockReplace = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockPush = vi.fn()
+const mockReplace = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
     replace: mockReplace,
   }),
 }))
 
-const mockSetAppDetail = jest.fn()
-jest.mock('@/app/components/app/store', () => ({
+const mockSetAppDetail = vi.fn()
+vi.mock('@/app/components/app/store', () => ({
   useStore: (selector: (state: any) => unknown) => selector({ setAppDetail: mockSetAppDetail }),
 }))
 
-const mockSwitchApp = jest.fn()
-const mockDeleteApp = jest.fn()
-jest.mock('@/service/apps', () => ({
+const mockSwitchApp = vi.fn()
+const mockDeleteApp = vi.fn()
+vi.mock('@/service/apps', () => ({
   switchApp: (...args: unknown[]) => mockSwitchApp(...args),
   deleteApp: (...args: unknown[]) => mockDeleteApp(...args),
 }))
 
 let mockIsEditor = true
-jest.mock('@/context/app-context', () => ({
+vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     isCurrentWorkspaceEditor: mockIsEditor,
     userProfile: {
@@ -64,16 +64,21 @@ let mockPlan = {
     vectorSpace: 0,
   },
 }
-jest.mock('@/context/provider-context', () => ({
+vi.mock('@/context/provider-context', () => ({
   useProviderContext: () => ({
     plan: mockPlan,
     enableBilling: mockEnableBilling,
   }),
 }))
 
-jest.mock('@/app/components/billing/apps-full-in-dialog', () => ({
+vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
   __esModule: true,
-  default: ({ loc }: { loc: string }) => <div data-testid="apps-full">AppsFull {loc}</div>,
+  default: ({ loc }: { loc: string }) => (
+    <div data-testid="apps-full">
+      AppsFull
+      {loc}
+    </div>
+  ),
 }))
 
 const createMockApp = (overrides: Partial<App> = {}): App => ({
@@ -107,13 +112,13 @@ const createMockApp = (overrides: Partial<App> = {}): App => ({
 })
 
 const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAppModal>> = {}) => {
-  const notify = jest.fn()
-  const onClose = jest.fn()
-  const onSuccess = jest.fn()
+  const notify = vi.fn()
+  const onClose = vi.fn()
+  const onSuccess = vi.fn()
   const appDetail = createMockApp()
 
   const utils = render(
-    <ToastContext.Provider value={{ notify, close: jest.fn() }}>
+    <ToastContext.Provider value={{ notify, close: vi.fn() }}>
       <SwitchAppModal
         show
         appDetail={appDetail}
@@ -135,7 +140,7 @@ const renderComponent = (overrides: Partial<React.ComponentProps<typeof SwitchAp
 
 describe('SwitchAppModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockIsEditor = true
     mockEnableBilling = false
     mockPlan = {
@@ -231,7 +236,6 @@ describe('SwitchAppModal', () => {
       // Arrange
       const { appDetail, notify, onClose, onSuccess } = renderComponent()
       mockSwitchApp.mockResolvedValueOnce({ new_app_id: 'new-app-001' })
-      const setItemSpy = jest.spyOn(Storage.prototype, 'setItem')
 
       // Act
       await user.click(screen.getByRole('button', { name: 'app.switchStart' }))
@@ -245,13 +249,13 @@ describe('SwitchAppModal', () => {
           icon: '🚀',
           icon_background: '#FFEAD5',
         })
+        expect(onSuccess).toHaveBeenCalledTimes(1)
+        expect(onClose).toHaveBeenCalledTimes(1)
+        expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
+        expect(localStorage.setItem).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
+        expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
+        expect(mockReplace).not.toHaveBeenCalled()
       })
-      expect(onSuccess).toHaveBeenCalledTimes(1)
-      expect(onClose).toHaveBeenCalledTimes(1)
-      expect(notify).toHaveBeenCalledWith({ type: 'success', message: 'app.newApp.appCreated' })
-      expect(setItemSpy).toHaveBeenCalledWith(NEED_REFRESH_APP_LIST_KEY, '1')
-      expect(mockPush).toHaveBeenCalledWith('/app/new-app-001/workflow')
-      expect(mockReplace).not.toHaveBeenCalled()
     })
 
     it('should delete the original app and use replace when remove original is confirmed', async () => {

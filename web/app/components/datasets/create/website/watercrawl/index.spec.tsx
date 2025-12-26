@@ -1,23 +1,24 @@
+import type { Mock } from 'vitest'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WaterCrawl from './index'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
 import { checkWatercrawlTaskStatus, createWatercrawlTask } from '@/service/datasets'
 import { sleep } from '@/utils'
+import WaterCrawl from './index'
 
 // Mock external dependencies
-jest.mock('@/service/datasets', () => ({
-  createWatercrawlTask: jest.fn(),
-  checkWatercrawlTaskStatus: jest.fn(),
+vi.mock('@/service/datasets', () => ({
+  createWatercrawlTask: vi.fn(),
+  checkWatercrawlTaskStatus: vi.fn(),
 }))
 
-jest.mock('@/utils', () => ({
-  sleep: jest.fn(() => Promise.resolve()),
+vi.mock('@/utils', () => ({
+  sleep: vi.fn(() => Promise.resolve()),
 }))
 
 // Mock modal context
-const mockSetShowAccountSettingModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowAccountSettingModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowAccountSettingModal: mockSetShowAccountSettingModal,
   }),
@@ -49,12 +50,12 @@ const createCrawlResultItem = (overrides: Partial<CrawlResultItem> = {}): CrawlR
 })
 
 const createDefaultProps = (overrides: Partial<Parameters<typeof WaterCrawl>[0]> = {}) => ({
-  onPreview: jest.fn(),
+  onPreview: vi.fn(),
   checkedCrawlResult: [] as CrawlResultItem[],
-  onCheckedCrawlResultChange: jest.fn(),
-  onJobIdChange: jest.fn(),
+  onCheckedCrawlResultChange: vi.fn(),
+  onJobIdChange: vi.fn(),
   crawlOptions: createDefaultCrawlOptions(),
-  onCrawlOptionsChange: jest.fn(),
+  onCrawlOptionsChange: vi.fn(),
   ...overrides,
 })
 
@@ -63,7 +64,7 @@ const createDefaultProps = (overrides: Partial<Parameters<typeof WaterCrawl>[0]>
 // ============================================================================
 describe('WaterCrawl', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Tests for initial component rendering
@@ -154,7 +155,7 @@ describe('WaterCrawl', () => {
     it('should call onCrawlOptionsChange when options change', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onCrawlOptionsChange = jest.fn()
+      const onCrawlOptionsChange = vi.fn()
       const props = createDefaultProps({ onCrawlOptionsChange })
 
       // Act
@@ -184,10 +185,10 @@ describe('WaterCrawl', () => {
     it('should execute crawl task when checkedCrawlResult is provided', async () => {
       // Arrange
       const checkedItem = createCrawlResultItem({ source_url: 'https://checked.com' })
-      const mockCreateTask = createWatercrawlTask as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
 
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
       mockCheckStatus.mockResolvedValueOnce({
         status: 'completed',
         current: 1,
@@ -231,7 +232,7 @@ describe('WaterCrawl', () => {
   describe('State Management', () => {
     it('should transition from init to running state when run is clicked', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
       let resolvePromise: () => void
       mockCreateTask.mockImplementation(() => new Promise((resolve) => {
         resolvePromise = () => resolve({ job_id: 'test-job' })
@@ -259,8 +260,8 @@ describe('WaterCrawl', () => {
 
     it('should transition to finished state after successful crawl', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -286,8 +287,8 @@ describe('WaterCrawl', () => {
 
     it('should update crawl result state during polling', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job-123' })
       mockCheckStatus
@@ -308,8 +309,8 @@ describe('WaterCrawl', () => {
           ],
         })
 
-      const onCheckedCrawlResultChange = jest.fn()
-      const onJobIdChange = jest.fn()
+      const onCheckedCrawlResultChange = vi.fn()
+      const onJobIdChange = vi.fn()
       const props = createDefaultProps({ onCheckedCrawlResultChange, onJobIdChange })
 
       // Act
@@ -330,8 +331,8 @@ describe('WaterCrawl', () => {
 
     it('should fold options when step changes from init', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -366,9 +367,9 @@ describe('WaterCrawl', () => {
   describe('Side Effects and Cleanup', () => {
     it('should call sleep during polling', async () => {
       // Arrange
-      const mockSleep = sleep as jest.Mock
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockSleep = sleep as Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
       mockCheckStatus
@@ -391,7 +392,7 @@ describe('WaterCrawl', () => {
 
     it('should update controlFoldOptions when step changes', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
       mockCreateTask.mockImplementation(() => new Promise(() => { /* pending */ }))
 
       const props = createDefaultProps()
@@ -438,8 +439,8 @@ describe('WaterCrawl', () => {
 
     it('should memoize checkValid callback based on crawlOptions', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValue({ job_id: 'test-job' })
       mockCheckStatus.mockResolvedValue({
@@ -490,8 +491,8 @@ describe('WaterCrawl', () => {
 
     it('should handle URL input and run button click', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -520,9 +521,9 @@ describe('WaterCrawl', () => {
 
     it('should handle preview action on crawled result', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onPreview = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onPreview = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -554,7 +555,7 @@ describe('WaterCrawl', () => {
 
     it('should handle checkbox changes in options', async () => {
       // Arrange
-      const onCrawlOptionsChange = jest.fn()
+      const onCrawlOptionsChange = vi.fn()
       const props = createDefaultProps({
         onCrawlOptionsChange,
         crawlOptions: createDefaultCrawlOptions({ crawl_sub_pages: false }),
@@ -602,8 +603,8 @@ describe('WaterCrawl', () => {
   describe('API Calls', () => {
     it('should call createWatercrawlTask with correct parameters', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'api-test-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -633,8 +634,8 @@ describe('WaterCrawl', () => {
 
     it('should delete max_depth from options when it is empty string', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'test-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -662,9 +663,9 @@ describe('WaterCrawl', () => {
 
     it('should poll for status with job_id', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onJobIdChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onJobIdChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'poll-job-123' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -697,8 +698,8 @@ describe('WaterCrawl', () => {
 
     it('should handle error status from polling', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'fail-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -724,8 +725,8 @@ describe('WaterCrawl', () => {
 
     it('should handle API error during status check', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'error-job' })
       mockCheckStatus.mockRejectedValueOnce({
@@ -748,9 +749,9 @@ describe('WaterCrawl', () => {
 
     it('should limit total to crawlOptions.limit', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'limit-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -758,8 +759,7 @@ describe('WaterCrawl', () => {
         current: 100,
         total: 100,
         data: Array.from({ length: 100 }, (_, i) =>
-          createCrawlResultItem({ source_url: `https://example.com/${i}` }),
-        ),
+          createCrawlResultItem({ source_url: `https://example.com/${i}` })),
       })
 
       const props = createDefaultProps({
@@ -781,8 +781,8 @@ describe('WaterCrawl', () => {
 
     it('should handle response without status field as error', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-status-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -868,8 +868,8 @@ describe('WaterCrawl', () => {
 
     it('should accept URL with http:// protocol', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'http-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -949,10 +949,10 @@ describe('WaterCrawl', () => {
 
     it('should handle API throwing an exception', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
       mockCreateTask.mockRejectedValueOnce(new Error('Network error'))
       // Suppress console output during test to avoid noisy logs
-      const consoleSpy = jest.spyOn(console, 'log').mockImplementation(jest.fn())
+      const consoleSpy = vi.spyOn(console, 'log').mockImplementation(vi.fn())
 
       const props = createDefaultProps()
 
@@ -972,8 +972,8 @@ describe('WaterCrawl', () => {
 
     it('should show unknown error when error message is empty', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'empty-error-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -997,9 +997,9 @@ describe('WaterCrawl', () => {
 
     it('should handle empty data array from API', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'empty-data-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1025,9 +1025,9 @@ describe('WaterCrawl', () => {
 
     it('should handle null data from running status', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'null-data-job' })
       mockCheckStatus
@@ -1060,9 +1060,9 @@ describe('WaterCrawl', () => {
 
     it('should handle undefined data from completed job polling', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'undefined-data-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1088,8 +1088,8 @@ describe('WaterCrawl', () => {
 
     it('should handle crawlResult with zero current value', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-current-job' })
       mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
@@ -1112,8 +1112,8 @@ describe('WaterCrawl', () => {
 
     it('should handle crawlResult with zero total and empty limit', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'zero-total-job' })
       mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
@@ -1136,9 +1136,9 @@ describe('WaterCrawl', () => {
 
     it('should handle undefined crawlResult data in finished state', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'undefined-result-data-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1165,8 +1165,8 @@ describe('WaterCrawl', () => {
 
     it('should use parseFloat fallback when crawlResult.total is undefined', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'no-total-job' })
       mockCheckStatus.mockImplementation(() => new Promise(() => { /* never resolves */ }))
@@ -1189,8 +1189,8 @@ describe('WaterCrawl', () => {
 
     it('should handle crawlResult with current=0 and total=0 during running', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'both-zero-job' })
       mockCheckStatus
@@ -1225,8 +1225,8 @@ describe('WaterCrawl', () => {
   describe('Prop Variations', () => {
     it('should handle different limit values in crawlOptions', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'limit-var-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1258,8 +1258,8 @@ describe('WaterCrawl', () => {
 
     it('should handle different max_depth values', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'depth-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1291,8 +1291,8 @@ describe('WaterCrawl', () => {
 
     it('should handle crawl_sub_pages disabled', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'nosub-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1324,8 +1324,8 @@ describe('WaterCrawl', () => {
 
     it('should handle use_sitemap enabled', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'sitemap-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1357,8 +1357,8 @@ describe('WaterCrawl', () => {
 
     it('should handle includes and excludes patterns', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'patterns-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1396,8 +1396,8 @@ describe('WaterCrawl', () => {
 
     it('should handle pre-selected crawl results', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
       const existingResult = createCrawlResultItem({ source_url: 'https://existing.com' })
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'preselect-job' })
@@ -1426,8 +1426,8 @@ describe('WaterCrawl', () => {
 
     it('should handle string type limit value', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'string-limit-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1455,8 +1455,8 @@ describe('WaterCrawl', () => {
 
     it('should handle only_main_content option', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'main-content-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1493,8 +1493,8 @@ describe('WaterCrawl', () => {
   describe('Display and UI States', () => {
     it('should show crawling progress during running state', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'progress-job' })
       mockCheckStatus.mockImplementation(() => new Promise(() => { /* pending */ }))
@@ -1517,8 +1517,8 @@ describe('WaterCrawl', () => {
 
     it('should display time consumed after crawl completion', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'time-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1545,8 +1545,8 @@ describe('WaterCrawl', () => {
 
     it('should display crawled results list after completion', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'result-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1572,11 +1572,11 @@ describe('WaterCrawl', () => {
 
     it('should show error message component when crawl fails', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
+      const mockCreateTask = createWatercrawlTask as Mock
 
       mockCreateTask.mockRejectedValueOnce(new Error('Failed'))
       // Suppress console output during test to avoid noisy logs
-      jest.spyOn(console, 'log').mockImplementation(jest.fn())
+      vi.spyOn(console, 'log').mockImplementation(vi.fn())
 
       const props = createDefaultProps()
 
@@ -1594,9 +1594,9 @@ describe('WaterCrawl', () => {
 
     it('should update progress during multiple polling iterations', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'multi-poll-job' })
       mockCheckStatus
@@ -1614,16 +1614,14 @@ describe('WaterCrawl', () => {
           current: 5,
           total: 10,
           data: Array.from({ length: 5 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
-          ),
+            createCrawlResultItem({ source_url: `https://page${i + 1}.com` })),
         })
         .mockResolvedValueOnce({
           status: 'completed',
           current: 10,
           total: 10,
           data: Array.from({ length: 10 }, (_, i) =>
-            createCrawlResultItem({ source_url: `https://page${i + 1}.com` }),
-          ),
+            createCrawlResultItem({ source_url: `https://page${i + 1}.com` })),
         })
 
       const props = createDefaultProps({
@@ -1659,11 +1657,11 @@ describe('WaterCrawl', () => {
   describe('Integration', () => {
     it('should complete full crawl workflow with job polling', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
-      const onJobIdChange = jest.fn()
-      const onPreview = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
+      const onJobIdChange = vi.fn()
+      const onPreview = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'full-workflow-job' })
       mockCheckStatus
@@ -1724,9 +1722,9 @@ describe('WaterCrawl', () => {
 
     it('should handle select all and deselect all in results', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onCheckedCrawlResultChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onCheckedCrawlResultChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'select-all-job' })
       mockCheckStatus.mockResolvedValueOnce({
@@ -1759,11 +1757,11 @@ describe('WaterCrawl', () => {
 
     it('should handle complete workflow from input to preview', async () => {
       // Arrange
-      const mockCreateTask = createWatercrawlTask as jest.Mock
-      const mockCheckStatus = checkWatercrawlTaskStatus as jest.Mock
-      const onPreview = jest.fn()
-      const onCheckedCrawlResultChange = jest.fn()
-      const onJobIdChange = jest.fn()
+      const mockCreateTask = createWatercrawlTask as Mock
+      const mockCheckStatus = checkWatercrawlTaskStatus as Mock
+      const onPreview = vi.fn()
+      const onCheckedCrawlResultChange = vi.fn()
+      const onJobIdChange = vi.fn()
 
       mockCreateTask.mockResolvedValueOnce({ job_id: 'preview-workflow-job' })
       mockCheckStatus.mockResolvedValueOnce({

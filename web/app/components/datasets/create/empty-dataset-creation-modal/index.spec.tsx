@@ -1,51 +1,52 @@
+import type { MockedFunction } from 'vitest'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import EmptyDatasetCreationModal from './index'
+import * as React from 'react'
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import EmptyDatasetCreationModal from './index'
 
 // Mock Next.js router
-const mockPush = jest.fn()
-jest.mock('next/navigation', () => ({
+const mockPush = vi.fn()
+vi.mock('next/navigation', () => ({
   useRouter: () => ({
     push: mockPush,
   }),
 }))
 
 // Mock createEmptyDataset API
-jest.mock('@/service/datasets', () => ({
-  createEmptyDataset: jest.fn(),
+vi.mock('@/service/datasets', () => ({
+  createEmptyDataset: vi.fn(),
 }))
 
 // Mock useInvalidDatasetList hook
-jest.mock('@/service/knowledge/use-dataset', () => ({
-  useInvalidDatasetList: jest.fn(),
+vi.mock('@/service/knowledge/use-dataset', () => ({
+  useInvalidDatasetList: vi.fn(),
 }))
 
 // Mock ToastContext - need to mock both createContext and useContext from use-context-selector
-const mockNotify = jest.fn()
-jest.mock('use-context-selector', () => ({
-  createContext: jest.fn(() => ({
+const mockNotify = vi.fn()
+vi.mock('use-context-selector', () => ({
+  createContext: vi.fn(() => ({
     Provider: ({ children }: { children: React.ReactNode }) => children,
   })),
-  useContext: jest.fn(() => ({ notify: mockNotify })),
+  useContext: vi.fn(() => ({ notify: mockNotify })),
 }))
 
 // Type cast mocked functions
-const mockCreateEmptyDataset = createEmptyDataset as jest.MockedFunction<typeof createEmptyDataset>
-const mockInvalidDatasetList = jest.fn()
-const mockUseInvalidDatasetList = useInvalidDatasetList as jest.MockedFunction<typeof useInvalidDatasetList>
+const mockCreateEmptyDataset = createEmptyDataset as MockedFunction<typeof createEmptyDataset>
+const mockInvalidDatasetList = vi.fn()
+const mockUseInvalidDatasetList = useInvalidDatasetList as MockedFunction<typeof useInvalidDatasetList>
 
 // Test data builder for props
-const createDefaultProps = (overrides?: Partial<{ show: boolean; onHide: () => void }>) => ({
+const createDefaultProps = (overrides?: Partial<{ show: boolean, onHide: () => void }>) => ({
   show: true,
-  onHide: jest.fn(),
+  onHide: vi.fn(),
   ...overrides,
 })
 
 describe('EmptyDatasetCreationModal', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     mockUseInvalidDatasetList.mockReturnValue(mockInvalidDatasetList)
     mockCreateEmptyDataset.mockResolvedValue({
       id: 'dataset-123',
@@ -115,7 +116,7 @@ describe('EmptyDatasetCreationModal', () => {
     describe('show prop', () => {
       it('should show modal when show is true', () => {
         // Arrange & Act
-        render(<EmptyDatasetCreationModal show={true} onHide={jest.fn()} />)
+        render(<EmptyDatasetCreationModal show={true} onHide={vi.fn()} />)
 
         // Assert
         expect(screen.getByText('datasetCreation.stepOne.modal.title')).toBeInTheDocument()
@@ -123,7 +124,7 @@ describe('EmptyDatasetCreationModal', () => {
 
       it('should hide modal when show is false', () => {
         // Arrange & Act
-        render(<EmptyDatasetCreationModal show={false} onHide={jest.fn()} />)
+        render(<EmptyDatasetCreationModal show={false} onHide={vi.fn()} />)
 
         // Assert
         expect(screen.queryByText('datasetCreation.stepOne.modal.title')).not.toBeInTheDocument()
@@ -131,7 +132,7 @@ describe('EmptyDatasetCreationModal', () => {
 
       it('should toggle visibility when show prop changes', () => {
         // Arrange
-        const onHide = jest.fn()
+        const onHide = vi.fn()
         const { rerender } = render(<EmptyDatasetCreationModal show={false} onHide={onHide} />)
 
         // Act & Assert - Initially hidden
@@ -146,7 +147,7 @@ describe('EmptyDatasetCreationModal', () => {
     describe('onHide prop', () => {
       it('should call onHide when cancel button is clicked', () => {
         // Arrange
-        const mockOnHide = jest.fn()
+        const mockOnHide = vi.fn()
         render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
 
         // Act
@@ -159,7 +160,7 @@ describe('EmptyDatasetCreationModal', () => {
 
       it('should call onHide when close icon is clicked', async () => {
         // Arrange
-        const mockOnHide = jest.fn()
+        const mockOnHide = vi.fn()
         render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
 
         // Act - Wait for modal to be rendered, then find the close span
@@ -196,7 +197,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should persist input value when modal is hidden and shown again via rerender', () => {
       // Arrange
-      const onHide = jest.fn()
+      const onHide = vi.fn()
       const { rerender } = render(<EmptyDatasetCreationModal show={true} onHide={onHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder') as HTMLInputElement
 
@@ -237,7 +238,7 @@ describe('EmptyDatasetCreationModal', () => {
   describe('User Interactions', () => {
     it('should submit form when confirm button is clicked with valid input', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -295,7 +296,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should allow exactly 40 characters', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -313,7 +314,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should close modal on cancel button click', () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const cancelButton = screen.getByText('datasetCreation.stepOne.modal.cancelButton')
 
@@ -331,7 +332,7 @@ describe('EmptyDatasetCreationModal', () => {
   describe('API Calls', () => {
     it('should call createEmptyDataset with correct parameters', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -348,7 +349,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should call invalidDatasetList after successful creation', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -365,7 +366,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should call onHide after successful creation', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -383,7 +384,7 @@ describe('EmptyDatasetCreationModal', () => {
     it('should show error notification on API failure', async () => {
       // Arrange
       mockCreateEmptyDataset.mockRejectedValue(new Error('API Error'))
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -404,7 +405,7 @@ describe('EmptyDatasetCreationModal', () => {
     it('should not call onHide on API failure', async () => {
       // Arrange
       mockCreateEmptyDataset.mockRejectedValue(new Error('API Error'))
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -451,7 +452,7 @@ describe('EmptyDatasetCreationModal', () => {
         id: 'test-dataset-456',
         name: 'Test',
       } as ReturnType<typeof createEmptyDataset> extends Promise<infer T> ? T : never)
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -508,7 +509,7 @@ describe('EmptyDatasetCreationModal', () => {
   describe('Edge Cases', () => {
     it('should handle whitespace-only input as valid (component behavior)', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -525,7 +526,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should handle special characters in input', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -542,7 +543,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should handle Unicode characters in input', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -559,7 +560,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should handle input at exactly 40 character boundary', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -599,7 +600,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should handle rapid consecutive submits', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -618,7 +619,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should handle input with leading/trailing spaces', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -635,7 +636,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should handle newline characters in input (browser strips newlines)', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')
       const confirmButton = screen.getByText('datasetCreation.stepOne.modal.confirmButton')
@@ -719,7 +720,7 @@ describe('EmptyDatasetCreationModal', () => {
   describe('Integration', () => {
     it('should complete full successful creation flow', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       mockCreateEmptyDataset.mockResolvedValue({
         id: 'new-id-789',
         name: 'Complete Flow Test',
@@ -747,7 +748,7 @@ describe('EmptyDatasetCreationModal', () => {
 
     it('should handle error flow correctly', async () => {
       // Arrange
-      const mockOnHide = jest.fn()
+      const mockOnHide = vi.fn()
       mockCreateEmptyDataset.mockRejectedValue(new Error('Server Error'))
       render(<EmptyDatasetCreationModal show={true} onHide={mockOnHide} />)
       const input = screen.getByPlaceholderText('datasetCreation.stepOne.modal.placeholder')

@@ -1,14 +1,15 @@
-import { type FormEvent, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import Input from '@/app/components/base/input'
 import Button from '@/app/components/base/button'
-import { emailRegex } from '@/config'
+import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
-import { sendEMailLoginCode } from '@/service/common'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
+import { emailRegex } from '@/config'
 import I18NContext from '@/context/i18n'
+import { sendEMailLoginCode } from '@/service/common'
 
 type MailAndCodeAuthProps = {
   isInvite: boolean
@@ -60,17 +61,18 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
     handleGetEMailVerificationCode()
   }
 
-  return (<form onSubmit={handleSubmit}>
-    <input type='text' className='hidden' />
-    <div className='mb-2'>
-      <label htmlFor="email" className='system-md-semibold my-2 text-text-secondary'>{t('login.email')}</label>
-      <div className='mt-1'>
-        <Input id='email' type="email" disabled={isInvite} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+  return (
+    <form onSubmit={handleSubmit}>
+      <input type="text" className="hidden" />
+      <div className="mb-2">
+        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('login.email')}</label>
+        <div className="mt-1">
+          <Input id="email" type="email" disabled={isInvite} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+        </div>
+        <div className="mt-3">
+          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('login.signup.verifyMail')}</Button>
+        </div>
       </div>
-      <div className='mt-3'>
-        <Button type='submit' loading={loading} disabled={loading || !email} variant='primary' className='w-full'>{t('login.signup.verifyMail')}</Button>
-      </div>
-    </div>
-  </form>
+    </form>
   )
 }

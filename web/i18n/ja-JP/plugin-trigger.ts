@@ -165,6 +165,7 @@ const translation = {
       verifyFailed: '認証情報の検証に失敗しました',
       authFailed: '認証に失敗しました',
       networkError: 'ネットワークエラーです。再試行してください',
+      updateFailed: 'サブスクリプションの更新に失敗しました',
     },
   },
   events: {

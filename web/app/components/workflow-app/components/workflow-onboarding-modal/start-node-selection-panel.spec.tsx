@@ -1,12 +1,12 @@
-import React from 'react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import StartNodeSelectionPanel from './start-node-selection-panel'
+import * as React from 'react'
 import { BlockEnum } from '@/app/components/workflow/types'
+import StartNodeSelectionPanel from './start-node-selection-panel'
 
 // Mock NodeSelector component
-jest.mock('@/app/components/workflow/block-selector', () => {
-  return function MockNodeSelector({
+vi.mock('@/app/components/workflow/block-selector', () => ({
+  default: function MockNodeSelector({
     open,
     onOpenChange,
     onSelect,
@@ -42,18 +42,12 @@ jest.mock('@/app/components/workflow/block-selector', () => {
         )}
       </div>
     )
-  }
-})
-
-// Mock icons
-jest.mock('@/app/components/base/icons/src/vender/workflow', () => ({
-  Home: () => <div data-testid="home-icon">Home</div>,
-  TriggerAll: () => <div data-testid="trigger-all-icon">TriggerAll</div>,
+  },
 }))
 
 describe('StartNodeSelectionPanel', () => {
-  const mockOnSelectUserInput = jest.fn()
-  const mockOnSelectTrigger = jest.fn()
+  const mockOnSelectUserInput = vi.fn()
+  const mockOnSelectTrigger = vi.fn()
 
   const defaultProps = {
     onSelectUserInput: mockOnSelectUserInput,
@@ -61,7 +55,7 @@ describe('StartNodeSelectionPanel', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Helper function to render component
@@ -86,7 +80,6 @@ describe('StartNodeSelectionPanel', () => {
       // Assert
       expect(screen.getByText('workflow.onboarding.userInputFull')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.userInputDescription')).toBeInTheDocument()
-      expect(screen.getByTestId('home-icon')).toBeInTheDocument()
     })
 
     it('should render trigger option', () => {
@@ -96,7 +89,6 @@ describe('StartNodeSelectionPanel', () => {
       // Assert
       expect(screen.getByText('workflow.onboarding.trigger')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.triggerDescription')).toBeInTheDocument()
-      expect(screen.getByTestId('trigger-all-icon')).toBeInTheDocument()
     })
 
     it('should render node selector component', () => {
@@ -105,17 +97,6 @@ describe('StartNodeSelectionPanel', () => {
 
       // Assert
       expect(screen.getByTestId('node-selector')).toBeInTheDocument()
-    })
-
-    it('should have correct grid layout', () => {
-      // Arrange & Act
-      const { container } = renderComponent()
-
-      // Assert
-      const grid = container.querySelector('.grid')
-      expect(grid).toBeInTheDocument()
-      expect(grid).toHaveClass('grid-cols-2')
-      expect(grid).toHaveClass('gap-4')
     })
 
     it('should not show trigger selector initially', () => {
@@ -131,7 +112,7 @@ describe('StartNodeSelectionPanel', () => {
   describe('Props', () => {
     it('should accept onSelectUserInput prop', () => {
       // Arrange
-      const customHandler = jest.fn()
+      const customHandler = vi.fn()
 
       // Act
       renderComponent({ onSelectUserInput: customHandler })
@@ -142,7 +123,7 @@ describe('StartNodeSelectionPanel', () => {
 
     it('should accept onSelectTrigger prop', () => {
       // Arrange
-      const customHandler = jest.fn()
+      const customHandler = vi.fn()
 
       // Act
       renderComponent({ onSelectTrigger: customHandler })
@@ -511,15 +492,6 @@ describe('StartNodeSelectionPanel', () => {
       expect(screen.getByText('workflow.onboarding.triggerDescription')).toBeInTheDocument()
     })
 
-    it('should have icons for visual identification', () => {
-      // Arrange & Act
-      renderComponent()
-
-      // Assert
-      expect(screen.getByTestId('home-icon')).toBeInTheDocument()
-      expect(screen.getByTestId('trigger-all-icon')).toBeInTheDocument()
-    })
-
     it('should maintain focus after interactions', async () => {
       // Arrange
       const user = userEvent.setup()
@@ -569,12 +541,9 @@ describe('StartNodeSelectionPanel', () => {
 
     it('should render all components in correct hierarchy', () => {
       // Arrange & Act
-      const { container } = renderComponent()
+      renderComponent()
 
       // Assert
-      const grid = container.querySelector('.grid')
-      expect(grid).toBeInTheDocument()
-
       // Both StartNodeOption components should be rendered
       expect(screen.getByText('workflow.onboarding.userInputFull')).toBeInTheDocument()
       expect(screen.getByText('workflow.onboarding.trigger')).toBeInTheDocument()

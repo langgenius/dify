@@ -1,7 +1,7 @@
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { useStore } from '@/app/components/workflow/store'
+import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import useTimestamp from '@/hooks/use-timestamp'
 
 const EditingTitle = () => {
@@ -18,11 +18,13 @@ const EditingTitle = () => {
       {
         !!draftUpdatedAt && (
           <>
-            {t('workflow.common.autoSaved')} {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
+            {t('workflow.common.autoSaved')}
+            {' '}
+            {formatTime(draftUpdatedAt / 1000, 'HH:mm:ss')}
           </>
         )
       }
-      <span className='mx-1 flex items-center'>·</span>
+      <span className="mx-1 flex items-center">·</span>
       {
         publishedAt
           ? `${t('workflow.common.published')} ${formatTimeFromNow(publishedAt)}`
@@ -31,7 +33,7 @@ const EditingTitle = () => {
       {
         isSyncingWorkflowDraft && (
           <>
-            <span className='mx-1 flex items-center'>·</span>
+            <span className="mx-1 flex items-center">·</span>
             {t('workflow.common.syncingData')}
           </>
         )

@@ -1,9 +1,9 @@
 import type { AfterResponseHook, BeforeErrorHook, BeforeRequestHook, Hooks } from 'ky'
-import ky from 'ky'
 import type { IOtherOptions } from './base'
+import Cookies from 'js-cookie'
+import ky from 'ky'
 import Toast from '@/app/components/base/toast'
 import { API_PREFIX, APP_VERSION, CSRF_COOKIE_NAME, CSRF_HEADER_NAME, IS_MARKETPLACE, MARKETPLACE_API_PREFIX, PASSPORT_HEADER_NAME, PUBLIC_API_PREFIX, WEB_APP_SHARE_CODE_HEADER_NAME } from '@/config'
-import Cookies from 'js-cookie'
 import { getWebAppAccessToken, getWebAppPassport } from './webapp-auth'
 
 const TIME_OUT = 100000
@@ -24,7 +24,8 @@ export type FetchOptionType = Omit<RequestInit, 'body'> & {
 }
 
 const afterResponse204: AfterResponseHook = async (_request, _options, response) => {
-  if (response.status === 204) return Response.json({ result: 'success' })
+  if (response.status === 204)
+    return Response.json({ result: 'success' })
 }
 
 export type ResponseError = {
@@ -209,8 +210,9 @@ async function base<T>(url: string, options: FetchOptionType = {}, otherOptions:
   if (
     contentType
     && [ContentType.download, ContentType.audio, ContentType.downloadZip].includes(contentType)
-  )
+  ) {
     return await res.blob() as T
+  }
 
   return await res.json() as T
 }
