@@ -86,15 +86,13 @@ const PluginPage = ({
         return
       }
       if (bundleInfo) {
-        // bundleInfo is a JSON string from URL, needs parsing
         try {
-          const parsedBundleInfo = typeof bundleInfo === 'string' ? JSON.parse(bundleInfo) : bundleInfo
-          const { data } = await fetchBundleInfoFromMarketPlace(parsedBundleInfo)
+          const { data } = await fetchBundleInfoFromMarketPlace(bundleInfo)
           setDependencies(data.version.dependencies)
           showInstallFromMarketplace()
         }
-        catch (e) {
-          console.error('Failed to parse bundle info:', e)
+        catch (error) {
+          console.error('Failed to load bundle info:', error)
         }
       }
     })()

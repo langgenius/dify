@@ -141,6 +141,47 @@ export function useMarketplaceFilters() {
  */
 const PACKAGE_IDS_PARAM = 'package-ids'
 const BUNDLE_INFO_PARAM = 'bundle-info'
+type BundleInfoQuery = {
+  org: string
+  name: string
+  version: string
+}
+
+const parseAsPackageId = createParser<string>({
+  parse: (value) => {
+    try {
+      const parsed = JSON.parse(value)
+      if (Array.isArray(parsed)) {
+        const first = parsed[0]
+        return typeof first === 'string' ? first : null
+      }
+      return value
+    }
+    catch {
+      return value
+    }
+  },
+  serialize: value => JSON.stringify([value]),
+})
+
+const parseAsBundleInfo = createParser<BundleInfoQuery>({
+  parse: (value) => {
+    try {
+      const parsed = JSON.parse(value) as Partial<BundleInfoQuery>
+      if (parsed
+        && typeof parsed.org === 'string'
+        && typeof parsed.name === 'string'
+        && typeof parsed.version === 'string') {
+        return { org: parsed.org, name: parsed.name, version: parsed.version }
+      }
+    }
+    catch {
+      return null
+    }
+    return null
+  },
+  serialize: value => JSON.stringify(value),
+})
 
 /**
  * Hook to manage plugin installation state via URL
@@ -149,53 +190,45 @@ const BUNDLE_INFO_PARAM = 'bundle-info'
  * @example
  * const [installState, setInstallState] = usePluginInstallation()
  * setInstallState({ packageId: 'org/plugin' }) // Sets ?package-ids=["org/plugin"]
+ * setInstallState({ bundleInfo: { org: 'org', name: 'bundle', version: '1.0.0' } }) // Sets ?bundle-info=...
  * setInstallState(null) // Clears installation params
  */
 export function usePluginInstallation() {
-  const [packageIds, setPackageIds] = useQueryState(
-    PACKAGE_IDS_PARAM,
-    parseAsString,
-  )
-  const [bundleInfo, setBundleInfo] = useQueryState(
-    BUNDLE_INFO_PARAM,
-    parseAsString,
+  const [installState, setInstallStateState] = useQueryStates(
+    {
+      packageId: parseAsPackageId,
+      bundleInfo: parseAsBundleInfo,
+    },
+    {
+      urlKeys: {
+        packageId: PACKAGE_IDS_PARAM,
+        bundleInfo: BUNDLE_INFO_PARAM,
+      },
+    },
   )
 
   const setInstallState = useCallback(
-    (state: { packageId?: string, bundleInfo?: string } | null) => {
+    (state: { packageId?: string, bundleInfo?: BundleInfoQuery } | null) => {
       if (!state) {
-        setPackageIds(null)
-        setBundleInfo(null)
+        setInstallStateState(null)
         return
       }
-      if (state.packageId) {
-        // Store as JSON array for consistency with existing code
-        setPackageIds(JSON.stringify([state.packageId]))
-      }
-      if (state.bundleInfo) {
-        setBundleInfo(state.bundleInfo)
-      }
+      const patch: { packageId?: string, bundleInfo?: BundleInfoQuery } = {}
+      if (state.packageId)
+        patch.packageId = state.packageId
+      if (state.bundleInfo)
+        patch.bundleInfo = state.bundleInfo
+      if (Object.keys(patch).length === 0)
+        return
+      setInstallStateState(patch)
     },
-    [setBundleInfo, setPackageIds],
+    [setInstallStateState],
   )
-
-  // Parse packageIds from JSON array
-  const currentPackageId = packageIds
-    ? (() => {
-        try {
-          const parsed = JSON.parse(packageIds)
-          return Array.isArray(parsed) ? parsed[0] : packageIds
-        }
-        catch {
-          return packageIds
-        }
-      })()
-    : null
 
   return [
     {
-      packageId: currentPackageId,
-      bundleInfo,
+      packageId: installState.packageId,
+      bundleInfo: installState.bundleInfo,
     },
     setInstallState,
   ] as const

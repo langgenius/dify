@@ -474,9 +474,10 @@ describe('useQueryParams hooks', () => {
   describe('usePluginInstallation', () => {
     it('should parse package ids from JSON arrays', () => {
       // Arrange
+      const bundleInfo = { org: 'org', name: 'bundle', version: '1.0.0' }
       const { result } = renderWithAdapter(
         () => usePluginInstallation(),
-        '?package-ids=%5B%22org%2Fplugin%22%5D&bundle-info=bundle',
+        `?package-ids=%5B%22org%2Fplugin%22%5D&bundle-info=${encodeURIComponent(JSON.stringify(bundleInfo))}`,
       )
 
       // Act
@@ -484,7 +485,7 @@ describe('useQueryParams hooks', () => {
 
       // Assert
       expect(state.packageId).toBe('org/plugin')
-      expect(state.bundleInfo).toBe('bundle')
+      expect(state.bundleInfo).toEqual(bundleInfo)
     })
 
     it('should return raw package id when JSON parsing fails', () => {
@@ -532,24 +533,26 @@ describe('useQueryParams hooks', () => {
 
     it('should set bundle info when provided', async () => {
       // Arrange
+      const bundleInfo = { org: 'org', name: 'bundle', version: '1.0.0' }
       const { result, onUrlUpdate } = renderWithAdapter(() => usePluginInstallation())
 
       // Act
       act(() => {
-        result.current[1]({ bundleInfo: 'bundle' })
+        result.current[1]({ bundleInfo })
       })
 
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('bundle-info')).toBe('bundle')
+      expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
 
     it('should clear installation params when state is null', async () => {
       // Arrange
+      const bundleInfo = { org: 'org', name: 'bundle', version: '1.0.0' }
       const { result, onUrlUpdate } = renderWithAdapter(
         () => usePluginInstallation(),
-        '?package-ids=%5B%22org%2Fplugin%22%5D&bundle-info=bundle',
+        `?package-ids=%5B%22org%2Fplugin%22%5D&bundle-info=${encodeURIComponent(JSON.stringify(bundleInfo))}`,
       )
 
       // Act
@@ -566,9 +569,10 @@ describe('useQueryParams hooks', () => {
 
     it('should preserve bundle info when only packageId is updated', async () => {
       // Arrange
+      const bundleInfo = { org: 'org', name: 'bundle', version: '1.0.0' }
       const { result, onUrlUpdate } = renderWithAdapter(
         () => usePluginInstallation(),
-        '?bundle-info=bundle',
+        `?bundle-info=${encodeURIComponent(JSON.stringify(bundleInfo))}`,
       )
 
       // Act
@@ -579,7 +583,7 @@ describe('useQueryParams hooks', () => {
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.searchParams.get('bundle-info')).toBe('bundle')
+      expect(update.searchParams.get('bundle-info')).toBe(JSON.stringify(bundleInfo))
     })
   })
 })
