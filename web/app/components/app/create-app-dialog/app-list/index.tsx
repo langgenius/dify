@@ -5,7 +5,6 @@ import type { App } from '@/models/explore'
 import { RiRobot2Line } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { useRouter } from 'next/navigation'
-import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,9 +63,7 @@ const Apps = ({
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
-  const [currCategory, setCurrCategory] = useQueryState('category', {
-    defaultValue: allCategoriesEn,
-  })
+  const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
   const {
     data,
