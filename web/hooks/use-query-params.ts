@@ -15,12 +15,13 @@
 
 import type { Options } from 'nuqs'
 import {
-
+  createParser,
   parseAsArrayOf,
   parseAsString,
   useQueryState,
   useQueryStates,
 } from 'nuqs'
+import { useCallback } from 'react'
 import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-setting/constants'
 
 /**
@@ -29,28 +30,35 @@ import { ACCOUNT_SETTING_MODAL_ACTION } from '@/app/components/header/account-se
  */
 export const PRICING_MODAL_QUERY_PARAM = 'pricing'
 export const PRICING_MODAL_QUERY_VALUE = 'open'
+const parseAsPricingModal = createParser<boolean>({
+  parse: value => (value === PRICING_MODAL_QUERY_VALUE ? true : null),
+  serialize: value => (value ? PRICING_MODAL_QUERY_VALUE : ''),
+})
 
 /**
  * Hook to manage pricing modal state via URL
- * @returns [isOpen, setIsOpen] - Tuple like useState
+ * @returns { isOpen, setIsOpen } - isOpen boolean and setter
  *
  * @example
- * const [isPricingModalOpen, setIsPricingModalOpen] = usePricingModal()
- * setIsPricingModalOpen(true) // Sets ?pricing=open
- * setIsPricingModalOpen(false) // Removes ?pricing
+ * const { isOpen, setIsOpen } = usePricingModal()
+ * setIsOpen(true) // Sets ?pricing=open
+ * setIsOpen(false) // Removes ?pricing
  */
 export function usePricingModal() {
-  const [isOpen, setIsOpen] = useQueryState(
+  const [isOpen, setIsOpenState] = useQueryState(
     PRICING_MODAL_QUERY_PARAM,
-    parseAsString,
+    parseAsPricingModal.withDefault(false),
   )
 
-  const setIsOpenBoolean = (open: boolean, options?: Options) => {
-    const history = options?.history ?? (open ? 'push' : 'replace')
-    setIsOpen(open ? PRICING_MODAL_QUERY_VALUE : null, { ...options, history })
-  }
+  const setIsOpen = useCallback(
+    (open: boolean, options?: Options) => {
+      const history = options?.history ?? (open ? 'push' : 'replace')
+      setIsOpenState(open ? true : null, { ...options, history })
+    },
+    [setIsOpenState],
+  )
 
-  return [isOpen === PRICING_MODAL_QUERY_VALUE, setIsOpenBoolean] as const
+  return { isOpen, setIsOpen }
 }
 
 /**
@@ -73,17 +81,20 @@ export function useAccountSettingModal<T extends string = string>() {
     },
   )
 
-  const setState = (state: { payload: T } | null) => {
-    if (!state) {
-      setAccountState({ action: null, tab: null }, { history: 'replace' })
-      return
-    }
-    const shouldPush = accountState.action !== ACCOUNT_SETTING_MODAL_ACTION
-    setAccountState(
-      { action: ACCOUNT_SETTING_MODAL_ACTION, tab: state.payload },
-      { history: shouldPush ? 'push' : 'replace' },
-    )
-  }
+  const setState = useCallback(
+    (state: { payload: T } | null) => {
+      if (!state) {
+        setAccountState({ action: null, tab: null }, { history: 'replace' })
+        return
+      }
+      const shouldPush = accountState.action !== ACCOUNT_SETTING_MODAL_ACTION
+      setAccountState(
+        { action: ACCOUNT_SETTING_MODAL_ACTION, tab: state.payload },
+        { history: shouldPush ? 'push' : 'replace' },
+      )
+    },
+    [accountState.action, setAccountState],
+  )
 
   const isOpen = accountState.action === ACCOUNT_SETTING_MODAL_ACTION
   const currentTab = (isOpen ? accountState.tab : null) as T | null
@@ -149,20 +160,23 @@ export function usePluginInstallation() {
     parseAsString,
   )
 
-  const setInstallState = (state: { packageId?: string, bundleInfo?: string } | null) => {
-    if (!state) {
-      setPackageIds(null)
-      setBundleInfo(null)
-      return
-    }
-    if (state.packageId) {
-      // Store as JSON array for consistency with existing code
-      setPackageIds(JSON.stringify([state.packageId]))
-    }
-    if (state.bundleInfo) {
-      setBundleInfo(state.bundleInfo)
-    }
-  }
+  const setInstallState = useCallback(
+    (state: { packageId?: string, bundleInfo?: string } | null) => {
+      if (!state) {
+        setPackageIds(null)
+        setBundleInfo(null)
+        return
+      }
+      if (state.packageId) {
+        // Store as JSON array for consistency with existing code
+        setPackageIds(JSON.stringify([state.packageId]))
+      }
+      if (state.bundleInfo) {
+        setBundleInfo(state.bundleInfo)
+      }
+    },
+    [setBundleInfo, setPackageIds],
+  )
 
   // Parse packageIds from JSON array
   const currentPackageId = packageIds
