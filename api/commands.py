@@ -851,6 +851,117 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
 
+@click.command(
+    "archive-workflow-runs",
+    help="Archive workflow runs for paid plan tenants to S3-compatible storage.",
+)
+@click.option("--tenant-id", default=None, help="Optional tenant ID for grayscale rollout.")
+@click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
+@click.option("--batch-size", default=100, show_default=True, help="Batch size for processing.")
+@click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
+@click.option("--dry-run", is_flag=True, help="Preview without archiving.")
+def archive_workflow_runs(
+    tenant_id: str | None,
+    before_days: int,
+    batch_size: int,
+    limit: int | None,
+    dry_run: bool,
+):
+    """
+    Archive workflow runs for paid plan tenants older than the specified days.
+
+    This command archives the following tables to storage:
+    - workflow_node_executions
+    - workflow_node_execution_offload
+    - workflow_pauses
+    - workflow_pause_reasons
+    - workflow_trigger_logs
+
+    The workflow_runs and workflow_app_logs tables are preserved for UI listing.
+    """
+    from services.archive_paid_plan_workflow_run_logs import WorkflowRunArchiver
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(
+        click.style(
+            f"Starting workflow run archiving at {start_time.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    archiver = WorkflowRunArchiver(
+        days=before_days,
+        batch_size=batch_size,
+        tenant_id=tenant_id,
+        limit=limit,
+        dry_run=dry_run,
+    )
+    summary = archiver.run()
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+    click.echo(
+        click.style(
+            f"Workflow run archiving completed. start={start_time.isoformat()} "
+            f"end={end_time.isoformat()} duration={elapsed}",
+            fg="green",
+        )
+    )
+
+
+@click.command(
+    "rollback-archived-run",
+    help="Restore an archived workflow run from S3-compatible storage.",
+)
+@click.option("--tenant-id", required=True, help="Tenant ID.")
+@click.option("--run-id", required=True, help="Workflow run ID to restore.")
+@click.option("--dry-run", is_flag=True, help="Preview without restoring.")
+def rollback_archived_run(
+    tenant_id: str,
+    run_id: str,
+    dry_run: bool,
+):
+    """
+    Restore an archived workflow run from storage to the database.
+
+    This restores the following tables:
+    - workflow_node_executions
+    - workflow_node_execution_offload
+    - workflow_pauses
+    - workflow_pause_reasons
+    - workflow_trigger_logs
+    """
+    from services.rollback_archived_workflow_run import WorkflowRunRollback
+
+    start_time = datetime.datetime.now(datetime.UTC)
+    click.echo(
+        click.style(
+            f"Starting rollback of workflow run {run_id} at {start_time.isoformat()}.",
+            fg="white",
+        )
+    )
+
+    rollback = WorkflowRunRollback(dry_run=dry_run)
+    result = rollback.rollback(tenant_id=tenant_id, workflow_run_id=run_id)
+
+    end_time = datetime.datetime.now(datetime.UTC)
+    elapsed = end_time - start_time
+
+    if result.success:
+        click.echo(
+            click.style(
+                f"Rollback completed successfully. duration={elapsed}",
+                fg="green",
+            )
+        )
+    else:
+        click.echo(
+            click.style(
+                f"Rollback failed: {result.error}. duration={elapsed}",
+                fg="red",
+            )
+        )
+
 
 @click.option("-f", "--force", is_flag=True, help="Skip user confirmation and force the command to execute.")
 @click.command("clear-orphaned-file-records", help="Clear orphaned file records.")

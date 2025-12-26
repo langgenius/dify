@@ -112,7 +112,7 @@ class WorkflowRunArchiver:
         self,
         days: int = 90,
         batch_size: int = 100,
-        tenant_id: str | None = None,
+        tenant_ids: Sequence[str] | None = None,
         limit: int | None = None,
         dry_run: bool = False,
         workflow_run_repo: APIWorkflowRunRepository | None = None,
@@ -123,13 +123,13 @@ class WorkflowRunArchiver:
         Args:
             days: Archive runs older than this many days
             batch_size: Number of runs to process per batch
-            tenant_id: Optional tenant ID for grayscale rollout
+            tenant_ids: Optional tenant IDs for grayscale rollout
             limit: Maximum number of runs to archive (None for unlimited)
             dry_run: If True, only preview without making changes
         """
         self.days = days
         self.batch_size = batch_size
-        self.tenant_id = tenant_id
+        self.tenant_ids = set(tenant_ids) if tenant_ids else set()
         self.limit = limit
         self.dry_run = dry_run
         self.cutoff_date = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
@@ -150,7 +150,7 @@ class WorkflowRunArchiver:
             click.style(
                 f"{'[DRY RUN] ' if self.dry_run else ''}Starting workflow run archiving "
                 f"for runs before {self.cutoff_date.isoformat()} "
-                f"(batch_size={self.batch_size}, tenant_id={self.tenant_id or 'all'})",
+                f"(batch_size={self.batch_size}, tenant_ids={','.join(sorted(self.tenant_ids)) or 'all'})",
                 fg="white",
             )
         )
@@ -198,11 +198,6 @@ class WorkflowRunArchiver:
 
                     # Skip already archived runs
                     if run.is_archived:
-                        summary.runs_skipped += 1
-                        continue
-
-                    # Skip non-target tenant when grayscale is enabled
-                    if self.tenant_id and run.tenant_id != self.tenant_id:
                         summary.runs_skipped += 1
                         continue
 
@@ -257,6 +252,7 @@ class WorkflowRunArchiver:
             end_before=self.cutoff_date,
             last_seen=last_seen,
             batch_size=self.batch_size,
+            tenant_ids=list(self.tenant_ids) if self.tenant_ids else None,
         )
 
     def _filter_paid_tenants(self, tenant_ids: set[str]) -> set[str]:
@@ -339,8 +335,22 @@ class WorkflowRunArchiver:
             # Serialize and upload each table
             table_stats: list[TableStats] = []
             for table_name, records in table_data.items():
-                data = ArchiveStorage.serialize_to_jsonl_gz(records)
                 key = self._get_table_key(run, table_name)
+                if storage.object_exists(key):
+                    # Reuse existing archived data to keep archiving idempotent.
+                    existing_data = storage.get_object(key)
+                    checksum = ArchiveStorage.compute_checksum(existing_data)
+                    table_stats.append(
+                        TableStats(
+                            table_name=table_name,
+                            row_count=len(ArchiveStorage.deserialize_from_jsonl_gz(existing_data)),
+                            checksum=checksum,
+                            size_bytes=len(existing_data),
+                        )
+                    )
+                    continue
+
+                data = ArchiveStorage.serialize_to_jsonl_gz(records)
                 checksum = storage.put_object(key, data)
 
                 table_stats.append(
@@ -475,7 +485,6 @@ class WorkflowRunArchiver:
         """Generate a manifest for the archived workflow run."""
         return {
             "schema_version": "1.0",
-            "created_at": run.created_at.isoformat() if run.created_at else None,
             "archived_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "tables": {
                 stat.table_name: {
@@ -522,8 +531,19 @@ class WorkflowRunArchiver:
                         actual_checksum,
                     )
                     return False
+
+                records = ArchiveStorage.deserialize_from_jsonl_gz(data)
+                expected_count = info.get("row_count", 0)
+                if len(records) != expected_count:
+                    logger.warning(
+                        "Row count mismatch for %s: expected=%s, actual=%s",
+                        key,
+                        expected_count,
+                        len(records),
+                    )
+                    return False
             except Exception as e:
-                logger.warning("Failed to verify checksum for %s: %s", key, e)
+                logger.warning("Failed to verify manifest for %s: %s", key, e)
                 return False
 
         return True

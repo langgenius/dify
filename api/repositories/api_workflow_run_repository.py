@@ -253,6 +253,31 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
+    def get_runs_batch_by_time_range(
+        self,
+        start_after: datetime | None,
+        end_before: datetime,
+        last_seen: tuple[datetime, str] | None,
+        batch_size: int,
+        tenant_ids: Sequence[str] | None = None,
+    ) -> Sequence[WorkflowRun]:
+        """
+        Fetch a batch of workflow runs within a time window using keyset pagination.
+        """
+        ...
+
+    def delete_runs_with_related(
+        self,
+        runs: Sequence[WorkflowRun],
+        delete_node_executions: Callable[[Session, Sequence[WorkflowRun]], tuple[int, int]] | None = None,
+        delete_trigger_logs: Callable[[Session, Sequence[str]], int] | None = None,
+    ) -> dict[str, int]:
+        """
+        Delete workflow runs and their related records (node executions, offloads, app logs,
+        trigger logs, pauses, pause reasons).
+        """
+        ...
+
     def create_workflow_pause(
         self,
         workflow_run_id: str,

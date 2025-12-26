@@ -52,7 +52,7 @@ def archive_workflow_runs_task() -> None:
         archiver = WorkflowRunArchiver(
             days=dify_config.PAID_PLAN_WORKFLOW_RUN_ARCHIVE_RETENTION_DAYS,
             batch_size=dify_config.PAID_PLAN_WORKFLOW_RUN_ARCHIVE_BATCH_SIZE,
-            tenant_id=None,  # Archive all paid tenants
+            tenant_ids=None,  # Archive all paid tenants
             limit=None,  # No limit for scheduled task
             dry_run=False,
         )
