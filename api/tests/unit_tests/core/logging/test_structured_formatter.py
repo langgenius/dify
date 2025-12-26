@@ -239,3 +239,29 @@ class TestStructuredJSONFormatter:
         assert "T" in ts
         # Should have milliseconds
         assert "." in ts
+
+    def test_fallback_for_non_serializable_attributes(self):
+        from core.logging.structured_formatter import StructuredJSONFormatter
+
+        formatter = StructuredJSONFormatter()
+        record = logging.LogRecord(
+            name="test",
+            level=logging.INFO,
+            pathname="test.py",
+            lineno=1,
+            msg="Test with non-serializable",
+            args=(),
+            exc_info=None,
+        )
+        # Set is not serializable by orjson
+        record.attributes = {"items": {1, 2, 3}, "custom": object()}
+
+        # Should not raise, fallback to json.dumps with default=str
+        output = formatter.format(record)
+
+        # Verify it's valid JSON (parsed by stdlib json since orjson may fail)
+        import json
+
+        log_dict = json.loads(output)
+        assert log_dict["message"] == "Test with non-serializable"
+        assert "attributes" in log_dict

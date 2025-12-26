@@ -41,7 +41,13 @@ class StructuredJSONFormatter(logging.Formatter):
 
     def format(self, record: logging.LogRecord) -> str:
         log_dict = self._build_log_dict(record)
-        return orjson.dumps(log_dict).decode("utf-8")
+        try:
+            return orjson.dumps(log_dict).decode("utf-8")
+        except TypeError:
+            # Fallback: convert non-serializable objects to string
+            import json
+
+            return json.dumps(log_dict, default=str, ensure_ascii=False)
 
     def _build_log_dict(self, record: logging.LogRecord) -> dict[str, Any]:
         # Core fields
