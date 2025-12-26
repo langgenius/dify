@@ -305,7 +305,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
     }))
   }, [setInputs])
 
-  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+  const handleAddCondition = useCallback<HandleAddCondition>(({ id, name, type }) => {
     let operator: ComparisonOperator = ComparisonOperator.is
 
     if (type === MetadataFilteringVariableType.number)
@@ -313,6 +313,7 @@ const useConfig = (id: string, payload: KnowledgeRetrievalNodeType) => {
 
     const newCondition = {
       id: uuid4(),
+      metadata_id: id, // Save metadata.id for reliable reference
       name,
       comparison_operator: operator,
     }
