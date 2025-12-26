@@ -1,26 +1,27 @@
-import React from 'react'
+import type { Mock } from 'vitest'
+import type { FeatureStoreState } from '@/app/components/base/features/store'
+import type { FileUpload } from '@/app/components/base/features/types'
 import { fireEvent, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { Resolution, TransferMethod } from '@/types/app'
 import ConfigVision from './index'
 import ParamConfig from './param-config'
 import ParamConfigContent from './param-config-content'
-import type { FeatureStoreState } from '@/app/components/base/features/store'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { Resolution, TransferMethod } from '@/types/app'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 
-const mockUseContext = jest.fn()
-jest.mock('use-context-selector', () => {
-  const actual = jest.requireActual('use-context-selector')
+const mockUseContext = vi.fn()
+vi.mock('use-context-selector', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('use-context-selector')>()
   return {
     ...actual,
     useContext: (context: unknown) => mockUseContext(context),
   }
 })
 
-const mockUseFeatures = jest.fn()
-const mockUseFeaturesStore = jest.fn()
-jest.mock('@/app/components/base/features/hooks', () => ({
+const mockUseFeatures = vi.fn()
+const mockUseFeaturesStore = vi.fn()
+vi.mock('@/app/components/base/features/hooks', () => ({
   useFeatures: (selector: (state: FeatureStoreState) => any) => mockUseFeatures(selector),
   useFeaturesStore: () => mockUseFeaturesStore(),
 }))
@@ -39,7 +40,7 @@ const defaultFile: FileUpload = {
 }
 
 let featureStoreState: FeatureStoreState
-let setFeaturesMock: jest.Mock
+let setFeaturesMock: Mock
 
 const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
   const mergedFile: FileUpload = {
@@ -54,11 +55,11 @@ const setupFeatureStore = (fileOverrides: Partial<FileUpload> = {}) => {
     features: {
       file: mergedFile,
     },
-    setFeatures: jest.fn(),
+    setFeatures: vi.fn(),
     showFeaturesModal: false,
-    setShowFeaturesModal: jest.fn(),
+    setShowFeaturesModal: vi.fn(),
   }
-  setFeaturesMock = featureStoreState.setFeatures as jest.Mock
+  setFeaturesMock = featureStoreState.setFeatures as Mock
   mockUseFeaturesStore.mockReturnValue({
     getState: () => featureStoreState,
   })
@@ -72,7 +73,7 @@ const getLatestFileConfig = () => {
 }
 
 beforeEach(() => {
-  jest.clearAllMocks()
+  vi.clearAllMocks()
   mockUseContext.mockReturnValue({
     isShowVisionConfig: true,
     isAllowVideoUpload: false,

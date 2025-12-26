@@ -1,16 +1,16 @@
-import { render, screen } from '@testing-library/react'
-import React from 'react'
-import Processing from './index'
-import type { InitialDocumentDetail } from '@/models/pipeline'
-import { DatasourceType } from '@/models/pipeline'
 import type { DocumentIndexingStatus } from '@/models/datasets'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { DatasourceType } from '@/models/pipeline'
+import Processing from './index'
 
 // ==========================================
 // Mock External Dependencies
 // ==========================================
 
-// Mock react-i18next (handled by __mocks__/react-i18next.ts but we override for custom messages)
-jest.mock('react-i18next', () => ({
+// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
+vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
   }),
@@ -18,7 +18,7 @@ jest.mock('react-i18next', () => ({
 
 // Mock useDocLink - returns a function that generates doc URLs
 // Strips leading slash from path to match actual implementation behavior
-jest.mock('@/context/i18n', () => ({
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => (path?: string) => {
     const normalizedPath = path?.startsWith('/') ? path.slice(1) : (path || '')
     return `https://docs.dify.ai/en-US/${normalizedPath}`
@@ -32,7 +32,7 @@ let mockDataset: {
   retrieval_model_dict?: { search_method?: string }
 } | undefined
 
-jest.mock('@/context/dataset-detail', () => ({
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: <T,>(selector: (state: { dataset?: typeof mockDataset }) => T): T => {
     return selector({ dataset: mockDataset })
   },
@@ -40,7 +40,7 @@ jest.mock('@/context/dataset-detail', () => ({
 
 // Mock the EmbeddingProcess component to track props
 let embeddingProcessProps: Record<string, unknown> = {}
-jest.mock('./embedding-process', () => ({
+vi.mock('./embedding-process', () => ({
   __esModule: true,
   default: (props: Record<string, unknown>) => {
     embeddingProcessProps = props
@@ -86,8 +86,7 @@ const createMockDocuments = (count: number): InitialDocumentDetail[] =>
       id: `doc-${index + 1}`,
       name: `document-${index + 1}.txt`,
       position: index,
-    }),
-  )
+    }))
 
 // ==========================================
 // Test Suite
@@ -95,7 +94,7 @@ const createMockDocuments = (count: number): InitialDocumentDetail[] =>
 
 describe('Processing', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     embeddingProcessProps = {}
     // Reset deterministic ID counter for reproducible tests
     documentIdCounter = 0

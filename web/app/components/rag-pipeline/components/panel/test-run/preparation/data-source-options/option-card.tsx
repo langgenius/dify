@@ -1,9 +1,10 @@
-import React, { useCallback } from 'react'
-import { cn } from '@/utils/classnames'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import * as React from 'react'
+import { useCallback } from 'react'
+import BlockIcon from '@/app/components/workflow/block-icon'
 import { useToolIcon } from '@/app/components/workflow/hooks'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type OptionCardProps = {
   label: string
@@ -36,7 +37,7 @@ const OptionCard = ({
       )}
       onClick={handleClickCard}
     >
-      <div className='flex size-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1'>
+      <div className="flex size-7 shrink-0 items-center justify-center rounded-lg border-[0.5px] border-components-panel-border bg-background-default-dodge p-1">
         <BlockIcon
           type={BlockEnum.DataSource}
           toolIcon={toolIcon}

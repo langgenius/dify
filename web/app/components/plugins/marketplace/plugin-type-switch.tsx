@@ -1,6 +1,4 @@
 'use client'
-import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
-import { cn } from '@/utils/classnames'
 import {
   RiArchive2Line,
   RiBrain2Line,
@@ -10,6 +8,8 @@ import {
   RiSpeakAiLine,
 } from '@remixicon/react'
 import { useCallback, useEffect } from 'react'
+import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
+import { cn } from '@/utils/classnames'
 import { PluginCategoryEnum } from '../types'
 import { useMarketplaceContext } from './context'
 import { useMixedTranslation } from './hooks'
@@ -47,37 +47,37 @@ const PluginTypeSwitch = ({
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
       text: t('plugin.category.models'),
-      icon: <RiBrain2Line className='mr-1.5 h-4 w-4' />,
+      icon: <RiBrain2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
       text: t('plugin.category.tools'),
-      icon: <RiHammerLine className='mr-1.5 h-4 w-4' />,
+      icon: <RiHammerLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
       text: t('plugin.category.datasources'),
-      icon: <RiDatabase2Line className='mr-1.5 h-4 w-4' />,
+      icon: <RiDatabase2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
       text: t('plugin.category.triggers'),
-      icon: <TriggerIcon className='mr-1.5 h-4 w-4' />,
+      icon: <TriggerIcon className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
       text: t('plugin.category.agents'),
-      icon: <RiSpeakAiLine className='mr-1.5 h-4 w-4' />,
+      icon: <RiSpeakAiLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
       text: t('plugin.category.extensions'),
-      icon: <RiPuzzle2Line className='mr-1.5 h-4 w-4' />,
+      icon: <RiPuzzle2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
       text: t('plugin.category.bundles'),
-      icon: <RiArchive2Line className='mr-1.5 h-4 w-4' />,
+      icon: <RiArchive2Line className="mr-1.5 h-4 w-4" />,
     },
   ]
 
@@ -100,7 +100,8 @@ const PluginTypeSwitch = ({
     <div className={cn(
       'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
       className,
-    )}>
+    )}
+    >
       {
         options.map(option => (
           <div

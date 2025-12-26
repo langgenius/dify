@@ -1,8 +1,15 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   ModelProvider,
 } from '../declarations'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
+import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
+import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
+import Indicator from '@/app/components/header/indicator'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { changeModelProviderPriority } from '@/service/common'
+import { cn } from '@/utils/classnames'
 import {
   ConfigurationMethodEnum,
   CustomConfigurationStatusEnum,
@@ -12,16 +19,9 @@ import {
   useUpdateModelList,
   useUpdateModelProviders,
 } from '../hooks'
+import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
 import PrioritySelector from './priority-selector'
 import PriorityUseTip from './priority-use-tip'
-import { UPDATE_MODEL_PROVIDER_CUSTOM_MODEL_LIST } from './index'
-import Indicator from '@/app/components/header/indicator'
-import { changeModelProviderPriority } from '@/service/common'
-import { useToastContext } from '@/app/components/base/toast'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { cn } from '@/utils/classnames'
-import { useCredentialStatus } from '@/app/components/header/account-setting/model-provider-page/model-auth/hooks'
-import { ConfigProvider } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 
 type CredentialPanelProps = {
   provider: ModelProvider
@@ -95,8 +95,9 @@ const CredentialPanel = ({
           <div className={cn(
             'relative ml-1 w-[120px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] p-1',
             authRemoved && 'border-state-destructive-border bg-state-destructive-hover',
-          )}>
-            <div className='system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary'>
+          )}
+          >
+            <div className="system-xs-medium mb-1 flex h-5 items-center justify-between pl-2 pr-[7px] pt-1 text-text-tertiary">
               <div
                 className={cn(
                   'grow truncate',
@@ -106,9 +107,9 @@ const CredentialPanel = ({
               >
                 {credentialLabel}
               </div>
-              <Indicator className='shrink-0' color={color} />
+              <Indicator className="shrink-0" color={color} />
             </div>
-            <div className='flex items-center gap-0.5'>
+            <div className="flex items-center gap-0.5">
               <ConfigProvider
                 provider={provider}
               />
@@ -131,7 +132,7 @@ const CredentialPanel = ({
       }
       {
         systemConfig.enabled && isCustomConfigured && !provider.provider_credential_schema && (
-          <div className='ml-1'>
+          <div className="ml-1">
             <PrioritySelector
               value={priorityUseType}
               onSelect={handleChangePriority}

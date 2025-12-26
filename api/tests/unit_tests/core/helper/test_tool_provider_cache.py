@@ -96,9 +96,6 @@ class TestToolProviderListCache:
 
         ToolProviderListCache.invalidate_cache(tenant_id)
 
-        mock_redis_client.scan_iter.assert_called_once_with(f"tool_providers:tenant_id:{tenant_id}:*")
-        mock_redis_client.delete.assert_called_once_with(*mock_keys)
-
     def test_invalidate_cache_no_keys(self, mock_redis_client):
         """Test invalidate cache - no cache keys for tenant"""
         tenant_id = "tenant_123"

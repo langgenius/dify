@@ -1,12 +1,16 @@
-const fs = require('node:fs')
-const path = require('node:path')
-const vm = require('node:vm')
-const transpile = require('typescript').transpile
-const magicast = require('magicast')
-const { parseModule, generateCode, loadFile } = magicast
-const bingTranslate = require('bing-translate-api')
-const { translate } = bingTranslate
-const data = require('./languages.json')
+import fs from 'node:fs'
+import { createRequire } from 'node:module'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import vm from 'node:vm'
+import { translate } from 'bing-translate-api'
+import { generateCode, loadFile, parseModule } from 'magicast'
+import { transpile } from 'typescript'
+import data from './languages'
+
+const require = createRequire(import.meta.url)
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const targetLanguage = 'en-US'
 const i18nFolder = '../i18n' // Path to i18n folder relative to this script
@@ -38,7 +42,8 @@ function parseArgs(argv) {
     let cursor = startIndex + 1
     while (cursor < argv.length && !argv[cursor].startsWith('--')) {
       const value = argv[cursor].trim()
-      if (value) values.push(value)
+      if (value)
+        values.push(value)
       cursor++
     }
     return { values, nextIndex: cursor - 1 }
@@ -112,8 +117,8 @@ Options:
   -h, --help        Show help
 
 Examples:
-  pnpm run auto-gen-i18n -- --file app common --lang zh-Hans ja-JP
-  pnpm run auto-gen-i18n -- --dry-run
+  pnpm run auto-gen-i18n --file app common --lang zh-Hans ja-JP
+  pnpm run auto-gen-i18n --dry-run
 `)
 }
 
@@ -123,7 +128,7 @@ function protectPlaceholders(text) {
   const patterns = [
     /\{\{[^{}]+\}\}/g, // mustache
     /\$\{[^{}]+\}/g, // template expressions
-    /<[^>]+?>/g, // html-like tags
+    /<[^>]+>/g, // html-like tags
   ]
 
   patterns.forEach((pattern) => {
@@ -156,7 +161,7 @@ async function translateText(source, toLanguage) {
     const { translation } = await translate(safeText, null, languageKeyMap[toLanguage])
     return { value: restore(translation), skipped: false }
   }
- catch (error) {
+  catch (error) {
     console.error(`❌ Error translating to ${toLanguage}:`, error.message)
     return { value: source, skipped: true, error: error.message }
   }
@@ -306,7 +311,7 @@ export default translation
     }
 
     const { code } = generateCode(mod)
-    let res = `const translation =${code.replace('export default', '')}
+    const res = `const translation =${code.replace('export default', '')}
 
 export default translation
 `.replace(/,\n\n/g, ',\n').replace('};', '}')
@@ -315,13 +320,13 @@ export default translation
       fs.writeFileSync(toGenLanguageFilePath, res)
       console.log(`💾 Saved translations to ${toGenLanguageFilePath}`)
     }
- else {
+    else {
       console.log(`🔍 [DRY RUN] Would save translations to ${toGenLanguageFilePath}`)
     }
 
     return result
   }
- catch (error) {
+  catch (error) {
     console.error(`Error processing file ${fullKeyFilePath}:`, error.message)
     throw error
   }

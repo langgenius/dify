@@ -1,9 +1,9 @@
+import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
+import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
-import 'katex/dist/katex.min.css'
-import { flow } from 'lodash-es'
 import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'
-import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
+import 'katex/dist/katex.min.css'
 
 const ReactMarkdown = dynamic(() => import('./react-markdown-wrapper').then(mod => mod.ReactMarkdownWrapper), { ssr: false })
 

@@ -1,29 +1,29 @@
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import Header from './index'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock store - required by Breadcrumbs component
 const mockStoreState = {
   hasBucket: false,
-  setOnlineDriveFileList: jest.fn(),
-  setSelectedFileIds: jest.fn(),
-  setBreadcrumbs: jest.fn(),
-  setPrefix: jest.fn(),
-  setBucket: jest.fn(),
+  setOnlineDriveFileList: vi.fn(),
+  setSelectedFileIds: vi.fn(),
+  setBreadcrumbs: vi.fn(),
+  setPrefix: vi.fn(),
+  setBucket: vi.fn(),
   breadcrumbs: [],
   prefix: [],
 }
 
-const mockGetState = jest.fn(() => mockStoreState)
+const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
-jest.mock('../../../store', () => ({
+vi.mock('../../../store', () => ({
   useDataSourceStore: () => mockDataSourceStore,
   useDataSourceStoreWithSelector: (selector: (s: typeof mockStoreState) => unknown) => selector(mockStoreState),
 }))
@@ -39,8 +39,8 @@ const createDefaultProps = (overrides?: Partial<HeaderProps>): HeaderProps => ({
   keywords: '',
   bucket: '',
   searchResultsLength: 0,
-  handleInputChange: jest.fn(),
-  handleResetKeywords: jest.fn(),
+  handleInputChange: vi.fn(),
+  handleResetKeywords: vi.fn(),
   isInPipeline: false,
   ...overrides,
 })
@@ -50,11 +50,11 @@ const createDefaultProps = (overrides?: Partial<HeaderProps>): HeaderProps => ({
 // ==========================================
 const resetMockStoreState = () => {
   mockStoreState.hasBucket = false
-  mockStoreState.setOnlineDriveFileList = jest.fn()
-  mockStoreState.setSelectedFileIds = jest.fn()
-  mockStoreState.setBreadcrumbs = jest.fn()
-  mockStoreState.setPrefix = jest.fn()
-  mockStoreState.setBucket = jest.fn()
+  mockStoreState.setOnlineDriveFileList = vi.fn()
+  mockStoreState.setSelectedFileIds = vi.fn()
+  mockStoreState.setBreadcrumbs = vi.fn()
+  mockStoreState.setPrefix = vi.fn()
+  mockStoreState.setBucket = vi.fn()
   mockStoreState.breadcrumbs = []
   mockStoreState.prefix = []
 }
@@ -64,7 +64,7 @@ const resetMockStoreState = () => {
 // ==========================================
 describe('Header', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
     resetMockStoreState()
   })
 
@@ -333,7 +333,7 @@ describe('Header', () => {
     describe('handleInputChange', () => {
       it('should call handleInputChange when input value changes', () => {
         // Arrange
-        const mockHandleInputChange = jest.fn()
+        const mockHandleInputChange = vi.fn()
         const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
         render(<Header {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -349,7 +349,7 @@ describe('Header', () => {
 
       it('should call handleInputChange on each keystroke', () => {
         // Arrange
-        const mockHandleInputChange = jest.fn()
+        const mockHandleInputChange = vi.fn()
         const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
         render(<Header {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -365,7 +365,7 @@ describe('Header', () => {
 
       it('should handle empty string input', () => {
         // Arrange
-        const mockHandleInputChange = jest.fn()
+        const mockHandleInputChange = vi.fn()
         const props = createDefaultProps({ inputValue: 'existing', handleInputChange: mockHandleInputChange })
         render(<Header {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -380,7 +380,7 @@ describe('Header', () => {
 
       it('should handle whitespace-only input', () => {
         // Arrange
-        const mockHandleInputChange = jest.fn()
+        const mockHandleInputChange = vi.fn()
         const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
         render(<Header {...props} />)
         const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -397,7 +397,7 @@ describe('Header', () => {
     describe('handleResetKeywords', () => {
       it('should call handleResetKeywords when clear icon is clicked', () => {
         // Arrange
-        const mockHandleResetKeywords = jest.fn()
+        const mockHandleResetKeywords = vi.fn()
         const props = createDefaultProps({
           inputValue: 'to-clear',
           handleResetKeywords: mockHandleResetKeywords,
@@ -446,8 +446,8 @@ describe('Header', () => {
 
     it('should not re-render when props are the same', () => {
       // Arrange
-      const mockHandleInputChange = jest.fn()
-      const mockHandleResetKeywords = jest.fn()
+      const mockHandleInputChange = vi.fn()
+      const mockHandleResetKeywords = vi.fn()
       const props = createDefaultProps({
         handleInputChange: mockHandleInputChange,
         handleResetKeywords: mockHandleResetKeywords,
@@ -571,7 +571,7 @@ describe('Header', () => {
 
     it('should pass the event object to handleInputChange callback', () => {
       // Arrange
-      const mockHandleInputChange = jest.fn()
+      const mockHandleInputChange = vi.fn()
       const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
       render(<Header {...props} />)
       const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -664,8 +664,8 @@ describe('Header', () => {
 
     it('should pass correct props to Input component', () => {
       // Arrange
-      const mockHandleInputChange = jest.fn()
-      const mockHandleResetKeywords = jest.fn()
+      const mockHandleInputChange = vi.fn()
+      const mockHandleResetKeywords = vi.fn()
       const props = createDefaultProps({
         inputValue: 'test-input',
         handleInputChange: mockHandleInputChange,
@@ -691,7 +691,7 @@ describe('Header', () => {
   describe('Callback Stability', () => {
     it('should maintain stable handleInputChange callback after rerender', () => {
       // Arrange
-      const mockHandleInputChange = jest.fn()
+      const mockHandleInputChange = vi.fn()
       const props = createDefaultProps({ handleInputChange: mockHandleInputChange })
       const { rerender } = render(<Header {...props} />)
       const input = screen.getByPlaceholderText('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')
@@ -707,7 +707,7 @@ describe('Header', () => {
 
     it('should maintain stable handleResetKeywords callback after rerender', () => {
       // Arrange
-      const mockHandleResetKeywords = jest.fn()
+      const mockHandleResetKeywords = vi.fn()
       const props = createDefaultProps({
         inputValue: 'to-clear',
         handleResetKeywords: mockHandleResetKeywords,

@@ -1,8 +1,9 @@
 'use client'
+import type { FC } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
 import { cn } from '@/utils/classnames'
-import type { FC } from 'react'
-import React, { useState } from 'react'
 import s from './style.module.css'
 
 type Props = {
@@ -37,22 +38,26 @@ const ImageGallery: FC<Props> = ({
   return (
     <div className={cn(s[`img-${imgNum}`], 'flex flex-wrap')}>
       {srcs.map((src, index) => (
-        !src ? null : <img
-          key={index}
-          className={s.item}
-          style={imgStyle}
-          src={src}
-          alt=''
-          onClick={() => setImagePreviewUrl(src)}
-          onError={e => e.currentTarget.remove()}
-        />
+        !src
+          ? null
+          : (
+              <img
+                key={index}
+                className={s.item}
+                style={imgStyle}
+                src={src}
+                alt=""
+                onClick={() => setImagePreviewUrl(src)}
+                onError={e => e.currentTarget.remove()}
+              />
+            )
       ))}
       {
         imagePreviewUrl && (
           <ImagePreview
             url={imagePreviewUrl}
             onCancel={() => setImagePreviewUrl('')}
-            title={''}
+            title=""
           />
         )
       }
@@ -73,9 +78,9 @@ export const ImageGalleryTest = () => {
     return srcs
   })()
   return (
-    <div className='space-y-2'>
+    <div className="space-y-2">
       {imgGallerySrcs.map((_, index) => (
-        <div key={index} className='rounded-lg bg-[#D1E9FF80] p-4 pb-2'>
+        <div key={index} className="rounded-lg bg-[#D1E9FF80] p-4 pb-2">
           <ImageGallery srcs={imgGallerySrcs.slice(0, index + 1)} />
         </div>
       ))}

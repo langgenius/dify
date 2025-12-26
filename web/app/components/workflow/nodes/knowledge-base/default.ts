@@ -1,8 +1,8 @@
 import type { NodeDefault } from '../../types'
 import type { KnowledgeBaseNodeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
 
 const metaData = genNodeMetaData({
   sort: 3.1,

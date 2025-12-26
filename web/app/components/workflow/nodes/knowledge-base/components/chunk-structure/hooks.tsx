@@ -1,3 +1,4 @@
+import type { Option } from './type'
 import { useTranslation } from 'react-i18next'
 import {
   GeneralChunk,
@@ -6,7 +7,6 @@ import {
 } from '@/app/components/base/icons/src/vender/knowledge'
 import { cn } from '@/utils/classnames'
 import { ChunkStructureEnum } from '../../types'
-import type { Option } from './type'
 
 export const useChunkStructure = () => {
   const { t } = useTranslation()
@@ -17,7 +17,8 @@ export const useChunkStructure = () => {
         className={cn(
           'h-[18px] w-[18px] text-text-tertiary group-hover:text-util-colors-indigo-indigo-600',
           isActive && 'text-util-colors-indigo-indigo-600',
-        )} />
+        )}
+      />
     ),
     title: t('datasetCreation.stepTwo.general'),
     description: t('datasetCreation.stepTwo.generalTip'),

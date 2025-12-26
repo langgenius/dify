@@ -1,9 +1,9 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
 import type { IConfirm } from '@/app/components/base/confirm'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 import { useNotionBinding } from '@/service/use-common'
 
@@ -102,7 +102,7 @@ export const CheckModal = () => {
       onCancel={handleCancelShowPayStatusModal}
       onConfirm={handleCancelShowPayStatusModal}
       showCancel={false}
-      type={confirmInfo.type === 'info' ? 'info' : 'warning' }
+      type={confirmInfo.type === 'info' ? 'info' : 'warning'}
       title={confirmInfo.title}
       content={(confirmInfo as unknown as { desc: string }).desc || ''}
       confirmText={(confirmInfo.type === 'info' && t('common.operation.ok')) || ''}
