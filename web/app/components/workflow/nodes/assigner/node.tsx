@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { AssignerNodeType } from './types'
+import type { OperationName } from './utils'
 import type { Node, NodeProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -59,7 +60,8 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
     )
   }
   // Legacy version
-  const { assigned_variable_selector: variable, write_mode: writeMode } = data as any
+  type LegacyAssignerNodeType = { assigned_variable_selector: string[], write_mode: OperationName }
+  const { assigned_variable_selector: variable, write_mode: writeMode } = data as unknown as LegacyAssignerNodeType
 
   if (!variable || variable.length === 0)
     return null
@@ -73,7 +75,7 @@ const NodeComponent: FC<NodeProps<AssignerNodeType>> = ({
         nodeType={node?.data.type}
         nodeTitle={node?.data.title}
         rightSlot={
-          writeMode && <Badge className="!ml-auto shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}` as any, { ns: 'workflow' }) as string} />
+          writeMode && <Badge className="!ml-auto shrink-0" text={t(`nodes.assigner.operations.${writeMode}`, { ns: 'workflow' })} />
         }
       />
     </div>

@@ -513,6 +513,8 @@
   "nodes.ifElse.comparisonOperator.in": "in",
   "nodes.ifElse.comparisonOperator.is": "is",
   "nodes.ifElse.comparisonOperator.is not": "is not",
+  "nodes.ifElse.comparisonOperator.is not null": "is not null",
+  "nodes.ifElse.comparisonOperator.is null": "is null",
   "nodes.ifElse.comparisonOperator.not contains": "not contains",
   "nodes.ifElse.comparisonOperator.not empty": "is not empty",
   "nodes.ifElse.comparisonOperator.not exists": "not exists",
