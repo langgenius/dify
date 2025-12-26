@@ -151,11 +151,11 @@ class DatasetDocumentSegmentListApi(Resource):
                 # PostgreSQL: Use jsonb_array_elements_text to properly handle Unicode/Chinese text
                 keywords_condition = func.array_to_string(
                     func.array(
-                        select(
-                            func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB))
-                        ).correlate(DocumentSegment).scalar_subquery()
+                        select(func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB)))
+                        .correlate(DocumentSegment)
+                        .scalar_subquery()
                     ),
-                    ","
+                    ",",
                 ).ilike(f"%{keyword}%")
             else:
                 # MySQL: Cast JSON to string for pattern matching
