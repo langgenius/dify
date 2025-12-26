@@ -1219,7 +1219,7 @@ class DatasetRetrieval:
 
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
-            case "in":
+            case "in" | "not in":
                 if isinstance(value, str):
                     value_list = [v.strip() for v in value.split(",") if v.strip()]
                 elif isinstance(value, (list, tuple)):
@@ -1228,9 +1228,11 @@ class DatasetRetrieval:
                     value_list = [str(value)] if value is not None else []
 
                 if not value_list:
-                    filters.append(literal(False))
+                    # `field in []` is False, `field not in []` is True
+                    filters.append(literal(condition == "not in"))
                 else:
-                    filters.append(json_field.in_(value_list))
+                    op = json_field.in_ if condition == "in" else json_field.notin_
+                    filters.append(op(value_list))
             case _:
                 pass
 
