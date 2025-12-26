@@ -9,7 +9,7 @@ import type {
   Node,
   ValueSelector,
 } from '../types'
-import { uniqBy } from 'lodash-es'
+import { uniqBy } from 'es-toolkit/compat'
 import {
   useCallback,
 } from 'react'

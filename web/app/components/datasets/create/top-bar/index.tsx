@@ -39,7 +39,7 @@ export const TopBar: FC<TopBarProps> = (props) => {
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <Stepper
           steps={Array.from({ length: 3 }, (_, i) => ({
-            name: t(STEP_T_MAP[i + 1]),
+            name: t(STEP_T_MAP[i + 1] as any) as string,
           }))}
           {...rest}
         />

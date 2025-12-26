@@ -75,7 +75,7 @@ const CSVUploader: FC<Props> = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t as any)
         notify({ type: 'error', message: errorMessage })
         const errorFile = {
           ...fileItem,

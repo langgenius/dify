@@ -7,7 +7,7 @@ import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import Link from 'next/link'
 import {
   useRouter,

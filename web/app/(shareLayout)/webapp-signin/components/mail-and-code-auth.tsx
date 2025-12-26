@@ -1,4 +1,4 @@
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'

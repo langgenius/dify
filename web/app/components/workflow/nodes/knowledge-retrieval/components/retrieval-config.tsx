@@ -2,6 +2,7 @@
 import type { FC } from 'react'
 import type { ModelConfig } from '../../../types'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
+import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { RiEqualizer2Line } from '@remixicon/react'
@@ -28,8 +29,8 @@ type Props = {
   onRetrievalModeChange: (mode: RETRIEVE_TYPE) => void
   onMultipleRetrievalConfigChange: (config: MultipleRetrievalConfig) => void
   singleRetrievalModelConfig?: ModelConfig
-  onSingleRetrievalModelChange?: (config: ModelConfig) => void
-  onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
+  onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
+  onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
   readonly?: boolean
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
