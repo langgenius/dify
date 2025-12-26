@@ -2,9 +2,11 @@ import logging
 import time
 
 from opentelemetry.trace import get_current_span
+from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
 
 from configs import dify_config
 from contexts.wrapper import RecyclableContextVar
+from core.logging.context import init_request_context
 from dify_app import DifyApp
 
 logger = logging.getLogger(__name__)
@@ -26,8 +28,6 @@ def create_flask_app_with_configs() -> DifyApp:
     @dify_app.before_request
     def before_request():
         # Initialize logging context for this request
-        from core.logging.context import init_request_context
-
         init_request_context()
         RecyclableContextVar.increment_thread_recycles()
 
@@ -36,8 +36,6 @@ def create_flask_app_with_configs() -> DifyApp:
     @dify_app.after_request
     def add_trace_headers(response):
         try:
-            from opentelemetry.trace.span import INVALID_SPAN_ID, INVALID_TRACE_ID
-
             span = get_current_span()
             ctx = span.get_span_context() if span else None
 
