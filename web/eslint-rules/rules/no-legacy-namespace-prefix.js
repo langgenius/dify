@@ -310,11 +310,15 @@ export default {
                     fixes.push(fixer.insertTextBefore(firstProp, `ns: '${ns}', `))
                   }
                 }
+                else if (hasSecondArg && secondArg.type === 'Literal' && typeof secondArg.value === 'string') {
+                  // Second arg is a string (default value): 'default' -> { ns: 'xxx', defaultValue: 'default' }
+                  fixes.push(fixer.replaceText(secondArg, `{ ns: '${ns}', defaultValue: ${sourceCode.getText(secondArg)} }`))
+                }
                 else if (!hasSecondArg) {
                   // No second argument, add new object
                   fixes.push(fixer.insertTextAfter(originalFirstArg, `, { ns: '${ns}' }`))
                 }
-                // If second arg exists but is not an object, skip (can't safely add ns)
+                // If second arg exists but is not an object or string, skip (can't safely add ns)
               }
 
               if (firstArg.type === 'Literal' && typeof firstArg.value === 'string') {
