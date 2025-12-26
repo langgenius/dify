@@ -119,7 +119,7 @@ describe('useQueryParams hooks', () => {
       expect(update.searchParams.has(PRICING_MODAL_QUERY_PARAM)).toBe(false)
     })
 
-    it('should use replace history when closing', async () => {
+    it('should use push history when closing', async () => {
       // Arrange
       const { result, onUrlUpdate } = renderWithAdapter(
         () => usePricingModal(),
@@ -134,7 +134,7 @@ describe('useQueryParams hooks', () => {
       // Assert
       await waitFor(() => expect(onUrlUpdate).toHaveBeenCalled())
       const update = onUrlUpdate.mock.calls[onUrlUpdate.mock.calls.length - 1][0]
-      expect(update.options.history).toBe('replace')
+      expect(update.options.history).toBe('push')
     })
 
     it('should respect explicit history options when provided', async () => {

@@ -34,6 +34,8 @@ const parseAsPricingModal = createParser<boolean>({
   parse: value => (value === PRICING_MODAL_QUERY_VALUE ? true : null),
   serialize: value => (value ? PRICING_MODAL_QUERY_VALUE : ''),
 })
+  .withDefault(false)
+  .withOptions({ history: 'push' })
 
 /**
  * Hook to manage pricing modal state via URL
@@ -47,13 +49,12 @@ const parseAsPricingModal = createParser<boolean>({
 export function usePricingModal() {
   const [isOpen, setIsOpenState] = useQueryState(
     PRICING_MODAL_QUERY_PARAM,
-    parseAsPricingModal.withDefault(false),
+    parseAsPricingModal,
   )
 
   const setIsOpen = useCallback(
     (open: boolean, options?: Options) => {
-      const history = options?.history ?? (open ? 'push' : 'replace')
-      setIsOpenState(open ? true : null, { ...options, history })
+      setIsOpenState(open, options)
     },
     [setIsOpenState],
   )
