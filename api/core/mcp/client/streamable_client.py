@@ -319,9 +319,9 @@ class StreamableHTTPTransport:
                 content_type = cast(str, response.headers.get(CONTENT_TYPE, "").lower())
 
                 if content_type.startswith(JSON):
-                    self._handle_json_response(response, ctx.server_to_client_queue, is_initialization)
+                    self._handle_json_response(response, ctx.server_to_client_queue)
                 elif content_type.startswith(SSE):
-                    self._handle_sse_response(response, ctx, is_initialization)
+                    self._handle_sse_response(response, ctx)
                 else:
                     self._handle_unexpected_content_type(
                         content_type,
