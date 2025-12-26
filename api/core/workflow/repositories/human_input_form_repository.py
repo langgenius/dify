@@ -4,7 +4,8 @@ from collections.abc import Mapping
 from datetime import datetime
 from typing import Any, Protocol
 
-from core.workflow.nodes.human_input.entities import HumanInputFormStatus, HumanInputNodeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 
 
 class HumanInputError(Exception):

@@ -17,7 +17,8 @@ from core.workflow.workflow_type_encoder import WorkflowRuntimeTypeConverter
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 
-from .entities import HumanInputFormStatus, HumanInputNodeData, PlaceholderType
+from .entities import HumanInputNodeData
+from .enums import HumanInputFormStatus, PlaceholderType
 
 if TYPE_CHECKING:
     from core.workflow.entities.graph_init_params import GraphInitParams

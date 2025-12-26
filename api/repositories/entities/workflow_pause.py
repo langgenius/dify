@@ -10,9 +10,6 @@ from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from datetime import datetime
 
-from .pause_reason import PauseReason
-
-
 from core.workflow.entities.pause_reason import PauseReason
 
 

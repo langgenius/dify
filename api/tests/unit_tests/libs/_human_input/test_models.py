@@ -8,9 +8,11 @@ import pytest
 
 from core.workflow.nodes.human_input.entities import (
     FormInput,
+    UserAction,
+)
+from core.workflow.nodes.human_input.enums import (
     FormInputType,
     TimeoutUnit,
-    UserAction,
 )
 
 from .support import FormSubmissionData, FormSubmissionRequest, HumanInputForm

@@ -7,9 +7,11 @@ from datetime import UTC, datetime, timedelta
 from core.entities.execution_extra_content import HumanInputContent as HumanInputContentDomain
 from core.workflow.nodes.human_input.entities import (
     FormDefinition,
+    UserAction,
+)
+from core.workflow.nodes.human_input.enums import (
     HumanInputFormStatus,
     TimeoutUnit,
-    UserAction,
 )
 from models.execution_extra_content import HumanInputContent as HumanInputContentModel
 from models.human_input import HumanInputForm

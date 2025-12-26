@@ -7,7 +7,7 @@ from dataclasses import dataclass
 from datetime import datetime
 from typing import Any
 
-from core.workflow.nodes.human_input.entities import HumanInputFormStatus
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
     HumanInputFormEntity,

@@ -2,12 +2,10 @@
 Human Input node entities.
 """
 
-import enum
 import re
 import uuid
 from collections.abc import Mapping, Sequence
 from datetime import datetime, timedelta
-from enum import StrEnum
 from typing import Annotated, Any, ClassVar, Literal, Optional, Self
 
 from pydantic import BaseModel, Field, field_validator, model_validator
@@ -16,60 +14,9 @@ from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.nodes.base import BaseNodeData
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 
+from .enums import ButtonStyle, DeliveryMethodType, EmailRecipientType, FormInputType, PlaceholderType, TimeoutUnit
+
 _OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$outputs\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
-
-
-class HumanInputFormStatus(StrEnum):
-    """Status of a human input form."""
-
-    WAITING = enum.auto()
-    EXPIRED = enum.auto()
-    SUBMITTED = enum.auto()
-    TIMEOUT = enum.auto()
-
-
-class DeliveryMethodType(StrEnum):
-    """Delivery method types for human input forms."""
-
-    WEBAPP = enum.auto()
-    EMAIL = enum.auto()
-
-
-class ButtonStyle(StrEnum):
-    """Button styles for user actions."""
-
-    PRIMARY = enum.auto()
-    DEFAULT = enum.auto()
-    ACCENT = enum.auto()
-    GHOST = enum.auto()
-
-
-class TimeoutUnit(StrEnum):
-    """Timeout unit for form expiration."""
-
-    HOUR = enum.auto()
-    DAY = enum.auto()
-
-
-class FormInputType(StrEnum):
-    """Form input types."""
-
-    TEXT_INPUT = enum.auto()
-    PARAGRAPH = enum.auto()
-
-
-class PlaceholderType(StrEnum):
-    """Placeholder types for form inputs."""
-
-    VARIABLE = enum.auto()
-    CONSTANT = enum.auto()
-
-
-class EmailRecipientType(StrEnum):
-    """Email recipient types."""
-
-    MEMBER = enum.auto()
-    EXTERNAL = enum.auto()
 
 
 class _WebAppDeliveryConfig(BaseModel):

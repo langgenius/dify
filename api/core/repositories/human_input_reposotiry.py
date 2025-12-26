@@ -13,11 +13,11 @@ from core.workflow.nodes.human_input.entities import (
     EmailRecipient,
     ExternalRecipient,
     FormDefinition,
-    HumanInputFormStatus,
     HumanInputNodeData,
     MemberRecipient,
     WebAppDeliveryMethod,
 )
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
     FormNotFoundError,

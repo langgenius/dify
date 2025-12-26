@@ -11,10 +11,11 @@ from core.repositories.human_input_reposotiry import (
 from core.workflow.nodes.human_input.entities import (
     FormDefinition,
     FormInput,
-    FormInputType,
-    HumanInputFormStatus,
-    TimeoutUnit,
     UserAction,
+)
+from core.workflow.nodes.human_input.enums import (
+    FormInputType,
+    TimeoutUnit,
 )
 from models.account import Account
 from models.human_input import RecipientType

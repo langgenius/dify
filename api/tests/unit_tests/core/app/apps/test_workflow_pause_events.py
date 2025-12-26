@@ -8,7 +8,8 @@ from core.app.entities.queue_entities import QueueWorkflowPausedEvent
 from core.app.entities.task_entities import HumanInputRequiredResponse, WorkflowPauseStreamResponse
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.graph_events.graph import GraphRunPausedEvent
-from core.workflow.nodes.human_input.entities import FormInput, FormInputType, UserAction
+from core.workflow.nodes.human_input.entities import FormInput, UserAction
+from core.workflow.nodes.human_input.enums import FormInputType
 from core.workflow.system_variable import SystemVariable
 from models.account import Account
 

@@ -10,7 +10,6 @@ from typing import TYPE_CHECKING, Any, Protocol
 from pydantic.json import pydantic_encoder
 
 from core.model_runtime.entities.llm_entities import LLMUsage
-from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.runtime.variable_pool import VariablePool
 
 if TYPE_CHECKING:

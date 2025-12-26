@@ -9,7 +9,8 @@ from core.repositories.human_input_reposotiry import (
     HumanInputFormRecord,
     HumanInputFormSubmissionRepository,
 )
-from core.workflow.nodes.human_input.entities import FormDefinition, HumanInputFormStatus
+from core.workflow.nodes.human_input.entities import FormDefinition
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from libs.datetime_utils import naive_utc_now
 from libs.exception import BaseHTTPException
 from models.account import Account

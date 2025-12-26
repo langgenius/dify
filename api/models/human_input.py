@@ -6,7 +6,7 @@ import sqlalchemy as sa
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Mapped, mapped_column, relationship
 
-from core.workflow.nodes.human_input.entities import (
+from core.workflow.nodes.human_input.enums import (
     DeliveryMethodType,
     HumanInputFormStatus,
 )

@@ -11,23 +11,25 @@ from pydantic import ValidationError
 from core.workflow.entities import GraphInitParams
 from core.workflow.node_events import PauseRequestedEvent
 from core.workflow.nodes.human_input.entities import (
-    ButtonStyle,
-    DeliveryMethodType,
     EmailDeliveryConfig,
     EmailDeliveryMethod,
     EmailRecipients,
-    EmailRecipientType,
     ExternalRecipient,
     FormInput,
     FormInputPlaceholder,
-    FormInputType,
     HumanInputNodeData,
     MemberRecipient,
-    PlaceholderType,
-    TimeoutUnit,
     UserAction,
     WebAppDeliveryMethod,
     _WebAppDeliveryConfig,
+)
+from core.workflow.nodes.human_input.enums import (
+    ButtonStyle,
+    DeliveryMethodType,
+    EmailRecipientType,
+    FormInputType,
+    PlaceholderType,
+    TimeoutUnit,
 )
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.repositories.human_input_form_repository import HumanInputFormRepository

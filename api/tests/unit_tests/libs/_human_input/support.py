@@ -4,7 +4,8 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any, Optional
 
-from core.workflow.nodes.human_input.entities import FormInput, TimeoutUnit
+from core.workflow.nodes.human_input.entities import FormInput
+from core.workflow.nodes.human_input.enums import TimeoutUnit
 
 
 # Exceptions
