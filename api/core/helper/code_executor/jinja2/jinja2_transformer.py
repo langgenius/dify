@@ -36,17 +36,16 @@ class Jinja2TemplateTransformer(TemplateTransformer):
     @classmethod
     def get_runner_script(cls) -> str:
         runner_script = dedent(f"""
+            import jinja2
+            import json
+            from base64 import b64decode
+
             # declare main function
             def main(**inputs):
-                import jinja2
-                from base64 import b64decode
                 # Decode base64-encoded template to handle special characters safely
                 template_code = b64decode('{cls._template_b64_placeholder}').decode('utf-8')
                 template = jinja2.Template(template_code)
                 return template.render(**inputs)
-
-            import json
-            from base64 import b64decode
 
             # decode and prepare input dict
             inputs_obj = json.loads(b64decode('{cls._inputs_placeholder}').decode('utf-8'))
