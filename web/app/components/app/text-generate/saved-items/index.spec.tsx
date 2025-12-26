@@ -3,7 +3,7 @@ import { fireEvent, render, screen } from '@testing-library/react'
 import copy from 'copy-to-clipboard'
 
 import * as React from 'react'
-import { describe, expect, it, vi } from 'vitest'
+import { beforeEach, describe, expect, it, vi } from 'vitest'
 import Toast from '@/app/components/base/toast'
 import SavedItems from './index'
 
