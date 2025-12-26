@@ -1,20 +1,16 @@
 import type { ClipboardEvent } from 'react'
+import type { FileEntity } from './types'
+import type { FileUpload } from '@/app/components/base/features/types'
+import type { FileUploadConfigResponse } from '@/models/common'
+import { noop } from 'es-toolkit/compat'
+import { produce } from 'immer'
+import { useParams } from 'next/navigation'
 import {
   useCallback,
   useState,
 } from 'react'
-import { useParams } from 'next/navigation'
-import { produce } from 'immer'
-import { v4 as uuid4 } from 'uuid'
 import { useTranslation } from 'react-i18next'
-import type { FileEntity } from './types'
-import { useFileStore } from './store'
-import {
-  fileUpload,
-  getFileUploadErrorMessage,
-  getSupportFileType,
-  isAllowedFileExtension,
-} from './utils'
+import { v4 as uuid4 } from 'uuid'
 import {
   AUDIO_SIZE_LIMIT,
   FILE_SIZE_LIMIT,
@@ -23,13 +19,17 @@ import {
   VIDEO_SIZE_LIMIT,
 } from '@/app/components/base/file-uploader/constants'
 import { useToastContext } from '@/app/components/base/toast'
-import { TransferMethod } from '@/types/app'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import type { FileUpload } from '@/app/components/base/features/types'
-import { formatFileSize } from '@/utils/format'
 import { uploadRemoteFileInfo } from '@/service/common'
-import type { FileUploadConfigResponse } from '@/models/common'
-import { noop } from 'lodash-es'
+import { TransferMethod } from '@/types/app'
+import { formatFileSize } from '@/utils/format'
+import { useFileStore } from './store'
+import {
+  fileUpload,
+  getFileUploadErrorMessage,
+  getSupportFileType,
+  isAllowedFileExtension,
+} from './utils'
 
 export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) => {
   const imgSizeLimit = Number(fileUploadConfig?.image_file_size_limit) * 1024 * 1024 || IMG_SIZE_LIMIT
@@ -47,7 +47,7 @@ export const useFileSizeLimit = (fileUploadConfig?: FileUploadConfigResponse) =>
   }
 }
 
-export const useFile = (fileConfig: FileUpload) => {
+export const useFile = (fileConfig: FileUpload, noNeedToCheckEnable = true) => {
   const { t } = useTranslation()
   const { notify } = useToastContext()
   const fileStore = useFileStore()
@@ -174,7 +174,7 @@ export const useFile = (fileConfig: FileUpload) => {
           handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
         },
         onErrorCallback: (error?: any) => {
-          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+          const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
           notify({ type: 'error', message: errorMessage })
           handleUpdateFile({ ...uploadingFile, progress: -1 })
         },
@@ -246,6 +246,11 @@ export const useFile = (fileConfig: FileUpload) => {
   }, [fileStore])
 
   const handleLocalFileUpload = useCallback((file: File) => {
+    // Check file upload enabled
+    if (!noNeedToCheckEnable && !fileConfig.enabled) {
+      notify({ type: 'error', message: t('common.fileUploader.uploadDisabled') })
+      return
+    }
     if (!isAllowedFileExtension(file.name, file.type, fileConfig.allowed_file_types || [], fileConfig.allowed_file_extensions || [])) {
       notify({ type: 'error', message: `${t('common.fileUploader.fileExtensionNotSupport')} ${file.type}` })
       return
@@ -282,7 +287,7 @@ export const useFile = (fileConfig: FileUpload) => {
             handleUpdateFile({ ...uploadingFile, uploadedId: res.id, progress: 100 })
           },
           onErrorCallback: (error?: any) => {
-            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t)
+            const errorMessage = getFileUploadErrorMessage(error, t('common.fileUploader.uploadFromComputerUploadError'), t as any)
             notify({ type: 'error', message: errorMessage })
             handleUpdateFile({ ...uploadingFile, progress: -1 })
           },
@@ -298,30 +303,16 @@ export const useFile = (fileConfig: FileUpload) => {
       false,
     )
     reader.readAsDataURL(file)
-  }, [checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions])
+  }, [noNeedToCheckEnable, checkSizeLimit, notify, t, handleAddFile, handleUpdateFile, params.token, fileConfig?.allowed_file_types, fileConfig?.allowed_file_extensions, fileConfig?.enabled])
 
   const handleClipboardPasteFile = useCallback((e: ClipboardEvent<HTMLTextAreaElement>) => {
     const file = e.clipboardData?.files[0]
     const text = e.clipboardData?.getData('text/plain')
     if (file && !text) {
       e.preventDefault()
-
-      const allowedFileTypes = fileConfig.allowed_file_types || []
-      const fileType = getSupportFileType(file.name, file.type, allowedFileTypes?.includes(SupportUploadFileTypes.custom))
-      const isFileTypeAllowed = allowedFileTypes.includes(fileType)
-
-      // Check if file type is in allowed list
-      if (!isFileTypeAllowed || !fileConfig.enabled) {
-        notify({
-          type: 'error',
-          message: t('common.fileUploader.fileExtensionNotSupport'),
-        })
-        return
-      }
-
       handleLocalFileUpload(file)
     }
-  }, [handleLocalFileUpload, fileConfig, notify, t])
+  }, [handleLocalFileUpload])
 
   const [isDragActive, setIsDragActive] = useState(false)
   const handleDragFileEnter = useCallback((e: React.DragEvent<HTMLElement>) => {

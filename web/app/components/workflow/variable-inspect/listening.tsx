@@ -1,18 +1,20 @@
-import { type FC, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { type Node, useStoreApi } from 'reactflow'
-import Button from '@/app/components/base/button'
-import BlockIcon from '@/app/components/workflow/block-icon'
-import { BlockEnum } from '@/app/components/workflow/types'
-import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { useStore } from '../store'
-import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
 import type { TFunction } from 'i18next'
-import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
+import type { FC } from 'react'
+import type { Node } from 'reactflow'
 import type { ScheduleTriggerNodeType } from '@/app/components/workflow/nodes/trigger-schedule/types'
 import type { WebhookTriggerNodeType } from '@/app/components/workflow/nodes/trigger-webhook/types'
-import Tooltip from '@/app/components/base/tooltip'
 import copy from 'copy-to-clipboard'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useStoreApi } from 'reactflow'
+import Button from '@/app/components/base/button'
+import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import Tooltip from '@/app/components/base/tooltip'
+import BlockIcon from '@/app/components/workflow/block-icon'
+import { useGetToolIcon } from '@/app/components/workflow/hooks/use-tool-icon'
+import { getNextExecutionTime } from '@/app/components/workflow/nodes/trigger-schedule/utils/execution-time-calculator'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { useStore } from '../store'
 
 const resolveListeningDescription = (
   message: string | undefined,
@@ -32,7 +34,7 @@ const resolveListeningDescription = (
   }
 
   if (triggerType === BlockEnum.TriggerPlugin) {
-    const pluginName = (triggerNode?.data as { provider_name?: string; title?: string })?.provider_name
+    const pluginName = (triggerNode?.data as { provider_name?: string, title?: string })?.provider_name
       || (triggerNode?.data as { title?: string })?.title
       || t('workflow.debug.variableInspect.listening.defaultPluginName')
     return t('workflow.debug.variableInspect.listening.tipPlugin', { pluginName })
@@ -155,8 +157,8 @@ const Listening: FC<ListeningProps> = ({
     : resolveListeningDescription(message, triggerNode, triggerType, t)
 
   return (
-    <div className='flex h-full flex-col gap-4 rounded-xl bg-background-section p-8'>
-      <div className='flex flex-row flex-wrap items-center gap-3'>
+    <div className="flex h-full flex-col gap-4 rounded-xl bg-background-section p-8">
+      <div className="flex flex-row flex-wrap items-center gap-3">
         {iconsToRender.map(icon => (
           <BlockIcon
             key={icon.key}
@@ -167,13 +169,13 @@ const Listening: FC<ListeningProps> = ({
           />
         ))}
       </div>
-      <div className='flex flex-col gap-1'>
-        <div className='system-sm-semibold text-text-secondary'>{t('workflow.debug.variableInspect.listening.title')}</div>
-        <div className='system-xs-regular whitespace-pre-line text-text-tertiary'>{description}</div>
+      <div className="flex flex-col gap-1">
+        <div className="system-sm-semibold text-text-secondary">{t('workflow.debug.variableInspect.listening.title')}</div>
+        <div className="system-xs-regular whitespace-pre-line text-text-tertiary">{description}</div>
       </div>
       {webhookDebugUrl && (
-        <div className='flex items-center gap-2'>
-          <div className='system-xs-regular shrink-0 whitespace-pre-line text-text-tertiary'>
+        <div className="flex items-center gap-2">
+          <div className="system-xs-regular shrink-0 whitespace-pre-line text-text-tertiary">
             {t('workflow.nodes.triggerWebhook.debugUrlTitle')}
           </div>
           <Tooltip
@@ -186,7 +188,7 @@ const Listening: FC<ListeningProps> = ({
             needsDelay={true}
           >
             <button
-              type='button'
+              type="button"
               aria-label={t('workflow.nodes.triggerWebhook.debugUrlCopy') || ''}
               className={`inline-flex items-center rounded-[6px] border border-divider-regular bg-components-badge-white-to-dark px-1.5 py-[2px] font-mono text-[13px] leading-[18px] text-text-secondary transition-colors hover:bg-components-panel-on-panel-item-bg-hover focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-components-panel-border ${debugUrlCopied ? 'bg-components-panel-on-panel-item-bg-hover text-text-primary' : ''}`}
               onClick={() => {
@@ -194,7 +196,7 @@ const Listening: FC<ListeningProps> = ({
                 setDebugUrlCopied(true)
               }}
             >
-              <span className='whitespace-nowrap text-text-primary'>
+              <span className="whitespace-nowrap text-text-primary">
                 {webhookDebugUrl}
               </span>
             </button>
@@ -203,12 +205,12 @@ const Listening: FC<ListeningProps> = ({
       )}
       <div>
         <Button
-          size='medium'
-          className='px-3'
-          variant='primary'
+          size="medium"
+          className="px-3"
+          variant="primary"
           onClick={onStop}
         >
-          <StopCircle className='mr-1 size-4' />
+          <StopCircle className="mr-1 size-4" />
           {t('workflow.debug.variableInspect.listening.stopButton')}
         </Button>
       </div>

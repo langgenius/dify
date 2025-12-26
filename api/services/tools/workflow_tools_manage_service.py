@@ -1,11 +1,13 @@
 import json
+import logging
 from collections.abc import Mapping
 from datetime import datetime
 from typing import Any
 
 from sqlalchemy import or_, select
-from sqlalchemy.orm import Session
 
+from core.db.session_factory import session_factory
+from core.helper.tool_provider_cache import ToolProviderListCache
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -18,6 +20,8 @@ from models.model import App
 from models.tools import WorkflowToolProvider
 from models.workflow import Workflow
 from services.tools.tools_transform_service import ToolTransformService
+
+logger = logging.getLogger(__name__)
 
 
 class WorkflowToolManageService:
@@ -64,30 +68,35 @@ class WorkflowToolManageService:
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            workflow_tool_provider = WorkflowToolProvider(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=workflow_app_id,
-                name=name,
-                label=label,
-                icon=json.dumps(icon),
-                description=description,
-                parameter_configuration=json.dumps(parameters),
-                privacy_policy=privacy_policy,
-                version=workflow.version,
-            )
-            session.add(workflow_tool_provider)
+        workflow_tool_provider = WorkflowToolProvider(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=workflow_app_id,
+            name=name,
+            label=label,
+            icon=json.dumps(icon),
+            description=description,
+            parameter_configuration=json.dumps(parameters),
+            privacy_policy=privacy_policy,
+            version=workflow.version,
+        )
 
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:
             raise ValueError(str(e))
 
+        with session_factory.create_session() as session, session.begin():
+            session.add(workflow_tool_provider)
+
         if labels is not None:
             ToolLabelManager.update_tool_labels(
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
+
         return {"result": "success"}
 
     @classmethod
@@ -175,6 +184,9 @@ class WorkflowToolManageService:
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
 
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
+
         return {"result": "success"}
 
     @classmethod
@@ -189,21 +201,27 @@ class WorkflowToolManageService:
             select(WorkflowToolProvider).where(WorkflowToolProvider.tenant_id == tenant_id)
         ).all()
 
+        # Create a mapping from provider_id to app_id
+        provider_id_to_app_id = {provider.id: provider.app_id for provider in db_tools}
+
         tools: list[WorkflowToolProviderController] = []
         for provider in db_tools:
             try:
                 tools.append(ToolTransformService.workflow_provider_to_controller(provider))
             except Exception:
                 # skip deleted tools
-                pass
+                logger.exception("Failed to load workflow tool provider %s", provider.id)
 
         labels = ToolLabelManager.get_tools_labels([t for t in tools if isinstance(t, ToolProviderController)])
 
         result = []
 
         for tool in tools:
+            workflow_app_id = provider_id_to_app_id.get(tool.provider_id)
             user_tool_provider = ToolTransformService.workflow_provider_to_user_provider(
-                provider_controller=tool, labels=labels.get(tool.provider_id, [])
+                provider_controller=tool,
+                labels=labels.get(tool.provider_id, []),
+                workflow_app_id=workflow_app_id,
             )
             ToolTransformService.repack_provider(tenant_id=tenant_id, provider=user_tool_provider)
             user_tool_provider.tools = [
@@ -230,6 +248,9 @@ class WorkflowToolManageService:
         ).delete()
 
         db.session.commit()
+
+        # Invalidate tool providers cache
+        ToolProviderListCache.invalidate_cache(tenant_id)
 
         return {"result": "success"}
 

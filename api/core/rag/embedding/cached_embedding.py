@@ -104,6 +104,88 @@ class CacheEmbedding(Embeddings):
 
         return text_embeddings
 
+    def embed_multimodal_documents(self, multimodel_documents: list[dict]) -> list[list[float]]:
+        """Embed file documents."""
+        # use doc embedding cache or store if not exists
+        multimodel_embeddings: list[Any] = [None for _ in range(len(multimodel_documents))]
+        embedding_queue_indices = []
+        for i, multimodel_document in enumerate(multimodel_documents):
+            file_id = multimodel_document["file_id"]
+            embedding = (
+                db.session.query(Embedding)
+                .filter_by(
+                    model_name=self._model_instance.model, hash=file_id, provider_name=self._model_instance.provider
+                )
+                .first()
+            )
+            if embedding:
+                multimodel_embeddings[i] = embedding.get_embedding()
+            else:
+                embedding_queue_indices.append(i)
+
+        # NOTE: avoid closing the shared scoped session here; downstream code may still have pending work
+
+        if embedding_queue_indices:
+            embedding_queue_multimodel_documents = [multimodel_documents[i] for i in embedding_queue_indices]
+            embedding_queue_embeddings = []
+            try:
+                model_type_instance = cast(TextEmbeddingModel, self._model_instance.model_type_instance)
+                model_schema = model_type_instance.get_model_schema(
+                    self._model_instance.model, self._model_instance.credentials
+                )
+                max_chunks = (
+                    model_schema.model_properties[ModelPropertyKey.MAX_CHUNKS]
+                    if model_schema and ModelPropertyKey.MAX_CHUNKS in model_schema.model_properties
+                    else 1
+                )
+                for i in range(0, len(embedding_queue_multimodel_documents), max_chunks):
+                    batch_multimodel_documents = embedding_queue_multimodel_documents[i : i + max_chunks]
+
+                    embedding_result = self._model_instance.invoke_multimodal_embedding(
+                        multimodel_documents=batch_multimodel_documents,
+                        user=self._user,
+                        input_type=EmbeddingInputType.DOCUMENT,
+                    )
+
+                    for vector in embedding_result.embeddings:
+                        try:
+                            # FIXME: type ignore for numpy here
+                            normalized_embedding = (vector / np.linalg.norm(vector)).tolist()  # type: ignore
+                            # stackoverflow best way: https://stackoverflow.com/questions/20319813/how-to-check-list-containing-nan
+                            if np.isnan(normalized_embedding).any():
+                                # for issue #11827  float values are not json compliant
+                                logger.warning("Normalized embedding is nan: %s", normalized_embedding)
+                                continue
+                            embedding_queue_embeddings.append(normalized_embedding)
+                        except IntegrityError:
+                            db.session.rollback()
+                        except Exception:
+                            logger.exception("Failed transform embedding")
+                cache_embeddings = []
+                try:
+                    for i, n_embedding in zip(embedding_queue_indices, embedding_queue_embeddings):
+                        multimodel_embeddings[i] = n_embedding
+                        file_id = multimodel_documents[i]["file_id"]
+                        if file_id not in cache_embeddings:
+                            embedding_cache = Embedding(
+                                model_name=self._model_instance.model,
+                                hash=file_id,
+                                provider_name=self._model_instance.provider,
+                                embedding=pickle.dumps(n_embedding, protocol=pickle.HIGHEST_PROTOCOL),
+                            )
+                            embedding_cache.set_embedding(n_embedding)
+                            db.session.add(embedding_cache)
+                            cache_embeddings.append(file_id)
+                    db.session.commit()
+                except IntegrityError:
+                    db.session.rollback()
+            except Exception as ex:
+                db.session.rollback()
+                logger.exception("Failed to embed documents")
+                raise ex
+
+        return multimodel_embeddings
+
     def embed_query(self, text: str) -> list[float]:
         """Embed query text."""
         # use doc embedding cache or store if not exists
@@ -142,6 +224,49 @@ class CacheEmbedding(Embeddings):
             if dify_config.DEBUG:
                 logger.exception(
                     "Failed to add embedding to redis for the text '%s...(%s chars)'", text[:10], len(text)
+                )
+            raise ex
+
+        return embedding_results  # type: ignore
+
+    def embed_multimodal_query(self, multimodel_document: dict) -> list[float]:
+        """Embed multimodal documents."""
+        # use doc embedding cache or store if not exists
+        file_id = multimodel_document["file_id"]
+        embedding_cache_key = f"{self._model_instance.provider}_{self._model_instance.model}_{file_id}"
+        embedding = redis_client.get(embedding_cache_key)
+        if embedding:
+            redis_client.expire(embedding_cache_key, 600)
+            decoded_embedding = np.frombuffer(base64.b64decode(embedding), dtype="float")
+            return [float(x) for x in decoded_embedding]
+        try:
+            embedding_result = self._model_instance.invoke_multimodal_embedding(
+                multimodel_documents=[multimodel_document], user=self._user, input_type=EmbeddingInputType.QUERY
+            )
+
+            embedding_results = embedding_result.embeddings[0]
+            # FIXME: type ignore for numpy here
+            embedding_results = (embedding_results / np.linalg.norm(embedding_results)).tolist()  # type: ignore
+            if np.isnan(embedding_results).any():
+                raise ValueError("Normalized embedding is nan please try again")
+        except Exception as ex:
+            if dify_config.DEBUG:
+                logger.exception("Failed to embed multimodal document '%s'", multimodel_document["file_id"])
+            raise ex
+
+        try:
+            # encode embedding to base64
+            embedding_vector = np.array(embedding_results)
+            vector_bytes = embedding_vector.tobytes()
+            # Transform to Base64
+            encoded_vector = base64.b64encode(vector_bytes)
+            # Transform to string
+            encoded_str = encoded_vector.decode("utf-8")
+            redis_client.setex(embedding_cache_key, 600, encoded_str)
+        except Exception as ex:
+            if dify_config.DEBUG:
+                logger.exception(
+                    "Failed to add embedding to redis for the multimodal document '%s'", multimodel_document["file_id"]
                 )
             raise ex
 

@@ -54,25 +54,14 @@ class WorkspaceInfoPayload(BaseModel):
     name: str
 
 
-console_ns.schema_model(
-    WorkspaceListQuery.__name__, WorkspaceListQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
-console_ns.schema_model(
-    SwitchWorkspacePayload.__name__,
-    SwitchWorkspacePayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
 
-console_ns.schema_model(
-    WorkspaceCustomConfigPayload.__name__,
-    WorkspaceCustomConfigPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    WorkspaceInfoPayload.__name__,
-    WorkspaceInfoPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
+reg(WorkspaceListQuery)
+reg(SwitchWorkspacePayload)
+reg(WorkspaceCustomConfigPayload)
+reg(WorkspaceInfoPayload)
 
 provider_fields = {
     "provider_name": fields.String,

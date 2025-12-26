@@ -1,9 +1,12 @@
 import logging
+from typing import Any, Literal
+from uuid import UUID
 
-from flask_restx import reqparse
+from pydantic import BaseModel, Field, field_validator
 from werkzeug.exceptions import InternalServerError, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.console.app.error import (
     AppUnavailableError,
     CompletionRequestError,
@@ -25,7 +28,6 @@ from core.model_runtime.errors.invoke import InvokeError
 from extensions.ext_database import db
 from libs import helper
 from libs.datetime_utils import naive_utc_now
-from libs.helper import uuid_value
 from libs.login import current_user
 from models import Account
 from models.model import AppMode
@@ -38,28 +40,56 @@ from .. import console_ns
 logger = logging.getLogger(__name__)
 
 
+class CompletionMessageExplorePayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str = ""
+    files: list[dict[str, Any]] | None = None
+    response_mode: Literal["blocking", "streaming"] | None = None
+    retriever_from: str = Field(default="explore_app")
+
+
+class ChatMessagePayload(BaseModel):
+    inputs: dict[str, Any]
+    query: str
+    files: list[dict[str, Any]] | None = None
+    conversation_id: str | None = None
+    parent_message_id: str | None = None
+    retriever_from: str = Field(default="explore_app")
+
+    @field_validator("conversation_id", "parent_message_id", mode="before")
+    @classmethod
+    def normalize_uuid(cls, value: str | UUID | None) -> str | None:
+        """
+        Accept blank IDs and validate UUID format when provided.
+        """
+        if not value:
+            return None
+
+        try:
+            return helper.uuid_value(value)
+        except ValueError as exc:
+            raise ValueError("must be a valid UUID") from exc
+
+
+register_schema_models(console_ns, CompletionMessageExplorePayload, ChatMessagePayload)
+
+
 # define completion api for user
 @console_ns.route(
     "/installed-apps/<uuid:installed_app_id>/completion-messages",
     endpoint="installed_app_completion",
 )
 class CompletionApi(InstalledAppResource):
+    @console_ns.expect(console_ns.models[CompletionMessageExplorePayload.__name__])
     def post(self, installed_app):
         app_model = installed_app.app
         if app_model.mode != AppMode.COMPLETION:
             raise NotCompletionAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("query", type=str, location="json", default="")
-            .add_argument("files", type=list, required=False, location="json")
-            .add_argument("response_mode", type=str, choices=["blocking", "streaming"], location="json")
-            .add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
-        )
-        args = parser.parse_args()
+        payload = CompletionMessageExplorePayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
-        streaming = args["response_mode"] == "streaming"
+        streaming = payload.response_mode == "streaming"
         args["auto_generate_name"] = False
 
         installed_app.last_used_at = naive_utc_now()
@@ -123,22 +153,15 @@ class CompletionStopApi(InstalledAppResource):
     endpoint="installed_app_chat_completion",
 )
 class ChatApi(InstalledAppResource):
+    @console_ns.expect(console_ns.models[ChatMessagePayload.__name__])
     def post(self, installed_app):
         app_model = installed_app.app
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("query", type=str, required=True, location="json")
-            .add_argument("files", type=list, required=False, location="json")
-            .add_argument("conversation_id", type=uuid_value, location="json")
-            .add_argument("parent_message_id", type=uuid_value, required=False, location="json")
-            .add_argument("retriever_from", type=str, required=False, default="explore_app", location="json")
-        )
-        args = parser.parse_args()
+        payload = ChatMessagePayload.model_validate(console_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         args["auto_generate_name"] = False
 

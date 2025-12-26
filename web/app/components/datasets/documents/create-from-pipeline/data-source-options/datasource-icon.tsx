@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { memo } from 'react'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type DatasourceIconProps = {
   size?: string
@@ -25,10 +25,11 @@ const DatasourceIcon: FC<DatasourceIconProps> = ({
         'flex items-center justify-center shadow-none',
         ICON_CONTAINER_CLASSNAME_SIZE_MAP[size],
         className,
-      )}
+      )
+    }
     >
       <div
-        className='h-full w-full shrink-0 rounded-md bg-cover bg-center'
+        className="h-full w-full shrink-0 rounded-md bg-cover bg-center"
         style={{
           backgroundImage: `url(${iconUrl})`,
         }}

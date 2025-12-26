@@ -1,11 +1,12 @@
 'use client'
-import { useTranslation } from 'react-i18next'
-import { ToolTypeEnum } from '../../workflow/block-selector/types'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import Link from 'next/link'
-import cn from '@/utils/classnames'
-import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
+import { useTranslation } from 'react-i18next'
 import useTheme from '@/hooks/use-theme'
+import { cn } from '@/utils/classnames'
+import { NoToolPlaceholder } from '../../base/icons/src/vender/other'
+import { ToolTypeEnum } from '../../workflow/block-selector/types'
+
 type Props = {
   type?: ToolTypeEnum
   isAgent?: boolean
@@ -32,17 +33,19 @@ const Empty = ({
   const Comp = (hasLink ? Link : 'div') as any
   const linkProps = hasLink ? { href: getLink(type), target: '_blank' } : {}
   const renderType = isAgent ? 'agent' : type
-  const hasTitle = t(`tools.addToolModal.${renderType}.title`) !== `tools.addToolModal.${renderType}.title`
+  const hasTitle = t(`tools.addToolModal.${renderType}.title` as any) as string !== `tools.addToolModal.${renderType}.title`
 
   return (
-    <div className='flex flex-col items-center justify-center'>
+    <div className="flex flex-col items-center justify-center">
       <NoToolPlaceholder className={theme === 'dark' ? 'invert' : ''} />
-      <div className='mb-1 mt-2 text-[13px] font-medium leading-[18px] text-text-primary'>
-        {hasTitle ? t(`tools.addToolModal.${renderType}.title`) : 'No tools available'}
+      <div className="mb-1 mt-2 text-[13px] font-medium leading-[18px] text-text-primary">
+        {hasTitle ? t(`tools.addToolModal.${renderType}.title` as any) as string : 'No tools available'}
       </div>
       {(!isAgent && hasTitle) && (
         <Comp className={cn('flex items-center text-[13px] leading-[18px] text-text-tertiary', hasLink && 'cursor-pointer hover:text-text-accent')} {...linkProps}>
-          {t(`tools.addToolModal.${renderType}.tip`)} {hasLink && <RiArrowRightUpLine className='ml-0.5 h-3 w-3' />}
+          {t(`tools.addToolModal.${renderType}.tip` as any) as string}
+          {' '}
+          {hasLink && <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />}
         </Comp>
       )}
     </div>

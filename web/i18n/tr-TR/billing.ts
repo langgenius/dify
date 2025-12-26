@@ -30,6 +30,7 @@ const translation = {
     vectorSpace: 'Vektör Alanı',
     vectorSpaceTooltip: 'Vektör Alanı, LLM\'lerin verilerinizi anlaması için gerekli uzun süreli hafıza sistemidir.',
     documentProcessingPriority: 'Doküman İşleme Önceliği',
+    documentProcessingPriorityTip: 'Daha yüksek belge işleme önceliği için lütfen planınızı yükseltin.',
     documentProcessingPriorityUpgrade: 'Daha fazla veriyi daha yüksek doğrulukla ve daha hızlı işleyin.',
     priority: {
       'standard': 'Standart',
@@ -152,7 +153,7 @@ const translation = {
       description: 'Bireysel Kullanıcılar, Küçük Ekipler veya Ticari Olmayan Projeler İçin',
     },
     premium: {
-      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulama Logo ve Marka Özelleştirmesi', 'Öncelikli E-posta ve Sohbet Desteği'],
+      features: ['Çeşitli Bulut Sağlayıcıları Tarafından Kendi Kendine Yönetilen Güvenilirlik', 'Tek Çalışma Alanı', 'Web Uygulama Logo ve Marka Özelleştirme', 'Öncelikli E-posta ve Sohbet Desteği'],
       name: 'Premium',
       includesTitle: 'Topluluktan her şey, artı:',
       for: 'Orta Büyüklükteki Organizasyonlar ve Ekipler için',
@@ -197,6 +198,23 @@ const translation = {
     dismiss: 'Kapat',
     description: 'Bu plan için iş akışı etkinliği tetikleyici sınırına ulaştınız.',
     usageTitle: 'TETİKLEYİCİ OLAYLAR',
+  },
+  viewBillingTitle: 'Faturalama ve Abonelikler',
+  viewBillingDescription: 'Ödeme yöntemlerini, faturaları ve abonelik değişikliklerini yönetin',
+  viewBillingAction: 'Yönet',
+  upgrade: {
+    uploadMultiplePages: {
+      title: 'Aynı anda birden fazla belge yüklemek için yükseltin',
+      description: 'Yükleme sınırına ulaştınız — mevcut planınızda aynı anda yalnızca bir belge seçip yükleyebilirsiniz.',
+    },
+    uploadMultipleFiles: {
+      title: 'Toplu belge yüklemeyi açmak için yükseltin',
+      description: 'Zaman kazanmak ve verimliliği artırmak için bir kerede daha fazla belgeyi toplu olarak yükleyin.',
+    },
+    addChunks: {
+      title: 'Parçalar eklemeye devam etmek için yükseltin',
+      description: 'Bu plan için parça ekleme sınırına ulaştınız.',
+    },
   },
 }
 

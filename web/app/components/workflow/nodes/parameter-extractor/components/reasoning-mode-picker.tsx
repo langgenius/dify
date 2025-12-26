@@ -1,10 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { ReasoningModeType } from '../types'
 import Field from '../../_base/components/field'
 import OptionCard from '../../_base/components/option-card'
+import { ReasoningModeType } from '../types'
 
 const i18nPrefix = 'workflow.nodes.parameterExtractor'
 
@@ -30,14 +31,14 @@ const ReasoningModePicker: FC<Props> = ({
       title={t(`${i18nPrefix}.reasoningMode`)}
       tooltip={t(`${i18nPrefix}.reasoningModeTip`)!}
     >
-      <div className='grid grid-cols-2 gap-x-1'>
+      <div className="grid grid-cols-2 gap-x-1">
         <OptionCard
-          title='Function/Tool Calling'
+          title="Function/Tool Calling"
           onSelect={handleChange(ReasoningModeType.functionCall)}
           selected={type === ReasoningModeType.functionCall}
         />
         <OptionCard
-          title='Prompt'
+          title="Prompt"
           selected={type === ReasoningModeType.prompt}
           onSelect={handleChange(ReasoningModeType.prompt)}
         />

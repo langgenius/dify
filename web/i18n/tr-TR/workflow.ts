@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(isteğe bağlı ve gizli)',
     goTo: 'Git',
     startNode: 'Başlangıç Düğümü',
+    openWorkflow: 'İş Akışını Aç',
   },
   nodes: {
     common: {
@@ -436,6 +437,7 @@ const translation = {
         input: 'Girdi değeri',
       },
       inputVars: 'Giriş Değişkenleri',
+      pluginNotInstalled: 'Eklenti yüklü değil',
     },
     start: {
       required: 'gerekli',
@@ -542,6 +544,7 @@ const translation = {
         icon: 'Parça simgesi',
         url: 'Parça URL\'si',
         metadata: 'Diğer meta veriler',
+        files: 'Alınan dosyalar',
       },
       metadata: {
         options: {
@@ -571,6 +574,8 @@ const translation = {
         title: 'Meta Verileri Filtreleme',
         tip: 'Metadata filtreleme, bir sistem içinde ilgili bilgilerin alınmasını ince ayar ve kontrol etmek için metadata özniteliklerini (etiketler, kategoriler veya erişim izinleri gibi) kullanma sürecidir.',
       },
+      queryText: 'Sorgu Metni',
+      queryAttachment: 'Sorgu Görüntüleri',
     },
     http: {
       inputVars: 'Giriş Değişkenleri',
@@ -595,7 +600,6 @@ const translation = {
         'authorizationType': 'Yetkilendirme Türü',
         'no-auth': 'Yok',
         'api-key': 'API Anahtarı',
-        'authType': 'Yetki Türü',
         'basic': 'Temel',
         'bearer': 'Bearer',
         'custom': 'Özel',

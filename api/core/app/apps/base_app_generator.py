@@ -1,3 +1,4 @@
+import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, Union, final
 
@@ -99,6 +100,16 @@ class BaseAppGenerator:
             if value is None:
                 return None
 
+        # Treat empty placeholders for optional file inputs as unset
+        if (
+            variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
+            and not variable_entity.required
+        ):
+            # Treat empty string (frontend default) as unset
+            # For FILE_LIST, allow empty list [] to pass through
+            if isinstance(value, str) and not value:
+                return None
+
         if variable_entity.type in {
             VariableEntityType.TEXT_INPUT,
             VariableEntityType.SELECT,
@@ -166,6 +177,13 @@ class BaseAppGenerator:
                         value = True
                     elif value == 0:
                         value = False
+            case VariableEntityType.JSON_OBJECT:
+                if not isinstance(value, str):
+                    raise ValueError(f"{variable_entity.variable} in input form must be a string")
+                try:
+                    json.loads(value)
+                except json.JSONDecodeError:
+                    raise ValueError(f"{variable_entity.variable} in input form must be a valid JSON object")
             case _:
                 raise AssertionError("this statement should be unreachable.")
 

@@ -383,6 +383,7 @@ const translation = {
     userInputField: '用户输入字段',
     changeBlock: '更改节点',
     helpLink: '查看帮助文档',
+    openWorkflow: '打开工作流',
     about: '关于',
     createdBy: '作者',
     nextStep: '下一步',
@@ -463,6 +464,7 @@ const translation = {
         variable: '使用变量',
       },
       inputVars: '输入变量',
+      pluginNotInstalled: '插件未安装',
     },
     start: {
       required: '必填',
@@ -561,6 +563,8 @@ const translation = {
     },
     knowledgeRetrieval: {
       queryVariable: '查询变量',
+      queryText: '查询文本',
+      queryAttachment: '查询图片',
       knowledge: '知识库',
       outputVars: {
         output: '召回的分段',
@@ -569,6 +573,7 @@ const translation = {
         icon: '分段图标',
         url: '分段链接',
         metadata: '其他元数据',
+        files: '召回的文件',
       },
       metadata: {
         title: '元数据过滤',
@@ -1057,6 +1062,9 @@ const translation = {
       days: '天',
       notConfigured: '未配置',
       mode: '模式',
+      modeVisual: '可视化',
+      modeCron: 'Cron',
+      selectTime: '选择时间',
       timezone: '时区',
       visualConfig: '可视化配置',
       monthlyDay: '月份日期',

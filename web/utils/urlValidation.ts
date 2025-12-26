@@ -15,8 +15,9 @@ export function validateRedirectUrl(url: string): void {
     if (
       error instanceof Error
       && error.message === 'Authorization URL must be HTTP or HTTPS'
-    )
+    ) {
       throw error
+    }
     // If URL parsing fails, it's also invalid
     throw new Error(`Invalid URL: ${url}`)
   }

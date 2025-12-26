@@ -379,6 +379,7 @@ const translation = {
     optional_and_hidden: '（可選且隱藏）',
     goTo: '前往',
     startNode: '起始節點',
+    openWorkflow: '打開工作流程',
   },
   nodes: {
     common: {
@@ -441,6 +442,7 @@ const translation = {
         variable: '使用變數',
       },
       inputVars: '輸入變數',
+      pluginNotInstalled: '插件未安裝',
     },
     start: {
       required: '必填',
@@ -547,6 +549,7 @@ const translation = {
         icon: '分段圖標',
         url: '分段鏈接',
         metadata: '其他元資料',
+        files: '已檢索的檔案',
       },
       metadata: {
         options: {
@@ -576,6 +579,8 @@ const translation = {
         title: '元資料過濾',
         tip: '元資料過濾是使用元資料屬性（如標籤、類別或訪問權限）來精煉和控制在系統內檢索相關信息的過程。',
       },
+      queryText: '查詢文字',
+      queryAttachment: '查詢圖片',
     },
     http: {
       inputVars: '輸入變數',

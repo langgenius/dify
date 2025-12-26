@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(opcional y oculto)',
     goTo: 'Ir a',
     startNode: 'Nodo de inicio',
+    openWorkflow: 'Abrir flujo de trabajo',
   },
   nodes: {
     common: {
@@ -436,6 +437,7 @@ const translation = {
         variable: 'Usa la variable',
       },
       inputVars: 'Variables de entrada',
+      pluginNotInstalled: 'El complemento no está instalado',
     },
     start: {
       required: 'requerido',
@@ -542,6 +544,7 @@ const translation = {
         icon: 'Ícono segmentado',
         url: 'URL segmentada',
         metadata: 'Metadatos adicionales',
+        files: 'Archivos recuperados',
       },
       metadata: {
         options: {
@@ -571,6 +574,8 @@ const translation = {
         title: 'Filtrado de Metadatos',
         tip: 'El filtrado de metadatos es el proceso de utilizar atributos de metadatos (como etiquetas, categorías o permisos de acceso) para refinar y controlar la recuperación de información relevante dentro de un sistema.',
       },
+      queryText: 'Texto de consulta',
+      queryAttachment: 'Consultar imágenes',
     },
     http: {
       inputVars: 'Variables de entrada',

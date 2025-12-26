@@ -6,6 +6,7 @@ Target: 1500+ lines of comprehensive test coverage.
 """
 
 import json
+import re
 from datetime import datetime
 from unittest.mock import MagicMock, Mock, patch
 
@@ -1791,8 +1792,8 @@ class TestExternalDatasetServiceFetchRetrieval:
 
     @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
     @patch("services.external_knowledge_service.db")
-    def test_fetch_external_knowledge_retrieval_non_200_status(self, mock_db, mock_process, factory):
-        """Test retrieval returns empty list on non-200 status."""
+    def test_fetch_external_knowledge_retrieval_non_200_status_raises_exception(self, mock_db, mock_process, factory):
+        """Test that non-200 status code raises Exception with response text."""
         # Arrange
         binding = factory.create_external_knowledge_binding_mock()
         api = factory.create_external_knowledge_api_mock()
@@ -1817,12 +1818,103 @@ class TestExternalDatasetServiceFetchRetrieval:
 
         mock_response = MagicMock()
         mock_response.status_code = 500
+        mock_response.text = "Internal Server Error: Database connection failed"
         mock_process.return_value = mock_response
 
-        # Act
-        result = ExternalDatasetService.fetch_external_knowledge_retrieval(
-            "tenant-123", "dataset-123", "query", {"top_k": 5}
-        )
+        # Act & Assert
+        with pytest.raises(Exception, match="Internal Server Error: Database connection failed"):
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            )
 
-        # Assert
-        assert result == []
+    @pytest.mark.parametrize(
+        ("status_code", "error_message"),
+        [
+            (400, "Bad Request: Invalid query parameters"),
+            (401, "Unauthorized: Invalid API key"),
+            (403, "Forbidden: Access denied to resource"),
+            (404, "Not Found: Knowledge base not found"),
+            (429, "Too Many Requests: Rate limit exceeded"),
+            (500, "Internal Server Error: Database connection failed"),
+            (502, "Bad Gateway: External service unavailable"),
+            (503, "Service Unavailable: Maintenance mode"),
+        ],
+    )
+    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.external_knowledge_service.db")
+    def test_fetch_external_knowledge_retrieval_various_error_status_codes(
+        self, mock_db, mock_process, factory, status_code, error_message
+    ):
+        """Test that various error status codes raise exceptions with response text."""
+        # Arrange
+        tenant_id = "tenant-123"
+        dataset_id = "dataset-123"
+
+        binding = factory.create_external_knowledge_binding_mock(
+            dataset_id=dataset_id, external_knowledge_api_id="api-123"
+        )
+        api = factory.create_external_knowledge_api_mock(api_id="api-123")
+
+        mock_binding_query = MagicMock()
+        mock_api_query = MagicMock()
+
+        def query_side_effect(model):
+            if model == ExternalKnowledgeBindings:
+                return mock_binding_query
+            elif model == ExternalKnowledgeApis:
+                return mock_api_query
+            return MagicMock()
+
+        mock_db.session.query.side_effect = query_side_effect
+
+        mock_binding_query.filter_by.return_value = mock_binding_query
+        mock_binding_query.first.return_value = binding
+
+        mock_api_query.filter_by.return_value = mock_api_query
+        mock_api_query.first.return_value = api
+
+        mock_response = MagicMock()
+        mock_response.status_code = status_code
+        mock_response.text = error_message
+        mock_process.return_value = mock_response
+
+        # Act & Assert
+        with pytest.raises(ValueError, match=re.escape(error_message)):
+            ExternalDatasetService.fetch_external_knowledge_retrieval(tenant_id, dataset_id, "query", {"top_k": 5})
+
+    @patch("services.external_knowledge_service.ExternalDatasetService.process_external_api")
+    @patch("services.external_knowledge_service.db")
+    def test_fetch_external_knowledge_retrieval_empty_response_text(self, mock_db, mock_process, factory):
+        """Test exception with empty response text."""
+        # Arrange
+        binding = factory.create_external_knowledge_binding_mock()
+        api = factory.create_external_knowledge_api_mock()
+
+        mock_binding_query = MagicMock()
+        mock_api_query = MagicMock()
+
+        def query_side_effect(model):
+            if model == ExternalKnowledgeBindings:
+                return mock_binding_query
+            elif model == ExternalKnowledgeApis:
+                return mock_api_query
+            return MagicMock()
+
+        mock_db.session.query.side_effect = query_side_effect
+
+        mock_binding_query.filter_by.return_value = mock_binding_query
+        mock_binding_query.first.return_value = binding
+
+        mock_api_query.filter_by.return_value = mock_api_query
+        mock_api_query.first.return_value = api
+
+        mock_response = MagicMock()
+        mock_response.status_code = 503
+        mock_response.text = ""
+        mock_process.return_value = mock_response
+
+        # Act & Assert
+        with pytest.raises(Exception, match=""):
+            ExternalDatasetService.fetch_external_knowledge_retrieval(
+                "tenant-123", "dataset-123", "query", {"top_k": 5}
+            )

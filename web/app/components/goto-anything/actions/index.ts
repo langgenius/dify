@@ -163,14 +163,14 @@
  * - `/` - Execute slash commands (theme, language, etc.)
  */
 
-import { appAction } from './app'
-import { knowledgeAction } from './knowledge'
-import { pluginAction } from './plugin'
-import { workflowNodesAction } from './workflow-nodes'
-import { ragPipelineNodesAction } from './rag-pipeline-nodes'
 import type { ActionItem, SearchResult } from './types'
+import { appAction } from './app'
 import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
+import { knowledgeAction } from './knowledge'
+import { pluginAction } from './plugin'
+import { ragPipelineNodesAction } from './rag-pipeline-nodes'
+import { workflowNodesAction } from './workflow-nodes'
 
 // Create dynamic Actions based on context
 export const createActions = (isWorkflowPage: boolean, isRagPipelinePage: boolean) => {
@@ -214,8 +214,12 @@ export const searchAnything = async (
   actionItem?: ActionItem,
   dynamicActions?: Record<string, ActionItem>,
 ): Promise<SearchResult[]> => {
+  const trimmedQuery = query.trim()
+
   if (actionItem) {
-    const searchTerm = query.replace(actionItem.key, '').replace(actionItem.shortcut, '').trim()
+    const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const prefixPattern = new RegExp(`^(${escapeRegExp(actionItem.key)}|${escapeRegExp(actionItem.shortcut)})\\s*`)
+    const searchTerm = trimmedQuery.replace(prefixPattern, '').trim()
     try {
       return await actionItem.search(query, searchTerm, locale)
     }
@@ -225,10 +229,12 @@ export const searchAnything = async (
     }
   }
 
-  if (query.startsWith('@') || query.startsWith('/'))
+  if (trimmedQuery.startsWith('@') || trimmedQuery.startsWith('/'))
     return []
 
   const globalSearchActions = Object.values(dynamicActions || Actions)
+    // Exclude slash commands from general search results
+    .filter(action => action.key !== '/')
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = globalSearchActions.map(async (action) => {
@@ -288,6 +294,6 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
   })
 }
 
-export * from './types'
 export * from './commands'
+export * from './types'
 export { appAction, knowledgeAction, pluginAction, workflowNodesAction }

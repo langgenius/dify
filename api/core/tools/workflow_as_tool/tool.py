@@ -203,7 +203,7 @@ class WorkflowTool(Tool):
         Resolve user object in both HTTP and worker contexts.
 
         In HTTP context: dereference the current_user LocalProxy (can return Account or EndUser).
-        In worker context: load Account from database by user_id (only returns Account, never EndUser).
+        In worker context: load Account(knowledge pipeline) or EndUser(trigger) from database by user_id.
 
         Returns:
             Account | EndUser | None: The resolved user object, or None if resolution fails.
@@ -224,24 +224,28 @@ class WorkflowTool(Tool):
             logger.warning("Failed to resolve user from request context: %s", e)
             return None
 
-    def _resolve_user_from_database(self, user_id: str) -> Account | None:
+    def _resolve_user_from_database(self, user_id: str) -> Account | EndUser | None:
         """
         Resolve user from database (worker/Celery context).
         """
-
-        user_stmt = select(Account).where(Account.id == user_id)
-        user = db.session.scalar(user_stmt)
-        if not user:
-            return None
 
         tenant_stmt = select(Tenant).where(Tenant.id == self.runtime.tenant_id)
         tenant = db.session.scalar(tenant_stmt)
         if not tenant:
             return None
 
-        user.current_tenant = tenant
+        user_stmt = select(Account).where(Account.id == user_id)
+        user = db.session.scalar(user_stmt)
+        if user:
+            user.current_tenant = tenant
+            return user
 
-        return user
+        end_user_stmt = select(EndUser).where(EndUser.id == user_id, EndUser.tenant_id == tenant.id)
+        end_user = db.session.scalar(end_user_stmt)
+        if end_user:
+            return end_user
+
+        return None
 
     def _get_workflow(self, app_id: str, version: str) -> Workflow:
         """

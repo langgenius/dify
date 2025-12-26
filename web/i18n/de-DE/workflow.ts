@@ -374,6 +374,7 @@ const translation = {
     optional_and_hidden: '(optional & hidden)',
     goTo: 'Gehe zu',
     startNode: 'Startknoten',
+    openWorkflow: 'Workflow öffnen',
   },
   nodes: {
     common: {
@@ -436,6 +437,7 @@ const translation = {
         variable: 'Verwende die Variable',
       },
       inputVars: 'Eingabevariablen',
+      pluginNotInstalled: 'Plugin ist nicht installiert',
     },
     start: {
       required: 'erforderlich',
@@ -542,6 +544,7 @@ const translation = {
         icon: 'Segmentiertes Symbol',
         url: 'Segmentierte URL',
         metadata: 'Weitere Metadaten',
+        files: 'Abgerufene Dateien',
       },
       metadata: {
         options: {
@@ -571,6 +574,8 @@ const translation = {
         title: 'Metadatenfilterung',
         tip: 'Metadatenfilterung ist der Prozess, Metadatenattribute (wie Tags, Kategorien oder Zugriffsberechtigungen) zu verwenden, um die Abfrage und Kontrolle der relevanten Informationen innerhalb eines Systems zu verfeinern.',
       },
+      queryText: 'Abfrage Text',
+      queryAttachment: 'Abfragebilder',
     },
     http: {
       inputVars: 'Eingabevariablen',
