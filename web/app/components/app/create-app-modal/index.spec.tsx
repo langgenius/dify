@@ -13,7 +13,12 @@ import { getRedirection } from '@/utils/app-redirection'
 import CreateAppModal from './index'
 
 vi.mock('ahooks', () => ({
-  useDebounceFn: (fn: (...args: any[]) => any) => ({ run: fn, cancel: vi.fn() }),
+  useDebounceFn: (fn: (...args: any[]) => any) => {
+    const run = (...args: any[]) => fn(...args)
+    const cancel = vi.fn()
+    const flush = vi.fn()
+    return { run, cancel, flush }
+  },
   useKeyPress: vi.fn(),
   useHover: () => false,
 }))
