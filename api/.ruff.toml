@@ -1,4 +1,4 @@
-exclude = ["migrations/*"]
+exclude = ["migrations/*", ".git/*"]
 line-length = 120
 
 [format]
