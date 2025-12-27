@@ -1,21 +1,29 @@
-import type { ActionItem } from './types'
+import type { SlashCommandHandler } from './types'
 import { RiSparklingFill } from '@remixicon/react'
 import * as React from 'react'
-import { isInWorkflowPage } from '@/app/components/workflow/constants'
+import { isInWorkflowPage, VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
 import i18n from '@/i18n-config/i18next-config'
+import { registerCommands, unregisterCommands } from './command-bus'
+
+type BananaDeps = Record<string, never>
 
 const BANANA_PROMPT_EXAMPLE = 'Summarize a document, classify sentiment, then notify Slack'
 
-export const bananaAction: ActionItem = {
-  key: '@banana',
-  shortcut: '@banana',
-  title: i18n.t('app.gotoAnything.actions.vibeTitle'),
-  description: i18n.t('app.gotoAnything.actions.vibeDesc'),
-  search: async (_query, searchTerm = '', locale) => {
-    if (!isInWorkflowPage())
-      return []
+const dispatchVibeCommand = (input?: string) => {
+  if (typeof document === 'undefined')
+    return
 
-    const trimmed = searchTerm.trim()
+  document.dispatchEvent(new CustomEvent(VIBE_COMMAND_EVENT, { detail: { dsl: input } }))
+}
+
+export const bananaCommand: SlashCommandHandler<BananaDeps> = {
+  name: 'banana',
+  description: i18n.t('app.gotoAnything.actions.vibeDesc'),
+  mode: 'submenu',
+  isAvailable: () => isInWorkflowPage(),
+
+  async search(args: string, locale: string = 'en') {
+    const trimmed = args.trim()
     const hasInput = !!trimmed
 
     return [{
@@ -35,5 +43,17 @@ export const bananaAction: ActionItem = {
         args: { dsl: trimmed },
       },
     }]
+  },
+
+  register(_deps: BananaDeps) {
+    registerCommands({
+      'workflow.vibe': async (args) => {
+        dispatchVibeCommand(args?.dsl)
+      },
+    })
+  },
+
+  unregister() {
+    unregisterCommands(['workflow.vibe'])
   },
 }
