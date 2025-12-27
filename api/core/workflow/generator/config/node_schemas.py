@@ -137,19 +137,28 @@ BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
     },
     "if-else": {
         "description": "Conditional branching based on conditions",
-        "required": ["conditions"],
+        "required": ["cases"],
         "parameters": {
-            "conditions": {
+            "cases": {
                 "type": "array",
-                "description": "List of condition cases",
+                "description": "List of condition cases. Each case defines when 'true' branch is taken.",
                 "item_schema": {
-                    "case_id": "string - unique case identifier",
-                    "logical_operator": "enum: and, or",
-                    "conditions": "array of {variable_selector, comparison_operator, value}",
+                    "case_id": "string - unique case identifier (e.g., 'case_1')",
+                    "logical_operator": "enum: and, or - how multiple conditions combine",
+                    "conditions": {
+                        "type": "array",
+                        "item_schema": {
+                    "variable_selector": "array of strings - path to variable, e.g. ['node_id', 'field']",
+                    "comparison_operator": (
+                        "enum: =, ≠, >, <, ≥, ≤, contains, not contains, is, is not, empty, not empty"
+                    ),
+                    "value": "string or number - value to compare against",
+                },
+                    },
                 },
             },
         },
-        "outputs": ["Branches: true (conditions met), false (else)"],
+        "outputs": ["Branches: true (first case conditions met), false (else/no case matched)"],
     },
     "knowledge-retrieval": {
         "description": "Query knowledge base for relevant content",
@@ -206,6 +215,71 @@ BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
             },
         },
         "outputs": ["item (current iteration item)", "index (current index)"],
+    },
+    "parameter-extractor": {
+        "description": "Extract structured parameters from user input using LLM",
+        "required": ["query", "parameters"],
+        "parameters": {
+            "model": {
+                "type": "object",
+                "description": "Model configuration (provider, name, mode)",
+            },
+            "query": {
+                "type": "array",
+                "description": "Path to input text to extract parameters from, e.g. ['start', 'user_input']",
+            },
+            "parameters": {
+                "type": "array",
+                "description": "Parameters to extract from the input",
+                "item_schema": {
+                    "name": "string - parameter name (required)",
+                    "type": (
+                        "enum: string, number, boolean, array[string], array[number], "
+                        "array[object], array[boolean]"
+                    ),
+                    "description": "string - description of what to extract (required)",
+                    "required": "boolean - whether this parameter is required (MUST be specified)",
+                    "options": "array of strings (optional) - for enum-like selection",
+                },
+            },
+            "instruction": {
+                "type": "string",
+                "description": "Additional instructions for extraction",
+            },
+            "reasoning_mode": {
+                "type": "enum",
+                "options": ["function_call", "prompt"],
+                "description": "How to perform extraction (defaults to function_call)",
+            },
+        },
+        "outputs": ["Extracted parameters as defined in parameters array", "__is_success", "__reason"],
+    },
+    "question-classifier": {
+        "description": "Classify user input into predefined categories using LLM",
+        "required": ["query", "classes"],
+        "parameters": {
+            "model": {
+                "type": "object",
+                "description": "Model configuration (provider, name, mode)",
+            },
+            "query": {
+                "type": "array",
+                "description": "Path to input text to classify, e.g. ['start', 'user_input']",
+            },
+            "classes": {
+                "type": "array",
+                "description": "Classification categories",
+                "item_schema": {
+                    "id": "string - unique class identifier",
+                    "name": "string - class name/label",
+                },
+            },
+            "instruction": {
+                "type": "string",
+                "description": "Additional instructions for classification",
+            },
+        },
+        "outputs": ["class_name (selected class)"],
     },
 }
 

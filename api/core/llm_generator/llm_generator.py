@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from collections.abc import Sequence
 from typing import Protocol, cast
 
@@ -12,8 +11,6 @@ from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
-    LLM_MODIFY_CODE_SYSTEM,
-    LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SUGGESTED_QUESTIONS_MAX_TOKENS,
     SUGGESTED_QUESTIONS_TEMPERATURE,
@@ -30,6 +27,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.generator import WorkflowGenerator
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -299,177 +297,23 @@ class LLMGenerator:
         regenerate_mode: bool = False,
         preferred_language: str | None = None,
         available_models: Sequence[dict[str, object]] | None = None,
+        max_fix_iterations: int = 2,
     ):
-        """
-        Generate workflow flowchart with enhanced prompts and inline intent classification.
 
-        Returns a dict with:
-        - intent: "generate" | "off_topic" | "error"
-        - flowchart: Mermaid syntax string (for generate intent)
-        - message: User-friendly explanation
-        - warnings: List of validation warnings
-        - suggestions: List of workflow suggestions (for off_topic intent)
-        - error: Error message if generation failed
-        """
-        from core.llm_generator.vibe_prompts import (
-            build_vibe_enhanced_prompt,
-            extract_mermaid_from_response,
-            parse_vibe_response,
-            sanitize_tool_nodes,
-            validate_node_parameters,
-            validate_tool_references,
-        )
-
-        model_parameters = model_config.get("completion_params", {})
-
-        # Build enhanced prompts with context
-        system_prompt, user_prompt = build_vibe_enhanced_prompt(
+        return WorkflowGenerator.generate_workflow_flowchart(
+            tenant_id=tenant_id,
             instruction=instruction,
-            available_nodes=list(available_nodes) if available_nodes else None,
-            available_tools=list(available_tools) if available_tools else None,
-            existing_nodes=list(existing_nodes) if existing_nodes else None,
-            selected_node_ids=list(selected_node_ids) if selected_node_ids else None,
-            previous_workflow=dict(previous_workflow) if previous_workflow else None,
+            model_config=model_config,
+            available_nodes=available_nodes,
+            existing_nodes=existing_nodes,
+            available_tools=available_tools,
+            selected_node_ids=selected_node_ids,
+            previous_workflow=previous_workflow,
             regenerate_mode=regenerate_mode,
             preferred_language=preferred_language,
-            available_models=list(available_models) if available_models else None,
+            available_models=available_models,
+            max_fix_iterations=max_fix_iterations,
         )
-
-        prompt_messages: list[PromptMessage] = [
-            SystemPromptMessage(content=system_prompt),
-            UserPromptMessage(content=user_prompt),
-        ]
-
-        # DEBUG: Log model input
-        logger.debug("=" * 80)
-        logger.debug("[VIBE] generate_workflow_flowchart - MODEL INPUT")
-        logger.debug("=" * 80)
-        logger.debug("[VIBE] Instruction: %s", instruction)
-        logger.debug("[VIBE] Model: %s/%s", model_config.get("provider", ""), model_config.get("name", ""))
-        system_prompt_log = system_prompt[:2000] + "..." if len(system_prompt) > 2000 else system_prompt
-        logger.debug("[VIBE] System Prompt:\n%s", system_prompt_log)
-        logger.debug("[VIBE] User Prompt:\n%s", user_prompt)
-        logger.debug("=" * 80)
-
-        model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
-            tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
-        )
-
-        try:
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
-                model_parameters=model_parameters,
-                stream=False,
-            )
-            content = response.message.get_text_content()
-
-            # DEBUG: Log model output
-            logger.debug("=" * 80)
-            logger.debug("[VIBE] generate_workflow_flowchart - MODEL OUTPUT")
-            logger.debug("=" * 80)
-            logger.debug("[VIBE] Raw Response:\n%s", content)
-            logger.debug("=" * 80)
-            if not isinstance(content, str):
-                raise ValueError("Flowchart response is not a string")
-
-            # Parse the enhanced response format
-            parsed = parse_vibe_response(content)
-
-            # DEBUG: Log parsed result
-            logger.debug("[VIBE] Parsed Response:")
-            logger.debug("[VIBE]   intent: %s", parsed.get("intent"))
-            logger.debug("[VIBE]   message: %s", parsed.get("message", "")[:200] if parsed.get("message") else "")
-            logger.debug("[VIBE]   mermaid: %s", parsed.get("mermaid", "")[:500] if parsed.get("mermaid") else "")
-            logger.debug("[VIBE]   warnings: %s", parsed.get("warnings", []))
-            logger.debug("[VIBE]   suggestions: %s", parsed.get("suggestions", []))
-            if parsed.get("error"):
-                logger.debug("[VIBE]   error: %s", parsed.get("error"))
-            logger.debug("=" * 80)
-
-            # Handle error case from parsing
-            if parsed.get("intent") == "error":
-                # Fall back to legacy parsing for backwards compatibility
-                match = re.search(r"```(?:mermaid)?\s*([\s\S]+?)```", content, flags=re.IGNORECASE)
-                flowchart = (match.group(1) if match else content).strip()
-                return {
-                    "intent": "generate",
-                    "flowchart": flowchart,
-                    "message": "",
-                    "warnings": [],
-                    "tool_recommendations": [],
-                    "error": "",
-                }
-
-            # Handle off_topic case
-            if parsed.get("intent") == "off_topic":
-                return {
-                    "intent": "off_topic",
-                    "flowchart": "",
-                    "message": parsed.get("message", ""),
-                    "suggestions": parsed.get("suggestions", []),
-                    "warnings": [],
-                    "tool_recommendations": [],
-                    "error": "",
-                }
-
-            # Handle generate case
-            flowchart = extract_mermaid_from_response(parsed)
-
-            # Sanitize tool nodes - replace invalid tools with fallback nodes
-            original_nodes = parsed.get("nodes", [])
-            sanitized_nodes, sanitize_warnings = sanitize_tool_nodes(
-                original_nodes,
-                list(available_tools) if available_tools else None,
-            )
-            # Update parsed nodes with sanitized version
-            parsed["nodes"] = sanitized_nodes
-
-            # Validate tool references and get recommendations for unconfigured tools
-            validation_warnings, tool_recommendations = validate_tool_references(
-                sanitized_nodes,
-                list(available_tools) if available_tools else None,
-            )
-
-            # Validate node parameters are properly filled (Phase 9: Auto-Fill)
-            param_warnings = validate_node_parameters(sanitized_nodes)
-
-            existing_warnings = parsed.get("warnings", [])
-            all_warnings = existing_warnings + sanitize_warnings + validation_warnings + param_warnings
-
-            return {
-                "intent": "generate",
-                "flowchart": flowchart,
-                "nodes": sanitized_nodes,  # Include sanitized nodes in response
-                "edges": parsed.get("edges", []),
-                "message": parsed.get("message", ""),
-                "warnings": all_warnings,
-                "tool_recommendations": tool_recommendations,
-                "error": "",
-            }
-
-        except InvokeError as e:
-            return {
-                "intent": "error",
-                "flowchart": "",
-                "message": "",
-                "warnings": [],
-                "tool_recommendations": [],
-                "error": str(e),
-            }
-        except Exception as e:
-            logger.exception("Failed to generate workflow flowchart, model: %s", model_config.get("name"))
-            return {
-                "intent": "error",
-                "flowchart": "",
-                "message": "",
-                "warnings": [],
-                "tool_recommendations": [],
-                "error": str(e),
-            }
 
     @classmethod
     def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):

@@ -1,8 +1,12 @@
+import logging
 from collections.abc import Sequence
-from typing import Any
+from typing import Any, cast
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
 
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -18,6 +22,7 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.generator import WorkflowGenerator
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
@@ -77,6 +82,13 @@ class FlowchartGeneratePayload(BaseModel):
     language: str | None = Field(default=None, description="Preferred language for generated content")
     # Available models that user has configured (for LLM/question-classifier nodes)
     available_models: list[dict[str, Any]] = Field(default_factory=list, description="User's configured models")
+    # Validate-fix iteration loop configuration
+    max_fix_iterations: int = Field(
+        default=2,
+        ge=0,
+        le=5,
+        description="Maximum number of validate-fix iterations (0 to disable auto-fix)",
+    )
 
 
 def reg(cls: type[BaseModel]):
@@ -305,7 +317,7 @@ class FlowchartGenerateApi(Resource):
                     "warnings": args.previous_workflow.warnings,
                 }
 
-            result = LLMGenerator.generate_workflow_flowchart(
+            result = WorkflowGenerator.generate_workflow_flowchart(
                 tenant_id=current_tenant_id,
                 instruction=args.instruction,
                 model_config=args.model_config_data,
@@ -313,11 +325,13 @@ class FlowchartGenerateApi(Resource):
                 existing_nodes=args.existing_nodes,
                 available_tools=args.available_tools,
                 selected_node_ids=args.selected_node_ids,
-                previous_workflow=previous_workflow_dict,
+                previous_workflow=cast(dict[str, object], previous_workflow_dict),
                 regenerate_mode=args.regenerate_mode,
                 preferred_language=args.language,
                 available_models=args.available_models,
+                max_fix_iterations=args.max_fix_iterations,
             )
+
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

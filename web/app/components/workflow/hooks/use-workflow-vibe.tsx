@@ -39,6 +39,7 @@ import {
   getNodeCustomTypeByNodeDataType,
   getNodesConnectedSourceOrTargetHandleIdsMap,
 } from '../utils'
+import { initialNodes as initializeNodeData } from '../utils/workflow-init'
 import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
@@ -115,7 +116,7 @@ const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
  * - Mixed content objects: {type: "mixed", value: "..."} → normalized to string
  * - Field name correction based on node type
  */
-const replaceVariableReferences = (
+export const replaceVariableReferences = (
   data: unknown,
   nodeIdMap: Map<string, Node>,
   parentKey?: string,
@@ -124,6 +125,11 @@ const replaceVariableReferences = (
     // Replace {{#old_id.field#}} patterns and correct field names
     return data.replace(/\{\{#([^.#]+)\.([^#]+)#\}\}/g, (match, oldId, field) => {
       const newNode = nodeIdMap.get(oldId)
+      // #region agent log
+      if (!newNode) {
+        console.warn(`[VIBE DEBUG] replaceVariableReferences: No mapping for "${oldId}" in template "${match}"`)
+      }
+      // #endregion
       if (newNode) {
         const nodeType = newNode.data?.type as string || ''
         const correctedField = correctFieldName(field, nodeType)
@@ -138,6 +144,11 @@ const replaceVariableReferences = (
     if (data.length >= 2 && typeof data[0] === 'string' && typeof data[1] === 'string') {
       const potentialNodeId = data[0]
       const newNode = nodeIdMap.get(potentialNodeId)
+      // #region agent log
+      if (!newNode && !['sys', 'env', 'conversation'].includes(potentialNodeId)) {
+        console.warn(`[VIBE DEBUG] replaceVariableReferences: No mapping for "${potentialNodeId}" in selector [${data.join(', ')}]`)
+      }
+      // #endregion
       if (newNode) {
         const nodeType = newNode.data?.type as string || ''
         const correctedField = correctFieldName(data[1], nodeType)
@@ -598,6 +609,8 @@ export const useWorkflowVibe = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
+
+
     if (!nodesMetaDataMap) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.nodesUnavailable') })
       return { nodes: [], edges: [] }
@@ -699,12 +712,59 @@ export const useWorkflowVibe = () => {
         }
       }
 
-      // For any node with model config, ALWAYS use user's default model
-      if (backendConfig.model && defaultModel) {
-        mergedConfig.model = {
-          provider: defaultModel.provider.provider,
-          name: defaultModel.model,
-          mode: 'chat',
+      // For End nodes, ensure outputs have value_selector format
+      // New format (preferred): {"outputs": [{"variable": "name", "value_selector": ["nodeId", "field"]}]}
+      // Legacy format (fallback): {"outputs": [{"variable": "name", "value": "{{#nodeId.field#}}"}]}
+      if (nodeType === BlockEnum.End && backendConfig.outputs) {
+        const outputs = backendConfig.outputs as Array<{ variable?: string, value?: string, value_selector?: string[] }>
+        mergedConfig.outputs = outputs.map((output) => {
+          // Preferred: value_selector array format (new LLM output format)
+          if (output.value_selector && Array.isArray(output.value_selector)) {
+            return output
+          }
+          // Parse value like "{{#nodeId.field#}}" into ["nodeId", "field"]
+          if (output.value) {
+            const match = output.value.match(/\{\{#([^.]+)\.([^#]+)#\}\}/)
+            if (match) {
+              return {
+                variable: output.variable,
+                value_selector: [match[1], match[2]],
+              }
+            }
+          }
+          // Fallback: return with empty value_selector to prevent crash
+          return {
+            variable: output.variable || 'output',
+            value_selector: [],
+          }
+        })
+      }
+
+      // For Parameter Extractor nodes, ensure each parameter has a 'required' field
+      // Backend may omit this field, but Dify's Pydantic model requires it
+      if (nodeType === BlockEnum.ParameterExtractor && backendConfig.parameters) {
+        const parameters = backendConfig.parameters as Array<{ name?: string, type?: string, description?: string, required?: boolean }>
+        mergedConfig.parameters = parameters.map((param) => ({
+          ...param,
+          required: param.required ?? true, // Default to required if not specified
+        }))
+      }
+
+      // For any node with model config, ALWAYS use user's configured model
+      // This prevents "Model not exist" errors when LLM generates models the user doesn't have configured
+      // Applies to: LLM, QuestionClassifier, ParameterExtractor, and any future model-dependent nodes
+      if (backendConfig.model) {
+        // Try to use defaultModel first, fallback to first available model from modelList
+        const fallbackModel = modelList?.[0]?.models?.[0]
+        const modelProvider = defaultModel?.provider?.provider || modelList?.[0]?.provider
+        const modelName = defaultModel?.model || fallbackModel?.model
+
+        if (modelProvider && modelName) {
+          mergedConfig.model = {
+            provider: modelProvider,
+            name: modelName,
+            mode: 'chat',
+          }
         }
       }
 
@@ -731,9 +791,18 @@ export const useWorkflowVibe = () => {
     }
 
     // Replace variable references in all node configs using the nodeIdMap
+    // This converts {{#old_id.field#}} to {{#new_uuid.field#}}
+
     for (const node of newNodes) {
       node.data = replaceVariableReferences(node.data, nodeIdMap) as typeof node.data
     }
+
+    // Use Dify's standard node initialization to handle all node types generically
+    // This sets up _targetBranches for question-classifier/if-else, _children for iteration/loop, etc.
+    const initializedNodes = initializeNodeData(newNodes, [])
+
+    // Update newNodes with initialized data
+    newNodes.splice(0, newNodes.length, ...initializedNodes)
 
     if (!newNodes.length) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
@@ -762,12 +831,16 @@ export const useWorkflowVibe = () => {
       zIndex: 0,
     })
 
+
     const newEdges: Edge[] = []
     for (const edgeSpec of backendEdges) {
       const sourceNode = nodeIdMap.get(edgeSpec.source)
       const targetNode = nodeIdMap.get(edgeSpec.target)
-      if (!sourceNode || !targetNode)
+
+      if (!sourceNode || !targetNode) {
+        console.warn(`[VIBE] Edge skipped: source=${edgeSpec.source} (found=${!!sourceNode}), target=${edgeSpec.target} (found=${!!targetNode})`)
         continue
+      }
 
       let sourceHandle = edgeSpec.sourceHandle || 'source'
       // Handle IfElse branch handles
@@ -775,8 +848,10 @@ export const useWorkflowVibe = () => {
         sourceHandle = 'source'
       }
 
+
       newEdges.push(buildEdge(sourceNode, targetNode, sourceHandle, edgeSpec.targetHandle || 'target'))
     }
+
 
     // Layout nodes
     const bounds = nodes.reduce(
@@ -878,10 +953,14 @@ export const useWorkflowVibe = () => {
       }
     })
 
+
+
     setNodes(updatedNodes)
     setEdges([...edges, ...newEdges])
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNodes[0].id })
     handleSyncWorkflowDraft()
+
+
 
     workflowStore.setState(state => ({
       ...state,
@@ -1194,81 +1273,128 @@ export const useWorkflowVibe = () => {
         output_schema: tool.output_schema,
       }))
 
-      const stream = await generateFlowchart({
-        instruction: trimmed,
-        model_config: latestModelConfig!,
-        existing_nodes: existingNodesPayload,
-        tools: toolsPayload,
-        regenerate_mode: regenerateMode,
-      })
+      const availableNodesPayload = availableNodesList.map(node => ({
+        type: node.type,
+        title: node.title,
+        description: node.description,
+      }))
 
       let mermaidCode = ''
       let backendNodes: BackendNodeSpec[] | undefined
       let backendEdges: BackendEdgeSpec[] | undefined
 
-      const reader = stream.getReader()
-      const decoder = new TextDecoder()
-
-      while (true) {
-        const { done, value } = await reader.read()
-        if (done)
-          break
-
-        const chunk = decoder.decode(value)
-        const lines = chunk.split('\n')
-
-        for (const line of lines) {
-          if (!line.trim() || !line.startsWith('data: '))
-            continue
-
-          try {
-            const data = JSON.parse(line.slice(6))
-            if (data.event === 'message' || data.event === 'workflow_generated') {
-              if (data.data?.text) {
-                mermaidCode += data.data.text
-                workflowStore.setState(state => ({
-                  ...state,
-                  vibePanelMermaidCode: mermaidCode,
-                }))
-              }
-              if (data.data?.nodes) {
-                backendNodes = data.data.nodes
-                workflowStore.setState(state => ({
-                  ...state,
-                  vibePanelBackendNodes: backendNodes,
-                }))
-              }
-              if (data.data?.edges) {
-                backendEdges = data.data.edges
-                workflowStore.setState(state => ({
-                  ...state,
-                  vibePanelBackendEdges: backendEdges,
-                }))
-              }
-              if (data.data?.intent) {
-                workflowStore.setState(state => ({
-                  ...state,
-                  vibePanelIntent: data.data.intent,
-                }))
-              }
-              if (data.data?.message) {
-                workflowStore.setState(state => ({
-                  ...state,
-                  vibePanelMessage: data.data.message,
-                }))
-              }
-              if (data.data?.suggestions) {
-                workflowStore.setState(state => ({
-                  ...state,
-                  vibePanelSuggestions: data.data.suggestions,
-                }))
-              }
-            }
+      if (!isMermaidFlowchart(trimmed)) {
+        // Build previous workflow context if regenerating
+        const { vibePanelBackendNodes, vibePanelBackendEdges, vibePanelLastWarnings } = workflowStore.getState()
+        const previousWorkflow = regenerateMode && vibePanelBackendNodes && vibePanelBackendNodes.length > 0
+          ? {
+            nodes: vibePanelBackendNodes,
+            edges: vibePanelBackendEdges || [],
+            warnings: vibePanelLastWarnings || [],
           }
-          catch (e) {
-            console.error('Error parsing chunk:', e)
-          }
+          : undefined
+
+        // Map language code to human-readable language name for LLM
+        const languageNameMap: Record<string, string> = {
+          en_US: 'English',
+          zh_Hans: 'Chinese',
+          zh_Hant: 'Traditional Chinese',
+          ja_JP: 'Japanese',
+          ko_KR: 'Korean',
+          pt_BR: 'Portuguese',
+          es_ES: 'Spanish',
+          fr_FR: 'French',
+          de_DE: 'German',
+          it_IT: 'Italian',
+          ru_RU: 'Russian',
+          uk_UA: 'Ukrainian',
+          vi_VN: 'Vietnamese',
+          pl_PL: 'Polish',
+          ro_RO: 'Romanian',
+          tr_TR: 'Turkish',
+          fa_IR: 'Persian',
+          hi_IN: 'Hindi',
         }
+        const preferredLanguage = languageNameMap[language] || 'English'
+
+        // Extract available models from user's configured model providers
+        const availableModelsPayload = modelList?.flatMap(provider =>
+          provider.models.map(model => ({
+            provider: provider.provider,
+            model: model.model,
+          })),
+        ) || []
+
+        const requestPayload = {
+          instruction: trimmed,
+          model_config: latestModelConfig,
+          available_nodes: availableNodesPayload,
+          existing_nodes: existingNodesPayload,
+          available_tools: toolsPayload,
+          selected_node_ids: [],
+          previous_workflow: previousWorkflow,
+          regenerate_mode: regenerateMode,
+          language: preferredLanguage,
+          available_models: availableModelsPayload,
+        }
+
+        const response = await generateFlowchart(requestPayload)
+
+        const { error, flowchart, nodes, edges, intent, message, warnings, suggestions } = response
+
+        if (error) {
+          Toast.notify({ type: 'error', message: error })
+          setIsVibeGenerating(false)
+          return
+        }
+
+        // Handle off_topic intent - show rejection message and suggestions
+        if (intent === 'off_topic') {
+          workflowStore.setState(state => ({
+            ...state,
+            vibePanelMermaidCode: '',
+            vibePanelMessage: message || t('workflow.vibe.offTopicDefault'),
+            vibePanelSuggestions: suggestions || [],
+            vibePanelIntent: 'off_topic',
+            isVibeGenerating: false,
+          }))
+          return
+        }
+
+        if (!flowchart) {
+          Toast.notify({ type: 'error', message: t('workflow.vibe.missingFlowchart') })
+          setIsVibeGenerating(false)
+          return
+        }
+
+        // Show warnings if any (includes tool sanitization warnings)
+        const responseWarnings = warnings || []
+        if (responseWarnings.length > 0) {
+          responseWarnings.forEach((warning) => {
+            Toast.notify({ type: 'warning', message: warning })
+          })
+        }
+
+        mermaidCode = flowchart
+        // Store backend nodes/edges for direct use (bypasses mermaid re-parsing)
+        backendNodes = nodes
+        backendEdges = edges
+        // Store warnings for regeneration context
+        workflowStore.setState(state => ({
+          ...state,
+          vibePanelLastWarnings: responseWarnings,
+        }))
+
+        workflowStore.setState(state => ({
+          ...state,
+          vibePanelMermaidCode: mermaidCode,
+          vibePanelBackendNodes: backendNodes,
+          vibePanelBackendEdges: backendEdges,
+          vibePanelMessage: '',
+          vibePanelSuggestions: [],
+          vibePanelIntent: 'generate',
+          isVibeGenerating: false,
+        }))
       }
 
       setIsVibeGenerating(false)
@@ -1286,10 +1412,16 @@ export const useWorkflowVibe = () => {
       if (skipPanelPreview) {
         // Prefer backend nodes (already sanitized) over mermaid re-parsing
         if (backendNodes && backendNodes.length > 0 && backendEdges) {
+          console.log('[VIBE] Applying backend nodes directly to workflow')
+          console.log('[VIBE] Backend nodes:', backendNodes.length)
+          console.log('[VIBE] Backend edges:', backendEdges.length)
           await applyBackendNodesToWorkflow(backendNodes, backendEdges)
+          console.log('[VIBE] Backend nodes applied successfully')
         }
         else {
+          console.log('[VIBE] Applying mermaid flowchart to workflow')
           await applyFlowchartToWorkflow()
+          console.log('[VIBE] Mermaid flowchart applied successfully')
         }
       }
     }
