@@ -1,6 +1,6 @@
 import logging
 from collections.abc import Sequence
-from typing import Any, cast
+from typing import Any
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
@@ -75,7 +75,6 @@ class FlowchartGeneratePayload(BaseModel):
     existing_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Existing workflow nodes")
     available_tools: list[dict[str, Any]] = Field(default_factory=list, description="Available tools")
     selected_node_ids: list[str] = Field(default_factory=list, description="IDs of selected nodes for context")
-    # Phase 10: Regenerate with previous workflow context
     previous_workflow: PreviousWorkflow | None = Field(default=None, description="Previous workflow for regeneration")
     regenerate_mode: bool = Field(default=False, description="Whether this is a regeneration request")
     # Language preference for generated content (node titles, descriptions)
@@ -309,13 +308,7 @@ class FlowchartGenerateApi(Resource):
 
         try:
             # Convert PreviousWorkflow to dict if present
-            previous_workflow_dict = None
-            if args.previous_workflow:
-                previous_workflow_dict = {
-                    "nodes": args.previous_workflow.nodes,
-                    "edges": args.previous_workflow.edges,
-                    "warnings": args.previous_workflow.warnings,
-                }
+            previous_workflow_dict = args.previous_workflow.model_dump() if args.previous_workflow else None
 
             result = WorkflowGenerator.generate_workflow_flowchart(
                 tenant_id=current_tenant_id,
@@ -325,7 +318,7 @@ class FlowchartGenerateApi(Resource):
                 existing_nodes=args.existing_nodes,
                 available_tools=args.available_tools,
                 selected_node_ids=args.selected_node_ids,
-                previous_workflow=cast(dict[str, object], previous_workflow_dict),
+                previous_workflow=previous_workflow_dict,
                 regenerate_mode=args.regenerate_mode,
                 preferred_language=args.language,
                 available_models=args.available_models,
