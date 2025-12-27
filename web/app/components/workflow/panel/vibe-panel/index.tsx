@@ -3,33 +3,42 @@
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
-import { RiCheckLine, RiRefreshLine } from '@remixicon/react'
+import { RiClipboardLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ResPlaceholder from '@/app/components/app/configuration/config/automatic/res-placeholder'
+import VersionSelector from '@/app/components/app/configuration/config/automatic/version-selector'
 import Button from '@/app/components/base/button'
 import { Generator } from '@/app/components/base/icons/src/vender/other'
 import Loading from '@/app/components/base/loading'
-import Flowchart from '@/app/components/base/mermaid'
 import Modal from '@/app/components/base/modal'
 import Textarea from '@/app/components/base/textarea'
+import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelModeType } from '@/types/app'
-import { VIBE_ACCEPT_EVENT, VIBE_COMMAND_EVENT, VIBE_REGENERATE_EVENT } from '../../constants'
-import { useStore } from '../../store'
+import { VIBE_APPLY_EVENT, VIBE_COMMAND_EVENT } from '../../constants'
+import { useHooksStore } from '../../hooks-store'
+import { useVibeFlowData } from '../../hooks/use-workflow-vibe'
+import { useStore, useWorkflowStore } from '../../store'
+import WorkflowPreview from '../../workflow-preview'
 
 const VibePanel: FC = () => {
   const { t } = useTranslation()
+  const workflowStore = useWorkflowStore()
   const showVibePanel = useStore(s => s.showVibePanel)
-  const setShowVibePanel = useStore(s => s.setShowVibePanel)
-  const vibePanelMermaidCode = useStore(s => s.vibePanelMermaidCode)
-  const setVibePanelMermaidCode = useStore(s => s.setVibePanelMermaidCode)
   const isVibeGenerating = useStore(s => s.isVibeGenerating)
-  const setIsVibeGenerating = useStore(s => s.setIsVibeGenerating)
   const vibePanelInstruction = useStore(s => s.vibePanelInstruction)
-  const setVibePanelInstruction = useStore(s => s.setVibePanelInstruction)
+  const configsMap = useHooksStore(s => s.configsMap)
+
+  const { current: currentFlowGraph, versions, currentVersionIndex, setCurrentVersionIndex } = useVibeFlowData({
+    storageKey: configsMap?.flowId || '',
+  })
+
+  const vibePanelPreviewNodes = currentFlowGraph?.nodes || []
+  const vibePanelPreviewEdges = currentFlowGraph?.edges || []
 
   const localModel = localStorage.getItem('auto-gen-model')
     ? JSON.parse(localStorage.getItem('auto-gen-model') as string) as Model
@@ -80,11 +89,21 @@ const VibePanel: FC = () => {
     localStorage.setItem('auto-gen-model', JSON.stringify(newModel))
   }, [model])
 
+  const handleInstructionChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    workflowStore.setState(state => ({
+      ...state,
+      vibePanelInstruction: e.target.value,
+    }))
+  }, [workflowStore])
+
   const handleClose = useCallback(() => {
-    setShowVibePanel(false)
-    setVibePanelMermaidCode('')
-    setIsVibeGenerating(false)
-  }, [setShowVibePanel, setVibePanelMermaidCode, setIsVibeGenerating])
+    workflowStore.setState(state => ({
+      ...state,
+      showVibePanel: false,
+      vibePanelMermaidCode: '',
+      isVibeGenerating: false,
+    }))
+  }, [workflowStore])
 
   const handleGenerate = useCallback(() => {
     const event = new CustomEvent(VIBE_COMMAND_EVENT, {
@@ -94,20 +113,16 @@ const VibePanel: FC = () => {
   }, [vibePanelInstruction])
 
   const handleAccept = useCallback(() => {
-    if (vibePanelMermaidCode) {
-      const event = new CustomEvent(VIBE_ACCEPT_EVENT, {
-        detail: { dsl: vibePanelMermaidCode },
-      })
-      document.dispatchEvent(event)
-      handleClose()
-    }
-  }, [vibePanelMermaidCode, handleClose])
-
-  const handleRegenerate = useCallback(() => {
-    setIsVibeGenerating(true)
-    const event = new CustomEvent(VIBE_REGENERATE_EVENT)
+    const event = new CustomEvent(VIBE_APPLY_EVENT)
     document.dispatchEvent(event)
-  }, [setIsVibeGenerating])
+    handleClose()
+  }, [handleClose])
+
+  const handleCopyMermaid = useCallback(() => {
+    const { vibePanelMermaidCode } = workflowStore.getState()
+    copy(vibePanelMermaidCode)
+    Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+  }, [workflowStore, t])
 
   if (!showVibePanel)
     return null
@@ -124,6 +139,7 @@ const VibePanel: FC = () => {
       isShow={showVibePanel}
       onClose={handleClose}
       className="min-w-[1140px] !p-0"
+      highPriority
     >
       <div className="flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
@@ -150,7 +166,7 @@ const VibePanel: FC = () => {
               className="min-h-[240px] resize-none rounded-[10px] px-4 pt-3"
               placeholder={t('workflow.vibe.missingInstruction')}
               value={vibePanelInstruction}
-              onChange={e => setVibePanelInstruction(e.target.value)}
+              onChange={handleInstructionChange}
             />
           </div>
 
@@ -163,48 +179,54 @@ const VibePanel: FC = () => {
               disabled={isVibeGenerating}
             >
               <Generator className="h-4 w-4" />
-              <span className="text-xs font-semibold">{t('appDebug.generate.generate')}</span>
+              <span className="system-xs-semibold">{t('appDebug.generate.generate')}</span>
             </Button>
           </div>
         </div>
 
-        {!isVibeGenerating && vibePanelMermaidCode && (
+        {!isVibeGenerating && vibePanelPreviewNodes.length > 0 && (
           <div className="h-full w-0 grow bg-background-default-subtle p-6 pb-0">
             <div className="flex h-full flex-col">
               <div className="mb-3 flex shrink-0 items-center justify-between">
-                <div className="shrink-0 text-base font-semibold leading-[160%] text-text-secondary">{t('workflow.vibe.panelTitle')}</div>
+                <div className="flex shrink-0 flex-col">
+                  <div className="system-xl-semibold text-text-secondary">{t('workflow.vibe.panelTitle')}</div>
+                  <VersionSelector
+                    versionLen={versions.length}
+                    value={currentVersionIndex}
+                    onChange={setCurrentVersionIndex}
+                  />
+                </div>
                 <div className="flex items-center space-x-2">
                   <Button
                     variant="secondary"
                     size="medium"
-                    onClick={handleRegenerate}
+                    onClick={handleCopyMermaid}
+                    className="px-2"
                   >
-                    <RiRefreshLine className="mr-1 h-4 w-4" />
-                    {t('workflow.vibe.regenerate')}
+                    <RiClipboardLine className="h-4 w-4" />
                   </Button>
                   <Button
                     variant="primary"
                     size="medium"
                     onClick={handleAccept}
                   >
-                    <RiCheckLine className="mr-1 h-4 w-4" />
-                    {t('workflow.vibe.accept')}
+                    {t('workflow.vibe.apply')}
                   </Button>
                 </div>
               </div>
-              <div className="flex grow flex-col overflow-y-auto pb-6">
-                <div className="grow">
-                  <Flowchart
-                    PrimitiveCode={vibePanelMermaidCode}
-                    theme="light"
-                  />
-                </div>
+              <div className="flex grow flex-col overflow-hidden pb-6">
+                <WorkflowPreview
+                  nodes={vibePanelPreviewNodes}
+                  edges={vibePanelPreviewEdges}
+                  viewport={{ x: 0, y: 0, zoom: 1 }}
+                  className="rounded-lg border border-divider-subtle"
+                />
               </div>
             </div>
           </div>
         )}
         {isVibeGenerating && renderLoading}
-        {!isVibeGenerating && !vibePanelMermaidCode && <ResPlaceholder />}
+        {!isVibeGenerating && vibePanelPreviewNodes.length === 0 && <ResPlaceholder />}
       </div>
     </Modal>
   )
