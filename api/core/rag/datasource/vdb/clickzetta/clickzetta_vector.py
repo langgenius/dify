@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import contextlib
 import json
 import logging
@@ -77,7 +78,7 @@ class ClickzettaConnectionPool:
     Manages connection reuse across ClickzettaVector instances.
     """
 
-    _instance: Optional["ClickzettaConnectionPool"] = None
+    _instance: ClickzettaConnectionPool | None = None
     _lock = threading.Lock()
 
     def __init__(self):
@@ -135,7 +136,7 @@ class ClickzettaConnectionPool:
 
         raise RuntimeError(f"Failed to create ClickZetta connection after {max_retries} attempts")
 
-    def _configure_connection(self, connection: "Connection"):
+    def _configure_connection(self, connection: Connection):
         """Configure connection session settings."""
         try:
             with connection.cursor() as cursor:
@@ -182,7 +183,7 @@ class ClickzettaConnectionPool:
         except Exception:
             logger.exception("Failed to configure connection, continuing with defaults")
 
-    def _is_connection_valid(self, connection: "Connection") -> bool:
+    def _is_connection_valid(self, connection: Connection) -> bool:
         """Check if connection is still valid."""
         try:
             with connection.cursor() as cursor:
@@ -222,7 +223,7 @@ class ClickzettaConnectionPool:
             # No valid connection found, create new one
             return self._create_connection(config)
 
-    def return_connection(self, config: ClickzettaConfig, connection: "Connection"):
+    def return_connection(self, config: ClickzettaConfig, connection: Connection):
         """Return a connection to the pool."""
         config_key = self._get_config_key(config)
 
@@ -320,14 +321,14 @@ class ClickzettaVector(BaseVector):
         """Get a connection from the pool."""
         return self._connection_pool.get_connection(self._config)
 
-    def _return_connection(self, connection: "Connection"):
+    def _return_connection(self, connection: Connection):
         """Return a connection to the pool."""
         self._connection_pool.return_connection(self._config, connection)
 
     class ConnectionContext:
         """Context manager for borrowing and returning connections."""
 
-        def __init__(self, vector_instance: "ClickzettaVector"):
+        def __init__(self, vector_instance: ClickzettaVector):
             self.vector = vector_instance
             self.connection: Connection | None = None
 

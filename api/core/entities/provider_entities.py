@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from enum import StrEnum, auto
 from typing import Union
 

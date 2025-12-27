@@ -4,7 +4,9 @@ Configuration system for mock nodes in testing.
 This module provides a flexible configuration system for customizing
 the behavior of mock nodes during testing.
 """
+
 from __future__ import annotations
+
 from collections.abc import Callable
 from dataclasses import dataclass, field
 from typing import Any

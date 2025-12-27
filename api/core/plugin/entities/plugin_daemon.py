@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import enum
 from collections.abc import Mapping, Sequence
 from datetime import datetime

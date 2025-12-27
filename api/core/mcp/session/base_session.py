@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import queue
 from collections.abc import Callable
@@ -62,21 +63,15 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
 
     request: ReceiveRequestT
     _session: Any
-    _on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any]
+    _on_complete: Callable[[RequestResponder[ReceiveRequestT, SendResultT]], Any]
 
     def __init__(
         self,
         request_id: RequestId,
         request_meta: RequestParams.Meta | None,
         request: ReceiveRequestT,
-        session: """BaseSession[
-            SendRequestT,
-            SendNotificationT,
-            SendResultT,
-            ReceiveRequestT,
-            ReceiveNotificationT
-        ]""",
-        on_complete: Callable[["RequestResponder[ReceiveRequestT, SendResultT]"], Any],
+        session: BaseSession[SendRequestT, SendNotificationT, SendResultT, ReceiveRequestT, ReceiveNotificationT],
+        on_complete: Callable[[RequestResponder[ReceiveRequestT, SendResultT]], Any],
     ):
         self.request_id = request_id
         self.request_meta = request_meta

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 import os
 import threading
@@ -34,7 +35,7 @@ class AliyunLogStore:
     Ensures only one instance exists to prevent multiple PG connection pools.
     """
 
-    _instance: "AliyunLogStore | None" = None
+    _instance: AliyunLogStore | None = None
     _initialized: bool = False
 
     # Track delayed PG connection for newly created projects

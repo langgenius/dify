@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 from datetime import datetime
 from decimal import Decimal
@@ -172,7 +173,7 @@ class ApiToolProvider(TypeBase):
         return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
-    def tools(self) -> list["ApiToolBundle"]:
+    def tools(self) -> list[ApiToolBundle]:
         return [ApiToolBundle.model_validate(tool) for tool in json.loads(self.tools_str)]
 
     @property
@@ -268,7 +269,7 @@ class WorkflowToolProvider(TypeBase):
         return db.session.query(Tenant).where(Tenant.id == self.tenant_id).first()
 
     @property
-    def parameter_configurations(self) -> list["WorkflowToolParameterConfiguration"]:
+    def parameter_configurations(self) -> list[WorkflowToolParameterConfiguration]:
         return [
             WorkflowToolParameterConfiguration.model_validate(config)
             for config in json.loads(self.parameter_configuration)

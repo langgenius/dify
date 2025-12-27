@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from collections.abc import Mapping
 from enum import StrEnum
 from typing import TYPE_CHECKING, Any, Optional
@@ -53,7 +54,7 @@ class SegmentType(StrEnum):
         return self in _ARRAY_TYPES
 
     @classmethod
-    def infer_segment_type(cls, value: Any) -> Optional[SegmentType]:
+    def infer_segment_type(cls, value: Any) -> SegmentType | None:
         """
         Attempt to infer the `SegmentType` based on the Python type of the `value` parameter.
 

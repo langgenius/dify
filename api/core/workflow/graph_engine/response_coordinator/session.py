@@ -4,7 +4,9 @@ Internal response session management for response coordinator.
 This module contains the private ResponseSession class used internally
 by ResponseStreamCoordinator to manage streaming sessions.
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass
 
 from core.workflow.nodes.answer.answer_node import AnswerNode

@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import importlib
 import logging
 import operator
@@ -60,7 +61,7 @@ logger = logging.getLogger(__name__)
 
 
 class Node(Generic[NodeDataT]):
-    node_type: ClassVar["NodeType"]
+    node_type: ClassVar[NodeType]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
     _node_data_type: ClassVar[type[BaseNodeData]] = BaseNodeData
 
@@ -199,14 +200,14 @@ class Node(Generic[NodeDataT]):
         return None
 
     # Global registry populated via __init_subclass__
-    _registry: ClassVar[dict["NodeType", dict[str, type["Node"]]]] = {}
+    _registry: ClassVar[dict[NodeType, dict[str, type[Node]]]] = {}
 
     def __init__(
         self,
         id: str,
         config: Mapping[str, Any],
-        graph_init_params: "GraphInitParams",
-        graph_runtime_state: "GraphRuntimeState",
+        graph_init_params: GraphInitParams,
+        graph_runtime_state: GraphRuntimeState,
     ) -> None:
         self._graph_init_params = graph_init_params
         self.id = id
@@ -439,7 +440,7 @@ class Node(Generic[NodeDataT]):
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
     @classmethod
-    def get_node_type_classes_mapping(cls) -> Mapping["NodeType", Mapping[str, type["Node"]]]:
+    def get_node_type_classes_mapping(cls) -> Mapping[NodeType, Mapping[str, type[Node]]]:
         """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
 
         Import all modules under core.workflow.nodes so subclasses register themselves on import.

@@ -4,7 +4,9 @@ This module provides file lifecycle management features including version contro
 automatic cleanup, backup and restore.
 Supports complete lifecycle management for knowledge base files.
 """
+
 from __future__ import annotations
+
 import json
 import logging
 import operator

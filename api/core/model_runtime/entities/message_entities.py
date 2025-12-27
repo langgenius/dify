@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC
 from collections.abc import Mapping, Sequence
 from enum import StrEnum, auto

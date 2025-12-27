@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import logging
 import threading
@@ -12,7 +13,7 @@ class SchemaRegistry:
 
     logger: ClassVar[logging.Logger] = logging.getLogger(__name__)
 
-    _default_instance: ClassVar[Optional["SchemaRegistry"]] = None
+    _default_instance: ClassVar[SchemaRegistry | None] = None
     _lock: ClassVar[threading.Lock] = threading.Lock()
 
     def __init__(self, base_dir: str):

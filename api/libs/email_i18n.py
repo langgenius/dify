@@ -5,7 +5,9 @@ This module provides a centralized, elegant way to handle email internationaliza
 in Dify. It follows Domain-Driven Design principles with proper type hints and
 eliminates the need for repetitive language switching logic.
 """
+
 from __future__ import annotations
+
 from dataclasses import dataclass
 from enum import StrEnum, auto
 from typing import Any, Protocol

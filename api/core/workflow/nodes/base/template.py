@@ -3,7 +3,9 @@
 This module provides a unified template structure for both Answer and End nodes,
 similar to SegmentGroup but focused on template representation without values.
 """
+
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Sequence
 from dataclasses import dataclass

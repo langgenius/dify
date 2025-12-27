@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
@@ -620,7 +621,7 @@ class WorkflowRun(Base):
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
     exceptions_count: Mapped[int] = mapped_column(sa.Integer, server_default=sa.text("0"), nullable=True)
 
-    pause: Mapped[Optional["WorkflowPause"]] = orm.relationship(
+    pause: Mapped[WorkflowPause | None] = orm.relationship(
         "WorkflowPause",
         primaryjoin="WorkflowRun.id == foreign(WorkflowPause.workflow_run_id)",
         uselist=False,
@@ -842,7 +843,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     created_by: Mapped[str] = mapped_column(StringUUID)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
+    offload_data: Mapped[list[WorkflowNodeExecutionOffload]] = orm.relationship(
         "WorkflowNodeExecutionOffload",
         primaryjoin="WorkflowNodeExecutionModel.id == foreign(WorkflowNodeExecutionOffload.node_execution_id)",
         uselist=True,
@@ -852,13 +853,13 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
 
     @staticmethod
     def preload_offload_data(
-        query: Select[tuple["WorkflowNodeExecutionModel"]] | orm.Query["WorkflowNodeExecutionModel"],
+        query: Select[tuple[WorkflowNodeExecutionModel]] | orm.Query[WorkflowNodeExecutionModel],
     ):
         return query.options(orm.selectinload(WorkflowNodeExecutionModel.offload_data))
 
     @staticmethod
     def preload_offload_data_and_files(
-        query: Select[tuple["WorkflowNodeExecutionModel"]] | orm.Query["WorkflowNodeExecutionModel"],
+        query: Select[tuple[WorkflowNodeExecutionModel]] | orm.Query[WorkflowNodeExecutionModel],
     ):
         return query.options(
             orm.selectinload(WorkflowNodeExecutionModel.offload_data).options(
@@ -933,7 +934,7 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
                     )
         return extras
 
-    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> Optional["WorkflowNodeExecutionOffload"]:
+    def _get_offload_by_type(self, type_: ExecutionOffLoadType) -> WorkflowNodeExecutionOffload | None:
         return next(iter([i for i in self.offload_data if i.type_ == type_]), None)
 
     @property
@@ -1047,7 +1048,7 @@ class WorkflowNodeExecutionOffload(Base):
         back_populates="offload_data",
     )
 
-    file: Mapped[Optional["UploadFile"]] = orm.relationship(
+    file: Mapped[UploadFile | None] = orm.relationship(
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
@@ -1335,7 +1336,7 @@ class WorkflowDraftVariable(Base):
     )
 
     # Relationship to WorkflowDraftVariableFile
-    variable_file: Mapped[Optional["WorkflowDraftVariableFile"]] = orm.relationship(
+    variable_file: Mapped[WorkflowDraftVariableFile | None] = orm.relationship(
         foreign_keys=[file_id],
         lazy="raise",
         uselist=False,
@@ -1667,7 +1668,7 @@ class WorkflowDraftVariableFile(Base):
     )
 
     # Relationship to UploadFile
-    upload_file: Mapped["UploadFile"] = orm.relationship(
+    upload_file: Mapped[UploadFile] = orm.relationship(
         foreign_keys=[upload_file_id],
         lazy="raise",
         uselist=False,
@@ -1734,7 +1735,7 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     state_object_key: Mapped[str] = mapped_column(String(length=255), nullable=False)
 
     # Relationship to WorkflowRun
-    workflow_run: Mapped["WorkflowRun"] = orm.relationship(
+    workflow_run: Mapped[WorkflowRun] = orm.relationship(
         foreign_keys=[workflow_run_id],
         # require explicit preloading.
         lazy="raise",

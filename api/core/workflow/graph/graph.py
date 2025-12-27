@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 import logging
 from collections import defaultdict
 from collections.abc import Mapping, Sequence
@@ -176,7 +177,7 @@ class Graph:
     def _create_node_instances(
         cls,
         node_configs_map: dict[str, dict[str, object]],
-        node_factory: "NodeFactory",
+        node_factory: NodeFactory,
     ) -> dict[str, Node]:
         """
         Create node instances from configurations using the node factory.
@@ -285,7 +286,7 @@ class Graph:
         cls,
         *,
         graph_config: Mapping[str, object],
-        node_factory: "NodeFactory",
+        node_factory: NodeFactory,
         root_node_id: str | None = None,
     ) -> Graph:
         """

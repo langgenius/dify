@@ -1,7 +1,9 @@
 """
 Broadcast channel for Pub/Sub messaging.
 """
+
 from __future__ import annotations
+
 import types
 from abc import abstractmethod
 from collections.abc import Iterator

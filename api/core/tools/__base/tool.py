@@ -1,4 +1,5 @@
 from __future__ import annotations
+
 from abc import ABC, abstractmethod
 from collections.abc import Generator
 from copy import deepcopy
@@ -167,7 +168,7 @@ class Tool(ABC):
             type=ToolInvokeMessage.MessageType.IMAGE, message=ToolInvokeMessage.TextMessage(text=image)
         )
 
-    def create_file_message(self, file: "File") -> ToolInvokeMessage:
+    def create_file_message(self, file: File) -> ToolInvokeMessage:
         return ToolInvokeMessage(
             type=ToolInvokeMessage.MessageType.FILE,
             message=ToolInvokeMessage.FileMessage(),

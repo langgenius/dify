@@ -1,7 +1,9 @@
 """
 Factory for creating ReadyQueue instances from serialized state.
 """
+
 from __future__ import annotations
+
 from typing import TYPE_CHECKING
 
 from .in_memory import InMemoryReadyQueue
