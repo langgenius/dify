@@ -297,17 +297,36 @@ export const useVibeFlowData = ({ storageKey }: UseVibeFlowDataParams) => {
     defaultValue: 0,
   })
 
+  useEffect(() => {
+    if (!versions || versions.length === 0) {
+      if (currentVersionIndex !== 0 && currentVersionIndex !== -1)
+        setCurrentVersionIndex(0)
+      return
+    }
+
+    if (currentVersionIndex === -1)
+      return
+
+    const normalizedIndex = Math.min(Math.max(currentVersionIndex ?? 0, 0), versions.length - 1)
+    if (normalizedIndex !== currentVersionIndex)
+      setCurrentVersionIndex(normalizedIndex)
+  }, [versions, currentVersionIndex, setCurrentVersionIndex])
+
   const current = useMemo(() => {
     if (!versions || versions.length === 0)
       return undefined
     const index = currentVersionIndex ?? 0
+    if (index < 0)
+      return undefined
     return versions[index] || versions[versions.length - 1]
   }, [versions, currentVersionIndex])
 
   const addVersion = useCallback((version: FlowGraph) => {
     // Prevent adding empty graphs
-    if (!version || !version.nodes || version.nodes.length === 0)
+    if (!version || !version.nodes || version.nodes.length === 0) {
+      setCurrentVersionIndex(-1)
       return
+    }
 
     setVersions((prev) => {
       const newVersions = [...(prev || []), version]
@@ -811,10 +830,7 @@ export const useWorkflowVibe = () => {
       }))
 
       const workflowGraph = await flowchartToWorkflowGraph(mermaidCode)
-      // Only add to versions if workflowGraph contains nodes
-      if (workflowGraph && workflowGraph.nodes && workflowGraph.nodes.length > 0) {
-        addVersion(workflowGraph)
-      }
+      addVersion(workflowGraph)
 
       if (skipPanelPreview)
         applyFlowchartToWorkflow()
