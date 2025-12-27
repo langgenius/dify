@@ -2,7 +2,7 @@
 import type { AppDetailResponse } from '@/models/app'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
 import { ChevronDownIcon, PlusIcon } from '@heroicons/react/24/solid'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import { Fragment, useState } from 'react'
 import { useTranslation } from 'react-i18next'

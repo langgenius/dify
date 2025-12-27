@@ -1,5 +1,5 @@
 import type { Locale } from '@/i18n-config'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import {
   createContext,
   useContext,

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { ExternalDataTool } from '@/models/common'
 import copy from 'copy-to-clipboard'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'

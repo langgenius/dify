@@ -11,7 +11,7 @@ import {
   RiPlayCircleLine,
 } from '@remixicon/react'
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'

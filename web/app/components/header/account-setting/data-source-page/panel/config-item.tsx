@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'

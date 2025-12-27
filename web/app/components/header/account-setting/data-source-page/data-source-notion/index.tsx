@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

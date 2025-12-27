@@ -2,7 +2,7 @@
 import type { InvitationResult } from '@/models/common'
 import { RiCloseLine, RiErrorWarningFill } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactMultiEmail } from 'react-multi-email'

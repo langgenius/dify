@@ -10,7 +10,8 @@ import type {
   SearchParams,
   SearchParamsFromCollection,
 } from './types'
-import { debounce, noop } from 'es-toolkit/compat'
+import { debounce } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import {
   useCallback,
   useEffect,

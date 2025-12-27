@@ -5,7 +5,7 @@ import type { Model, ModelProvider } from '@/app/components/header/account-setti
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useQueryClient } from '@tanstack/react-query'
 import dayjs from 'dayjs'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'

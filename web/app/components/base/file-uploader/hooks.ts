@@ -2,7 +2,7 @@ import type { ClipboardEvent } from 'react'
 import type { FileEntity } from './types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import type { FileUploadConfigResponse } from '@/models/common'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { useParams } from 'next/navigation'
 import {

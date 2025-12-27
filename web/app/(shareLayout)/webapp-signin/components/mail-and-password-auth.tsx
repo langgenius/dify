@@ -1,5 +1,5 @@
 'use client'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'

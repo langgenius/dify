@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
