@@ -1,14 +1,14 @@
 import type { FC } from 'react'
+import { RiArrowDownSLine } from '@remixicon/react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import Dropdown from '@/app/components/base/dropdown'
 import { Brush01 } from '@/app/components/base/icons/src/vender/solid/editor'
 import { Scales02 } from '@/app/components/base/icons/src/vender/solid/FinanceAndECommerce'
 import { Target04 } from '@/app/components/base/icons/src/vender/solid/general'
 import { TONE_LIST } from '@/config'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type PresetsParameterProps = {
   onSelect: (toneId: number) => void
@@ -20,12 +20,12 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
   const renderTrigger = useCallback((open: boolean) => {
     return (
       <Button
-        size={'small'}
-        variant={'secondary'}
+        size="small"
+        variant="secondary"
         className={cn(open && 'bg-state-base-hover')}
       >
         {t('common.modelProvider.loadPresets')}
-        <RiArrowDownSLine className='ml-0.5 h-3.5 w-3.5' />
+        <RiArrowDownSLine className="ml-0.5 h-3.5 w-3.5" />
       </Button>
     )
   }, [t])
@@ -42,9 +42,9 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
     return {
       value: tone.id,
       text: (
-        <div className='flex h-full items-center'>
+        <div className="flex h-full items-center">
           {getToneIcon(tone.id)}
-          {t(`common.model.tone.${tone.name}`) as string}
+          {t(`common.model.tone.${tone.name}` as any) as string}
         </div>
       ),
     }
@@ -55,7 +55,7 @@ const PresetsParameter: FC<PresetsParameterProps> = ({
       renderTrigger={renderTrigger}
       items={options}
       onSelect={item => onSelect(item.value as number)}
-      popupClassName='z-[1003]'
+      popupClassName="z-[1003]"
     />
   )
 }

@@ -1,8 +1,8 @@
-import { useFile } from './hooks'
-import { useStore } from './store'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { FILE_EXTS } from '@/app/components/base/prompt-editor/constants'
 import { SupportUploadFileTypes } from '@/app/components/workflow/types'
+import { useFile } from './hooks'
+import { useStore } from './store'
 
 type FileInputProps = {
   fileConfig: FileUpload
@@ -35,9 +35,9 @@ const FileInput = ({
 
   return (
     <input
-      className='absolute inset-0 block w-full cursor-pointer text-[0] opacity-0 disabled:cursor-not-allowed'
+      className="absolute inset-0 block w-full cursor-pointer text-[0] opacity-0 disabled:cursor-not-allowed"
       onClick={e => ((e.target as HTMLInputElement).value = '')}
-      type='file'
+      type="file"
       onChange={handleChange}
       accept={accept}
       disabled={!!(fileConfig.number_limits && files.length >= fileConfig?.number_limits)}

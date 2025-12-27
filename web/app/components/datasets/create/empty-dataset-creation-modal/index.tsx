@@ -1,17 +1,19 @@
 'use client'
-import React, { useState } from 'react'
 import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import s from './index.module.css'
-import cn from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
-import Input from '@/app/components/base/input'
+import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
-
+import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
+
 import { createEmptyDataset } from '@/service/datasets'
 import { useInvalidDatasetList } from '@/service/knowledge/use-dataset'
+import { cn } from '@/utils/classnames'
+import s from './index.module.css'
 
 type IProps = {
   show: boolean
@@ -40,6 +42,10 @@ const EmptyDatasetCreationModal = ({
     try {
       const dataset = await createEmptyDataset({ name: inputValue })
       invalidDatasetList()
+      trackEvent('create_empty_datasets', {
+        name: inputValue,
+        dataset_id: dataset.id,
+      })
       onHide()
       router.push(`/datasets/${dataset.id}/documents`)
     }
@@ -63,9 +69,9 @@ const EmptyDatasetCreationModal = ({
         <div className={s.label}>{t('datasetCreation.stepOne.modal.input')}</div>
         <Input value={inputValue} placeholder={t('datasetCreation.stepOne.modal.placeholder') || ''} onChange={e => setInputValue(e.target.value)} />
       </div>
-      <div className='flex flex-row-reverse'>
-        <Button className='ml-2 w-24' variant='primary' onClick={submit}>{t('datasetCreation.stepOne.modal.confirmButton')}</Button>
-        <Button className='w-24' onClick={onHide}>{t('datasetCreation.stepOne.modal.cancelButton')}</Button>
+      <div className="flex flex-row-reverse">
+        <Button className="ml-2 w-24" variant="primary" onClick={submit}>{t('datasetCreation.stepOne.modal.confirmButton')}</Button>
+        <Button className="w-24" onClick={onHide}>{t('datasetCreation.stepOne.modal.cancelButton')}</Button>
       </div>
     </Modal>
   )

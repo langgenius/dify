@@ -1,8 +1,8 @@
 'use client'
 
-import SearchBoxWrapper from './search-box/search-box-wrapper'
+import { cn } from '@/utils/classnames'
 import PluginTypeSwitch from './plugin-type-switch'
-import cn from '@/utils/classnames'
+import SearchBoxWrapper from './search-box/search-box-wrapper'
 
 type StickySearchAndSwitchWrapperProps = {
   locale?: string

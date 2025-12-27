@@ -59,7 +59,7 @@ class MCPClient:
             try:
                 logger.debug("Not supported method %s found in URL path, trying default 'mcp' method.", method_name)
                 self.connect_server(sse_client, "sse")
-            except MCPConnectionError:
+            except (MCPConnectionError, ValueError):
                 logger.debug("MCP connection failed with 'sse', falling back to 'mcp' method.")
                 self.connect_server(streamablehttp_client, "mcp")
 

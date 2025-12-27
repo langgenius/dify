@@ -1,9 +1,9 @@
 import type { NodeDefault } from '../../types'
-import { AuthorizationType, BodyType, Method } from './types'
 import type { BodyPayload, HttpNodeType } from './types'
-import { genNodeMetaData } from '@/app/components/workflow/utils'
-import { BlockEnum } from '@/app/components/workflow/types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { genNodeMetaData } from '@/app/components/workflow/utils'
+import { AuthorizationType, BodyType, Method } from './types'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Utilities,
@@ -45,10 +45,11 @@ const nodeDefault: NodeDefault<HttpNodeType> = {
       errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.http.api') })
 
     if (!errorMessages
-        && payload.body.type === BodyType.binary
-        && ((!(payload.body.data as BodyPayload)[0]?.file) || (payload.body.data as BodyPayload)[0]?.file?.length === 0)
-    )
+      && payload.body.type === BodyType.binary
+      && ((!(payload.body.data as BodyPayload)[0]?.file) || (payload.body.data as BodyPayload)[0]?.file?.length === 0)
+    ) {
       errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.http.binaryFileVariable') })
+    }
 
     return {
       isValid: !errorMessages,

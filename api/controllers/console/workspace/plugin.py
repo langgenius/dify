@@ -1,5 +1,6 @@
 import io
-from typing import Literal
+from collections.abc import Mapping
+from typing import Any, Literal
 
 from flask import request, send_file
 from flask_restx import Resource
@@ -46,8 +47,8 @@ class PluginDebuggingKeyApi(Resource):
 
 
 class ParserList(BaseModel):
-    page: int = Field(default=1)
-    page_size: int = Field(default=256)
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
 reg(ParserList)
@@ -106,8 +107,8 @@ class ParserPluginIdentifierQuery(BaseModel):
 
 
 class ParserTasks(BaseModel):
-    page: int
-    page_size: int
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
 class ParserMarketplaceUpgrade(BaseModel):
@@ -139,6 +140,15 @@ class ParserDynamicOptions(BaseModel):
     parameter: str
     credential_id: str | None = None
     provider_type: Literal["tool", "trigger"]
+
+
+class ParserDynamicOptionsWithCredentials(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str
+    credentials: Mapping[str, Any]
 
 
 class PluginPermissionSettingsPayload(BaseModel):
@@ -183,6 +193,7 @@ reg(ParserGithubUpgrade)
 reg(ParserUninstall)
 reg(ParserPermissionChange)
 reg(ParserDynamicOptions)
+reg(ParserDynamicOptionsWithCredentials)
 reg(ParserPreferencesChange)
 reg(ParserExcludePlugin)
 reg(ParserReadme)
@@ -650,6 +661,37 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 provider_type=args.provider_type,
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-options-with-credentials")
+class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDynamicOptionsWithCredentials.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    def post(self):
+        """Fetch dynamic options using credentials directly (for edit mode)."""
+        current_user, tenant_id = current_account_with_tenant()
+        user_id = current_user.id
+
+        args = ParserDynamicOptionsWithCredentials.model_validate(console_ns.payload)
+
+        try:
+            options = PluginParameterService.get_dynamic_select_options_with_credentials(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                credentials=args.credentials,
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)

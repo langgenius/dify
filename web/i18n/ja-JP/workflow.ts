@@ -464,6 +464,7 @@ const translation = {
         variable: '変数を使用する',
       },
       inputVars: '入力変数',
+      pluginNotInstalled: 'プラグインがインストールされていません',
     },
     start: {
       required: '必須',
@@ -570,6 +571,7 @@ const translation = {
         icon: 'セグメントアイコン',
         url: 'セグメント URL',
         metadata: 'メタデータ',
+        files: '取得したファイル',
       },
       metadata: {
         title: 'メタデータフィルタ',
@@ -599,6 +601,8 @@ const translation = {
           select: '変数選択...',
         },
       },
+      queryText: 'クエリテキスト',
+      queryAttachment: '画像を検索',
     },
     http: {
       inputVars: '入力変数',
@@ -1058,6 +1062,9 @@ const translation = {
       useVisualPicker: 'ビジュアル設定を使用',
       nodeTitle: 'スケジュールトリガー',
       mode: 'モード',
+      modeVisual: 'ビジュアル',
+      modeCron: 'Cron',
+      selectTime: '時間を選択',
       timezone: 'タイムゾーン',
       visualConfig: 'ビジュアル設定',
       monthlyDay: '月の日',

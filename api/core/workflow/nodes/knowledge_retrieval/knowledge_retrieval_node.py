@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
-from sqlalchemy import and_, func, literal, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -25,6 +25,8 @@ from core.rag.entities.metadata_entities import Condition, MetadataCondition
 from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from core.variables import (
+    ArrayFileSegment,
+    FileSegment,
     StringSegment,
 )
 from core.variables.segments import ArrayObjectSegment
@@ -119,20 +121,41 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         return "1"
 
     def _run(self) -> NodeRunResult:
-        # extract variables
-        variable = self.graph_runtime_state.variable_pool.get(self.node_data.query_variable_selector)
-        if not isinstance(variable, StringSegment):
+        if not self._node_data.query_variable_selector and not self._node_data.query_attachment_selector:
             return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
+                status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 inputs={},
-                error="Query variable is not string type.",
+                process_data={},
+                outputs={},
+                metadata={},
+                llm_usage=LLMUsage.empty_usage(),
             )
-        query = variable.value
-        variables = {"query": query}
-        if not query:
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED, inputs=variables, error="Query is required."
-            )
+        variables: dict[str, Any] = {}
+        # extract variables
+        if self._node_data.query_variable_selector:
+            variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_variable_selector)
+            if not isinstance(variable, StringSegment):
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs={},
+                    error="Query variable is not string type.",
+                )
+            query = variable.value
+            variables["query"] = query
+
+        if self._node_data.query_attachment_selector:
+            variable = self.graph_runtime_state.variable_pool.get(self._node_data.query_attachment_selector)
+            if not isinstance(variable, ArrayFileSegment) and not isinstance(variable, FileSegment):
+                return NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.FAILED,
+                    inputs={},
+                    error="Attachments variable is not array file or file type.",
+                )
+            if isinstance(variable, ArrayFileSegment):
+                variables["attachments"] = variable.value
+            else:
+                variables["attachments"] = [variable.value]
+
         # TODO(-LAN-): Move this check outside.
         # check rate limit
         knowledge_rate_limit = FeatureService.get_knowledge_rate_limit(self.tenant_id)
@@ -161,7 +184,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         # retrieve knowledge
         usage = LLMUsage.empty_usage()
         try:
-            results, usage = self._fetch_dataset_retriever(node_data=self.node_data, query=query)
+            results, usage = self._fetch_dataset_retriever(node_data=self._node_data, variables=variables)
             outputs = {"result": ArrayObjectSegment(value=results)}
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
@@ -198,12 +221,16 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             db.session.close()
 
     def _fetch_dataset_retriever(
-        self, node_data: KnowledgeRetrievalNodeData, query: str
+        self, node_data: KnowledgeRetrievalNodeData, variables: dict[str, Any]
     ) -> tuple[list[dict[str, Any]], LLMUsage]:
         usage = LLMUsage.empty_usage()
         available_datasets = []
         dataset_ids = node_data.dataset_ids
-
+        query = variables.get("query")
+        attachments = variables.get("attachments")
+        metadata_filter_document_ids = None
+        metadata_condition = None
+        metadata_usage = LLMUsage.empty_usage()
         # Subquery: Count the number of available documents for each dataset
         subquery = (
             db.session.query(Document.dataset_id, func.count(Document.id).label("available_document_count"))
@@ -234,13 +261,14 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             if not dataset:
                 continue
             available_datasets.append(dataset)
-        metadata_filter_document_ids, metadata_condition, metadata_usage = self._get_metadata_filter_condition(
-            [dataset.id for dataset in available_datasets], query, node_data
-        )
-        usage = self._merge_usage(usage, metadata_usage)
+        if query:
+            metadata_filter_document_ids, metadata_condition, metadata_usage = self._get_metadata_filter_condition(
+                [dataset.id for dataset in available_datasets], query, node_data
+            )
+            usage = self._merge_usage(usage, metadata_usage)
         all_documents = []
         dataset_retrieval = DatasetRetrieval()
-        if node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE:
+        if str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.SINGLE and query:
             # fetch model config
             if node_data.single_retrieval_config is None:
                 raise ValueError("single_retrieval_config is required")
@@ -272,7 +300,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                     metadata_filter_document_ids=metadata_filter_document_ids,
                     metadata_condition=metadata_condition,
                 )
-        elif node_data.retrieval_mode == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
+        elif str(node_data.retrieval_mode) == DatasetRetrieveConfigEntity.RetrieveStrategy.MULTIPLE:
             if node_data.multiple_retrieval_config is None:
                 raise ValueError("multiple_retrieval_config is required")
             if node_data.multiple_retrieval_config.reranking_mode == "reranking_model":
@@ -319,6 +347,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                 reranking_enable=node_data.multiple_retrieval_config.reranking_enable,
                 metadata_filter_document_ids=metadata_filter_document_ids,
                 metadata_condition=metadata_condition,
+                attachment_ids=[attachment.related_id for attachment in attachments] if attachments else None,
             )
         usage = self._merge_usage(usage, dataset_retrieval.llm_usage)
 
@@ -327,7 +356,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         retrieval_resource_list = []
         # deal with external documents
         for item in external_documents:
-            source = {
+            source: dict[str, dict[str, str | Any | dict[Any, Any] | None] | Any | str | None] = {
                 "metadata": {
                     "_source": "knowledge",
                     "dataset_id": item.metadata.get("dataset_id"),
@@ -384,6 +413,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                                 "doc_metadata": document.doc_metadata,
                             },
                             "title": document.name,
+                            "files": list(record.files) if record.files else None,
                         }
                         if segment.answer:
                             source["content"] = f"question:{segment.get_sign_content()} \nanswer:{segment.answer}"
@@ -393,12 +423,20 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         if retrieval_resource_list:
             retrieval_resource_list = sorted(
                 retrieval_resource_list,
-                key=lambda x: x["metadata"]["score"] if x["metadata"].get("score") is not None else 0.0,
+                key=self._score,  # type: ignore[arg-type, return-value]
                 reverse=True,
             )
             for position, item in enumerate(retrieval_resource_list, start=1):
-                item["metadata"]["position"] = position
+                item["metadata"]["position"] = position  # type: ignore[index]
         return retrieval_resource_list, usage
+
+    def _score(self, item: dict[str, Any]) -> float:
+        meta = item.get("metadata")
+        if isinstance(meta, dict):
+            s = meta.get("score")
+            if isinstance(s, (int, float)):
+                return float(s)
+        return 0.0
 
     def _get_metadata_filter_condition(
         self, dataset_ids: list, query: str, node_data: KnowledgeRetrievalNodeData
@@ -422,7 +460,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             if automatic_metadata_filters:
                 conditions = []
                 for sequence, filter in enumerate(automatic_metadata_filters):
-                    self._process_metadata_filter_func(
+                    DatasetRetrieval.process_metadata_filter_func(
                         sequence,
                         filter.get("condition", ""),
                         filter.get("metadata_name", ""),
@@ -466,7 +504,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                             value=expected_value,
                         )
                     )
-                    filters = self._process_metadata_filter_func(
+                    filters = DatasetRetrieval.process_metadata_filter_func(
                         sequence,
                         condition.comparison_operator,
                         metadata_name,
@@ -565,87 +603,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             return [], usage
         return automatic_metadata_filters, usage
 
-    def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list[Any]
-    ) -> list[Any]:
-        if value is None and condition not in ("empty", "not empty"):
-            return filters
-
-        json_field = Document.doc_metadata[metadata_name].as_string()
-
-        match condition:
-            case "contains":
-                filters.append(json_field.like(f"%{value}%"))
-
-            case "not contains":
-                filters.append(json_field.notlike(f"%{value}%"))
-
-            case "start with":
-                filters.append(json_field.like(f"{value}%"))
-
-            case "end with":
-                filters.append(json_field.like(f"%{value}"))
-            case "in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
-
-                if not value_list:
-                    filters.append(literal(False))
-                else:
-                    filters.append(json_field.in_(value_list))
-
-            case "not in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
-
-                if not value_list:
-                    filters.append(literal(True))
-                else:
-                    filters.append(json_field.notin_(value_list))
-
-            case "is" | "=":
-                if isinstance(value, str):
-                    filters.append(json_field == value)
-                elif isinstance(value, (int, float)):
-                    filters.append(Document.doc_metadata[metadata_name].as_float() == value)
-
-            case "is not" | "≠":
-                if isinstance(value, str):
-                    filters.append(json_field != value)
-                elif isinstance(value, (int, float)):
-                    filters.append(Document.doc_metadata[metadata_name].as_float() != value)
-
-            case "empty":
-                filters.append(Document.doc_metadata[metadata_name].is_(None))
-
-            case "not empty":
-                filters.append(Document.doc_metadata[metadata_name].isnot(None))
-
-            case "before" | "<":
-                filters.append(Document.doc_metadata[metadata_name].as_float() < value)
-
-            case "after" | ">":
-                filters.append(Document.doc_metadata[metadata_name].as_float() > value)
-
-            case "≤" | "<=":
-                filters.append(Document.doc_metadata[metadata_name].as_float() <= value)
-
-            case "≥" | ">=":
-                filters.append(Document.doc_metadata[metadata_name].as_float() >= value)
-
-            case _:
-                pass
-
-        return filters
-
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
         cls,
@@ -659,7 +616,10 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         typed_node_data = KnowledgeRetrievalNodeData.model_validate(node_data)
 
         variable_mapping = {}
-        variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
+        if typed_node_data.query_variable_selector:
+            variable_mapping[node_id + ".query"] = typed_node_data.query_variable_selector
+        if typed_node_data.query_attachment_selector:
+            variable_mapping[node_id + ".queryAttachment"] = typed_node_data.query_attachment_selector
         return variable_mapping
 
     def get_model_config(self, model: ModelConfig) -> tuple[ModelInstance, ModelConfigWithCredentialsEntity]:
