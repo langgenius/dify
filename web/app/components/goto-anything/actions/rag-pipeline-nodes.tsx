@@ -1,25 +1,40 @@
-import type { ActionItem } from './types'
+import type { ScopeSearchHandler } from './scope-registry'
+import type { SearchResult } from './types'
 import { ACTION_KEYS } from '../constants'
+import { scopeRegistry } from './scope-registry'
 
-// Create the RAG pipeline nodes action
-export const ragPipelineNodesAction: ActionItem = {
-  key: ACTION_KEYS.NODE,
-  shortcut: ACTION_KEYS.NODE,
-  title: 'Search RAG Pipeline Nodes',
-  description: 'Find and jump to nodes in the current RAG pipeline by name or type',
-  searchFn: undefined, // Will be set by useRagPipelineSearch hook
-  search: async (_, searchTerm = '', _locale) => {
+const scopeId = 'rag-pipeline-node'
+
+const buildSearchHandler = (searchFn?: (searchTerm: string) => SearchResult[]): ScopeSearchHandler => {
+  return async (_, searchTerm = '', _locale) => {
     try {
-      // Use the searchFn if available (set by useRagPipelineSearch hook)
-      if (ragPipelineNodesAction.searchFn)
-        return ragPipelineNodesAction.searchFn(searchTerm)
-
-      // If not in RAG pipeline context, return empty array
+      if (searchFn)
+        return searchFn(searchTerm)
       return []
     }
     catch (error) {
       console.warn('RAG pipeline nodes search failed:', error)
       return []
     }
-  },
+  }
+}
+
+export const setRagPipelineNodesSearchFn = (fn: (searchTerm: string) => SearchResult[]) => {
+  scopeRegistry.updateSearchHandler(scopeId, buildSearchHandler(fn))
+}
+
+// Register the RAG pipeline nodes action
+scopeRegistry.register({
+  id: scopeId,
+  shortcut: ACTION_KEYS.NODE,
+  title: 'Search RAG Pipeline Nodes',
+  description: 'Find and jump to nodes in the current RAG pipeline by name or type',
+  isAvailable: context => context.isRagPipelinePage,
+  search: buildSearchHandler(),
+})
+
+// Legacy export
+export const ragPipelineNodesAction = {
+  key: ACTION_KEYS.NODE,
+  search: async () => [],
 }

@@ -1,4 +1,5 @@
-import type { ActionItem, SearchResult } from './actions/types'
+import type { ScopeDescriptor } from './actions/scope-registry'
+import type { SearchResult } from './actions/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -47,34 +48,38 @@ vi.mock('./context', () => ({
   GotoAnythingProvider: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }))
 
-const createActionItem = (key: ActionItem['key'], shortcut: string): ActionItem => ({
-  key,
+const createScope = (id: ScopeDescriptor['id'], shortcut: string): ScopeDescriptor => ({
+  id,
   shortcut,
-  title: `${key} title`,
-  description: `${key} desc`,
-  action: vi.fn(),
+  title: `${id} title`,
+  description: `${id} desc`,
   search: vi.fn(),
 })
 
-const actionsMock = {
-  slash: createActionItem('/', '/'),
-  app: createActionItem('@app', '@app'),
-  plugin: createActionItem('@plugin', '@plugin'),
-}
+const scopesMock = [
+  createScope('slash', '/'),
+  createScope('app', '@app'),
+  createScope('plugin', '@plugin'),
+]
 
-const createActionsMock = vi.fn(() => actionsMock)
-const matchActionMock = vi.fn(() => undefined)
-const searchAnythingMock = vi.fn(async () => mockQueryResult.data)
+type MatchAction = typeof import('./actions').matchAction
+type SearchAnything = typeof import('./actions').searchAnything
+
+const useScopeRegistryMock = vi.fn(() => scopesMock)
+const matchActionMock = vi.fn<MatchAction>(() => undefined)
+const searchAnythingMock = vi.fn<SearchAnything>(async () => mockQueryResult.data)
+const registerDefaultScopesMock = vi.fn()
 
 vi.mock('./actions', () => ({
   __esModule: true,
-  createActions: () => createActionsMock(),
-  matchAction: () => matchActionMock(),
-  searchAnything: () => searchAnythingMock(),
+  matchAction: (...args: Parameters<MatchAction>) => matchActionMock(...args),
+  searchAnything: (...args: Parameters<SearchAnything>) => searchAnythingMock(...args),
+  registerDefaultScopes: () => registerDefaultScopesMock(),
 }))
 
 vi.mock('./actions/commands', () => ({
   SlashCommandProvider: () => null,
+  executeCommand: vi.fn(),
 }))
 
 vi.mock('./actions/commands/registry', () => ({
@@ -83,6 +88,10 @@ vi.mock('./actions/commands/registry', () => ({
     getAvailableCommands: () => [],
     getAllCommands: () => [],
   },
+}))
+
+vi.mock('./actions/scope-registry', () => ({
+  useScopeRegistry: () => useScopeRegistryMock(),
 }))
 
 vi.mock('@/app/components/workflow/utils/common', () => ({

@@ -6,7 +6,7 @@
 
 import type { Shape as WorkflowState } from '@/app/components/workflow/store/workflow'
 import type { Edge, Node } from '@/app/components/workflow/types'
-import { render, screen } from '@testing-library/react'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import Toast from '@/app/components/base/toast'
 import { WorkflowContext } from '@/app/components/workflow/context'
@@ -224,13 +224,14 @@ describe('VibePanel', () => {
   // --------------------------------------------------------------------------
   describe('User Interactions', () => {
     it('should update instruction in store when typing', async () => {
-      const user = userEvent.setup()
       const { workflowStore } = renderVibePanel()
 
       const textarea = screen.getByPlaceholderText('workflow.vibe.missingInstruction')
-      await user.type(textarea, 'Build a vibe flow')
+      fireEvent.change(textarea, { target: { value: 'Build a vibe flow' } })
 
-      expect(workflowStore.getState().vibePanelInstruction).toBe('Build a vibe flow')
+      await waitFor(() => {
+        expect(workflowStore.getState().vibePanelInstruction).toBe('Build a vibe flow')
+      })
     })
 
     it('should dispatch command event with instruction when generate clicked', async () => {

@@ -44,12 +44,19 @@ export type CommandSearchResult = {
 
 export type SearchResult = AppSearchResult | PluginSearchResult | KnowledgeSearchResult | WorkflowNodeSearchResult | CommandSearchResult
 
+// Legacy ActionItem for backward compatibility if needed, but we should move to ScopeDescriptor
 export type ActionItem = {
   key: ActionKey
   shortcut: string
   title: string | TypeWithI18N
   description: string
+  /**
+   * @deprecated use search() instead
+   */
   action?: (data: SearchResult) => void
+  /**
+   * @deprecated use search() instead
+   */
   searchFn?: (searchTerm: string) => SearchResult[]
   search: (
     query: string,
@@ -57,3 +64,5 @@ export type ActionItem = {
     locale?: string,
   ) => (Promise<SearchResult[]> | SearchResult[])
 }
+
+export type { ScopeContext, ScopeDescriptor } from './scope-registry'
