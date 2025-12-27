@@ -99,7 +99,7 @@ export function useAccountSettingModal<T extends string = string>() {
 export type MarketplaceFilters = {
   q: string // search query
   category: string // plugin category
-  tags: string[] // comma-separated tags
+  tags: string[] // array of tags
 }
 
 /**
