@@ -26,12 +26,6 @@ export type PanelSliceShape = {
   setInitShowLastRunTab: (initShowLastRunTab: boolean) => void
   showVibePanel: boolean
   setShowVibePanel: (showVibePanel: boolean) => void
-  vibePanelMermaidCode: string
-  setVibePanelMermaidCode: (vibePanelMermaidCode: string) => void
-  isVibeGenerating: boolean
-  setIsVibeGenerating: (isVibeGenerating: boolean) => void
-  vibePanelInstruction: string
-  setVibePanelInstruction: (vibePanelInstruction: string) => void
 }
 
 export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
@@ -55,9 +49,4 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   showVibePanel: false,
   setShowVibePanel: showVibePanel => set(() => ({ showVibePanel })),
   vibePanelMermaidCode: '',
-  setVibePanelMermaidCode: vibePanelMermaidCode => set(() => ({ vibePanelMermaidCode })),
-  isVibeGenerating: false,
-  setIsVibeGenerating: isVibeGenerating => set(() => ({ isVibeGenerating })),
-  vibePanelInstruction: '',
-  setVibePanelInstruction: vibePanelInstruction => set(() => ({ vibePanelInstruction })),
 })
