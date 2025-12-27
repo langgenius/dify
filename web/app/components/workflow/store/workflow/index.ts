@@ -12,6 +12,7 @@ import type { NodeSliceShape } from './node-slice'
 import type { PanelSliceShape } from './panel-slice'
 import type { ToolSliceShape } from './tool-slice'
 import type { VersionSliceShape } from './version-slice'
+import type { VibeWorkflowSliceShape } from './vibe-workflow-slice'
 import type { WorkflowDraftSliceShape } from './workflow-draft-slice'
 import type { WorkflowSliceShape } from './workflow-slice'
 import type { RagPipelineSliceShape } from '@/app/components/rag-pipeline/store'
@@ -34,6 +35,7 @@ import { createNodeSlice } from './node-slice'
 import { createPanelSlice } from './panel-slice'
 import { createToolSlice } from './tool-slice'
 import { createVersionSlice } from './version-slice'
+import { createVibeWorkflowSlice } from './vibe-workflow-slice'
 import { createWorkflowDraftSlice } from './workflow-draft-slice'
 import { createWorkflowSlice } from './workflow-slice'
 
@@ -56,6 +58,7 @@ export type Shape
     & InspectVarsSliceShape
     & LayoutSliceShape
     & SliceFromInjection
+    & VibeWorkflowSliceShape
 
 export type InjectWorkflowStoreSliceFn = StateCreator<SliceFromInjection>
 
@@ -80,6 +83,7 @@ export const createWorkflowStore = (params: CreateWorkflowStoreParams) => {
     ...createWorkflowSlice(...args),
     ...createInspectVarsSlice(...args),
     ...createLayoutSlice(...args),
+    ...createVibeWorkflowSlice(...args),
     ...(injectWorkflowStoreSliceFn?.(...args) || {} as SliceFromInjection),
   }))
 }

@@ -4,6 +4,7 @@ import type { ToolDefaultValue } from '../block-selector/types'
 import type { Edge, Node, ToolWithProvider } from '../types'
 import type { Tool } from '@/app/components/tools/types'
 import type { Model } from '@/types/app'
+import { useSessionStorageState } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -25,10 +26,10 @@ import {
   CUSTOM_EDGE,
   NODE_WIDTH,
   NODE_WIDTH_X_OFFSET,
-  VIBE_ACCEPT_EVENT,
+  VIBE_APPLY_EVENT,
   VIBE_COMMAND_EVENT,
-  VIBE_REGENERATE_EVENT,
 } from '../constants'
+import { useHooksStore } from '../hooks-store'
 import { useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import {
@@ -74,6 +75,11 @@ type ParseError = {
 type ParseResult = {
   nodes: ParsedNode[]
   edges: ParsedEdge[]
+}
+
+type FlowGraph = {
+  nodes: Node[]
+  edges: Edge[]
 }
 
 const NODE_DECLARATION = /^([A-Z][\w-]*)\s*\[(?:"([^"]+)"|([^\]]+))\]\s*$/i
@@ -276,10 +282,45 @@ const buildToolParams = (parameters?: Tool['parameters']) => {
   return params
 }
 
+type UseVibeFlowDataParams = {
+  storageKey: string
+}
+
+const keyPrefix = 'vibe-flow-'
+
+export const useVibeFlowData = ({ storageKey }: UseVibeFlowDataParams) => {
+  const [versions, setVersions] = useSessionStorageState<FlowGraph[]>(`${keyPrefix}${storageKey}-versions`, {
+    defaultValue: [],
+  })
+
+  const [currentVersionIndex, setCurrentVersionIndex] = useSessionStorageState<number>(`${keyPrefix}${storageKey}-version-index`, {
+    defaultValue: 0,
+  })
+
+  const current = versions?.[currentVersionIndex || 0]
+
+  const addVersion = useCallback((version: FlowGraph) => {
+    setCurrentVersionIndex(() => versions?.length || 0)
+    setVersions((prev) => {
+      return [...prev!, version]
+    })
+  }, [setVersions, setCurrentVersionIndex, versions?.length])
+
+  return {
+    versions,
+    addVersion,
+    currentVersionIndex,
+    setCurrentVersionIndex,
+    current,
+  }
+}
+
 export const useWorkflowVibe = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
   const workflowStore = useWorkflowStore()
+  const configsMap = useHooksStore(s => s.configsMap)
+
   const language = useGetLanguage()
   const { nodesMap: nodesMetaDataMap } = useNodesMetaData()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -295,6 +336,10 @@ export const useWorkflowVibe = () => {
   const [modelConfig, setModelConfig] = useState<Model | null>(null)
   const isGeneratingRef = useRef(false)
   const lastInstructionRef = useRef<string>('')
+
+  const { addVersion, current: currentFlowGraph } = useVibeFlowData({
+    storageKey: `${configsMap?.flowId}`,
+  })
 
   useEffect(() => {
     const storedModel = (() => {
@@ -427,48 +472,42 @@ export const useWorkflowVibe = () => {
     return map
   }, [nodesMetaDataMap])
 
-  const applyFlowchartToWorkflow = useCallback(async (mermaidCode: string) => {
-    const { getNodes, setNodes, edges, setEdges } = store.getState()
+  const flowchartToWorkflowGraph = useCallback(async (mermaidCode: string): Promise<FlowGraph> => {
+    const { getNodes } = store.getState()
     const nodes = getNodes()
-    const {
-      setShowVibePanel,
-    } = workflowStore.getState()
 
     const parseResultToUse = parseMermaidFlowchart(mermaidCode, nodeTypeLookup, toolLookup)
+    const emptyGraph = {
+      nodes: [],
+      edges: [],
+    }
     if ('error' in parseResultToUse) {
       switch (parseResultToUse.error) {
         case 'missingNodeType':
         case 'missingNodeDefinition':
           Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
-          setShowVibePanel(false)
-          return
+          return emptyGraph
         case 'unknownNodeId':
           Toast.notify({ type: 'error', message: t('workflow.vibe.unknownNodeId', { id: parseResultToUse.detail }) })
-          setShowVibePanel(false)
-          return
+          return emptyGraph
         case 'unknownNodeType':
           Toast.notify({ type: 'error', message: t('workflow.vibe.nodeTypeUnavailable', { type: parseResultToUse.detail }) })
-          setShowVibePanel(false)
-          return
+          return emptyGraph
         case 'unknownTool':
           Toast.notify({ type: 'error', message: t('workflow.vibe.toolUnavailable', { tool: parseResultToUse.detail }) })
-          setShowVibePanel(false)
-          return
+          return emptyGraph
         case 'unsupportedEdgeLabel':
           Toast.notify({ type: 'error', message: t('workflow.vibe.unsupportedEdgeLabel', { label: parseResultToUse.detail }) })
-          setShowVibePanel(false)
-          return
+          return emptyGraph
         default:
           Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
-          setShowVibePanel(false)
-          return
+          return emptyGraph
       }
     }
 
     if (!nodesMetaDataMap) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.nodesUnavailable') })
-      setShowVibePanel(false)
-      return
+      return emptyGraph
     }
 
     const existingStartNode = nodes.find(node => node.data.type === BlockEnum.Start)
@@ -513,7 +552,7 @@ export const useWorkflowVibe = () => {
 
     if (!newNodes.length) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
-      return
+      return emptyGraph
     }
 
     const buildEdge = (
@@ -626,10 +665,20 @@ export const useWorkflowVibe = () => {
         },
       }
     })
+    return {
+      nodes: updatedNodes,
+      edges: newEdges,
+    }
+  }, [nodeTypeLookup, toolLookup])
 
-    setNodes(updatedNodes)
-    setEdges([...edges, ...newEdges])
-    saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNodes[0].id })
+  const applyFlowchartToWorkflow = useCallback(() => {
+    const { setNodes, setEdges } = store.getState()
+    const vibePanelPreviewNodes = currentFlowGraph.nodes || []
+    const vibePanelPreviewEdges = currentFlowGraph.edges || []
+
+    setNodes(vibePanelPreviewNodes)
+    setEdges(vibePanelPreviewEdges)
+    saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: vibePanelPreviewNodes[0].id })
     handleSyncWorkflowDraft()
 
     workflowStore.setState(state => ({
@@ -744,8 +793,11 @@ export const useWorkflowVibe = () => {
         isVibeGenerating: false,
       }))
 
+      const workflowGraph = await flowchartToWorkflowGraph(mermaidCode)
+      addVersion(workflowGraph)
+
       if (skipPanelPreview)
-        await applyFlowchartToWorkflow(mermaidCode)
+        applyFlowchartToWorkflow()
     }
     finally {
       isGeneratingRef.current = false
@@ -764,47 +816,27 @@ export const useWorkflowVibe = () => {
     getLatestModelConfig,
   ])
 
-  const handleRegenerate = useCallback(async () => {
-    if (!lastInstructionRef.current) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.missingInstruction') })
-      return
-    }
-
-    await handleVibeCommand(lastInstructionRef.current, false)
-  }, [handleVibeCommand, t])
-
-  const handleAccept = useCallback(async (vibePanelMermaidCode: string | undefined) => {
-    if (!vibePanelMermaidCode) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.noFlowchart') })
-      return
-    }
-
-    await applyFlowchartToWorkflow(vibePanelMermaidCode)
-  }, [applyFlowchartToWorkflow, t])
+  const handleAccept = useCallback(() => {
+    applyFlowchartToWorkflow()
+  }, [applyFlowchartToWorkflow])
 
   useEffect(() => {
     const handler = (event: CustomEvent<VibeCommandDetail>) => {
       handleVibeCommand(event.detail?.dsl, false)
     }
 
-    const regenerateHandler = () => {
-      handleRegenerate()
-    }
-
-    const acceptHandler = (event: CustomEvent<VibeCommandDetail>) => {
-      handleAccept(event.detail?.dsl)
+    const acceptHandler = () => {
+      handleAccept()
     }
 
     document.addEventListener(VIBE_COMMAND_EVENT, handler as EventListener)
-    document.addEventListener(VIBE_REGENERATE_EVENT, regenerateHandler as EventListener)
-    document.addEventListener(VIBE_ACCEPT_EVENT, acceptHandler as EventListener)
+    document.addEventListener(VIBE_APPLY_EVENT, acceptHandler as EventListener)
 
     return () => {
       document.removeEventListener(VIBE_COMMAND_EVENT, handler as EventListener)
-      document.removeEventListener(VIBE_REGENERATE_EVENT, regenerateHandler as EventListener)
-      document.removeEventListener(VIBE_ACCEPT_EVENT, acceptHandler as EventListener)
+      document.removeEventListener(VIBE_APPLY_EVENT, acceptHandler as EventListener)
     }
-  }, [handleVibeCommand, handleRegenerate])
+  }, [handleVibeCommand, handleAccept])
 
   return null
 }

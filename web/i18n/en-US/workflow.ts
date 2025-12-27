@@ -138,7 +138,7 @@ const translation = {
     generatingFlowchart: 'Generating flowchart preview...',
     noFlowchartYet: 'No flowchart preview available',
     regenerate: 'Regenerate',
-    accept: 'Accept',
+    apply: 'Apply',
     noFlowchart: 'No flowchart provided',
   },
   publishLimit: {
