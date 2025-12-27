@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import re
 import uuid
@@ -54,7 +55,7 @@ class AppMode(StrEnum):
     RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "AppMode":
+    def value_of(cls, value: str) -> AppMode:
         """
         Get value of given mode.
 
@@ -1306,7 +1307,7 @@ class Message(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "Message":
+    def from_dict(cls, data: dict[str, Any]) -> Message:
         return cls(
             id=data["id"],
             app_id=data["app_id"],

@@ -1,3 +1,4 @@
+from __future__ import annotations
 import contextlib
 import json
 import logging
@@ -89,7 +90,7 @@ class ClickzettaConnectionPool:
         self._start_cleanup_thread()
 
     @classmethod
-    def get_instance(cls) -> "ClickzettaConnectionPool":
+    def get_instance(cls) -> ClickzettaConnectionPool:
         """Get singleton instance of connection pool."""
         if cls._instance is None:
             with cls._lock:
@@ -104,7 +105,7 @@ class ClickzettaConnectionPool:
             f"{config.workspace}:{config.vcluster}:{config.schema_name}"
         )
 
-    def _create_connection(self, config: ClickzettaConfig) -> "Connection":
+    def _create_connection(self, config: ClickzettaConfig) -> Connection:
         """Create a new ClickZetta connection."""
         max_retries = 3
         retry_delay = 1.0
@@ -190,7 +191,7 @@ class ClickzettaConnectionPool:
         except Exception:
             return False
 
-    def get_connection(self, config: ClickzettaConfig) -> "Connection":
+    def get_connection(self, config: ClickzettaConfig) -> Connection:
         """Get a connection from the pool or create a new one."""
         config_key = self._get_config_key(config)
 
@@ -315,7 +316,7 @@ class ClickzettaVector(BaseVector):
         self._connection_pool = ClickzettaConnectionPool.get_instance()
         self._init_write_queue()
 
-    def _get_connection(self) -> "Connection":
+    def _get_connection(self) -> Connection:
         """Get a connection from the pool."""
         return self._connection_pool.get_connection(self._config)
 
@@ -330,7 +331,7 @@ class ClickzettaVector(BaseVector):
             self.vector = vector_instance
             self.connection: Connection | None = None
 
-        def __enter__(self) -> "Connection":
+        def __enter__(self) -> Connection:
             self.connection = self.vector._get_connection()
             return self.connection
 
@@ -338,7 +339,7 @@ class ClickzettaVector(BaseVector):
             if self.connection:
                 self.vector._return_connection(self.connection)
 
-    def get_connection_context(self) -> "ClickzettaVector.ConnectionContext":
+    def get_connection_context(self) -> ClickzettaVector.ConnectionContext:
         """Get a connection context manager."""
         return self.ConnectionContext(self)
 
@@ -437,7 +438,7 @@ class ClickzettaVector(BaseVector):
         """Return the vector database type."""
         return "clickzetta"
 
-    def _ensure_connection(self) -> "Connection":
+    def _ensure_connection(self) -> Connection:
         """Get a connection from the pool."""
         return self._get_connection()
 

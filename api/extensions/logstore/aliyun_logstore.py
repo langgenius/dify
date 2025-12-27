@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 import os
 import threading
@@ -66,7 +67,7 @@ class AliyunLogStore:
         "\t",
     ]
 
-    def __new__(cls) -> "AliyunLogStore":
+    def __new__(cls) -> AliyunLogStore:
         """Implement singleton pattern."""
         if cls._instance is None:
             cls._instance = super().__new__(cls)

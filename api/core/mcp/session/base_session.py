@@ -1,3 +1,4 @@
+from __future__ import annotations
 import logging
 import queue
 from collections.abc import Callable
@@ -85,7 +86,7 @@ class RequestResponder(Generic[ReceiveRequestT, SendResultT]):
         self._on_complete = on_complete
         self._entered = False  # Track if we're in a context manager
 
-    def __enter__(self) -> "RequestResponder[ReceiveRequestT, SendResultT]":
+    def __enter__(self) -> RequestResponder[ReceiveRequestT, SendResultT]:
         """Enter the context manager, enabling request cancellation tracking."""
         self._entered = True
         return self

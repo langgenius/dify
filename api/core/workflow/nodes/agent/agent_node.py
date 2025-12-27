@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
@@ -328,7 +329,7 @@ class AgentNode(Node[AgentNodeData]):
     def _generate_credentials(
         self,
         parameters: dict[str, Any],
-    ) -> "InvokeCredentials":
+    ) -> InvokeCredentials:
         """
         Generate credentials based on the given agent parameters.
         """

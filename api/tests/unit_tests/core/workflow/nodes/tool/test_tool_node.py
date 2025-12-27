@@ -1,3 +1,4 @@
+from __future__ import annotations
 import sys
 import types
 from collections.abc import Generator
@@ -21,7 +22,7 @@ if TYPE_CHECKING:  # pragma: no cover - imported for type checking only
 
 
 @pytest.fixture
-def tool_node(monkeypatch) -> "ToolNode":
+def tool_node(monkeypatch) -> ToolNode:
     module_name = "core.ops.ops_trace_manager"
     if module_name not in sys.modules:
         ops_stub = types.ModuleType(module_name)

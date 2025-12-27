@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 from datetime import datetime
 from decimal import Decimal
@@ -167,7 +168,7 @@ class ApiToolProvider(TypeBase):
     )
 
     @property
-    def schema_type(self) -> "ApiProviderSchemaType":
+    def schema_type(self) -> ApiProviderSchemaType:
         return ApiProviderSchemaType.value_of(self.schema_type_str)
 
     @property
@@ -359,7 +360,7 @@ class MCPToolProvider(TypeBase):
         except (json.JSONDecodeError, TypeError):
             return []
 
-    def to_entity(self) -> "MCPProviderEntity":
+    def to_entity(self) -> MCPProviderEntity:
         """Convert to domain entity"""
         from core.entities.mcp_provider import MCPProviderEntity
 
@@ -533,5 +534,5 @@ class DeprecatedPublishedAppTool(TypeBase):
     )
 
     @property
-    def description_i18n(self) -> "I18nObject":
+    def description_i18n(self) -> I18nObject:
         return I18nObject.model_validate(json.loads(self.description))

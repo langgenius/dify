@@ -1,3 +1,4 @@
+from __future__ import annotations
 import base64
 import json
 import logging
@@ -109,7 +110,7 @@ class MCPTool(Tool):
         """Process audio content and return a blob message."""
         return self.create_blob_message(blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType})
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "MCPTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> MCPTool:
         return MCPTool(
             entity=self.entity,
             runtime=runtime,

@@ -1,3 +1,4 @@
+from __future__ import annotations
 from libs.broadcast_channel.channel import Producer, Subscriber, Subscription
 from redis import Redis
 
@@ -20,7 +21,7 @@ class BroadcastChannel:
     ):
         self._client = redis_client
 
-    def topic(self, topic: str) -> "Topic":
+    def topic(self, topic: str) -> Topic:
         return Topic(self._client, topic)
 
 

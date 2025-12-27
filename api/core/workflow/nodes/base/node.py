@@ -1,3 +1,4 @@
+from __future__ import annotations
 import importlib
 import logging
 import operator
@@ -241,7 +242,7 @@ class Node(Generic[NodeDataT]):
         return
 
     @property
-    def graph_init_params(self) -> "GraphInitParams":
+    def graph_init_params(self) -> GraphInitParams:
         return self._graph_init_params
 
     @property

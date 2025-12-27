@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
@@ -181,7 +182,7 @@ class WorkflowTool(Tool):
                             return found
         return None
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "WorkflowTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> WorkflowTool:
         """
         fork a new tool with metadata
 

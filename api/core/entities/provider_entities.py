@@ -1,3 +1,4 @@
+from __future__ import annotations
 from enum import StrEnum, auto
 from typing import Union
 
@@ -178,7 +179,7 @@ class BasicProviderConfig(BaseModel):
         TOOLS_SELECTOR = CommonParameterType.TOOLS_SELECTOR
 
         @classmethod
-        def value_of(cls, value: str) -> "ProviderConfig.Type":
+        def value_of(cls, value: str) -> ProviderConfig.Type:
             """
             Get value of given mode.
 

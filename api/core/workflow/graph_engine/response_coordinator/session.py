@@ -4,7 +4,7 @@ Internal response session management for response coordinator.
 This module contains the private ResponseSession class used internally
 by ResponseStreamCoordinator to manage streaming sessions.
 """
-
+from __future__ import annotations
 from dataclasses import dataclass
 
 from core.workflow.nodes.answer.answer_node import AnswerNode
@@ -27,7 +27,7 @@ class ResponseSession:
     index: int = 0  # Current position in the template segments
 
     @classmethod
-    def from_node(cls, node: Node) -> "ResponseSession":
+    def from_node(cls, node: Node) -> ResponseSession:
         """
         Create a ResponseSession from an AnswerNode or EndNode.
 

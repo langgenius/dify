@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import logging
 import threading
@@ -20,7 +21,7 @@ class SchemaRegistry:
         self.metadata: MutableMapping[str, MutableMapping[str, Any]] = {}
 
     @classmethod
-    def default_registry(cls) -> "SchemaRegistry":
+    def default_registry(cls) -> SchemaRegistry:
         """Returns the default schema registry for builtin schemas (thread-safe singleton)"""
         if cls._default_instance is None:
             with cls._lock:

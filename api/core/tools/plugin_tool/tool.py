@@ -1,3 +1,4 @@
+from __future__ import annotations
 from collections.abc import Generator
 from typing import Any
 
@@ -46,7 +47,7 @@ class PluginTool(Tool):
             message_id=message_id,
         )
 
-    def fork_tool_runtime(self, runtime: ToolRuntime) -> "PluginTool":
+    def fork_tool_runtime(self, runtime: ToolRuntime) -> PluginTool:
         return PluginTool(
             entity=self.entity,
             runtime=runtime,

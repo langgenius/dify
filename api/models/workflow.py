@@ -1,3 +1,4 @@
+from __future__ import annotations
 import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
@@ -67,7 +68,7 @@ class WorkflowType(StrEnum):
     RAG_PIPELINE = "rag-pipeline"
 
     @classmethod
-    def value_of(cls, value: str) -> "WorkflowType":
+    def value_of(cls, value: str) -> WorkflowType:
         """
         Get value of given mode.
 
@@ -80,7 +81,7 @@ class WorkflowType(StrEnum):
         raise ValueError(f"invalid workflow type value {value}")
 
     @classmethod
-    def from_app_mode(cls, app_mode: Union[str, "AppMode"]) -> "WorkflowType":
+    def from_app_mode(cls, app_mode: Union[str, AppMode]) -> WorkflowType:
         """
         Get workflow type from app mode.
 
@@ -181,7 +182,7 @@ class Workflow(Base):  # bug
         rag_pipeline_variables: list[dict],
         marked_name: str = "",
         marked_comment: str = "",
-    ) -> "Workflow":
+    ) -> Workflow:
         workflow = Workflow()
         workflow.id = str(uuid4())
         workflow.tenant_id = tenant_id
@@ -689,7 +690,7 @@ class WorkflowRun(Base):
         }
 
     @classmethod
-    def from_dict(cls, data: dict[str, Any]) -> "WorkflowRun":
+    def from_dict(cls, data: dict[str, Any]) -> WorkflowRun:
         return cls(
             id=data.get("id"),
             tenant_id=data.get("tenant_id"),
@@ -1064,7 +1065,7 @@ class WorkflowAppLogCreatedFrom(StrEnum):
     INSTALLED_APP = "installed-app"
 
     @classmethod
-    def value_of(cls, value: str) -> "WorkflowAppLogCreatedFrom":
+    def value_of(cls, value: str) -> WorkflowAppLogCreatedFrom:
         """
         Get value of given mode.
 
@@ -1181,7 +1182,7 @@ class ConversationVariable(TypeBase):
     )
 
     @classmethod
-    def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> "ConversationVariable":
+    def from_variable(cls, *, app_id: str, conversation_id: str, variable: Variable) -> ConversationVariable:
         obj = cls(
             id=variable.id,
             app_id=app_id,
@@ -1504,7 +1505,7 @@ class WorkflowDraftVariable(Base):
         node_execution_id: str | None,
         description: str = "",
         file_id: str | None = None,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = WorkflowDraftVariable()
         variable.created_at = naive_utc_now()
         variable.updated_at = naive_utc_now()
@@ -1526,7 +1527,7 @@ class WorkflowDraftVariable(Base):
         name: str,
         value: Segment,
         description: str = "",
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             node_id=CONVERSATION_VARIABLE_NODE_ID,
@@ -1547,7 +1548,7 @@ class WorkflowDraftVariable(Base):
         value: Segment,
         node_execution_id: str,
         editable: bool = False,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             node_id=SYSTEM_VARIABLE_NODE_ID,
@@ -1570,7 +1571,7 @@ class WorkflowDraftVariable(Base):
         visible: bool = True,
         editable: bool = True,
         file_id: str | None = None,
-    ) -> "WorkflowDraftVariable":
+    ) -> WorkflowDraftVariable:
         variable = cls._new(
             app_id=app_id,
             node_id=node_id,
@@ -1789,7 +1790,7 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
     )
 
     @classmethod
-    def from_entity(cls, pause_reason: PauseReason) -> "WorkflowPauseReason":
+    def from_entity(cls, pause_reason: PauseReason) -> WorkflowPauseReason:
         if isinstance(pause_reason, HumanInputRequired):
             return cls(
                 type_=PauseReasonType.HUMAN_INPUT_REQUIRED, form_id=pause_reason.form_id, node_id=pause_reason.node_id

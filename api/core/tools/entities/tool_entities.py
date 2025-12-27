@@ -1,3 +1,4 @@
+from __future__ import annotations
 import base64
 import contextlib
 from collections.abc import Mapping
@@ -55,7 +56,7 @@ class ToolProviderType(StrEnum):
     MCP = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "ToolProviderType":
+    def value_of(cls, value: str) -> ToolProviderType:
         """
         Get value of given mode.
 
@@ -79,7 +80,7 @@ class ApiProviderSchemaType(StrEnum):
     OPENAI_ACTIONS = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "ApiProviderSchemaType":
+    def value_of(cls, value: str) -> ApiProviderSchemaType:
         """
         Get value of given mode.
 
@@ -102,7 +103,7 @@ class ApiProviderAuthType(StrEnum):
     API_KEY_QUERY = auto()
 
     @classmethod
-    def value_of(cls, value: str) -> "ApiProviderAuthType":
+    def value_of(cls, value: str) -> ApiProviderAuthType:
         """
         Get value of given mode.
 
@@ -307,7 +308,7 @@ class ToolParameter(PluginParameter):
         typ: ToolParameterType,
         required: bool,
         options: list[str] | None = None,
-    ) -> "ToolParameter":
+    ) -> ToolParameter:
         """
         get a simple tool parameter
 
@@ -429,14 +430,14 @@ class ToolInvokeMeta(BaseModel):
     tool_config: dict | None = None
 
     @classmethod
-    def empty(cls) -> "ToolInvokeMeta":
+    def empty(cls) -> ToolInvokeMeta:
         """
         Get an empty instance of ToolInvokeMeta
         """
         return cls(time_cost=0.0, error=None, tool_config={})
 
     @classmethod
-    def error_instance(cls, error: str) -> "ToolInvokeMeta":
+    def error_instance(cls, error: str) -> ToolInvokeMeta:
         """
         Get an instance of ToolInvokeMeta with error
         """
