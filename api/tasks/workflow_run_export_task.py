@@ -40,10 +40,9 @@ def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str, include_
 
         try:
             storage = get_archive_storage()
-            presigned_url = storage.client.generate_presigned_url(
-                ClientMethod="get_object",
-                Params={"Bucket": storage.bucket, "Key": export_result["storage_key"]},
-                ExpiresIn=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
+            presigned_url = storage.generate_presigned_url(
+                export_result["storage_key"],
+                expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
             )
         except ArchiveStorageNotConfiguredError:
             presigned_url = None

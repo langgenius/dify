@@ -215,6 +215,32 @@ def test_list_objects_error(monkeypatch):
         storage.list_objects("prefix")
 
 
+def test_generate_presigned_url(monkeypatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.generate_presigned_url.return_value = "http://signed-url"
+    storage = ArchiveStorage()
+
+    url = storage.generate_presigned_url("key", expires_in=123)
+
+    client.generate_presigned_url.assert_called_once_with(
+        ClientMethod="get_object",
+        Params={"Bucket": "archive-bucket", "Key": "key"},
+        ExpiresIn=123,
+    )
+    assert url == "http://signed-url"
+
+
+def test_generate_presigned_url_error(monkeypatch):
+    _configure_storage(monkeypatch)
+    client, _ = _mock_client(monkeypatch)
+    client.generate_presigned_url.side_effect = _client_error("500")
+    storage = ArchiveStorage()
+
+    with pytest.raises(ArchiveStorageError, match="Failed to generate pre-signed URL"):
+        storage.generate_presigned_url("key")
+
+
 def test_serialization_roundtrip():
     records = [
         {

@@ -187,6 +187,29 @@ class ArchiveStorage:
         except ClientError as e:
             raise ArchiveStorageError(f"Failed to delete object '{key}': {e}")
 
+    def generate_presigned_url(self, key: str, expires_in: int = 3600) -> str:
+        """
+        Generate a pre-signed URL for downloading an object.
+
+        Args:
+            key: Object key (path) within the bucket
+            expires_in: URL validity duration in seconds (default: 1 hour)
+
+        Returns:
+            Pre-signed URL string.
+
+        Raises:
+            ArchiveStorageError: If generation fails
+        """
+        try:
+            return self.client.generate_presigned_url(
+                ClientMethod="get_object",
+                Params={"Bucket": self.bucket, "Key": key},
+                ExpiresIn=expires_in,
+            )
+        except ClientError as e:
+            raise ArchiveStorageError(f"Failed to generate pre-signed URL for '{key}': {e}")
+
     def list_objects(self, prefix: str) -> list[str]:
         """
         List objects under a given prefix.
