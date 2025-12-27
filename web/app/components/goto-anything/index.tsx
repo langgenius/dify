@@ -4,7 +4,7 @@ import type { FC } from 'react'
 import type { Plugin } from '../plugins/types'
 import type { SearchResult } from './actions'
 import { RiSearchLine } from '@remixicon/react'
-import { useQuery } from '@tanstack/react-query'
+import { keepPreviousData, useQuery } from '@tanstack/react-query'
 import { useDebounce, useKeyPress } from 'ahooks'
 import { Command } from 'cmdk'
 import { useRouter } from 'next/navigation'
@@ -122,6 +122,7 @@ const GotoAnything: FC<Props> = ({
       enabled: !!searchQueryDebouncedValue && !isCommandsMode,
       staleTime: 30000,
       gcTime: 300000,
+      placeholderData: keepPreviousData,
     },
   )
 
@@ -197,6 +198,9 @@ const GotoAnything: FC<Props> = ({
   }, [router])
 
   const dedupedResults = useMemo(() => {
+    if (!searchQuery.trim())
+      return []
+
     const seen = new Set<string>()
     return searchResults.filter((result) => {
       const key = `${result.type}-${result.id}`
@@ -205,7 +209,7 @@ const GotoAnything: FC<Props> = ({
       seen.add(key)
       return true
     })
-  }, [searchResults])
+  }, [searchResults, searchQuery])
 
   // Group results by type
   const groupedResults = useMemo(() => dedupedResults.reduce((acc, result) => {
