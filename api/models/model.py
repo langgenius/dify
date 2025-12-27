@@ -7,7 +7,7 @@ from collections.abc import Mapping
 from datetime import datetime
 from decimal import Decimal
 from enum import StrEnum, auto
-from typing import TYPE_CHECKING, Any, Literal, Optional, cast
+from typing import TYPE_CHECKING, Any, Literal, cast
 from uuid import uuid4
 
 import sqlalchemy as sa

@@ -5,7 +5,7 @@ import logging
 import threading
 from collections.abc import Mapping, MutableMapping
 from pathlib import Path
-from typing import Any, ClassVar, Optional
+from typing import Any, ClassVar
 
 
 class SchemaRegistry:
