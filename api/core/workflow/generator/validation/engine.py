@@ -162,15 +162,6 @@ class ValidationEngine:
 
         result.stats = stats
 
-        logger.debug(
-            "[Validation] Completed: %d nodes, %d rules, %d errors (%d fixable, %d user-required)",
-            stats["total_nodes"],
-            stats["total_rules_checked"],
-            stats["total_errors"],
-            stats["fixable_count"],
-            stats["user_required_count"],
-        )
-
         return result
 
     def _validate_edges(self, context: ValidationContext) -> list[ValidationError]:
