@@ -1,9 +1,11 @@
 'use client'
 import type { ActionItem } from '../types'
+import type { SlashCommandDependencies } from './types'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
 import { setLocaleOnClient } from '@/i18n-config'
 import i18n from '@/i18n-config/i18next-config'
+import { ACTION_KEYS } from '../../constants'
 import { accountCommand } from './account'
 import { bananaCommand } from './banana'
 import { executeCommand } from './command-bus'
@@ -16,8 +18,8 @@ import { themeCommand } from './theme'
 import { zenCommand } from './zen'
 
 export const slashAction: ActionItem = {
-  key: '/',
-  shortcut: '/',
+  key: ACTION_KEYS.SLASH,
+  shortcut: ACTION_KEYS.SLASH,
   title: i18n.t('app.gotoAnything.actions.slashTitle'),
   description: i18n.t('app.gotoAnything.actions.slashDesc'),
   action: (result) => {
@@ -33,7 +35,7 @@ export const slashAction: ActionItem = {
 }
 
 // Register/unregister default handlers for slash commands with external dependencies.
-export const registerSlashCommands = (deps: Record<string, any>) => {
+export const registerSlashCommands = (deps: SlashCommandDependencies) => {
   // Register command handlers to the registry system with their respective dependencies
   slashCommandRegistry.register(themeCommand, { setTheme: deps.setTheme })
   slashCommandRegistry.register(languageCommand, { setLocale: deps.setLocale })

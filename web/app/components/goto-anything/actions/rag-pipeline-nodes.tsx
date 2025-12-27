@@ -1,9 +1,10 @@
 import type { ActionItem } from './types'
+import { ACTION_KEYS } from '../constants'
 
 // Create the RAG pipeline nodes action
 export const ragPipelineNodesAction: ActionItem = {
-  key: '@node',
-  shortcut: '@node',
+  key: ACTION_KEYS.NODE,
+  shortcut: ACTION_KEYS.NODE,
   title: 'Search RAG Pipeline Nodes',
   description: 'Find and jump to nodes in the current RAG pipeline by name or type',
   searchFn: undefined, // Will be set by useRagPipelineSearch hook

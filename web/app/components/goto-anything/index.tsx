@@ -21,6 +21,7 @@ import { createActions, matchAction, searchAnything } from './actions'
 import { SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
 import CommandSelector from './command-selector'
+import { ACTION_KEYS } from './constants'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 
 type Props = {
@@ -98,7 +99,7 @@ const GotoAnything: FC<Props> = ({
     if (!action)
       return 'general'
 
-    return action.key === '/' ? '@command' : action.key
+    return action.key === ACTION_KEYS.SLASH ? '@command' : action.key
   }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(

@@ -5,6 +5,7 @@ import { usePathname } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { slashCommandRegistry } from './actions/commands/registry'
+import { ACTION_KEYS, SCOPE_ACTION_I18N_MAP, SLASH_COMMAND_I18N_MAP } from './constants'
 
 type Props = {
   actions: Record<string, ActionItem>
@@ -49,7 +50,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
 
     return Object.values(actions).filter((action) => {
       // Exclude slash action when in @ mode
-      if (action.key === '/')
+      if (action.key === ACTION_KEYS.SLASH)
         return false
       if (!searchFilter)
         return true
@@ -106,32 +107,8 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
             </span>
             <span className="ml-3 text-sm text-text-secondary">
               {isSlashMode
-                ? (
-                    (() => {
-                      const slashKeyMap: Record<string, string> = {
-                        '/theme': 'app.gotoAnything.actions.themeCategoryDesc',
-                        '/language': 'app.gotoAnything.actions.languageChangeDesc',
-                        '/account': 'app.gotoAnything.actions.accountDesc',
-                        '/feedback': 'app.gotoAnything.actions.feedbackDesc',
-                        '/docs': 'app.gotoAnything.actions.docDesc',
-                        '/community': 'app.gotoAnything.actions.communityDesc',
-                        '/zen': 'app.gotoAnything.actions.zenDesc',
-                        '/banana': 'app.gotoAnything.actions.vibeDesc',
-                      }
-                      return t((slashKeyMap[item.key] || item.description) as any)
-                    })()
-                  )
-                : (
-                    (() => {
-                      const keyMap: Record<string, string> = {
-                        '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
-                        '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
-                        '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
-                        '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
-                      }
-                      return t(keyMap[item.key] as any) as string
-                    })()
-                  )}
+                ? t((SLASH_COMMAND_I18N_MAP[item.key] || item.description) as any)
+                : t((SCOPE_ACTION_I18N_MAP[item.key] || item.description) as any)}
             </span>
           </Command.Item>
         ))}

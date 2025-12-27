@@ -6,20 +6,21 @@ import type { SlashCommandHandler } from './types'
  * Responsible for managing registration, lookup, and search of all slash commands
  */
 export class SlashCommandRegistry {
-  private commands = new Map<string, SlashCommandHandler>()
-  private commandDeps = new Map<string, any>()
+  private commands = new Map<string, SlashCommandHandler<unknown>>()
+  private commandDeps = new Map<string, unknown>()
 
   /**
    * Register command handler
    */
-  register<TDeps = any>(handler: SlashCommandHandler<TDeps>, deps?: TDeps) {
+  register<TDeps = unknown>(handler: SlashCommandHandler<TDeps>, deps?: TDeps) {
     // Register main command name
-    this.commands.set(handler.name, handler)
+    // Cast to unknown first, then to SlashCommandHandler<unknown> to handle generic type variance
+    this.commands.set(handler.name, handler as SlashCommandHandler<unknown>)
 
     // Register aliases
     if (handler.aliases) {
       handler.aliases.forEach((alias) => {
-        this.commands.set(alias, handler)
+        this.commands.set(alias, handler as SlashCommandHandler<unknown>)
       })
     }
 
@@ -57,7 +58,7 @@ export class SlashCommandRegistry {
   /**
    * Find command handler
    */
-  findCommand(commandName: string): SlashCommandHandler | undefined {
+  findCommand(commandName: string): SlashCommandHandler<unknown> | undefined {
     return this.commands.get(commandName)
   }
 
@@ -65,7 +66,7 @@ export class SlashCommandRegistry {
    * Smart partial command matching
    * Prioritize alias matching, then match command name prefix
    */
-  private findBestPartialMatch(partialName: string): SlashCommandHandler | undefined {
+  private findBestPartialMatch(partialName: string): SlashCommandHandler<unknown> | undefined {
     const lowerPartial = partialName.toLowerCase()
 
     // First check if any alias starts with this
@@ -81,7 +82,7 @@ export class SlashCommandRegistry {
   /**
    * Find handler by alias prefix
    */
-  private findHandlerByAliasPrefix(prefix: string): SlashCommandHandler | undefined {
+  private findHandlerByAliasPrefix(prefix: string): SlashCommandHandler<unknown> | undefined {
     for (const handler of this.getAllCommands()) {
       if (handler.aliases?.some(alias => alias.toLowerCase().startsWith(prefix)))
         return handler
@@ -92,7 +93,7 @@ export class SlashCommandRegistry {
   /**
    * Find handler by name prefix
    */
-  private findHandlerByNamePrefix(prefix: string): SlashCommandHandler | undefined {
+  private findHandlerByNamePrefix(prefix: string): SlashCommandHandler<unknown> | undefined {
     return this.getAllCommands().find(handler =>
       handler.name.toLowerCase().startsWith(prefix),
     )
@@ -101,8 +102,8 @@ export class SlashCommandRegistry {
   /**
    * Get all registered commands (deduplicated)
    */
-  getAllCommands(): SlashCommandHandler[] {
-    const uniqueCommands = new Map<string, SlashCommandHandler>()
+  getAllCommands(): SlashCommandHandler<unknown>[] {
+    const uniqueCommands = new Map<string, SlashCommandHandler<unknown>>()
     this.commands.forEach((handler) => {
       uniqueCommands.set(handler.name, handler)
     })
@@ -113,7 +114,7 @@ export class SlashCommandRegistry {
    * Get all available commands in current context (deduplicated and filtered)
    * Commands without isAvailable method are considered always available
    */
-  getAvailableCommands(): SlashCommandHandler[] {
+  getAvailableCommands(): SlashCommandHandler<unknown>[] {
     return this.getAllCommands().filter(handler => this.isCommandAvailable(handler))
   }
 
@@ -228,7 +229,7 @@ export class SlashCommandRegistry {
   /**
    * Get command dependencies
    */
-  getCommandDependencies(commandName: string): any {
+  getCommandDependencies(commandName: string): unknown {
     return this.commandDeps.get(commandName)
   }
 
@@ -236,7 +237,7 @@ export class SlashCommandRegistry {
    * Determine if a command is available in the current context.
    * Defaults to true when a handler does not implement the guard.
    */
-  private isCommandAvailable(handler: SlashCommandHandler) {
+  private isCommandAvailable(handler: SlashCommandHandler<unknown>) {
     return handler.isAvailable?.() ?? true
   }
 }

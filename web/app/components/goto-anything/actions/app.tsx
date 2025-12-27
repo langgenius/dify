@@ -4,6 +4,7 @@ import { fetchAppList } from '@/service/apps'
 import { getRedirectionPath } from '@/utils/app-redirection'
 import { AppTypeIcon } from '../../app/type-selector'
 import AppIcon from '../../base/app-icon'
+import { ACTION_KEYS } from '../constants'
 
 const parser = (apps: App[]): AppSearchResult[] => {
   return apps.map(app => ({
@@ -36,8 +37,8 @@ const parser = (apps: App[]): AppSearchResult[] => {
 }
 
 export const appAction: ActionItem = {
-  key: '@app',
-  shortcut: '@app',
+  key: ACTION_KEYS.APP,
+  shortcut: ACTION_KEYS.APP,
   title: 'Search Applications',
   description: 'Search and navigate to your applications',
   // action,
