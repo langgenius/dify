@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import type { ActionItem } from './actions/types'
+import type { ScopeDescriptor } from './actions/scope-registry'
 import { Command } from 'cmdk'
 import { usePathname } from 'next/navigation'
 import { useEffect, useMemo } from 'react'
@@ -8,7 +8,7 @@ import { slashCommandRegistry } from './actions/commands/registry'
 import { ACTION_KEYS, SCOPE_ACTION_I18N_MAP, SLASH_COMMAND_I18N_MAP } from './constants'
 
 type Props = {
-  actions: Record<string, ActionItem>
+  scopes: ScopeDescriptor[]
   onCommandSelect: (commandKey: string) => void
   searchFilter?: string
   commandValue?: string
@@ -16,7 +16,7 @@ type Props = {
   originalQuery?: string
 }
 
-const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
+const CommandSelector: FC<Props> = ({ scopes, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
   const { t } = useTranslation()
   const pathname = usePathname()
 
@@ -44,22 +44,29 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
     }))
   }, [isSlashMode, searchFilter, pathname])
 
-  const filteredActions = useMemo(() => {
+  const filteredScopes = useMemo(() => {
     if (isSlashMode)
       return []
 
-    return Object.values(actions).filter((action) => {
+    return scopes.filter((scope) => {
       // Exclude slash action when in @ mode
-      if (action.key === ACTION_KEYS.SLASH)
+      if (scope.id === 'slash' || scope.shortcut === ACTION_KEYS.SLASH)
         return false
       if (!searchFilter)
         return true
-      const filterLower = searchFilter.toLowerCase()
-      return action.shortcut.toLowerCase().includes(filterLower)
-    })
-  }, [actions, searchFilter, isSlashMode])
 
-  const allItems = isSlashMode ? slashCommands : filteredActions
+      // Match against shortcut or title
+      return scope.shortcut.toLowerCase().includes(searchFilter.toLowerCase())
+        || scope.title.toLowerCase().includes(searchFilter.toLowerCase())
+    }).map(scope => ({
+      key: scope.shortcut, // Map to shortcut for UI display consistency
+      shortcut: scope.shortcut,
+      title: scope.title,
+      description: scope.description,
+    }))
+  }, [scopes, searchFilter, isSlashMode])
+
+  const allItems = isSlashMode ? slashCommands : filteredScopes
 
   useEffect(() => {
     if (allItems.length > 0 && onCommandValueChange) {

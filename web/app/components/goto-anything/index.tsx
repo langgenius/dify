@@ -17,11 +17,12 @@ import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
-import { createActions, matchAction, searchAnything } from './actions'
-import { SlashCommandProvider } from './actions/commands'
+import { matchAction, registerDefaultScopes, searchAnything } from './actions'
+import { executeCommand, SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
+import { useScopeRegistry } from './actions/scope-registry'
 import CommandSelector from './command-selector'
-import { ACTION_KEYS } from './constants'
+import { ACTION_KEYS, EMPTY_STATE_I18N_MAP, GROUP_HEADING_I18N_MAP } from './constants'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
 
 type Props = {
@@ -39,11 +40,8 @@ const GotoAnything: FC<Props> = ({
   const [cmdVal, setCmdVal] = useState<string>('_')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Filter actions based on context
-  const Actions = useMemo(() => {
-    // Create actions based on current page context
-    return createActions(isWorkflowPage, isRagPipelinePage)
-  }, [isWorkflowPage, isRagPipelinePage])
+  // Fetch scopes from registry based on context
+  const scopes = useScopeRegistry({ isWorkflowPage, isRagPipelinePage }, registerDefaultScopes)
 
   const [activePlugin, setActivePlugin] = useState<Plugin>()
 
@@ -80,8 +78,8 @@ const GotoAnything: FC<Props> = ({
   })
 
   const isCommandsMode = searchQuery.trim() === '@' || searchQuery.trim() === '/'
-    || (searchQuery.trim().startsWith('@') && !matchAction(searchQuery.trim(), Actions))
-    || (searchQuery.trim().startsWith('/') && !matchAction(searchQuery.trim(), Actions))
+    || (searchQuery.trim().startsWith('@') && !matchAction(searchQuery.trim(), scopes))
+    || (searchQuery.trim().startsWith('/') && !matchAction(searchQuery.trim(), scopes))
 
   const searchMode = useMemo(() => {
     if (isCommandsMode) {
@@ -94,13 +92,16 @@ const GotoAnything: FC<Props> = ({
     }
 
     const query = searchQueryDebouncedValue.toLowerCase()
-    const action = matchAction(query, Actions)
+    const action = matchAction(query, scopes)
 
     if (!action)
       return 'general'
 
-    return action.key === ACTION_KEYS.SLASH ? '@command' : action.key
-  }, [searchQueryDebouncedValue, Actions, isCommandsMode, searchQuery])
+    if (action.id === 'slash' || action.shortcut === ACTION_KEYS.SLASH)
+      return '@command'
+
+    return action.shortcut
+  }, [searchQueryDebouncedValue, scopes, isCommandsMode, searchQuery])
 
   const { data: searchResults = [], isLoading, isError, error } = useQuery(
     {
@@ -112,12 +113,12 @@ const GotoAnything: FC<Props> = ({
         isWorkflowPage,
         isRagPipelinePage,
         defaultLocale,
-        Object.keys(Actions).sort().join(','),
+        scopes.map(s => s.id).sort().join(','),
       ],
       queryFn: async () => {
         const query = searchQueryDebouncedValue.toLowerCase()
-        const action = matchAction(query, Actions)
-        return await searchAnything(defaultLocale, query, action, Actions)
+        const scope = matchAction(query, scopes)
+        return await searchAnything(defaultLocale, query, scope, scopes)
       },
       enabled: !!searchQueryDebouncedValue && !isCommandsMode,
       staleTime: 30000,
@@ -167,9 +168,18 @@ const GotoAnything: FC<Props> = ({
           break
         }
 
-        // Execute slash commands
-        const action = Actions.slash
-        action?.action?.(result)
+        // Execute slash commands using the command bus
+        // This handles both direct execution and submenu commands with args
+        const { command, args } = result.data
+
+        // Try executing via command bus first (preferred for submenu commands with args)
+        // We can't easily check if it exists in bus without potentially running it if we were to try/catch
+        // but typically search results point to valid bus commands.
+        executeCommand(command, args)
+
+        // Note: We previously checked slashCommandRegistry handlers here, but search results
+        // should return executable command strings (like 'theme.set') that are registered in the bus.
+        // The registry is mainly for the top-level command matching (e.g. /theme).
         break
       }
       case 'plugin':
@@ -246,25 +256,19 @@ const GotoAnything: FC<Props> = ({
           <div className="text-sm font-medium">
             {isCommandSearch
               ? (() => {
-                  const keyMap: Record<string, string> = {
-                    app: 'app.gotoAnything.emptyState.noAppsFound',
-                    plugin: 'app.gotoAnything.emptyState.noPluginsFound',
-                    knowledge: 'app.gotoAnything.emptyState.noKnowledgeBasesFound',
-                    node: 'app.gotoAnything.emptyState.noWorkflowNodesFound',
-                  }
-                  return t((keyMap[commandType] || 'app.gotoAnything.noResults') as any)
+                  return t((EMPTY_STATE_I18N_MAP[commandType] || 'app.gotoAnything.noResults') as any)
                 })()
               : t('app.gotoAnything.noResults')}
           </div>
           <div className="mt-1 text-xs text-text-quaternary">
             {isCommandSearch
               ? t('app.gotoAnything.emptyState.tryDifferentTerm')
-              : t('app.gotoAnything.emptyState.trySpecificSearch', { shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })}
+              : t('app.gotoAnything.emptyState.trySpecificSearch', { shortcuts: scopes.map(s => s.shortcut).join(', ') })}
           </div>
         </div>
       </div>
     )
-  }, [dedupedResults, searchQuery, Actions, searchMode, isLoading, isError, isCommandsMode])
+  }, [dedupedResults, searchQuery, scopes, searchMode, isLoading, isError, isCommandsMode])
 
   const defaultUI = useMemo(() => {
     if (searchQuery.trim())
@@ -282,7 +286,7 @@ const GotoAnything: FC<Props> = ({
         </div>
       </div>
     )
-  }, [searchQuery, Actions])
+  }, [searchQuery, scopes])
 
   useEffect(() => {
     if (show) {
@@ -399,7 +403,7 @@ const GotoAnything: FC<Props> = ({
                   {isCommandsMode
                     ? (
                         <CommandSelector
-                          actions={Actions}
+                          scopes={scopes}
                           onCommandSelect={handleCommandSelect}
                           searchFilter={searchQuery.trim().substring(1)}
                           commandValue={cmdVal}
@@ -412,14 +416,7 @@ const GotoAnything: FC<Props> = ({
                           <Command.Group
                             key={groupIndex}
                             heading={(() => {
-                              const typeMap: Record<string, string> = {
-                                'app': 'app.gotoAnything.groups.apps',
-                                'plugin': 'app.gotoAnything.groups.plugins',
-                                'knowledge': 'app.gotoAnything.groups.knowledgeBases',
-                                'workflow-node': 'app.gotoAnything.groups.workflowNodes',
-                                'command': 'app.gotoAnything.groups.commands',
-                              }
-                              return t((typeMap[type] || `${type}s`) as any)
+                              return t((GROUP_HEADING_I18N_MAP[type] || `${type}s`) as any)
                             })()}
                             className="p-2 capitalize text-text-secondary"
                           >
