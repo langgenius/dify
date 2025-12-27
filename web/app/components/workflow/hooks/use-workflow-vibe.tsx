@@ -714,7 +714,7 @@ export const useWorkflowVibe = () => {
     setNodes(vibePanelPreviewNodes)
     setEdges(vibePanelPreviewEdges)
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: vibePanelPreviewNodes[0].id })
-    handleSyncWorkflowDraft()
+    handleSyncWorkflowDraft(true, true)
 
     workflowStore.setState(state => ({
       ...state,
