@@ -7,7 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, literal, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -1036,7 +1036,7 @@ class DatasetRetrieval:
             if automatic_metadata_filters:
                 conditions = []
                 for sequence, filter in enumerate(automatic_metadata_filters):
-                    self._process_metadata_filter_func(
+                    self.process_metadata_filter_func(
                         sequence,
                         filter.get("condition"),  # type: ignore
                         filter.get("metadata_name"),  # type: ignore
@@ -1072,7 +1072,7 @@ class DatasetRetrieval:
                             value=expected_value,
                         )
                     )
-                    filters = self._process_metadata_filter_func(
+                    filters = self.process_metadata_filter_func(
                         sequence,
                         condition.comparison_operator,
                         metadata_name,
@@ -1168,8 +1168,9 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
+    @classmethod
+    def process_metadata_filter_func(
+        cls, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
             return filters
@@ -1218,6 +1219,20 @@ class DatasetRetrieval:
 
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
+            case "in" | "not in":
+                if isinstance(value, str):
+                    value_list = [v.strip() for v in value.split(",") if v.strip()]
+                elif isinstance(value, (list, tuple)):
+                    value_list = [str(v) for v in value if v is not None]
+                else:
+                    value_list = [str(value)] if value is not None else []
+
+                if not value_list:
+                    # `field in []` is False, `field not in []` is True
+                    filters.append(literal(condition == "not in"))
+                else:
+                    op = json_field.in_ if condition == "in" else json_field.notin_
+                    filters.append(op(value_list))
             case _:
                 pass
 
