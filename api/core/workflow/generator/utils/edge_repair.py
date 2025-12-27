@@ -59,8 +59,6 @@ class EdgeRepair:
         repairs: list[str] = []
         warnings: list[str] = []
 
-        logger.info("[EdgeRepair] Starting repair: %d nodes, %d edges", len(nodes), len(edges))
-
         # Build node lookup
         node_map = {n.get("id"): n for n in nodes if n.get("id")}
         node_ids = set(node_map.keys())
@@ -121,12 +119,6 @@ class EdgeRepair:
         edges.extend(new_edges)
         repairs.extend(terminal_repairs)
 
-        logger.info("[EdgeRepair] Completed: %d repairs made, %d warnings", len(repairs), len(warnings))
-        for r in repairs:
-            logger.info("[EdgeRepair] Repair: %s", r)
-        for w in warnings:
-            logger.info("[EdgeRepair] Warning: %s", w)
-
         return RepairResult(
             nodes=nodes,
             edges=edges,
@@ -157,7 +149,6 @@ class EdgeRepair:
             edges.append({"source": src, "target": tgt})
             repairs.append(f"Inferred edge: {src} -> {tgt}")
 
-        logger.info("[EdgeRepair] Inferred %d edges from node order (no edges provided)", len(edges))
         return edges, repairs
 
     @classmethod
