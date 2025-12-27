@@ -5,6 +5,7 @@ const translation = {
     saved: 'Kaydedildi',
     create: 'Oluşturuldu',
     remove: 'Kaldırıldı',
+    actionFailed: 'İşlem başarısız',
   },
   operation: {
     create: 'Oluştur',
@@ -65,6 +66,12 @@ const translation = {
     yes: 'Evet',
     deleteConfirmTitle: 'Silinsin mi?',
     confirmAction: 'Lütfen işleminizi onaylayın.',
+    noSearchResults: 'Hiç {{content}} bulunamadı',
+    resetKeywords: 'Anahtar kelimeleri sıfırla',
+    selectCount: '{{count}} Seçildi',
+    searchCount: '{{count}} {{content}} bul',
+    noSearchCount: '0 {{content}}',
+    now: 'Şimdi',
   },
   errorMsg: {
     fieldRequired: '{{field}} gereklidir',
@@ -73,6 +80,7 @@ const translation = {
   placeholder: {
     input: 'Lütfen girin',
     select: 'Lütfen seçin',
+    search: 'Ara...',
   },
   voice: {
     language: {
@@ -96,6 +104,8 @@ const translation = {
       hiIN: 'Hintçe',
       trTR: 'Türkçe',
       faIR: 'Farsça',
+      slSI: 'Slovence',
+      arTN: 'Tunus Arapçası',
     },
   },
   unit: {
@@ -727,6 +737,7 @@ const translation = {
     pasteFileLinkInvalid: 'Geçersiz dosya bağlantısı',
     fileExtensionNotSupport: 'Dosya uzantısı desteklenmiyor',
     fileExtensionBlocked: 'Bu dosya türü güvenlik nedenleriyle engellenmiştir',
+    uploadDisabled: 'Dosya yükleme devre dışı',
   },
   license: {
     expiring_plural: '{{count}} gün içinde sona eriyor',
@@ -768,6 +779,13 @@ const translation = {
   },
   label: {
     optional: '(isteğe bağlı)',
+  },
+  noData: 'Veri yok',
+  dynamicSelect: {
+    error: 'Seçenekler yüklenemedi',
+    noData: 'Seçenek yok',
+    loading: 'Seçenekler yükleniyor...',
+    selected: '{{count}} seçildi',
   },
 }
 

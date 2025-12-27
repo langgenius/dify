@@ -1,21 +1,25 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
+import { RiErrorWarningLine } from '@remixicon/react'
 import { produce } from 'immer'
-import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest } from '../types'
-import cn from '@/utils/classnames'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
+import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
+import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import Button from '@/app/components/base/button'
 import Toast from '@/app/components/base/toast'
-import EmojiPicker from '@/app/components/base/emoji-picker'
-import AppIcon from '@/app/components/base/app-icon'
-import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
+import Tooltip from '@/app/components/base/tooltip'
 import LabelSelector from '@/app/components/tools/labels/selector'
 import ConfirmModal from '@/app/components/tools/workflow-tool/confirm-modal'
-import Tooltip from '@/app/components/base/tooltip'
+import MethodSelector from '@/app/components/tools/workflow-tool/method-selector'
+import { VarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import { buildWorkflowOutputParameters } from './utils'
 
 type Props = {
   isAdd?: boolean
@@ -45,7 +49,31 @@ const WorkflowToolAsModal: FC<Props> = ({
   const [name, setName] = useState(payload.name)
   const [description, setDescription] = useState(payload.description)
   const [parameters, setParameters] = useState<WorkflowToolProviderParameter[]>(payload.parameters)
-  const handleParameterChange = (key: string, value: string, index: number) => {
+  const rawOutputParameters = payload.outputParameters
+  const outputSchema = payload.tool?.output_schema
+  const outputParameters = useMemo<WorkflowToolProviderOutputParameter[]>(() => buildWorkflowOutputParameters(rawOutputParameters, outputSchema), [rawOutputParameters, outputSchema])
+  const reservedOutputParameters: WorkflowToolProviderOutputParameter[] = [
+    {
+      name: 'text',
+      description: t('workflow.nodes.tool.outputVars.text'),
+      type: VarType.string,
+      reserved: true,
+    },
+    {
+      name: 'files',
+      description: t('workflow.nodes.tool.outputVars.files.title'),
+      type: VarType.arrayFile,
+      reserved: true,
+    },
+    {
+      name: 'json',
+      description: t('workflow.nodes.tool.outputVars.json'),
+      type: VarType.arrayObject,
+      reserved: true,
+    },
+  ]
+
+  const handleParameterChange = (key: string, value: any, index: number) => {
     const newData = produce(parameters, (draft: WorkflowToolProviderParameter[]) => {
       if (key === 'description')
         draft[index].description = value
@@ -67,6 +95,10 @@ const WorkflowToolAsModal: FC<Props> = ({
       return true
 
     return /^\w+$/.test(name)
+  }
+
+  const isOutputParameterReserved = (name: string) => {
+    return reservedOutputParameters.find(p => p.name === name)
   }
 
   const onConfirm = () => {
@@ -121,20 +153,24 @@ const WorkflowToolAsModal: FC<Props> = ({
         isShow
         onHide={onHide}
         title={t('workflow.common.workflowAsTool')!}
-        panelClassName='mt-2 !w-[640px]'
-        maxWidthClassName='!max-w-[640px]'
-        height='calc(100vh - 16px)'
-        headerClassName='!border-b-divider'
-        body={
-          <div className='flex h-full flex-col'>
-            <div className='h-0 grow space-y-4 overflow-y-auto px-6 py-3'>
+        panelClassName="mt-2 !w-[640px]"
+        maxWidthClassName="!max-w-[640px]"
+        height="calc(100vh - 16px)"
+        headerClassName="!border-b-divider"
+        body={(
+          <div className="flex h-full flex-col">
+            <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
               {/* name & icon */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
-                <div className='flex items-center justify-between gap-3'>
-                  <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' iconType='emoji' icon={emoji.content} background={emoji.background} />
+                <div className="system-sm-medium py-2 text-text-primary">
+                  {t('tools.createTool.name')}
+                  {' '}
+                  <span className="ml-1 text-red-500">*</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" iconType="emoji" icon={emoji.content} background={emoji.background} />
                   <Input
-                    className='h-10 grow'
+                    className="h-10 grow"
                     placeholder={t('tools.createTool.toolNamePlaceHolder')!}
                     value={label}
                     onChange={e => setLabel(e.target.value)}
@@ -143,29 +179,31 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* name for tool call */}
               <div>
-                <div className='system-sm-medium flex items-center py-2 text-text-primary'>
-                  {t('tools.createTool.nameForToolCall')} <span className='ml-1 text-red-500'>*</span>
+                <div className="system-sm-medium flex items-center py-2 text-text-primary">
+                  {t('tools.createTool.nameForToolCall')}
+                  {' '}
+                  <span className="ml-1 text-red-500">*</span>
                   <Tooltip
-                    popupContent={
-                      <div className='w-[180px]'>
+                    popupContent={(
+                      <div className="w-[180px]">
                         {t('tools.createTool.nameForToolCallPlaceHolder')}
                       </div>
-                    }
+                    )}
                   />
                 </div>
                 <Input
-                  className='h-10'
+                  className="h-10"
                   placeholder={t('tools.createTool.nameForToolCallPlaceHolder')!}
                   value={name}
                   onChange={e => setName(e.target.value)}
                 />
                 {!isNameValid(name) && (
-                  <div className='text-xs leading-[18px] text-red-500'>{t('tools.createTool.nameForToolCallTip')}</div>
+                  <div className="text-xs leading-[18px] text-red-500">{t('tools.createTool.nameForToolCallTip')}</div>
                 )}
               </div>
               {/* description */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.description')}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.description')}</div>
                 <Textarea
                   placeholder={t('tools.createTool.descriptionPlaceholder') || ''}
                   value={description}
@@ -174,11 +212,11 @@ const WorkflowToolAsModal: FC<Props> = ({
               </div>
               {/* Tool Input  */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.toolInput.title')}</div>
-                <div className='w-full overflow-x-auto rounded-lg border border-divider-regular'>
-                  <table className='w-full text-xs font-normal leading-[18px] text-text-secondary'>
-                    <thead className='uppercase text-text-tertiary'>
-                      <tr className='border-b border-divider-regular'>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.toolInput.title')}</div>
+                <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
+                  <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
+                    <thead className="uppercase text-text-tertiary">
+                      <tr className="border-b border-divider-regular">
                         <th className="w-[156px] p-2 pl-3 font-medium">{t('tools.createTool.toolInput.name')}</th>
                         <th className="w-[102px] p-2 pl-3 font-medium">{t('tools.createTool.toolInput.method')}</th>
                         <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolInput.description')}</th>
@@ -186,21 +224,22 @@ const WorkflowToolAsModal: FC<Props> = ({
                     </thead>
                     <tbody>
                       {parameters.map((item, index) => (
-                        <tr key={index} className='border-b border-divider-regular last:border-0'>
+                        <tr key={index} className="border-b border-divider-regular last:border-0">
                           <td className="max-w-[156px] p-2 pl-3">
-                            <div className='text-[13px] leading-[18px]'>
-                              <div title={item.name} className='flex'>
-                                <span className='truncate font-medium text-text-primary'>{item.name}</span>
-                                <span className='shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]'>{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                            <div className="text-[13px] leading-[18px]">
+                              <div title={item.name} className="flex">
+                                <span className="truncate font-medium text-text-primary">{item.name}</span>
+                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
                               </div>
-                              <div className='text-text-tertiary'>{item.type}</div>
+                              <div className="text-text-tertiary">{item.type}</div>
                             </div>
                           </td>
                           <td>
                             {item.name === '__image' && (
                               <div className={cn(
                                 'flex h-9 min-h-[56px] cursor-default items-center gap-1 bg-transparent px-3 py-2',
-                              )}>
+                              )}
+                              >
                                 <div className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary')}>
                                   {t('tools.createTool.toolInput.methodParameter')}
                                 </div>
@@ -212,8 +251,8 @@ const WorkflowToolAsModal: FC<Props> = ({
                           </td>
                           <td className="w-[236px] p-2 pl-3 text-text-tertiary">
                             <input
-                              type='text'
-                              className='w-full appearance-none bg-transparent text-[13px] font-normal leading-[18px] text-text-secondary caret-primary-600 outline-none placeholder:text-text-quaternary'
+                              type="text"
+                              className="w-full appearance-none bg-transparent text-[13px] font-normal leading-[18px] text-text-secondary caret-primary-600 outline-none placeholder:text-text-quaternary"
                               placeholder={t('tools.createTool.toolInput.descriptionPlaceholder')!}
                               value={item.description}
                               onChange={e => handleParameterChange('description', e.target.value, index)}
@@ -225,49 +264,104 @@ const WorkflowToolAsModal: FC<Props> = ({
                   </table>
                 </div>
               </div>
+              {/* Tool Output  */}
+              <div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.toolOutput.title')}</div>
+                <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
+                  <table className="w-full text-xs font-normal leading-[18px] text-text-secondary">
+                    <thead className="uppercase text-text-tertiary">
+                      <tr className="border-b border-divider-regular">
+                        <th className="w-[156px] p-2 pl-3 font-medium">{t('tools.createTool.name')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.toolOutput.description')}</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {[...reservedOutputParameters, ...outputParameters].map((item, index) => (
+                        <tr key={index} className="border-b border-divider-regular last:border-0">
+                          <td className="max-w-[156px] p-2 pl-3">
+                            <div className="text-[13px] leading-[18px]">
+                              <div title={item.name} className="flex items-center">
+                                <span className="truncate font-medium text-text-primary">{item.name}</span>
+                                <span className="shrink-0 pl-1 text-xs leading-[18px] text-[#ec4a0a]">{item.reserved ? t('tools.createTool.toolOutput.reserved') : ''}</span>
+                                {
+                                  !item.reserved && isOutputParameterReserved(item.name)
+                                    ? (
+                                        <Tooltip
+                                          popupContent={(
+                                            <div className="w-[180px]">
+                                              {t('tools.createTool.toolOutput.reservedParameterDuplicateTip')}
+                                            </div>
+                                          )}
+                                        >
+                                          <RiErrorWarningLine className="h-3 w-3 text-text-warning-secondary" />
+                                        </Tooltip>
+                                      )
+                                    : null
+                                }
+                              </div>
+                              <div className="text-text-tertiary">{item.type}</div>
+                            </div>
+                          </td>
+                          <td className="w-[236px] p-2 pl-3 text-text-tertiary">
+                            <span className="text-[13px] font-normal leading-[18px] text-text-secondary">{item.description}</span>
+                          </td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+              </div>
               {/* Tags */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.toolInput.label')}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.toolInput.label')}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
               {/* Privacy Policy */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.privacyPolicy')}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.privacyPolicy')}</div>
                 <Input
-                  className='h-10'
+                  className="h-10"
                   value={privacyPolicy}
                   onChange={e => setPrivacyPolicy(e.target.value)}
-                  placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
+                  placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''}
+                />
               </div>
             </div>
-            <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')} >
+            <div className={cn((!isAdd && onRemove) ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
               {!isAdd && onRemove && (
-                <Button variant='warning' onClick={onRemove}>{t('common.operation.delete')}</Button>
+                <Button variant="warning" onClick={onRemove}>{t('common.operation.delete')}</Button>
               )}
-              <div className='flex space-x-2 '>
+              <div className="flex space-x-2 ">
                 <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button variant='primary' onClick={() => {
-                  if (isAdd)
-                    onConfirm()
-                  else
-                    setShowModal(true)
-                }}>{t('common.operation.save')}</Button>
+                <Button
+                  variant="primary"
+                  onClick={() => {
+                    if (isAdd)
+                      onConfirm()
+                    else
+                      setShowModal(true)
+                  }}
+                >
+                  {t('common.operation.save')}
+                </Button>
               </div>
             </div>
           </div>
-        }
+        )}
         isShowMask={true}
         clickOutsideNotOpen={true}
       />
-      {showEmojiPicker && <EmojiPicker
-        onSelect={(icon, icon_background) => {
-          setEmoji({ content: icon, background: icon_background })
-          setShowEmojiPicker(false)
-        }}
-        onClose={() => {
-          setShowEmojiPicker(false)
-        }}
-      />}
+      {showEmojiPicker && (
+        <EmojiPicker
+          onSelect={(icon, icon_background) => {
+            setEmoji({ content: icon, background: icon_background })
+            setShowEmojiPicker(false)
+          }}
+          onClose={() => {
+            setShowEmojiPicker(false)
+          }}
+        />
+      )}
       {showModal && (
         <ConfirmModal
           show={showModal}

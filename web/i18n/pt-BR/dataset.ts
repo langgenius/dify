@@ -18,7 +18,6 @@ const translation = {
   intro4: 'ou pode ser criado',
   intro5: ' como um plug-in de índice ChatGPT independente para publicação',
   unavailable: 'Indisponível',
-  unavailableTip: 'O modelo de incorporação não está disponível, o modelo de incorporação padrão precisa ser configurado',
   datasets: 'CONHECIMENTO',
   datasetsApi: 'API',
   retrieval: {
@@ -36,8 +35,6 @@ const translation = {
       recommend: 'Recomendar',
     },
     invertedIndex: {
-      title: 'Índice Invertido',
-      description: 'O Índice Invertido é uma estrutura usada para recuperação eficiente. Organizado por termos, cada termo aponta para documentos ou páginas da web que o contêm.',
     },
     change: 'Alterar',
     changeRetrievalMethod: 'Alterar método de recuperação',
@@ -236,6 +233,20 @@ const translation = {
     enabled: 'Em serviço',
     title: 'API de Serviço',
     disabled: 'Desativado',
+  },
+  docAllEnabled_one: '{{count}} documento habilitado',
+  docAllEnabled_other: 'Todos os documentos {{count}} ativados',
+  partialEnabled_one: 'Total de {{count}} documentos, {{num}} disponíveis',
+  partialEnabled_other: 'Total de {{count}} documentos, {{num}} disponíveis',
+  cornerLabel: {
+    unavailable: 'Indisponível',
+    pipeline: 'Pipeline',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Arraste e solte o arquivo ou pasta, ou',
+    browse: 'Navegar',
+    tip: '{{supportTypes}} (Máx. {{batchCount}}, {{size}}MB cada)',
   },
 }
 

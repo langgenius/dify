@@ -26,6 +26,7 @@ const translation = {
       description: '關於檢索方法。',
       longDescription: '關於檢索方法，您可以隨時在知識庫設定中更改此設定。',
       method: '檢索方法',
+      multiModalTip: '當嵌入模型支援多模態時，請選擇多模態重排序模型以獲得更好的表現。',
     },
     save: '儲存',
     permissionsInvitedMembers: '部分團隊成員',

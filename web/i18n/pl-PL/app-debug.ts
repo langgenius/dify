@@ -114,8 +114,6 @@ const translation = {
     dataSet: {
       title: 'Kontekst',
       noData: 'Możesz importować wiedzę jako kontekst',
-      words: 'Słowa',
-      textBlocks: 'Bloki tekstu',
       selectTitle: 'Wybierz odniesienie do wiedzy',
       selected: 'Wiedza wybrana',
       noDataSet: 'Nie znaleziono wiedzy',
@@ -351,6 +349,7 @@ const translation = {
     'localUpload': 'Przesyłanie lokalne',
     'uploadFileTypes': 'Typy przesyłanych plików',
     'maxNumberOfUploads': 'Maksymalna liczba przesyłanych plików',
+    'maxNumberTip': 'Dokument < {{docLimit}}, obraz < {{imgLimit}}, audio < {{audioLimit}}, wideo < {{videoLimit}}',
     'single-file': 'Pojedynczy plik',
     'content': 'Zawartość',
     'multi-files': 'Lista plików',
@@ -380,9 +379,7 @@ const translation = {
     visionSettings: {
       title: 'Ustawienia Wizji',
       resolution: 'Rozdzielczość',
-      resolutionTooltip: `niska rozdzielczość pozwoli modelowi odbierać obrazy o rozdzielczości 512 x 512 i reprezentować obraz z limitem 65 tokenów. Pozwala to API na szybsze odpowiedzi i zużywa mniej tokenów wejściowych dla przypadków, które nie wymagają wysokiego szczegółu.
-        \n
-        wysoka rozdzielczość pozwala najpierw modelowi zobaczyć obraz niskiej rozdzielczości, a następnie tworzy szczegółowe przycięcia obrazów wejściowych jako 512px kwadratów w oparciu o rozmiar obrazu wejściowego. Każde z tych szczegółowych przycięć używa dwukrotności budżetu tokenów, co daje razem 129 tokenów.`,
+      resolutionTooltip: 'niska rozdzielczość pozwoli modelowi odbierać obrazy o rozdzielczości 512 x 512 i reprezentować obraz z limitem 65 tokenów. Pozwala to API na szybsze odpowiedzi i zużywa mniej tokenów wejściowych dla przypadków, które nie wymagają wysokiego szczegółu.\nwysoka rozdzielczość pozwala najpierw modelowi zobaczyć obraz niskiej rozdzielczości, a następnie tworzy szczegółowe przycięcia obrazów wejściowych jako 512px kwadratów w oparciu o rozmiar obrazu wejściowego. Każde z tych szczegółowych przycięć używa dwukrotności budżetu tokenów, co daje razem 129 tokenów.',
       high: 'Wysoka',
       low: 'Niska',
       uploadMethod: 'Metoda przesyłania',

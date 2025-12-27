@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Contexte',
       noData: 'Vous pouvez importer des Connaissances comme contexte',
-      words: 'Mots',
-      textBlocks: 'Blocs de texte',
       selectTitle: 'Sélectionnez la connaissance de référence',
       selected: 'Connaissance sélectionnée',
       noDataSet: 'Aucune connaissance trouvée',
@@ -331,6 +329,7 @@ const translation = {
     'multi-files': 'Liste des fichiers',
     'both': 'Les deux',
     'maxNumberOfUploads': 'Nombre maximal de téléchargements',
+    'maxNumberTip': 'Document < {{docLimit}}, image < {{imgLimit}}, audio < {{audioLimit}}, vidéo < {{videoLimit}}',
     'localUpload': 'Téléchargement local',
     'single-file': 'En file indienne',
     'optional': 'optionnel',
@@ -358,9 +357,7 @@ const translation = {
     visionSettings: {
       title: 'Paramètres de Vision',
       resolution: 'Résolution',
-      resolutionTooltip: `low res will allow model receive a low-res 512 x 512 version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail.
-      \n
-      high res will first allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget for a total of 129 tokens.`,
+      resolutionTooltip: 'low res will allow model receive a low-res 512 x 512 version of the image, and represent the image with a budget of 65 tokens. This allows the API to return faster responses and consume fewer input tokens for use cases that do not require high detail.\nhigh res will first allows the model to see the low res image and then creates detailed crops of input images as 512px squares based on the input image size. Each of the detailed crops uses twice the token budget for a total of 129 tokens.',
       high: 'Élevé',
       low: 'Faible',
       uploadMethod: 'Méthode de Téléchargement',
@@ -542,10 +539,7 @@ const translation = {
     generate: 'Générer',
     tryIt: 'Essaie',
     overwriteTitle: 'Remplacer la configuration existante ?',
-    noDataLine2: 'L’aperçu de l’orchestration s’affichera ici.',
     overwriteMessage: 'L’application de cette invite remplacera la configuration existante.',
-    noDataLine1: 'Décrivez votre cas d’utilisation sur la gauche,',
-    instructionPlaceHolder: 'Rédigez des instructions claires et précises.',
     title: 'Générateur d’invites',
     apply: 'Appliquer',
     resTitle: 'Invite générée',

@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ParamItem from '.'
 
@@ -38,7 +38,7 @@ const ScoreThresholdItem: FC<Props> = ({
   return (
     <ParamItem
       className={className}
-      id='score_threshold'
+      id="score_threshold"
       name={t('appDebug.datasetConfig.score_threshold')}
       tip={t('appDebug.datasetConfig.score_thresholdTip') as string}
       {...VALUE_LIMIT}

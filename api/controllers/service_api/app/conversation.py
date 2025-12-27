@@ -1,10 +1,15 @@
-from flask_restx import Resource, reqparse
+from typing import Any, Literal
+from uuid import UUID
+
+from flask import request
+from flask_restx import Resource
 from flask_restx._http import HTTPStatus
-from flask_restx.inputs import int_range
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
 import services
+from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
@@ -19,74 +24,77 @@ from fields.conversation_variable_fields import (
     build_conversation_variable_infinite_scroll_pagination_model,
     build_conversation_variable_model,
 )
-from libs.helper import uuid_value
 from models.model import App, AppMode, EndUser
 from services.conversation_service import ConversationService
 
-# Define parsers for conversation APIs
-conversation_list_parser = (
-    reqparse.RequestParser()
-    .add_argument("last_id", type=uuid_value, location="args", help="Last conversation ID for pagination")
-    .add_argument(
-        "limit",
-        type=int_range(1, 100),
-        required=False,
-        default=20,
-        location="args",
-        help="Number of conversations to return",
-    )
-    .add_argument(
-        "sort_by",
-        type=str,
-        choices=["created_at", "-created_at", "updated_at", "-updated_at"],
-        required=False,
-        default="-updated_at",
-        location="args",
-        help="Sort order for conversations",
-    )
-)
 
-conversation_rename_parser = (
-    reqparse.RequestParser()
-    .add_argument("name", type=str, required=False, location="json", help="New conversation name")
-    .add_argument(
-        "auto_generate",
-        type=bool,
-        required=False,
-        default=False,
-        location="json",
-        help="Auto-generate conversation name",
+class ConversationListQuery(BaseModel):
+    last_id: UUID | None = Field(default=None, description="Last conversation ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of conversations to return")
+    sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
+        default="-updated_at", description="Sort order for conversations"
     )
-)
 
-conversation_variables_parser = (
-    reqparse.RequestParser()
-    .add_argument("last_id", type=uuid_value, location="args", help="Last variable ID for pagination")
-    .add_argument(
-        "limit",
-        type=int_range(1, 100),
-        required=False,
-        default=20,
-        location="args",
-        help="Number of variables to return",
+
+class ConversationRenamePayload(BaseModel):
+    name: str | None = Field(default=None, description="New conversation name (required if auto_generate is false)")
+    auto_generate: bool = Field(default=False, description="Auto-generate conversation name")
+
+    @model_validator(mode="after")
+    def validate_name_requirement(self):
+        if not self.auto_generate:
+            if self.name is None or not self.name.strip():
+                raise ValueError("name is required when auto_generate is false")
+        return self
+
+
+class ConversationVariablesQuery(BaseModel):
+    last_id: UUID | None = Field(default=None, description="Last variable ID for pagination")
+    limit: int = Field(default=20, ge=1, le=100, description="Number of variables to return")
+    variable_name: str | None = Field(
+        default=None, description="Filter variables by name", min_length=1, max_length=255
     )
-)
 
-conversation_variable_update_parser = reqparse.RequestParser().add_argument(
-    # using lambda is for passing the already-typed value without modification
-    # if no lambda, it will be converted to string
-    # the string cannot be converted using json.loads
-    "value",
-    required=True,
-    location="json",
-    type=lambda x: x,
-    help="New value for the conversation variable",
+    @field_validator("variable_name", mode="before")
+    @classmethod
+    def validate_variable_name(cls, v: str | None) -> str | None:
+        """
+        Validate variable_name to prevent injection attacks.
+        """
+        if v is None:
+            return v
+
+        # Only allow safe characters: alphanumeric, underscore, hyphen, period
+        if not v.replace("-", "").replace("_", "").replace(".", "").isalnum():
+            raise ValueError(
+                "Variable name can only contain letters, numbers, hyphens (-), underscores (_), and periods (.)"
+            )
+
+        # Prevent SQL injection patterns
+        dangerous_patterns = ["'", '"', ";", "--", "/*", "*/", "xp_", "sp_"]
+        for pattern in dangerous_patterns:
+            if pattern in v.lower():
+                raise ValueError(f"Variable name contains invalid characters: {pattern}")
+
+        return v
+
+
+class ConversationVariableUpdatePayload(BaseModel):
+    value: Any
+
+
+register_schema_models(
+    service_api_ns,
+    ConversationListQuery,
+    ConversationRenamePayload,
+    ConversationVariablesQuery,
+    ConversationVariableUpdatePayload,
 )
 
 
 @service_api_ns.route("/conversations")
 class ConversationApi(Resource):
-    @service_api_ns.expect(conversation_list_parser)
+    @service_api_ns.expect(service_api_ns.models[ConversationListQuery.__name__])
     @service_api_ns.doc("list_conversations")
     @service_api_ns.doc(description="List all conversations for the current user")
     @service_api_ns.doc(
@@ -107,7 +115,8 @@ class ConversationApi(Resource):
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
             raise NotChatAppError()
 
-        args = conversation_list_parser.parse_args()
+        query_args = ConversationListQuery.model_validate(request.args.to_dict())
+        last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:
             with Session(db.engine) as session:
@@ -115,10 +124,10 @@ class ConversationApi(Resource):
                     session=session,
                     app_model=app_model,
                     user=end_user,
-                    last_id=args["last_id"],
-                    limit=args["limit"],
+                    last_id=last_id,
+                    limit=query_args.limit,
                     invoke_from=InvokeFrom.SERVICE_API,
-                    sort_by=args["sort_by"],
+                    sort_by=query_args.sort_by,
                 )
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
@@ -155,7 +164,7 @@ class ConversationDetailApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")
 class ConversationRenameApi(Resource):
-    @service_api_ns.expect(conversation_rename_parser)
+    @service_api_ns.expect(service_api_ns.models[ConversationRenamePayload.__name__])
     @service_api_ns.doc("rename_conversation")
     @service_api_ns.doc(description="Rename a conversation or auto-generate a name")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -176,17 +185,17 @@ class ConversationRenameApi(Resource):
 
         conversation_id = str(c_id)
 
-        args = conversation_rename_parser.parse_args()
+        payload = ConversationRenamePayload.model_validate(service_api_ns.payload or {})
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
+            return ConversationService.rename(app_model, conversation_id, end_user, payload.name, payload.auto_generate)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables")
 class ConversationVariablesApi(Resource):
-    @service_api_ns.expect(conversation_variables_parser)
+    @service_api_ns.expect(service_api_ns.models[ConversationVariablesQuery.__name__])
     @service_api_ns.doc("list_conversation_variables")
     @service_api_ns.doc(description="List all variables for a conversation")
     @service_api_ns.doc(params={"c_id": "Conversation ID"})
@@ -211,11 +220,12 @@ class ConversationVariablesApi(Resource):
 
         conversation_id = str(c_id)
 
-        args = conversation_variables_parser.parse_args()
+        query_args = ConversationVariablesQuery.model_validate(request.args.to_dict())
+        last_id = str(query_args.last_id) if query_args.last_id else None
 
         try:
             return ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, args["limit"], args["last_id"]
+                app_model, conversation_id, end_user, query_args.limit, last_id, query_args.variable_name
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
@@ -223,7 +233,7 @@ class ConversationVariablesApi(Resource):
 
 @service_api_ns.route("/conversations/<uuid:c_id>/variables/<uuid:variable_id>")
 class ConversationVariableDetailApi(Resource):
-    @service_api_ns.expect(conversation_variable_update_parser)
+    @service_api_ns.expect(service_api_ns.models[ConversationVariableUpdatePayload.__name__])
     @service_api_ns.doc("update_conversation_variable")
     @service_api_ns.doc(description="Update a conversation variable's value")
     @service_api_ns.doc(params={"c_id": "Conversation ID", "variable_id": "Variable ID"})
@@ -250,11 +260,11 @@ class ConversationVariableDetailApi(Resource):
         conversation_id = str(c_id)
         variable_id = str(variable_id)
 
-        args = conversation_variable_update_parser.parse_args()
+        payload = ConversationVariableUpdatePayload.model_validate(service_api_ns.payload or {})
 
         try:
             return ConversationService.update_conversation_variable(
-                app_model, conversation_id, variable_id, end_user, args["value"]
+                app_model, conversation_id, variable_id, end_user, payload.value
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

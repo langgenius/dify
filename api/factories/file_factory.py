@@ -1,5 +1,7 @@
+import logging
 import mimetypes
 import os
+import re
 import urllib.parse
 import uuid
 from collections.abc import Callable, Mapping, Sequence
@@ -15,6 +17,8 @@ from core.file import File, FileBelongsTo, FileTransferMethod, FileType, FileUpl
 from core.helper import ssrf_proxy
 from extensions.ext_database import db
 from models import MessageFile, ToolFile, UploadFile
+
+logger = logging.getLogger(__name__)
 
 
 def build_from_message_files(
@@ -268,15 +272,47 @@ def _build_from_remote_url(
 
 
 def _extract_filename(url_path: str, content_disposition: str | None) -> str | None:
-    filename = None
+    filename: str | None = None
     # Try to extract from Content-Disposition header first
     if content_disposition:
-        _, params = parse_options_header(content_disposition)
-        # RFC 5987 https://datatracker.ietf.org/doc/html/rfc5987: filename* takes precedence over filename
-        filename = params.get("filename*") or params.get("filename")
+        # Manually extract filename* parameter since parse_options_header doesn't support it
+        filename_star_match = re.search(r"filename\*=([^;]+)", content_disposition)
+        if filename_star_match:
+            raw_star = filename_star_match.group(1).strip()
+            # Remove trailing quotes if present
+            raw_star = raw_star.removesuffix('"')
+            # format: charset'lang'value
+            try:
+                parts = raw_star.split("'", 2)
+                charset = (parts[0] or "utf-8").lower() if len(parts) >= 1 else "utf-8"
+                value = parts[2] if len(parts) == 3 else parts[-1]
+                filename = urllib.parse.unquote(value, encoding=charset, errors="replace")
+            except Exception:
+                # Fallback: try to extract value after the last single quote
+                if "''" in raw_star:
+                    filename = urllib.parse.unquote(raw_star.split("''")[-1])
+                else:
+                    filename = urllib.parse.unquote(raw_star)
+
+        if not filename:
+            # Fallback to regular filename parameter
+            _, params = parse_options_header(content_disposition)
+            raw = params.get("filename")
+            if raw:
+                # Strip surrounding quotes and percent-decode if present
+                if len(raw) >= 2 and raw[0] == raw[-1] == '"':
+                    raw = raw[1:-1]
+                filename = urllib.parse.unquote(raw)
     # Fallback to URL path if no filename from header
     if not filename:
-        filename = os.path.basename(url_path)
+        candidate = os.path.basename(url_path)
+        filename = urllib.parse.unquote(candidate) if candidate else None
+    # Defense-in-depth: ensure basename only
+    if filename:
+        filename = os.path.basename(filename)
+        # Return None if filename is empty or only whitespace
+        if not filename or not filename.strip():
+            filename = None
     return filename or None
 
 
@@ -323,15 +359,20 @@ def _build_from_tool_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    # Backward/interop compatibility: allow tool_file_id to come from related_id or URL
+    tool_file_id = mapping.get("tool_file_id")
+
+    if not tool_file_id:
+        raise ValueError(f"ToolFile {tool_file_id} not found")
     tool_file = db.session.scalar(
         select(ToolFile).where(
-            ToolFile.id == mapping.get("tool_file_id"),
+            ToolFile.id == tool_file_id,
             ToolFile.tenant_id == tenant_id,
         )
     )
 
     if tool_file is None:
-        raise ValueError(f"ToolFile {mapping.get('tool_file_id')} not found")
+        raise ValueError(f"ToolFile {tool_file_id} not found")
 
     extension = "." + tool_file.file_key.split(".")[-1] if "." in tool_file.file_key else ".bin"
 
@@ -369,10 +410,13 @@ def _build_from_datasource_file(
     transfer_method: FileTransferMethod,
     strict_type_validation: bool = False,
 ) -> File:
+    datasource_file_id = mapping.get("datasource_file_id")
+    if not datasource_file_id:
+        raise ValueError(f"DatasourceFile {datasource_file_id} not found")
     datasource_file = (
         db.session.query(UploadFile)
         .where(
-            UploadFile.id == mapping.get("datasource_file_id"),
+            UploadFile.id == datasource_file_id,
             UploadFile.tenant_id == tenant_id,
         )
         .first()

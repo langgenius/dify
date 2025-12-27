@@ -5,8 +5,8 @@ const translation = {
   table: {
     header: {
       source: 'Джерело',
-      text: 'Текст',
       time: 'Час',
+      queryContent: 'Вміст запиту',
     },
   },
   input: {
@@ -29,6 +29,12 @@ const translation = {
   open: 'Відкривати',
   keyword: 'Ключові слова',
   records: 'Записи',
+  imageUploader: {
+    tip: 'Завантажте або перетягніть зображення (Макс. {{batchCount}}, {{size}} МБ кожне)',
+    tooltip: 'Завантажте зображення (Макс. {{batchCount}}, {{size}} МБ кожне)',
+    dropZoneTip: 'Перетягніть файл сюди, щоб завантажити',
+    singleChunkAttachmentLimitTooltip: 'Кількість вкладень у вигляді одного блоку не може перевищувати {{limit}}',
+  },
 }
 
 export default translation

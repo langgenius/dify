@@ -32,6 +32,9 @@ const translation = {
     cancelDisagree: '取消反对',
     userAction: '用户表示',
   },
+  code: {
+    instruction: '指令',
+  },
   notSetAPIKey: {
     title: 'LLM 提供者的密钥未设置',
     trailFinished: '试用已结束',
@@ -105,8 +108,6 @@ const translation = {
     dataSet: {
       title: '知识库',
       noData: '您可以导入知识库作为上下文',
-      words: '词',
-      textBlocks: '文本块',
       selectTitle: '选择引用知识库',
       selected: '个知识库被选中',
       noDataSet: '未找到知识库',
@@ -443,9 +444,7 @@ const translation = {
     visionSettings: {
       title: '视觉设置',
       resolution: '分辨率',
-      resolutionTooltip: `低分辨率模式将使模型接收图像的低分辨率版本，尺寸为 512 x 512，并使用 65 Tokens 来表示图像。这样可以使 API 更快地返回响应，并在不需要高细节的用例中消耗更少的输入。
-      \n
-      高分辨率模式将首先允许模型查看低分辨率图像，然后根据输入图像的大小创建 512 像素的详细裁剪图像。每个详细裁剪图像使用两倍的预算总共为 129 Tokens。`,
+      resolutionTooltip: '低分辨率模式将使模型接收图像的低分辨率版本，尺寸为 512 x 512，并使用 65 Tokens 来表示图像。这样可以使 API 更快地返回响应，并在不需要高细节的用例中消耗更少的输入。\n高分辨率模式将首先允许模型查看低分辨率图像，然后根据输入图像的大小创建 512 像素的详细裁剪图像。每个详细裁剪图像使用两倍的预算总共为 129 Tokens。',
       high: '高',
       low: '低',
       uploadMethod: '上传方式',

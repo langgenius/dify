@@ -1,39 +1,37 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Api, Namespace, Resource, fields, reqparse
+from flask_restx import Api, Namespace, Resource, fields
 from flask_restx.api import HTTPStatus
-from werkzeug.exceptions import Forbidden
+from pydantic import BaseModel, Field
 
+from controllers.common.schema import register_schema_models
+from controllers.console.wraps import edit_permission_required
 from controllers.service_api import service_api_ns
 from controllers.service_api.wraps import validate_app_token
 from extensions.ext_redis import redis_client
 from fields.annotation_fields import annotation_fields, build_annotation_model
-from libs.login import current_user
-from models import Account
 from models.model import App
 from services.annotation_service import AppAnnotationService
 
-# Define parsers for annotation API
-annotation_create_parser = (
-    reqparse.RequestParser()
-    .add_argument("question", required=True, type=str, location="json", help="Annotation question")
-    .add_argument("answer", required=True, type=str, location="json", help="Annotation answer")
-)
 
-annotation_reply_action_parser = (
-    reqparse.RequestParser()
-    .add_argument(
-        "score_threshold", required=True, type=float, location="json", help="Score threshold for annotation matching"
-    )
-    .add_argument("embedding_provider_name", required=True, type=str, location="json", help="Embedding provider name")
-    .add_argument("embedding_model_name", required=True, type=str, location="json", help="Embedding model name")
-)
+class AnnotationCreatePayload(BaseModel):
+    question: str = Field(description="Annotation question")
+    answer: str = Field(description="Annotation answer")
+
+
+class AnnotationReplyActionPayload(BaseModel):
+    score_threshold: float = Field(description="Score threshold for annotation matching")
+    embedding_provider_name: str = Field(description="Embedding provider name")
+    embedding_model_name: str = Field(description="Embedding model name")
+
+
+register_schema_models(service_api_ns, AnnotationCreatePayload, AnnotationReplyActionPayload)
 
 
 @service_api_ns.route("/apps/annotation-reply/<string:action>")
 class AnnotationReplyActionApi(Resource):
-    @service_api_ns.expect(annotation_reply_action_parser)
+    @service_api_ns.expect(service_api_ns.models[AnnotationReplyActionPayload.__name__])
     @service_api_ns.doc("annotation_reply_action")
     @service_api_ns.doc(description="Enable or disable annotation reply feature")
     @service_api_ns.doc(params={"action": "Action to perform: 'enable' or 'disable'"})
@@ -46,7 +44,7 @@ class AnnotationReplyActionApi(Resource):
     @validate_app_token
     def post(self, app_model: App, action: Literal["enable", "disable"]):
         """Enable or disable annotation reply feature."""
-        args = annotation_reply_action_parser.parse_args()
+        args = AnnotationReplyActionPayload.model_validate(service_api_ns.payload or {}).model_dump()
         if action == "enable":
             result = AppAnnotationService.enable_app_annotation(args, app_model.id)
         elif action == "disable":
@@ -128,7 +126,7 @@ class AnnotationListApi(Resource):
             "page": page,
         }
 
-    @service_api_ns.expect(annotation_create_parser)
+    @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("create_annotation")
     @service_api_ns.doc(description="Create a new annotation")
     @service_api_ns.doc(
@@ -141,14 +139,14 @@ class AnnotationListApi(Resource):
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns), code=HTTPStatus.CREATED)
     def post(self, app_model: App):
         """Create a new annotation."""
-        args = annotation_create_parser.parse_args()
+        args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
         annotation = AppAnnotationService.insert_app_annotation_directly(args, app_model.id)
         return annotation, 201
 
 
 @service_api_ns.route("/apps/annotations/<uuid:annotation_id>")
 class AnnotationUpdateDeleteApi(Resource):
-    @service_api_ns.expect(annotation_create_parser)
+    @service_api_ns.expect(service_api_ns.models[AnnotationCreatePayload.__name__])
     @service_api_ns.doc("update_annotation")
     @service_api_ns.doc(description="Update an existing annotation")
     @service_api_ns.doc(params={"annotation_id": "Annotation ID"})
@@ -161,15 +159,11 @@ class AnnotationUpdateDeleteApi(Resource):
         }
     )
     @validate_app_token
+    @edit_permission_required
     @service_api_ns.marshal_with(build_annotation_model(service_api_ns))
-    def put(self, app_model: App, annotation_id):
+    def put(self, app_model: App, annotation_id: str):
         """Update an existing annotation."""
-        assert isinstance(current_user, Account)
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        annotation_id = str(annotation_id)
-        args = annotation_create_parser.parse_args()
+        args = AnnotationCreatePayload.model_validate(service_api_ns.payload or {}).model_dump()
         annotation = AppAnnotationService.update_app_annotation_directly(args, app_model.id, annotation_id)
         return annotation
 
@@ -185,13 +179,8 @@ class AnnotationUpdateDeleteApi(Resource):
         }
     )
     @validate_app_token
-    def delete(self, app_model: App, annotation_id):
+    @edit_permission_required
+    def delete(self, app_model: App, annotation_id: str):
         """Delete an annotation."""
-        assert isinstance(current_user, Account)
-
-        if not current_user.has_edit_permission:
-            raise Forbidden()
-
-        annotation_id = str(annotation_id)
         AppAnnotationService.delete_app_annotation(app_model.id, annotation_id)
         return {"result": "success"}, 204

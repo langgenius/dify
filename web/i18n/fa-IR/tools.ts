@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'ایجاد ابزار سفارشی',
   customToolTip: 'بیشتر در مورد ابزارهای سفارشی Dify بیاموزید',
   type: {
-    all: 'همه',
     builtIn: 'سفارشی شده',
     custom: 'سفارشی',
     workflow: 'جریان کار',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'پس از پیکربندی اعتبارنامه‌ها، همه اعضای موجود در فضای کاری می‌توانند از این ابزار هنگام هماهنگی برنامه‌ها استفاده کنند.',
   },
   includeToolNum: '{{num}} ابزار شامل شد',
-  addTool: 'افزودن ابزار',
   addToolModal: {
     type: 'نوع',
     category: 'دسته‌بندی',
-    add: 'افزودن',
     added: 'افزوده شد',
-    manageInTools: 'مدیریت در ابزارها',
     custom: {
       title: 'هیچ ابزار سفارشی موجود نیست',
       tip: 'یک ابزار سفارشی ایجاد کنید',
@@ -123,6 +119,13 @@ const translation = {
     confirmTip: 'برنامه‌هایی که از این ابزار استفاده می‌کنند تحت تأثیر قرار خواهند گرفت',
     deleteToolConfirmTitle: 'آیا این ابزار را حذف کنید؟',
     deleteToolConfirmContent: 'حذف ابزار غیرقابل بازگشت است. کاربران دیگر قادر به دسترسی به ابزار شما نخواهند بود.',
+    toolOutput: {
+      title: 'خروجی ابزار',
+      name: 'نام',
+      reserved: 'رزرو شده',
+      reservedParameterDuplicateTip: 'متن، JSON و فایل‌ها متغیرهای رزرو شده هستند. متغیرهایی با این نام‌ها نمی‌توانند در طرح خروجی ظاهر شوند.',
+      description: 'توضیحات',
+    },
   },
   test: {
     title: 'آزمایش',
@@ -209,6 +212,7 @@ const translation = {
       clientID: 'شناسه مشتری',
       clientSecret: 'رمز مشتری',
       useDynamicClientRegistration: 'استفاده از ثبت‌نام پویا برای مشتری',
+      redirectUrlWarning: 'لطفاً URL بازگشت OAuth خود را پیکربندی کنید به:',
     },
     delete: 'حذف سرور MCP',
     deleteConfirmTitle: 'آیا مایل به حذف {mcp} هستید؟',

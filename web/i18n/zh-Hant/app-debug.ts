@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: '上下文',
       noData: '您可以匯入知識庫作為上下文',
-      words: '詞',
-      textBlocks: '文字塊',
       selectTitle: '選擇引用知識庫',
       selected: '個知識庫被選中',
       noDataSet: '未找到知識庫',
@@ -294,7 +292,6 @@ const translation = {
     'required': '必填',
     'hide': '隱藏',
     'errorMsg': {
-      varNameRequired: '變數名稱必填',
       labelNameRequired: '顯示名稱必填',
       varNameCanBeRepeat: '變數名稱不能重複',
       atLeastOneOption: '至少需要一個選項',
@@ -330,6 +327,7 @@ const translation = {
     'localUpload': '本地上傳',
     'single-file': '單個檔',
     'maxNumberOfUploads': '最大上傳次數',
+    'maxNumberTip': '文件 < {{docLimit}}, 圖片 < {{imgLimit}}, 音訊 < {{audioLimit}}, 影片 < {{videoLimit}}',
     'checkbox': '核取方塊',
     'optional': '可選的',
     'jsonSchema': 'JSON Schema',
@@ -355,9 +353,7 @@ const translation = {
     visionSettings: {
       title: '視覺設定',
       resolution: '解析度',
-      resolutionTooltip: `低解析度模式將使模型接收影象的低解析度版本，尺寸為 512 x 512，並使用 65 Tokens 來表示影象。這樣可以使 API 更快地返回響應，並在不需要高細節的用例中消耗更少的輸入。
-      \n
-      高解析度模式將首先允許模型檢視低解析度影象，然後根據輸入影象的大小建立 512 畫素的詳細裁剪影象。每個詳細裁剪影象使用兩倍的預算總共為 129 Tokens。`,
+      resolutionTooltip: '低解析度模式將使模型接收影象的低解析度版本，尺寸為 512 x 512，並使用 65 Tokens 來表示影象。這樣可以使 API 更快地返回響應，並在不需要高細節的用例中消耗更少的輸入。\n高解析度模式將首先允許模型檢視低解析度影象，然後根據輸入影象的大小建立 512 畫素的詳細裁剪影象。每個詳細裁剪影象使用兩倍的預算總共為 129 Tokens。',
       high: '高',
       low: '低',
       uploadMethod: '上傳方式',

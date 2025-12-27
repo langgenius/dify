@@ -1,6 +1,6 @@
 import type { SlashCommandHandler } from './types'
-import React from 'react'
 import { RiDiscordLine } from '@remixicon/react'
+import * as React from 'react'
 import i18n from '@/i18n-config/i18next-config'
 import { registerCommands, unregisterCommands } from './command-bus'
 
@@ -28,8 +28,8 @@ export const communityCommand: SlashCommandHandler<CommunityDeps> = {
       description: i18n.t('app.gotoAnything.actions.communityDesc', { lng: locale }) || 'Open Discord community',
       type: 'command' as const,
       icon: (
-        <div className='flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg'>
-          <RiDiscordLine className='h-4 w-4 text-text-tertiary' />
+        <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">
+          <RiDiscordLine className="h-4 w-4 text-text-tertiary" />
         </div>
       ),
       data: { command: 'navigation.community', args: { url: 'https://discord.gg/5AEfbxcd9k' } },

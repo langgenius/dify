@@ -5,6 +5,7 @@ const translation = {
     saved: 'Sauvegardé',
     create: 'Créé',
     remove: 'Supprimé',
+    actionFailed: 'Action échouée',
   },
   operation: {
     create: 'Créer',
@@ -65,10 +66,17 @@ const translation = {
     confirmAction: 'Veuillez confirmer votre action.',
     deleteConfirmTitle: 'Supprimer ?',
     yes: 'Oui',
+    noSearchResults: 'Aucun {{content}} n\'a été trouvé',
+    resetKeywords: 'Réinitialiser les mots-clés',
+    selectCount: '{{count}} Sélectionné',
+    searchCount: 'Trouver {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'Maintenant',
   },
   placeholder: {
     input: 'Veuillez entrer',
     select: 'Veuillez sélectionner',
+    search: 'Rechercher...',
   },
   voice: {
     language: {
@@ -92,6 +100,8 @@ const translation = {
       hiIN: 'Hindi',
       trTR: 'Turc',
       faIR: 'Persan',
+      slSI: 'Slovène',
+      arTN: 'Arabe tunisien',
     },
   },
   unit: {
@@ -203,7 +213,6 @@ const translation = {
     showAppLength: 'Afficher {{length}} applications',
     delete: 'Supprimer le compte',
     deleteTip: 'La suppression de votre compte effacera définitivement toutes vos données et elles ne pourront pas être récupérées.',
-    deleteConfirmTip: 'Pour confirmer, veuillez envoyer ce qui suit depuis votre adresse e-mail enregistrée à ',
     myAccount: 'Mon compte',
     account: 'Compte',
     studio: 'Dify Studio',
@@ -728,6 +737,7 @@ const translation = {
     pasteFileLinkInvalid: 'Lien de fichier non valide',
     uploadFromComputerLimit: 'Le fichier de téléchargement ne peut pas dépasser {{size}}',
     fileExtensionBlocked: 'Ce type de fichier est bloqué pour des raisons de sécurité',
+    uploadDisabled: 'Le téléchargement de fichiers est désactivé',
   },
   license: {
     expiring: 'Expirant dans un jour',
@@ -769,6 +779,13 @@ const translation = {
   },
   label: {
     optional: '(facultatif)',
+  },
+  noData: 'Aucune donnée',
+  dynamicSelect: {
+    error: 'Échec du chargement des options',
+    noData: 'Aucune option disponible',
+    loading: 'Chargement des options...',
+    selected: '{{count}} sélectionné',
   },
 }
 

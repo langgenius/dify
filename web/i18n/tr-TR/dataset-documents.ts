@@ -81,6 +81,10 @@ const translation = {
       ok: 'Tamam',
     },
     learnMore: 'Daha fazla bilgi edinin',
+    sort: {
+      uploadTime: 'Yükleme Zamanı',
+      hitCount: 'Alım Sayısı',
+    },
   },
   metadata: {
     title: 'Meta Veri',
@@ -396,6 +400,7 @@ const translation = {
     addChildChunk: 'Alt Parça Ekle',
     keywordDuplicate: 'Anahtar kelime zaten var',
     keywordEmpty: 'Anahtar kelime boş olamaz',
+    allFilesUploaded: 'Kaydetmeden önce tüm dosyaların yüklenmesi gerekir',
   },
 }
 

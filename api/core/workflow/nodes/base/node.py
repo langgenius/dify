@@ -1,8 +1,12 @@
+import importlib
 import logging
+import operator
+import pkgutil
 from abc import abstractmethod
 from collections.abc import Generator, Mapping, Sequence
 from functools import singledispatchmethod
-from typing import Any, ClassVar
+from types import MappingProxyType
+from typing import Any, ClassVar, Generic, TypeVar, cast, get_args, get_origin
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -49,12 +53,152 @@ from models.enums import UserFrom
 
 from .entities import BaseNodeData, RetryConfig
 
+NodeDataT = TypeVar("NodeDataT", bound=BaseNodeData)
+
 logger = logging.getLogger(__name__)
 
 
-class Node:
+class Node(Generic[NodeDataT]):
     node_type: ClassVar["NodeType"]
     execution_type: NodeExecutionType = NodeExecutionType.EXECUTABLE
+    _node_data_type: ClassVar[type[BaseNodeData]] = BaseNodeData
+
+    def __init_subclass__(cls, **kwargs: Any) -> None:
+        """
+        Automatically extract and validate the node data type from the generic parameter.
+
+        When a subclass is defined as `class MyNode(Node[MyNodeData])`, this method:
+        1. Inspects `__orig_bases__` to find the `Node[T]` parameterization
+        2. Extracts `T` (e.g., `MyNodeData`) from the generic argument
+        3. Validates that `T` is a proper `BaseNodeData` subclass
+        4. Stores it in `_node_data_type` for automatic hydration in `__init__`
+
+        This eliminates the need for subclasses to manually implement boilerplate
+        accessor methods like `_get_title()`, `_get_error_strategy()`, etc.
+
+        How it works:
+        ::
+
+            class CodeNode(Node[CodeNodeData]):
+                          │         │
+                          │         └─────────────────────────────────┐
+                          │                                           │
+                          ▼                                           ▼
+            ┌─────────────────────────────┐     ┌─────────────────────────────────┐
+            │  __orig_bases__ = (         │     │  CodeNodeData(BaseNodeData)     │
+            │    Node[CodeNodeData],      │     │    title: str                   │
+            │  )                          │     │    desc: str | None             │
+            └──────────────┬──────────────┘     │    ...                          │
+                           │                    └─────────────────────────────────┘
+                           ▼                                      ▲
+            ┌─────────────────────────────┐                       │
+            │  get_origin(base) -> Node   │                       │
+            │  get_args(base) -> (        │                       │
+            │    CodeNodeData,            │ ──────────────────────┘
+            │  )                          │
+            └──────────────┬──────────────┘
+                           │
+                           ▼
+            ┌─────────────────────────────┐
+            │  Validate:                  │
+            │  - Is it a type?            │
+            │  - Is it a BaseNodeData     │
+            │    subclass?                │
+            └──────────────┬──────────────┘
+                           │
+                           ▼
+            ┌─────────────────────────────┐
+            │  cls._node_data_type =      │
+            │    CodeNodeData             │
+            └─────────────────────────────┘
+
+        Later, in __init__:
+        ::
+
+            config["data"] ──► _hydrate_node_data() ──► _node_data_type.model_validate()
+                                                                │
+                                                                ▼
+                                                        CodeNodeData instance
+                                                        (stored in self._node_data)
+
+        Example:
+            class CodeNode(Node[CodeNodeData]):  # CodeNodeData is auto-extracted
+                node_type = NodeType.CODE
+                # No need to implement _get_title, _get_error_strategy, etc.
+        """
+        super().__init_subclass__(**kwargs)
+
+        if cls is Node:
+            return
+
+        node_data_type = cls._extract_node_data_type_from_generic()
+
+        if node_data_type is None:
+            raise TypeError(f"{cls.__name__} must inherit from Node[T] with a BaseNodeData subtype")
+
+        cls._node_data_type = node_data_type
+
+        # Skip base class itself
+        if cls is Node:
+            return
+        # Only register production node implementations defined under core.workflow.nodes.*
+        # This prevents test helper subclasses from polluting the global registry and
+        # accidentally overriding real node types (e.g., a test Answer node).
+        module_name = getattr(cls, "__module__", "")
+        # Only register concrete subclasses that define node_type and version()
+        node_type = cls.node_type
+        version = cls.version()
+        bucket = Node._registry.setdefault(node_type, {})
+        if module_name.startswith("core.workflow.nodes."):
+            # Production node definitions take precedence and may override
+            bucket[version] = cls  # type: ignore[index]
+        else:
+            # External/test subclasses may register but must not override production
+            bucket.setdefault(version, cls)  # type: ignore[index]
+        # Maintain a "latest" pointer preferring numeric versions; fallback to lexicographic
+        version_keys = [v for v in bucket if v != "latest"]
+        numeric_pairs: list[tuple[str, int]] = []
+        for v in version_keys:
+            numeric_pairs.append((v, int(v)))
+        if numeric_pairs:
+            latest_key = max(numeric_pairs, key=operator.itemgetter(1))[0]
+        else:
+            latest_key = max(version_keys) if version_keys else version
+        bucket["latest"] = bucket[latest_key]
+
+    @classmethod
+    def _extract_node_data_type_from_generic(cls) -> type[BaseNodeData] | None:
+        """
+        Extract the node data type from the generic parameter `Node[T]`.
+
+        Inspects `__orig_bases__` to find the `Node[T]` parameterization and extracts `T`.
+
+        Returns:
+            The extracted BaseNodeData subtype, or None if not found.
+
+        Raises:
+            TypeError: If the generic argument is invalid (not exactly one argument,
+                      or not a BaseNodeData subtype).
+        """
+        # __orig_bases__ contains the original generic bases before type erasure.
+        # For `class CodeNode(Node[CodeNodeData])`, this would be `(Node[CodeNodeData],)`.
+        for base in getattr(cls, "__orig_bases__", ()):  # type: ignore[attr-defined]
+            origin = get_origin(base)  # Returns `Node` for `Node[CodeNodeData]`
+            if origin is Node:
+                args = get_args(base)  # Returns `(CodeNodeData,)` for `Node[CodeNodeData]`
+                if len(args) != 1:
+                    raise TypeError(f"{cls.__name__} must specify exactly one node data generic argument")
+
+                candidate = args[0]
+                if not isinstance(candidate, type) or not issubclass(candidate, BaseNodeData):
+                    raise TypeError(f"{cls.__name__} must parameterize Node with a BaseNodeData subtype")
+
+                return candidate
+
+        return None
+
+    # Global registry populated via __init_subclass__
+    _registry: ClassVar[dict["NodeType", dict[str, type["Node"]]]] = {}
 
     def __init__(
         self,
@@ -63,6 +207,7 @@ class Node:
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
     ) -> None:
+        self._graph_init_params = graph_init_params
         self.id = id
         self.tenant_id = graph_init_params.tenant_id
         self.app_id = graph_init_params.app_id
@@ -83,8 +228,33 @@ class Node:
         self._node_execution_id: str = ""
         self._start_at = naive_utc_now()
 
-    @abstractmethod
-    def init_node_data(self, data: Mapping[str, Any]) -> None: ...
+        raw_node_data = config.get("data") or {}
+        if not isinstance(raw_node_data, Mapping):
+            raise ValueError("Node config data must be a mapping.")
+
+        self._node_data: NodeDataT = self._hydrate_node_data(raw_node_data)
+
+        self.post_init()
+
+    def post_init(self) -> None:
+        """Optional hook for subclasses requiring extra initialization."""
+        return
+
+    @property
+    def graph_init_params(self) -> "GraphInitParams":
+        return self._graph_init_params
+
+    @property
+    def execution_id(self) -> str:
+        return self._node_execution_id
+
+    def ensure_execution_id(self) -> str:
+        if not self._node_execution_id:
+            self._node_execution_id = str(uuid4())
+        return self._node_execution_id
+
+    def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
+        return cast(NodeDataT, self._node_data_type.model_validate(data))
 
     @abstractmethod
     def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
@@ -95,14 +265,12 @@ class Node:
         raise NotImplementedError
 
     def run(self) -> Generator[GraphNodeEventBase, None, None]:
-        # Generate a single node execution ID to use for all events
-        if not self._node_execution_id:
-            self._node_execution_id = str(uuid4())
+        execution_id = self.ensure_execution_id()
         self._start_at = naive_utc_now()
 
         # Create and push start event with required fields
         start_event = NodeRunStartedEvent(
-            id=self._node_execution_id,
+            id=execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_title=self.title,
@@ -114,23 +282,23 @@ class Node:
         from core.workflow.nodes.tool.tool_node import ToolNode
 
         if isinstance(self, ToolNode):
-            start_event.provider_id = getattr(self.get_base_node_data(), "provider_id", "")
-            start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
+            start_event.provider_id = getattr(self.node_data, "provider_id", "")
+            start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
         from core.workflow.nodes.datasource.datasource_node import DatasourceNode
 
         if isinstance(self, DatasourceNode):
-            plugin_id = getattr(self.get_base_node_data(), "plugin_id", "")
-            provider_name = getattr(self.get_base_node_data(), "provider_name", "")
+            plugin_id = getattr(self.node_data, "plugin_id", "")
+            provider_name = getattr(self.node_data, "provider_name", "")
 
             start_event.provider_id = f"{plugin_id}/{provider_name}"
-            start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
+            start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
         from core.workflow.nodes.trigger_plugin.trigger_event_node import TriggerEventNode
 
         if isinstance(self, TriggerEventNode):
-            start_event.provider_id = getattr(self.get_base_node_data(), "provider_id", "")
-            start_event.provider_type = getattr(self.get_base_node_data(), "provider_type", "")
+            start_event.provider_id = getattr(self.node_data, "provider_id", "")
+            start_event.provider_type = getattr(self.node_data, "provider_type", "")
 
         from typing import cast
 
@@ -139,7 +307,7 @@ class Node:
 
         if isinstance(self, AgentNode):
             start_event.agent_strategy = AgentNodeStrategyInit(
-                name=cast(AgentNodeData, self.get_base_node_data()).agent_strategy_name,
+                name=cast(AgentNodeData, self.node_data).agent_strategy_name,
                 icon=self.agent_strategy_icon,
             )
 
@@ -160,7 +328,7 @@ class Node:
                 if isinstance(event, NodeEventBase):  # pyright: ignore[reportUnnecessaryIsInstance]
                     yield self._dispatch(event)
                 elif isinstance(event, GraphNodeEventBase) and not event.in_iteration_id and not event.in_loop_id:  # pyright: ignore[reportUnnecessaryIsInstance]
-                    event.id = self._node_execution_id
+                    event.id = self.execution_id
                     yield event
                 else:
                     yield event
@@ -172,7 +340,7 @@ class Node:
                 error_type="WorkflowNodeError",
             )
             yield NodeRunFailedEvent(
-                id=self._node_execution_id,
+                id=self.execution_id,
                 node_id=self._node_id,
                 node_type=self.node_type,
                 start_at=self._start_at,
@@ -269,42 +437,52 @@ class Node:
         # in `api/core/workflow/nodes/__init__.py`.
         raise NotImplementedError("subclasses of BaseNode must implement `version` method.")
 
+    @classmethod
+    def get_node_type_classes_mapping(cls) -> Mapping["NodeType", Mapping[str, type["Node"]]]:
+        """Return mapping of NodeType -> {version -> Node subclass} using __init_subclass__ registry.
+
+        Import all modules under core.workflow.nodes so subclasses register themselves on import.
+        Then we return a readonly view of the registry to avoid accidental mutation.
+        """
+        # Import all node modules to ensure they are loaded (thus registered)
+        import core.workflow.nodes as _nodes_pkg
+
+        for _, _modname, _ in pkgutil.walk_packages(_nodes_pkg.__path__, _nodes_pkg.__name__ + "."):
+            # Avoid importing modules that depend on the registry to prevent circular imports
+            # e.g. node_factory imports node_mapping which builds the mapping here.
+            if _modname in {
+                "core.workflow.nodes.node_factory",
+                "core.workflow.nodes.node_mapping",
+            }:
+                continue
+            importlib.import_module(_modname)
+
+        # Return a readonly view so callers can't mutate the registry by accident
+        return {nt: MappingProxyType(ver_map) for nt, ver_map in cls._registry.items()}
+
     @property
     def retry(self) -> bool:
         return False
 
-    # Abstract methods that subclasses must implement to provide access
-    # to BaseNodeData properties in a type-safe way
-
-    @abstractmethod
     def _get_error_strategy(self) -> ErrorStrategy | None:
         """Get the error strategy for this node."""
-        ...
+        return self._node_data.error_strategy
 
-    @abstractmethod
     def _get_retry_config(self) -> RetryConfig:
         """Get the retry configuration for this node."""
-        ...
+        return self._node_data.retry_config
 
-    @abstractmethod
     def _get_title(self) -> str:
         """Get the node title."""
-        ...
+        return self._node_data.title
 
-    @abstractmethod
     def _get_description(self) -> str | None:
         """Get the node description."""
-        ...
+        return self._node_data.desc
 
-    @abstractmethod
     def _get_default_value_dict(self) -> dict[str, Any]:
         """Get the default values dictionary for this node."""
-        ...
-
-    @abstractmethod
-    def get_base_node_data(self) -> BaseNodeData:
-        """Get the BaseNodeData object for this node."""
-        ...
+        return self._node_data.default_value_dict
 
     # Public interface properties that delegate to abstract methods
     @property
@@ -332,11 +510,16 @@ class Node:
         """Get the default values dictionary for this node."""
         return self._get_default_value_dict()
 
+    @property
+    def node_data(self) -> NodeDataT:
+        """Typed access to this node's configuration data."""
+        return self._node_data
+
     def _convert_node_run_result_to_graph_node_event(self, result: NodeRunResult) -> GraphNodeEventBase:
         match result.status:
             case WorkflowNodeExecutionStatus.FAILED:
                 return NodeRunFailedEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self.id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -345,7 +528,7 @@ class Node:
                 )
             case WorkflowNodeExecutionStatus.SUCCEEDED:
                 return NodeRunSucceededEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self.id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -361,7 +544,7 @@ class Node:
     @_dispatch.register
     def _(self, event: StreamChunkEvent) -> NodeRunStreamChunkEvent:
         return NodeRunStreamChunkEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             selector=event.selector,
@@ -374,7 +557,7 @@ class Node:
         match event.node_run_result.status:
             case WorkflowNodeExecutionStatus.SUCCEEDED:
                 return NodeRunSucceededEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self._node_id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -382,7 +565,7 @@ class Node:
                 )
             case WorkflowNodeExecutionStatus.FAILED:
                 return NodeRunFailedEvent(
-                    id=self._node_execution_id,
+                    id=self.execution_id,
                     node_id=self._node_id,
                     node_type=self.node_type,
                     start_at=self._start_at,
@@ -397,7 +580,7 @@ class Node:
     @_dispatch.register
     def _(self, event: PauseRequestedEvent) -> NodeRunPauseRequestedEvent:
         return NodeRunPauseRequestedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             node_run_result=NodeRunResult(status=WorkflowNodeExecutionStatus.PAUSED),
@@ -407,7 +590,7 @@ class Node:
     @_dispatch.register
     def _(self, event: AgentLogEvent) -> NodeRunAgentLogEvent:
         return NodeRunAgentLogEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             message_id=event.message_id,
@@ -423,10 +606,10 @@ class Node:
     @_dispatch.register
     def _(self, event: LoopStartedEvent) -> NodeRunLoopStartedEvent:
         return NodeRunLoopStartedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             metadata=event.metadata,
@@ -436,10 +619,10 @@ class Node:
     @_dispatch.register
     def _(self, event: LoopNextEvent) -> NodeRunLoopNextEvent:
         return NodeRunLoopNextEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             index=event.index,
             pre_loop_output=event.pre_loop_output,
         )
@@ -447,10 +630,10 @@ class Node:
     @_dispatch.register
     def _(self, event: LoopSucceededEvent) -> NodeRunLoopSucceededEvent:
         return NodeRunLoopSucceededEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
@@ -461,10 +644,10 @@ class Node:
     @_dispatch.register
     def _(self, event: LoopFailedEvent) -> NodeRunLoopFailedEvent:
         return NodeRunLoopFailedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
@@ -476,10 +659,10 @@ class Node:
     @_dispatch.register
     def _(self, event: IterationStartedEvent) -> NodeRunIterationStartedEvent:
         return NodeRunIterationStartedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             metadata=event.metadata,
@@ -489,10 +672,10 @@ class Node:
     @_dispatch.register
     def _(self, event: IterationNextEvent) -> NodeRunIterationNextEvent:
         return NodeRunIterationNextEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             index=event.index,
             pre_iteration_output=event.pre_iteration_output,
         )
@@ -500,10 +683,10 @@ class Node:
     @_dispatch.register
     def _(self, event: IterationSucceededEvent) -> NodeRunIterationSucceededEvent:
         return NodeRunIterationSucceededEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
@@ -514,10 +697,10 @@ class Node:
     @_dispatch.register
     def _(self, event: IterationFailedEvent) -> NodeRunIterationFailedEvent:
         return NodeRunIterationFailedEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
-            node_title=self.get_base_node_data().title,
+            node_title=self.node_data.title,
             start_at=event.start_at,
             inputs=event.inputs,
             outputs=event.outputs,
@@ -529,7 +712,7 @@ class Node:
     @_dispatch.register
     def _(self, event: RunRetrieverResourceEvent) -> NodeRunRetrieverResourceEvent:
         return NodeRunRetrieverResourceEvent(
-            id=self._node_execution_id,
+            id=self.execution_id,
             node_id=self._node_id,
             node_type=self.node_type,
             retriever_resources=event.retriever_resources,

@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: '创建自定义工具',
   customToolTip: '了解更多关于 Dify 自定义工具的信息',
   type: {
-    all: '全部',
     builtIn: '工具',
     custom: '自定义',
     workflow: '工作流',
@@ -16,18 +15,16 @@ const translation = {
   author: '作者',
   auth: {
     authorized: '已授权',
+    unauthorized: '未授权',
     setup: '要使用请先授权',
     setupModalTitle: '设置授权',
     setupModalTitleDescription: '配置凭据后，工作区中的所有成员都可以在编排应用程序时使用此工具。',
   },
   includeToolNum: '包含 {{num}} 个 {{action}}',
-  addTool: '添加工具',
   addToolModal: {
     type: '类型',
     category: '类别',
-    add: '添加',
     added: '已添加',
-    manageInTools: '去工具列表管理',
     custom: {
       title: '没有可用的自定义工具',
       tip: '创建自定义工具',
@@ -65,7 +62,7 @@ const translation = {
     exampleOptions: {
       json: '天气 (JSON)',
       yaml: '宠物商店 (YAML)',
-      blankTemplate: '空白模版',
+      blankTemplate: '空白模板',
     },
     availableTools: {
       title: '可用工具',
@@ -116,6 +113,13 @@ const translation = {
       labelPlaceholder: '选择标签 (可选)',
       description: '描述',
       descriptionPlaceholder: '参数意义的描述',
+    },
+    toolOutput: {
+      title: '工具出参',
+      name: '名称',
+      reserved: '预留',
+      reservedParameterDuplicateTip: 'text、json、files 是预留变量，这些名称的变量不能出现在 output_schema 中。',
+      description: '描述',
     },
     customDisclaimer: '自定义免责声明',
     customDisclaimerPlaceholder: '请输入自定义免责声明',
@@ -205,6 +209,7 @@ const translation = {
       timeoutPlaceholder: '30',
       authentication: '认证',
       useDynamicClientRegistration: '使用动态客户端注册',
+      redirectUrlWarning: '请将您的 OAuth 重定向 URL 配置为：',
       clientID: '客户端 ID',
       clientSecret: '客户端密钥',
       clientSecretPlaceholder: '客户端密钥',

@@ -138,6 +138,9 @@ const translation = {
       running: '稼働中',
       disable: '無効',
     },
+    disableTooltip: {
+      triggerMode: 'トリガーノードモードでは{{feature}}機能を使用できません。',
+    },
   },
   analysis: {
     title: '分析',

@@ -62,7 +62,6 @@ def init_tool_node(config: dict):
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
     )
-    node.init_node_data(config.get("data", {}))
     return node
 
 

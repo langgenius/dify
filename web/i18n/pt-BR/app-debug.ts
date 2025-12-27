@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Contexto',
       noData: 'Você pode importar Conhecimento como contexto',
-      words: 'Palavras',
-      textBlocks: 'Blocos de Texto',
       selectTitle: 'Selecionar Conhecimento de referência',
       selected: 'Conhecimento selecionado',
       noDataSet: 'Nenhum Conhecimento encontrado',
@@ -332,6 +330,7 @@ const translation = {
     'multi-files': 'Lista de arquivos',
     'single-file': 'Fila indiana',
     'maxNumberOfUploads': 'Número máximo de uploads',
+    'maxNumberTip': 'Documento < {{docLimit}}, imagem < {{imgLimit}}, áudio < {{audioLimit}}, vídeo < {{videoLimit}}',
     'uploadFileTypes': 'Carregar tipos de arquivo',
     'both': 'Ambos',
     'localUpload': 'Local Upload',
@@ -360,9 +359,7 @@ const translation = {
     visionSettings: {
       title: 'Configurações de Visão',
       resolution: 'Resolução',
-      resolutionTooltip: `Baixa resolução permitirá que o modelo receba uma versão de baixa resolução de 512 x 512 da imagem e represente a imagem com um orçamento de 65 tokens. Isso permite que a API retorne respostas mais rápidas e consuma menos tokens de entrada para casos de uso que não exigem alta precisão.
-                \n
-                Alta resolução permitirá que o modelo veja a imagem de baixa resolução e crie recortes detalhados das imagens de entrada como quadrados de 512px com base no tamanho da imagem de entrada. Cada um dos recortes detalhados usa o dobro do orçamento de tokens, totalizando 129 tokens.`,
+      resolutionTooltip: 'Baixa resolução permitirá que o modelo receba uma versão de baixa resolução de 512 x 512 da imagem e represente a imagem com um orçamento de 65 tokens. Isso permite que a API retorne respostas mais rápidas e consuma menos tokens de entrada para casos de uso que não exigem alta precisão.\nAlta resolução permitirá que o modelo veja a imagem de baixa resolução e crie recortes detalhados das imagens de entrada como quadrados de 512px com base no tamanho da imagem de entrada. Cada um dos recortes detalhados usa o dobro do orçamento de tokens, totalizando 129 tokens.',
       high: 'Alta',
       low: 'Baixa',
       uploadMethod: 'Método de Upload',

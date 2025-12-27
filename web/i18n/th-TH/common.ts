@@ -5,6 +5,7 @@ const translation = {
     saved: 'บันทึก',
     create: 'สร้าง',
     remove: 'ถูก เอา ออก',
+    actionFailed: 'การดำเนินการล้มเหลว',
   },
   operation: {
     create: 'สร้าง',
@@ -65,6 +66,12 @@ const translation = {
     deleteConfirmTitle: 'ลบหรือไม่?',
     confirmAction: 'กรุณายืนยันการกระทำของคุณ',
     yes: 'ใช่',
+    noSearchResults: 'ไม่พบ {{content}}',
+    resetKeywords: 'รีเซ็ตคำสำคัญ',
+    selectCount: '{{count}} ที่เลือก',
+    searchCount: 'ค้นหา {{count}} {{content}}',
+    noSearchCount: '0 {{content}}',
+    now: 'ตอนนี้',
   },
   errorMsg: {
     fieldRequired: '{{field}} เป็นสิ่งจําเป็น',
@@ -73,6 +80,7 @@ const translation = {
   placeholder: {
     input: 'กรุณากรอก',
     select: 'กรุณาเลือก',
+    search: 'ค้นหา...',
   },
   voice: {
     language: {
@@ -96,6 +104,8 @@ const translation = {
       hiIN: 'ฮินดี',
       trTR: 'ตุรกี',
       faIR: 'ภาษาเปอร์เซีย',
+      slSI: 'ภาษาสโลเวเนีย',
+      arTN: 'ภาษาอาหรับตูนิเซีย',
     },
   },
   unit: {
@@ -707,6 +717,7 @@ const translation = {
     pasteFileLinkInvalid: 'ลิงก์ไฟล์ไม่ถูกต้อง',
     fileExtensionNotSupport: 'ไม่รองรับนามสกุลไฟล์',
     fileExtensionBlocked: 'ประเภทไฟล์นี้ถูกบล็อกด้วยเหตุผลด้านความปลอดภัย',
+    uploadDisabled: 'การอัปโหลดไฟล์ถูกปิดใช้งาน',
   },
   tag: {
     placeholder: 'แท็กทั้งหมด',
@@ -763,6 +774,13 @@ const translation = {
   },
   label: {
     optional: '(ไม่บังคับ)',
+  },
+  noData: 'ไม่มีข้อมูล',
+  dynamicSelect: {
+    error: 'การโหลดตัวเลือกล้มเหลว',
+    noData: 'ไม่มีตัวเลือก available',
+    loading: 'กำลังโหลดตัวเลือก...',
+    selected: '{{count}} ที่ถูกเลือก',
   },
 }
 

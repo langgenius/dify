@@ -78,8 +78,6 @@ const translation = {
       description: 'Jalankan pencarian teks lengkap dan pencarian vektor secara bersamaan, peringkatkan ulang untuk memilih kecocokan terbaik untuk kueri pengguna. Pengguna dapat memilih untuk mengatur bobot atau mengonfigurasi ke model Rerank.',
     },
     invertedIndex: {
-      title: 'Indeks Terbalik',
-      description: 'Indeks Terbalik adalah struktur yang digunakan untuk pengambilan yang efisien. Diatur berdasarkan istilah, setiap istilah menunjuk ke dokumen atau halaman web yang berisinya.',
     },
     change: 'Ubah',
     changeRetrievalMethod: 'Ubah metode pengambilan',
@@ -126,12 +124,14 @@ const translation = {
     checkName: {
       empty: 'Nama metadata tidak boleh kosong',
       invalid: 'Nama metadata hanya dapat berisi huruf kecil, angka, dan garis bawah dan harus dimulai dengan huruf kecil',
+      tooLong: 'Nama metadata tidak boleh melebihi {{max}} karakter',
     },
     batchEditMetadata: {
       editMetadata: 'Edit Metadata',
       applyToAllSelectDocument: 'Terapkan ke semua dokumen yang dipilih',
       multipleValue: 'Beberapa Nilai',
       applyToAllSelectDocumentTip: 'Secara otomatis membuat semua metadata yang diedit di atas dan baru untuk semua dokumen yang dipilih, jika tidak, mengedit metadata hanya akan berlaku untuk dokumen yang dengannya.',
+      editDocumentsNum: 'Mengedit dokumen {{num}}',
     },
     selectMetadata: {
       manageAction: 'Urus',
@@ -148,6 +148,8 @@ const translation = {
       builtInDescription: 'Metadata bawaan secara otomatis diekstrak dan dihasilkan. Itu harus diaktifkan sebelum digunakan dan tidak dapat diedit.',
       namePlaceholder: 'Nama metadata',
       builtIn: 'Bawaan',
+      values: 'Nilai {{num}}',
+      deleteContent: 'Apakah Anda yakin ingin menghapus metadata "{{name}}"',
     },
     documentMetadata: {
       metadataToolTip: 'Metadata berfungsi sebagai filter penting yang meningkatkan akurasi dan relevansi pengambilan informasi. Anda dapat memodifikasi dan menambahkan metadata untuk dokumen ini di sini.',
@@ -210,7 +212,6 @@ const translation = {
   allExternalTip: 'Saat hanya menggunakan pengetahuan eksternal, pengguna dapat memilih apakah akan mengaktifkan model Rerank. Jika tidak diaktifkan, potongan yang diambil akan diurutkan berdasarkan skor. Ketika strategi pengambilan dari basis pengetahuan yang berbeda tidak konsisten, itu akan menjadi tidak akurat.',
   datasetUsedByApp: 'Pengetahuan tersebut digunakan oleh beberapa aplikasi. Aplikasi tidak akan lagi dapat menggunakan Pengetahuan ini, dan semua konfigurasi prompt serta log akan dihapus secara permanen.',
   mixtureInternalAndExternalTip: 'Model Rerank diperlukan untuk campuran pengetahuan internal dan eksternal.',
-  unavailableTip: 'Model penyematan tidak tersedia, model penyematan default perlu dikonfigurasi',
   nTo1RetrievalLegacy: 'Pengambilan N-to-1 akan secara resmi tidak digunakan lagi mulai September. Disarankan untuk menggunakan pengambilan Multi-jalur terbaru untuk mendapatkan hasil yang lebih baik.',
   inconsistentEmbeddingModelTip: 'Model Rerank diperlukan jika model Penyematan dari basis pengetahuan yang dipilih tidak konsisten.',
   allKnowledgeDescription: 'Pilih untuk menampilkan semua pengetahuan di ruang kerja ini. Hanya Pemilik Ruang Kerja yang dapat mengelola semua pengetahuan.',
@@ -229,6 +230,22 @@ const translation = {
     title: 'API Layanan',
     enabled: 'Sedang Beroperasi',
     disabled: 'Dinonaktifkan',
+  },
+  docAllEnabled_one: 'dokumen {{count}} diaktifkan',
+  docAllEnabled_other: 'Semua dokumen {{count}} diaktifkan',
+  partialEnabled_one: 'Total {{count}} dokumen, {{num}} tersedia',
+  partialEnabled_other: 'Total {{count}} dokumen, {{num}} tersedia',
+  documentsDisabled: '{{num}} dokumen dinonaktifkan - tidak aktif lebih dari 30 hari',
+  preprocessDocument: '{{num}} Prasekolah Dokumen',
+  cornerLabel: {
+    unavailable: 'Tidak tersedia',
+    pipeline: 'Saluran pipa',
+  },
+  multimodal: 'Multimodal',
+  imageUploader: {
+    button: 'Seret dan lepas file atau folder, atau',
+    browse: 'Telusuri',
+    tip: '{{supportTypes}} (Maks {{batchCount}}, {{size}}MB masing-masing)',
   },
 }
 

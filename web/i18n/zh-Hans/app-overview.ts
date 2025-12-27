@@ -138,6 +138,9 @@ const translation = {
       running: '运行中',
       disable: '已停用',
     },
+    disableTooltip: {
+      triggerMode: '触发节点模式下不支持{{feature}}功能。',
+    },
   },
   analysis: {
     title: '分析',

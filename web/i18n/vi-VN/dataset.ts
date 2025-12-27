@@ -19,7 +19,6 @@ const translation = {
   intro5: 'có thể được tạo',
   intro6: ' dưới dạng một plugin chỉ mục ChatGPT độc lập để xuất bản',
   unavailable: 'Không khả dụng',
-  unavailableTip: 'Mô hình nhúng không khả dụng, cần cấu hình mô hình nhúng mặc định',
   datasets: 'BỘ KIẾN THỨC',
   datasetsApi: 'API',
   retrieval: {
@@ -37,8 +36,6 @@ const translation = {
       recommend: 'Đề xuất',
     },
     invertedIndex: {
-      title: 'Chỉ mục Ngược',
-      description: 'Chỉ mục Ngược là một cấu trúc được sử dụng cho việc truy xuất hiệu quả. Nó được tổ chức theo thuật ngữ, mỗi thuật ngữ trỏ đến tài liệu hoặc trang web chứa nó.',
     },
     change: 'Thay đổi',
     changeRetrievalMethod: 'Thay đổi phương pháp truy xuất',
@@ -236,6 +233,20 @@ const translation = {
     enabled: 'Đang phục vụ',
     disabled: 'Vô hiệu hóa',
     title: 'Giao diện lập trình dịch vụ',
+  },
+  docAllEnabled_one: 'Tài liệu {{count}} đã được kích hoạt',
+  docAllEnabled_other: 'Tất cả các tài liệu {{count}} đã được kích hoạt',
+  partialEnabled_one: 'Tổng cộng {{count}} tài liệu, {{num}} có sẵn',
+  partialEnabled_other: 'Tổng cộng {{count}} tài liệu, {{num}} có sẵn',
+  cornerLabel: {
+    unavailable: 'Không khả dụng',
+    pipeline: 'Đường ống',
+  },
+  multimodal: 'Đa phương thức',
+  imageUploader: {
+    button: 'Kéo và thả tệp hoặc thư mục, hoặc',
+    browse: 'Duyệt',
+    tip: '{{supportTypes}} (Tối đa {{batchCount}}, {{size}}MB mỗi cái)',
   },
 }
 

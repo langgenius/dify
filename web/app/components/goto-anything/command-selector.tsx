@@ -1,8 +1,9 @@
 import type { FC } from 'react'
-import { useEffect, useMemo } from 'react'
-import { Command } from 'cmdk'
-import { useTranslation } from 'react-i18next'
 import type { ActionItem } from './actions/types'
+import { Command } from 'cmdk'
+import { usePathname } from 'next/navigation'
+import { useEffect, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { slashCommandRegistry } from './actions/commands/registry'
 
 type Props = {
@@ -16,19 +17,23 @@ type Props = {
 
 const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, commandValue, onCommandValueChange, originalQuery }) => {
   const { t } = useTranslation()
+  const pathname = usePathname()
 
   // Check if we're in slash command mode
   const isSlashMode = originalQuery?.trim().startsWith('/') || false
 
   // Get slash commands from registry
+  // Note: pathname is included in deps because some commands (like /zen) check isAvailable based on current route
   const slashCommands = useMemo(() => {
-    if (!isSlashMode) return []
+    if (!isSlashMode)
+      return []
 
-    const allCommands = slashCommandRegistry.getAllCommands()
+    const availableCommands = slashCommandRegistry.getAvailableCommands()
     const filter = searchFilter?.toLowerCase() || '' // searchFilter already has '/' removed
 
-    return allCommands.filter((cmd) => {
-      if (!filter) return true
+    return availableCommands.filter((cmd) => {
+      if (!filter)
+        return true
       return cmd.name.toLowerCase().includes(filter)
     }).map(cmd => ({
       key: `/${cmd.name}`,
@@ -36,14 +41,16 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
       title: cmd.name,
       description: cmd.description,
     }))
-  }, [isSlashMode, searchFilter])
+  }, [isSlashMode, searchFilter, pathname])
 
   const filteredActions = useMemo(() => {
-    if (isSlashMode) return []
+    if (isSlashMode)
+      return []
 
     return Object.values(actions).filter((action) => {
       // Exclude slash action when in @ mode
-      if (action.key === '/') return false
+      if (action.key === '/')
+        return false
       if (!searchFilter)
         return true
       const filterLower = searchFilter.toLowerCase()
@@ -98,29 +105,32 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
               {item.shortcut}
             </span>
             <span className="ml-3 text-sm text-text-secondary">
-              {isSlashMode ? (
-                (() => {
-                  const slashKeyMap: Record<string, string> = {
-                    '/theme': 'app.gotoAnything.actions.themeCategoryDesc',
-                    '/language': 'app.gotoAnything.actions.languageChangeDesc',
-                    '/account': 'app.gotoAnything.actions.accountDesc',
-                    '/feedback': 'app.gotoAnything.actions.feedbackDesc',
-                    '/docs': 'app.gotoAnything.actions.docDesc',
-                    '/community': 'app.gotoAnything.actions.communityDesc',
-                  }
-                  return t(slashKeyMap[item.key] || item.description)
-                })()
-              ) : (
-                (() => {
-                  const keyMap: Record<string, string> = {
-                    '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
-                    '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
-                    '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
-                    '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
-                  }
-                  return t(keyMap[item.key])
-                })()
-              )}
+              {isSlashMode
+                ? (
+                    (() => {
+                      const slashKeyMap: Record<string, string> = {
+                        '/theme': 'app.gotoAnything.actions.themeCategoryDesc',
+                        '/language': 'app.gotoAnything.actions.languageChangeDesc',
+                        '/account': 'app.gotoAnything.actions.accountDesc',
+                        '/feedback': 'app.gotoAnything.actions.feedbackDesc',
+                        '/docs': 'app.gotoAnything.actions.docDesc',
+                        '/community': 'app.gotoAnything.actions.communityDesc',
+                        '/zen': 'app.gotoAnything.actions.zenDesc',
+                      }
+                      return t((slashKeyMap[item.key] || item.description) as any)
+                    })()
+                  )
+                : (
+                    (() => {
+                      const keyMap: Record<string, string> = {
+                        '@app': 'app.gotoAnything.actions.searchApplicationsDesc',
+                        '@plugin': 'app.gotoAnything.actions.searchPluginsDesc',
+                        '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
+                        '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
+                      }
+                      return t(keyMap[item.key] as any) as string
+                    })()
+                  )}
             </span>
           </Command.Item>
         ))}

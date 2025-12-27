@@ -1,41 +1,48 @@
 'use client'
 
 import type { Dispatch, SetStateAction } from 'react'
-import { useCallback, useEffect, useState } from 'react'
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { useSearchParams } from 'next/navigation'
+import type { TriggerEventsLimitModalPayload } from './hooks/use-trigger-events-limit-modal'
+import type { OpeningStatement } from '@/app/components/base/features/types'
+import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
+import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
 import type {
   ConfigurationMethodEnum,
   Credential,
   CustomConfigurationModelFixedFields,
   CustomModel,
+  ModelModalModeEnum,
   ModelProvider,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import {
-  EDUCATION_PRICING_SHOW_ACTION,
-  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
-} from '@/app/education-apply/constants'
-import type { AccountSettingTab } from '@/app/components/header/account-setting/constants'
+import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
+import type { UpdatePluginPayload } from '@/app/components/plugins/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
+import type {
+  ApiBasedExtension,
+  ExternalDataTool,
+} from '@/models/common'
+import type { ModerationConfig, PromptVariable } from '@/models/debug'
+import { noop } from 'es-toolkit/compat'
+import dynamic from 'next/dynamic'
+import { useSearchParams } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import {
   ACCOUNT_SETTING_MODAL_ACTION,
   DEFAULT_ACCOUNT_SETTING_TAB,
   isValidAccountSettingTab,
 } from '@/app/components/header/account-setting/constants'
-import type { ModerationConfig, PromptVariable } from '@/models/debug'
-import type {
-  ApiBasedExtension,
-  ExternalDataTool,
-} from '@/models/common'
-import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
-import type { ModelLoadBalancingModalProps } from '@/app/components/header/account-setting/model-provider-page/provider-added-card/model-load-balancing-modal'
-import type { OpeningStatement } from '@/app/components/base/features/types'
-import type { InputVar } from '@/app/components/workflow/types'
-import type { UpdatePluginPayload } from '@/app/components/plugins/types'
+import {
+  EDUCATION_PRICING_SHOW_ACTION,
+  EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
+} from '@/app/education-apply/constants'
+import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { removeSpecificQueryParam } from '@/utils'
-import { noop } from 'lodash-es'
-import dynamic from 'next/dynamic'
-import type { ExpireNoticeModalPayloadProps } from '@/app/education-apply/expire-notice-modal'
-import type { ModelModalModeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+
+  useTriggerEventsLimitModal,
+} from './hooks/use-trigger-events-limit-modal'
 
 const AccountSetting = dynamic(() => import('@/app/components/header/account-setting'), {
   ssr: false,
@@ -74,6 +81,9 @@ const UpdatePlugin = dynamic(() => import('@/app/components/plugins/update-plugi
 const ExpireNoticeModal = dynamic(() => import('@/app/education-apply/expire-notice-modal'), {
   ssr: false,
 })
+const TriggerEventsLimitModal = dynamic(() => import('@/app/components/billing/trigger-events-limit-modal'), {
+  ssr: false,
+})
 
 export type ModalState<T> = {
   payload: T
@@ -83,7 +93,7 @@ export type ModalState<T> = {
   onEditCallback?: (newPayload: T) => void
   onValidateBeforeSaveCallback?: (newPayload: T) => boolean
   isEditMode?: boolean
-  datasetBindings?: { id: string; name: string }[]
+  datasetBindings?: { id: string, name: string }[]
 }
 
 export type ModelModalType = {
@@ -113,6 +123,7 @@ export type ModalContextState = {
   }> | null>>
   setShowUpdatePluginModal: Dispatch<SetStateAction<ModalState<UpdatePluginPayload> | null>>
   setShowEducationExpireNoticeModal: Dispatch<SetStateAction<ModalState<ExpireNoticeModalPayloadProps> | null>>
+  setShowTriggerEventsLimitModal: Dispatch<SetStateAction<ModalState<TriggerEventsLimitModalPayload> | null>>
 }
 const PRICING_MODAL_QUERY_PARAM = 'pricing'
 const PRICING_MODAL_QUERY_VALUE = 'open'
@@ -130,6 +141,7 @@ const ModalContext = createContext<ModalContextState>({
   setShowOpeningModal: noop,
   setShowUpdatePluginModal: noop,
   setShowEducationExpireNoticeModal: noop,
+  setShowTriggerEventsLimitModal: noop,
 })
 
 export const useModalContext = () => useContext(ModalContext)
@@ -168,6 +180,7 @@ export const ModalContextProvider = ({
   }> | null>(null)
   const [showUpdatePluginModal, setShowUpdatePluginModal] = useState<ModalState<UpdatePluginPayload> | null>(null)
   const [showEducationExpireNoticeModal, setShowEducationExpireNoticeModal] = useState<ModalState<ExpireNoticeModalPayloadProps> | null>(null)
+  const { currentWorkspace } = useAppContext()
 
   const [showPricingModal, setShowPricingModal] = useState(
     searchParams.get(PRICING_MODAL_QUERY_PARAM) === PRICING_MODAL_QUERY_VALUE,
@@ -227,6 +240,17 @@ export const ModalContextProvider = ({
     }
     window.history.replaceState(null, '', url.toString())
   }, [showPricingModal])
+
+  const { plan, isFetchedPlan } = useProviderContext()
+  const {
+    showTriggerEventsLimitModal,
+    setShowTriggerEventsLimitModal,
+    persistTriggerEventsLimitModalDismiss,
+  } = useTriggerEventsLimitModal({
+    plan,
+    isFetchedPlan,
+    currentWorkspaceId: currentWorkspace?.id,
+  })
 
   const handleCancelModerationSettingModal = () => {
     setShowModerationSettingModal(null)
@@ -334,7 +358,9 @@ export const ModalContextProvider = ({
       setShowOpeningModal,
       setShowUpdatePluginModal,
       setShowEducationExpireNoticeModal,
-    }}>
+      setShowTriggerEventsLimitModal,
+    }}
+    >
       <>
         {children}
         {
@@ -386,7 +412,8 @@ export const ModalContextProvider = ({
           showAnnotationFullModal && (
             <AnnotationFullModal
               show={showAnnotationFullModal}
-              onHide={() => setShowAnnotationFullModal(false)} />
+              onHide={() => setShowAnnotationFullModal(false)}
+            />
           )
         }
         {
@@ -454,7 +481,27 @@ export const ModalContextProvider = ({
               {...showEducationExpireNoticeModal.payload}
               onClose={() => setShowEducationExpireNoticeModal(null)}
             />
-          )}
+          )
+        }
+        {
+          !!showTriggerEventsLimitModal && (
+            <TriggerEventsLimitModal
+              show
+              usage={showTriggerEventsLimitModal.payload.usage}
+              total={showTriggerEventsLimitModal.payload.total}
+              resetInDays={showTriggerEventsLimitModal.payload.resetInDays}
+              onClose={() => {
+                persistTriggerEventsLimitModalDismiss()
+                setShowTriggerEventsLimitModal(null)
+              }}
+              onUpgrade={() => {
+                persistTriggerEventsLimitModalDismiss()
+                setShowTriggerEventsLimitModal(null)
+                handleShowPricingModal()
+              }}
+            />
+          )
+        }
       </>
     </ModalContext.Provider>
   )

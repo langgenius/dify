@@ -1,13 +1,14 @@
-import { useTranslation } from 'react-i18next'
-import { AddDocumentsStep } from './types'
 import type { DataSourceOption } from '@/app/components/rag-pipeline/components/panel/test-run/types'
-import { useCallback, useMemo, useState } from 'react'
-import { BlockEnum, type Node } from '@/app/components/workflow/types'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
-import { useDataSourceStore, useDataSourceStoreWithSelector } from './data-source/store'
+import type { Node } from '@/app/components/workflow/types'
 import type { DataSourceNotionPageMap, DataSourceNotionWorkspace } from '@/models/common'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
+import { BlockEnum } from '@/app/components/workflow/types'
 import { CrawlStep } from '@/models/datasets'
+import { useDataSourceStore, useDataSourceStoreWithSelector } from './data-source/store'
+import { AddDocumentsStep } from './types'
 
 export const useAddDocumentsSteps = () => {
   const { t } = useTranslation()

@@ -1,7 +1,7 @@
 import type { FC } from 'react'
-import React from 'react'
+import { headers } from 'next/headers'
 import Script from 'next/script'
-import { type UnsafeUnwrappedHeaders, headers } from 'next/headers'
+import * as React from 'react'
 import { IS_CE_EDITION } from '@/config'
 
 export enum GaType {
@@ -18,13 +18,13 @@ export type IGAProps = {
   gaType: GaType
 }
 
-const GA: FC<IGAProps> = ({
+const GA: FC<IGAProps> = async ({
   gaType,
 }) => {
   if (IS_CE_EDITION)
     return null
 
-  const nonce = process.env.NODE_ENV === 'production' ? (headers() as unknown as UnsafeUnwrappedHeaders).get('x-nonce') ?? '' : ''
+  const nonce = process.env.NODE_ENV === 'production' ? (await headers()).get('x-nonce') ?? '' : ''
 
   return (
     <>
@@ -33,7 +33,8 @@ const GA: FC<IGAProps> = ({
         async
         src={`https://www.googletagmanager.com/gtag/js?id=${gaIdMaps[gaType]}`}
         nonce={nonce ?? undefined}
-      ></Script>
+      >
+      </Script>
       <Script
         id="ga-init"
         dangerouslySetInnerHTML={{
@@ -50,9 +51,10 @@ gtag('config', '${gaIdMaps[gaType]}');
       {/* Cookie banner */}
       <Script
         id="cookieyes"
-        src='https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js'
+        src="https://cdn-cookieyes.com/client_data/2a645945fcae53f8e025a2b1/script.js"
         nonce={nonce ?? undefined}
-      ></Script>
+      >
+      </Script>
     </>
 
   )

@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: 'Özel Araç Oluştur',
   customToolTip: 'Dify özel araçları hakkında daha fazla bilgi edinin',
   type: {
-    all: 'Hepsi',
     builtIn: 'Yerleşik',
     custom: 'Özel',
     workflow: 'Workflow',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: 'Kimlik bilgilerini yapılandırdıktan sonra, çalışma alanındaki tüm üyeler uygulamaları düzenlerken bu aracı kullanabilir.',
   },
   includeToolNum: '{{num}} araç dahil',
-  addTool: 'Araç Ekle',
   addToolModal: {
     type: 'Tür',
     category: 'Kategori',
-    add: 'Ekle',
     added: 'Eklendi',
-    manageInTools: 'Araçlarda Yönet',
     custom: {
       title: 'Mevcut özel araç yok',
       tip: 'Özel bir araç oluşturun',
@@ -123,6 +119,13 @@ const translation = {
     confirmTip: 'Bu aracı kullanan uygulamalar etkilenecek',
     deleteToolConfirmTitle: 'Bu Aracı silmek istiyor musunuz?',
     deleteToolConfirmContent: 'Aracın silinmesi geri alınamaz. Kullanıcılar artık aracınıza erişemeyecek.',
+    toolOutput: {
+      title: 'Araç Çıktısı',
+      name: 'İsim',
+      reserved: 'Ayrılmış',
+      reservedParameterDuplicateTip: 'text, json ve dosyalar ayrılmış değişkenlerdir. Bu isimlere sahip değişkenler çıktı şemasında yer alamaz.',
+      description: 'Açıklama',
+    },
   },
   test: {
     title: 'Test',
@@ -209,6 +212,7 @@ const translation = {
       clientSecret: 'İstemci Sırrı',
       authentication: 'Kimlik Doğrulama',
       useDynamicClientRegistration: 'Dinamik İstemci Kaydını Kullan',
+      redirectUrlWarning: 'Lütfen OAuth yönlendirme URL\'nizi şu şekilde yapılandırın:',
     },
     delete: 'MCP Sunucusunu Kaldır',
     deleteConfirmTitle: '{mcp} kaldırılsın mı?',

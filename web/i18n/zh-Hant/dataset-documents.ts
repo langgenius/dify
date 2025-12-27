@@ -81,6 +81,10 @@ const translation = {
     },
     addUrl: '新增 URL',
     learnMore: '瞭解更多資訊',
+    sort: {
+      uploadTime: '上傳時間',
+      hitCount: '檢索次數',
+    },
   },
   metadata: {
     title: '元資料',
@@ -396,6 +400,7 @@ const translation = {
     newChildChunk: '新兒童塊',
     keywordEmpty: '關鍵字不能為空',
     keywordDuplicate: '關鍵字已經存在',
+    allFilesUploaded: '所有檔案必須在儲存之前上傳',
   },
 }
 

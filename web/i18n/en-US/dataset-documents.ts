@@ -40,6 +40,10 @@ const translation = {
       enableTip: 'The file can be indexed',
       disableTip: 'The file cannot be indexed',
     },
+    sort: {
+      uploadTime: 'Upload Time',
+      hitCount: 'Retrieval Count',
+    },
     status: {
       queuing: 'Queuing',
       indexing: 'Indexing',
@@ -374,6 +378,7 @@ const translation = {
     answerEmpty: 'Answer can not be empty',
     contentPlaceholder: 'Add content here',
     contentEmpty: 'Content can not be empty',
+    allFilesUploaded: 'All files must be uploaded before saving',
     newTextSegment: 'New Text Segment',
     newQaSegment: 'New Q&A Segment',
     addChunk: 'Add Chunk',

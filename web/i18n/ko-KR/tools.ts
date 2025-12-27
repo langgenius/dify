@@ -3,7 +3,6 @@ const translation = {
   createCustomTool: '커스텀 도구 만들기',
   customToolTip: 'Dify 커스텀 도구에 대해 더 알아보기',
   type: {
-    all: '모두',
     builtIn: '내장',
     custom: '커스텀',
     workflow: '워크플로우',
@@ -21,13 +20,10 @@ const translation = {
     setupModalTitleDescription: '자격 증명을 구성한 후에 워크스페이스의 모든 멤버가 이 도구를 사용하여 애플리케이션을 조작할 수 있습니다.',
   },
   includeToolNum: '{{num}}개의 도구가 포함되어 있습니다',
-  addTool: '도구 추가',
   addToolModal: {
     type: '타입',
     category: '카테고리',
-    add: '추가',
     added: '추가됨',
-    manageInTools: '도구에서 관리',
     custom: {
       title: '사용자 정의 도구 없음',
       tip: '사용자 정의 도구 생성',
@@ -123,6 +119,13 @@ const translation = {
     confirmTip: '이 도구를 사용하는 앱은 영향을 받습니다.',
     deleteToolConfirmTitle: '이 도구를 삭제하시겠습니까?',
     deleteToolConfirmContent: '이 도구를 삭제하면 되돌릴 수 없습니다. 사용자는 더 이상 당신의 도구에 액세스할 수 없습니다.',
+    toolOutput: {
+      title: '도구 출력',
+      name: '이름',
+      reserved: '예약됨',
+      reservedParameterDuplicateTip: 'text, json, 파일은 예약된 변수입니다. 이러한 이름을 가진 변수는 출력 스키마에 나타날 수 없습니다.',
+      description: '설명',
+    },
   },
   test: {
     title: '테스트',
@@ -209,6 +212,7 @@ const translation = {
       clientSecret: '클라이언트 시크릿',
       clientID: '클라이언트 ID',
       clientSecretPlaceholder: '클라이언트 시크릿',
+      redirectUrlWarning: 'OAuth 리디렉션 URL을 다음으로 설정해 주세요:',
     },
     delete: 'MCP 서버 제거',
     deleteConfirmTitle: '{mcp}를 제거하시겠습니까?',

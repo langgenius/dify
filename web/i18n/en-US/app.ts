@@ -1,4 +1,9 @@
 const translation = {
+  theme: {
+    switchDark: 'Switch to dark theme',
+    switchLight: 'Switch to light theme',
+  },
+  appNamePlaceholder: 'Give your app a name',
   createApp: 'CREATE APP',
   types: {
     all: 'All',
@@ -183,6 +188,14 @@ const translation = {
       title: 'Cloud Monitor',
       description: 'The fully-managed and maintenance-free observability platform provided by Alibaba Cloud, enables out-of-the-box monitoring, tracing, and evaluation of Dify applications.',
     },
+    mlflow: {
+      title: 'MLflow',
+      description: 'MLflow is an open-source platform for experiment management, evaluation, and monitoring of LLM applications.',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks offers fully-managed MLflow with strong governance and security for storing trace data.',
+    },
     tencent: {
       title: 'Tencent APM',
       description: 'Tencent Application Performance Monitoring provides comprehensive tracing and multi-dimensional analysis for LLM applications.',
@@ -192,11 +205,19 @@ const translation = {
       title: 'Config ',
       placeholder: 'Enter your {{key}}',
       project: 'Project',
+      trackingUri: 'Tracking URI',
+      experimentId: 'Experiment ID',
+      username: 'Username',
+      password: 'Password',
       publicKey: 'Public Key',
       secretKey: 'Secret Key',
       viewDocsLink: 'View {{key}} docs',
       removeConfirmTitle: 'Remove {{key}} configuration?',
       removeConfirmContent: 'The current configuration is in use, removing it will turn off the Tracing feature.',
+      clientId: 'OAuth Client ID',
+      clientSecret: 'OAuth Client Secret',
+      personalAccessToken: 'Personal Access Token (legacy)',
+      databricksHost: 'Databricks Workspace URL',
     },
   },
   appSelector: {
@@ -282,6 +303,7 @@ const translation = {
     commandHint: 'Type @ to browse by category',
     slashHint: 'Type / to see all available commands',
     actions: {
+      slashTitle: 'Commands',
       searchApplications: 'Search Applications',
       searchApplicationsDesc: 'Search and navigate to your applications',
       searchPlugins: 'Search Plugins',
@@ -309,6 +331,8 @@ const translation = {
       communityDesc: 'Open Discord community',
       docDesc: 'Open help documentation',
       feedbackDesc: 'Open community feedback discussions',
+      zenTitle: 'Zen Mode',
+      zenDesc: 'Toggle canvas focus mode',
     },
     emptyState: {
       noAppsFound: 'No apps found',

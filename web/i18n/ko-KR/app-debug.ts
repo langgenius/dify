@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: '컨텍스트',
       noData: '지식을 컨텍스트로 가져올 수 있습니다',
-      words: '단어',
-      textBlocks: '텍스트 블록',
       selectTitle: '참조할 지식 선택',
       selected: '선택한 지식',
       noDataSet: '지식이 없습니다',
@@ -328,6 +326,7 @@ const translation = {
     'multi-files': '파일 목록',
     'uploadFileTypes': '파일 형식 업로드',
     'maxNumberOfUploads': '최대 업로드 수',
+    'maxNumberTip': '문서 < {{docLimit}}, 이미지 < {{imgLimit}}, 오디오 < {{audioLimit}}, 비디오 < {{videoLimit}}',
     'localUpload': '로컬 업로드',
     'json': 'JSON 코드',
     'jsonSchema': 'JSON 스키마',
@@ -354,9 +353,7 @@ const translation = {
     visionSettings: {
       title: '비전 설정',
       resolution: '해상도',
-      resolutionTooltip: `저해상도는 모델에게 512 x 512 해상도의 저해상도 이미지를 제공하여 65 토큰의 예산으로 이미지를 표현합니다. 이로 인해 API 는 더 빠른 응답을 제공하며 높은 세부 정보가 필요한 경우 토큰 소모를 늘립니다.
-      \n
-      고해상도는 먼저 모델에게 저해상도 이미지를 보여주고, 그 후 입력 이미지 크기에 따라 512px 의 정사각형 세부 사진을 만듭니다. 각 세부 사진에 대해 129 토큰의 예산을 사용합니다.`,
+      resolutionTooltip: '저해상도는 모델에게 512 x 512 해상도의 저해상도 이미지를 제공하여 65 토큰의 예산으로 이미지를 표현합니다. 이로 인해 API 는 더 빠른 응답을 제공하며 높은 세부 정보가 필요한 경우 토큰 소모를 늘립니다.\n고해상도는 먼저 모델에게 저해상도 이미지를 보여주고, 그 후 입력 이미지 크기에 따라 512px 의 정사각형 세부 사진을 만듭니다. 각 세부 사진에 대해 129 토큰의 예산을 사용합니다.',
       high: '고',
       low: '저',
       uploadMethod: '업로드 방식',

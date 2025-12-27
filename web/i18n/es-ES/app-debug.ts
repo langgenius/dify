@@ -105,8 +105,6 @@ const translation = {
     dataSet: {
       title: 'Contexto',
       noData: 'Puedes importar Conocimiento como contexto',
-      words: 'Palabras',
-      textBlocks: 'Bloques de Texto',
       selectTitle: 'Seleccionar Conocimiento de referencia',
       selected: 'Conocimiento seleccionado',
       noDataSet: 'No se encontró Conocimiento',
@@ -328,6 +326,7 @@ const translation = {
     'both': 'ambos',
     'single-file': 'En fila india',
     'maxNumberOfUploads': 'Número máximo de cargas',
+    'maxNumberTip': 'Documento < {{docLimit}}, imagen < {{imgLimit}}, audio < {{audioLimit}}, vídeo < {{videoLimit}}',
     'multi-files': 'Lista de archivos',
     'jsonSchema': 'Esquema JSON',
     'json': 'Código JSON',
@@ -354,9 +353,7 @@ const translation = {
     visionSettings: {
       title: 'Configuraciones de Visión',
       resolution: 'Resolución',
-      resolutionTooltip: `Baja resolución permitirá que el modelo reciba una versión de baja resolución de 512 x 512 de la imagen, y represente la imagen con un presupuesto de 65 tokens. Esto permite que la API devuelva respuestas más rápidas y consuma menos tokens de entrada para casos de uso que no requieren alta detalle.
-      \n
-      Alta resolución permitirá primero que el modelo vea la imagen de baja resolución y luego crea recortes detallados de las imágenes de entrada como cuadrados de 512px basados en el tamaño de la imagen de entrada. Cada uno de los recortes detallados usa el doble del presupuesto de tokens para un total de 129 tokens.`,
+      resolutionTooltip: 'Baja resolución permitirá que el modelo reciba una versión de baja resolución de 512 x 512 de la imagen, y represente la imagen con un presupuesto de 65 tokens. Esto permite que la API devuelva respuestas más rápidas y consuma menos tokens de entrada para casos de uso que no requieren alta detalle.\nAlta resolución permitirá primero que el modelo vea la imagen de baja resolución y luego crea recortes detallados de las imágenes de entrada como cuadrados de 512px basados en el tamaño de la imagen de entrada. Cada uno de los recortes detallados usa el doble del presupuesto de tokens para un total de 129 tokens.',
       high: 'Alta',
       low: 'Baja',
       uploadMethod: 'Método de carga',

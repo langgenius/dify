@@ -3,6 +3,7 @@ from collections.abc import Sequence
 from email.message import Message
 from typing import Any, Literal
 
+import charset_normalizer
 import httpx
 from pydantic import BaseModel, Field, ValidationInfo, field_validator
 
@@ -96,10 +97,12 @@ class HttpRequestNodeData(BaseNodeData):
 class Response:
     headers: dict[str, str]
     response: httpx.Response
+    _cached_text: str | None
 
     def __init__(self, response: httpx.Response):
         self.response = response
         self.headers = dict(response.headers)
+        self._cached_text = None
 
     @property
     def is_file(self):
@@ -159,7 +162,31 @@ class Response:
 
     @property
     def text(self) -> str:
-        return self.response.text
+        """
+        Get response text with robust encoding detection.
+
+        Uses charset_normalizer for better encoding detection than httpx's default,
+        which helps handle Chinese and other non-ASCII characters properly.
+        """
+        # Check cache first
+        if hasattr(self, "_cached_text") and self._cached_text is not None:
+            return self._cached_text
+
+        # Try charset_normalizer for robust encoding detection first
+        detected_encoding = charset_normalizer.from_bytes(self.response.content).best()
+        if detected_encoding and detected_encoding.encoding:
+            try:
+                text = self.response.content.decode(detected_encoding.encoding)
+                self._cached_text = text
+                return text
+            except (UnicodeDecodeError, TypeError, LookupError):
+                # Fallback to httpx's encoding detection if charset_normalizer fails
+                pass
+
+        # Fallback to httpx's built-in encoding detection
+        text = self.response.text
+        self._cached_text = text
+        return text
 
     @property
     def content(self) -> bytes:

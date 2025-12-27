@@ -64,22 +64,17 @@ class DifyNodeFactory(NodeFactory):
         if not node_mapping:
             raise ValueError(f"No class mapping found for node type: {node_type}")
 
-        node_class = node_mapping.get(LATEST_VERSION)
+        latest_node_class = node_mapping.get(LATEST_VERSION)
+        node_version = str(node_data.get("version", "1"))
+        matched_node_class = node_mapping.get(node_version)
+        node_class = matched_node_class or latest_node_class
         if not node_class:
             raise ValueError(f"No latest version class found for node type: {node_type}")
 
         # Create node instance
-        node_instance = node_class(
+        return node_class(
             id=node_id,
             config=node_config,
             graph_init_params=self.graph_init_params,
             graph_runtime_state=self.graph_runtime_state,
         )
-
-        # Initialize node with provided data
-        node_data = node_config.get("data", {})
-        if not is_str_dict(node_data):
-            raise ValueError(f"Node {node_id} missing data information")
-        node_instance.init_node_data(node_data)
-
-        return node_instance

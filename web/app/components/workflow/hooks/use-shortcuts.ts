@@ -1,12 +1,7 @@
-import { useReactFlow } from 'reactflow'
 import { useKeyPress } from 'ahooks'
-import { useCallback } from 'react'
-import {
-  getKeyboardKeyCodeBySystem,
-  isEventTargetInputArea,
-} from '../utils'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
-import { useWorkflowStore } from '../store'
+import { useCallback, useEffect } from 'react'
+import { useReactFlow } from 'reactflow'
+import { ZEN_TOGGLE_EVENT } from '@/app/components/goto-anything/actions/commands/zen'
 import {
   useEdgesInteractions,
   useNodesInteractions,
@@ -15,6 +10,12 @@ import {
   useWorkflowMoveMode,
   useWorkflowOrganize,
 } from '.'
+import { useWorkflowStore } from '../store'
+import {
+  getKeyboardKeyCodeBySystem,
+  isEventTargetInputArea,
+} from '../utils'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
 
 export const useShortcuts = (): void => {
   const {
@@ -44,22 +45,27 @@ export const useShortcuts = (): void => {
     fitView,
   } = useReactFlow()
 
-  // Zoom out to a minimum of 0.5 for shortcut
+  // Zoom out to a minimum of 0.25 for shortcut
   const constrainedZoomOut = () => {
     const currentZoom = getZoom()
-    const newZoom = Math.max(currentZoom - 0.1, 0.5)
+    const newZoom = Math.max(currentZoom - 0.1, 0.25)
     zoomTo(newZoom)
   }
 
-  // Zoom in to a maximum of 1 for shortcut
+  // Zoom in to a maximum of 2 for shortcut
   const constrainedZoomIn = () => {
     const currentZoom = getZoom()
-    const newZoom = Math.min(currentZoom + 0.1, 1)
+    const newZoom = Math.min(currentZoom + 0.1, 2)
     zoomTo(newZoom)
   }
 
   const shouldHandleShortcut = useCallback((e: KeyboardEvent) => {
     return !isEventTargetInputArea(e.target as HTMLElement)
+  }, [])
+
+  const shouldHandleCopy = useCallback(() => {
+    const selection = document.getSelection()
+    return !selection || selection.isCollapsed
   }, [])
 
   useKeyPress(['delete', 'backspace'], (e) => {
@@ -72,7 +78,7 @@ export const useShortcuts = (): void => {
 
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
     const { showDebugAndPreviewPanel } = workflowStore.getState()
-    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel) {
+    if (shouldHandleShortcut(e) && shouldHandleCopy() && !showDebugAndPreviewPanel) {
       e.preventDefault()
       handleNodesCopy()
     }
@@ -246,4 +252,16 @@ export const useShortcuts = (): void => {
       events: ['keyup'],
     },
   )
+
+  // Listen for zen toggle event from /zen command
+  useEffect(() => {
+    const handleZenToggle = () => {
+      handleToggleMaximizeCanvas()
+    }
+
+    window.addEventListener(ZEN_TOGGLE_EVENT, handleZenToggle)
+    return () => {
+      window.removeEventListener(ZEN_TOGGLE_EVENT, handleZenToggle)
+    }
+  }, [handleToggleMaximizeCanvas])
 }

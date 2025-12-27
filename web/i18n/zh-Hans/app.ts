@@ -1,4 +1,9 @@
 const translation = {
+  theme: {
+    switchDark: '切换至深色主题',
+    switchLight: '切换至浅色主题',
+  },
+  appNamePlaceholder: '给你的应用起个名字',
   createApp: '创建应用',
   types: {
     all: '全部',
@@ -38,7 +43,7 @@ const translation = {
   newApp: {
     learnMore: '了解更多',
     startFromBlank: '创建空白应用',
-    startFromTemplate: '从应用模版创建',
+    startFromTemplate: '从应用模板创建',
     foundResult: '{{count}} 个结果',
     foundResults: '{{count}} 个结果',
     noAppsFound: '未找到应用',
@@ -80,7 +85,7 @@ const translation = {
     Confirm: '确认',
     import: '导入',
     nameNotEmpty: '名称不能为空',
-    appTemplateNotSelected: '请选择应用模版',
+    appTemplateNotSelected: '请选择应用模板',
     appTypeRequired: '请选择应用类型',
     appCreated: '应用已创建',
     caution: '注意',
@@ -95,7 +100,7 @@ const translation = {
   },
   newAppFromTemplate: {
     byCategories: '分类',
-    searchAllTemplate: '搜索所有模版...',
+    searchAllTemplate: '搜索所有模板...',
     sidebar: {
       Recommended: '推荐',
       Agent: 'Agent',
@@ -183,6 +188,14 @@ const translation = {
       viewDocsLink: '查看 {{key}} 的文档',
       removeConfirmTitle: '删除 {{key}} 配置？',
       removeConfirmContent: '当前配置正在使用中，删除它将关闭追踪功能。',
+      clientSecret: 'OAuth 客户端密钥',
+      trackingUri: '跟踪 URI',
+      password: '密码',
+      databricksHost: 'Databricks 工作区 URL',
+      username: '用户名',
+      clientId: 'OAuth 客户端 ID',
+      experimentId: '实验编号',
+      personalAccessToken: '个人访问令牌（旧版）',
     },
     weave: {
       title: '编织',
@@ -191,6 +204,14 @@ const translation = {
     aliyun: {
       title: '云监控',
       description: '阿里云提供的全托管免运维可观测平台，一键开启Dify应用的监控追踪和评估',
+    },
+    mlflow: {
+      title: 'MLflow',
+      description: '开源LLMOps平台，提供实验跟踪、可观测性和评估功能，帮助您自信地构建AI/LLM应用。',
+    },
+    databricks: {
+      title: 'Databricks',
+      description: 'Databricks提供完全托管的MLflow，具有强大的治理和安全功能，用于存储跟踪数据。',
     },
     tencent: {
       title: '腾讯云 APM',
@@ -281,6 +302,7 @@ const translation = {
     commandHint: '输入 @ 按类别浏览',
     slashHint: '输入 / 查看所有可用命令',
     actions: {
+      slashTitle: '命令',
       searchApplications: '搜索应用程序',
       searchApplicationsDesc: '搜索并导航到您的应用程序',
       searchPlugins: '搜索插件',
@@ -308,6 +330,8 @@ const translation = {
       communityDesc: '打开 Discord 社区',
       docDesc: '打开帮助文档',
       feedbackDesc: '打开社区反馈讨论',
+      zenTitle: '专注模式',
+      zenDesc: '切换画布专注模式',
     },
     emptyState: {
       noAppsFound: '未找到应用',
