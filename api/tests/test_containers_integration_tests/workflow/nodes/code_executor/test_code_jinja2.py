@@ -60,14 +60,9 @@ class TestJinja2CodeExecutor(CodeExecutorTestMixin):
     <pre>'''code block'''</pre>
 </body>
 </html>"""
-        inputs = {
-            "task": {"Task ID": "TASK-123", "Issues": "Line 1\nLine 2\nLine 3"},
-            "status": "completed"
-        }
+        inputs = {"task": {"Task ID": "TASK-123", "Issues": "Line 1\nLine 2\nLine 3"}, "status": "completed"}
 
-        result = CodeExecutor.execute_workflow_code_template(
-            language=CodeLanguage.JINJA2, code=template, inputs=inputs
-        )
+        result = CodeExecutor.execute_workflow_code_template(language=CodeLanguage.JINJA2, code=template, inputs=inputs)
 
         # Verify the template rendered correctly with all special characters
         output = result["result"]

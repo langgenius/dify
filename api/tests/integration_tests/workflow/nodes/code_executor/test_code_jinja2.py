@@ -54,14 +54,9 @@ def test_jinja2_template_with_special_characters():
     <pre>'''code block'''</pre>
 </body>
 </html>"""
-    inputs = {
-        "task": {"Task ID": "TASK-123", "Issues": "Line 1\nLine 2\nLine 3"},
-        "status": "completed"
-    }
+    inputs = {"task": {"Task ID": "TASK-123", "Issues": "Line 1\nLine 2\nLine 3"}, "status": "completed"}
 
-    result = CodeExecutor.execute_workflow_code_template(
-        language=CODE_LANGUAGE, code=template, inputs=inputs
-    )
+    result = CodeExecutor.execute_workflow_code_template(language=CODE_LANGUAGE, code=template, inputs=inputs)
 
     # Verify the template rendered correctly with all special characters
     output = result["result"]
@@ -80,9 +75,7 @@ def test_jinja2_template_with_html_textarea_prefill():
     notes_content = "This is a multi-line note.\nWith special chars: 'single' and \"double\" quotes."
     inputs = {"notes": notes_content}
 
-    result = CodeExecutor.execute_workflow_code_template(
-        language=CODE_LANGUAGE, code=template, inputs=inputs
-    )
+    result = CodeExecutor.execute_workflow_code_template(language=CODE_LANGUAGE, code=template, inputs=inputs)
 
     expected_output = f"<textarea name='notes'>{notes_content}</textarea>"
     assert result["result"] == expected_output
