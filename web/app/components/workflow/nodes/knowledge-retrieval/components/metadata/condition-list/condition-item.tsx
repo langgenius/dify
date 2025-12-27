@@ -62,8 +62,15 @@ const ConditionItem = ({
   }, [onRemoveCondition, condition.id])
 
   const currentMetadata = useMemo(() => {
+    // Try to match by metadata_id first (reliable reference)
+    if (condition.metadata_id) {
+      const found = metadataList.find(metadata => metadata.id === condition.metadata_id)
+      if (found)
+        return found
+    }
+    // Fallback to name matching for backward compatibility with old conditions
     return metadataList.find(metadata => metadata.name === condition.name)
-  }, [metadataList, condition.name])
+  }, [metadataList, condition.metadata_id, condition.name])
 
   const handleConditionOperatorChange = useCallback((operator: ComparisonOperator) => {
     onUpdateCondition?.(
