@@ -160,12 +160,11 @@
  * - `@knowledge` / `@kb` - Search knowledge bases
  * - `@plugin` - Search plugins
  * - `@node` - Search workflow nodes (workflow pages only)
- * - `/` - Execute slash commands (theme, language, etc.)
+ * - `/` - Execute slash commands (theme, language, banana, etc.)
  */
 
 import type { ActionItem, SearchResult } from './types'
 import { appAction } from './app'
-import { bananaAction } from './banana'
 import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
 import { knowledgeAction } from './knowledge'
@@ -192,7 +191,6 @@ export const createActions = (isWorkflowPage: boolean, isRagPipelinePage: boolea
   else if (isWorkflowPage) {
     return {
       ...baseActions,
-      banana: bananaAction,
       node: workflowNodesAction,
     }
   }
@@ -207,7 +205,6 @@ export const Actions = {
   app: appAction,
   knowledge: knowledgeAction,
   plugin: pluginAction,
-  banana: bananaAction,
   node: workflowNodesAction,
 }
 
@@ -299,4 +296,4 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
 
 export * from './commands'
 export * from './types'
-export { appAction, bananaAction, knowledgeAction, pluginAction, workflowNodesAction }
+export { appAction, knowledgeAction, pluginAction, workflowNodesAction }
