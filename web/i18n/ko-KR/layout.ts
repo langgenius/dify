@@ -1,7 +1,7 @@
 const translation = {
   sidebar: {
-    expandSidebar: '사이드바 확장',
-    collapseSidebar: '사이드바 축소',
+    expandSidebar: '사이드바 펼치기',
+    collapseSidebar: '사이드바 접기',
   },
 }
 

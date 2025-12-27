@@ -82,7 +82,7 @@ const translation = {
   },
   deleteExternalAPIConfirmWarningContent: {
     title: {
-      front: '삭제하다',
+      front: '삭제',
       end: '?',
     },
     content: {
@@ -112,17 +112,17 @@ const translation = {
   },
   externalKnowledgeForm: {
     cancel: '취소',
-    connect: '연결하다',
+    connect: '연결',
   },
   externalAPIForm: {
     encrypted: {
       end: '기술.',
       front: 'API 토큰은 다음을 사용하여 암호화되고 저장됩니다.',
     },
-    save: '구해내다',
+    save: '저장',
     name: '이름',
     endpoint: 'API 엔드포인트',
-    edit: '편집하다',
+    edit: '편집',
     cancel: '취소',
     apiKey: 'API 키',
   },
@@ -157,7 +157,7 @@ const translation = {
     paragraph: '단락',
   },
   batchAction: {
-    delete: '삭제하다',
+    delete: '삭제',
     enable: '사용',
     cancel: '취소',
     archive: '보관',

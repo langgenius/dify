@@ -7,7 +7,7 @@ const translation = {
       descriptionPlaceholder: '이 지식 파이프라인에 대한 설명을 입력하십시오. (선택 사항)',
     },
     reRun: '다시 실행',
-    processing: '가공',
+    processing: '처리 중',
     testRun: '테스트 실행',
     confirmPublish: '게시 확인',
     preparingDataSource: '데이터 소스 준비',
@@ -16,23 +16,23 @@ const translation = {
     confirmPublishContent: '지식 파이프라인을 성공적으로 게시한 후에는 이 지식 기반의 청크 구조를 수정할 수 없습니다. 게시하시겠습니까?',
   },
   inputField: {
-    manage: '관리하다',
-    create: '사용자 입력 필드 만들기',
+    manage: '관리',
+    create: '사용자 입력 필드 생성',
   },
   publishToast: {
     title: '이 파이프라인은 아직 게시되지 않았습니다.',
-    desc: '파이프라인이 게시되지 않은 경우 기술 자료 노드에서 청크 구조를 수정할 수 있으며 파이프라인 오케스트레이션 및 변경 내용은 자동으로 초안으로 저장됩니다.',
+    desc: '파이프라인이 게시되지 않은 경우 지식 노드에서 청크 구조를 수정할 수 있으며 파이프라인 오케스트레이션 및 변경 내용은 자동으로 초안으로 저장됩니다.',
   },
   result: {
     resultPreview: {
-      loading: '가공... 기다리세요',
-      viewDetails: '세부 정보보기',
+      loading: '처리 중... 잠시만 기다려 주세요',
+      viewDetails: '상세 정보 보기',
       error: '실행 중 오류가 발생했습니다.',
-      footerTip: '테스트 실행 모드에서, 최대 {{count}}개의 청크를 미리보기',
+      footerTip: '테스트 실행 모드에서는 최대 {{count}}개의 청크를 미리보기할 수 있습니다',
     },
   },
   ragToolSuggestions: {
-    title: 'RAG에 대한 제안',
+    title: 'RAG 제안',
     noRecommendationPlugins: '추천 플러그인이 없습니다. 더 많은 플러그인은 <CustomLink>마켓플레이스</CustomLink>에서 찾아보세요.',
   },
 }

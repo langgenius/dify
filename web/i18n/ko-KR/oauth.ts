@@ -1,15 +1,15 @@
 const translation = {
   tips: {
     needLogin: '로그인하여 인증해 주세요.',
-    notLoggedIn: '이 앱은 Dify Cloud 계정에 접근하고 싶어합니다.',
-    loggedIn: '이 앱은 다음 정보를 귀하의 Dify Cloud 계정에서 액세스하려고 합니다.',
+    notLoggedIn: '이 앱은 Dify 클라우드 계정에 접근하고 싶어합니다.',
+    loggedIn: '이 앱은 Dify 클라우드 계정에서 다음 정보에 접근하려고 합니다.',
     common: '우리는 귀하의 개인 정보를 존중하며, 이 정보를 개발자 도구를 통한 귀하의 경험 향상에만 사용할 것입니다.',
   },
   scopes: {
     avatar: '아바타',
     email: '이메일',
     name: '이름',
-    languagePreference: '언어 선호',
+    languagePreference: '언어 선호도',
     timezone: '시간대',
   },
   error: {

@@ -1,7 +1,7 @@
 const translation = {
   title: '탐색',
   sidebar: {
-    discovery: '탐색',
+    discovery: '발견',
     chat: '채팅',
     workspace: '작업 공간',
     action: {
@@ -12,12 +12,12 @@ const translation = {
     },
     delete: {
       title: '앱 삭제',
-      content: '이 앱을 삭제해도 괜찮습니까?',
+      content: '이 앱을 삭제하시겠습니까?',
     },
   },
   apps: {
-    title: 'Dify 로 앱 탐색',
-    description: '이 템플릿 앱을 즉시 사용하거나 템플릿을 기반으로 고유한 앱을 사용자 정의하세요.',
+    title: 'Dify 앱 탐색',
+    description: '템플릿 앱을 즉시 사용하거나 템플릿을 기반으로 나만의 앱을 커스터마이징하세요.',
     allCategories: '모든 카테고리',
   },
   appCard: {
@@ -31,13 +31,13 @@ const translation = {
   },
   category: {
     Assistant: '어시스턴트',
-    Writing: '작성',
+    Writing: '글쓰기',
     Translate: '번역',
     Programming: '프로그래밍',
     Agent: '에이전트',
     Workflow: '워크플로우',
     HR: '인사',
-    Entertainment: '오락',
+    Entertainment: '엔터테인먼트',
   },
 }
 

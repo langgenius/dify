@@ -214,7 +214,7 @@ const translation = {
   },
   viewBillingTitle: '청구 및 구독',
   viewBillingDescription: '결제 수단, 청구서 및 구독 변경 관리',
-  viewBillingAction: '관리하다',
+  viewBillingAction: '관리',
   upgrade: {
     uploadMultiplePages: {
       title: '한 번에 여러 문서를 업로드하려면 업그레이드하세요',
