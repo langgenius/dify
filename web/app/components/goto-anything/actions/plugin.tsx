@@ -1,5 +1,5 @@
 import type { Plugin, PluginsFromMarketplaceResponse } from '../../plugins/types'
-import type { ActionItem, PluginSearchResult } from './types'
+import type { PluginSearchResult, ScopeDescriptor } from './types'
 import { renderI18nObject } from '@/i18n-config'
 import { postMarketplace } from '@/service/base'
 import Icon from '../../plugins/card/base/card-icon'
@@ -19,8 +19,8 @@ const parser = (plugins: Plugin[], locale: string): PluginSearchResult[] => {
   })
 }
 
-export const pluginAction: ActionItem = {
-  key: ACTION_KEYS.PLUGIN,
+export const pluginScope: ScopeDescriptor = {
+  id: 'plugin',
   shortcut: ACTION_KEYS.PLUGIN,
   title: 'Search Plugins',
   description: 'Search and navigate to your plugins',

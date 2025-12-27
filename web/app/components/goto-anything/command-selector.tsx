@@ -55,9 +55,11 @@ const CommandSelector: FC<Props> = ({ scopes, onCommandSelect, searchFilter, com
       if (!searchFilter)
         return true
 
-      // Match against shortcut or title
-      return scope.shortcut.toLowerCase().includes(searchFilter.toLowerCase())
-        || scope.title.toLowerCase().includes(searchFilter.toLowerCase())
+      // Match against shortcut/aliases or title
+      const filterLower = searchFilter.toLowerCase()
+      const shortcuts = [scope.shortcut, ...(scope.aliases || [])]
+      return shortcuts.some(shortcut => shortcut.toLowerCase().includes(filterLower))
+        || scope.title.toLowerCase().includes(filterLower)
     }).map(scope => ({
       key: scope.shortcut, // Map to shortcut for UI display consistency
       shortcut: scope.shortcut,

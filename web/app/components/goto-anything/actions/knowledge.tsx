@@ -1,4 +1,4 @@
-import type { ActionItem, KnowledgeSearchResult } from './types'
+import type { KnowledgeSearchResult, ScopeDescriptor } from './types'
 import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { cn } from '@/utils/classnames'
@@ -31,9 +31,10 @@ const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
   })
 }
 
-export const knowledgeAction: ActionItem = {
-  key: ACTION_KEYS.KNOWLEDGE,
-  shortcut: '@kb',
+export const knowledgeScope: ScopeDescriptor = {
+  id: 'knowledge',
+  shortcut: ACTION_KEYS.KNOWLEDGE,
+  aliases: ['@kb'],
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
   // action,

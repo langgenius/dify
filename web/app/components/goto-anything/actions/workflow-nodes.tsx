@@ -4,6 +4,7 @@ import { ACTION_KEYS } from '../constants'
 import { scopeRegistry } from './scope-registry'
 
 const scopeId = 'workflow-node'
+let scopeRegistered = false
 
 const buildSearchHandler = (searchFn?: (searchTerm: string) => SearchResult[]): ScopeSearchHandler => {
   return async (_, searchTerm = '', _locale) => {
@@ -19,22 +20,22 @@ const buildSearchHandler = (searchFn?: (searchTerm: string) => SearchResult[]): 
   }
 }
 
-export const setWorkflowNodesSearchFn = (fn: (searchTerm: string) => SearchResult[]) => {
-  scopeRegistry.updateSearchHandler(scopeId, buildSearchHandler(fn))
+export const registerWorkflowNodeScope = () => {
+  if (scopeRegistered)
+    return
+
+  scopeRegistered = true
+  scopeRegistry.register({
+    id: scopeId,
+    shortcut: ACTION_KEYS.NODE,
+    title: 'Search Workflow Nodes',
+    description: 'Find and jump to nodes in the current workflow by name or type',
+    isAvailable: context => context.isWorkflowPage,
+    search: buildSearchHandler(),
+  })
 }
 
-// Register the workflow nodes action
-scopeRegistry.register({
-  id: scopeId,
-  shortcut: ACTION_KEYS.NODE,
-  title: 'Search Workflow Nodes',
-  description: 'Find and jump to nodes in the current workflow by name or type',
-  isAvailable: context => context.isWorkflowPage,
-  search: buildSearchHandler(),
-})
-
-// Legacy export if needed (though we should migrate away from it)
-export const workflowNodesAction = {
-  key: ACTION_KEYS.NODE,
-  search: async () => [], // Dummy implementation
+export const setWorkflowNodesSearchFn = (fn: (searchTerm: string) => SearchResult[]) => {
+  registerWorkflowNodeScope()
+  scopeRegistry.updateSearchHandler(scopeId, buildSearchHandler(fn))
 }

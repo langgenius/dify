@@ -1,5 +1,5 @@
 'use client'
-import type { ActionItem } from '../types'
+import type { ScopeDescriptor } from '../types'
 import type { SlashCommandDependencies } from './types'
 import { useTheme } from 'next-themes'
 import { useEffect } from 'react'
@@ -8,7 +8,6 @@ import i18n from '@/i18n-config/i18next-config'
 import { ACTION_KEYS } from '../../constants'
 import { accountCommand } from './account'
 import { bananaCommand } from './banana'
-import { executeCommand } from './command-bus'
 import { communityCommand } from './community'
 import { docsCommand } from './docs'
 import { forumCommand } from './forum'
@@ -17,17 +16,11 @@ import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
 
-export const slashAction: ActionItem = {
-  key: ACTION_KEYS.SLASH,
+export const slashScope: ScopeDescriptor = {
+  id: 'slash',
   shortcut: ACTION_KEYS.SLASH,
   title: i18n.t('app.gotoAnything.actions.slashTitle'),
   description: i18n.t('app.gotoAnything.actions.slashDesc'),
-  action: (result) => {
-    if (result.type !== 'command')
-      return
-    const { command, args } = result.data
-    executeCommand(command, args)
-  },
   search: async (query, _searchTerm = '') => {
     // Delegate all search logic to the command registry system
     return slashCommandRegistry.search(query, i18n.language)
