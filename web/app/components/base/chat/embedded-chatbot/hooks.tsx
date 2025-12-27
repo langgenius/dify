@@ -19,18 +19,18 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useToastContext } from '@/app/components/base/toast'
 import { addFileInfos, sortAgentSorts } from '@/app/components/tools/utils'
 import { InputVarType } from '@/app/components/workflow/types'
 import { useWebAppStore } from '@/context/web-app-context'
 import { changeLanguage } from '@/i18n-config/i18next-config'
+import { updateFeedback } from '@/service/share'
 import {
-  fetchChatList,
-  fetchConversations,
-  generationConversationName,
-  updateFeedback,
-} from '@/service/share'
+  useInvalidateShareConversations,
+  useShareChatList,
+  useShareConversationName,
+  useShareConversations,
+} from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
 import { getProcessedFilesFromResponse } from '../../file-uploader/utils'
 import { CONVERSATION_ID_INFO } from '../constants'
@@ -137,9 +137,30 @@ export const useEmbeddedChatbot = () => {
     return currentConversationId
   }, [currentConversationId, newConversationId])
 
-  const { data: appPinnedConversationData } = useSWR(['appConversationData', isInstalledApp, appId, true], () => fetchConversations(isInstalledApp, appId, undefined, true, 100))
-  const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(['appConversationData', isInstalledApp, appId, false], () => fetchConversations(isInstalledApp, appId, undefined, false, 100))
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null, () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId))
+  const { data: appPinnedConversationData } = useShareConversations({
+    isInstalledApp,
+    appId,
+    pinned: true,
+    limit: 100,
+  })
+  const {
+    data: appConversationData,
+    isLoading: appConversationDataLoading,
+  } = useShareConversations({
+    isInstalledApp,
+    appId,
+    pinned: false,
+    limit: 100,
+  })
+  const {
+    data: appChatListData,
+    isLoading: appChatListDataLoading,
+  } = useShareChatList({
+    conversationId: chatShouldReloadKey,
+    isInstalledApp,
+    appId,
+  })
+  const invalidateShareConversations = useInvalidateShareConversations()
 
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -259,7 +280,13 @@ export const useEmbeddedChatbot = () => {
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
 
-  const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(isInstalledApp, appId, newConversationId), { revalidateOnFocus: false })
+  const { data: newConversation } = useShareConversationName({
+    conversationId: newConversationId,
+    isInstalledApp,
+    appId,
+  }, {
+    refetchOnWindowFocus: false,
+  })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
@@ -379,8 +406,8 @@ export const useEmbeddedChatbot = () => {
     setNewConversationId(newConversationId)
     handleConversationIdInfoChange(newConversationId)
     setShowNewConversationItemInList(false)
-    mutateAppConversationData()
-  }, [mutateAppConversationData, handleConversationIdInfoChange])
+    invalidateShareConversations()
+  }, [handleConversationIdInfoChange, invalidateShareConversations])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
