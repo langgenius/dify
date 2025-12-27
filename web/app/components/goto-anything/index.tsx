@@ -4,8 +4,7 @@ import type { FC } from 'react'
 import type { Plugin } from '../plugins/types'
 import type { SearchResult } from './actions'
 import { RiSearchLine } from '@remixicon/react'
-import { keepPreviousData, useQuery } from '@tanstack/react-query'
-import { useDebounce, useKeyPress } from 'ahooks'
+import { useKeyPress } from 'ahooks'
 import { Command } from 'cmdk'
 import { useRouter } from 'next/navigation'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -15,14 +14,13 @@ import Modal from '@/app/components/base/modal'
 import { VIBE_COMMAND_EVENT } from '@/app/components/workflow/constants'
 import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app/components/workflow/utils/common'
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
-import { useGetLanguage } from '@/context/i18n'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
-import { matchAction, searchAnything, useGotoAnythingScopes } from './actions'
 import { executeCommand, SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
 import CommandSelector from './command-selector'
-import { ACTION_KEYS, EMPTY_STATE_I18N_MAP, GROUP_HEADING_I18N_MAP } from './constants'
-import { GotoAnythingProvider, useGotoAnythingContext } from './context'
+import { EMPTY_STATE_I18N_MAP, GROUP_HEADING_I18N_MAP } from './constants'
+import { GotoAnythingProvider } from './context'
+import { useSearch } from './hooks/use-search'
 
 type Props = {
   onHide?: () => void
@@ -31,16 +29,21 @@ const GotoAnything: FC<Props> = ({
   onHide,
 }) => {
   const router = useRouter()
-  const defaultLocale = useGetLanguage()
-  const { isWorkflowPage, isRagPipelinePage } = useGotoAnythingContext()
   const { t } = useTranslation()
   const [show, setShow] = useState<boolean>(false)
   const [searchQuery, setSearchQuery] = useState<string>('')
   const [cmdVal, setCmdVal] = useState<string>('_')
   const inputRef = useRef<HTMLInputElement>(null)
 
-  // Fetch scopes from registry based on context
-  const scopes = useGotoAnythingScopes({ isWorkflowPage, isRagPipelinePage })
+  const {
+    scopes,
+    searchResults: dedupedResults,
+    isLoading,
+    isError,
+    error,
+    searchMode,
+    isCommandsMode,
+  } = useSearch(searchQuery)
 
   const [activePlugin, setActivePlugin] = useState<Plugin>()
 
@@ -71,60 +74,6 @@ const GotoAnything: FC<Props> = ({
       setSearchQuery('')
     }
   })
-
-  const searchQueryDebouncedValue = useDebounce(searchQuery.trim(), {
-    wait: 300,
-  })
-
-  const isCommandsMode = searchQuery.trim() === '@' || searchQuery.trim() === '/'
-    || (searchQuery.trim().startsWith('@') && !matchAction(searchQuery.trim(), scopes))
-    || (searchQuery.trim().startsWith('/') && !matchAction(searchQuery.trim(), scopes))
-
-  const searchMode = useMemo(() => {
-    if (isCommandsMode) {
-      // Distinguish between @ (scopes) and / (commands) mode
-      if (searchQuery.trim().startsWith('@'))
-        return 'scopes'
-      else if (searchQuery.trim().startsWith('/'))
-        return 'commands'
-      return 'commands' // default fallback
-    }
-
-    const query = searchQueryDebouncedValue.toLowerCase()
-    const action = matchAction(query, scopes)
-
-    if (!action)
-      return 'general'
-
-    if (action.id === 'slash' || action.shortcut === ACTION_KEYS.SLASH)
-      return '@command'
-
-    return action.shortcut
-  }, [searchQueryDebouncedValue, scopes, isCommandsMode, searchQuery])
-
-  const { data: searchResults = [], isLoading, isError, error } = useQuery(
-    {
-      queryKey: [
-        'goto-anything',
-        'search-result',
-        searchQueryDebouncedValue,
-        searchMode,
-        isWorkflowPage,
-        isRagPipelinePage,
-        defaultLocale,
-        scopes.map(s => s.id).sort().join(','),
-      ],
-      queryFn: async () => {
-        const query = searchQueryDebouncedValue.toLowerCase()
-        const scope = matchAction(query, scopes)
-        return await searchAnything(defaultLocale, query, scope, scopes)
-      },
-      enabled: !!searchQueryDebouncedValue && !isCommandsMode,
-      staleTime: 30000,
-      gcTime: 300000,
-      placeholderData: keepPreviousData,
-    },
-  )
 
   // Prevent automatic selection of the first option when cmdVal is not set
   const clearSelection = () => {
@@ -196,20 +145,6 @@ const GotoAnything: FC<Props> = ({
           router.push(result.path)
     }
   }, [router])
-
-  const dedupedResults = useMemo(() => {
-    if (!searchQuery.trim())
-      return []
-
-    const seen = new Set<string>()
-    return searchResults.filter((result) => {
-      const key = `${result.type}-${result.id}`
-      if (seen.has(key))
-        return false
-      seen.add(key)
-      return true
-    })
-  }, [searchResults, searchQuery])
 
   // Group results by type
   const groupedResults = useMemo(() => dedupedResults.reduce((acc, result) => {
@@ -396,7 +331,7 @@ const GotoAnything: FC<Props> = ({
                   <div>
                     <div className="text-sm font-medium text-red-500">{t('app.gotoAnything.searchFailed')}</div>
                     <div className="mt-1 text-xs text-text-quaternary">
-                      {error.message}
+                      {error?.message}
                     </div>
                   </div>
                 </div>
