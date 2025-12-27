@@ -123,8 +123,9 @@ def make_request(method, url, max_retries=SSRF_DEFAULT_MAX_RETRIES, **kwargs):
             # the request API to explicitly set headers before sending
             headers = {k: v for k, v in headers.items() if k.lower() != "host"}
             if user_provided_host is not None:
-                request.headers["Host"] = user_provided_host
+                headers["Host"] = user_provided_host
 
+            request = client.build_request(method, url, headers=headers, **kwargs)
             response = client.send(request, follow_redirects=follow_redirects)
 
             # Check for SSRF protection by Squid proxy
