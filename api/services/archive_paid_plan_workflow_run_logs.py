@@ -428,7 +428,11 @@ class WorkflowRunArchiver:
         result = {}
         for column in model.__table__.columns:
             attr_name = column.key
-            value = getattr(model, attr_name)
+            value = getattr(model, attr_name, None)
+            if value is None and attr_name == "type" and hasattr(model, "type_"):
+                # Some models (e.g., WorkflowNodeExecutionOffload) map the DB column "type"
+                # to the attribute name "type_". Fall back accordingly to avoid AttributeError.
+                value = model.type_
             result[attr_name] = value
         return result
 
