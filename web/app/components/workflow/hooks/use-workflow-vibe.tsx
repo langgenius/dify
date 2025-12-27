@@ -3,6 +3,7 @@
 import type { ToolDefaultValue } from '../block-selector/types'
 import type { Edge, Node, ToolWithProvider } from '../types'
 import type { Tool } from '@/app/components/tools/types'
+import type { BackendEdgeSpec, BackendNodeSpec } from '@/service/debug'
 import type { Model } from '@/types/app'
 import { useSessionStorageState } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -13,7 +14,6 @@ import Toast from '@/app/components/base/toast'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { useGetLanguage } from '@/context/i18n'
-import type { BackendEdgeSpec, BackendNodeSpec } from '@/service/debug'
 import { generateFlowchart } from '@/service/debug'
 import {
   useAllBuiltInTools,
@@ -44,7 +44,7 @@ import { useNodesMetaData } from './use-nodes-meta-data'
 import { useNodesSyncDraft } from './use-nodes-sync-draft'
 import { useNodesReadOnly } from './use-workflow'
 import { useWorkflowHistory, WorkflowHistoryEvent } from './use-workflow-history'
-import { NODE_TYPE_ALIASES, correctFieldName } from './use-workflow-vibe-config'
+import { correctFieldName, NODE_TYPE_ALIASES } from './use-workflow-vibe-config'
 
 type VibeCommandDetail = {
   dsl?: string
@@ -125,11 +125,6 @@ export const replaceVariableReferences = (
     // Replace {{#old_id.field#}} patterns and correct field names
     return data.replace(/\{\{#([^.#]+)\.([^#]+)#\}\}/g, (match, oldId, field) => {
       const newNode = nodeIdMap.get(oldId)
-      // #region agent log
-      if (!newNode) {
-        console.warn(`[VIBE DEBUG] replaceVariableReferences: No mapping for "${oldId}" in template "${match}"`)
-      }
-      // #endregion
       if (newNode) {
         const nodeType = newNode.data?.type as string || ''
         const correctedField = correctFieldName(field, nodeType)
@@ -435,6 +430,28 @@ export const useVibeFlowData = ({ storageKey }: UseVibeFlowDataParams) => {
   }
 }
 
+const buildEdge = (
+  source: Node,
+  target: Node,
+  sourceHandle = 'source',
+  targetHandle = 'target',
+): Edge => ({
+  id: `${source.id}-${sourceHandle}-${target.id}-${targetHandle}`,
+  type: CUSTOM_EDGE,
+  source: source.id,
+  sourceHandle,
+  target: target.id,
+  targetHandle,
+  data: {
+    sourceType: source.data.type,
+    targetType: target.data.type,
+    isInIteration: false,
+    isInLoop: false,
+    _connectedNodeIsSelected: false,
+  },
+  zIndex: 0,
+})
+
 export const useWorkflowVibe = () => {
   const { t } = useTranslation()
   const store = useStoreApi()
@@ -609,8 +626,6 @@ export const useWorkflowVibe = () => {
     const { getNodes } = store.getState()
     const nodes = getNodes()
 
-
-
     if (!nodesMetaDataMap) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.nodesUnavailable') })
       return { nodes: [], edges: [] }
@@ -744,7 +759,7 @@ export const useWorkflowVibe = () => {
       // Backend may omit this field, but Dify's Pydantic model requires it
       if (nodeType === BlockEnum.ParameterExtractor && backendConfig.parameters) {
         const parameters = backendConfig.parameters as Array<{ name?: string, type?: string, description?: string, required?: boolean }>
-        mergedConfig.parameters = parameters.map((param) => ({
+        mergedConfig.parameters = parameters.map(param => ({
           ...param,
           required: param.required ?? true, // Default to required if not specified
         }))
@@ -809,29 +824,6 @@ export const useWorkflowVibe = () => {
       return { nodes: [], edges: [] }
     }
 
-    const buildEdge = (
-      source: Node,
-      target: Node,
-      sourceHandle = 'source',
-      targetHandle = 'target',
-    ): Edge => ({
-      id: `${source.id}-${sourceHandle}-${target.id}-${targetHandle}`,
-      type: CUSTOM_EDGE,
-      source: source.id,
-      sourceHandle,
-      target: target.id,
-      targetHandle,
-      data: {
-        sourceType: source.data.type,
-        targetType: target.data.type,
-        isInIteration: false,
-        isInLoop: false,
-        _connectedNodeIsSelected: false,
-      },
-      zIndex: 0,
-    })
-
-
     const newEdges: Edge[] = []
     for (const edgeSpec of backendEdges) {
       const sourceNode = nodeIdMap.get(edgeSpec.source)
@@ -848,10 +840,8 @@ export const useWorkflowVibe = () => {
         sourceHandle = 'source'
       }
 
-
       newEdges.push(buildEdge(sourceNode, targetNode, sourceHandle, edgeSpec.targetHandle || 'target'))
     }
-
 
     // Layout nodes
     const bounds = nodes.reduce(
@@ -1056,28 +1046,6 @@ export const useWorkflowVibe = () => {
       Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
       return emptyGraph
     }
-
-    const buildEdge = (
-      source: Node,
-      target: Node,
-      sourceHandle = 'source',
-      targetHandle = 'target',
-    ): Edge => ({
-      id: `${source.id}-${sourceHandle}-${target.id}-${targetHandle}`,
-      type: CUSTOM_EDGE,
-      source: source.id,
-      sourceHandle,
-      target: target.id,
-      targetHandle,
-      data: {
-        sourceType: source.data.type,
-        targetType: target.data.type,
-        isInIteration: false,
-        isInLoop: false,
-        _connectedNodeIsSelected: false,
-      },
-      zIndex: 0,
-    })
 
     const newEdges: Edge[] = []
     for (const edgeSpec of parseResultToUse.edges) {
@@ -1288,10 +1256,10 @@ export const useWorkflowVibe = () => {
         const { vibePanelBackendNodes, vibePanelBackendEdges, vibePanelLastWarnings } = workflowStore.getState()
         const previousWorkflow = regenerateMode && vibePanelBackendNodes && vibePanelBackendNodes.length > 0
           ? {
-            nodes: vibePanelBackendNodes,
-            edges: vibePanelBackendEdges || [],
-            warnings: vibePanelLastWarnings || [],
-          }
+              nodes: vibePanelBackendNodes,
+              edges: vibePanelBackendEdges || [],
+              warnings: vibePanelLastWarnings || [],
+            }
           : undefined
 
         // Map language code to human-readable language name for LLM
