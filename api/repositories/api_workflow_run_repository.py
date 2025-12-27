@@ -42,7 +42,7 @@ from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowPause, WorkflowPauseReason, WorkflowRun
+from models.workflow import WorkflowAppLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
     AverageInteractionStats,
@@ -318,6 +318,16 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
     ) -> Sequence[WorkflowPauseReason]:
         """
         Fetch workflow pause reason records by pause IDs.
+        """
+        ...
+
+    def get_app_logs_by_run_id(
+        self,
+        session: Session,
+        run_id: str,
+    ) -> Sequence[WorkflowAppLog]:
+        """
+        Fetch workflow app logs by workflow run ID.
         """
         ...
 
