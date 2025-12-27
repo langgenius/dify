@@ -10,7 +10,7 @@ import json
 import re
 from typing import Any
 
-from core.llm_generator.vibe_config import (
+from core.workflow.generator.config import (
     BUILTIN_NODE_SCHEMAS,
     DEFAULT_SUGGESTIONS,
     FALLBACK_RULES,
@@ -100,6 +100,13 @@ You help users create AI automation workflows by generating workflow configurati
 </variable_syntax>
 
 <rules>
+  <rule id="model_selection" priority="critical">
+    For LLM, question-classifier, parameter-extractor nodes:
+    - You MUST include a "model" config with provider and name from available_models section
+    - Copy the EXACT provider and name values from available_models
+    - NEVER use openai/gpt-4o, openai/gpt-3.5-turbo, openai/gpt-4 unless they appear in available_models
+    - If available_models is empty or not provided, omit the model config entirely
+  </rule>
   <rule id="tool_usage" priority="critical">
     ONLY use tools with status="configured" from available_tools.
     NEVER invent tool names like "webscraper", "email_sender", etc.
@@ -217,12 +224,14 @@ You help users create AI automation workflows by generating workflow configurati
       "type": "llm",
       "title": "Analyze Content",
       "config": {{{{
+        "model": {{{{"provider": "USE_FROM_AVAILABLE_MODELS", "name": "USE_FROM_AVAILABLE_MODELS", "mode": "chat"}}}},
         "prompt_template": [
           {{{{"role": "system", "text": "You are a helpful analyst."}}}},
           {{{{"role": "user", "text": "Analyze this content:\\n\\n{{{{#fetch.body#}}}}"}}}}
         ]
       }}}}
     }}}}
+    NOTE: Replace "USE_FROM_AVAILABLE_MODELS" with actual values from available_models section!
   </example>
   <example type="code" title="Process data">
     {{{{
@@ -343,6 +352,7 @@ Generate your JSON response now. Remember:
 3. Never invent tool names - use fallback nodes instead
 </output_instruction>
 """
+
 
 def format_available_nodes(nodes: list[dict[str, Any]] | None) -> str:
     """Format available nodes as XML with parameter schemas."""
@@ -591,7 +601,7 @@ def format_previous_attempt(
 def format_available_models(models: list[dict[str, Any]] | None) -> str:
     """Format available models as XML for prompt inclusion."""
     if not models:
-        return "<available_models>\n  <!-- No models configured -->\n</available_models>"
+        return "<available_models>\n  <!-- No models configured - omit model config from nodes -->\n</available_models>"
 
     lines = ["<available_models>"]
     for model in models:
@@ -600,16 +610,30 @@ def format_available_models(models: list[dict[str, Any]] | None) -> str:
         lines.append(f'  <model provider="{provider}" name="{model_name}" />')
     lines.append("</available_models>")
 
-    # Add model selection rule
+    # Add model selection rule with concrete example
     lines.append("")
     lines.append("<model_selection_rule>")
-    lines.append("  CRITICAL: For LLM, question-classifier, and parameter-extractor nodes, you MUST select a model from available_models.")
-    if len(models) == 1:
-        first_model = models[0]
-        lines.append(f'  Use provider="{first_model.get("provider")}" and name="{first_model.get("model")}" for all model-dependent nodes.')
-    else:
-        lines.append("  Choose the most suitable model for each task from the available options.")
-    lines.append("  NEVER use models not listed in available_models (e.g., openai/gpt-4o if not listed).")
+    lines.append("  CRITICAL: For LLM, question-classifier, and parameter-extractor nodes:")
+    lines.append("  - You MUST include a 'model' field in the config")
+    lines.append("  - You MUST use ONLY models from available_models above")
+    lines.append("  - NEVER use openai/gpt-4o, gpt-3.5-turbo, gpt-4 unless they appear in available_models")
+    lines.append("")
+
+    # Provide concrete JSON example to copy
+    first_model = models[0]
+    provider = first_model.get("provider", "unknown")
+    model_name = first_model.get("model", "unknown")
+    lines.append("  COPY THIS EXACT MODEL CONFIG for all LLM/question-classifier/parameter-extractor nodes:")
+    lines.append(f'  "model": {{"provider": "{provider}", "name": "{model_name}", "mode": "chat"}}')
+
+    if len(models) > 1:
+        lines.append("")
+        lines.append("  Alternative models you can use:")
+        for m in models[1:4]:  # Show up to 3 alternatives
+            p = m.get("provider", "unknown")
+            n = m.get("model", "unknown")
+            lines.append(f'  - "model": {{"provider": "{p}", "name": "{n}", "mode": "chat"}}')
+
     lines.append("</model_selection_rule>")
 
     return "\n".join(lines)
@@ -1023,6 +1047,7 @@ def validate_node_parameters(nodes: list[dict[str, Any]]) -> list[str]:
 def extract_mermaid_from_response(data: dict[str, Any]) -> str:
     """Extract mermaid flowchart from parsed response."""
     mermaid = data.get("mermaid", "")
+
     if not mermaid:
         return ""
 
@@ -1034,5 +1059,203 @@ def extract_mermaid_from_response(data: dict[str, Any]) -> str:
         if match:
             mermaid = match.group(1).strip()
 
+    # Sanitize edge labels to remove characters that break Mermaid parsing
+    # Edge labels in Mermaid are ONLY in the pattern: -->|label|
+    # We must NOT match |pipe| characters inside node labels like ["type=start|title=开始"]
+    def sanitize_edge_label(match: re.Match) -> str:
+        arrow = match.group(1)  # --> or ---
+        label = match.group(2)  # the label between pipes
+        # Remove or replace special characters that break Mermaid
+        # Parentheses, brackets, braces have special meaning in Mermaid
+        sanitized = re.sub(r'[(){}\[\]]', '', label)
+        return f"{arrow}|{sanitized}|"
+
+    # Only match edge labels: --> or --- followed by |label|
+    # This pattern ensures we only sanitize actual edge labels, not node content
+    mermaid = re.sub(r'(-->|---)\|([^|]+)\|', sanitize_edge_label, mermaid)
+
     return mermaid
+
+
+def classify_validation_errors(
+    nodes: list[dict[str, Any]],
+    available_models: list[dict[str, Any]] | None = None,
+    available_tools: list[dict[str, Any]] | None = None,
+    edges: list[dict[str, Any]] | None = None,
+) -> dict[str, list[dict[str, Any]]]:
+    """
+    Classify validation errors into fixable and user-required categories.
+
+    This function uses the declarative rule engine to validate nodes.
+    The rule engine provides deterministic, testable validation without
+    relying on LLM judgment.
+
+    Fixable errors can be automatically corrected by the LLM in subsequent
+    iterations. User-required errors need manual intervention.
+
+    Args:
+        nodes: List of generated workflow nodes
+        available_models: List of models the user has configured
+        available_tools: List of available tools
+        edges: List of edges connecting nodes
+
+    Returns:
+        dict with:
+        - "fixable": errors that LLM can fix automatically
+        - "user_required": errors that need user intervention
+        - "all_warnings": combined warning messages for backwards compatibility
+        - "stats": validation statistics
+    """
+    from core.workflow.generator.validation import ValidationContext, ValidationEngine
+
+    # Build validation context
+    context = ValidationContext(
+        nodes=nodes,
+        edges=edges or [],
+        available_models=available_models or [],
+        available_tools=available_tools or [],
+    )
+
+    # Run validation through rule engine
+    engine = ValidationEngine()
+    result = engine.validate(context)
+
+    # Convert to legacy format for backwards compatibility
+    fixable: list[dict[str, Any]] = []
+    user_required: list[dict[str, Any]] = []
+
+    for error in result.fixable_errors:
+        fixable.append({
+            "node_id": error.node_id,
+            "node_type": error.node_type,
+            "error_type": error.rule_id,
+            "message": error.message,
+            "is_fixable": True,
+            "fix_hint": error.fix_hint,
+            "category": error.category.value,
+            "details": error.details,
+        })
+
+    for error in result.user_required_errors:
+        user_required.append({
+            "node_id": error.node_id,
+            "node_type": error.node_type,
+            "error_type": error.rule_id,
+            "message": error.message,
+            "is_fixable": False,
+            "fix_hint": error.fix_hint,
+            "category": error.category.value,
+            "details": error.details,
+        })
+
+    # Include warnings in user_required (they're non-blocking but informative)
+    for error in result.warnings:
+        user_required.append({
+            "node_id": error.node_id,
+            "node_type": error.node_type,
+            "error_type": error.rule_id,
+            "message": error.message,
+            "is_fixable": error.is_fixable,
+            "fix_hint": error.fix_hint,
+            "category": error.category.value,
+            "severity": "warning",
+            "details": error.details,
+        })
+
+    # Generate combined warnings for backwards compatibility
+    all_warnings = [e["message"] for e in fixable + user_required]
+
+    return {
+        "fixable": fixable,
+        "user_required": user_required,
+        "all_warnings": all_warnings,
+        "stats": result.stats,
+    }
+
+
+def build_fix_prompt(
+    fixable_errors: list[dict[str, Any]],
+    previous_nodes: list[dict[str, Any]],
+    available_models: list[dict[str, Any]] | None = None,
+) -> str:
+    """
+    Build a prompt for LLM to fix the identified errors.
+
+    This creates a focused instruction that tells the LLM exactly what
+    to fix in the previous generation.
+
+    Args:
+        fixable_errors: List of errors that can be automatically fixed
+        previous_nodes: The nodes from the previous generation attempt
+        available_models: Available models for model configuration fixes
+
+    Returns:
+        Formatted prompt string for the fix iteration
+    """
+    if not fixable_errors:
+        return ""
+
+    parts = ["<fix_required>"]
+    parts.append("  <description>")
+    parts.append("    Your previous generation has errors that need fixing.")
+    parts.append("    Please regenerate with the following corrections:")
+    parts.append("  </description>")
+
+    # Group errors by node
+    errors_by_node: dict[str, list[dict[str, Any]]] = {}
+    for error in fixable_errors:
+        node_id = error["node_id"]
+        if node_id not in errors_by_node:
+            errors_by_node[node_id] = []
+        errors_by_node[node_id].append(error)
+
+    parts.append("  <errors_to_fix>")
+    for node_id, node_errors in errors_by_node.items():
+        parts.append(f"    <node id=\"{node_id}\">")
+        for error in node_errors:
+            error_type = error["error_type"]
+            message = error["message"]
+            fix_hint = error.get("fix_hint", "")
+            parts.append(f"      <error type=\"{error_type}\">")
+            parts.append(f"        <message>{message}</message>")
+            if fix_hint:
+                parts.append(f"        <fix_hint>{fix_hint}</fix_hint>")
+            parts.append("      </error>")
+        parts.append("    </node>")
+    parts.append("  </errors_to_fix>")
+
+    # Add model selection help if there are model-related errors
+    model_errors = [e for e in fixable_errors if "model" in e["error_type"]]
+    if model_errors and available_models:
+        parts.append("  <model_selection_help>")
+        parts.append("    Use one of these models for nodes requiring model config:")
+        for model in available_models[:3]:  # Show top 3
+            provider = model.get("provider", "unknown")
+            name = model.get("model", "unknown")
+            parts.append(f'    - {{"provider": "{provider}", "name": "{name}", "mode": "chat"}}')
+        parts.append("  </model_selection_help>")
+
+    # Add previous nodes summary for context
+    parts.append("  <previous_nodes_to_fix>")
+    for node in previous_nodes:
+        node_id = node.get("id", "unknown")
+        if node_id in errors_by_node:
+            # Only include nodes that have errors
+            node_type = node.get("type", "unknown")
+            title = node.get("title", "Untitled")
+            config_summary = json.dumps(node.get("config", {}), ensure_ascii=False)[:200]
+            parts.append(f"    <node id=\"{node_id}\" type=\"{node_type}\" title=\"{title}\">")
+            parts.append(f"      <current_config>{config_summary}...</current_config>")
+            parts.append("    </node>")
+    parts.append("  </previous_nodes_to_fix>")
+
+    parts.append("  <instructions>")
+    parts.append("    1. Keep the workflow structure and logic unchanged")
+    parts.append("    2. Fix ONLY the errors listed above")
+    parts.append("    3. Ensure all required fields are properly filled")
+    parts.append("    4. Use variable references {{#node_id.field#}} where appropriate")
+    parts.append("  </instructions>")
+    parts.append("</fix_required>")
+
+    return "\n".join(parts)
 
