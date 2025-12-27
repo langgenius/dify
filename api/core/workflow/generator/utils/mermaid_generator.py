@@ -17,22 +17,6 @@ def generate_mermaid(workflow_data: dict[str, Any]) -> str:
     nodes = workflow_data.get("nodes", [])
     edges = workflow_data.get("edges", [])
 
-    # DEBUG: Log input data
-    logger.debug("[MERMAID] Input nodes count: %d", len(nodes))
-    logger.debug("[MERMAID] Input edges count: %d", len(edges))
-    for i, node in enumerate(nodes):
-        logger.debug(
-            "[MERMAID] Node %d: id=%s, type=%s, title=%s", i, node.get("id"), node.get("type"), node.get("title")
-        )
-    for i, edge in enumerate(edges):
-        logger.debug(
-            "[MERMAID] Edge %d: source=%s, target=%s, sourceHandle=%s",
-            i,
-            edge.get("source"),
-            edge.get("target"),
-            edge.get("sourceHandle"),
-        )
-
     lines = ["flowchart TD"]
 
     # 1. Define Nodes
@@ -98,14 +82,6 @@ def generate_mermaid(workflow_data: dict[str, Any]) -> str:
             continue
 
         if source not in defined_node_ids or target not in defined_node_ids:
-            # Log skipped edges for debugging
-            logger.warning(
-                "[MERMAID] Skipping edge: source=%s (exists=%s), target=%s (exists=%s)",
-                source,
-                source in defined_node_ids,
-                target,
-                target in defined_node_ids,
-            )
             continue
 
         safe_source = id_map.get(source, source)
@@ -127,12 +103,10 @@ def generate_mermaid(workflow_data: dict[str, Any]) -> str:
             label = f"|{safe_handle}|"
 
         edge_line = f"  {safe_source} -->{label} {safe_target}"
-        logger.debug("[MERMAID] Adding edge: %s", edge_line)
         lines.append(edge_line)
 
     # Start/End nodes are implicitly handled if they are in the 'nodes' list
     # If not, we might need to add them, but usually the Builder should produce them.
 
     result = "\n".join(lines)
-    logger.debug("[MERMAID] Final output:\n%s", result)
     return result
