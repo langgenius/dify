@@ -5,96 +5,64 @@
  * Actions handle different types of searches: apps, knowledge bases, plugins, workflow nodes, and commands.
  */
 
-import type { ActionItem, ScopeDescriptor, SearchResult } from './types'
+import type { ScopeContext, ScopeDescriptor, SearchResult } from './types'
 import { ACTION_KEYS } from '../constants'
-import { appAction } from './app'
-import { slashAction } from './commands'
+import { appScope } from './app'
+import { slashScope } from './commands'
 import { slashCommandRegistry } from './commands/registry'
-import { knowledgeAction } from './knowledge'
-import { pluginAction } from './plugin'
-import { scopeRegistry } from './scope-registry'
+import { knowledgeScope } from './knowledge'
+import { pluginScope } from './plugin'
+import { registerRagPipelineNodeScope } from './rag-pipeline-nodes'
+import { scopeRegistry, useScopeRegistry } from './scope-registry'
+import { registerWorkflowNodeScope } from './workflow-nodes'
 
-let defaultScopesRegistered = false
+let scopesInitialized = false
 
-export const registerDefaultScopes = () => {
-  if (defaultScopesRegistered)
+export const initGotoAnythingScopes = () => {
+  if (scopesInitialized)
     return
 
-  defaultScopesRegistered = true
+  scopesInitialized = true
 
-  scopeRegistry.register({
-    id: 'slash',
-    shortcut: ACTION_KEYS.SLASH,
-    title: 'Commands',
-    description: 'Execute commands',
-    search: slashAction.search,
-    isAvailable: () => true,
-  })
-
-  scopeRegistry.register({
-    id: 'app',
-    shortcut: ACTION_KEYS.APP,
-    title: 'Search Applications',
-    description: 'Search and navigate to your applications',
-    search: appAction.search,
-    isAvailable: () => true,
-  })
-
-  scopeRegistry.register({
-    id: 'knowledge',
-    shortcut: ACTION_KEYS.KNOWLEDGE,
-    title: 'Search Knowledge Bases',
-    description: 'Search and navigate to your knowledge bases',
-    search: knowledgeAction.search,
-    isAvailable: () => true,
-  })
-
-  scopeRegistry.register({
-    id: 'plugin',
-    shortcut: ACTION_KEYS.PLUGIN,
-    title: 'Search Plugins',
-    description: 'Search and navigate to your plugins',
-    search: pluginAction.search,
-    isAvailable: () => true,
-  })
+  scopeRegistry.register(slashScope)
+  scopeRegistry.register(appScope)
+  scopeRegistry.register(knowledgeScope)
+  scopeRegistry.register(pluginScope)
+  registerWorkflowNodeScope()
+  registerRagPipelineNodeScope()
 }
 
-// Legacy export for backward compatibility
-export const Actions = {
-  slash: slashAction,
-  app: appAction,
-  knowledge: knowledgeAction,
-  plugin: pluginAction,
+export const useGotoAnythingScopes = (context: ScopeContext) => {
+  initGotoAnythingScopes()
+  return useScopeRegistry(context)
 }
 
-const getScopeId = (scope: ScopeDescriptor | ActionItem) => ('id' in scope ? scope.id : scope.key)
+const isSlashScope = (scope: ScopeDescriptor) => {
+  if (scope.shortcut === ACTION_KEYS.SLASH)
+    return true
+  return scope.aliases?.includes(ACTION_KEYS.SLASH) ?? false
+}
 
-const isSlashScope = (scope: ScopeDescriptor | ActionItem) => scope.shortcut === ACTION_KEYS.SLASH
+const getScopeShortcuts = (scope: ScopeDescriptor) => [scope.shortcut, ...(scope.aliases ?? [])]
 
 export const searchAnything = async (
   locale: string,
   query: string,
-  scope?: ScopeDescriptor | ActionItem,
-  scopes?: (ScopeDescriptor | ActionItem)[],
+  scope: ScopeDescriptor | undefined,
+  scopes: ScopeDescriptor[],
 ): Promise<SearchResult[]> => {
-  registerDefaultScopes()
   const trimmedQuery = query.trim()
-
-  // Backwards compatibility: if scopes is not provided or empty, use non-page-specific scopes
-  const effectiveScopes = (scopes && scopes.length > 0)
-    ? scopes
-    : scopeRegistry.getScopes({ isWorkflowPage: false, isRagPipelinePage: false })
 
   if (scope) {
     const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
-    const scopeId = getScopeId(scope)
-    const prefixPattern = new RegExp(`^(${escapeRegExp(scope.shortcut)})\\s*`)
+    const shortcuts = getScopeShortcuts(scope).map(escapeRegExp)
+    const prefixPattern = new RegExp(`^(${shortcuts.join('|')})\\s*`)
     const searchTerm = trimmedQuery.replace(prefixPattern, '').trim()
     try {
       return await scope.search(query, searchTerm, locale)
     }
     catch (error) {
-      console.warn(`Search failed for ${scopeId}:`, error)
+      console.warn(`Search failed for ${scope.id}:`, error)
       return []
     }
   }
@@ -103,11 +71,11 @@ export const searchAnything = async (
     return []
 
   // Filter out slash commands from general search
-  const searchScopes = effectiveScopes.filter(scope => !isSlashScope(scope))
+  const searchScopes = scopes.filter(scope => !isSlashScope(scope))
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = searchScopes.map(async (action) => {
-    const actionId = getScopeId(action)
+    const actionId = action.id
     try {
       const results = await action.search(query, query, locale)
       return { success: true, data: results, actionType: actionId }
@@ -128,7 +96,7 @@ export const searchAnything = async (
       allResults.push(...result.value.data)
     }
     else {
-      const actionKey = getScopeId(searchScopes[index]) || 'unknown'
+      const actionKey = searchScopes[index]?.id || 'unknown'
       failedActions.push(actionKey)
     }
   })
@@ -142,11 +110,10 @@ export const searchAnything = async (
 // ...
 
 export const matchAction = (query: string, scopes: ScopeDescriptor[]) => {
-  registerDefaultScopes()
   const escapeRegExp = (value: string) => value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   return scopes.find((scope) => {
     // Special handling for slash commands
-    if (scope.shortcut === ACTION_KEYS.SLASH) {
+    if (isSlashScope(scope)) {
       const allCommands = slashCommandRegistry.getAllCommands()
       return allCommands.some((cmd) => {
         const cmdPattern = `/${cmd.name}`
@@ -158,7 +125,8 @@ export const matchAction = (query: string, scopes: ScopeDescriptor[]) => {
 
     // Check if query matches shortcut (exact or prefix)
     // Only match if it's the full shortcut followed by space
-    const reg = new RegExp(`^(${escapeRegExp(scope.shortcut)})(?:\\s|$)`)
+    const shortcuts = getScopeShortcuts(scope).map(escapeRegExp)
+    const reg = new RegExp(`^(${shortcuts.join('|')})(?:\\s|$)`)
     return reg.test(query)
   })
 }
@@ -166,4 +134,4 @@ export const matchAction = (query: string, scopes: ScopeDescriptor[]) => {
 export * from './commands'
 export * from './scope-registry'
 export * from './types'
-export { appAction, knowledgeAction, pluginAction }
+export { appScope, knowledgeScope, pluginScope }

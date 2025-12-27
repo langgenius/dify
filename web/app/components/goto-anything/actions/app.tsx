@@ -1,4 +1,4 @@
-import type { ActionItem, AppSearchResult } from './types'
+import type { AppSearchResult, ScopeDescriptor } from './types'
 import type { App } from '@/types/app'
 import { fetchAppList } from '@/service/apps'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -36,8 +36,8 @@ const parser = (apps: App[]): AppSearchResult[] => {
   }))
 }
 
-export const appAction: ActionItem = {
-  key: ACTION_KEYS.APP,
+export const appScope: ScopeDescriptor = {
+  id: 'app',
   shortcut: ACTION_KEYS.APP,
   title: 'Search Applications',
   description: 'Search and navigate to your applications',

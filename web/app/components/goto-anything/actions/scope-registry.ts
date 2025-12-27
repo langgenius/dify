@@ -24,6 +24,10 @@ export type ScopeDescriptor = {
    */
   shortcut: string
   /**
+   * Additional shortcuts that map to this scope (e.g. ['@kb'])
+   */
+  aliases?: string[]
+  /**
    * I18n key or string for the scope title
    */
   title: string
@@ -95,9 +99,7 @@ class ScopeRegistry {
 
 export const scopeRegistry = new ScopeRegistry()
 
-export const useScopeRegistry = (context: ScopeContext, initialize?: () => void) => {
-  initialize?.()
-
+export const useScopeRegistry = (context: ScopeContext) => {
   const subscribe = useCallback(
     (listener: Listener) => scopeRegistry.subscribe(listener),
     [],

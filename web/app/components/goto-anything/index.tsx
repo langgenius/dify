@@ -17,10 +17,9 @@ import { getKeyboardKeyCodeBySystem, isEventTargetInputArea, isMac } from '@/app
 import { selectWorkflowNode } from '@/app/components/workflow/utils/node-navigation'
 import { useGetLanguage } from '@/context/i18n'
 import InstallFromMarketplace from '../plugins/install-plugin/install-from-marketplace'
-import { matchAction, registerDefaultScopes, searchAnything } from './actions'
+import { matchAction, searchAnything, useGotoAnythingScopes } from './actions'
 import { executeCommand, SlashCommandProvider } from './actions/commands'
 import { slashCommandRegistry } from './actions/commands/registry'
-import { useScopeRegistry } from './actions/scope-registry'
 import CommandSelector from './command-selector'
 import { ACTION_KEYS, EMPTY_STATE_I18N_MAP, GROUP_HEADING_I18N_MAP } from './constants'
 import { GotoAnythingProvider, useGotoAnythingContext } from './context'
@@ -41,7 +40,7 @@ const GotoAnything: FC<Props> = ({
   const inputRef = useRef<HTMLInputElement>(null)
 
   // Fetch scopes from registry based on context
-  const scopes = useScopeRegistry({ isWorkflowPage, isRagPipelinePage }, registerDefaultScopes)
+  const scopes = useGotoAnythingScopes({ isWorkflowPage, isRagPipelinePage })
 
   const [activePlugin, setActivePlugin] = useState<Plugin>()
 
