@@ -297,14 +297,25 @@ export const useVibeFlowData = ({ storageKey }: UseVibeFlowDataParams) => {
     defaultValue: 0,
   })
 
-  const current = versions?.[currentVersionIndex || 0]
+  const current = useMemo(() => {
+    if (!versions || versions.length === 0)
+      return undefined
+    const index = currentVersionIndex ?? 0
+    return versions[index] || versions[versions.length - 1]
+  }, [versions, currentVersionIndex])
 
   const addVersion = useCallback((version: FlowGraph) => {
-    setCurrentVersionIndex(() => versions?.length || 0)
+    // Prevent adding empty graphs
+    if (!version || !version.nodes || version.nodes.length === 0)
+      return
+
     setVersions((prev) => {
-      return [...prev!, version]
+      const newVersions = [...(prev || []), version]
+      // Set index in setVersions callback to ensure using the latest length
+      setCurrentVersionIndex(newVersions.length - 1)
+      return newVersions
     })
-  }, [setVersions, setCurrentVersionIndex, versions?.length])
+  }, [setVersions, setCurrentVersionIndex])
 
   return {
     versions,
@@ -672,6 +683,11 @@ export const useWorkflowVibe = () => {
   }, [nodeTypeLookup, toolLookup])
 
   const applyFlowchartToWorkflow = useCallback(() => {
+    if (!currentFlowGraph || !currentFlowGraph.nodes || currentFlowGraph.nodes.length === 0) {
+      Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
+      return
+    }
+
     const { setNodes, setEdges } = store.getState()
     const vibePanelPreviewNodes = currentFlowGraph.nodes || []
     const vibePanelPreviewEdges = currentFlowGraph.edges || []
@@ -687,6 +703,7 @@ export const useWorkflowVibe = () => {
       vibePanelMermaidCode: '',
     }))
   }, [
+    currentFlowGraph,
     handleSyncWorkflowDraft,
     nodeTypeLookup,
     nodesMetaDataMap,
@@ -794,7 +811,10 @@ export const useWorkflowVibe = () => {
       }))
 
       const workflowGraph = await flowchartToWorkflowGraph(mermaidCode)
-      addVersion(workflowGraph)
+      // Only add to versions if workflowGraph contains nodes
+      if (workflowGraph && workflowGraph.nodes && workflowGraph.nodes.length > 0) {
+        addVersion(workflowGraph)
+      }
 
       if (skipPanelPreview)
         applyFlowchartToWorkflow()
