@@ -3,6 +3,7 @@ import type { ChatConfig } from '../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { ToastProvider } from '@/app/components/base/toast'
 import {
   fetchChatList,
   fetchConversations,
@@ -11,14 +12,6 @@ import {
 import { shareQueryKeys } from '@/service/use-share'
 import { CONVERSATION_ID_INFO } from '../constants'
 import { useChatWithHistory } from './hooks'
-
-const notifyMock = vi.fn()
-
-vi.mock('@/app/components/base/toast', () => ({
-  useToastContext: () => ({
-    notify: notifyMock,
-  }),
-}))
 
 vi.mock('@/hooks/use-app-favicon', () => ({
   useAppFavicon: vi.fn(),
@@ -85,7 +78,9 @@ const createQueryClient = () => new QueryClient({
 
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
+    <QueryClientProvider client={queryClient}>
+      <ToastProvider>{children}</ToastProvider>
+    </QueryClientProvider>
   )
 }
 
@@ -127,6 +122,7 @@ const setConversationIdInfo = (appId: string, conversationId: string) => {
 describe('useChatWithHistory', () => {
   beforeEach(() => {
     vi.clearAllMocks()
+    localStorage.removeItem(CONVERSATION_ID_INFO)
     mockStoreState.appInfo = {
       app_id: 'app-1',
       custom_config: null,
@@ -140,6 +136,10 @@ describe('useChatWithHistory', () => {
     }
     mockStoreState.appParams = null
     setConversationIdInfo('app-1', 'conversation-1')
+  })
+
+  afterEach(() => {
+    localStorage.removeItem(CONVERSATION_ID_INFO)
   })
 
   // Scenario: share query results populate conversation lists and trigger chat list fetch.
@@ -206,6 +206,65 @@ describe('useChatWithHistory', () => {
         expect(result.current.conversationList[0]).toEqual(generatedConversation)
       })
       expect(invalidateSpy).toHaveBeenCalledWith({ queryKey: shareQueryKeys.conversations })
+    })
+  })
+
+  // Scenario: chat list queries stop when reload key is cleared.
+  describe('Chat list gating', () => {
+    it('should not refetch chat list when newConversationId matches current conversation', async () => {
+      // Arrange
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
+      })
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(createConversationItem({ id: 'conversation-1' }))
+
+      const { result } = renderWithClient(() => useChatWithHistory())
+
+      await waitFor(() => {
+        expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+      })
+
+      // Act
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-1')
+      })
+
+      // Assert
+      await waitFor(() => {
+        expect(result.current.chatShouldReloadKey).toBe('')
+      })
+      expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+    })
+  })
+
+  // Scenario: conversation id updates persist to localStorage.
+  describe('Conversation id persistence', () => {
+    it('should store new conversation id in localStorage after completion', async () => {
+      // Arrange
+      const listData = createConversationData({
+        data: [createConversationItem({ id: 'conversation-1', name: 'First' })],
+      })
+      mockFetchConversations.mockResolvedValue(listData)
+      mockFetchChatList.mockResolvedValue({ data: [] })
+      mockGenerationConversationName.mockResolvedValue(createConversationItem({ id: 'conversation-new' }))
+
+      const { result } = renderWithClient(() => useChatWithHistory())
+
+      // Act
+      act(() => {
+        result.current.handleNewConversationCompleted('conversation-new')
+      })
+
+      // Assert
+      await waitFor(() => {
+        const storedValue = localStorage.getItem(CONVERSATION_ID_INFO)
+        const parsed = storedValue ? JSON.parse(storedValue) : {}
+        const storedUserId = parsed['app-1']?.['user-1']
+        const storedDefaultId = parsed['app-1']?.DEFAULT
+        expect([storedUserId, storedDefaultId]).toContain('conversation-new')
+      })
     })
   })
 })

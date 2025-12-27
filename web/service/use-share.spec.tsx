@@ -105,12 +105,13 @@ describe('useShareConversations', () => {
     }
 
     // Act
-    renderShareHook(() => useShareConversations(params))
+    const { result } = renderShareHook(() => useShareConversations(params))
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchConversations).not.toHaveBeenCalled()
+      expect(result.current.fetchStatus).toBe('idle')
     })
+    expect(mockFetchConversations).not.toHaveBeenCalled()
   })
 })
 
@@ -151,12 +152,13 @@ describe('useShareChatList', () => {
     }
 
     // Act
-    renderShareHook(() => useShareChatList(params))
+    const { result } = renderShareHook(() => useShareChatList(params))
 
     // Assert
     await waitFor(() => {
-      expect(mockFetchChatList).not.toHaveBeenCalled()
+      expect(result.current.fetchStatus).toBe('idle')
     })
+    expect(mockFetchChatList).not.toHaveBeenCalled()
   })
 })
 
@@ -197,12 +199,13 @@ describe('useShareConversationName', () => {
     }
 
     // Act
-    renderShareHook(() => useShareConversationName(params, { enabled: false }))
+    const { result } = renderShareHook(() => useShareConversationName(params, { enabled: false }))
 
     // Assert
     await waitFor(() => {
-      expect(mockGenerationConversationName).not.toHaveBeenCalled()
+      expect(result.current.fetchStatus).toBe('idle')
     })
+    expect(mockGenerationConversationName).not.toHaveBeenCalled()
   })
 })
 
