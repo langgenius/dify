@@ -34,7 +34,7 @@ const VibePanel: FC = () => {
   const configsMap = useHooksStore(s => s.configsMap)
 
   const { current: currentFlowGraph, versions, currentVersionIndex, setCurrentVersionIndex } = useVibeFlowData({
-    storageKey: `${configsMap?.flowId}`,
+    storageKey: configsMap?.flowId || '',
   })
 
   const vibePanelPreviewNodes = currentFlowGraph?.nodes || []

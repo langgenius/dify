@@ -48,5 +48,4 @@ export const createPanelSlice: StateCreator<PanelSliceShape> = set => ({
   setInitShowLastRunTab: initShowLastRunTab => set(() => ({ initShowLastRunTab })),
   showVibePanel: false,
   setShowVibePanel: showVibePanel => set(() => ({ showVibePanel })),
-  vibePanelMermaidCode: '',
 })

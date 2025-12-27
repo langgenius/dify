@@ -338,7 +338,7 @@ export const useWorkflowVibe = () => {
   const lastInstructionRef = useRef<string>('')
 
   const { addVersion, current: currentFlowGraph } = useVibeFlowData({
-    storageKey: `${configsMap?.flowId}`,
+    storageKey: configsMap?.flowId || '',
   })
 
   useEffect(() => {
