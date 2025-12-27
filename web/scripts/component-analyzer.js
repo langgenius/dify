@@ -21,6 +21,7 @@ export class ComponentAnalyzer {
     const resolvedPath = absolutePath ?? path.resolve(process.cwd(), filePath)
     const fileName = path.basename(filePath, path.extname(filePath))
     const lineCount = code.split('\n').length
+    const hasReactQuery = /\buse(?:Query|Queries|InfiniteQuery|SuspenseQuery|SuspenseInfiniteQuery|Mutation)\b/.test(code)
 
     // Calculate complexity metrics
     const { total: rawComplexity, max: rawMaxComplexity } = this.calculateCognitiveComplexity(code)
@@ -44,14 +45,13 @@ export class ComponentAnalyzer {
       hasMemo: code.includes('useMemo'),
       hasEvents: /on[A-Z]\w+/.test(code),
       hasRouter: code.includes('useRouter') || code.includes('usePathname'),
-      hasAPI: code.includes('service/') || code.includes('fetch(') || code.includes('useSWR'),
+      hasAPI: code.includes('service/') || code.includes('fetch(') || hasReactQuery,
       hasForwardRef: code.includes('forwardRef'),
       hasComponentMemo: /React\.memo|memo\(/.test(code),
       hasSuspense: code.includes('Suspense') || /\blazy\(/.test(code),
       hasPortal: code.includes('createPortal'),
       hasImperativeHandle: code.includes('useImperativeHandle'),
-      hasSWR: code.includes('useSWR'),
-      hasReactQuery: code.includes('useQuery') || code.includes('useMutation'),
+      hasReactQuery,
       hasAhooks: code.includes('from \'ahooks\''),
       complexity,
       maxComplexity,

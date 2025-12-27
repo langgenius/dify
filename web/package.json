@@ -138,7 +138,6 @@
     "semver": "^7.7.3",
     "sharp": "^0.33.5",
     "sortablejs": "^1.15.6",
-    "swr": "^2.3.6",
     "tailwind-merge": "^2.6.0",
     "tldts": "^7.0.17",
     "use-context-selector": "^2.0.0",
