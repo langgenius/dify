@@ -164,6 +164,7 @@
  */
 
 import type { ActionItem, SearchResult } from './types'
+import { ACTION_KEYS } from '../constants'
 import { appAction } from './app'
 import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
@@ -234,7 +235,7 @@ export const searchAnything = async (
 
   const globalSearchActions = Object.values(dynamicActions || Actions)
     // Exclude slash commands from general search results
-    .filter(action => action.key !== '/')
+    .filter(action => action.key !== ACTION_KEYS.SLASH)
 
   // Use Promise.allSettled to handle partial failures gracefully
   const searchPromises = globalSearchActions.map(async (action) => {
@@ -272,7 +273,7 @@ export const searchAnything = async (
 export const matchAction = (query: string, actions: Record<string, ActionItem>) => {
   return Object.values(actions).find((action) => {
     // Special handling for slash commands
-    if (action.key === '/') {
+    if (action.key === ACTION_KEYS.SLASH) {
       // Get all registered commands from the registry
       const allCommands = slashCommandRegistry.getAllCommands()
 

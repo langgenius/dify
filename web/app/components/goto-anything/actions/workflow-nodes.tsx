@@ -1,9 +1,10 @@
 import type { ActionItem } from './types'
+import { ACTION_KEYS } from '../constants'
 
 // Create the workflow nodes action
 export const workflowNodesAction: ActionItem = {
-  key: '@node',
-  shortcut: '@node',
+  key: ACTION_KEYS.NODE,
+  shortcut: ACTION_KEYS.NODE,
   title: 'Search Workflow Nodes',
   description: 'Find and jump to nodes in the current workflow by name or type',
   searchFn: undefined, // Will be set by useWorkflowSearch hook

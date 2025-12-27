@@ -4,6 +4,7 @@ import { renderI18nObject } from '@/i18n-config'
 import { postMarketplace } from '@/service/base'
 import Icon from '../../plugins/card/base/card-icon'
 import { getPluginIconInMarketplace } from '../../plugins/marketplace/utils'
+import { ACTION_KEYS } from '../constants'
 
 const parser = (plugins: Plugin[], locale: string): PluginSearchResult[] => {
   return plugins.map((plugin) => {
@@ -19,8 +20,8 @@ const parser = (plugins: Plugin[], locale: string): PluginSearchResult[] => {
 }
 
 export const pluginAction: ActionItem = {
-  key: '@plugin',
-  shortcut: '@plugin',
+  key: ACTION_KEYS.PLUGIN,
+  shortcut: ACTION_KEYS.PLUGIN,
   title: 'Search Plugins',
   description: 'Search and navigate to your plugins',
   search: async (_, searchTerm = '', locale) => {

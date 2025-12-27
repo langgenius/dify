@@ -3,6 +3,7 @@ import type { DataSet } from '@/models/datasets'
 import { fetchDatasets } from '@/service/datasets'
 import { cn } from '@/utils/classnames'
 import { Folder } from '../../base/icons/src/vender/solid/files'
+import { ACTION_KEYS } from '../constants'
 
 const EXTERNAL_PROVIDER = 'external' as const
 const isExternalProvider = (provider: string): boolean => provider === EXTERNAL_PROVIDER
@@ -31,7 +32,7 @@ const parser = (datasets: DataSet[]): KnowledgeSearchResult[] => {
 }
 
 export const knowledgeAction: ActionItem = {
-  key: '@knowledge',
+  key: ACTION_KEYS.KNOWLEDGE,
   shortcut: '@kb',
   title: 'Search Knowledge Bases',
   description: 'Search and navigate to your knowledge bases',
