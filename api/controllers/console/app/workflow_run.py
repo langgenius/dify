@@ -1,4 +1,5 @@
 from typing import Literal, cast
+from uuid import uuid4
 
 from flask import request
 from flask_restx import Resource, fields, marshal_with
@@ -23,7 +24,9 @@ from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
+from services.workflow_run_export_task_status import get_task_status, set_task_status
 from services.workflow_run_service import WorkflowRunService
+from tasks.workflow_run_export_task import export_workflow_run_task
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
@@ -91,6 +94,19 @@ workflow_run_node_execution_list_fields_copy = workflow_run_node_execution_list_
 workflow_run_node_execution_list_fields_copy["data"] = fields.List(fields.Nested(workflow_run_node_execution_model))
 workflow_run_node_execution_list_model = console_ns.model(
     "WorkflowRunNodeExecutionList", workflow_run_node_execution_list_fields_copy
+)
+
+workflow_run_export_task_fields = console_ns.model(
+    "WorkflowRunExportTaskStatus",
+    {
+        "task_id": fields.String(description="Export task id"),
+        "status": fields.String(description="Task status: pending/running/success/failed"),
+        "storage_key": fields.String(description="Object storage key", required=False),
+        "checksum": fields.String(description="Object checksum", required=False),
+        "size_bytes": fields.Integer(description="Size of exported zip in bytes", required=False),
+        "presigned_url": fields.String(description="Pre-signed URL for download", required=False),
+        "error": fields.String(description="Error message", required=False),
+    },
 )
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
@@ -179,6 +195,48 @@ class AdvancedChatAppWorkflowRunListApi(Resource):
         )
 
         return result
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/export-task")
+class WorkflowRunExportTaskApi(Resource):
+    @console_ns.doc("create_workflow_run_export_task")
+    @console_ns.doc(description="Create an async export task for a workflow run.")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(202, "Task created", workflow_run_export_task_fields)
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model()
+    def post(self, app_model: App, run_id: str):
+        task_id = str(uuid4())
+        # Mark pending
+        set_task_status(
+            task_id,
+            "pending",
+            {"tenant_id": str(app_model.tenant_id), "app_id": str(app_model.id), "run_id": str(run_id)},
+        )
+        # Enqueue async task
+        export_workflow_run_task.apply_async(
+            args=[task_id, str(app_model.tenant_id), str(run_id)],
+            kwargs={"include_manifest": True},
+        )
+        return {"task_id": task_id, "status": "pending"}, 202
+
+
+@console_ns.route("/workflow-run-export-tasks/<string:task_id>")
+class WorkflowRunExportTaskStatusApi(Resource):
+    @console_ns.doc("get_workflow_run_export_task_status")
+    @console_ns.doc(description="Get status of a workflow run export task.")
+    @console_ns.response(200, "Task status", workflow_run_export_task_fields)
+    @console_ns.response(404, "Task not found")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self, task_id: str):
+        status = get_task_status(task_id)
+        if not status:
+            return {"code": "not_found", "message": "task not found"}, 404
+        return status
 
 
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflow-runs/count")
