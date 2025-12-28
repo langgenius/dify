@@ -453,6 +453,7 @@ class LoopNode(LLMUsageTrackingMixin, Node[LoopNodeData]):
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
             config=GraphEngineConfig(),
+            cleanup_mcp_sessions=False,
         )
 
         return graph_engine
