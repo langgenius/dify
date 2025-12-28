@@ -13,6 +13,7 @@ from core.mcp.types import (
     EmbeddedResource,
     ImageContent,
     TextContent,
+    TextResourceContents,
 )
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
@@ -64,10 +65,15 @@ class MCPTool(Tool):
                 yield self.create_blob_message(
                     blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType}
                 )
-            elif isinstance(content, EmbeddedResource) and isinstance(content.resource, BlobResourceContents):
-                yield self.create_blob_message(
-                    blob=base64.b64decode(content.resource.blob), meta={"mime_type": content.resource.mimeType}
-                )
+            elif isinstance(content, EmbeddedResource):
+                resource = content.resource
+                if isinstance(resource, TextResourceContents):
+                    yield self.create_text_message(resource.text)
+                elif isinstance(resource, BlobResourceContents):
+                    mime_type = resource.mimeType or "application/octet-stream"
+                    yield self.create_blob_message(blob=base64.b64decode(resource.blob), meta={"mime_type": mime_type})
+                else:
+                    raise ToolInvokeError(f"Unsupported embedded resource type: {type(resource)}")
             else:
                 logger.warning("Unsupported content type=%s", type(content))
 
