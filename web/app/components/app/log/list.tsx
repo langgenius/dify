@@ -208,8 +208,6 @@ type IDetailPanel = {
 
 function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const MIN_ITEMS_FOR_SCROLL_LOADING = 8
-  const SCROLL_THRESHOLD_PX = 50
-  const SCROLL_DEBOUNCE_MS = 200
   const { userProfile: { timezone } } = useAppContext()
   const { formatTime } = useTimestamp()
   const { onClose, appDetail } = useContext(DrawerContext)
@@ -228,67 +226,121 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
   const [varValues, setVarValues] = useState<Record<string, string>>({})
   const isLoadingRef = useRef(false)
 
+  // Request queue management to prevent race conditions
+  const requestQueueRef = useRef<Promise<void> | null>(null)
+  const pendingRequestIdRef = useRef<string | null>(null)
+  const lastScrollTopRef = useRef(0)
+  const scrollTimeoutRef = useRef<NodeJS.Timeout | undefined>(undefined)
+
   const [allChatItems, setAllChatItems] = useState<IChatItem[]>([])
   const [chatItemTree, setChatItemTree] = useState<ChatItemInTree[]>([])
   const [threadChatItems, setThreadChatItems] = useState<IChatItem[]>([])
 
   const fetchData = useCallback(async () => {
-    if (isLoadingRef.current)
+    // Wait for ongoing request to complete
+    if (requestQueueRef.current) {
+      await requestQueueRef.current
       return
-
-    try {
-      isLoadingRef.current = true
-
-      if (!hasMore)
-        return
-
-      const params: ChatMessagesRequest = {
-        conversation_id: detail.id,
-        limit: 10,
-      }
-      // Use the oldest answer item ID for pagination
-      const answerItems = allChatItems.filter(item => item.isAnswer)
-      const oldestAnswerItem = answerItems[answerItems.length - 1]
-      if (oldestAnswerItem?.id)
-        params.first_id = oldestAnswerItem.id
-      const messageRes = await fetchChatMessages({
-        url: `/apps/${appDetail?.id}/chat-messages`,
-        params,
-      })
-      if (messageRes.data.length > 0) {
-        const varValues = messageRes.data.at(-1)!.inputs
-        setVarValues(varValues)
-      }
-      setHasMore(messageRes.has_more)
-
-      const newAllChatItems = [
-        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string),
-        ...allChatItems,
-      ]
-      setAllChatItems(newAllChatItems)
-
-      let tree = buildChatItemTree(newAllChatItems)
-      if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
-        tree = [{
-          id: 'introduction',
-          isAnswer: true,
-          isOpeningStatement: true,
-          content: detail?.model_config?.configs?.introduction ?? 'hello',
-          feedbackDisabled: true,
-          children: tree,
-        }]
-      }
-      setChatItemTree(tree)
-
-      const lastMessageId = newAllChatItems.length > 0 ? newAllChatItems[newAllChatItems.length - 1].id : undefined
-      setThreadChatItems(getThreadMessages(tree, lastMessageId))
     }
-    catch (err) {
-      console.error('fetchData execution failed:', err)
+
+    if (!hasMore) {
+      return
     }
-    finally {
-      isLoadingRef.current = false
-    }
+
+    // Generate unique request ID to track this specific request
+    const requestId = `${Date.now()}-${Math.random()}`
+    pendingRequestIdRef.current = requestId
+
+    const request = (async () => {
+      try {
+        isLoadingRef.current = true
+
+        const params: ChatMessagesRequest = {
+          conversation_id: detail.id,
+          limit: 10,
+        }
+
+        // Capture current state to avoid stale closure
+        const currentItems = allChatItems
+        const answerItems = currentItems.filter(item => item.isAnswer)
+        const oldestAnswerItem = answerItems[answerItems.length - 1]
+
+        if (oldestAnswerItem?.id) {
+          params.first_id = oldestAnswerItem.id
+        }
+
+        const messageRes = await fetchChatMessages({
+          url: `/apps/${appDetail?.id}/chat-messages`,
+          params,
+        })
+
+        // Check if this request is outdated (newer request has been initiated)
+        if (pendingRequestIdRef.current !== requestId) {
+          return
+        }
+
+        if (messageRes.data.length > 0) {
+          const varValues = messageRes.data.at(-1)!.inputs
+          setVarValues(varValues)
+        }
+
+        setHasMore(messageRes.has_more)
+
+        const newItems = getFormattedChatList(
+          messageRes.data,
+          detail.id,
+          timezone!,
+          t('appLog.dateTimeFormat') as string,
+        )
+
+        // Strict deduplication
+        const existingIds = new Set(currentItems.map(item => item.id))
+        const uniqueNewItems = newItems.filter(item => !existingIds.has(item.id))
+
+        if (uniqueNewItems.length === 0) {
+          setHasMore(false)
+          return
+        }
+
+        // Add new messages at the beginning (older messages)
+        const newAllChatItems = [...uniqueNewItems, ...currentItems]
+        setAllChatItems(newAllChatItems)
+
+        let tree = buildChatItemTree(newAllChatItems)
+        if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
+          tree = [{
+            id: 'introduction',
+            isAnswer: true,
+            isOpeningStatement: true,
+            content: detail?.model_config?.configs?.introduction ?? 'hello',
+            feedbackDisabled: true,
+            children: tree,
+          }]
+        }
+        setChatItemTree(tree)
+
+        const lastMessageId = newAllChatItems.length > 0
+          ? newAllChatItems[newAllChatItems.length - 1].id
+          : undefined
+        setThreadChatItems(getThreadMessages(tree, lastMessageId))
+      }
+      catch (err) {
+        console.error(`[fetchData] ${requestId} Error:`, err)
+        if (pendingRequestIdRef.current === requestId) {
+          setHasMore(false)
+        }
+      }
+      finally {
+        if (pendingRequestIdRef.current === requestId) {
+          isLoadingRef.current = false
+          requestQueueRef.current = null
+          pendingRequestIdRef.current = null
+        }
+      }
+    })()
+
+    requestQueueRef.current = request
+    await request
   }, [allChatItems, detail.id, hasMore, timezone, t, appDetail, detail?.model_config?.configs?.introduction])
 
   const switchSibling = useCallback((siblingMessageId: string) => {
@@ -390,141 +442,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     }
   }, [appDetail?.id, detail.id, appDetail?.mode, fetchData])
 
-  const [isLoading, setIsLoading] = useState(false)
-
-  const loadMoreMessages = useCallback(async () => {
-    if (isLoading || !hasMore || !appDetail?.id || !detail.id)
-      return
-
-    setIsLoading(true)
-
-    try {
-      const params: ChatMessagesRequest = {
-        conversation_id: detail.id,
-        limit: 10,
-      }
-
-      // Use the earliest response item as the first_id
-      const answerItems = allChatItems.filter(item => item.isAnswer)
-      const oldestAnswerItem = answerItems[answerItems.length - 1]
-      if (oldestAnswerItem?.id) {
-        params.first_id = oldestAnswerItem.id
-      }
-      else if (allChatItems.length > 0 && allChatItems[0]?.id) {
-        const firstId = allChatItems[0].id.replace('question-', '').replace('answer-', '')
-        params.first_id = firstId
-      }
-
-      const messageRes = await fetchChatMessages({
-        url: `/apps/${appDetail.id}/chat-messages`,
-        params,
-      })
-
-      if (!messageRes.data || messageRes.data.length === 0) {
-        setHasMore(false)
-        return
-      }
-
-      if (messageRes.data.length > 0) {
-        const varValues = messageRes.data.at(-1)!.inputs
-        setVarValues(varValues)
-      }
-
-      setHasMore(messageRes.has_more)
-
-      const newItems = getFormattedChatList(
-        messageRes.data,
-        detail.id,
-        timezone!,
-        t('appLog.dateTimeFormat') as string,
-      )
-
-      // Check for duplicate messages
-      const existingIds = new Set(allChatItems.map(item => item.id))
-      const uniqueNewItems = newItems.filter(item => !existingIds.has(item.id))
-
-      if (uniqueNewItems.length === 0) {
-        if (allChatItems.length > 1) {
-          const nextId = allChatItems[1].id.replace('question-', '').replace('answer-', '')
-
-          const retryParams = {
-            ...params,
-            first_id: nextId,
-          }
-
-          const retryRes = await fetchChatMessages({
-            url: `/apps/${appDetail.id}/chat-messages`,
-            params: retryParams,
-          })
-
-          if (retryRes.data && retryRes.data.length > 0) {
-            const retryItems = getFormattedChatList(
-              retryRes.data,
-              detail.id,
-              timezone!,
-              t('appLog.dateTimeFormat') as string,
-            )
-
-            const retryUniqueItems = retryItems.filter(item => !existingIds.has(item.id))
-            if (retryUniqueItems.length > 0) {
-              const newAllChatItems = [
-                ...retryUniqueItems,
-                ...allChatItems,
-              ]
-
-              setAllChatItems(newAllChatItems)
-
-              let tree = buildChatItemTree(newAllChatItems)
-              if (retryRes.has_more === false && detail?.model_config?.configs?.introduction) {
-                tree = [{
-                  id: 'introduction',
-                  isAnswer: true,
-                  isOpeningStatement: true,
-                  content: detail?.model_config?.configs?.introduction ?? 'hello',
-                  feedbackDisabled: true,
-                  children: tree,
-                }]
-              }
-              setChatItemTree(tree)
-              setHasMore(retryRes.has_more)
-              setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
-              return
-            }
-          }
-        }
-      }
-
-      const newAllChatItems = [
-        ...uniqueNewItems,
-        ...allChatItems,
-      ]
-
-      setAllChatItems(newAllChatItems)
-
-      let tree = buildChatItemTree(newAllChatItems)
-      if (messageRes.has_more === false && detail?.model_config?.configs?.introduction) {
-        tree = [{
-          id: 'introduction',
-          isAnswer: true,
-          isOpeningStatement: true,
-          content: detail?.model_config?.configs?.introduction ?? 'hello',
-          feedbackDisabled: true,
-          children: tree,
-        }]
-      }
-      setChatItemTree(tree)
-
-      setThreadChatItems(getThreadMessages(tree, newAllChatItems.at(-1)?.id))
-    }
-    catch (error) {
-      console.error(error)
-      setHasMore(false)
-    }
-    finally {
-      setIsLoading(false)
-    }
-  }, [allChatItems, detail.id, hasMore, isLoading, timezone, t, appDetail])
-
+  // Unified scroll listener with proper debouncing
   useEffect(() => {
     const scrollableDiv = document.getElementById('scrollableDiv')
     const outerDiv = scrollableDiv?.parentElement
@@ -532,6 +450,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
 
     let scrollContainer: HTMLElement | null = null
 
+    // Find the actual scrollable container
     if (outerDiv && outerDiv.scrollHeight > outerDiv.clientHeight) {
       scrollContainer = outerDiv
     }
@@ -542,6 +461,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       scrollContainer = chatContainer
     }
     else {
+      // Fallback: search for any scrollable container
       const possibleContainers = document.querySelectorAll('.overflow-auto, .overflow-y-auto')
       for (let i = 0; i < possibleContainers.length; i++) {
         const container = possibleContainers[i] as HTMLElement
@@ -552,44 +472,45 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       }
     }
 
-    if (!scrollContainer)
+    if (!scrollContainer) {
       return
-
-    let lastLoadTime = 0
-    const throttleDelay = 200
+    }
 
     const handleScroll = () => {
-      const currentScrollTop = scrollContainer!.scrollTop
-      const scrollHeight = scrollContainer!.scrollHeight
-      const clientHeight = scrollContainer!.clientHeight
-
-      const distanceFromTop = currentScrollTop
-      const distanceFromBottom = scrollHeight - currentScrollTop - clientHeight
-
-      const now = Date.now()
-
-      const isNearTop = distanceFromTop < 30
-      // eslint-disable-next-line sonarjs/no-unused-vars
-      const _distanceFromBottom = distanceFromBottom < 30
-      if (isNearTop && hasMore && !isLoading && (now - lastLoadTime > throttleDelay)) {
-        lastLoadTime = now
-        loadMoreMessages()
+      // Clear previous debounce timer
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
       }
+
+      // Debounce: execute after 200ms of no scrolling
+      scrollTimeoutRef.current = setTimeout(() => {
+        if (!scrollContainer)
+          return
+
+        const currentScrollTop = scrollContainer.scrollTop
+        const distanceFromTop = currentScrollTop
+
+        // Only trigger when scrolling UP (to load older messages)
+        const isScrollingUp = currentScrollTop < lastScrollTopRef.current
+        lastScrollTopRef.current = currentScrollTop
+
+        const isNearTop = distanceFromTop < 50
+
+        if (isScrollingUp && isNearTop && hasMore && !isLoadingRef.current) {
+          fetchData()
+        }
+      }, 200)
     }
 
     scrollContainer.addEventListener('scroll', handleScroll, { passive: true })
 
-    const handleWheel = (e: WheelEvent) => {
-      if (e.deltaY < 0)
-        handleScroll()
-    }
-    scrollContainer.addEventListener('wheel', handleWheel, { passive: true })
-
     return () => {
-      scrollContainer!.removeEventListener('scroll', handleScroll)
-      scrollContainer!.removeEventListener('wheel', handleWheel)
+      scrollContainer?.removeEventListener('scroll', handleScroll)
+      if (scrollTimeoutRef.current) {
+        clearTimeout(scrollTimeoutRef.current)
+      }
     }
-  }, [hasMore, isLoading, loadMoreMessages])
+  }, [hasMore, fetchData])
 
   const isChatMode = appDetail?.mode !== AppModeEnum.COMPLETION
   const isAdvanced = appDetail?.mode === AppModeEnum.ADVANCED_CHAT
@@ -617,36 +538,6 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
     const raf = requestAnimationFrame(adjustModalWidth)
     return () => cancelAnimationFrame(raf)
   }, [])
-
-  // Add scroll listener to ensure loading is triggered
-  useEffect(() => {
-    if (threadChatItems.length >= MIN_ITEMS_FOR_SCROLL_LOADING && hasMore) {
-      const scrollableDiv = document.getElementById('scrollableDiv')
-
-      if (scrollableDiv) {
-        let loadingTimeout: NodeJS.Timeout | null = null
-
-        const handleScroll = () => {
-          const { scrollTop } = scrollableDiv
-
-          // Trigger loading when scrolling near the top
-          if (scrollTop < SCROLL_THRESHOLD_PX && !isLoadingRef.current) {
-            if (loadingTimeout)
-              clearTimeout(loadingTimeout)
-
-            loadingTimeout = setTimeout(fetchData, SCROLL_DEBOUNCE_MS) // 200ms debounce
-          }
-        }
-
-        scrollableDiv.addEventListener('scroll', handleScroll)
-        return () => {
-          scrollableDiv.removeEventListener('scroll', handleScroll)
-          if (loadingTimeout)
-            clearTimeout(loadingTimeout)
-        }
-      }
-    }
-  }, [threadChatItems.length, hasMore, fetchData])
 
   return (
     <div ref={ref} className="flex h-full flex-col rounded-xl border-[0.5px] border-components-panel-border">
@@ -756,7 +647,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               {/* Put the scroll bar always on the bottom */}
               <div className="flex w-full flex-col-reverse" style={{ position: 'relative' }}>
                 {/* Loading state indicator - only shown when loading */}
-                {hasMore && isLoading && (
+                {hasMore && isLoadingRef.current && (
                   <div className="sticky left-0 right-0 top-0 z-10 bg-primary-50/40 py-3 text-center">
                     <div className="system-xs-regular text-text-tertiary">
                       {t('appLog.detail.loading')}
