@@ -1,3 +1,4 @@
+import base64
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
@@ -178,3 +179,48 @@ class TestForgotPasswordResetApi:
         mock_get_account.assert_called_once_with("User@Example.com", session=mock_session)
         mock_update_account.assert_called_once()
         mock_revoke_token.assert_called_once_with("token-123")
+
+    @patch("controllers.web.forgot_password.hash_password", return_value=b"hashed-value")
+    @patch("controllers.web.forgot_password.secrets.token_bytes", return_value=b"0123456789abcdef")
+    @patch("controllers.web.forgot_password.Session")
+    @patch("controllers.web.forgot_password.AccountService.revoke_reset_password_token")
+    @patch("controllers.web.forgot_password.AccountService.get_reset_password_data")
+    @patch("controllers.web.forgot_password.AccountService.get_account_by_email_with_case_fallback")
+    def test_should_update_password_and_commit(
+        self,
+        mock_get_account,
+        mock_get_reset_data,
+        mock_revoke_token,
+        mock_session_cls,
+        mock_token_bytes,
+        mock_hash_password,
+        app,
+    ):
+        mock_get_reset_data.return_value = {"phase": "reset", "email": "user@example.com"}
+        account = MagicMock()
+        mock_get_account.return_value = account
+        mock_session = MagicMock()
+        mock_session_cls.return_value.__enter__.return_value = mock_session
+
+        with patch("controllers.web.forgot_password.db", SimpleNamespace(engine="engine")):
+            with app.test_request_context(
+                "/web/forgot-password/resets",
+                method="POST",
+                json={
+                    "token": "reset-token",
+                    "new_password": "StrongPass123!",
+                    "password_confirm": "StrongPass123!",
+                },
+            ):
+                response = ForgotPasswordResetApi().post()
+
+        assert response == {"result": "success"}
+        mock_get_reset_data.assert_called_once_with("reset-token")
+        mock_revoke_token.assert_called_once_with("reset-token")
+        mock_token_bytes.assert_called_once_with(16)
+        mock_hash_password.assert_called_once_with("StrongPass123!", b"0123456789abcdef")
+        expected_password = base64.b64encode(b"hashed-value").decode()
+        assert account.password == expected_password
+        expected_salt = base64.b64encode(b"0123456789abcdef").decode()
+        assert account.password_salt == expected_salt
+        mock_session.commit.assert_called_once()
