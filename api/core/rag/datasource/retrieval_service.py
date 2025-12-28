@@ -106,7 +106,12 @@ class RetrievalService:
                         )
                     )
 
-            concurrent.futures.wait(futures, timeout=3600, return_when=concurrent.futures.ALL_COMPLETED)
+            if futures:
+                for future in concurrent.futures.as_completed(futures, timeout=3600):
+                    if future.exception():
+                        for f in futures:
+                            f.cancel()
+                        break
 
         if exceptions:
             raise ValueError(";\n".join(exceptions))
@@ -662,7 +667,14 @@ class RetrievalService:
                             document_ids_filter=document_ids_filter,
                         )
                     )
-                concurrent.futures.wait(futures, timeout=300, return_when=concurrent.futures.ALL_COMPLETED)
+                # Use as_completed for early error propagation - cancel remaining futures on first error
+                if futures:
+                    for future in concurrent.futures.as_completed(futures, timeout=300):
+                        if future.exception():
+                            # Cancel remaining futures to avoid unnecessary waiting
+                            for f in futures:
+                                f.cancel()
+                            break
 
             if exceptions:
                 raise ValueError(";\n".join(exceptions))
