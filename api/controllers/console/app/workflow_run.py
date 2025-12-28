@@ -24,7 +24,12 @@ from libs.custom_inputs import time_duration
 from libs.helper import uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
-from services.workflow_run_export_task_status import get_task_status, set_task_status
+from services.workflow_run_export_task_status import (
+    get_task_id_for_run,
+    get_task_status,
+    reserve_task_for_run,
+    set_task_status,
+)
 from services.workflow_run_service import WorkflowRunService
 from tasks.workflow_run_export_task import export_workflow_run_task
 
@@ -208,16 +213,34 @@ class WorkflowRunExportTaskApi(Resource):
     @account_initialization_required
     @get_app_model()
     def post(self, app_model: App, run_id: str):
-        task_id = str(uuid4())
-        # Mark pending
+        tenant_id = str(app_model.tenant_id)
+        app_id = str(app_model.id)
+        run_id_str = str(run_id)
+
+        # If a task already exists for this run, return its status to keep export idempotent.
+        existing_task_id = get_task_id_for_run(tenant_id, app_id, run_id_str)
+        if existing_task_id:
+            status = get_task_status(existing_task_id)
+            if status:
+                return status, 200
+
+        new_task_id = str(uuid4())
+        task_id = reserve_task_for_run(tenant_id, app_id, run_id_str, new_task_id)
+
+        # If another request just reserved, return its status or pending stub.
+        if task_id != new_task_id:
+            status = get_task_status(task_id)
+            if status:
+                return status, 200
+
+        # Mark pending and enqueue
         set_task_status(
             task_id,
             "pending",
-            {"tenant_id": str(app_model.tenant_id), "app_id": str(app_model.id), "run_id": str(run_id)},
+            {"tenant_id": tenant_id, "app_id": app_id, "run_id": run_id_str},
         )
-        # Enqueue async task
         export_workflow_run_task.apply_async(
-            args=[task_id, str(app_model.tenant_id), str(run_id)],
+            args=[task_id, tenant_id, run_id_str],
             kwargs={"include_manifest": True},
         )
         return {"task_id": task_id, "status": "pending"}, 202
