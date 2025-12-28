@@ -569,10 +569,14 @@ class DatasetRetrieval:
                     all_threads.append(attachment_thread)
                     attachment_thread.start()
 
-            for thread in all_threads:
-                thread.join(timeout=300)
+            # Poll threads with short timeout to detect errors quickly (fail-fast)
+            while any(t.is_alive() for t in all_threads):
+                for thread in all_threads:
+                    thread.join(timeout=0.1)
+                    if thread_exceptions:
+                        cancel_event.set()
+                        break
                 if thread_exceptions:
-                    cancel_event.set()
                     break
 
             if thread_exceptions:
@@ -1454,9 +1458,13 @@ class DatasetRetrieval:
                     )
                     threads.append(retrieval_thread)
                     retrieval_thread.start()
-                for thread in threads:
-                    thread.join(timeout=300)
-                    # Check for cancellation signal between threads
+
+                # Poll threads with short timeout to respond quickly to cancellation
+                while any(t.is_alive() for t in threads):
+                    for thread in threads:
+                        thread.join(timeout=0.1)
+                        if cancel_event and cancel_event.is_set():
+                            break
                     if cancel_event and cancel_event.is_set():
                         break
 

@@ -1,4 +1,5 @@
 import concurrent.futures
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -35,6 +36,8 @@ default_retrieval_model = {
     "top_k": 4,
     "score_threshold_enabled": False,
 }
+
+logger = logging.getLogger(__name__)
 
 
 class RetrievalService:
@@ -108,7 +111,7 @@ class RetrievalService:
 
             if futures:
                 for future in concurrent.futures.as_completed(futures, timeout=3600):
-                    if future.exception():
+                    if exceptions:
                         for f in futures:
                             f.cancel()
                         break
@@ -215,6 +218,7 @@ class RetrievalService:
                 )
                 all_documents.extend(documents)
             except Exception as e:
+                logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
     @classmethod
@@ -308,6 +312,7 @@ class RetrievalService:
                     else:
                         all_documents.extend(documents)
             except Exception as e:
+                logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
     @classmethod
@@ -356,6 +361,7 @@ class RetrievalService:
                     else:
                         all_documents.extend(documents)
             except Exception as e:
+                logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
     @staticmethod
