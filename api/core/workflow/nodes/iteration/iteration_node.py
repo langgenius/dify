@@ -638,6 +638,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             graph=iteration_graph,
             graph_runtime_state=graph_runtime_state_copy,
             command_channel=InMemoryChannel(),  # Use InMemoryChannel for sub-graphs
+            cleanup_mcp_sessions=False,
         )
 
         return graph_engine

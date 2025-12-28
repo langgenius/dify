@@ -64,6 +64,7 @@ class GraphEngine:
         graph: Graph,
         graph_runtime_state: GraphRuntimeState,
         command_channel: CommandChannel,
+        cleanup_mcp_sessions: bool = True,
         min_workers: int | None = None,
         max_workers: int | None = None,
         scale_up_threshold: int | None = None,
@@ -80,6 +81,7 @@ class GraphEngine:
         # Graph execution tracks the overall execution state
         self._graph_execution = cast("GraphExecution", self._graph_runtime_state.graph_execution)
         self._graph_execution.workflow_id = workflow_id
+        self._cleanup_mcp_sessions_enabled = cleanup_mcp_sessions
 
         # === Worker Management Parameters ===
         # Parameters for dynamic worker pool scaling
@@ -355,6 +357,19 @@ class GraphEngine:
                 layer.on_graph_end(self._graph_execution.error)
             except Exception as e:
                 logger.warning("Layer %s failed on_graph_end: %s", layer.__class__.__name__, e)
+
+        if self._cleanup_mcp_sessions_enabled:
+            self._cleanup_mcp_sessions()
+
+    def _cleanup_mcp_sessions(self) -> None:
+        """Release any long-lived MCP sessions bound to this workflow run."""
+        try:
+            system_variables = self._graph_runtime_state.variable_pool.system_variables
+            workflow_execution_id = getattr(system_variables, "workflow_execution_id", None)
+            if workflow_execution_id:
+                McpSessionRegistry.cleanup(workflow_execution_id)
+        except Exception:
+            logger.warning("Failed to cleanup MCP sessions", exc_info=True)
 
     # Public property accessors for attributes that need external access
     @property
