@@ -2,9 +2,6 @@
 
 from unittest.mock import MagicMock, create_autospec
 
-import pytest
-
-from core.workflow.enums import NodeState
 from core.workflow.graph import Edge, Graph
 from core.workflow.graph_engine.graph_state_manager import GraphStateManager
 from core.workflow.graph_engine.graph_traversal.skip_propagator import SkipPropagator
