@@ -171,6 +171,30 @@ class MCPTool(Tool):
         # Step 2: Session is now closed, perform network operations without holding database connection
         # MCPClientWithAuthRetry will create a new session lazily only if auth retry is needed
         try:
+            if workflow_execution_id:
+                # Workflow path: reuse MCP session scoped by workflow_execution_id
+                session_manager = McpSessionRegistry.get_manager(workflow_execution_id)
+                session_key = self._build_session_key(server_url)
+
+                def factory() -> MCPClientWithAuthRetry:
+                    client = MCPClientWithAuthRetry(
+                        server_url=server_url,
+                        headers=headers,
+                        timeout=self.timeout,
+                        sse_read_timeout=self.sse_read_timeout,
+                        provider_entity=provider_entity,
+                    )
+                    return client.connect()
+
+                client = session_manager.acquire(session_key, factory)
+                try:
+                    return client.invoke_tool(tool_name=self.entity.identity.name, tool_args=tool_parameters)
+                except MCPConnectionError:
+                    # Connection/auth issues should drop the session so the next call can re-establish cleanly
+                    session_manager.invalidate(session_key)
+                    raise
+
+            # Non-workflow path: fallback to ephemeral client
             with MCPClientWithAuthRetry(
                 server_url=server_url,
                 headers=headers,
