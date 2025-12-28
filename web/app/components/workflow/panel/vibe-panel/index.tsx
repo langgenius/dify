@@ -3,7 +3,7 @@
 import type { FC } from 'react'
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { CompletionParams, Model } from '@/types/app'
-import { RiCheckLine, RiClipboardLine, RiInformation2Line, RiRefreshLine } from '@remixicon/react'
+import { RiClipboardLine, RiInformation2Line } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -29,8 +29,12 @@ const VibePanel: FC = () => {
   const { t } = useTranslation()
   const workflowStore = useWorkflowStore()
   const showVibePanel = useStore(s => s.showVibePanel)
+  const setShowVibePanel = useStore(s => s.setShowVibePanel)
   const isVibeGenerating = useStore(s => s.isVibeGenerating)
+  const setIsVibeGenerating = useStore(s => s.setIsVibeGenerating)
   const vibePanelInstruction = useStore(s => s.vibePanelInstruction)
+  const vibePanelMermaidCode = useStore(s => s.vibePanelMermaidCode)
+  const setVibePanelMermaidCode = useStore(s => s.setVibePanelMermaidCode)
   const configsMap = useHooksStore(s => s.configsMap)
 
   const { current: currentFlowGraph, versions, currentVersionIndex, setCurrentVersionIndex } = useVibeFlowData({
@@ -39,7 +43,7 @@ const VibePanel: FC = () => {
 
   const vibePanelPreviewNodes = currentFlowGraph?.nodes || []
   const vibePanelPreviewEdges = currentFlowGraph?.edges || []
-  
+
   const setVibePanelInstruction = useStore(s => s.setVibePanelInstruction)
   const vibePanelIntent = useStore(s => s.vibePanelIntent)
   const setVibePanelIntent = useStore(s => s.setVibePanelIntent)
@@ -127,10 +131,9 @@ const VibePanel: FC = () => {
   }, [handleClose])
 
   const handleCopyMermaid = useCallback(() => {
-    const { vibePanelMermaidCode } = workflowStore.getState()
     copy(vibePanelMermaidCode)
     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-  }, [workflowStore, t])
+  }, [vibePanelMermaidCode, t])
 
   const handleSuggestionClick = useCallback((suggestion: string) => {
     setVibePanelInstruction(suggestion)
