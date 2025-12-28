@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDraftLine } from '@remixicon/react'
+import { RiArchive2Line, RiCheckboxCircleLine, RiCloseCircleLine, RiDeleteBinLine, RiDraftLine, RiRefreshLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
@@ -17,6 +17,7 @@ type IBatchActionProps = {
   onBatchDelete: () => Promise<void>
   onArchive?: () => void
   onEditMetadata?: () => void
+  onBatchReIndex?: () => void
   onCancel: () => void
 }
 
@@ -28,6 +29,7 @@ const BatchAction: FC<IBatchActionProps> = ({
   onArchive,
   onBatchDelete,
   onEditMetadata,
+  onBatchReIndex,
   onCancel,
 }) => {
   const { t } = useTranslation()
@@ -89,6 +91,16 @@ const BatchAction: FC<IBatchActionProps> = ({
           >
             <RiArchive2Line className="size-4" />
             <span className="px-0.5">{t(`${i18nPrefix}.archive`)}</span>
+          </Button>
+        )}
+        {onBatchReIndex && (
+          <Button
+            variant="ghost"
+            className="gap-x-0.5 px-3"
+            onClick={onBatchReIndex}
+          >
+            <RiRefreshLine className="size-4" />
+            <span className="px-0.5">{t(`${i18nPrefix}.reIndex`)}</span>
           </Button>
         )}
         <Button
