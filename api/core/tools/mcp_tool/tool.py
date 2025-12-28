@@ -6,7 +6,15 @@ from typing import Any
 
 from core.mcp.auth_client import MCPClientWithAuthRetry
 from core.mcp.error import MCPConnectionError
-from core.mcp.types import AudioContent, CallToolResult, ImageContent, TextContent
+from core.mcp.types import (
+    AudioContent,
+    BlobResourceContents,
+    CallToolResult,
+    EmbeddedResource,
+    ImageContent,
+    TextContent,
+    TextResourceContents,
+)
 from core.tools.__base.tool import Tool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import ToolEntity, ToolInvokeMessage, ToolProviderType
@@ -57,6 +65,8 @@ class MCPTool(Tool):
                 yield self._process_image_content(content)
             elif isinstance(content, AudioContent):
                 yield self._process_audio_content(content)
+            elif isinstance(content, EmbeddedResource):
+                yield self._process_embedded_resource(content)
             else:
                 logger.warning("Unsupported content type=%s", type(content))
 
@@ -108,6 +118,24 @@ class MCPTool(Tool):
     def _process_audio_content(self, content: AudioContent) -> ToolInvokeMessage:
         """Process audio content and return a blob message."""
         return self.create_blob_message(blob=base64.b64decode(content.data), meta={"mime_type": content.mimeType})
+
+    def _process_embedded_resource(self, content: EmbeddedResource) -> ToolInvokeMessage:
+        """Process embedded resource content and return an appropriate message."""
+        resource = content.resource
+
+        if isinstance(resource, TextResourceContents):
+            # For text resources, use the text directly
+            return self.create_text_message(resource.text)
+        elif isinstance(resource, BlobResourceContents):
+            # For blob resources (PDFs, documents, etc.), decode base64 and create blob message
+            mime_type = resource.mimeType or "application/octet-stream"
+            try:
+                blob = base64.b64decode(resource.blob)
+            except ValueError as e:
+                raise ToolInvokeError(f"Failed to decode base64 blob from embedded resource: {e}") from e
+            return self.create_blob_message(blob=blob, meta={"mime_type": mime_type})
+        else:
+            raise ToolInvokeError(f"Unsupported embedded resource type: {type(resource)}")
 
     def fork_tool_runtime(self, runtime: ToolRuntime) -> "MCPTool":
         return MCPTool(
