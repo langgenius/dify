@@ -54,7 +54,7 @@ const CooldownTimer = ({ secondsRemaining, onFinish }: CooldownTimerProps) => {
 
   return displayTime
     ? (
-        <Tooltip popupContent={t('common.modelProvider.apiKeyRateLimit', { seconds: displayTime })}>
+        <Tooltip popupContent={t('modelProvider.apiKeyRateLimit', { ns: 'common', seconds: displayTime })}>
           <SimplePieChart percentage={Math.round(displayTime / 60 * 100)} className="h-3 w-3" />
         </Tooltip>
       )

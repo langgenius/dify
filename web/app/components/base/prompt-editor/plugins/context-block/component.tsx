@@ -50,7 +50,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
       ref={ref}
     >
       <File05 className="mr-1 h-[14px] w-[14px]" />
-      <div className="mr-1 text-xs font-medium">{t('common.promptEditor.context.item.title')}</div>
+      <div className="mr-1 text-xs font-medium">{t('promptEditor.context.item.title', { ns: 'common' })}</div>
       {!canNotAddContext && (
         <PortalToFollowElem
           open={open}
@@ -73,7 +73,7 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
             <div className="w-[360px] rounded-xl bg-white shadow-lg">
               <div className="p-4">
                 <div className="mb-2 text-xs font-medium text-gray-500">
-                  {t('common.promptEditor.context.modal.title', { num: localDatasets.length })}
+                  {t('promptEditor.context.modal.title', { ns: 'common', num: localDatasets.length })}
                 </div>
                 <div className="max-h-[270px] overflow-y-auto">
                   {
@@ -91,11 +91,11 @@ const ContextBlockComponent: FC<ContextBlockComponentProps> = ({
                   <div className="mr-2 flex h-6 w-6 shrink-0 items-center justify-center rounded-md border-[0.5px] border-gray-100">
                     <RiAddLine className="h-[14px] w-[14px]" />
                   </div>
-                  <div className="text-[13px] font-medium" title="">{t('common.promptEditor.context.modal.add')}</div>
+                  <div className="text-[13px] font-medium" title="">{t('promptEditor.context.modal.add', { ns: 'common' })}</div>
                 </div>
               </div>
               <div className="rounded-b-xl border-t-[0.5px] border-gray-50 bg-gray-50 px-4 py-3 text-xs text-gray-500">
-                {t('common.promptEditor.context.modal.footer')}
+                {t('promptEditor.context.modal.footer', { ns: 'common' })}
               </div>
             </div>
           </PortalToFollowElemContent>

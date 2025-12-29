@@ -31,7 +31,7 @@ export default function LanguagePage() {
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
 
       setLocaleOnClient(item.value.toString() as Locale)
     }
@@ -50,7 +50,7 @@ export default function LanguagePage() {
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
 
       mutateUserProfile()
     }
@@ -65,7 +65,7 @@ export default function LanguagePage() {
   return (
     <>
       <div className="mb-8">
-        <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
+        <div className={titleClassName}>{t('language.displayLanguage', { ns: 'common' })}</div>
         <SimpleSelect
           defaultValue={locale || userProfile.interface_language}
           items={languages.filter(item => item.supported)}
@@ -75,7 +75,7 @@ export default function LanguagePage() {
         />
       </div>
       <div className="mb-8">
-        <div className={titleClassName}>{t('common.language.timezone')}</div>
+        <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
         <SimpleSelect
           defaultValue={userProfile.timezone}
           items={timezones}

@@ -1,3 +1,4 @@
+/* eslint-disable dify-i18n/require-ns-option */
 import type { Locale } from '@/i18n-config'
 import {
   getLocaleOnServer,
