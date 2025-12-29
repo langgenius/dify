@@ -1,3 +1,2 @@
-export { ReactScan } from './react-scan'
-export { ReactScanLoader } from './react-scan'
-export { TanStackDevtoolsWrapper } from './tanstack'
+export * from './react-scan'
+export * from './tanstack'
