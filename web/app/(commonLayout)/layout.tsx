@@ -1,5 +1,6 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
+import { AppInitializer } from '@/app/components/app-initializer'
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import GA, { GaType } from '@/app/components/base/ga'
 import Zendesk from '@/app/components/base/zendesk'
@@ -7,7 +8,6 @@ import GotoAnything from '@/app/components/goto-anything'
 import Header from '@/app/components/header'
 import HeaderWrapper from '@/app/components/header/header-wrapper'
 import ReadmePanel from '@/app/components/plugins/readme-panel'
-import SwrInitializer from '@/app/components/swr-initializer'
 import { AppContextProvider } from '@/context/app-context'
 import { EventEmitterContextProvider } from '@/context/event-emitter'
 import { ModalContextProvider } from '@/context/modal-context'
@@ -20,7 +20,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
     <>
       <GA gaType={GaType.admin} />
       <AmplitudeProvider />
-      <SwrInitializer>
+      <AppInitializer>
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
@@ -38,7 +38,7 @@ const Layout = ({ children }: { children: ReactNode }) => {
           </EventEmitterContextProvider>
         </AppContextProvider>
         <Zendesk />
-      </SwrInitializer>
+      </AppInitializer>
     </>
   )
 }

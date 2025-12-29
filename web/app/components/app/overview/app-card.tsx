@@ -91,26 +91,26 @@ function AppCard({
   const OPERATIONS_MAP = useMemo(() => {
     const operationsMap = {
       webapp: [
-        { opName: t('appOverview.overview.appInfo.launch'), opIcon: RiExternalLinkLine },
+        { opName: t('overview.appInfo.launch', { ns: 'appOverview' }), opIcon: RiExternalLinkLine },
       ] as { opName: string, opIcon: any }[],
-      api: [{ opName: t('appOverview.overview.apiInfo.doc'), opIcon: RiBookOpenLine }],
+      api: [{ opName: t('overview.apiInfo.doc', { ns: 'appOverview' }), opIcon: RiBookOpenLine }],
       app: [],
     }
     if (appInfo.mode !== AppModeEnum.COMPLETION && appInfo.mode !== AppModeEnum.WORKFLOW)
-      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.embedded.entry'), opIcon: RiWindowLine })
+      operationsMap.webapp.push({ opName: t('overview.appInfo.embedded.entry', { ns: 'appOverview' }), opIcon: RiWindowLine })
 
-    operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.customize.entry'), opIcon: RiPaintBrushLine })
+    operationsMap.webapp.push({ opName: t('overview.appInfo.customize.entry', { ns: 'appOverview' }), opIcon: RiPaintBrushLine })
 
     if (isCurrentWorkspaceEditor)
-      operationsMap.webapp.push({ opName: t('appOverview.overview.appInfo.settings.entry'), opIcon: RiEqualizer2Line })
+      operationsMap.webapp.push({ opName: t('overview.appInfo.settings.entry', { ns: 'appOverview' }), opIcon: RiEqualizer2Line })
 
     return operationsMap
   }, [isCurrentWorkspaceEditor, appInfo, t])
 
   const isApp = cardType === 'webapp'
   const basicName = isApp
-    ? t('appOverview.overview.appInfo.title')
-    : t('appOverview.overview.apiInfo.title')
+    ? t('overview.appInfo.title', { ns: 'appOverview' })
+    : t('overview.apiInfo.title', { ns: 'appOverview' })
   const isWorkflowApp = appInfo.mode === AppModeEnum.WORKFLOW
   const appUnpublished = isWorkflowApp && !currentWorkflow?.graph
   const hasStartNode = currentWorkflow?.graph?.nodes?.some(node => node.data.type === BlockEnum.Start)
@@ -126,19 +126,19 @@ function AppCard({
 
   const genClickFuncByName = (opName: string) => {
     switch (opName) {
-      case t('appOverview.overview.appInfo.launch'):
+      case t('overview.appInfo.launch', { ns: 'appOverview' }):
         return () => {
           window.open(appUrl, '_blank')
         }
-      case t('appOverview.overview.appInfo.customize.entry'):
+      case t('overview.appInfo.customize.entry', { ns: 'appOverview' }):
         return () => {
           setShowCustomizeModal(true)
         }
-      case t('appOverview.overview.appInfo.settings.entry'):
+      case t('overview.appInfo.settings.entry', { ns: 'appOverview' }):
         return () => {
           setShowSettingsModal(true)
         }
-      case t('appOverview.overview.appInfo.embedded.entry'):
+      case t('overview.appInfo.embedded.entry', { ns: 'appOverview' }):
         return () => {
           setShowEmbedded(true)
         }
@@ -219,16 +219,16 @@ function AppCard({
               hideType
               type={
                 isApp
-                  ? t('appOverview.overview.appInfo.explanation')
-                  : t('appOverview.overview.apiInfo.explanation')
+                  ? t('overview.appInfo.explanation', { ns: 'appOverview' })
+                  : t('overview.apiInfo.explanation', { ns: 'appOverview' })
               }
             />
             <div className="flex shrink-0 items-center gap-1">
               <Indicator color={runningStatus ? 'green' : 'yellow'} />
               <div className={`${runningStatus ? 'text-text-success' : 'text-text-warning'} system-xs-semibold-uppercase`}>
                 {runningStatus
-                  ? t('appOverview.overview.status.running')
-                  : t('appOverview.overview.status.disable')}
+                  ? t('overview.status.running', { ns: 'appOverview' })
+                  : t('overview.status.disable', { ns: 'appOverview' })}
               </div>
             </div>
             <Tooltip
@@ -241,13 +241,13 @@ function AppCard({
                             ? (
                                 <>
                                   <div className="mb-1 text-xs font-normal text-text-secondary">
-                                    {t('appOverview.overview.appInfo.enableTooltip.description')}
+                                    {t('overview.appInfo.enableTooltip.description', { ns: 'appOverview' })}
                                   </div>
                                   <div
                                     className="cursor-pointer text-xs font-normal text-text-accent hover:underline"
                                     onClick={() => window.open(docLink('/guides/workflow/node/user-input'), '_blank')}
                                   >
-                                    {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+                                    {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
                                   </div>
                                 </>
                               )
@@ -268,8 +268,8 @@ function AppCard({
             <div className="flex flex-col items-start justify-center self-stretch">
               <div className="system-xs-medium pb-1 text-text-tertiary">
                 {isApp
-                  ? t('appOverview.overview.appInfo.accessibleAddress')
-                  : t('appOverview.overview.apiInfo.accessibleAddress')}
+                  ? t('overview.appInfo.accessibleAddress', { ns: 'appOverview' })
+                  : t('overview.apiInfo.accessibleAddress', { ns: 'appOverview' })}
               </div>
               <div className="inline-flex h-9 w-full items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
                 <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
@@ -287,8 +287,8 @@ function AppCard({
                 {showConfirmDelete && (
                   <Confirm
                     type="warning"
-                    title={t('appOverview.overview.appInfo.regenerate')}
-                    content={t('appOverview.overview.appInfo.regenerateNotice')}
+                    title={t('overview.appInfo.regenerate', { ns: 'appOverview' })}
+                    content={t('overview.appInfo.regenerateNotice', { ns: 'appOverview' })}
                     isShow={showConfirmDelete}
                     onConfirm={() => {
                       onGenCode()
@@ -299,7 +299,7 @@ function AppCard({
                 )}
                 {isApp && isCurrentWorkspaceManager && (
                   <Tooltip
-                    popupContent={t('appOverview.overview.appInfo.regenerate') || ''}
+                    popupContent={t('overview.appInfo.regenerate', { ns: 'appOverview' }) || ''}
                   >
                     <div
                       className="h-6 w-6 cursor-pointer rounded-md hover:bg-state-base-hover"
@@ -319,7 +319,7 @@ function AppCard({
           )}
           {!isMinimalState && isApp && systemFeatures.webapp_auth.enabled && appDetail && (
             <div className="flex flex-col items-start justify-center self-stretch">
-              <div className="system-xs-medium pb-1 text-text-tertiary">{t('app.publishApp.title')}</div>
+              <div className="system-xs-medium pb-1 text-text-tertiary">{t('publishApp.title', { ns: 'app' })}</div>
               <div
                 className="flex h-9 w-full cursor-pointer items-center gap-x-0.5  rounded-lg bg-components-input-bg-normal py-1 pl-2.5 pr-2"
                 onClick={handleClickAccessControl}
@@ -329,32 +329,32 @@ function AppCard({
                     && (
                       <>
                         <RiBuildingLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.organization')}</p>
+                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.organization', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.SPECIFIC_GROUPS_MEMBERS
                     && (
                       <>
                         <RiLockLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.specific')}</p>
+                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.PUBLIC
                     && (
                       <>
                         <RiGlobalLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.anyone')}</p>
+                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.anyone', { ns: 'app' })}</p>
                       </>
                     )}
                   {appDetail?.access_mode === AccessMode.EXTERNAL_MEMBERS
                     && (
                       <>
                         <RiVerifiedBadgeLine className="h-4 w-4 shrink-0 text-text-secondary" />
-                        <p className="system-sm-medium text-text-secondary">{t('app.accessControlDialog.accessItems.external')}</p>
+                        <p className="system-sm-medium text-text-secondary">{t('accessControlDialog.accessItems.external', { ns: 'app' })}</p>
                       </>
                     )}
                 </div>
-                {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('app.publishApp.notSet')}</p>}
+                {!isAppAccessSet && <p className="system-xs-regular shrink-0 text-text-tertiary">{t('publishApp.notSet', { ns: 'app' })}</p>}
                 <div className="flex h-4 w-4 shrink-0 items-center justify-center">
                   <RiArrowRightSLine className="h-4 w-4 text-text-quaternary" />
                 </div>
@@ -369,7 +369,7 @@ function AppCard({
               const disabled
                 = triggerModeDisabled
                   ? true
-                  : op.opName === t('appOverview.overview.appInfo.settings.entry')
+                  : op.opName === t('overview.appInfo.settings.entry', { ns: 'appOverview' })
                     ? false
                     : !runningStatus
               return (
@@ -383,7 +383,7 @@ function AppCard({
                 >
                   <Tooltip
                     popupContent={
-                      t('appOverview.overview.appInfo.preUseReminder') ?? ''
+                      t('overview.appInfo.preUseReminder', { ns: 'appOverview' }) ?? ''
                     }
                     popupClassName={disabled ? 'mt-[-8px]' : '!hidden'}
                   >

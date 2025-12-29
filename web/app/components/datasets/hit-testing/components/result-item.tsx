@@ -16,7 +16,7 @@ import ChunkDetailModal from './chunk-detail-modal'
 import ResultItemFooter from './result-item-footer'
 import ResultItemMeta from './result-item-meta'
 
-const i18nPrefix = 'datasetHitTesting'
+const i18nPrefix = ''
 type ResultItemProps = {
   payload: HitTesting
 }
@@ -78,7 +78,7 @@ const ResultItem = ({
               }}
             >
               <Icon className={cn('h-4 w-4', isFold && 'opacity-50')} />
-              <div className="text-xs font-semibold uppercase">{t(`${i18nPrefix}.hitChunks`, { num: child_chunks.length })}</div>
+              <div className="text-xs font-semibold uppercase">{t(`${i18nPrefix}hitChunks`, { ns: 'datasetHitTesting', num: child_chunks.length })}</div>
             </div>
             {!isFold && (
               <div className="space-y-2">

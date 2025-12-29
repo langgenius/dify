@@ -116,7 +116,7 @@ const PopupItem: FC<PopupItemProps> = ({
                   && modelItem.features?.some(feature => [ModelFeatureEnum.vision, ModelFeatureEnum.audio, ModelFeatureEnum.video, ModelFeatureEnum.document].includes(feature))
                   && (
                     <div className="pt-2">
-                      <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('common.model.capabilities')}</div>
+                      <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('model.capabilities', { ns: 'common' })}</div>
                       <div className="flex flex-wrap gap-1">
                         {modelItem.features?.map(feature => (
                           <FeatureIcon
@@ -158,7 +158,7 @@ const PopupItem: FC<PopupItemProps> = ({
                     className="hidden cursor-pointer text-xs font-medium text-text-accent group-hover:block"
                     onClick={handleOpenModelModal}
                   >
-                    {t('common.operation.add').toLocaleUpperCase()}
+                    {t('operation.add', { ns: 'common' }).toLocaleUpperCase()}
                   </div>
                 )
               }
