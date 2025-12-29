@@ -8,6 +8,7 @@
   "batchAction.delete": "Delete",
   "batchAction.disable": "Disable",
   "batchAction.enable": "Enable",
+  "batchAction.reIndex": "Re-index",
   "batchAction.selected": "Selected",
   "chunkingMode.general": "General",
   "chunkingMode.graph": "Graph",
