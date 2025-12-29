@@ -134,7 +134,7 @@
     "remark-breaks": "^4.0.0",
     "remark-gfm": "^4.0.1",
     "remark-math": "^6.0.0",
-    "scheduler": "^0.26.0",
+    "scheduler": "^0.27.0",
     "semver": "^7.7.3",
     "sharp": "^0.33.5",
     "sortablejs": "^1.15.6",
