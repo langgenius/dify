@@ -22,7 +22,7 @@ vi.mock('react-i18next', () => ({
       return `${prefix}${key}`
     },
   }),
-  Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
+  Trans: ({ i18nKey, ns }: { i18nKey: string, ns?: string }) => <span>{ns ? `${ns}.${i18nKey}` : i18nKey}</span>,
 }))
 
 vi.mock('../../../../base/toast', () => ({
