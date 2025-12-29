@@ -9,7 +9,6 @@ from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
 from configs import dify_config
-from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from controllers.web.error import NotFoundError
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import CredentialType
@@ -345,13 +344,8 @@ class TriggerSubscriptionUpdateApi(Resource):
         provider_id = TriggerProviderID(subscription.provider_id)
 
         try:
-            # rename only
-            if (
-                args.name is not None
-                and args.credentials is None
-                and args.parameters is None
-                and args.properties is None
-            ):
+            # for rename only, update the name
+            if args.name is not None and not any((args.credentials, args.parameters, args.properties)):
                 TriggerProviderService.update_trigger_subscription(
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,
@@ -359,36 +353,26 @@ class TriggerSubscriptionUpdateApi(Resource):
                 )
                 return 200
 
-            # rebuild for create automatically by the provider
-            match subscription.credential_type:
-                case CredentialType.UNAUTHORIZED:
-                    TriggerProviderService.update_trigger_subscription(
-                        tenant_id=user.current_tenant_id,
-                        subscription_id=subscription_id,
-                        name=args.name,
-                        properties=args.properties,
-                    )
-                    return 200
-                case CredentialType.API_KEY | CredentialType.OAUTH2:
-                    if args.credentials:
-                        new_credentials: dict[str, Any] = {
-                            key: value if value != HIDDEN_VALUE else subscription.credentials.get(key, UNKNOWN_VALUE)
-                            for key, value in args.credentials.items()
-                        }
-                    else:
-                        new_credentials = subscription.credentials
+            # for manually created subscription, only update the name and properties
+            if subscription.credential_type == CredentialType.UNAUTHORIZED:
+                TriggerProviderService.update_trigger_subscription(
+                    tenant_id=user.current_tenant_id,
+                    subscription_id=subscription_id,
+                    name=args.name,
+                    properties=args.properties,
+                )
+                return 200
 
-                    TriggerProviderService.rebuild_trigger_subscription(
-                        tenant_id=user.current_tenant_id,
-                        name=args.name,
-                        provider_id=provider_id,
-                        subscription_id=subscription_id,
-                        credentials=new_credentials,
-                        parameters=args.parameters or subscription.parameters,
-                    )
-                    return 200
-                case _:
-                    raise BadRequest("Invalid credential type")
+            # rebuild for create automatically by the provider
+            TriggerProviderService.rebuild_trigger_subscription(
+                tenant_id=user.current_tenant_id,
+                name=args.name,
+                provider_id=provider_id,
+                subscription_id=subscription_id,
+                credentials=args.credentials or subscription.credentials,
+                parameters=args.parameters or subscription.parameters,
+            )
+            return 200
         except ValueError as e:
             raise BadRequest(str(e))
         except Exception as e:
