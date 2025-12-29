@@ -40,10 +40,7 @@ from libs.infinite_scroll_pagination import InfiniteScrollPagination
 from libs.time_parser import get_time_threshold
 from libs.uuid_utils import uuidv7
 from models.enums import WorkflowRunTriggeredFrom
-from models.workflow import WorkflowAppLog, WorkflowPauseReason, WorkflowRun
-from models.workflow import (
-    WorkflowPause as WorkflowPauseModel,
-)
+from models.workflow import WorkflowAppLog, WorkflowPause, WorkflowPauseReason, WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.entities.workflow_pause import WorkflowPauseEntity
 from repositories.types import (
@@ -362,8 +359,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         session: Session,
         run_id: str,
-    ) -> Sequence[WorkflowPauseModel]:
-        stmt = select(WorkflowPauseModel).where(WorkflowPauseModel.workflow_run_id == run_id)
+    ) -> Sequence[WorkflowPause]:
+        stmt = select(WorkflowPause).where(WorkflowPause.workflow_run_id == run_id)
         return list(session.scalars(stmt))
 
     def get_pause_reason_records_by_run_id(
@@ -404,9 +401,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             app_logs_result = session.execute(delete(WorkflowAppLog).where(WorkflowAppLog.workflow_run_id.in_(run_ids)))
             app_logs_deleted = cast(CursorResult, app_logs_result).rowcount or 0
 
-            pause_ids = session.scalars(
-                select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
-            ).all()
+            pause_stmt = select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))
+            pause_ids = session.scalars(pause_stmt).all()
             pause_reasons_deleted = 0
             pauses_deleted = 0
 
@@ -415,7 +411,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                     delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
                 )
                 pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-                pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
+                pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
                 pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
             trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
@@ -457,9 +453,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         else:
             node_executions_deleted, offloads_deleted = 0, 0
 
-        pause_ids = session.scalars(
-            select(WorkflowPauseModel.id).where(WorkflowPauseModel.workflow_run_id.in_(run_ids))
-        ).all()
+        pause_ids = session.scalars(select(WorkflowPause.id).where(WorkflowPause.workflow_run_id.in_(run_ids))).all()
         pause_reasons_deleted = 0
         pauses_deleted = 0
 
@@ -468,7 +462,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 delete(WorkflowPauseReason).where(WorkflowPauseReason.pause_id.in_(pause_ids))
             )
             pause_reasons_deleted = cast(CursorResult, pause_reasons_result).rowcount or 0
-            pauses_result = session.execute(delete(WorkflowPauseModel).where(WorkflowPauseModel.id.in_(pause_ids)))
+            pauses_result = session.execute(delete(WorkflowPause).where(WorkflowPause.id.in_(pause_ids)))
             pauses_deleted = cast(CursorResult, pauses_result).rowcount or 0
 
         trigger_logs_deleted = delete_trigger_logs(session, run_ids) if delete_trigger_logs else 0
@@ -563,9 +557,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             ValueError: If workflow_run_id is invalid or workflow run doesn't exist
             RuntimeError: If workflow is already paused or in invalid state
         """
-        previous_pause_model_query = select(WorkflowPauseModel).where(
-            WorkflowPauseModel.workflow_run_id == workflow_run_id
-        )
+        previous_pause_model_query = select(WorkflowPause).where(WorkflowPause.workflow_run_id == workflow_run_id)
         with self._session_maker() as session, session.begin():
             # Get the workflow run
             workflow_run = session.get(WorkflowRun, workflow_run_id)
@@ -590,7 +582,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             # Upload the state file
 
             # Create the pause record
-            pause_model = WorkflowPauseModel()
+            pause_model = WorkflowPause()
             pause_model.id = str(uuidv7())
             pause_model.workflow_id = workflow_run.workflow_id
             pause_model.workflow_run_id = workflow_run.id
@@ -762,13 +754,13 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         """
         with self._session_maker() as session, session.begin():
             # Get the pause model by ID
-            pause_model = session.get(WorkflowPauseModel, pause_entity.id)
+            pause_model = session.get(WorkflowPause, pause_entity.id)
             if pause_model is None:
                 raise _WorkflowRunError(f"WorkflowPause not found: {pause_entity.id}")
             self._delete_pause_model(session, pause_model)
 
     @staticmethod
-    def _delete_pause_model(session: Session, pause_model: WorkflowPauseModel):
+    def _delete_pause_model(session: Session, pause_model: WorkflowPause):
         storage.delete(pause_model.state_object_key)
 
         # Delete the pause record
@@ -803,15 +795,15 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         _limit: int = limit or 1000
         pruned_record_ids: list[str] = []
         cond = or_(
-            WorkflowPauseModel.created_at < expiration,
+            WorkflowPause.created_at < expiration,
             and_(
-                WorkflowPauseModel.resumed_at.is_not(null()),
-                WorkflowPauseModel.resumed_at < resumption_expiration,
+                WorkflowPause.resumed_at.is_not(null()),
+                WorkflowPause.resumed_at < resumption_expiration,
             ),
         )
         # First, collect pause records to delete with their state files
         # Expired pauses (created before expiration time)
-        stmt = select(WorkflowPauseModel).where(cond).limit(_limit)
+        stmt = select(WorkflowPause).where(cond).limit(_limit)
 
         with self._session_maker(expire_on_commit=False) as session:
             # Old resumed pauses (resumed more than resumption_duration ago)
@@ -822,7 +814,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         # Delete state files from storage
         for pause in pauses_to_delete:
             with self._session_maker(expire_on_commit=False) as session, session.begin():
-                # todo: this issues a separate query for each WorkflowPauseModel record.
+                # todo: this issues a separate query for each WorkflowPause record.
                 # consider batching this lookup.
                 try:
                     storage.delete(pause.state_object_key)
@@ -1074,7 +1066,7 @@ class _PrivateWorkflowPauseEntity(WorkflowPauseEntity):
     def __init__(
         self,
         *,
-        pause_model: WorkflowPauseModel,
+        pause_model: WorkflowPause,
         reason_models: Sequence[WorkflowPauseReason],
         human_input_form: Sequence = (),
     ) -> None:
