@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "Безкоштовні можливості:",
   "plans.community.name": "Спільнота",
   "plans.community.price": "Безкоштовно",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "Зв'язатися з відділом продажу",
   "plans.enterprise.description": "Отримайте повні можливості та підтримку для масштабних критично важливих систем.",
   "plans.enterprise.features": [
