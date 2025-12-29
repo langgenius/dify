@@ -526,9 +526,6 @@ importers:
       lint-staged:
         specifier: ^15.5.2
         version: 15.5.2
-      lodash:
-        specifier: ^4.17.21
-        version: 4.17.21
       nock:
         specifier: ^14.0.10
         version: 14.0.10
