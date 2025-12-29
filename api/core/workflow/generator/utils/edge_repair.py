@@ -12,7 +12,8 @@ The repair logic is deterministic and doesn't require LLM calls.
 
 import logging
 from dataclasses import dataclass, field
-from typing import Any
+
+from core.workflow.generator.types import WorkflowDataDict, WorkflowEdgeDict, WorkflowNodeDict
 
 logger = logging.getLogger(__name__)
 
@@ -21,8 +22,8 @@ logger = logging.getLogger(__name__)
 class RepairResult:
     """Result of edge repair operation."""
 
-    nodes: list[dict[str, Any]]
-    edges: list[dict[str, Any]]
+    nodes: list[WorkflowNodeDict]
+    edges: list[WorkflowEdgeDict]
     repairs_made: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
 
@@ -44,7 +45,7 @@ class EdgeRepair:
     """
 
     @classmethod
-    def repair(cls, workflow_data: dict[str, Any]) -> RepairResult:
+    def repair(cls, workflow_data: WorkflowDataDict) -> RepairResult:
         """
         Repair edges in the workflow data.
 
@@ -69,8 +70,8 @@ class EdgeRepair:
             repairs.extend(inferred_repairs)
 
         # 2. Build edge index for analysis
-        outgoing_edges: dict[str, list[dict[str, Any]]] = {}
-        incoming_edges: dict[str, list[dict[str, Any]]] = {}
+        outgoing_edges: dict[str, list[WorkflowEdgeDict]] = {}
+        incoming_edges: dict[str, list[WorkflowEdgeDict]] = {}
         for edge in edges:
             src = edge.get("source")
             tgt = edge.get("target")
@@ -106,16 +107,12 @@ class EdgeRepair:
                     outgoing_edges.setdefault(edge.get("source"), []).append(edge)
 
         # 5. Connect orphaned nodes (nodes with no incoming edge, except start)
-        new_edges, orphan_repairs = cls._connect_orphaned_nodes(
-            nodes, edges, outgoing_edges, incoming_edges
-        )
+        new_edges, orphan_repairs = cls._connect_orphaned_nodes(nodes, edges, outgoing_edges, incoming_edges)
         edges.extend(new_edges)
         repairs.extend(orphan_repairs)
 
         # 6. Connect nodes with no outgoing edge to 'end' (except end nodes)
-        new_edges, terminal_repairs = cls._connect_terminal_nodes(
-            nodes, edges, outgoing_edges
-        )
+        new_edges, terminal_repairs = cls._connect_terminal_nodes(nodes, edges, outgoing_edges)
         edges.extend(new_edges)
         repairs.extend(terminal_repairs)
 
@@ -127,13 +124,13 @@ class EdgeRepair:
         )
 
     @classmethod
-    def _infer_linear_chain(cls, nodes: list[dict[str, Any]]) -> tuple[list[dict[str, Any]], list[str]]:
+    def _infer_linear_chain(cls, nodes: list[WorkflowNodeDict]) -> tuple[list[WorkflowEdgeDict], list[str]]:
         """
         Infer a linear chain of edges from node order.
 
         This is used when no edges are provided at all.
         """
-        edges: list[dict[str, Any]] = []
+        edges: list[WorkflowEdgeDict] = []
         repairs: list[str] = []
 
         # Filter to get ordered node IDs
@@ -154,17 +151,17 @@ class EdgeRepair:
     @classmethod
     def _repair_classifier_branches(
         cls,
-        node: dict[str, Any],
-        edges: list[dict[str, Any]],
-        outgoing_edges: dict[str, list[dict[str, Any]]],
+        node: WorkflowNodeDict,
+        edges: list[WorkflowEdgeDict],
+        outgoing_edges: dict[str, list[WorkflowEdgeDict]],
         valid_node_ids: set[str],
-    ) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    ) -> tuple[list[WorkflowEdgeDict], list[str], list[str]]:
         """
         Repair missing branches for question-classifier nodes.
 
         For each class that doesn't have an edge, create one pointing to 'end'.
         """
-        new_edges: list[dict[str, Any]] = []
+        new_edges: list[WorkflowEdgeDict] = []
         repairs: list[str] = []
         warnings: list[str] = []
 
@@ -219,15 +216,15 @@ class EdgeRepair:
     @classmethod
     def _repair_if_else_branches(
         cls,
-        node: dict[str, Any],
-        edges: list[dict[str, Any]],
-        outgoing_edges: dict[str, list[dict[str, Any]]],
+        node: WorkflowNodeDict,
+        edges: list[WorkflowEdgeDict],
+        outgoing_edges: dict[str, list[WorkflowEdgeDict]],
         valid_node_ids: set[str],
-    ) -> tuple[list[dict[str, Any]], list[str], list[str]]:
+    ) -> tuple[list[WorkflowEdgeDict], list[str], list[str]]:
         """
         Repair missing true/false branches for if-else nodes.
         """
-        new_edges: list[dict[str, Any]] = []
+        new_edges: list[WorkflowEdgeDict] = []
         repairs: list[str] = []
         warnings: list[str] = []
 
@@ -271,17 +268,17 @@ class EdgeRepair:
     @classmethod
     def _connect_orphaned_nodes(
         cls,
-        nodes: list[dict[str, Any]],
-        edges: list[dict[str, Any]],
-        outgoing_edges: dict[str, list[dict[str, Any]]],
-        incoming_edges: dict[str, list[dict[str, Any]]],
-    ) -> tuple[list[dict[str, Any]], list[str]]:
+        nodes: list[WorkflowNodeDict],
+        edges: list[WorkflowEdgeDict],
+        outgoing_edges: dict[str, list[WorkflowEdgeDict]],
+        incoming_edges: dict[str, list[WorkflowEdgeDict]],
+    ) -> tuple[list[WorkflowEdgeDict], list[str]]:
         """
         Connect orphaned nodes to the previous node in sequence.
 
         An orphaned node has no incoming edges and is not a 'start' node.
         """
-        new_edges: list[dict[str, Any]] = []
+        new_edges: list[WorkflowEdgeDict] = []
         repairs: list[str] = []
 
         node_ids = [n.get("id") for n in nodes if n.get("id")]
@@ -311,17 +308,17 @@ class EdgeRepair:
     @classmethod
     def _connect_terminal_nodes(
         cls,
-        nodes: list[dict[str, Any]],
-        edges: list[dict[str, Any]],
-        outgoing_edges: dict[str, list[dict[str, Any]]],
-    ) -> tuple[list[dict[str, Any]], list[str]]:
+        nodes: list[WorkflowNodeDict],
+        edges: list[WorkflowEdgeDict],
+        outgoing_edges: dict[str, list[WorkflowEdgeDict]],
+    ) -> tuple[list[WorkflowEdgeDict], list[str]]:
         """
         Connect terminal nodes (no outgoing edges) to 'end'.
 
         A terminal node has no outgoing edges and is not an 'end' node.
         This ensures all branches eventually reach 'end'.
         """
-        new_edges: list[dict[str, Any]] = []
+        new_edges: list[WorkflowEdgeDict] = []
         repairs: list[str] = []
 
         # Find end node
@@ -360,4 +357,3 @@ class EdgeRepair:
             outgoing_edges.setdefault(node_id, []).append(new_edge)
 
         return new_edges, repairs
-

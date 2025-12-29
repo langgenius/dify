@@ -16,6 +16,12 @@ from core.workflow.generator.config import (
     FALLBACK_RULES,
     OFF_TOPIC_RESPONSES,
 )
+from core.workflow.generator.types import (
+    AvailableModelDict,
+    AvailableToolDict,
+    WorkflowDataDict,
+    WorkflowNodeDict,
+)
 
 
 def extract_instruction_values(instruction: str) -> dict[str, Any]:
@@ -29,10 +35,10 @@ def extract_instruction_values(instruction: str) -> dict[str, Any]:
 
     return {
         "urls": urls,
-        "emails": re.findall(r'[\w.-]+@[\w.-]+\.\w+', instruction),
+        "emails": re.findall(r"[\w.-]+@[\w.-]+\.\w+", instruction),
         "api_endpoints": [u for u in urls if "/api/" in u or "/v1/" in u or "/v2/" in u],
-        "file_extensions": re.findall(r'\.(json|csv|txt|pdf|docx?)(?:\s|$)', instruction, re.IGNORECASE),
-        "json_paths": re.findall(r'\.[\w]+(?:\.[\w]+)+', instruction),  # e.g., .data.results
+        "file_extensions": re.findall(r"\.(json|csv|txt|pdf|docx?)(?:\s|$)", instruction, re.IGNORECASE),
+        "json_paths": re.findall(r"\.[\w]+(?:\.[\w]+)+", instruction),  # e.g., .data.results
     }
 
 
@@ -354,7 +360,7 @@ Generate your JSON response now. Remember:
 """
 
 
-def format_available_nodes(nodes: list[dict[str, Any]] | None) -> str:
+def format_available_nodes(nodes: list[WorkflowNodeDict] | None) -> str:
     """Format available nodes as XML with parameter schemas."""
     lines = ["<available_nodes>"]
 
@@ -418,7 +424,7 @@ def format_available_nodes(nodes: list[dict[str, Any]] | None) -> str:
     return "\n".join(lines)
 
 
-def format_available_tools(tools: list[dict[str, Any]] | None) -> str:
+def format_available_tools(tools: list[AvailableToolDict] | None) -> str:
     """Format available tools as XML with parameter schemas."""
     lines = ["<available_tools>"]
 
@@ -428,8 +434,8 @@ def format_available_tools(tools: list[dict[str, Any]] | None) -> str:
         lines.append("</available_tools>")
         return "\n".join(lines)
 
-    configured_tools: list[dict[str, Any]] = []
-    unconfigured_tools: list[dict[str, Any]] = []
+    configured_tools: list[AvailableToolDict] = []
+    unconfigured_tools: list[AvailableToolDict] = []
 
     for tool in tools:
         if tool.get("is_team_authorization", False):
@@ -495,7 +501,7 @@ def format_available_tools(tools: list[dict[str, Any]] | None) -> str:
     return "\n".join(lines)
 
 
-def format_existing_nodes(nodes: list[dict[str, Any]] | None) -> str:
+def format_existing_nodes(nodes: list[WorkflowNodeDict] | None) -> str:
     """Format existing workflow nodes for context."""
     if not nodes:
         return "No existing nodes in workflow (creating from scratch)."
@@ -511,7 +517,7 @@ def format_existing_nodes(nodes: list[dict[str, Any]] | None) -> str:
 
 def format_selected_nodes(
     selected_ids: list[str] | None,
-    existing_nodes: list[dict[str, Any]] | None,
+    existing_nodes: list[WorkflowNodeDict] | None,
 ) -> str:
     """Format selected nodes for modification context."""
     if not selected_ids:
@@ -529,7 +535,7 @@ def format_selected_nodes(
 
 
 def format_previous_attempt(
-    previous_workflow: dict[str, Any] | None,
+    previous_workflow: WorkflowDataDict | None,
     regenerate_mode: bool = False,
 ) -> str:
     """
@@ -598,7 +604,7 @@ def format_previous_attempt(
     return "\n".join(parts)
 
 
-def format_available_models(models: list[dict[str, Any]] | None) -> str:
+def format_available_models(models: list[AvailableModelDict] | None) -> str:
     """Format available models as XML for prompt inclusion."""
     if not models:
         return "<available_models>\n  <!-- No models configured - omit model config from nodes -->\n</available_models>"
@@ -641,14 +647,14 @@ def format_available_models(models: list[dict[str, Any]] | None) -> str:
 
 def build_vibe_enhanced_prompt(
     instruction: str,
-    available_nodes: list[dict[str, Any]] | None = None,
-    available_tools: list[dict[str, Any]] | None = None,
-    existing_nodes: list[dict[str, Any]] | None = None,
+    available_nodes: list[WorkflowNodeDict] | None = None,
+    available_tools: list[AvailableToolDict] | None = None,
+    existing_nodes: list[WorkflowNodeDict] | None = None,
     selected_node_ids: list[str] | None = None,
-    previous_workflow: dict[str, Any] | None = None,
+    previous_workflow: WorkflowDataDict | None = None,
     regenerate_mode: bool = False,
     preferred_language: str | None = None,
-    available_models: list[dict[str, Any]] | None = None,
+    available_models: list[AvailableModelDict] | None = None,
 ) -> tuple[str, str]:
     """Build the complete system and user prompts."""
     # Extract concrete values from user instruction for auto-fill hints
@@ -724,8 +730,8 @@ def parse_vibe_response(content: str) -> dict[str, Any]:
 
 
 def validate_tool_references(
-    nodes: list[dict[str, Any]],
-    available_tools: list[dict[str, Any]] | None,
+    nodes: list[WorkflowNodeDict],
+    available_tools: list[AvailableToolDict] | None,
 ) -> tuple[list[str], list[dict[str, Any]]]:
     """
     Validate tool references and return warnings and recommendations.
@@ -784,12 +790,14 @@ def validate_tool_references(
                     seen_recommendations.add(tool_ref)
                     warnings.append(f"Tool '{tool_ref}' requires configuration")
                     tool_info = tool_info_map.get(tool_ref, {})
-                    recommendations.append({
-                        "requested_capability": f"Use {tool_ref}",
-                        "unconfigured_tools": [tool_info] if tool_info else [],
-                        "configured_alternatives": [],
-                        "recommendation": f"Configure '{tool_ref}' in Tools settings to enable this functionality",
-                    })
+                    recommendations.append(
+                        {
+                            "requested_capability": f"Use {tool_ref}",
+                            "unconfigured_tools": [tool_info] if tool_info else [],
+                            "configured_alternatives": [],
+                            "recommendation": f"Configure '{tool_ref}' in Tools settings to enable this functionality",
+                        }
+                    )
             else:
                 # Tool doesn't exist at all
                 warnings.append(f"Tool '{tool_ref}' not found in available tools")
@@ -817,7 +825,7 @@ def determine_fallback_type(tool_ref: str, node_title: str) -> str | None:
     return None
 
 
-def create_http_request_fallback(original_node: dict[str, Any]) -> dict[str, Any]:
+def create_http_request_fallback(original_node: WorkflowNodeDict) -> WorkflowNodeDict:
     """Create http-request fallback node, preserving original URL if present."""
     config = original_node.get("config", {})
     tool_params = config.get("tool_parameters", {})
@@ -828,12 +836,7 @@ def create_http_request_fallback(original_node: dict[str, Any]) -> dict[str, Any
         params = {}
 
     # Try to preserve URL from original config (check multiple locations)
-    original_url = (
-        config.get("url")
-        or tool_params.get("url")
-        or params.get("url")
-        or ""
-    )
+    original_url = config.get("url") or tool_params.get("url") or params.get("url") or ""
 
     # Headers should be a string (newline separated key: value pairs)
     headers = config.get("headers") or tool_params.get("headers") or params.get("headers") or ""
@@ -864,7 +867,7 @@ def create_http_request_fallback(original_node: dict[str, Any]) -> dict[str, Any
     }
 
 
-def create_code_fallback(original_node: dict[str, Any]) -> dict[str, Any]:
+def create_code_fallback(original_node: WorkflowNodeDict) -> WorkflowNodeDict:
     """Create code fallback node with placeholder implementation."""
     title = original_node.get("title", "Process")
     return {
@@ -878,7 +881,7 @@ def create_code_fallback(original_node: dict[str, Any]) -> dict[str, Any]:
     }
 
 
-def create_llm_fallback(original_node: dict[str, Any]) -> dict[str, Any]:
+def create_llm_fallback(original_node: WorkflowNodeDict) -> WorkflowNodeDict:
     """Create LLM fallback node for text analysis tasks."""
     title = original_node.get("title", "Analyze")
     return {
@@ -895,9 +898,9 @@ def create_llm_fallback(original_node: dict[str, Any]) -> dict[str, Any]:
 
 
 def sanitize_tool_nodes(
-    nodes: list[dict[str, Any]],
-    available_tools: list[dict[str, Any]] | None,
-) -> tuple[list[dict[str, Any]], list[str]]:
+    nodes: list[WorkflowNodeDict],
+    available_tools: list[AvailableToolDict] | None,
+) -> tuple[list[WorkflowNodeDict], list[str]]:
     """
     Replace invalid tool nodes with fallback nodes (http-request or code).
 
@@ -920,7 +923,7 @@ def sanitize_tool_nodes(
             if tool_key:
                 valid_tool_keys.add(tool_key)
 
-    sanitized: list[dict[str, Any]] = []
+    sanitized: list[WorkflowNodeDict] = []
     warnings: list[str] = []
 
     for node in nodes:
@@ -969,8 +972,7 @@ def sanitize_tool_nodes(
                 fallback_node = create_llm_fallback(node)
                 sanitized.append(fallback_node)
                 warnings.append(
-                    f"Tool '{tool_ref}' not found. Replaced with LLM node. "
-                    "Please configure the prompt template."
+                    f"Tool '{tool_ref}' not found. Replaced with LLM node. Please configure the prompt template."
                 )
             else:
                 # No appropriate fallback - keep original node and warn
@@ -983,7 +985,7 @@ def sanitize_tool_nodes(
     return sanitized, warnings
 
 
-def validate_node_parameters(nodes: list[dict[str, Any]]) -> list[str]:
+def validate_node_parameters(nodes: list[WorkflowNodeDict]) -> list[str]:
     """
     Validate that all required parameters are properly filled in generated nodes.
 
@@ -1030,16 +1032,12 @@ def validate_node_parameters(nodes: list[dict[str, Any]]) -> list[str]:
         elif node_type == "start":
             variables = config.get("variables", [])
             if not variables:
-                warnings.append(
-                    "Start node should define input variables for user data (e.g., url, query, content)"
-                )
+                warnings.append("Start node should define input variables for user data (e.g., url, query, content)")
 
         elif node_type == "end":
             outputs = config.get("outputs", [])
             if not outputs:
-                warnings.append(
-                    "End node should define output variables to return workflow results"
-                )
+                warnings.append("End node should define output variables to return workflow results")
 
     return warnings
 
@@ -1067,12 +1065,12 @@ def extract_mermaid_from_response(data: dict[str, Any]) -> str:
         label = match.group(2)  # the label between pipes
         # Remove or replace special characters that break Mermaid
         # Parentheses, brackets, braces have special meaning in Mermaid
-        sanitized = re.sub(r'[(){}\[\]]', '', label)
+        sanitized = re.sub(r"[(){}\[\]]", "", label)
         return f"{arrow}|{sanitized}|"
 
     # Only match edge labels: --> or --- followed by |label|
     # This pattern ensures we only sanitize actual edge labels, not node content
-    mermaid = re.sub(r'(-->|---)\|([^|]+)\|', sanitize_edge_label, mermaid)
+    mermaid = re.sub(r"(-->|---)\|([^|]+)\|", sanitize_edge_label, mermaid)
 
     return mermaid
 
@@ -1125,42 +1123,48 @@ def classify_validation_errors(
     user_required: list[dict[str, Any]] = []
 
     for error in result.fixable_errors:
-        fixable.append({
-            "node_id": error.node_id,
-            "node_type": error.node_type,
-            "error_type": error.rule_id,
-            "message": error.message,
-            "is_fixable": True,
-            "fix_hint": error.fix_hint,
-            "category": error.category.value,
-            "details": error.details,
-        })
+        fixable.append(
+            {
+                "node_id": error.node_id,
+                "node_type": error.node_type,
+                "error_type": error.rule_id,
+                "message": error.message,
+                "is_fixable": True,
+                "fix_hint": error.fix_hint,
+                "category": error.category.value,
+                "details": error.details,
+            }
+        )
 
     for error in result.user_required_errors:
-        user_required.append({
-            "node_id": error.node_id,
-            "node_type": error.node_type,
-            "error_type": error.rule_id,
-            "message": error.message,
-            "is_fixable": False,
-            "fix_hint": error.fix_hint,
-            "category": error.category.value,
-            "details": error.details,
-        })
+        user_required.append(
+            {
+                "node_id": error.node_id,
+                "node_type": error.node_type,
+                "error_type": error.rule_id,
+                "message": error.message,
+                "is_fixable": False,
+                "fix_hint": error.fix_hint,
+                "category": error.category.value,
+                "details": error.details,
+            }
+        )
 
     # Include warnings in user_required (they're non-blocking but informative)
     for error in result.warnings:
-        user_required.append({
-            "node_id": error.node_id,
-            "node_type": error.node_type,
-            "error_type": error.rule_id,
-            "message": error.message,
-            "is_fixable": error.is_fixable,
-            "fix_hint": error.fix_hint,
-            "category": error.category.value,
-            "severity": "warning",
-            "details": error.details,
-        })
+        user_required.append(
+            {
+                "node_id": error.node_id,
+                "node_type": error.node_type,
+                "error_type": error.rule_id,
+                "message": error.message,
+                "is_fixable": error.is_fixable,
+                "fix_hint": error.fix_hint,
+                "category": error.category.value,
+                "severity": "warning",
+                "details": error.details,
+            }
+        )
 
     # Generate combined warnings for backwards compatibility
     all_warnings = [e["message"] for e in fixable + user_required]
@@ -1211,12 +1215,12 @@ def build_fix_prompt(
 
     parts.append("  <errors_to_fix>")
     for node_id, node_errors in errors_by_node.items():
-        parts.append(f"    <node id=\"{node_id}\">")
+        parts.append(f'    <node id="{node_id}">')
         for error in node_errors:
             error_type = error["error_type"]
             message = error["message"]
             fix_hint = error.get("fix_hint", "")
-            parts.append(f"      <error type=\"{error_type}\">")
+            parts.append(f'      <error type="{error_type}">')
             parts.append(f"        <message>{message}</message>")
             if fix_hint:
                 parts.append(f"        <fix_hint>{fix_hint}</fix_hint>")
@@ -1244,7 +1248,7 @@ def build_fix_prompt(
             node_type = node.get("type", "unknown")
             title = node.get("title", "Untitled")
             config_summary = json.dumps(node.get("config", {}), ensure_ascii=False)[:200]
-            parts.append(f"    <node id=\"{node_id}\" type=\"{node_type}\" title=\"{title}\">")
+            parts.append(f'    <node id="{node_id}" type="{node_type}" title="{title}">')
             parts.append(f"      <current_config>{config_summary}...</current_config>")
             parts.append("    </node>")
     parts.append("  </previous_nodes_to_fix>")
@@ -1258,4 +1262,3 @@ def build_fix_prompt(
     parts.append("</fix_required>")
 
     return "\n".join(parts)
-

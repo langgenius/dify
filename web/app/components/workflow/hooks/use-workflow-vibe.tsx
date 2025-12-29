@@ -757,12 +757,74 @@ export const useWorkflowVibe = () => {
 
       // For Parameter Extractor nodes, ensure each parameter has a 'required' field
       // Backend may omit this field, but Dify's Pydantic model requires it
-      if (nodeType === BlockEnum.ParameterExtractor && backendConfig.parameters) {
-        const parameters = backendConfig.parameters as Array<{ name?: string, type?: string, description?: string, required?: boolean }>
-        mergedConfig.parameters = parameters.map(param => ({
-          ...param,
-          required: param.required ?? true, // Default to required if not specified
-        }))
+      if (nodeType === BlockEnum.ParameterExtractor) {
+        // Fix: If backend returns query as null, use default empty array instead
+        if (backendConfig.query === null || backendConfig.query === undefined) {
+          mergedConfig.query = []
+        }
+        if (backendConfig.parameters) {
+          const parameters = backendConfig.parameters as Array<{ name?: string, type?: string, description?: string, required?: boolean }>
+          mergedConfig.parameters = parameters.map(param => ({
+            ...param,
+            required: param.required ?? true, // Default to required if not specified
+          }))
+        }
+      }
+
+      // For Question Classifier nodes, ensure query_variable_selector is not null
+      // Backend may return null, but Dify's Pydantic model requires an array
+      // Note: question-classifier uses 'query' field in backend config, but 'query_variable_selector' in frontend
+      if (nodeType === BlockEnum.QuestionClassifier) {
+        // Fix: If backend returns query as null, use default empty array instead
+        const backendQuery = backendConfig.query
+        if (backendQuery === null || backendQuery === undefined) {
+          mergedConfig.query_variable_selector = []
+        }
+        else if (Array.isArray(backendQuery)) {
+          // Map backend 'query' field to frontend 'query_variable_selector' field
+          mergedConfig.query_variable_selector = backendQuery
+          // Remove the 'query' field to avoid confusion
+          delete mergedConfig.query
+        }
+      }
+
+      // For Variable Aggregator nodes, ensure variables format is correct
+      // Backend expects list[list[str]], but LLM may generate dict format
+      if (nodeType === BlockEnum.VariableAggregator && backendConfig.variables) {
+        const backendVariables = backendConfig.variables as Array<any>
+        const repairedVariables: string[][] = []
+        let repaired = false
+
+        for (const varItem of backendVariables) {
+          if (Array.isArray(varItem)) {
+            // Already in correct format
+            repairedVariables.push(varItem)
+          }
+          else if (typeof varItem === 'object' && varItem !== null) {
+            // Convert dict format to array format
+            const valueSelector = varItem.value_selector || varItem.selector || varItem.path
+            if (Array.isArray(valueSelector) && valueSelector.length > 0) {
+              repairedVariables.push(valueSelector)
+              repaired = true
+            }
+            else {
+              // Try to extract from name field - LLM may generate {"name": "node_id.field"}
+              const name = varItem.name
+              if (typeof name === 'string' && name.includes('.')) {
+                const parts = name.split('.', 2)
+                if (parts.length === 2) {
+                  repairedVariables.push([parts[0], parts[1]])
+                  repaired = true
+                }
+              }
+              // If still can't parse, skip this variable (don't add empty array)
+            }
+          }
+        }
+
+        if (repaired || repairedVariables.length !== backendVariables.length) {
+          mergedConfig.variables = repairedVariables
+        }
       }
 
       // For any node with model config, ALWAYS use user's configured model
@@ -943,14 +1005,10 @@ export const useWorkflowVibe = () => {
       }
     })
 
-
-
     setNodes(updatedNodes)
     setEdges([...edges, ...newEdges])
     saveStateToHistory(WorkflowHistoryEvent.NodeAdd, { nodeId: newNodes[0].id })
     handleSyncWorkflowDraft()
-
-
 
     workflowStore.setState(state => ({
       ...state,
@@ -1433,17 +1491,7 @@ export const useWorkflowVibe = () => {
     toolOptions,
   ])
 
-  const handleRegenerate = useCallback(async () => {
-    if (!lastInstructionRef.current) {
-      Toast.notify({ type: 'error', message: t('workflow.vibe.missingInstruction') })
-      return
-    }
-
-    // Pass regenerateMode=true to include previous workflow context
-    await handleVibeCommand(lastInstructionRef.current, false, true)
-  }, [handleVibeCommand, t])
-
-  const handleAccept = useCallback(async (vibePanelMermaidCode: string | undefined) => {
+  const handleAccept = useCallback(async () => {
     // Prefer backend nodes (already sanitized) over mermaid re-parsing
     const { vibePanelBackendNodes, vibePanelBackendEdges } = workflowStore.getState()
     if (vibePanelBackendNodes && vibePanelBackendNodes.length > 0 && vibePanelBackendEdges) {
@@ -1461,7 +1509,7 @@ export const useWorkflowVibe = () => {
     }
 
     const acceptHandler = () => {
-      handleAccept(undefined)
+      handleAccept()
     }
 
     document.addEventListener(VIBE_COMMAND_EVENT, handler as EventListener)

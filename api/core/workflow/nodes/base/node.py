@@ -197,6 +197,14 @@ class Node(Generic[NodeDataT]):
 
         return None
 
+    @classmethod
+    def get_default_config_schema(cls) -> dict[str, Any] | None:
+        """
+        Get the default configuration schema for the node.
+        Used for LLM generation.
+        """
+        return None
+
     # Global registry populated via __init_subclass__
     _registry: ClassVar[dict["NodeType", dict[str, type["Node"]]]] = {}
 

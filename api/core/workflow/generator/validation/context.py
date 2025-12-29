@@ -8,7 +8,13 @@ The ValidationContext holds all the data needed for validation:
 """
 
 from dataclasses import dataclass, field
-from typing import Any
+
+from core.workflow.generator.types import (
+    AvailableModelDict,
+    AvailableToolDict,
+    WorkflowEdgeDict,
+    WorkflowNodeDict,
+)
 
 
 @dataclass
@@ -23,21 +29,21 @@ class ValidationContext:
     """
 
     # Generated workflow data
-    nodes: list[dict[str, Any]] = field(default_factory=list)
-    edges: list[dict[str, Any]] = field(default_factory=list)
+    nodes: list[WorkflowNodeDict] = field(default_factory=list)
+    edges: list[WorkflowEdgeDict] = field(default_factory=list)
 
     # Available external resources
-    available_models: list[dict[str, Any]] = field(default_factory=list)
-    available_tools: list[dict[str, Any]] = field(default_factory=list)
+    available_models: list[AvailableModelDict] = field(default_factory=list)
+    available_tools: list[AvailableToolDict] = field(default_factory=list)
 
     # Cached lookups (populated lazily)
-    _node_map: dict[str, dict[str, Any]] | None = field(default=None, repr=False)
+    _node_map: dict[str, WorkflowNodeDict] | None = field(default=None, repr=False)
     _model_set: set[tuple[str, str]] | None = field(default=None, repr=False)
     _tool_set: set[str] | None = field(default=None, repr=False)
     _configured_tool_set: set[str] | None = field(default=None, repr=False)
 
     @property
-    def node_map(self) -> dict[str, dict[str, Any]]:
+    def node_map(self) -> dict[str, WorkflowNodeDict]:
         """Get a map of node_id -> node for quick lookup."""
         if self._node_map is None:
             self._node_map = {node.get("id", ""): node for node in self.nodes}
@@ -47,10 +53,7 @@ class ValidationContext:
     def model_set(self) -> set[tuple[str, str]]:
         """Get a set of (provider, model_name) tuples for quick lookup."""
         if self._model_set is None:
-            self._model_set = {
-                (m.get("provider", ""), m.get("model", ""))
-                for m in self.available_models
-            }
+            self._model_set = {(m.get("provider", ""), m.get("model", "")) for m in self.available_models}
         return self._model_set
 
     @property
@@ -95,7 +98,7 @@ class ValidationContext:
         """Check if a tool is configured and ready to use."""
         return tool_key in self.configured_tool_set
 
-    def get_node(self, node_id: str) -> dict[str, Any] | None:
+    def get_node(self, node_id: str) -> WorkflowNodeDict | None:
         """Get a node by its ID."""
         return self.node_map.get(node_id)
 
@@ -105,19 +108,8 @@ class ValidationContext:
 
     def get_upstream_nodes(self, node_id: str) -> list[str]:
         """Get IDs of nodes that connect to this node (upstream)."""
-        return [
-            edge.get("source", "")
-            for edge in self.edges
-            if edge.get("target") == node_id
-        ]
+        return [edge.get("source", "") for edge in self.edges if edge.get("target") == node_id]
 
     def get_downstream_nodes(self, node_id: str) -> list[str]:
         """Get IDs of nodes that this node connects to (downstream)."""
-        return [
-            edge.get("target", "")
-            for edge in self.edges
-            if edge.get("source") == node_id
-        ]
-
-
-
+        return [edge.get("target", "") for edge in self.edges if edge.get("source") == node_id]

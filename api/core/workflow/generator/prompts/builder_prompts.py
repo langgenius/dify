@@ -15,6 +15,10 @@ Your goal is to implement the Architect's plan by generating a precise, runnable
 <node_specs>
 {builtin_node_specs}
 </node_specs>
+
+<available_models>
+{available_models}
+</available_models>
 </inputs>
 
 <rules>
@@ -32,10 +36,17 @@ Your goal is to implement the Architect's plan by generating a precise, runnable
    - ONLY use the tools listed in `<tool_schemas>`.
    - If a planned tool is missing from schemas, fallback to `http-request` or `code`.
 
-4. **Node Specifics**:
+4. **Model Selection** (CRITICAL):
+   - For LLM, question-classifier, and parameter-extractor nodes, you MUST include a "model" config.
+   - You MUST use ONLY models from the `<available_models>` section above.
+   - Copy the EXACT provider and name values from available_models.
+   - NEVER use openai/gpt-4o, gpt-3.5-turbo, gpt-4, or any other models unless they appear in available_models.
+   - If available_models is empty or shows "No models configured", omit the model config entirely.
+
+5. **Node Specifics**:
    - For `if-else` comparison_operator, use literal symbols: `≥`, `≤`, `=`, `≠` (NOT `>=` or `==`).
 
-5. **Output**:
+6. **Output**:
    - Return ONLY the JSON object with `nodes` and `edges`.
    - Do NOT generate Mermaid diagrams.
    - Do NOT generate explanations.

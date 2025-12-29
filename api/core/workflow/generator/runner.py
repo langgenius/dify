@@ -15,6 +15,7 @@ from core.workflow.generator.prompts.planner_prompts import (
     format_tools_for_planner,
 )
 from core.workflow.generator.prompts.vibe_prompts import (
+    format_available_models,
     format_available_nodes,
     format_available_tools,
     parse_vibe_response,
@@ -125,6 +126,7 @@ class WorkflowGenerator:
             plan_context=json.dumps(plan_data.get("steps", []), indent=2),
             tool_schemas=tool_schemas,
             builtin_node_specs=node_specs,
+            available_models=format_available_models(list(available_models or [])),
         )
         builder_user = BUILDER_USER_PROMPT.format(instruction=instruction)
 

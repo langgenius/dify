@@ -9,6 +9,12 @@ import logging
 from dataclasses import dataclass, field
 from typing import Any
 
+from core.workflow.generator.types import (
+    AvailableModelDict,
+    AvailableToolDict,
+    WorkflowEdgeDict,
+    WorkflowNodeDict,
+)
 from core.workflow.generator.validation.context import ValidationContext
 from core.workflow.generator.validation.rules import (
     RuleCategory,
@@ -205,7 +211,7 @@ class ValidationEngine:
 
     def validate_single_node(
         self,
-        node: dict[str, Any],
+        node: WorkflowNodeDict,
         context: ValidationContext,
     ) -> list[ValidationError]:
         """
@@ -227,10 +233,10 @@ class ValidationEngine:
 
 
 def validate_nodes(
-    nodes: list[dict[str, Any]],
-    edges: list[dict[str, Any]] | None = None,
-    available_models: list[dict[str, Any]] | None = None,
-    available_tools: list[dict[str, Any]] | None = None,
+    nodes: list[WorkflowNodeDict],
+    edges: list[WorkflowEdgeDict] | None = None,
+    available_models: list[AvailableModelDict] | None = None,
+    available_tools: list[AvailableToolDict] | None = None,
 ) -> ValidationResult:
     """
     Convenience function to validate nodes without creating engine/context manually.
@@ -252,6 +258,3 @@ def validate_nodes(
     )
     engine = ValidationEngine()
     return engine.validate(context)
-
-
-

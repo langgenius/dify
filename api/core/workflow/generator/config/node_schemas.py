@@ -1,48 +1,26 @@
 """
-Built-in Node Schemas for Vibe Workflow Generation.
+Unified Node Configuration for Vibe Workflow Generation.
 
-These schemas define the parameter structures for each node type,
-helping the LLM understand what configuration each node requires.
+This module centralizes all node-related configuration:
+- Node schemas (parameter definitions)
+- Fallback rules (keyword-based node type inference)
+- Node type aliases (natural language to canonical type mapping)
+- Field name corrections (LLM output normalization)
+- Validation utilities
+
+Note: These definitions are the single source of truth.
+Frontend has a mirrored copy at web/app/components/workflow/hooks/use-workflow-vibe-config.ts
 """
 
 from typing import Any
 
+# =============================================================================
+# NODE SCHEMAS
+# =============================================================================
+
 # Built-in node schemas with parameter definitions
 # These help the model understand what config each node type requires
-BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
-    "start": {
-        "description": "Workflow entry point - defines input variables",
-        "required": [],
-        "parameters": {
-            "variables": {
-                "type": "array",
-                "description": "Input variables for the workflow",
-                "item_schema": {
-                    "variable": "string - variable name",
-                    "label": "string - display label",
-                    "type": "enum: text-input, paragraph, number, select, file, file-list",
-                    "required": "boolean",
-                    "max_length": "number (optional)",
-                },
-            },
-        },
-        "outputs": ["All defined variables are available as {{#start.variable_name#}}"],
-    },
-    "end": {
-        "description": "Workflow exit point - defines output variables",
-        "required": ["outputs"],
-        "parameters": {
-            "outputs": {
-                "type": "array",
-                "description": "Output variables to return",
-                "item_schema": {
-                    "variable": "string - output variable name",
-                    "type": "enum: string, number, object, array",
-                    "value_selector": "array - path to source value, e.g. ['node_id', 'field']",
-                },
-            },
-        },
-    },
+_HARDCODED_SCHEMAS: dict[str, dict[str, Any]] = {
     "http-request": {
         "description": "Send HTTP requests to external APIs or fetch web content",
         "required": ["url", "method"],
@@ -148,12 +126,12 @@ BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
                     "conditions": {
                         "type": "array",
                         "item_schema": {
-                    "variable_selector": "array of strings - path to variable, e.g. ['node_id', 'field']",
-                    "comparison_operator": (
-                        "enum: =, ≠, >, <, ≥, ≤, contains, not contains, is, is not, empty, not empty"
-                    ),
-                    "value": "string or number - value to compare against",
-                },
+                            "variable_selector": "array of strings - path to variable, e.g. ['node_id', 'field']",
+                            "comparison_operator": (
+                                "enum: =, ≠, >, <, ≥, ≤, contains, not contains, is, is not, empty, not empty"
+                            ),
+                            "value": "string or number - value to compare against",
+                        },
                     },
                 },
             },
@@ -181,15 +159,19 @@ BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
     },
     "template-transform": {
         "description": "Transform data using Jinja2 templates",
-        "required": ["template"],
+        "required": ["template", "variables"],
         "parameters": {
             "template": {
                 "type": "string",
-                "description": "Jinja2 template string",
+                "description": "Jinja2 template string. Use {{ variable_name }} to reference variables.",
             },
             "variables": {
                 "type": "array",
-                "description": "Variables to pass to template",
+                "description": "Input variables defined for the template",
+                "item_schema": {
+                    "variable": "string - variable name to use in template",
+                    "value_selector": "array - path to source value, e.g. ['start', 'user_input']",
+                },
             },
         },
         "outputs": ["output (transformed string)"],
@@ -201,6 +183,7 @@ BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
             "variables": {
                 "type": "array",
                 "description": "List of variable selectors to aggregate",
+                "item_schema": "array of strings - path to source variable, e.g. ['node_id', 'field']",
             },
         },
         "outputs": ["output (aggregated value)"],
@@ -234,8 +217,7 @@ BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
                 "item_schema": {
                     "name": "string - parameter name (required)",
                     "type": (
-                        "enum: string, number, boolean, array[string], array[number], "
-                        "array[object], array[boolean]"
+                        "enum: string, number, boolean, array[string], array[number], array[object], array[boolean]"
                     ),
                     "description": "string - description of what to extract (required)",
                     "required": "boolean - whether this parameter is required (MUST be specified)",
@@ -283,3 +265,237 @@ BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = {
     },
 }
 
+
+def _get_dynamic_schemas() -> dict[str, dict[str, Any]]:
+    """
+    Dynamically load schemas from node classes.
+    Uses lazy import to avoid circular dependency.
+    """
+    from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
+
+    schemas = {}
+    for node_type, version_map in NODE_TYPE_CLASSES_MAPPING.items():
+        # Get the latest version class
+        node_cls = version_map.get(LATEST_VERSION)
+        if not node_cls:
+            continue
+
+        # Get schema from the class
+        schema = node_cls.get_default_config_schema()
+        if schema:
+            schemas[node_type.value] = schema
+
+    return schemas
+
+
+# Cache for built-in schemas (populated on first access)
+_builtin_schemas_cache: dict[str, dict[str, Any]] | None = None
+
+
+def get_builtin_node_schemas() -> dict[str, dict[str, Any]]:
+    """
+    Get the complete set of built-in node schemas.
+    Combines hardcoded schemas with dynamically loaded ones.
+    Results are cached after first call.
+    """
+    global _builtin_schemas_cache
+    if _builtin_schemas_cache is None:
+        _builtin_schemas_cache = {**_HARDCODED_SCHEMAS, **_get_dynamic_schemas()}
+    return _builtin_schemas_cache
+
+
+# For backward compatibility - but use get_builtin_node_schemas() for lazy loading
+BUILTIN_NODE_SCHEMAS: dict[str, dict[str, Any]] = _HARDCODED_SCHEMAS.copy()
+
+
+# =============================================================================
+# FALLBACK RULES
+# =============================================================================
+
+# Keyword rules for smart fallback detection
+# Maps node type to keywords that suggest using that node type as a fallback
+FALLBACK_RULES: dict[str, list[str]] = {
+    "http-request": [
+        "http",
+        "url",
+        "web",
+        "scrape",
+        "scraper",
+        "fetch",
+        "api",
+        "request",
+        "download",
+        "upload",
+        "webhook",
+        "endpoint",
+        "rest",
+        "get",
+        "post",
+    ],
+    "code": [
+        "code",
+        "script",
+        "calculate",
+        "compute",
+        "process",
+        "transform",
+        "parse",
+        "convert",
+        "format",
+        "filter",
+        "sort",
+        "math",
+        "logic",
+    ],
+    "llm": [
+        "analyze",
+        "summarize",
+        "summary",
+        "extract",
+        "classify",
+        "translate",
+        "generate",
+        "write",
+        "rewrite",
+        "explain",
+        "answer",
+        "chat",
+    ],
+}
+
+
+# =============================================================================
+# NODE TYPE ALIASES
+# =============================================================================
+
+# Node type aliases for inference from natural language
+# Maps common terms to canonical node type names
+NODE_TYPE_ALIASES: dict[str, str] = {
+    # Start node aliases
+    "start": "start",
+    "begin": "start",
+    "input": "start",
+    # End node aliases
+    "end": "end",
+    "finish": "end",
+    "output": "end",
+    # LLM node aliases
+    "llm": "llm",
+    "ai": "llm",
+    "gpt": "llm",
+    "model": "llm",
+    "chat": "llm",
+    # Code node aliases
+    "code": "code",
+    "script": "code",
+    "python": "code",
+    "javascript": "code",
+    # HTTP request node aliases
+    "http-request": "http-request",
+    "http": "http-request",
+    "request": "http-request",
+    "api": "http-request",
+    "fetch": "http-request",
+    "webhook": "http-request",
+    # Conditional node aliases
+    "if-else": "if-else",
+    "condition": "if-else",
+    "branch": "if-else",
+    "switch": "if-else",
+    # Loop node aliases
+    "iteration": "iteration",
+    "loop": "loop",
+    "foreach": "iteration",
+    # Tool node alias
+    "tool": "tool",
+}
+
+
+# =============================================================================
+# FIELD NAME CORRECTIONS
+# =============================================================================
+
+# Field name corrections for LLM-generated node configs
+# Maps incorrect field names to correct ones for specific node types
+FIELD_NAME_CORRECTIONS: dict[str, dict[str, str]] = {
+    "http-request": {
+        "text": "body",  # LLM might use "text" instead of "body"
+        "content": "body",
+        "response": "body",
+    },
+    "code": {
+        "text": "result",  # LLM might use "text" instead of "result"
+        "output": "result",
+    },
+    "llm": {
+        "response": "text",
+        "answer": "text",
+    },
+}
+
+
+def get_corrected_field_name(node_type: str, field: str) -> str:
+    """
+    Get the corrected field name for a node type.
+
+    Args:
+        node_type: The type of the node (e.g., "http-request", "code")
+        field: The field name to correct
+
+    Returns:
+        The corrected field name, or the original if no correction needed
+    """
+    corrections = FIELD_NAME_CORRECTIONS.get(node_type, {})
+    return corrections.get(field, field)
+
+
+# =============================================================================
+# VALIDATION UTILITIES
+# =============================================================================
+
+# Node types that are internal and don't need schemas for LLM generation
+_INTERNAL_NODE_TYPES: set[str] = {
+    # Internal workflow nodes
+    "answer",  # Internal to chatflow
+    "loop",  # Uses iteration internally
+    "assigner",  # Variable assignment utility
+    "variable-assigner",  # Variable assignment utility
+    "agent",  # Agent node (complex, handled separately)
+    "document-extractor",  # Internal document processing
+    "list-operator",  # Internal list operations
+    # Iteration internal nodes
+    "iteration-start",  # Internal to iteration loop
+    "loop-start",  # Internal to loop
+    "loop-end",  # Internal to loop
+    # Trigger nodes (not user-creatable via LLM)
+    "trigger-plugin",  # Plugin trigger
+    "trigger-schedule",  # Scheduled trigger
+    "trigger-webhook",  # Webhook trigger
+    # Other internal nodes
+    "datasource",  # Data source configuration
+    "human-input",  # Human-in-the-loop node
+    "knowledge-index",  # Knowledge indexing node
+}
+
+
+def validate_node_schemas() -> list[str]:
+    """
+    Validate that all registered node types have corresponding schemas.
+
+    This function checks if BUILTIN_NODE_SCHEMAS covers all node types
+    registered in NODE_TYPE_CLASSES_MAPPING, excluding internal node types.
+
+    Returns:
+        List of warning messages for missing schemas (empty if all valid)
+    """
+    from core.workflow.nodes.node_mapping import NODE_TYPE_CLASSES_MAPPING
+
+    schemas = get_builtin_node_schemas()
+    warnings = []
+    for node_type in NODE_TYPE_CLASSES_MAPPING:
+        type_value = node_type.value
+        if type_value in _INTERNAL_NODE_TYPES:
+            continue
+        if type_value not in schemas:
+            warnings.append(f"Missing schema for node type: {type_value}")
+    return warnings

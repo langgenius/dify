@@ -1,7 +1,7 @@
 import logging
 from dataclasses import dataclass
-from typing import Any
 
+from core.workflow.generator.types import AvailableModelDict, AvailableToolDict, WorkflowDataDict
 from core.workflow.generator.validation.context import ValidationContext
 from core.workflow.generator.validation.engine import ValidationEngine
 from core.workflow.generator.validation.rules import Severity
@@ -42,9 +42,9 @@ class WorkflowValidator:
     @classmethod
     def validate(
         cls,
-        workflow_data: dict[str, Any],
-        available_tools: list[dict[str, Any]],
-        available_models: list[dict[str, Any]] | None = None,
+        workflow_data: WorkflowDataDict,
+        available_tools: list[AvailableToolDict],
+        available_models: list[AvailableModelDict] | None = None,
     ) -> tuple[bool, list[ValidationHint]]:
         """
         Validate workflow data and return validity status and hints.

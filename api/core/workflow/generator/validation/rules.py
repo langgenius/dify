@@ -15,6 +15,8 @@ from dataclasses import dataclass, field
 from enum import Enum
 from typing import TYPE_CHECKING, Any
 
+from core.workflow.generator.types import WorkflowNodeDict
+
 if TYPE_CHECKING:
     from core.workflow.generator.validation.context import ValidationContext
 
@@ -78,7 +80,7 @@ class ValidationError:
 
 # Type alias for rule check functions
 RuleCheckFn = Callable[
-    [dict[str, Any], "ValidationContext"],
+    [WorkflowNodeDict, "ValidationContext"],
     list[ValidationError],
 ]
 
@@ -226,7 +228,7 @@ def check_required_field(
 # =============================================================================
 
 
-def _check_llm_prompt_template(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_llm_prompt_template(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that LLM node has prompt_template."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -246,7 +248,7 @@ def _check_llm_prompt_template(node: dict[str, Any], ctx: "ValidationContext") -
     return errors
 
 
-def _check_http_request_url(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_http_request_url(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that http-request node has url and method."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -300,7 +302,7 @@ def _check_http_request_url(node: dict[str, Any], ctx: "ValidationContext") -> l
     return errors
 
 
-def _check_code_node(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_code_node(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that code node has code and language."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -331,7 +333,7 @@ def _check_code_node(node: dict[str, Any], ctx: "ValidationContext") -> list[Val
     return errors
 
 
-def _check_question_classifier(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_question_classifier(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that question-classifier has classes."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -351,7 +353,7 @@ def _check_question_classifier(node: dict[str, Any], ctx: "ValidationContext") -
     return errors
 
 
-def _check_parameter_extractor(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_parameter_extractor(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that parameter-extractor has parameters and instruction."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -407,7 +409,7 @@ def _check_parameter_extractor(node: dict[str, Any], ctx: "ValidationContext") -
     return errors
 
 
-def _check_knowledge_retrieval(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_knowledge_retrieval(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that knowledge-retrieval has dataset_ids."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -449,7 +451,7 @@ def _check_knowledge_retrieval(node: dict[str, Any], ctx: "ValidationContext") -
     return errors
 
 
-def _check_end_node(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_end_node(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that end node has outputs defined."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -478,7 +480,7 @@ def _check_end_node(node: dict[str, Any], ctx: "ValidationContext") -> list[Vali
 # =============================================================================
 
 
-def _check_variable_references(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_variable_references(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that variable references point to valid nodes."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -529,7 +531,7 @@ def _check_variable_references(node: dict[str, Any], ctx: "ValidationContext") -
     return errors
 
 
-def _check_node_has_outgoing_edge(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_node_has_outgoing_edge(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that non-end nodes have at least one outgoing edge."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -559,7 +561,7 @@ def _check_node_has_outgoing_edge(node: dict[str, Any], ctx: "ValidationContext"
     return errors
 
 
-def _check_node_has_incoming_edge(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_node_has_incoming_edge(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that non-start nodes have at least one incoming edge."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -589,7 +591,7 @@ def _check_node_has_incoming_edge(node: dict[str, Any], ctx: "ValidationContext"
     return errors
 
 
-def _check_question_classifier_branches(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_question_classifier_branches(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that question-classifier has edges for all defined classes."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -646,7 +648,7 @@ def _check_question_classifier_branches(node: dict[str, Any], ctx: "ValidationCo
     return errors
 
 
-def _check_if_else_branches(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_if_else_branches(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that if-else has both true and false branch edges."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -687,7 +689,7 @@ def _check_if_else_branches(node: dict[str, Any], ctx: "ValidationContext") -> l
     return errors
 
 
-def _check_if_else_operators(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_if_else_operators(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that if-else comparison operators are valid."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -745,7 +747,7 @@ def _check_if_else_operators(node: dict[str, Any], ctx: "ValidationContext") -> 
     return errors
 
 
-def _check_edge_targets_exist(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_edge_targets_exist(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that edge targets reference existing nodes."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -783,7 +785,7 @@ def _check_edge_targets_exist(node: dict[str, Any], ctx: "ValidationContext") ->
 MODEL_REQUIRED_NODE_TYPES = {"llm", "question-classifier", "parameter-extractor"}
 
 
-def _check_model_config(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_model_config(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that model configuration is valid."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")
@@ -867,7 +869,7 @@ def _check_model_config(node: dict[str, Any], ctx: "ValidationContext") -> list[
     return errors
 
 
-def _check_tool_reference(node: dict[str, Any], ctx: "ValidationContext") -> list[ValidationError]:
+def _check_tool_reference(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
     """Check that tool references are valid and configured."""
     errors: list[ValidationError] = []
     node_id = node.get("id", "unknown")

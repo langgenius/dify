@@ -1,10 +1,11 @@
 import logging
-from typing import Any
+
+from core.workflow.generator.types import WorkflowDataDict
 
 logger = logging.getLogger(__name__)
 
 
-def generate_mermaid(workflow_data: dict[str, Any]) -> str:
+def generate_mermaid(workflow_data: WorkflowDataDict) -> str:
     """
     Generate a Mermaid flowchart from workflow data consisting of nodes and edges.
 

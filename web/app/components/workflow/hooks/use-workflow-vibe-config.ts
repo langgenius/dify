@@ -5,8 +5,8 @@
  * including node type aliases and field name corrections.
  *
  * Note: These definitions are mirrored in the backend at:
- * api/core/llm_generator/vibe_config/node_definitions.json
- * When updating these values, also update the backend JSON file.
+ * api/core/workflow/generator/config/node_schemas.py
+ * When updating these values, also update the backend file.
  */
 
 /**
@@ -15,42 +15,42 @@
  */
 export const NODE_TYPE_ALIASES: Record<string, string> = {
   // Start node aliases
-  start: 'start',
-  begin: 'start',
-  input: 'start',
+  'start': 'start',
+  'begin': 'start',
+  'input': 'start',
   // End node aliases
-  end: 'end',
-  finish: 'end',
-  output: 'end',
+  'end': 'end',
+  'finish': 'end',
+  'output': 'end',
   // LLM node aliases
-  llm: 'llm',
-  ai: 'llm',
-  gpt: 'llm',
-  model: 'llm',
-  chat: 'llm',
+  'llm': 'llm',
+  'ai': 'llm',
+  'gpt': 'llm',
+  'model': 'llm',
+  'chat': 'llm',
   // Code node aliases
-  code: 'code',
-  script: 'code',
-  python: 'code',
-  javascript: 'code',
+  'code': 'code',
+  'script': 'code',
+  'python': 'code',
+  'javascript': 'code',
   // HTTP request node aliases
   'http-request': 'http-request',
-  http: 'http-request',
-  request: 'http-request',
-  api: 'http-request',
-  fetch: 'http-request',
-  webhook: 'http-request',
+  'http': 'http-request',
+  'request': 'http-request',
+  'api': 'http-request',
+  'fetch': 'http-request',
+  'webhook': 'http-request',
   // Conditional node aliases
   'if-else': 'if-else',
-  condition: 'if-else',
-  branch: 'if-else',
-  switch: 'if-else',
+  'condition': 'if-else',
+  'branch': 'if-else',
+  'switch': 'if-else',
   // Loop node aliases
-  iteration: 'iteration',
-  loop: 'loop',
-  foreach: 'iteration',
+  'iteration': 'iteration',
+  'loop': 'loop',
+  'foreach': 'iteration',
   // Tool node alias
-  tool: 'tool',
+  'tool': 'tool',
 }
 
 /**
@@ -63,11 +63,11 @@ export const FIELD_NAME_CORRECTIONS: Record<string, Record<string, string>> = {
     content: 'body',
     response: 'body',
   },
-  code: {
+  'code': {
     text: 'result', // LLM might use "text" instead of "result"
     output: 'result',
   },
-  llm: {
+  'llm': {
     response: 'text',
     answer: 'text',
   },
@@ -97,4 +97,3 @@ export const correctFieldName = (field: string, nodeType: string): string => {
 export const getCanonicalNodeType = (alias: string): string | undefined => {
   return NODE_TYPE_ALIASES[alias.toLowerCase()]
 }
-
