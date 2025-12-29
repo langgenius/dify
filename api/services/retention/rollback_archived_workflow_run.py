@@ -136,7 +136,6 @@ class WorkflowRunRollback:
 
         with session_maker() as session:
             try:
-
                 prefix = build_workflow_run_prefix(
                     tenant_id=run.tenant_id,
                     app_id=run.app_id,

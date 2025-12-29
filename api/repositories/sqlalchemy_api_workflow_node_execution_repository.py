@@ -361,9 +361,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         Fetch node executions for a run using the composite index on
         (tenant_id, app_id, workflow_id, triggered_from, workflow_run_id).
         """
-        tuple_values = [
-            (run["tenant_id"], run["app_id"], run["workflow_id"], run["triggered_from"], run["run_id"])
-        ]
+        tuple_values = [(run["tenant_id"], run["app_id"], run["workflow_id"], run["triggered_from"], run["run_id"])]
         stmt = select(WorkflowNodeExecutionModel).where(
             tuple_(
                 WorkflowNodeExecutionModel.tenant_id,
