@@ -4,12 +4,12 @@ import { lazy, Suspense } from 'react'
 import { IS_DEV } from '@/config'
 
 const ReactScan = lazy(() =>
-  import('./react-scan').then(module => ({
+  import('./scan').then(module => ({
     default: module.ReactScan,
   })),
 )
 
-const ReactScanLoader = () => {
+export const ReactScanLoader = () => {
   if (!IS_DEV)
     return null
 
@@ -19,5 +19,3 @@ const ReactScanLoader = () => {
     </Suspense>
   )
 }
-
-export default ReactScanLoader

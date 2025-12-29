@@ -6,7 +6,7 @@ import { lazy, Suspense } from 'react'
 import { IS_DEV } from '@/config'
 
 const TanStackDevtoolsWrapper = lazy(() =>
-  import('@/app/components/devtools').then(module => ({
+  import('@/app/components/devtools/tanstack').then(module => ({
     default: module.TanStackDevtoolsWrapper,
   })),
 )

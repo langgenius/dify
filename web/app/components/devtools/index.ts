@@ -1,3 +1,3 @@
 export { ReactScan } from './react-scan'
-export { default as ReactScanLoader } from './react-scan-loader'
-export { TanStackDevtoolsWrapper } from './tanstack-devtools'
+export { ReactScanLoader } from './react-scan'
+export { TanStackDevtoolsWrapper } from './tanstack'
