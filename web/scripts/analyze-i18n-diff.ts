@@ -122,7 +122,7 @@ function parseTsContent(content: string): NestedTranslation {
  */
 function getMainBranchFile(filePath: string): string | null {
   try {
-    const relativePath = `i18n/${LOCALE}/${filePath}`
+    const relativePath = `./i18n/${LOCALE}/${filePath}`
     // eslint-disable-next-line sonarjs/os-command
     return execSync(`git show main:${relativePath}`, {
       encoding: 'utf-8',
@@ -147,7 +147,7 @@ function getTranslationFiles(): string[] {
  */
 function getMainBranchNamespaces(): string[] {
   try {
-    const relativePath = `i18n/${LOCALE}`
+    const relativePath = `./i18n/${LOCALE}`
     // eslint-disable-next-line sonarjs/os-command
     const output = execSync(`git ls-tree --name-only main ${relativePath}/`, {
       encoding: 'utf-8',
