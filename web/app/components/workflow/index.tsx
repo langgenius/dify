@@ -35,6 +35,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   useAllBuiltInTools,
@@ -363,7 +364,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [schemaTypeDefinitions, fetchInspectVars, isLoadedVars, vars, customTools, buildInTools, workflowTools, mcpTools, dataSourceList])
 
-  if (process.env.NODE_ENV === 'development') {
+  if (IS_DEV) {
     store.getState().onError = (code, message) => {
       if (code === '002')
         return
