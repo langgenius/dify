@@ -353,8 +353,26 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
         return node_executions_deleted, offloads_deleted
 
     @staticmethod
-    def get_by_run_id(session: Session, run_id: str) -> Sequence[WorkflowNodeExecutionModel]:
-        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == run_id)
+    def get_by_run(
+        session: Session,
+        run: RunContext,
+    ) -> Sequence[WorkflowNodeExecutionModel]:
+        """
+        Fetch node executions for a run using the composite index on
+        (tenant_id, app_id, workflow_id, triggered_from, workflow_run_id).
+        """
+        tuple_values = [
+            (run["tenant_id"], run["app_id"], run["workflow_id"], run["triggered_from"], run["run_id"])
+        ]
+        stmt = select(WorkflowNodeExecutionModel).where(
+            tuple_(
+                WorkflowNodeExecutionModel.tenant_id,
+                WorkflowNodeExecutionModel.app_id,
+                WorkflowNodeExecutionModel.workflow_id,
+                WorkflowNodeExecutionModel.triggered_from,
+                WorkflowNodeExecutionModel.workflow_run_id,
+            ).in_(tuple_values)
+        )
         return list(session.scalars(stmt))
 
     @staticmethod
