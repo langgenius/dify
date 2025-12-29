@@ -168,6 +168,7 @@ const translation = {
     disable: 'Wyłączać',
     delete: 'Usunąć',
     cancel: 'Anuluj',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{liczba}} Przetwarzanie wstępne dokumentów',
   localDocs: 'Lokalne dokumenty',
@@ -251,6 +252,7 @@ const translation = {
     button: 'Przeciągnij i upuść plik lub folder, lub',
     browse: 'Przeglądaj',
     tip: '{{supportTypes}} (maks. {{batchCount}}, {{size}} MB każdy)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

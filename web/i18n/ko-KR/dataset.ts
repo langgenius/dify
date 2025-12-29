@@ -163,6 +163,7 @@ const translation = {
     archive: '보관',
     selected: '선택한',
     disable: '비활성화',
+    reIndex: 'Re-index',
   },
   localDocs: '로컬 문서',
   preprocessDocument: '{{숫자}} 문서 전처리',
@@ -246,6 +247,7 @@ const translation = {
     button: '파일 또는 폴더를 끌어다 놓거나',
     browse: '둘러보기',
     tip: '{{supportTypes}} (최대 {{batchCount}}, 각각 {{size}}MB)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

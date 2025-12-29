@@ -164,6 +164,7 @@ const translation = {
     cancel: '取消',
     archive: '檔案',
     selected: '選擇',
+    reIndex: 'Re-index',
   },
   enable: '使',
   documentsDisabled: '已禁用 {{num}} 個文檔 - 處於非活動狀態超過 30 天',
@@ -247,6 +248,7 @@ const translation = {
     button: '拖放檔案或資料夾，或',
     browse: '瀏覽',
     tip: '{{supportTypes}}（最多 {{batchCount}}，每個 {{size}}MB）',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

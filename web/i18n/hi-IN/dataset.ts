@@ -169,6 +169,7 @@ const translation = {
     selected: 'चयनित',
     delete: 'मिटाना',
     archive: 'पुरालेख',
+    reIndex: 'Re-index',
   },
   localDocs: 'स्थानीय डॉक्स',
   preprocessDocument: '{{num}} प्रीप्रोसेस दस्तावेज़',
@@ -252,6 +253,7 @@ const translation = {
     button: 'फ़ाइल या फ़ोल्डर खींचें और छोड़ें, या',
     browse: 'ब्राउज़',
     tip: '{{supportTypes}} (अधिकतम {{batchCount}}, प्रत्येक {{size}}MB)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

@@ -164,6 +164,7 @@ const translation = {
     enable: 'فعال',
     delete: 'حذف',
     archive: 'بایگانی',
+    reIndex: 'Re-index',
   },
   enable: 'فعال',
   documentsDisabled: '{{num}} اسناد غیرفعال - غیرفعال برای بیش از 30 روز',
@@ -247,6 +248,7 @@ const translation = {
     button: 'کشیدن و رها کردن فایل یا پوشه، یا',
     browse: 'مرور کردن',
     tip: '{{supportTypes}} (حداکثر {{batchCount}}، هر کدام {{size}} مگابایت)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

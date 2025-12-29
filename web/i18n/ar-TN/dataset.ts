@@ -172,6 +172,7 @@ const translation = {
     archive: 'أرشيف',
     delete: 'حذف',
     cancel: 'إلغاء',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{num}} معالجة المستندات مسبقًا',
   allKnowledge: 'كل المعرفة',
@@ -245,6 +246,7 @@ const translation = {
     button: 'اسحب وأفلت الملف أو المجلد، أو',
     browse: 'تصفح',
     tip: '{{supportTypes}} (الحد الأقصى {{batchCount}}، {{size}} ميغابايت لكل منها)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

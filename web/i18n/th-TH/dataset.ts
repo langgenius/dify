@@ -163,6 +163,7 @@ const translation = {
     enable: 'เปิด',
     cancel: 'ยกเลิก',
     disable: 'เก',
+    reIndex: 'Re-index',
   },
   localDocs: 'เอกสารท้องถิ่น',
   preprocessDocument: '{{num}} เอกสารการประมวลผลล่วงหน้า',
@@ -246,6 +247,7 @@ const translation = {
     button: 'ลากและวางไฟล์หรือโฟลเดอร์ หรือ',
     browse: 'เรียกดู',
     tip: '{{supportTypes}} (สูงสุด {{batchCount}}, {{size}}MB ต่อชิ้น)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

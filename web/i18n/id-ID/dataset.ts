@@ -112,6 +112,7 @@ const translation = {
     selected: 'Dipilih',
     cancel: 'Membatalkan',
     enable: 'Mengaktifkan',
+    reIndex: 'Re-index',
   },
   metadata: {
     createMetadata: {
@@ -246,6 +247,7 @@ const translation = {
     button: 'Seret dan lepas file atau folder, atau',
     browse: 'Telusuri',
     tip: '{{supportTypes}} (Maks {{batchCount}}, {{size}}MB masing-masing)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

@@ -164,6 +164,7 @@ const translation = {
     delete: 'Silmek',
     archive: 'Arşiv',
     disable: 'Devre dışı bırakmak',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{sayı}} Belgeleri Ön İşleme',
   localDocs: 'Yerel Dokümanlar',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Dosya veya klasörü sürükleyip bırakın, veya',
     browse: 'Gözat',
     tip: '{{supportTypes}} (Her biri Maks. {{batchCount}}, {{size}}MB)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

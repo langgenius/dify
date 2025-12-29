@@ -164,6 +164,7 @@ const translation = {
     disable: 'Отключить',
     cancel: 'Отмена',
     archive: 'Архив',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{число}} Предварительная обработка документов',
   documentsDisabled: 'Документы {{num}} отключены - неактивны более 30 дней',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Перетащите файл или папку, или',
     browse: 'Просматривать',
     tip: '{{supportTypes}} (макс. {{batchCount}}, {{size}} МБ каждый)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

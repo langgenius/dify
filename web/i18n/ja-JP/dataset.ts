@@ -169,6 +169,7 @@ const translation = {
     archive: 'アーカイブ',
     delete: '削除',
     cancel: 'キャンセル',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{num}}件のドキュメントを前処理',
   allKnowledge: 'ナレッジベース全体',

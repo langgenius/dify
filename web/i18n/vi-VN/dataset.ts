@@ -164,6 +164,7 @@ const translation = {
     selected: 'Chọn',
     archive: 'Lưu trữ',
     cancel: 'Hủy',
+    reIndex: 'Re-index',
   },
   localDocs: 'Tài liệu địa phương',
   enable: 'Kích hoạt',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Kéo và thả tệp hoặc thư mục, hoặc',
     browse: 'Duyệt',
     tip: '{{supportTypes}} (Tối đa {{batchCount}}, {{size}}MB mỗi cái)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

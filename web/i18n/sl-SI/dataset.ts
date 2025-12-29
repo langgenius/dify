@@ -164,6 +164,7 @@ const translation = {
     disable: 'Onesposobiti',
     archive: 'Arhiv',
     delete: 'Izbrisati',
+    reIndex: 'Re-index',
   },
   localDocs: 'Lokalni dokumenti',
   documentsDisabled: '{{num}} dokumenti onemogočeni - neaktivni več kot 30 dni',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Povlecite in spustite datoteko ali mapo, ali',
     browse: 'Brskaj',
     tip: '{{supportTypes}} (maks. {{batchCount}}, {{size}} MB vsak)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

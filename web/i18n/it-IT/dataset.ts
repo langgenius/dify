@@ -169,6 +169,7 @@ const translation = {
     selected: 'Selezionato',
     disable: 'Disabilitare',
     delete: 'Cancellare',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{num}} Pre-elaborazione dei documenti',
   enable: 'Abilitare',
@@ -252,6 +253,7 @@ const translation = {
     button: 'Trascina e rilascia file o cartella, oppure',
     browse: 'Sfoglia',
     tip: '{{supportTypes}} (Max {{batchCount}}, {{size}}MB ciascuno)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

@@ -164,6 +164,7 @@ const translation = {
     cancel: 'Cancelar',
     archive: 'Archivo',
     delete: 'Borrar',
+    reIndex: 'Re-index',
   },
   enable: 'Habilitar',
   documentsDisabled: '{{num}} Documentos desactivados - inactivos durante más de 30 días',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Arrastra y suelta el archivo o la carpeta, o',
     browse: 'Examinar',
     tip: '{{supportTypes}} (Máx. {{batchCount}}, {{size}} MB cada uno)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

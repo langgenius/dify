@@ -164,6 +164,7 @@ const translation = {
     disable: 'Abschalten',
     delete: 'Löschen',
     enable: 'Ermöglichen',
+    reIndex: 'Re-index',
   },
   enable: 'Ermöglichen',
   localDocs: 'Lokale Dokumente',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Datei oder Ordner ziehen und ablegen, oder',
     browse: 'Durchsuchen',
     tip: '{{supportTypes}} (Max {{batchCount}}, je {{size}}MB)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

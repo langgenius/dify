@@ -165,6 +165,7 @@ const translation = {
     archive: 'Архів',
     selected: 'Вибрані',
     cancel: 'Скасувати',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{num}} Попередня обробка документів',
   documentsDisabled: 'Документи {{num}} вимкнені - неактивні понад 30 днів',
@@ -248,6 +249,7 @@ const translation = {
     button: 'Перетягніть файл або папку, або',
     browse: 'Перегляд',
     tip: '{{supportTypes}} (Макс {{batchCount}}, по {{size}} МБ кожен)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

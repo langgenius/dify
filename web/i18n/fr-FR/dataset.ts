@@ -164,6 +164,7 @@ const translation = {
     cancel: 'Annuler',
     enable: 'Activer',
     selected: 'Sélectionné',
+    reIndex: 'Re-index',
   },
   preprocessDocument: '{{num}} Prétraiter les documents',
   documentsDisabled: '{{num}} documents désactivés - inactifs depuis plus de 30 jours',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Faites glisser et déposez un fichier ou un dossier, ou',
     browse: 'Parcourir',
     tip: '{{supportTypes}} (Max {{batchCount}}, {{size}} Mo chacun)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 

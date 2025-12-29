@@ -164,6 +164,7 @@ const translation = {
     disable: 'Dezactiva',
     selected: 'Selectat',
     archive: 'Arhivă',
+    reIndex: 'Re-index',
   },
   documentsDisabled: '{{num}} documente dezactivate - inactive de peste 30 de zile',
   preprocessDocument: '{{num}} Procesarea prealabilă a documentelor',
@@ -247,6 +248,7 @@ const translation = {
     button: 'Trage și plasează fișierul sau folderul, sau',
     browse: 'Răsfoiește',
     tip: '{{supportTypes}} (Maxim {{batchCount}}, {{size}}MB fiecare)',
+    fileSizeLimitExceeded: 'File size exceeds the {{size}}MB limit',
   },
 }
 
