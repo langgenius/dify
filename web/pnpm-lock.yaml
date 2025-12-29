@@ -526,9 +526,6 @@ importers:
       lint-staged:
         specifier: ^15.5.2
         version: 15.5.2
-      lodash:
-        specifier: ^4.17.21
-        version: 4.17.21
       magicast:
         specifier: ^0.3.5
         version: 0.3.5
