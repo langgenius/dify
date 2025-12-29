@@ -4,7 +4,7 @@ from typing import Any
 
 from flask import make_response, redirect, request
 from flask_restx import Resource, reqparse
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -42,6 +42,12 @@ class TriggerSubscriptionUpdateRequest(BaseModel):
     credentials: Mapping[str, Any] | None = Field(default=None, description="The credentials for the subscription")
     parameters: Mapping[str, Any] | None = Field(default=None, description="The parameters for the subscription")
     properties: Mapping[str, Any] | None = Field(default=None, description="The properties for the subscription")
+
+    @model_validator(mode="after")
+    def check_at_least_one_field(self):
+        if all(v is None for v in (self.name, self.credentials, self.parameters, self.properties)):
+            raise ValueError("At least one of name, credentials, parameters, or properties must be provided")
+        return self
 
 
 class TriggerSubscriptionVerifyRequest(BaseModel):
@@ -332,7 +338,7 @@ class TriggerSubscriptionUpdateApi(Resource):
         user = current_user
         assert user.current_tenant_id is not None
 
-        args = TriggerSubscriptionUpdateRequest.model_validate(console_ns.payload)
+        request = TriggerSubscriptionUpdateRequest.model_validate(console_ns.payload)
 
         subscription = TriggerProviderService.get_subscription_by_id(
             tenant_id=user.current_tenant_id,
@@ -344,33 +350,27 @@ class TriggerSubscriptionUpdateApi(Resource):
         provider_id = TriggerProviderID(subscription.provider_id)
 
         try:
-            # for rename only, update the name
-            if args.name is not None and not any((args.credentials, args.parameters, args.properties)):
+            # For rename only, just update the name
+            rename = request.name is not None and not any((request.credentials, request.parameters, request.properties))
+            # When credential type is UNAUTHORIZED, it indicates the subscription was manually created
+            manually_created = subscription.credential_type == CredentialType.UNAUTHORIZED
+            if rename or manually_created:
                 TriggerProviderService.update_trigger_subscription(
                     tenant_id=user.current_tenant_id,
                     subscription_id=subscription_id,
-                    name=args.name,
+                    name=request.name,
+                    properties=request.properties,
                 )
                 return 200
 
-            # for manually created subscription, only update the name and properties
-            if subscription.credential_type == CredentialType.UNAUTHORIZED:
-                TriggerProviderService.update_trigger_subscription(
-                    tenant_id=user.current_tenant_id,
-                    subscription_id=subscription_id,
-                    name=args.name,
-                    properties=args.properties,
-                )
-                return 200
-
-            # rebuild for create automatically by the provider
+            # For the rest cases(API_KEY, OAUTH2), call third party provider to rebuild the subscription
             TriggerProviderService.rebuild_trigger_subscription(
                 tenant_id=user.current_tenant_id,
-                name=args.name,
+                name=request.name,
                 provider_id=provider_id,
                 subscription_id=subscription_id,
-                credentials=args.credentials or subscription.credentials,
-                parameters=args.parameters or subscription.parameters,
+                credentials=request.credentials or subscription.credentials,
+                parameters=request.parameters or subscription.parameters,
             )
             return 200
         except ValueError as e:
