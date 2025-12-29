@@ -100,9 +100,28 @@ const ProviderDetail = ({
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [deleteAction, setDeleteAction] = useState('')
+
+  const getCustomProvider = useCallback(async () => {
+    setIsDetailLoading(true)
+    const res = await fetchCustomCollection(collection.name)
+    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
+      if (res.credentials.api_key_value)
+        res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
+    }
+    setCustomCollection({
+      ...res,
+      labels: collection.labels,
+      provider: collection.name,
+    })
+    setIsDetailLoading(false)
+  }, [collection.labels, collection.name])
+
   const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
     await updateCustomCollection(data)
     onRefreshData()
+    await getCustomProvider()
+    // Use fresh data from form submission to avoid race condition with collection.labels
+    setCustomCollection(prev => prev ? { ...prev, labels: data.labels } : null)
     Toast.notify({
       type: 'success',
       message: t('common.api.actionSuccess'),
@@ -118,20 +137,6 @@ const ProviderDetail = ({
     })
     setIsShowEditCustomCollectionModal(false)
   }
-  const getCustomProvider = useCallback(async () => {
-    setIsDetailLoading(true)
-    const res = await fetchCustomCollection(collection.name)
-    if (res.credentials.auth_type === AuthType.apiKey && !res.credentials.api_key_header_prefix) {
-      if (res.credentials.api_key_value)
-        res.credentials.api_key_header_prefix = AuthHeaderPrefix.custom
-    }
-    setCustomCollection({
-      ...res,
-      labels: collection.labels,
-      provider: collection.name,
-    })
-    setIsDetailLoading(false)
-  }, [collection.labels, collection.name])
   // workflow provider
   const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {

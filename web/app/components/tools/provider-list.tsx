@@ -1,5 +1,6 @@
 'use client'
 import type { Collection } from './types'
+import { useQueryState } from 'nuqs'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -14,7 +15,6 @@ import CustomCreateCard from '@/app/components/tools/provider/custom-create-card
 import ProviderDetail from '@/app/components/tools/provider/detail'
 import WorkflowToolEmpty from '@/app/components/tools/provider/empty'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useCheckInstalled, useInvalidateInstalledPluginList } from '@/service/use-plugins'
 import { useAllToolProviders } from '@/service/use-tools'
 import { cn } from '@/utils/classnames'
@@ -45,8 +45,8 @@ const ProviderList = () => {
   const { enable_marketplace } = useGlobalPublicStore(s => s.systemFeatures)
   const containerRef = useRef<HTMLDivElement>(null)
 
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'builtin',
+  const [activeTab, setActiveTab] = useQueryState('category', {
+    defaultValue: 'builtin',
   })
   const options = [
     { value: 'builtin', text: t('tools.type.builtIn') },
