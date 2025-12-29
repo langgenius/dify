@@ -15,11 +15,15 @@ import { InputTypeEnum } from './types'
 
 type VariableConfigKeySuffix = I18nKeysByPrefix<'appDebug', 'variableConfig.'>
 
-const i18nFileTypeMap: Partial<Record<InputType, VariableConfigKeySuffix>> = {
+const i18nFileTypeMap = {
+  'text-input': 'text-input',
+  'paragraph': 'paragraph',
   'number': 'number',
+  'select': 'select',
+  'checkbox': 'checkbox',
   'file': 'single-file',
   'file-list': 'multi-files',
-}
+} satisfies Record<InputType, VariableConfigKeySuffix>
 
 const INPUT_TYPE_ICON = {
   [PipelineInputVarType.textInput]: RiTextSnippet,
@@ -48,7 +52,7 @@ export const useInputTypeOptions = (supportFile: boolean) => {
   return options.map((value) => {
     return {
       value,
-      label: t(`variableConfig.${i18nFileTypeMap[value] || value}` as `variableConfig.${VariableConfigKeySuffix}`, { ns: 'appDebug' }),
+      label: t(`variableConfig.${i18nFileTypeMap[value]}`, { ns: 'appDebug' }),
       Icon: INPUT_TYPE_ICON[value],
       type: DATA_TYPE[value],
     }

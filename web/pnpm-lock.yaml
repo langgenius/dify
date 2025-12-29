@@ -330,6 +330,9 @@ importers:
       sortablejs:
         specifier: ^1.15.6
         version: 1.15.6
+      string-ts:
+        specifier: ^2.3.1
+        version: 2.3.1
       swr:
         specifier: ^2.3.6
         version: 2.3.7(react@19.2.3)

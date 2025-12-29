@@ -3,15 +3,32 @@ export default {
   meta: {
     type: 'problem',
     docs: {
-      description: 'Disallow using "as any" type assertion in t() function calls',
+      description: 'Disallow using type assertions in t() function calls',
     },
-    schema: [],
+    schema: [
+      {
+        type: 'object',
+        properties: {
+          mode: {
+            type: 'string',
+            enum: ['any', 'all'],
+            default: 'any',
+          },
+        },
+        additionalProperties: false,
+      },
+    ],
     messages: {
       noAsAnyInT:
         'Avoid using "as any" in t() function calls. Use proper i18n key types instead.',
+      noAsInT:
+        'Avoid using type assertions in t() function calls. Use proper i18n key types instead.',
     },
   },
   create(context) {
+    const options = context.options[0] || {}
+    const mode = options.mode || 'any'
+
     /**
      * Check if this is a t() function call
      * @param {import('estree').CallExpression} node
@@ -45,6 +62,23 @@ export default {
       )
     }
 
+    /**
+     * Check if a node is a TSAsExpression (excluding "as const")
+     * @param {object} node
+     * @returns {boolean}
+     */
+    function isAsExpression(node) {
+      if (node.type !== 'TSAsExpression')
+        return false
+      // Ignore "as const"
+      if (node.typeAnnotation && node.typeAnnotation.type === 'TSTypeReference') {
+        const typeName = node.typeAnnotation.typeName
+        if (typeName && typeName.type === 'Identifier' && typeName.name === 'const')
+          return false
+      }
+      return true
+    }
+
     return {
       CallExpression(node) {
         if (!isTCall(node) || node.arguments.length === 0)
@@ -52,12 +86,23 @@ export default {
 
         const firstArg = node.arguments[0]
 
-        // Check if the first argument uses "as any"
-        if (isAsAny(firstArg)) {
-          context.report({
-            node: firstArg,
-            messageId: 'noAsAnyInT',
-          })
+        if (mode === 'all') {
+          // Check for any type assertion
+          if (isAsExpression(firstArg)) {
+            context.report({
+              node: firstArg,
+              messageId: 'noAsInT',
+            })
+          }
+        }
+        else {
+          // Check only for "as any"
+          if (isAsAny(firstArg)) {
+            context.report({
+              node: firstArg,
+              messageId: 'noAsAnyInT',
+            })
+          }
         }
       },
     }

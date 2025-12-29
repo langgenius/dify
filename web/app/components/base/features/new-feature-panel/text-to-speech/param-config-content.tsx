@@ -10,6 +10,7 @@ import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { Fragment } from 'react'
 import { useTranslation } from 'react-i18next'
+import { replace } from 'string-ts'
 import AudioBtn from '@/app/components/base/audio-btn'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import Switch from '@/app/components/base/switch'
@@ -100,7 +101,7 @@ const VoiceParamConfig = ({
               className="h-full w-full cursor-pointer rounded-lg border-0 bg-components-input-bg-normal py-1.5 pl-3 pr-10 focus-visible:bg-state-base-hover focus-visible:outline-none group-hover:bg-state-base-hover sm:text-sm sm:leading-6"
             >
               <span className={cn('block truncate text-left text-text-secondary', !languageItem?.name && 'text-text-tertiary')}>
-                {languageItem?.name ? t(`voice.language.${languageItem?.value.replace('-', '')}` as VoiceLanguageKey, { ns: 'common' }) : localLanguagePlaceholder}
+                {languageItem?.name ? t(`voice.language.${replace(languageItem?.value, '-', '')}`, { ns: 'common' }) : localLanguagePlaceholder}
               </span>
               <span className="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
                 <ChevronDownIcon
@@ -119,7 +120,7 @@ const VoiceParamConfig = ({
               <ListboxOptions
                 className="absolute z-10 mt-1 max-h-60 w-full overflow-auto rounded-md border-[0.5px] border-components-panel-border bg-components-panel-bg px-1 py-1 text-base shadow-lg focus:outline-none sm:text-sm"
               >
-                {languages.map((item: Item) => (
+                {languages.map(item => (
                   <ListboxOption
                     key={item.value}
                     className="relative cursor-pointer select-none rounded-lg py-2 pl-3 pr-9 text-text-secondary hover:bg-state-base-hover data-[active]:bg-state-base-active"
@@ -131,7 +132,7 @@ const VoiceParamConfig = ({
                         <span
                           className={cn('block', selected && 'font-normal')}
                         >
-                          {t(`voice.language.${(item.value).toString().replace('-', '')}` as VoiceLanguageKey, { ns: 'common' })}
+                          {t(`voice.language.${replace((item.value), '-', '')}`, { ns: 'common' })}
                         </span>
                         {(selected || item.value === text2speech?.language) && (
                           <span
