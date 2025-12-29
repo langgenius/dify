@@ -13,7 +13,6 @@ from datetime import datetime
 from typing import Any
 
 import click
-from sqlalchemy import select
 from sqlalchemy.dialects.postgresql import insert as pg_insert
 from sqlalchemy.orm import Session, sessionmaker
 
@@ -30,7 +29,6 @@ from models.workflow import (
     WorkflowNodeExecutionOffload,
     WorkflowPause,
     WorkflowPauseReason,
-    WorkflowRun,
 )
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -117,27 +115,27 @@ class WorkflowRunRollback:
             click.echo(click.style(f"Archive storage not configured: {e}", fg="red"))
             return result
 
-        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         repo = self._get_workflow_run_repo()
+        run = repo.get_workflow_run_by_id_without_tenant(workflow_run_id)
+        if not run:
+            result.error = f"Workflow run {workflow_run_id} not found"
+            click.echo(click.style(result.error, fg="red"))
+            return result
+
+        if run.tenant_id != tenant_id:
+            result.error = f"Workflow run {workflow_run_id} does not belong to tenant {tenant_id}"
+            click.echo(click.style(result.error, fg="red"))
+            return result
+
+        if not run.is_archived:
+            result.error = f"Workflow run {workflow_run_id} is not archived"
+            click.echo(click.style(result.error, fg="yellow"))
+            return result
+
+        session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
 
         with session_maker() as session:
             try:
-                # Verify the workflow run exists
-                run = session.get(WorkflowRun, workflow_run_id)
-                if not run:
-                    result.error = f"Workflow run {workflow_run_id} not found"
-                    click.echo(click.style(result.error, fg="red"))
-                    return result
-
-                if run.tenant_id != tenant_id:
-                    result.error = f"Workflow run {workflow_run_id} does not belong to tenant {tenant_id}"
-                    click.echo(click.style(result.error, fg="red"))
-                    return result
-
-                if not run.is_archived:
-                    result.error = f"Workflow run {workflow_run_id} is not archived"
-                    click.echo(click.style(result.error, fg="yellow"))
-                    return result
 
                 prefix = build_workflow_run_prefix(
                     tenant_id=run.tenant_id,
@@ -320,21 +318,19 @@ class WorkflowRunRollback:
         """
         results = []
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        repo = self._get_workflow_run_repo()
+
+        if start_date is None or end_date is None:
+            raise ValueError("start_date and end_date are required for batch rollback.")
 
         with session_maker() as session:
-            stmt = select(WorkflowRun).where(
-                WorkflowRun.tenant_id == tenant_id,
-                WorkflowRun.is_archived == True,
+            runs = repo.get_archived_runs_by_time_range(
+                session=session,
+                tenant_ids=[tenant_id],
+                start_date=start_date,
+                end_date=end_date,
+                limit=limit,
             )
-
-            if start_date:
-                stmt = stmt.where(WorkflowRun.created_at >= start_date)
-            if end_date:
-                stmt = stmt.where(WorkflowRun.created_at < end_date)
-
-            stmt = stmt.order_by(WorkflowRun.created_at.asc()).limit(limit)
-
-            runs = session.scalars(stmt).all()
 
         click.echo(
             click.style(
