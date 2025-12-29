@@ -61,7 +61,7 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
     >
       <Button
         className={cn(
-          'p-2 rounded-lg border border-transparent',
+          'rounded-lg border border-transparent p-2',
           theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
         )}
         onClick={handleViewVersionHistory}
