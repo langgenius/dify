@@ -28,12 +28,12 @@ const MCPToolItem = ({
     return (
       <div className="mt-2">
         <div className="title-xs-semi-bold mb-1 text-text-primary">
-          {t('tools.mcp.toolItem.parameters')}
+          {t('mcp.toolItem.parameters', { ns: 'tools' })}
           :
         </div>
         <ul className="space-y-1">
           {parameters.map((parameter) => {
-            const descriptionContent = parameter.human_description[language] || t('tools.mcp.toolItem.noDescription')
+            const descriptionContent = parameter.human_description[language] || t('mcp.toolItem.noDescription', { ns: 'tools' })
             return (
               <li key={parameter.name} className="pl-2">
                 <span className="system-xs-regular font-bold text-text-secondary">{parameter.name}</span>

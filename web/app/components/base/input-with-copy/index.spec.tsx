@@ -13,14 +13,17 @@ vi.mock('copy-to-clipboard', () => ({
 // Mock the i18n hook
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
       const translations: Record<string, string> = {
-        'common.operation.copy': 'Copy',
-        'common.operation.copied': 'Copied',
-        'appOverview.overview.appInfo.embedded.copy': 'Copy',
-        'appOverview.overview.appInfo.embedded.copied': 'Copied',
+        'operation.copy': 'Copy',
+        'operation.copied': 'Copied',
+        'overview.appInfo.embedded.copy': 'Copy',
+        'overview.appInfo.embedded.copied': 'Copied',
       }
-      return translations[key] || key
+      if (translations[key])
+        return translations[key]
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

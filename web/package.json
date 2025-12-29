@@ -138,6 +138,7 @@
     "semver": "^7.7.3",
     "sharp": "^0.33.5",
     "sortablejs": "^1.15.6",
+    "string-ts": "^2.3.1",
     "tailwind-merge": "^2.6.0",
     "tldts": "^7.0.17",
     "use-context-selector": "^2.0.0",
@@ -205,7 +206,6 @@
     "knip": "^5.66.1",
     "lint-staged": "^15.5.2",
     "lodash": "^4.17.21",
-    "magicast": "^0.3.5",
     "nock": "^14.0.10",
     "postcss": "^8.5.6",
     "react-scan": "^0.4.3",
@@ -217,8 +217,7 @@
     "uglify-js": "^3.19.3",
     "vite": "^7.3.0",
     "vite-tsconfig-paths": "^6.0.3",
-    "vitest": "^4.0.16",
-    "vitest-localstorage-mock": "^0.1.2"
+    "vitest": "^4.0.16"
   },
   "pnpm": {
     "overrides": {

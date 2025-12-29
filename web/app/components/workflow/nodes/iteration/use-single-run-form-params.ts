@@ -10,7 +10,7 @@ import { VALUE_SELECTOR_DELIMITER as DELIMITER } from '@/config'
 import { useIsNodeInIteration, useWorkflow } from '../../hooks'
 import { getNodeInfoById, getNodeUsedVarPassToServerKey, getNodeUsedVars, isSystemVar } from '../_base/components/variable/utils'
 
-const i18nPrefix = 'workflow.nodes.iteration'
+const i18nPrefix = 'nodes.iteration'
 
 type Params = {
   id: string
@@ -117,7 +117,7 @@ const useSingleRunFormParams = ({
         onChange: setInputVarValues,
       },
       {
-        label: t(`${i18nPrefix}.input`)!,
+        label: t(`${i18nPrefix}.input`, { ns: 'workflow' })!,
         inputs: [{
           label: '',
           variable: iteratorInputKey,
