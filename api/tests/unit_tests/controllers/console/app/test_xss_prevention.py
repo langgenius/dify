@@ -5,7 +5,6 @@ This test module validates that HTML tags, JavaScript, and other potentially
 dangerous content are rejected in App names and descriptions.
 """
 
-
 import pytest
 
 from controllers.console.app.app import CopyAppPayload, CreateAppPayload, UpdateAppPayload
