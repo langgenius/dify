@@ -475,29 +475,17 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             "pause_reasons": pause_reasons_deleted,
         }
 
-    def mark_runs_archived(
+    def set_runs_archived(
         self,
         session: Session,
         run_ids: Sequence[str],
+        archived: bool,
     ) -> int:
         if not run_ids:
             return 0
 
         result = session.execute(
-            WorkflowRun.__table__.update().where(WorkflowRun.id.in_(run_ids)).values(is_archived=True)
-        )
-        return cast(CursorResult, result).rowcount or 0
-
-    def mark_runs_unarchived(
-        self,
-        session: Session,
-        run_ids: Sequence[str],
-    ) -> int:
-        if not run_ids:
-            return 0
-
-        result = session.execute(
-            WorkflowRun.__table__.update().where(WorkflowRun.id.in_(run_ids)).values(is_archived=False)
+            WorkflowRun.__table__.update().where(WorkflowRun.id.in_(run_ids)).values(is_archived=archived)
         )
         return cast(CursorResult, result).rowcount or 0
 

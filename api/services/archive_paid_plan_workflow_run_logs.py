@@ -529,7 +529,7 @@ class WorkflowRunArchiver:
     def _mark_archived(self, session: Session, run_id: str) -> None:
         """Mark a workflow run as archived."""
         repo = self._get_workflow_run_repo()
-        repo.mark_runs_archived(session, [run_id])
+        repo.set_runs_archived(session, [run_id], archived=True)
 
     def _delete_archived_data(self, session: Session, run: WorkflowRun) -> dict[str, int]:
         """Delete archived data from the 5 tables."""

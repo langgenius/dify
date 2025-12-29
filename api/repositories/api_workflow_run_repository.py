@@ -293,13 +293,14 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         """
         ...
 
-    def mark_runs_archived(
+    def set_runs_archived(
         self,
         session: Session,
         run_ids: Sequence[str],
+        archived: bool,
     ) -> int:
         """
-        Mark workflow runs as archived.
+        Set workflow runs archived flag.
         """
         ...
 

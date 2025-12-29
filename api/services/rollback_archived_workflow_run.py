@@ -32,6 +32,8 @@ from models.workflow import (
     WorkflowPauseReason,
     WorkflowRun,
 )
+from repositories.api_workflow_run_repository import APIWorkflowRunRepository
+from repositories.factory import DifyAPIRepositoryFactory
 
 logger = logging.getLogger(__name__)
 
@@ -75,6 +77,7 @@ class WorkflowRunRollback:
             dry_run: If True, only preview without making changes
         """
         self.dry_run = dry_run
+        self.workflow_run_repo: APIWorkflowRunRepository | None = None
 
     def rollback(
         self,
@@ -115,6 +118,7 @@ class WorkflowRunRollback:
             return result
 
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+        repo = self._get_workflow_run_repo()
 
         with session_maker() as session:
             try:
@@ -204,7 +208,7 @@ class WorkflowRunRollback:
                     )
 
                     # Mark as not archived
-                    run.is_archived = False
+                    repo.set_runs_archived(session, [run.id], archived=False)
                     session.commit()
 
                 result.success = True
@@ -224,6 +228,15 @@ class WorkflowRunRollback:
 
         result.elapsed_time = time.time() - start_time
         return result
+
+    def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
+        if self.workflow_run_repo is not None:
+            return self.workflow_run_repo
+
+        self.workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(
+            sessionmaker(bind=db.engine, expire_on_commit=False)
+        )
+        return self.workflow_run_repo
 
     def _restore_table_records(
         self,
