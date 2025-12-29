@@ -170,6 +170,7 @@ const translation = {
     enable: '启用',
     disable: '禁用',
     archive: '归档',
+    reIndex: '重新索引',
     delete: '删除',
     cancel: '取消',
   },
@@ -245,6 +246,7 @@ const translation = {
     tip: '支持 {{supportTypes}} (最多 {{batchCount}} 个，每个大小不超过 {{size}}MB)',
     button: '拖拽文件或文件夹，或',
     browse: '浏览',
+    fileSizeLimitExceeded: '文件大小超过 {{size}}MB 限制',
   },
 }
 

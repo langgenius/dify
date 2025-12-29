@@ -48,6 +48,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
+  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
     ? {
         provider: '',
@@ -66,6 +67,15 @@ const EditCustomCollectionModal: FC<Props> = ({
     : payload)
 
   const originalProvider = isEdit ? payload.provider : ''
+
+  // Sync customCollection state when payload changes
+  useEffect(() => {
+    if (isEdit) {
+      setCustomCollection(payload)
+      setParamsSchemas(payload.tools || [])
+      setLabels(payload.labels || [])
+    }
+  }, [isEdit, payload])
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
@@ -124,7 +134,6 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [currTool, setCurrTool] = useState<CustomParamSchema | null>(null)
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
-  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const handleLabelSelect = (value: string[]) => {
     setLabels(value)
   }
@@ -292,7 +301,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               <div>
                 <div className="system-sm-medium py-2 text-text-primary">{t('tools.createTool.authMethod.title')}</div>
                 <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
-                  <div className="system-xs-regular text-text-primary">{t(`tools.createTool.authMethod.types.${credential.auth_type}`)}</div>
+                  <div className="system-xs-regular text-text-primary">{t(`tools.createTool.authMethod.types.${credential.auth_type}` as any) as string}</div>
                   <RiSettings2Line className="h-4 w-4 text-text-secondary" />
                 </div>
               </div>

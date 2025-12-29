@@ -1,6 +1,6 @@
 'use client'
 import { RiArrowLeftLine, RiLockPasswordLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'

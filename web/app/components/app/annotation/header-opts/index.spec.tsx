@@ -1,5 +1,6 @@
 import type { ComponentProps } from 'react'
 import type { AnnotationItemBasic } from '../type'
+import type { Locale } from '@/i18n-config'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
@@ -166,7 +167,7 @@ type HeaderOptionsProps = ComponentProps<typeof HeaderOptions>
 
 const renderComponent = (
   props: Partial<HeaderOptionsProps> = {},
-  locale: string = LanguagesSupported[0] as string,
+  locale: Locale = LanguagesSupported[0],
 ) => {
   const defaultProps: HeaderOptionsProps = {
     appId: 'test-app-id',
@@ -353,7 +354,7 @@ describe('HeaderOptions', () => {
       })
     const revokeSpy = vi.spyOn(URL, 'revokeObjectURL').mockImplementation(vi.fn())
 
-    renderComponent({}, LanguagesSupported[1] as string)
+    renderComponent({}, LanguagesSupported[1])
 
     await expandExportMenu(user)
 
@@ -441,7 +442,7 @@ describe('HeaderOptions', () => {
     view.rerender(
       <I18NContext.Provider
         value={{
-          locale: LanguagesSupported[0] as string,
+          locale: LanguagesSupported[0],
           i18n: {},
           setLocaleOnClient: vi.fn(),
         }}

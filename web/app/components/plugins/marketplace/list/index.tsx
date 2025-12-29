@@ -1,6 +1,7 @@
 'use client'
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
+import type { Locale } from '@/i18n-config'
 import { cn } from '@/utils/classnames'
 import Empty from '../empty'
 import CardWrapper from './card-wrapper'
@@ -11,7 +12,7 @@ type ListProps = {
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
-  locale: string
+  locale: Locale
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: () => void

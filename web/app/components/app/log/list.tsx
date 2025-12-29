@@ -12,7 +12,7 @@ import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { get, noop } from 'lodash-es'
+import { get, noop } from 'es-toolkit/compat'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
@@ -139,14 +139,14 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         id: item.id,
         content: item.answer,
         agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-        feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
-        adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
+        feedback: item.feedbacks?.find(item => item.from_source === 'user'), // user feedback
+        adminFeedback: item.feedbacks?.find(item => item.from_source === 'admin'), // admin feedback
         feedbackDisabled: false,
         isAnswer: true,
         message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
         log: [
-          ...item.message,
-          ...(item.message[item.message.length - 1]?.role !== 'assistant'
+          ...(item.message ?? []),
+          ...(item.message?.[item.message.length - 1]?.role !== 'assistant'
             ? [
                 {
                   role: 'assistant',
@@ -165,7 +165,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         more: {
           time: dayjs.unix(item.created_at).tz(timezone).format(format),
           tokens: item.answer_tokens + item.message_tokens,
-          latency: item.provider_response_latency.toFixed(2),
+          latency: (item.provider_response_latency ?? 0).toFixed(2),
         },
         citation: item.metadata?.retriever_resources,
         annotation: (() => {

@@ -1,11 +1,14 @@
 'use client'
 import type { Plugin } from '../types'
+import type { Locale } from '@/i18n-config'
 import { RiAlertFill } from '@remixicon/react'
 import * as React from 'react'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
-import { renderI18nObject } from '@/i18n-config'
+import {
+  renderI18nObject,
+} from '@/i18n-config'
 import { getLanguage } from '@/i18n-config/language'
 import { Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
@@ -30,7 +33,7 @@ export type Props = {
   footer?: React.ReactNode
   isLoading?: boolean
   loadingFileName?: string
-  locale?: string
+  locale?: Locale
   limitedInstall?: boolean
 }
 

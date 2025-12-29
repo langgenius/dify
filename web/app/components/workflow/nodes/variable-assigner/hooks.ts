@@ -7,9 +7,9 @@ import type {
   VarGroupItem,
   VariableAssignerNodeType,
 } from './types'
-import { produce } from 'immer'
+import { uniqBy } from 'es-toolkit/compat'
 
-import { uniqBy } from 'lodash-es'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useNodes,

@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useContext } from 'use-context-selector'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
@@ -21,10 +20,10 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import ExploreContext from '@/context/explore-context'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
-import { fetchAppDetail, fetchAppList } from '@/service/explore'
+import { fetchAppDetail } from '@/service/explore'
+import { useExploreAppList } from '@/service/use-explore'
 import { AppModeEnum } from '@/types/app'
 import { getRedirection } from '@/utils/app-redirection'
 import { cn } from '@/utils/classnames'
@@ -64,29 +63,17 @@ const Apps = ({
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
-  const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: allCategoriesEn,
-    disableSearchParams: true,
-  })
+  const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
   const {
-    data: { categories, allList },
-  } = useSWR(
-    ['/explore/apps'],
-    () =>
-      fetchAppList().then(({ categories, recommended_apps }) => ({
-        categories,
-        allList: recommended_apps.sort((a, b) => a.position - b.position),
-      })),
-    {
-      fallbackData: {
-        categories: [],
-        allList: [],
-      },
-    },
-  )
+    data,
+    isLoading,
+  } = useExploreAppList()
 
   const filteredList = useMemo(() => {
+    if (!data)
+      return []
+    const { allList } = data
     const filteredByCategory = allList.filter((item) => {
       if (currCategory === allCategoriesEn)
         return true
@@ -107,7 +94,7 @@ const Apps = ({
         return true
       return false
     })
-  }, [currentType, currCategory, allCategoriesEn, allList])
+  }, [currentType, currCategory, allCategoriesEn, data])
 
   const searchFilteredList = useMemo(() => {
     if (!searchKeywords || !filteredList || filteredList.length === 0)
@@ -169,7 +156,7 @@ const Apps = ({
     }
   }
 
-  if (!categories || categories.length === 0) {
+  if (isLoading) {
     return (
       <div className="flex h-full items-center">
         <Loading type="area" />
@@ -203,7 +190,7 @@ const Apps = ({
       <div className="relative flex flex-1 overflow-y-auto">
         {!searchKeywords && (
           <div className="h-full w-[200px] p-4">
-            <Sidebar current={currCategory as AppCategories} categories={categories} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
+            <Sidebar current={currCategory as AppCategories} categories={data?.categories || []} onClick={(category) => { setCurrCategory(category) }} onCreateFromBlank={onCreateFromBlank} />
           </div>
         )}
         <div className="h-full flex-1 shrink-0 grow overflow-auto border-l border-divider-burn p-6 pt-2">

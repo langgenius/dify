@@ -3,7 +3,7 @@ import type { Member } from '@/models/common'
 import type { DataSet } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
-import { isEqual } from 'lodash-es'
+import { isEqual } from 'es-toolkit/compat'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -295,7 +295,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isExternal
                 rowClass={rowClass}
                 labelClass={labelClass}
-                t={t}
+                t={t as any}
                 topK={topK}
                 scoreThreshold={scoreThreshold}
                 scoreThresholdEnabled={scoreThresholdEnabled}
@@ -308,7 +308,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
                 isExternal={false}
                 rowClass={rowClass}
                 labelClass={labelClass}
-                t={t}
+                t={t as any}
                 indexMethod={indexMethod}
                 retrievalConfig={retrievalConfig}
                 showMultiModalTip={showMultiModalTip}

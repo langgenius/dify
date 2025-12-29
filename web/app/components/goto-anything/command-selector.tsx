@@ -117,7 +117,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                         '/community': 'app.gotoAnything.actions.communityDesc',
                         '/zen': 'app.gotoAnything.actions.zenDesc',
                       }
-                      return t(slashKeyMap[item.key] || item.description)
+                      return t((slashKeyMap[item.key] || item.description) as any)
                     })()
                   )
                 : (
@@ -128,7 +128,7 @@ const CommandSelector: FC<Props> = ({ actions, onCommandSelect, searchFilter, co
                         '@knowledge': 'app.gotoAnything.actions.searchKnowledgeBasesDesc',
                         '@node': 'app.gotoAnything.actions.searchWorkflowNodesDesc',
                       }
-                      return t(keyMap[item.key])
+                      return t(keyMap[item.key] as any) as string
                     })()
                   )}
             </span>

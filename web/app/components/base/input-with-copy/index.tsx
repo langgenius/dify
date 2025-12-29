@@ -2,7 +2,7 @@
 import type { InputProps } from '../input'
 import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'

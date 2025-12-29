@@ -1,6 +1,7 @@
 'use client'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { Locale } from '@/i18n-config'
 import { RiMoreLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -170,7 +171,7 @@ const FeaturedTriggers = ({
                       onInstallSuccess={async () => {
                         await onInstallSuccess?.()
                       }}
-                      t={t}
+                      t={t as any}
                     />
                   ))}
                 </div>
@@ -213,7 +214,7 @@ const FeaturedTriggers = ({
 
 type FeaturedTriggerUninstalledItemProps = {
   plugin: Plugin
-  language: string
+  language: Locale
   onInstallSuccess?: () => Promise<void> | void
   t: (key: string, options?: Record<string, any>) => string
 }

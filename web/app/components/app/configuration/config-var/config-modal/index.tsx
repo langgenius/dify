@@ -47,6 +47,12 @@ const getCheckboxDefaultSelectValue = (value: InputVar['default']) => {
 const parseCheckboxSelectValue = (value: string) =>
   value === CHECKBOX_DEFAULT_TRUE_VALUE
 
+const normalizeSelectDefaultValue = (inputVar: InputVar) => {
+  if (inputVar.type === InputVarType.select && inputVar.default === '')
+    return { ...inputVar, default: undefined }
+  return inputVar
+}
+
 export type IConfigModalProps = {
   isCreate?: boolean
   payload?: InputVar
@@ -67,7 +73,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
 }) => {
   const { modelConfig } = useContext(ConfigContext)
   const { t } = useTranslation()
-  const [tempPayload, setTempPayload] = useState<InputVar>(() => payload || getNewVarInWorkflow('') as any)
+  const [tempPayload, setTempPayload] = useState<InputVar>(() => normalizeSelectDefaultValue(payload || getNewVarInWorkflow('') as any))
   const { type, label, variable, options, max_length } = tempPayload
   const modalRef = useRef<HTMLDivElement>(null)
   const appDetail = useAppStore(state => state.appDetail)
@@ -96,7 +102,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: t('appDebug.variableConfig.varName') }),
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: t('appDebug.variableConfig.varName') }) as string,
       })
       return false
     }
@@ -182,6 +188,8 @@ const ConfigModal: FC<IConfigModalProps> = ({
 
     const newPayload = produce(tempPayload, (draft) => {
       draft.type = type
+      if (type === InputVarType.select)
+        draft.default = undefined
       if ([InputVarType.singleFile, InputVarType.multiFiles].includes(type)) {
         (Object.keys(DEFAULT_FILE_UPLOAD_SETTING)).forEach((key) => {
           if (key !== 'max_length')
@@ -216,7 +224,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        message: t(`appDebug.varKeyError.${errorMessageKey}` as any, { key: errorKey }) as string,
       })
       return
     }

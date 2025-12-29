@@ -1,4 +1,4 @@
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { useMitt } from '@/hooks/use-mitt'
 

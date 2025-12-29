@@ -1,4 +1,6 @@
 const translation = {
+  loading: 'Loading',
+  error: 'Error',
   theme: {
     theme: 'Theme',
     light: 'light',
@@ -19,6 +21,7 @@ const translation = {
     cancel: 'Cancel',
     clear: 'Clear',
     save: 'Save',
+    saving: 'Saving...',
     yes: 'Yes',
     no: 'No',
     deleteConfirmTitle: 'Delete?',
@@ -71,6 +74,8 @@ const translation = {
     saveAndRegenerate: 'Save & Regenerate Child Chunks',
     view: 'View',
     viewMore: 'VIEW MORE',
+    back: 'Back',
+    imageDownloaded: 'Image downloaded',
     regenerate: 'Regenerate',
     submit: 'Submit',
     skip: 'Skip',
@@ -252,6 +257,7 @@ const translation = {
     feedbackPlaceholder: 'Optional',
     editWorkspaceInfo: 'Edit Workspace Info',
     workspaceName: 'Workspace Name',
+    workspaceNamePlaceholder: 'Enter workspace name',
     workspaceIcon: 'Workspace Icon',
     changeEmail: {
       title: 'Change Email',
@@ -515,6 +521,7 @@ const translation = {
     emptyProviderTip: 'Please install a model provider first.',
     auth: {
       unAuthorized: 'Unauthorized',
+      credentialRemoved: 'Credential removed',
       authRemoved: 'Auth removed',
       apiKeys: 'API Keys',
       addApiKey: 'Add API Key',
