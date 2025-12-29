@@ -875,7 +875,7 @@ class TriggerProviderService:
         if not subscription:
             raise ValueError(f"Subscription {subscription_id} not found")
 
-        credential_type = subscription.credential_type
+        credential_type = CredentialType.of(subscription.credential_type)
         if credential_type not in {CredentialType.OAUTH2, CredentialType.API_KEY}:
             raise ValueError(f"Credential type {credential_type} not supported for auto creation")
 
