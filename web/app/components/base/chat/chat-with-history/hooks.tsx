@@ -20,7 +20,6 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { getProcessedFilesFromResponse } from '@/app/components/base/file-uploader/utils'
 import { useToastContext } from '@/app/components/base/toast'
 import { InputVarType } from '@/app/components/workflow/types'
@@ -29,14 +28,17 @@ import { useAppFavicon } from '@/hooks/use-app-favicon'
 import { changeLanguage } from '@/i18n-config/i18next-config'
 import {
   delConversation,
-  fetchChatList,
-  fetchConversations,
-  generationConversationName,
   pinConversation,
   renameConversation,
   unpinConversation,
   updateFeedback,
 } from '@/service/share'
+import {
+  useInvalidateShareConversations,
+  useShareChatList,
+  useShareConversationName,
+  useShareConversations,
+} from '@/service/use-share'
 import { TransferMethod } from '@/types/app'
 import { addFileInfos, sortAgentSorts } from '../../../tools/utils'
 import { CONVERSATION_ID_INFO } from '../constants'
@@ -174,21 +176,42 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     return currentConversationId
   }, [currentConversationId, newConversationId])
 
-  const { data: appPinnedConversationData, mutate: mutateAppPinnedConversationData } = useSWR(
-    appId ? ['appConversationData', isInstalledApp, appId, true] : null,
-    () => fetchConversations(isInstalledApp, appId, undefined, true, 100),
-    { revalidateOnFocus: false, revalidateOnReconnect: false },
-  )
-  const { data: appConversationData, isLoading: appConversationDataLoading, mutate: mutateAppConversationData } = useSWR(
-    appId ? ['appConversationData', isInstalledApp, appId, false] : null,
-    () => fetchConversations(isInstalledApp, appId, undefined, false, 100),
-    { revalidateOnFocus: false, revalidateOnReconnect: false },
-  )
-  const { data: appChatListData, isLoading: appChatListDataLoading } = useSWR(
-    chatShouldReloadKey ? ['appChatList', chatShouldReloadKey, isInstalledApp, appId] : null,
-    () => fetchChatList(chatShouldReloadKey, isInstalledApp, appId),
-    { revalidateOnFocus: false, revalidateOnReconnect: false },
-  )
+  const { data: appPinnedConversationData } = useShareConversations({
+    isInstalledApp,
+    appId,
+    pinned: true,
+    limit: 100,
+  }, {
+    enabled: !!appId,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+  const {
+    data: appConversationData,
+    isLoading: appConversationDataLoading,
+  } = useShareConversations({
+    isInstalledApp,
+    appId,
+    pinned: false,
+    limit: 100,
+  }, {
+    enabled: !!appId,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+  const {
+    data: appChatListData,
+    isLoading: appChatListDataLoading,
+  } = useShareChatList({
+    conversationId: chatShouldReloadKey,
+    isInstalledApp,
+    appId,
+  }, {
+    enabled: !!chatShouldReloadKey,
+    refetchOnWindowFocus: false,
+    refetchOnReconnect: false,
+  })
+  const invalidateShareConversations = useInvalidateShareConversations()
 
   const [clearChatList, setClearChatList] = useState(false)
   const [isResponding, setIsResponding] = useState(false)
@@ -309,7 +332,13 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     handleNewConversationInputsChange(conversationInputs)
   }, [handleNewConversationInputsChange, inputsForms])
 
-  const { data: newConversation } = useSWR(newConversationId ? [isInstalledApp, appId, newConversationId] : null, () => generationConversationName(isInstalledApp, appId, newConversationId), { revalidateOnFocus: false })
+  const { data: newConversation } = useShareConversationName({
+    conversationId: newConversationId,
+    isInstalledApp,
+    appId,
+  }, {
+    refetchOnWindowFocus: false,
+  })
   const [originConversationList, setOriginConversationList] = useState<ConversationItem[]>([])
   useEffect(() => {
     if (appConversationData?.data && !appConversationDataLoading)
@@ -429,9 +458,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setClearChatList(true)
   }, [handleChangeConversation, setShowNewConversationItemInList, handleNewConversationInputsChange, setClearChatList, inputsForms])
   const handleUpdateConversationList = useCallback(() => {
-    mutateAppConversationData()
-    mutateAppPinnedConversationData()
-  }, [mutateAppConversationData, mutateAppPinnedConversationData])
+    invalidateShareConversations()
+  }, [invalidateShareConversations])
 
   const handlePinConversation = useCallback(async (conversationId: string) => {
     await pinConversation(isInstalledApp, appId, conversationId)
@@ -518,8 +546,8 @@ export const useChatWithHistory = (installedAppInfo?: InstalledApp) => {
     setNewConversationId(newConversationId)
     handleConversationIdInfoChange(newConversationId)
     setShowNewConversationItemInList(false)
-    mutateAppConversationData()
-  }, [mutateAppConversationData, handleConversationIdInfoChange])
+    invalidateShareConversations()
+  }, [handleConversationIdInfoChange, invalidateShareConversations])
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
