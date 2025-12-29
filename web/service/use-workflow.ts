@@ -9,6 +9,7 @@ import type {
   UpdateWorkflowParams,
   VarInInspect,
   WorkflowConfigResponse,
+  WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { del, get, patch, post, put } from './base'
@@ -22,6 +23,14 @@ export const useAppWorkflow = (appID: string) => {
     enabled: !!appID,
     queryKey: [NAME_SPACE, 'publish', appID],
     queryFn: () => get<FetchWorkflowDraftResponse>(`/apps/${appID}/workflows/publish`),
+  })
+}
+
+export const useWorkflowRunHistory = (url?: string, enabled = true) => {
+  return useQuery<WorkflowRunHistoryResponse>({
+    queryKey: [NAME_SPACE, 'runHistory', url],
+    queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
+    enabled: !!url && enabled,
   })
 }
 

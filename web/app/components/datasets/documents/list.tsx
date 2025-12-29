@@ -9,7 +9,7 @@ import {
   RiGlobalLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { pick, uniq } from 'lodash-es'
+import { pick, uniq } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -26,7 +26,7 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode, DataSourceType, DocumentActionType } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
-import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -220,6 +220,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
 
   const handleAction = (actionName: DocumentActionType) => {
     return async () => {
@@ -249,6 +250,22 @@ const DocumentList: FC<IDocumentListProps> = ({
       else { Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
     }
   }
+
+  const handleBatchReIndex = async () => {
+    const [e] = await asyncRunSafe<CommonResponse>(retryIndexDocument({ datasetId, documentIds: selectedIds }))
+    if (!e) {
+      onSelectedIdChange([])
+      Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      onUpdate()
+    }
+    else {
+      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+    }
+  }
+
+  const hasErrorDocumentsSelected = useMemo(() => {
+    return localDocs.some(doc => selectedIds.includes(doc.id) && doc.display_status === 'error')
+  }, [localDocs, selectedIds])
 
   const getFileExtension = useCallback((fileName: string): string => {
     if (!fileName)
@@ -447,6 +464,7 @@ const DocumentList: FC<IDocumentListProps> = ({
           onBatchDisable={handleAction(DocumentActionType.disable)}
           onBatchDelete={handleAction(DocumentActionType.delete)}
           onEditMetadata={showEditModal}
+          onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
           onCancel={() => {
             onSelectedIdChange([])
           }}

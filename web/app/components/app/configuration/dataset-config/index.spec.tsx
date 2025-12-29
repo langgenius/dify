@@ -52,7 +52,7 @@ vi.mock('../debug/hooks', () => ({
   useFormattingChangedDispatcher: vi.fn(() => vi.fn()),
 }))
 
-vi.mock('lodash-es', () => ({
+vi.mock('es-toolkit/compat', () => ({
   intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)

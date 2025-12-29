@@ -10,12 +10,14 @@ import AppList from './index'
 const allCategoriesEn = 'explore.apps.allCategories:{"lng":"en"}'
 let mockTabValue = allCategoriesEn
 const mockSetTab = vi.fn()
-let mockSWRData: { categories: string[], allList: App[] } = { categories: [], allList: [] }
+let mockExploreData: { categories: string[], allList: App[] } | undefined = { categories: [], allList: [] }
+let mockIsLoading = false
+let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => [mockTabValue, mockSetTab],
+vi.mock('nuqs', () => ({
+  useQueryState: () => [mockTabValue, mockSetTab],
 }))
 
 vi.mock('ahooks', async () => {
@@ -33,9 +35,12 @@ vi.mock('ahooks', async () => {
   }
 })
 
-vi.mock('swr', () => ({
-  __esModule: true,
-  default: () => ({ data: mockSWRData }),
+vi.mock('@/service/use-explore', () => ({
+  useExploreAppList: () => ({
+    data: mockExploreData,
+    isLoading: mockIsLoading,
+    isError: mockIsError,
+  }),
 }))
 
 vi.mock('@/service/explore', () => ({
@@ -135,14 +140,17 @@ describe('AppList', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockTabValue = allCategoriesEn
-    mockSWRData = { categories: [], allList: [] }
+    mockExploreData = { categories: [], allList: [] }
+    mockIsLoading = false
+    mockIsError = false
   })
 
   // Rendering: show loading when categories are not ready.
   describe('Rendering', () => {
-    it('should render loading when categories are empty', () => {
+    it('should render loading when the query is loading', () => {
       // Arrange
-      mockSWRData = { categories: [], allList: [] }
+      mockExploreData = undefined
+      mockIsLoading = true
 
       // Act
       renderWithContext()
@@ -153,7 +161,7 @@ describe('AppList', () => {
 
     it('should render app cards when data is available', () => {
       // Arrange
-      mockSWRData = {
+      mockExploreData = {
         categories: ['Writing', 'Translate'],
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
       }
@@ -172,7 +180,7 @@ describe('AppList', () => {
     it('should filter apps by selected category', () => {
       // Arrange
       mockTabValue = 'Writing'
-      mockSWRData = {
+      mockExploreData = {
         categories: ['Writing', 'Translate'],
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Beta' }, category: 'Translate' })],
       }
@@ -190,7 +198,7 @@ describe('AppList', () => {
   describe('User Interactions', () => {
     it('should filter apps by search keywords', async () => {
       // Arrange
-      mockSWRData = {
+      mockExploreData = {
         categories: ['Writing'],
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
       }
@@ -210,7 +218,7 @@ describe('AppList', () => {
     it('should handle create flow and confirm DSL when pending', async () => {
       // Arrange
       const onSuccess = vi.fn()
-      mockSWRData = {
+      mockExploreData = {
         categories: ['Writing'],
         allList: [createApp()],
       };
@@ -246,7 +254,7 @@ describe('AppList', () => {
   describe('Edge Cases', () => {
     it('should reset search results when clear icon is clicked', async () => {
       // Arrange
-      mockSWRData = {
+      mockExploreData = {
         categories: ['Writing'],
         allList: [createApp(), createApp({ app_id: 'app-2', app: { ...createApp().app, name: 'Gamma' } })],
       }

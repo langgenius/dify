@@ -1,6 +1,6 @@
 import type { ButtonProps } from '@/app/components/base/button'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
