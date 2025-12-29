@@ -170,6 +170,7 @@ const translation = {
     enable: 'Enable',
     disable: 'Disable',
     archive: 'Archive',
+    reIndex: 'Re-index',
     delete: 'Delete',
     cancel: 'Cancel',
   },
