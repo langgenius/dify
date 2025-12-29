@@ -31,7 +31,7 @@ const BoolInput: FC<Props> = ({
       />
       <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
         {name}
-        {!required && <span className="system-xs-regular text-text-tertiary">{t('workflow.panel.optional')}</span>}
+        {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
       </div>
     </div>
   )

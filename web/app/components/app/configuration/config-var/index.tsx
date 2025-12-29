@@ -84,21 +84,21 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
 
     const newList = newPromptVariables
-    let errorMsgKey = ''
-    let typeName = ''
+    let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
+    let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
     if (hasDuplicateStr(newList.map(item => item.key))) {
-      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
-      typeName = 'appDebug.variableConfig.varName'
+      errorMsgKey = 'varKeyError.keyAlreadyExists'
+      typeName = 'variableConfig.varName'
     }
     else if (hasDuplicateStr(newList.map(item => item.name as string))) {
-      errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
-      typeName = 'appDebug.variableConfig.labelName'
+      errorMsgKey = 'varKeyError.keyAlreadyExists'
+      typeName = 'variableConfig.labelName'
     }
 
-    if (errorMsgKey) {
+    if (errorMsgKey && typeName) {
       Toast.notify({
         type: 'error',
-        message: t(errorMsgKey as any, { key: t(typeName as any) as string }) as string,
+        message: t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }),
       })
       return false
     }
@@ -149,7 +149,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
-            Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+            Toast.notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
             return false
           }
         }
@@ -238,12 +238,12 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={(
         <div className="flex items-center">
-          <div className="mr-1">{t('appDebug.variableTitle')}</div>
+          <div className="mr-1">{t('variableTitle', { ns: 'appDebug' })}</div>
           {!readonly && (
             <Tooltip
               popupContent={(
                 <div className="w-[180px]">
-                  {t('appDebug.variableTip')}
+                  {t('variableTip', { ns: 'appDebug' })}
                 </div>
               )}
             />
@@ -255,7 +255,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     >
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
-          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.notSetVar')}</div>
+          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('notSetVar', { ns: 'appDebug' })}</div>
         </div>
       )}
       {hasVar && (
@@ -307,8 +307,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       {isShowDeleteContextVarModal && (
         <Confirm
           isShow={isShowDeleteContextVarModal}
-          title={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle', { varName: promptVariables[removeIndex as number]?.name })}
-          content={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip')}
+          title={t('feature.dataSet.queryVariable.deleteContextVarTitle', { ns: 'appDebug', varName: promptVariables[removeIndex as number]?.name })}
+          content={t('feature.dataSet.queryVariable.deleteContextVarTip', { ns: 'appDebug' })}
           onConfirm={() => {
             didRemoveVar(removeIndex as number)
             hideDeleteContextVarModal()

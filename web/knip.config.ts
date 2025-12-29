@@ -76,7 +76,7 @@ const config: KnipConfig = {
     // Browser initialization (runs on client startup)
     'app/components/browser-initializer.tsx!',
     'app/components/sentry-initializer.tsx!',
-    'app/components/swr-initializer.tsx!',
+    'app/components/app-initializer.tsx!',
 
     // i18n initialization (server and client)
     'app/components/i18n.tsx!',
@@ -204,7 +204,6 @@ const config: KnipConfig = {
     // ========================================================================
     'bing-translate-api',
     'uglify-js',
-    'magicast',
   ],
 
   // ============================================================================

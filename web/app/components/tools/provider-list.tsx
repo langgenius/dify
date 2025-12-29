@@ -49,9 +49,9 @@ const ProviderList = () => {
     defaultValue: 'builtin',
   })
   const options = [
-    { value: 'builtin', text: t('tools.type.builtIn') },
-    { value: 'api', text: t('tools.type.custom') },
-    { value: 'workflow', text: t('tools.type.workflow') },
+    { value: 'builtin', text: t('type.builtIn', { ns: 'tools' }) },
+    { value: 'api', text: t('type.custom', { ns: 'tools' }) },
+    { value: 'workflow', text: t('type.workflow', { ns: 'tools' }) },
     { value: 'mcp', text: 'MCP' },
   ]
   const [tagFilterValue, setTagFilterValue] = useState<string[]>([])
@@ -194,7 +194,7 @@ const ProviderList = () => {
             </div>
           )}
           {!filteredCollectionList.length && activeTab === 'builtin' && (
-            <Empty lightCard text={t('tools.noTools')} className="h-[224px] shrink-0 px-12" />
+            <Empty lightCard text={t('noTools', { ns: 'tools' })} className="h-[224px] shrink-0 px-12" />
           )}
           <div ref={toolListTailRef} />
           {enable_marketplace && activeTab === 'builtin' && (

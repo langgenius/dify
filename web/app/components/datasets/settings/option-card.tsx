@@ -95,7 +95,7 @@ const OptionCard = <T,>({
             {
               isRecommended && (
                 <Badge className="h-[18px] border-text-accent-secondary text-text-accent-secondary">
-                  {t('datasetCreation.stepTwo.recommend')}
+                  {t('stepTwo.recommend', { ns: 'datasetCreation' })}
                 </Badge>
               )
             }

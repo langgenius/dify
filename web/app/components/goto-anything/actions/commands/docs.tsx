@@ -28,8 +28,8 @@ export const docsCommand: SlashCommandHandler<DocDeps> = {
   async search(args: string, locale: string = 'en') {
     return [{
       id: 'doc',
-      title: i18n.t('common.userProfile.helpCenter', { lng: locale }),
-      description: i18n.t('app.gotoAnything.actions.docDesc', { lng: locale }) || 'Open help documentation',
+      title: i18n.t('userProfile.helpCenter', { ns: 'common', lng: locale }),
+      description: i18n.t('gotoAnything.actions.docDesc', { ns: 'app', lng: locale }) || 'Open help documentation',
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

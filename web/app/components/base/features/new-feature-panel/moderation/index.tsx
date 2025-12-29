@@ -106,22 +106,22 @@ const Moderation = ({
 
   const providerContent = useMemo(() => {
     if (moderation?.type === 'openai_moderation')
-      return t('appDebug.feature.moderation.modal.provider.openai')
+      return t('feature.moderation.modal.provider.openai', { ns: 'appDebug' })
     else if (moderation?.type === 'keywords')
-      return t('appDebug.feature.moderation.modal.provider.keywords')
+      return t('feature.moderation.modal.provider.keywords', { ns: 'appDebug' })
     else if (moderation?.type === 'api')
-      return t('common.apiBasedExtension.selector.title')
+      return t('apiBasedExtension.selector.title', { ns: 'common' })
     else
       return codeBasedExtensionList?.data.find(item => item.name === moderation?.type)?.label[locale] || '-'
   }, [codeBasedExtensionList?.data, locale, moderation?.type, t])
 
   const enableContent = useMemo(() => {
     if (moderation?.config?.inputs_config?.enabled && moderation.config?.outputs_config?.enabled)
-      return t('appDebug.feature.moderation.allEnabled')
+      return t('feature.moderation.allEnabled', { ns: 'appDebug' })
     else if (moderation?.config?.inputs_config?.enabled)
-      return t('appDebug.feature.moderation.inputEnabled')
+      return t('feature.moderation.inputEnabled', { ns: 'appDebug' })
     else if (moderation?.config?.outputs_config?.enabled)
-      return t('appDebug.feature.moderation.outputEnabled')
+      return t('feature.moderation.outputEnabled', { ns: 'appDebug' })
   }, [moderation?.config?.inputs_config?.enabled, moderation?.config?.outputs_config?.enabled, t])
 
   return (
@@ -131,7 +131,7 @@ const Moderation = ({
           <ContentModeration className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('appDebug.feature.moderation.title')}
+      title={t('feature.moderation.title', { ns: 'appDebug' })}
       value={!!moderation?.enabled}
       onChange={state => handleChange(FeatureEnum.moderation, state)}
       onMouseEnter={() => setIsHovering(true)}
@@ -140,19 +140,19 @@ const Moderation = ({
     >
       <>
         {!moderation?.enabled && (
-          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('appDebug.feature.moderation.description')}</div>
+          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.moderation.description', { ns: 'appDebug' })}</div>
         )}
         {!!moderation?.enabled && (
           <>
             {!isHovering && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.moderation.modal.provider.title')}</div>
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.moderation.modal.provider.title', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{providerContent}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.moderation.contentEnableLabel')}</div>
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.moderation.contentEnableLabel', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{enableContent}</div>
                 </div>
               </div>
@@ -160,7 +160,7 @@ const Moderation = ({
             {isHovering && (
               <Button className="w-full" onClick={handleOpenModerationSettingModal} disabled={disabled}>
                 <RiEqualizer2Line className="mr-1 h-4 w-4" />
-                {t('common.operation.settings')}
+                {t('operation.settings', { ns: 'common' })}
               </Button>
             )}
           </>
