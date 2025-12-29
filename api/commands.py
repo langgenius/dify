@@ -851,6 +851,7 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 
     click.echo(click.style("Clear free plan tenant expired logs completed.", fg="green"))
 
+
 @click.command(
     "archive-workflow-runs",
     help="Archive workflow runs for paid plan tenants to S3-compatible storage.",
