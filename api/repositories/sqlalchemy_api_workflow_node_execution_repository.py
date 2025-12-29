@@ -7,13 +7,13 @@ using SQLAlchemy 2.0 style queries for WorkflowNodeExecutionModel operations.
 
 from collections.abc import Sequence
 from datetime import datetime
-from typing import cast
+from typing import TypedDict, cast
 
-from sqlalchemy import asc, delete, desc, select
+from sqlalchemy import asc, delete, desc, select, tuple_
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, sessionmaker
 
-from models.workflow import WorkflowNodeExecutionModel
+from models.workflow import WorkflowNodeExecutionModel, WorkflowNodeExecutionOffload
 from repositories.api_workflow_node_execution_repository import DifyAPIWorkflowNodeExecutionRepository
 
 

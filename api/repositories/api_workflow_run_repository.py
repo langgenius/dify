@@ -34,9 +34,11 @@ Example:
     ```
 """
 
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from typing import Protocol
+
+from sqlalchemy.orm import Session
 
 from core.workflow.entities.pause_reason import PauseReason
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
