@@ -15,15 +15,17 @@ import ListWrapper from './list-wrapper'
 // Mock useMixedTranslation hook
 vi.mock('../hooks', () => ({
   useMixedTranslation: (_locale?: string) => ({
-    t: (key: string, params?: Record<string, unknown>) => {
+    t: (key: string, options?: { ns?: string, num?: number }) => {
+      // Build full key with namespace prefix if provided
+      const fullKey = options?.ns ? `${options.ns}.${key}` : key
       const translations: Record<string, string> = {
         'plugin.marketplace.viewMore': 'View More',
-        'plugin.marketplace.pluginsResult': `${params?.num || 0} plugins found`,
+        'plugin.marketplace.pluginsResult': `${options?.num || 0} plugins found`,
         'plugin.marketplace.noPluginFound': 'No plugins found',
         'plugin.detailPanel.operation.install': 'Install',
         'plugin.detailPanel.operation.detail': 'Detail',
       }
-      return translations[key] || key
+      return translations[fullKey] || key
     },
   }),
 }))

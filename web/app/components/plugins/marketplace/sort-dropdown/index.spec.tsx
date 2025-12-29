@@ -9,7 +9,9 @@ import SortDropdown from './index'
 // ================================
 
 // Mock useMixedTranslation hook
-const mockTranslation = vi.fn((key: string) => {
+const mockTranslation = vi.fn((key: string, options?: { ns?: string }) => {
+  // Build full key with namespace prefix if provided
+  const fullKey = options?.ns ? `${options.ns}.${key}` : key
   const translations: Record<string, string> = {
     'plugin.marketplace.sortBy': 'Sort by',
     'plugin.marketplace.sortOption.mostPopular': 'Most Popular',
@@ -17,7 +19,7 @@ const mockTranslation = vi.fn((key: string) => {
     'plugin.marketplace.sortOption.newlyReleased': 'Newly Released',
     'plugin.marketplace.sortOption.firstReleased': 'First Released',
   }
-  return translations[key] || key
+  return translations[fullKey] || key
 })
 
 vi.mock('../hooks', () => ({
@@ -157,7 +159,7 @@ describe('SortDropdown', () => {
       render(<SortDropdown locale="ja-JP" />)
 
       // Translation function should be called for labels
-      expect(mockTranslation).toHaveBeenCalledWith('plugin.marketplace.sortBy')
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortBy', { ns: 'plugin' })
     })
 
     it('should render without locale prop (undefined)', () => {
@@ -605,16 +607,16 @@ describe('SortDropdown', () => {
     it('should call translation for sortBy label', () => {
       render(<SortDropdown />)
 
-      expect(mockTranslation).toHaveBeenCalledWith('plugin.marketplace.sortBy')
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortBy', { ns: 'plugin' })
     })
 
     it('should call translation for all sort options', () => {
       render(<SortDropdown />)
 
-      expect(mockTranslation).toHaveBeenCalledWith('plugin.marketplace.sortOption.mostPopular')
-      expect(mockTranslation).toHaveBeenCalledWith('plugin.marketplace.sortOption.recentlyUpdated')
-      expect(mockTranslation).toHaveBeenCalledWith('plugin.marketplace.sortOption.newlyReleased')
-      expect(mockTranslation).toHaveBeenCalledWith('plugin.marketplace.sortOption.firstReleased')
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.mostPopular', { ns: 'plugin' })
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.recentlyUpdated', { ns: 'plugin' })
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.newlyReleased', { ns: 'plugin' })
+      expect(mockTranslation).toHaveBeenCalledWith('marketplace.sortOption.firstReleased', { ns: 'plugin' })
     })
 
     it('should pass locale to useMixedTranslation', () => {

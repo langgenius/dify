@@ -13,13 +13,15 @@ import ToolSelectorTrigger from './trigger/tool-selector'
 // Mock useMixedTranslation hook
 vi.mock('../hooks', () => ({
   useMixedTranslation: (_locale?: string) => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
+      // Build full key with namespace prefix if provided
+      const fullKey = options?.ns ? `${options.ns}.${key}` : key
       const translations: Record<string, string> = {
         'pluginTags.allTags': 'All Tags',
         'pluginTags.searchTags': 'Search tags',
         'plugin.searchPlugins': 'Search plugins',
       }
-      return translations[key] || key
+      return translations[fullKey] || key
     },
   }),
 }))

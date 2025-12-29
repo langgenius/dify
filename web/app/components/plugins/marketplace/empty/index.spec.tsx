@@ -10,11 +10,13 @@ import Line from './line'
 // Mock useMixedTranslation hook
 vi.mock('../hooks', () => ({
   useMixedTranslation: (_locale?: string) => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
+      // Build full key with namespace prefix if provided
+      const fullKey = options?.ns ? `${options.ns}.${key}` : key
       const translations: Record<string, string> = {
         'plugin.marketplace.noPluginFound': 'No plugin found',
       }
-      return translations[key] || key
+      return translations[fullKey] || key
     },
   }),
 }))

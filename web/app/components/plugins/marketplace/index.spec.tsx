@@ -620,7 +620,7 @@ describe('hooks', () => {
       const { result } = renderHook(() => useMixedTranslation())
 
       // The mock returns key as-is
-      expect(result.current.t('plugin.category.all')).toBe('plugin.category.all')
+      expect(result.current.t('category.all', { ns: 'plugin' })).toBe('category.all')
     })
 
     it('should use locale from outer when provided', () => {
@@ -641,7 +641,7 @@ describe('hooks', () => {
     it('should use getFixedT when localeFromOuter is provided', () => {
       const { result } = renderHook(() => useMixedTranslation('fr-FR'))
       // Should still return a function
-      expect(result.current.t('plugin.search')).toBe('plugin.search')
+      expect(result.current.t('search', { ns: 'plugin' })).toBe('search')
     })
   })
 })
@@ -2758,14 +2758,15 @@ describe('PluginTypeSwitch Component', () => {
         </MarketplaceContextProvider>,
       )
 
-      expect(screen.getByText('plugin.category.all')).toBeInTheDocument()
-      expect(screen.getByText('plugin.category.models')).toBeInTheDocument()
-      expect(screen.getByText('plugin.category.tools')).toBeInTheDocument()
-      expect(screen.getByText('plugin.category.datasources')).toBeInTheDocument()
-      expect(screen.getByText('plugin.category.triggers')).toBeInTheDocument()
-      expect(screen.getByText('plugin.category.agents')).toBeInTheDocument()
-      expect(screen.getByText('plugin.category.extensions')).toBeInTheDocument()
-      expect(screen.getByText('plugin.category.bundles')).toBeInTheDocument()
+      // Note: The mock returns the key without namespace prefix
+      expect(screen.getByText('category.all')).toBeInTheDocument()
+      expect(screen.getByText('category.models')).toBeInTheDocument()
+      expect(screen.getByText('category.tools')).toBeInTheDocument()
+      expect(screen.getByText('category.datasources')).toBeInTheDocument()
+      expect(screen.getByText('category.triggers')).toBeInTheDocument()
+      expect(screen.getByText('category.agents')).toBeInTheDocument()
+      expect(screen.getByText('category.extensions')).toBeInTheDocument()
+      expect(screen.getByText('category.bundles')).toBeInTheDocument()
     })
 
     it('should apply className prop', () => {
@@ -2795,7 +2796,7 @@ describe('PluginTypeSwitch Component', () => {
         </MarketplaceContextProvider>,
       )
 
-      fireEvent.click(screen.getByText('plugin.category.tools'))
+      fireEvent.click(screen.getByText('category.tools'))
       expect(screen.getByTestId('active-type-display')).toHaveTextContent('tool')
     })
 
@@ -2817,7 +2818,7 @@ describe('PluginTypeSwitch Component', () => {
       )
 
       fireEvent.click(screen.getByTestId('set-model'))
-      const modelOption = screen.getByText('plugin.category.models').closest('div')
+      const modelOption = screen.getByText('category.models').closest('div')
       expect(modelOption).toHaveClass('shadow-xs')
     })
   })
