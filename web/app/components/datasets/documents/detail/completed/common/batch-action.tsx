@@ -100,7 +100,7 @@ const BatchAction: FC<IBatchActionProps> = ({
             onClick={onBatchReIndex}
           >
             <RiRefreshLine className="size-4" />
-            <span className="px-0.5">{t(`${i18nPrefix}.reIndex`)}</span>
+            <span className="px-0.5">{t(`${i18nPrefix}.reIndex`, { ns: 'dataset' })}</span>
           </Button>
         )}
         <Button

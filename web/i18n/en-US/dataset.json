@@ -89,6 +89,7 @@
   "indexingMethod.full_text_search": "FULL TEXT",
   "indexingMethod.hybrid_search": "HYBRID",
   "indexingMethod.invertedIndex": "INVERTED",
+  "indexingMethod.keyword_search": "KEYWORD",
   "indexingMethod.semantic_search": "VECTOR",
   "indexingTechnique.economy": "ECO",
   "indexingTechnique.high_quality": "HQ",

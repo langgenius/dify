@@ -39,6 +39,7 @@ const Blocks = ({
       type: block.type,
       title: block.title,
       author: 'Dify',
+      // @ts-expect-error Fix this missing field later
       description: block.description,
     },
     defaultValue: {},

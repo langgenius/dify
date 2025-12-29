@@ -255,11 +255,11 @@ const DocumentList: FC<IDocumentListProps> = ({
     const [e] = await asyncRunSafe<CommonResponse>(retryIndexDocument({ datasetId, documentIds: selectedIds }))
     if (!e) {
       onSelectedIdChange([])
-      Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onUpdate()
     }
     else {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
   }
 

@@ -17,7 +17,7 @@ type Props = {
   isShort?: boolean
   onClick?: () => void
   loc?: string
-  labelKey?: I18nKeysWithPrefix<'billing', 'upgradeBtn.'>
+  labelKey?: Exclude<I18nKeysWithPrefix<'billing'>, 'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'>
 }
 
 const UpgradeBtn: FC<Props> = ({

@@ -13,13 +13,19 @@ declare module 'i18next' {
 export type I18nKeysByPrefix<
   NS extends NamespaceCamelCase,
   Prefix extends string = '',
-> = keyof Resources[NS] extends infer K
-  ? K extends `${Prefix}${infer Rest}`
-    ? Rest
+> = Prefix extends ''
+  ? keyof Resources[NS]
+  : keyof Resources[NS] extends infer K
+    ? K extends `${Prefix}${infer Rest}`
+      ? Rest
+      : never
     : never
-  : never
 
 export type I18nKeysWithPrefix<
   NS extends NamespaceCamelCase,
   Prefix extends string = '',
-> = Extract<keyof Resources[NS], `${Prefix}${string}`>
+> = Prefix extends ''
+  ? keyof Resources[NS]
+  : Extract<keyof Resources[NS], `${Prefix}${string}`>
+
+type A = I18nKeysWithPrefix<'billing'>

@@ -3,6 +3,7 @@
 import type {
   ReactNode,
 } from 'react'
+import type { TagKey } from '../constants'
 import type { Plugin } from '../types'
 import type {
   MarketplaceCollection,
@@ -113,7 +114,7 @@ export const MarketplaceContextProvider = ({
       return data?.plugins.map(plugin => plugin.plugin_id)
   }, [data?.plugins, shouldExclude])
   const queryFromSearchParams = searchParams?.q || ''
-  const tagsFromSearchParams = searchParams?.tags ? getValidTagKeys(searchParams.tags.split(',')) : []
+  const tagsFromSearchParams = searchParams?.tags ? getValidTagKeys(searchParams.tags.split(',') as TagKey[]) : []
   const hasValidTags = !!tagsFromSearchParams.length
   const hasValidCategory = getValidCategoryKeys(searchParams?.category)
   const categoryFromSearchParams = hasValidCategory || PLUGIN_TYPE_SEARCH_MAP.all

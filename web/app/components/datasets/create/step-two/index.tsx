@@ -88,7 +88,7 @@ type StepTwoProps = {
   websiteCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
-  updateRetrievalMethodCache?: (method: string) => void
+  updateRetrievalMethodCache?: (method: RETRIEVE_METHOD | '') => void
   updateResultCache?: (res: createDocumentResponse) => void
   onSave?: () => void
   onCancel?: () => void
@@ -552,7 +552,7 @@ const StepTwo = ({
           onSuccess(data) {
             updateIndexingTypeCache?.(indexType as string)
             updateResultCache?.(data)
-            updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
+            updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
           },
         },
       )
@@ -562,7 +562,7 @@ const StepTwo = ({
         onSuccess(data) {
           updateIndexingTypeCache?.(indexType as string)
           updateResultCache?.(data)
-          updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
+          updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
         },
       })
     }
