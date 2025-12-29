@@ -2,9 +2,11 @@
  * This script compares i18n keys between current branch (flat JSON) and main branch (nested TS).
  *
  * It checks:
- * 1. All keys from main branch exist in current branch
- * 2. Values for existing keys haven't changed
- * 3. Lists newly added keys and values
+ * 1. All namespaces from main branch have corresponding JSON files
+ * 2. No TS files exist in current branch (all should be converted to JSON)
+ * 3. All keys from main branch exist in current branch
+ * 4. Values for existing keys haven't changed
+ * 5. Lists newly added keys and values
  *
  * Usage: npx tsx scripts/analyze-i18n-diff.ts
  */
@@ -120,7 +122,7 @@ function parseTsContent(content: string): NestedTranslation {
  */
 function getMainBranchFile(filePath: string): string | null {
   try {
-    const relativePath = `web/i18n/${LOCALE}/${filePath}`
+    const relativePath = `i18n/${LOCALE}/${filePath}`
     // eslint-disable-next-line sonarjs/os-command
     return execSync(`git show main:${relativePath}`, {
       encoding: 'utf-8',
@@ -138,6 +140,67 @@ function getMainBranchFile(filePath: string): string | null {
 function getTranslationFiles(): string[] {
   const files = fs.readdirSync(I18N_DIR)
   return files.filter(f => f.endsWith('.json')).map(f => f.replace('.json', ''))
+}
+
+/**
+ * Get list of namespaces from main branch (ts files)
+ */
+function getMainBranchNamespaces(): string[] {
+  try {
+    const relativePath = `i18n/${LOCALE}`
+    // eslint-disable-next-line sonarjs/os-command
+    const output = execSync(`git ls-tree --name-only main ${relativePath}/`, {
+      encoding: 'utf-8',
+      stdio: ['pipe', 'pipe', 'pipe'],
+    })
+    // eslint-disable-next-line sonarjs/os-command
+    return output
+      .trim()
+      .split('\n')
+      .filter(f => f.endsWith('.ts'))
+      .map(f => path.basename(f, '.ts'))
+  }
+  catch {
+    return []
+  }
+}
+
+type NamespaceCheckResult = {
+  mainNamespaces: string[]
+  currentJsonFiles: string[]
+  currentTsFiles: string[]
+  missingJsonFiles: string[]
+  unexpectedTsFiles: string[]
+}
+
+/**
+ * Check namespace file consistency between main and current branch
+ */
+function checkNamespaceFiles(): NamespaceCheckResult {
+  const mainNamespaces = getMainBranchNamespaces()
+  const currentFiles = fs.readdirSync(I18N_DIR)
+
+  const currentJsonFiles = currentFiles
+    .filter(f => f.endsWith('.json'))
+    .map(f => f.replace('.json', ''))
+
+  const currentTsFiles = currentFiles
+    .filter(f => f.endsWith('.ts'))
+    .map(f => f.replace('.ts', ''))
+
+  // Check which namespaces from main are missing json files
+  const missingJsonFiles = mainNamespaces.filter(ns => !currentJsonFiles.includes(ns))
+
+  // ts files should not exist in current branch
+  const unexpectedTsFiles = currentTsFiles
+
+  return {
+    mainNamespaces,
+    currentJsonFiles,
+    currentTsFiles,
+    missingJsonFiles,
+    unexpectedTsFiles,
+  }
 }
 
 /**
@@ -203,6 +266,41 @@ function analyzeFile(baseName: string): AnalysisResult {
 function main() {
   console.log('🔍 Analyzing i18n differences between current branch (flat JSON) and main branch (nested TS)...\n')
 
+  // Check namespace file consistency first
+  console.log('📂 Checking namespace files...')
+  console.log('='.repeat(60))
+  const nsCheck = checkNamespaceFiles()
+
+  console.log(`Namespaces in main branch (ts files): ${nsCheck.mainNamespaces.length}`)
+  console.log(`JSON files in current branch: ${nsCheck.currentJsonFiles.length}`)
+  console.log(`TS files in current branch: ${nsCheck.currentTsFiles.length}`)
+
+  let hasNamespaceError = false
+
+  if (nsCheck.missingJsonFiles.length > 0) {
+    console.log('\n❌ Missing JSON files (namespace exists in main but no corresponding JSON):')
+    for (const ns of nsCheck.missingJsonFiles) {
+      console.log(`  - ${ns}.json (was ${ns}.ts in main)`)
+    }
+    hasNamespaceError = true
+  }
+  else {
+    console.log('\n✅ All namespaces from main branch have corresponding JSON files')
+  }
+
+  if (nsCheck.unexpectedTsFiles.length > 0) {
+    console.log('\n❌ Unexpected TS files (should be deleted):')
+    for (const ns of nsCheck.unexpectedTsFiles) {
+      console.log(`  - ${ns}.ts`)
+    }
+    hasNamespaceError = true
+  }
+  else {
+    console.log('✅ No TS files in current branch (all converted to JSON)')
+  }
+
+  console.log()
+
   const files = getTranslationFiles()
   const allResults: AnalysisResult[] = []
 
@@ -220,7 +318,7 @@ function main() {
   }
 
   // Summary
-  console.log('📊 Summary')
+  console.log('📊 Key Analysis Summary')
   console.log('='.repeat(60))
   console.log(`Total files analyzed: ${files.length}`)
   console.log(`Missing keys (in main but not in current): ${totalMissing}`)
@@ -280,18 +378,29 @@ function main() {
       changedValues: totalChanged,
       newKeys: totalNew,
     },
+    namespaceCheck: {
+      mainNamespaces: nsCheck.mainNamespaces,
+      currentJsonFiles: nsCheck.currentJsonFiles,
+      missingJsonFiles: nsCheck.missingJsonFiles,
+      unexpectedTsFiles: nsCheck.unexpectedTsFiles,
+    },
     details: allResults,
   }, null, 2))
 
   console.log(`\n📄 Detailed report written to: i18n-analysis-report.json`)
 
-  // Exit with error code if there are missing keys
+  // Exit with error code if there are issues
+  if (hasNamespaceError) {
+    console.log('\n⚠️  Warning: Namespace file issues detected!')
+    process.exit(1)
+  }
+
   if (totalMissing > 0) {
     console.log('\n⚠️  Warning: Some keys are missing in the current branch!')
     process.exit(1)
   }
 
-  console.log('\n✅ All keys from main branch exist in current branch.')
+  console.log('\n✅ All namespace files and keys from main branch exist in current branch.')
 }
 
 main()
