@@ -1,4 +1,5 @@
 'use client'
+import type { PluginDetail } from '@/app/components/plugins/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
@@ -9,10 +10,12 @@ import { useSubscriptionList } from './use-subscription-list'
 
 type SubscriptionListViewProps = {
   showTopBorder?: boolean
+  pluginDetail?: PluginDetail
 }
 
 export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
   showTopBorder = false,
+  pluginDetail,
 }) => {
   const { t } = useTranslation()
   const { subscriptions } = useSubscriptionList()
@@ -25,9 +28,9 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
         {subscriptionCount > 0 && (
           <div className="flex h-8 shrink-0 items-center gap-1">
             <span className="system-sm-semibold-uppercase text-text-secondary">
-              {t('pluginTrigger.subscription.listNum', { num: subscriptionCount })}
+              {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Tooltip popupContent={t('pluginTrigger.subscription.list.tip')} />
+            <Tooltip popupContent={t('subscription.list.tip', { ns: 'pluginTrigger' })} />
           </div>
         )}
         <CreateSubscriptionButton
@@ -41,6 +44,7 @@ export const SubscriptionListView: React.FC<SubscriptionListViewProps> = ({
             <SubscriptionCard
               key={subscription.id}
               data={subscription}
+              pluginDetail={pluginDetail}
             />
           ))}
         </div>

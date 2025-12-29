@@ -4,6 +4,7 @@ import type { IAppCardProps } from '@/app/components/app/overview/app-card'
 import type { BlockEnum } from '@/app/components/workflow/types'
 import type { UpdateAppSiteCodeResponse } from '@/models/app'
 import type { App } from '@/types/app'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -62,7 +63,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
   const buildTriggerModeMessage = useCallback((featureName: string) => (
     <div className="flex flex-col gap-1">
       <div className="text-xs text-text-secondary">
-        {t('appOverview.overview.disableTooltip.triggerMode', { feature: featureName })}
+        {t('overview.disableTooltip.triggerMode', { ns: 'appOverview', feature: featureName })}
       </div>
       <div
         className="cursor-pointer text-xs font-medium text-text-accent hover:underline"
@@ -71,19 +72,19 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
           window.open(triggerDocUrl, '_blank')
         }}
       >
-        {t('appOverview.overview.appInfo.enableTooltip.learnMore')}
+        {t('overview.appInfo.enableTooltip.learnMore', { ns: 'appOverview' })}
       </div>
     </div>
   ), [t, triggerDocUrl])
 
   const disableWebAppTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('appOverview.overview.appInfo.title'))
+    ? buildTriggerModeMessage(t('overview.appInfo.title', { ns: 'appOverview' }))
     : null
   const disableApiTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('appOverview.overview.apiInfo.title'))
+    ? buildTriggerModeMessage(t('overview.apiInfo.title', { ns: 'appOverview' }))
     : null
   const disableMcpTooltip = disableAppCards
-    ? buildTriggerModeMessage(t('tools.mcp.server.title'))
+    ? buildTriggerModeMessage(t('mcp.server.title', { ns: 'tools' }))
     : null
 
   const updateAppDetail = async () => {
@@ -94,7 +95,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
     catch (error) { console.error(error) }
   }
 
-  const handleCallbackResult = (err: Error | null, message?: string) => {
+  const handleCallbackResult = (err: Error | null, message?: I18nKeysByPrefix<'common', 'actionMsg.'>) => {
     const type = err ? 'error' : 'success'
 
     message ||= (type === 'success' ? 'modifiedSuccessfully' : 'modifiedUnsuccessfully')
@@ -104,7 +105,7 @@ const CardView: FC<ICardViewProps> = ({ appId, isInPanel, className }) => {
 
     notify({
       type,
-      message: t(`common.actionMsg.${message}`),
+      message: t(`actionMsg.${message}`, { ns: 'common' }) as string,
     })
   }
 

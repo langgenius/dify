@@ -25,7 +25,7 @@ const Button = ({
 }: ButtonProps) => {
   const { t } = useTranslation()
   const { theme } = useTheme()
-  const i18nPrefix = `billing.plans.${plan}`
+  const i18nPrefix = `plans.${plan}` as const
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const AwsMarketplace = useMemo(() => {
     return theme === Theme.light ? AwsMarketplaceLight : AwsMarketplaceDark
@@ -42,7 +42,7 @@ const Button = ({
       onClick={handleGetPayUrl}
     >
       <div className="flex grow items-center gap-x-2">
-        <span>{t(`${i18nPrefix}.btnText`)}</span>
+        <span>{t(`${i18nPrefix}.btnText`, { ns: 'billing' })}</span>
         {isPremiumPlan && (
           <span className="pb-px pt-[7px]">
             <AwsMarketplace className="h-6" />

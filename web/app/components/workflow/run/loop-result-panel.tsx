@@ -13,7 +13,7 @@ import { cn } from '@/utils/classnames'
 import { ArrowNarrowLeft } from '../../base/icons/src/vender/line/arrows'
 import TracingPanel from './tracing-panel'
 
-const i18nPrefix = 'workflow.singleRun'
+const i18nPrefix = 'singleRun'
 
 type Props = {
   list: NodeTracing[][]
@@ -43,7 +43,7 @@ const LoopResultPanel: FC<Props> = ({
       <div className={cn(!noWrap && 'shrink-0 ', 'px-4 pt-3')}>
         <div className="flex h-8 shrink-0 items-center justify-between">
           <div className="system-xl-semibold truncate text-text-primary">
-            {t(`${i18nPrefix}.testRunLoop`)}
+            {t(`${i18nPrefix}.testRunLoop`, { ns: 'workflow' }) }
           </div>
           <div className="ml-2 shrink-0 cursor-pointer p-1" onClick={onHide}>
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
@@ -51,7 +51,7 @@ const LoopResultPanel: FC<Props> = ({
         </div>
         <div className="flex cursor-pointer items-center space-x-1 py-2 text-text-accent-secondary" onClick={onBack}>
           <ArrowNarrowLeft className="h-4 w-4" />
-          <div className="system-sm-medium">{t(`${i18nPrefix}.back`)}</div>
+          <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
         </div>
       </div>
       {/* List */}
@@ -71,7 +71,7 @@ const LoopResultPanel: FC<Props> = ({
                   <Loop className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
                 <span className="system-sm-semibold-uppercase grow text-text-primary">
-                  {t(`${i18nPrefix}.loop`)}
+                  {t(`${i18nPrefix}.loop`, { ns: 'workflow' })}
                   {' '}
                   {index + 1}
                 </span>

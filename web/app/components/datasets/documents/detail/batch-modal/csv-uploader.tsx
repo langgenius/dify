@@ -75,7 +75,7 @@ const CSVUploader: FC<Props> = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
         notify({ type: 'error', message: errorMessage })
         const errorFile = {
           ...fileItem,
@@ -128,7 +128,7 @@ const CSVUploader: FC<Props> = ({
       return
     const files = [...e.dataTransfer.files]
     if (files.length > 1) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     initialUpload(files[0])
@@ -159,11 +159,11 @@ const CSVUploader: FC<Props> = ({
     const ext = `.${getFileType(file)}`
     const isValidType = ext.toLowerCase() === '.csv'
     if (!isValidType)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
 
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t])
@@ -208,8 +208,8 @@ const CSVUploader: FC<Props> = ({
             <div className="flex w-full items-center justify-center space-x-2">
               <CSVIcon className="shrink-0" />
               <div className="text-text-secondary">
-                {t('datasetDocuments.list.batchModal.csvUploadTitle')}
-                <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('datasetDocuments.list.batchModal.browse')}</span>
+                {t('list.batchModal.csvUploadTitle', { ns: 'datasetDocuments' })}
+                <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('list.batchModal.browse', { ns: 'datasetDocuments' })}</span>
               </div>
             </div>
             {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
@@ -229,7 +229,7 @@ const CSVUploader: FC<Props> = ({
                   <div className="mx-2 h-4 w-px bg-text-secondary" />
                 </>
               )}
-              <Button onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
+              <Button onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>
               <div className="mx-2 h-4 w-px bg-text-secondary" />
               <div className="cursor-pointer p-2" onClick={removeFile}>
                 <RiDeleteBinLine className="h-4 w-4 text-text-secondary" />

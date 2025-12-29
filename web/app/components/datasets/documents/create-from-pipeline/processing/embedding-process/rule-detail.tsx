@@ -30,11 +30,11 @@ const RuleDetail = ({
           ? value
           // eslint-disable-next-line sonarjs/no-nested-conditional
           : sourceData.mode === ProcessMode.general
-            ? (t('datasetDocuments.embedding.custom') as string)
+            ? (t('embedding.custom', { ns: 'datasetDocuments' }) as string)
             // eslint-disable-next-line sonarjs/no-nested-conditional
-            : `${t('datasetDocuments.embedding.hierarchical')} · ${sourceData?.rules?.parent_mode === 'paragraph'
-              ? t('dataset.parentMode.paragraph')
-              : t('dataset.parentMode.fullDoc')}`
+            : `${t('embedding.hierarchical', { ns: 'datasetDocuments' })} · ${sourceData?.rules?.parent_mode === 'paragraph'
+              ? t('parentMode.paragraph', { ns: 'dataset' })
+              : t('parentMode.fullDoc', { ns: 'dataset' })}`
         break
     }
     return value
@@ -43,12 +43,12 @@ const RuleDetail = ({
   return (
     <div className="flex flex-col gap-1" data-testid="rule-detail">
       <FieldInfo
-        label={t('datasetDocuments.embedding.mode')}
+        label={t('embedding.mode', { ns: 'datasetDocuments' })}
         displayedValue={getValue('mode')}
       />
       <FieldInfo
-        label={t('datasetCreation.stepTwo.indexMode')}
-        displayedValue={t(`datasetCreation.stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`) as string}
+        label={t('stepTwo.indexMode', { ns: 'datasetCreation' })}
+        displayedValue={t(`stepTwo.${indexingType === IndexingType.ECONOMICAL ? 'economical' : 'qualified'}`, { ns: 'datasetCreation' }) as string}
         valueIcon={(
           <Image
             className="size-4"
@@ -62,8 +62,8 @@ const RuleDetail = ({
         )}
       />
       <FieldInfo
-        label={t('datasetSettings.form.retrievalSetting.title')}
-        displayedValue={t(`dataset.retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod}.title`) as string}
+        label={t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
+        displayedValue={t(`retrieval.${indexingType === IndexingType.ECONOMICAL ? 'keyword_search' : retrievalMethod ?? 'semantic_search'}.title`, { ns: 'dataset' })}
         valueIcon={(
           <Image
             className="size-4"

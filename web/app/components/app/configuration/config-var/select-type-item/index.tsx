@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InputVarType } from '@/app/components/workflow/types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import InputVarTypeIcon from '@/app/components/workflow/nodes/_base/components/input-var-type-icon'
@@ -12,7 +13,9 @@ export type ISelectTypeItemProps = {
   onClick: () => void
 }
 
-const i18nFileTypeMap: Record<string, string> = {
+type VariableConfigTypeKey = I18nKeysByPrefix<'appDebug', 'variableConfig.'>
+
+const i18nTypeMap: Partial<Record<InputVarType, VariableConfigTypeKey>> = {
   'file': 'single-file',
   'file-list': 'multi-files',
 }
@@ -23,7 +26,8 @@ const SelectTypeItem: FC<ISelectTypeItemProps> = ({
   onClick,
 }) => {
   const { t } = useTranslation()
-  const typeName = t(`appDebug.variableConfig.${i18nFileTypeMap[type] || type}`)
+  const typeKey = i18nTypeMap[type] ?? type as VariableConfigTypeKey
+  const typeName = t(`variableConfig.${typeKey}`, { ns: 'appDebug' })
 
   return (
     <div

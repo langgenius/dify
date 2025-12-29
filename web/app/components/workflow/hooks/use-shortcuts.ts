@@ -66,6 +66,11 @@ export const useShortcuts = (): void => {
     return !isEventTargetInputArea(e.target as HTMLElement)
   }, [])
 
+  const shouldHandleCopy = useCallback(() => {
+    const selection = document.getSelection()
+    return !selection || selection.isCollapsed
+  }, [])
+
   useKeyPress(['delete', 'backspace'], (e) => {
     if (shouldHandleShortcut(e)) {
       e.preventDefault()
@@ -77,7 +82,7 @@ export const useShortcuts = (): void => {
   useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.c`, (e) => {
     const { showDebugAndPreviewPanel } = workflowStore.getState()
     // Only intercept when nodes are selected via box selection
-    if (shouldHandleShortcut(e) && !showDebugAndPreviewPanel && hasBundledNodes()) {
+    if (shouldHandleShortcut(e) && shouldHandleCopy() && !showDebugAndPreviewPanel && hasBundledNodes()) {
       e.preventDefault()
       handleNodesCopy()
     }

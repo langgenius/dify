@@ -13,6 +13,7 @@ import type {
 } from '../types'
 import type { Emoji } from '@/app/components/tools/types'
 import type { DataSet } from '@/models/datasets'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
 import {
   useCallback,
   useMemo,
@@ -170,7 +171,7 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         // Check if plugin is installed for plugin-dependent nodes first
         let errorMessage: string | undefined
         if (isPluginMissing)
-          errorMessage = t('workflow.nodes.common.pluginNotInstalled')
+          errorMessage = t('nodes.common.pluginNotInstalled', { ns: 'workflow' })
         else if (validator)
           errorMessage = validator(checkData, t, moreDataForCheckValid).errorMessage
 
@@ -184,10 +185,10 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
               if (usedNode) {
                 const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
                 if (!usedVar)
-                  errorMessage = t('workflow.errorMsg.invalidVariable')
+                  errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
               }
               else {
-                errorMessage = t('workflow.errorMsg.invalidVariable')
+                errorMessage = t('errorMsg.invalidVariable', { ns: 'workflow' })
               }
             }
           }
@@ -223,8 +224,8 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         list.push({
           id: 'start-node-required',
           type: BlockEnum.Start,
-          title: t('workflow.panel.startNode'),
-          errorMessage: t('workflow.common.needStartNode'),
+          title: t('panel.startNode', { ns: 'workflow' }),
+          errorMessage: t('common.needStartNode', { ns: 'workflow' }),
           canNavigate: false,
         })
       }
@@ -237,8 +238,11 @@ export const useChecklist = (nodes: Node[], edges: Edge[]) => {
         list.push({
           id: `${type}-need-added`,
           type,
-          title: t(`workflow.blocks.${type}`),
-          errorMessage: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }),
+          // We don't have enough type info for t() here
+
+          title: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }),
+
+          errorMessage: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }),
           canNavigate: false,
         })
       }
@@ -310,7 +314,7 @@ export const useChecklistBeforePublish = () => {
     const { validNodes, maxDepth } = getValidTreeNodes(filteredNodes, edges)
 
     if (maxDepth > MAX_TREE_DEPTH) {
-      notify({ type: 'error', message: t('workflow.common.maxTreeDepth', { depth: MAX_TREE_DEPTH }) })
+      notify({ type: 'error', message: t('common.maxTreeDepth', { ns: 'workflow', depth: MAX_TREE_DEPTH }) })
       return false
     }
     // Before publish, we need to fetch datasets detail, in case of the settings of datasets have been changed
@@ -374,12 +378,12 @@ export const useChecklistBeforePublish = () => {
           if (usedNode) {
             const usedVar = usedNode.vars.find(v => v.variable === variable?.[1])
             if (!usedVar) {
-              notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.errorMsg.invalidVariable')}` })
+              notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
               return false
             }
           }
           else {
-            notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.errorMsg.invalidVariable')}` })
+            notify({ type: 'error', message: `[${node.data.title}] ${t('errorMsg.invalidVariable', { ns: 'workflow' })}` })
             return false
           }
         }
@@ -390,7 +394,7 @@ export const useChecklistBeforePublish = () => {
       const isUnconnected = !validNodes.find(n => n.id === node.id)
 
       if (isUnconnected && !canSkipConnectionCheck) {
-        notify({ type: 'error', message: `[${node.data.title}] ${t('workflow.common.needConnectTip')}` })
+        notify({ type: 'error', message: `[${node.data.title}] ${t('common.needConnectTip', { ns: 'workflow' })}` })
         return false
       }
     }
@@ -398,7 +402,7 @@ export const useChecklistBeforePublish = () => {
     if (shouldCheckStartNode) {
       const startNodesFiltered = nodes.filter(node => START_NODE_TYPES.includes(node.data.type as BlockEnum))
       if (startNodesFiltered.length === 0) {
-        notify({ type: 'error', message: t('workflow.common.needStartNode') })
+        notify({ type: 'error', message: t('common.needStartNode', { ns: 'workflow' }) })
         return false
       }
     }
@@ -409,7 +413,7 @@ export const useChecklistBeforePublish = () => {
       const type = isRequiredNodesType[i]
 
       if (!filteredNodes.find(node => node.data.type === type)) {
-        notify({ type: 'error', message: t('workflow.common.needAdd', { node: t(`workflow.blocks.${type}`) }) })
+        notify({ type: 'error', message: t('common.needAdd', { ns: 'workflow', node: t(`blocks.${type}` as I18nKeysWithPrefix<'workflow', 'blocks.'>, { ns: 'workflow' }) }) })
         return false
       }
     }
@@ -431,7 +435,7 @@ export const useWorkflowRunValidation = () => {
 
   const validateBeforeRun = useCallback(() => {
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       return false
     }
     return true

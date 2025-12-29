@@ -1,5 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { Locale } from '@/i18n-config'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
@@ -17,7 +18,7 @@ import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '..
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
-  locale?: string
+  locale?: Locale
 }
 const CardWrapperComponent = ({
   plugin,
@@ -65,13 +66,13 @@ const CardWrapperComponent = ({
             className="w-[calc(50%-4px)]"
             onClick={showInstallFromMarketplace}
           >
-            {t('plugin.detailPanel.operation.install')}
+            {t('detailPanel.operation.install', { ns: 'plugin' })}
           </Button>
           <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block w-[calc(50%-4px)] flex-1 shrink-0">
             <Button
               className="w-full gap-0.5"
             >
-              {t('plugin.detailPanel.operation.detail')}
+              {t('detailPanel.operation.detail', { ns: 'plugin' })}
               <RiArrowRightUpLine className="ml-1 h-4 w-4" />
             </Button>
           </a>

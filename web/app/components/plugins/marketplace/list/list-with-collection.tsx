@@ -3,6 +3,7 @@
 import type { MarketplaceCollection } from '../types'
 import type { SearchParamsFromCollection } from '@/app/components/plugins/marketplace/types'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { Locale } from '@/i18n-config'
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
 import { getLanguage } from '@/i18n-config/language'
@@ -13,7 +14,7 @@ type ListWithCollectionProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   showInstallButton?: boolean
-  locale: string
+  locale: Locale
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: (searchParams?: SearchParamsFromCollection) => void
@@ -50,7 +51,7 @@ const ListWithCollection = ({
                     className="system-xs-medium flex cursor-pointer items-center text-text-accent "
                     onClick={() => onMoreClick?.(collection.search_params)}
                   >
-                    {t('plugin.marketplace.viewMore')}
+                    {t('marketplace.viewMore', { ns: 'plugin' })}
                     <RiArrowRightSLine className="h-4 w-4" />
                   </div>
                 )

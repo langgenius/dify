@@ -10,7 +10,7 @@ import type {
 } from '../types'
 import {
   cloneDeep,
-} from 'lodash-es'
+} from 'es-toolkit/compat'
 import {
   getConnectedEdges,
 } from 'reactflow'

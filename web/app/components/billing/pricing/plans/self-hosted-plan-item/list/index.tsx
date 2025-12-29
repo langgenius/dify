@@ -11,14 +11,15 @@ const List = ({
   plan,
 }: ListProps) => {
   const { t } = useTranslation()
-  const i18nPrefix = `billing.plans.${plan}`
-  const features = t(`${i18nPrefix}.features`, { returnObjects: true }) as string[]
+  const i18nPrefix = `plans.${plan}` as const
+  const features = t(`${i18nPrefix}.features`, { ns: 'billing', returnObjects: true }) as string[]
 
   return (
     <div className="flex flex-col gap-y-[10px] p-6">
       <div className="system-md-semibold text-text-secondary">
         <Trans
-          i18nKey={t(`${i18nPrefix}.includesTitle`)}
+          i18nKey={`${i18nPrefix}.includesTitle`}
+          ns="billing"
           components={{ highlight: <span className="text-text-warning"></span> }}
         />
       </div>

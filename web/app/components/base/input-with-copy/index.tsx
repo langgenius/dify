@@ -2,7 +2,7 @@
 import type { InputProps } from '../input'
 import { RiClipboardFill, RiClipboardLine } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -16,7 +16,7 @@ export type InputWithCopyProps = {
   onCopy?: (value: string) => void // Callback when copy is triggered
 } & Omit<InputProps, 'showClearIcon' | 'onCopy'> // Remove conflicting props
 
-const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
+const prefixEmbedded = 'overview.appInfo.embedded'
 
 const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
   {
@@ -78,8 +78,8 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
           <Tooltip
             popupContent={
               (isCopied
-                ? t(`${prefixEmbedded}.copied`)
-                : t(`${prefixEmbedded}.copy`)) || ''
+                ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
             }
           >
             <ActionButton

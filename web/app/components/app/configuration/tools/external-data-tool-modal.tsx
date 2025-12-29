@@ -3,7 +3,7 @@ import type {
   CodeBasedExtensionItem,
   ExternalDataTool,
 } from '@/models/common'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -49,7 +49,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const providers: Provider[] = [
     {
       key: 'api',
-      name: t('common.apiBasedExtension.selector.title'),
+      name: t('apiBasedExtension.selector.title', { ns: 'common' }),
     },
     ...(
       codeBasedExtensionList
@@ -134,27 +134,27 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
 
   const handleSave = () => {
     if (!localeData.type) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: t('appDebug.feature.tools.modal.toolType.title') }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.toolType.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (!localeData.label) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: t('appDebug.feature.tools.modal.name.title') }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.name.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (!localeData.variable) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: t('appDebug.feature.tools.modal.variableName.title') }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (localeData.variable && !/^[a-z_]\w{0,29}$/i.test(localeData.variable)) {
-      notify({ type: 'error', message: t('appDebug.varKeyError.notValid', { key: t('appDebug.feature.tools.modal.variableName.title') }) })
+      notify({ type: 'error', message: t('varKeyError.notValid', { ns: 'appDebug', key: t('feature.tools.modal.variableName.title', { ns: 'appDebug' }) }) })
       return
     }
 
     if (localeData.type === 'api' && !localeData.config?.api_based_extension_id) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? 'API Extension' : 'API 扩展' }) })
       return
     }
 
@@ -163,7 +163,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
         if (!localeData.config?.[currentProvider.form_schema[i].variable] && currentProvider.form_schema[i].required) {
           notify({
             type: 'error',
-            message: t('appDebug.errorMessage.valueOfVarRequired', { key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
+            message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: locale !== LanguagesSupported[1] ? currentProvider.form_schema[i].label['en-US'] : currentProvider.form_schema[i].label['zh-Hans'] }),
           })
           return
         }
@@ -178,7 +178,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
     onSave(formatData(formattedData))
   }
 
-  const action = data.type ? t('common.operation.edit') : t('common.operation.add')
+  const action = data.type ? t('operation.edit', { ns: 'common' }) : t('operation.add', { ns: 'common' })
 
   return (
     <Modal
@@ -187,11 +187,11 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       className="!w-[640px] !max-w-none !p-8 !pb-6"
     >
       <div className="mb-2 text-xl font-semibold text-text-primary">
-        {`${action} ${t('appDebug.variableConfig.apiBasedVar')}`}
+        {`${action} ${t('variableConfig.apiBasedVar', { ns: 'appDebug' })}`}
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">
-          {t('common.apiBasedExtension.type')}
+          {t('apiBasedExtension.type', { ns: 'common' })}
         </div>
         <SimpleSelect
           defaultValue={localeData.type}
@@ -206,14 +206,14 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">
-          {t('appDebug.feature.tools.modal.name.title')}
+          {t('feature.tools.modal.name.title', { ns: 'appDebug' })}
         </div>
         <div className="flex items-center">
           <input
             value={localeData.label || ''}
             onChange={e => handleValueChange({ label: e.target.value })}
             className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none"
-            placeholder={t('appDebug.feature.tools.modal.name.placeholder') || ''}
+            placeholder={t('feature.tools.modal.name.placeholder', { ns: 'appDebug' }) || ''}
           />
           <AppIcon
             size="large"
@@ -226,20 +226,20 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">
-          {t('appDebug.feature.tools.modal.variableName.title')}
+          {t('feature.tools.modal.variableName.title', { ns: 'appDebug' })}
         </div>
         <input
           value={localeData.variable || ''}
           onChange={e => handleValueChange({ variable: e.target.value })}
           className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-components-input-text-filled outline-none"
-          placeholder={t('appDebug.feature.tools.modal.variableName.placeholder') || ''}
+          placeholder={t('feature.tools.modal.variableName.placeholder', { ns: 'appDebug' }) || ''}
         />
       </div>
       {
         localeData.type === 'api' && (
           <div className="py-2">
             <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
-              {t('common.apiBasedExtension.selector.title')}
+              {t('apiBasedExtension.selector.title', { ns: 'common' })}
               <a
                 href={docLink('/guides/extension/api-based-extension/README')}
                 target="_blank"
@@ -247,7 +247,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
                 className="group flex items-center text-xs font-normal text-text-tertiary hover:text-text-accent"
               >
                 <BookOpen01 className="mr-1 h-3 w-3 text-text-tertiary group-hover:text-text-accent" />
-                {t('common.apiBasedExtension.link')}
+                {t('apiBasedExtension.link', { ns: 'common' })}
               </a>
             </div>
             <ApiBasedExtensionSelector
@@ -273,13 +273,13 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
           onClick={onCancel}
           className="mr-2"
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           onClick={handleSave}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
       {

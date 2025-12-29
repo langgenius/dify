@@ -1,6 +1,7 @@
 'use client'
+import type { Locale } from '@/i18n-config'
 import { RiAccountCircleLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
@@ -42,7 +43,7 @@ export default function InviteSettingsPage() {
   const handleActivate = useCallback(async () => {
     try {
       if (!name) {
-        Toast.notify({ type: 'error', message: t('login.enterYourName') })
+        Toast.notify({ type: 'error', message: t('enterYourName', { ns: 'login' }) })
         return
       }
       const res = await activateMember({
@@ -73,11 +74,11 @@ export default function InviteSettingsPage() {
       <div className="flex flex-col md:w-[400px]">
         <div className="mx-auto w-full">
           <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle text-2xl font-bold shadow-lg">🤷‍♂️</div>
-          <h2 className="title-4xl-semi-bold text-text-primary">{t('login.invalid')}</h2>
+          <h2 className="title-4xl-semi-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
         </div>
         <div className="mx-auto mt-6 w-full">
           <Button variant="primary" className="w-full !text-sm">
-            <a href="https://dify.ai">{t('login.explore')}</a>
+            <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
           </Button>
         </div>
       </div>
@@ -90,12 +91,12 @@ export default function InviteSettingsPage() {
         <RiAccountCircleLine className="h-6 w-6 text-2xl text-text-accent-light-mode-only" />
       </div>
       <div className="pb-4 pt-2">
-        <h2 className="title-4xl-semi-bold text-text-primary">{t('login.setYourAccount')}</h2>
+        <h2 className="title-4xl-semi-bold text-text-primary">{t('setYourAccount', { ns: 'login' })}</h2>
       </div>
       <form onSubmit={noop}>
         <div className="mb-5">
           <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-            {t('login.name')}
+            {t('name', { ns: 'login' })}
           </label>
           <div className="mt-1">
             <Input
@@ -103,7 +104,7 @@ export default function InviteSettingsPage() {
               type="text"
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder={t('login.namePlaceholder') || ''}
+              placeholder={t('namePlaceholder', { ns: 'login' }) || ''}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault()
@@ -116,14 +117,14 @@ export default function InviteSettingsPage() {
         </div>
         <div className="mb-5">
           <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-            {t('login.interfaceLanguage')}
+            {t('interfaceLanguage', { ns: 'login' })}
           </label>
           <div className="mt-1">
             <SimpleSelect
               defaultValue={LanguagesSupported[0]}
               items={languages.filter(item => item.supported)}
               onSelect={(item) => {
-                setLanguage(item.value as string)
+                setLanguage(item.value as Locale)
               }}
             />
           </div>
@@ -131,7 +132,7 @@ export default function InviteSettingsPage() {
         {/* timezone */}
         <div className="mb-5">
           <label htmlFor="timezone" className="system-md-semibold text-text-secondary">
-            {t('login.timezone')}
+            {t('timezone', { ns: 'login' })}
           </label>
           <div className="mt-1">
             <SimpleSelect
@@ -149,13 +150,13 @@ export default function InviteSettingsPage() {
             className="w-full"
             onClick={handleActivate}
           >
-            {`${t('login.join')} ${checkRes?.data?.workspace_name}`}
+            {`${t('join', { ns: 'login' })} ${checkRes?.data?.workspace_name}`}
           </Button>
         </div>
       </form>
       {!systemFeatures.branding.enabled && (
         <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
-          {t('login.license.tip')}
+          {t('license.tip', { ns: 'login' })}
       &nbsp;
           <Link
             className="system-xs-medium text-text-accent-secondary"
@@ -163,7 +164,7 @@ export default function InviteSettingsPage() {
             rel="noopener noreferrer"
             href={docLink('/policies/open-source')}
           >
-            {t('login.license.link')}
+            {t('license.link', { ns: 'login' })}
           </Link>
         </div>
       )}

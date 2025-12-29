@@ -23,8 +23,8 @@ import Loading from '../components/base/loading'
 const accountFormSchema = z.object({
   email: z
     .string()
-    .min(1, { message: 'login.error.emailInValid' })
-    .email('login.error.emailInValid'),
+    .min(1, { message: 'error.emailInValid' })
+    .email('error.emailInValid'),
 })
 
 type AccountFormValues = z.infer<typeof accountFormSchema>
@@ -86,10 +86,10 @@ const ForgotPasswordForm = () => {
           <>
             <div className="sm:mx-auto sm:w-full sm:max-w-md">
               <h2 className="text-[32px] font-bold text-text-primary">
-                {isEmailSent ? t('login.resetLinkSent') : t('login.forgotPassword')}
+                {isEmailSent ? t('resetLinkSent', { ns: 'login' }) : t('forgotPassword', { ns: 'login' })}
               </h2>
               <p className="mt-1 text-sm text-text-secondary">
-                {isEmailSent ? t('login.checkEmailForResetLink') : t('login.forgotPasswordDesc')}
+                {isEmailSent ? t('checkEmailForResetLink', { ns: 'login' }) : t('forgotPasswordDesc', { ns: 'login' })}
               </p>
             </div>
             <div className="mt-8 grow sm:mx-auto sm:w-full sm:max-w-md">
@@ -101,20 +101,20 @@ const ForgotPasswordForm = () => {
                         htmlFor="email"
                         className="my-2 flex items-center justify-between text-sm font-medium text-text-primary"
                       >
-                        {t('login.email')}
+                        {t('email', { ns: 'login' })}
                       </label>
                       <div className="mt-1">
                         <Input
                           {...register('email')}
-                          placeholder={t('login.emailPlaceholder') || ''}
+                          placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
                         />
-                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}`)}</span>}
+                        {errors.email && <span className="text-sm text-red-400">{t(`${errors.email?.message}` as 'error.emailInValid', { ns: 'login' })}</span>}
                       </div>
                     </div>
                   )}
                   <div>
                     <Button variant="primary" className="w-full" onClick={handleSendResetPasswordClick}>
-                      {isEmailSent ? t('login.backToSignIn') : t('login.sendResetLink')}
+                      {isEmailSent ? t('backToSignIn', { ns: 'login' }) : t('sendResetLink', { ns: 'login' })}
                     </Button>
                   </div>
                 </form>

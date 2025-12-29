@@ -1,5 +1,5 @@
 'use client'
-import type { SimpleSubscription } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import type { SimpleSubscription } from './types'
 import { RiArrowDownSLine, RiWebhookLine } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -8,8 +8,9 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import { SubscriptionList, SubscriptionListMode } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
+import { SubscriptionList } from '@/app/components/plugins/plugin-detail-panel/subscription-list'
 import { cn } from '@/utils/classnames'
+import { SubscriptionListMode } from './types'
 import { useSubscriptionList } from './use-subscription-list'
 
 type SubscriptionTriggerButtonProps = {
@@ -32,12 +33,12 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
     if (!selectedId) {
       if (isOpen) {
         return {
-          label: t('pluginTrigger.subscription.selectPlaceholder'),
+          label: t('subscription.selectPlaceholder', { ns: 'pluginTrigger' }),
           color: 'yellow' as const,
         }
       }
       return {
-        label: t('pluginTrigger.subscription.noSubscriptionSelected'),
+        label: t('subscription.noSubscriptionSelected', { ns: 'pluginTrigger' }),
         color: 'red' as const,
       }
     }
@@ -47,7 +48,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
 
       if (!selectedSubscription) {
         return {
-          label: t('pluginTrigger.subscription.subscriptionRemoved'),
+          label: t('subscription.subscriptionRemoved', { ns: 'pluginTrigger' }),
           color: 'red' as const,
         }
       }
@@ -59,7 +60,7 @@ const SubscriptionTriggerButton: React.FC<SubscriptionTriggerButtonProps> = ({
     }
 
     return {
-      label: t('pluginTrigger.subscription.noSubscriptionSelected'),
+      label: t('subscription.noSubscriptionSelected', { ns: 'pluginTrigger' }),
       color: 'red' as const,
     }
   }, [selectedId, subscriptions, t, isOpen])

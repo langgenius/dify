@@ -17,7 +17,7 @@ import { ComparisonOperator } from '../../if-else/types'
 import { comparisonOperatorNotRequireValue, getOperators } from '../../if-else/utils'
 import SubVariablePicker from './sub-variable-picker'
 
-const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
+const optionNameI18NPrefix = 'nodes.ifElse.optionName'
 
 const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
   name: VarType.string,
@@ -66,13 +66,13 @@ const FilterCondition: FC<Props> = ({
     if (isSelect) {
       if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
       if (condition.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
@@ -141,7 +141,7 @@ const FilterCondition: FC<Props> = ({
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
           onFocusChange={setIsFocus}
-          placeholder={!readOnly ? t('workflow.nodes.http.insertVarPlaceholder')! : ''}
+          placeholder={!readOnly ? t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })! : ''}
           placeholderClassName="!leading-[21px]"
         />
       )

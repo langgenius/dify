@@ -11,7 +11,7 @@ import { PromptRole } from '@/models/debug'
 import { useWorkflowStore } from '../../../store'
 import { EditionType } from '../../../types'
 
-const i18nPrefix = 'workflow.nodes.llm'
+const i18nPrefix = 'nodes.llm'
 
 type Props = {
   instanceId: string
@@ -121,7 +121,7 @@ const ConfigPromptItem: FC<Props> = ({
 
           <Tooltip
             popupContent={
-              <div className="max-w-[180px]">{t(`${i18nPrefix}.roleDescription.${payload.role}`)}</div>
+              <div className="max-w-[180px]">{payload.role && t(`${i18nPrefix}.roleDescription.${payload.role}`, { ns: 'workflow' })}</div>
             }
             triggerClassName="w-4 h-4"
           />

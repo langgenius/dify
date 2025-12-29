@@ -8,8 +8,8 @@ import type {
   MetadataFilteringModeEnum,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { DataSet } from '@/models/datasets'
+import { intersectionBy } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { intersectionBy } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -176,7 +176,7 @@ const DatasetConfig: FC = () => {
     }))
   }, [setDatasetConfigs, datasetConfigsRef])
 
-  const handleAddCondition = useCallback<HandleAddCondition>(({ name, type }) => {
+  const handleAddCondition = useCallback<HandleAddCondition>(({ id, name, type }) => {
     let operator: ComparisonOperator = ComparisonOperator.is
 
     if (type === MetadataFilteringVariableType.number)
@@ -184,6 +184,7 @@ const DatasetConfig: FC = () => {
 
     const newCondition = {
       id: uuid4(),
+      metadata_id: id, // Save metadata.id for reliable reference
       name,
       comparison_operator: operator,
     }
@@ -256,7 +257,7 @@ const DatasetConfig: FC = () => {
   return (
     <FeaturePanel
       className="mt-2"
-      title={t('appDebug.feature.dataSet.title')}
+      title={t('feature.dataSet.title', { ns: 'appDebug' })}
       headerRight={(
         <div className="flex items-center gap-1">
           {!isAgent && <ParamsConfig disabled={!hasData} selectedDatasets={dataSet} />}
@@ -282,7 +283,7 @@ const DatasetConfig: FC = () => {
           )
         : (
             <div className="mt-1 px-3 pb-3">
-              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.feature.dataSet.noData')}</div>
+              <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('feature.dataSet.noData', { ns: 'appDebug' })}</div>
             </div>
           )}
 

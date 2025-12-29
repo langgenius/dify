@@ -29,7 +29,7 @@ const GetSchema: FC<Props> = ({
     if (!importUrl.startsWith('http://') && !importUrl.startsWith('https://')) {
       Toast.notify({
         type: 'error',
-        message: t('tools.createTool.urlError'),
+        message: t('createTool.urlError', { ns: 'tools' }),
       })
       return
     }
@@ -65,7 +65,7 @@ const GetSchema: FC<Props> = ({
           onClick={() => { setShowImportFromUrl(!showImportFromUrl) }}
         >
           <RiAddLine className="h-3 w-3" />
-          <div className="system-xs-medium text-text-secondary">{t('tools.createTool.importFromUrl')}</div>
+          <div className="system-xs-medium text-text-secondary">{t('createTool.importFromUrl', { ns: 'tools' })}</div>
         </Button>
         {showImportFromUrl && (
           <div className=" absolute left-[-35px] top-[26px] rounded-lg border border-components-panel-border bg-components-panel-bg p-2 shadow-lg">
@@ -73,7 +73,7 @@ const GetSchema: FC<Props> = ({
               <Input
                 type="text"
                 className="w-[244px]"
-                placeholder={t('tools.createTool.importFromUrlPlaceHolder')!}
+                placeholder={t('createTool.importFromUrlPlaceHolder', { ns: 'tools' })!}
                 value={importUrl}
                 onChange={e => setImportUrl(e.target.value)}
               />
@@ -85,7 +85,7 @@ const GetSchema: FC<Props> = ({
                 onClick={handleImportFromUrl}
                 loading={isParsing}
               >
-                {isParsing ? '' : t('common.operation.ok')}
+                {isParsing ? '' : t('operation.ok', { ns: 'common' })}
               </Button>
             </div>
           </div>
@@ -97,7 +97,7 @@ const GetSchema: FC<Props> = ({
           className="space-x-1"
           onClick={() => { setShowExamples(!showExamples) }}
         >
-          <div className="system-xs-medium text-text-secondary">{t('tools.createTool.examples')}</div>
+          <div className="system-xs-medium text-text-secondary">{t('createTool.examples', { ns: 'tools' })}</div>
           <RiArrowDownSLine className="h-3 w-3" />
         </Button>
         {showExamples && (
@@ -111,7 +111,7 @@ const GetSchema: FC<Props> = ({
                 }}
                 className="system-sm-regular cursor-pointer whitespace-nowrap rounded-lg px-3 py-1.5 leading-5 text-text-secondary hover:bg-components-panel-on-panel-item-bg-hover"
               >
-                {t(`tools.createTool.exampleOptions.${item.key}`)}
+                {t(`createTool.exampleOptions.${item.key}`, { ns: 'tools' })}
               </div>
             ))}
           </div>

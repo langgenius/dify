@@ -7,7 +7,10 @@ import AgentSettingButton from './agent-setting-button'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: { ns?: string }) => {
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
+    },
   }),
 }))
 

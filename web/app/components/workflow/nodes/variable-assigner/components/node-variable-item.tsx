@@ -1,4 +1,5 @@
 import type { Node, ValueSelector } from '@/app/components/workflow/types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   memo,
   useMemo,
@@ -16,13 +17,13 @@ import { cn } from '@/utils/classnames'
 type NodeVariableItemProps = {
   node: Node
   variable: ValueSelector
-  writeMode?: string
+  writeMode?: I18nKeysByPrefix<'workflow', 'nodes.assigner.operations.'>
   showBorder?: boolean
   className?: string
   isException?: boolean
 }
 
-const i18nPrefix = 'workflow.nodes.assigner'
+const i18nPrefix = 'nodes.assigner'
 
 const NodeVariableItem = ({
   node,
@@ -120,7 +121,7 @@ const NodeVariableItem = ({
         {VariableIcon}
         {VariableName}
       </div>
-      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}`)} />}
+      {writeMode && <Badge className="shrink-0" text={t(`${i18nPrefix}.operations.${writeMode}`, { ns: 'workflow' }) as string} />}
     </div>
   )
 }

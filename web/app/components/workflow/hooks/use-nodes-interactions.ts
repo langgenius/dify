@@ -824,8 +824,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('workflow.nodes.iteration.deleteTitle'),
-                desc: t('workflow.nodes.iteration.deleteDesc') || '',
+                title: t('nodes.iteration.deleteTitle', { ns: 'workflow' }),
+                desc: t('nodes.iteration.deleteDesc', { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   iterationChildren.forEach((child) => {
                     handleNodeDelete(child.id)
@@ -864,8 +864,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('workflow.nodes.loop.deleteTitle'),
-                desc: t('workflow.nodes.loop.deleteDesc') || '',
+                title: t('nodes.loop.deleteTitle', { ns: 'workflow' }),
+                desc: t('nodes.loop.deleteDesc', { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   loopChildren.forEach((child) => {
                     handleNodeDelete(child.id)
@@ -1265,7 +1265,7 @@ export const useNodesInteractions = () => {
 
         const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
         const afterNodesInSameBranchIds = afterNodesInSameBranch.map(
-          node => node.id,
+          (node: Node) => node.id,
         )
         const newNodes = produce(nodes, (draft) => {
           draft.forEach((node) => {
@@ -1509,7 +1509,7 @@ export const useNodesInteractions = () => {
 
         const afterNodesInSameBranch = getAfterNodesInSameBranch(nextNodeId!)
         const afterNodesInSameBranchIds = afterNodesInSameBranch.map(
-          node => node.id,
+          (node: Node) => node.id,
         )
         const newNodes = produce(nodes, (draft) => {
           draft.forEach((node) => {
@@ -2415,7 +2415,7 @@ export const useNodesInteractions = () => {
     const { x: minX, y: minY } = getTopLeftNodePosition(bundledNodes)
 
     const groupNodeData: GroupNodeData = {
-      title: t('workflow.operator.makeGroup'),
+      title: t('operator.makeGroup', { ns: 'workflow' }),
       desc: '',
       type: BlockEnum.Group,
       members,

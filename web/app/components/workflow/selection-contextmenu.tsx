@@ -1,4 +1,5 @@
 import type { FC, ReactElement } from 'react'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   RiAlignBottom,
   RiAlignCenter,
@@ -41,18 +42,19 @@ enum AlignType {
 type AlignButtonConfig = {
   type: AlignType
   icon: ReactElement
-  labelKey: string
+  labelKey: I18nKeysByPrefix<'workflow', 'operator.'>
 }
 
 type AlignButtonProps = {
   config: AlignButtonConfig
+  label: string
   onClick: (type: AlignType) => void
   position?: 'top' | 'bottom' | 'left' | 'right'
 }
 
-const AlignButton: FC<AlignButtonProps> = ({ config, onClick, position = 'bottom' }) => {
+const AlignButton: FC<AlignButtonProps> = ({ config, label, onClick, position = 'bottom' }) => {
   return (
-    <Tooltip position={position} popupContent={config.labelKey}>
+    <Tooltip position={position} popupContent={label}>
       <div
         className="flex h-7 w-7 cursor-pointer items-center justify-center rounded-md text-text-secondary hover:bg-state-base-hover"
         onClick={() => onClick(config.type)}
@@ -64,14 +66,14 @@ const AlignButton: FC<AlignButtonProps> = ({ config, onClick, position = 'bottom
 }
 
 const ALIGN_BUTTONS: AlignButtonConfig[] = [
-  { type: AlignType.Left, icon: <RiAlignLeft className="h-4 w-4" />, labelKey: 'workflow.operator.alignLeft' },
-  { type: AlignType.Center, icon: <RiAlignCenter className="h-4 w-4" />, labelKey: 'workflow.operator.alignCenter' },
-  { type: AlignType.Right, icon: <RiAlignRight className="h-4 w-4" />, labelKey: 'workflow.operator.alignRight' },
-  { type: AlignType.DistributeHorizontal, icon: <RiAlignJustify className="h-4 w-4" />, labelKey: 'workflow.operator.distributeHorizontal' },
-  { type: AlignType.Top, icon: <RiAlignTop className="h-4 w-4" />, labelKey: 'workflow.operator.alignTop' },
-  { type: AlignType.Middle, icon: <RiAlignCenter className="h-4 w-4 rotate-90" />, labelKey: 'workflow.operator.alignMiddle' },
-  { type: AlignType.Bottom, icon: <RiAlignBottom className="h-4 w-4" />, labelKey: 'workflow.operator.alignBottom' },
-  { type: AlignType.DistributeVertical, icon: <RiAlignJustify className="h-4 w-4 rotate-90" />, labelKey: 'workflow.operator.distributeVertical' },
+  { type: AlignType.Left, icon: <RiAlignLeft className="h-4 w-4" />, labelKey: 'alignLeft' },
+  { type: AlignType.Center, icon: <RiAlignCenter className="h-4 w-4" />, labelKey: 'alignCenter' },
+  { type: AlignType.Right, icon: <RiAlignRight className="h-4 w-4" />, labelKey: 'alignRight' },
+  { type: AlignType.DistributeHorizontal, icon: <RiAlignJustify className="h-4 w-4" />, labelKey: 'distributeHorizontal' },
+  { type: AlignType.Top, icon: <RiAlignTop className="h-4 w-4" />, labelKey: 'alignTop' },
+  { type: AlignType.Middle, icon: <RiAlignCenter className="h-4 w-4 rotate-90" />, labelKey: 'alignMiddle' },
+  { type: AlignType.Bottom, icon: <RiAlignBottom className="h-4 w-4" />, labelKey: 'alignBottom' },
+  { type: AlignType.DistributeVertical, icon: <RiAlignJustify className="h-4 w-4 rotate-90" />, labelKey: 'distributeVertical' },
 ]
 
 const SelectionContextmenu = () => {
@@ -445,7 +447,7 @@ const SelectionContextmenu = () => {
                   handleSelectionContextmenuCancel()
                 }}
               >
-                {t('workflow.operator.makeGroup')}
+                {t('operator.makeGroup', { ns: 'workflow' })}
                 <ShortcutsName keys={['ctrl', 'g']} className={!canMakeGroup ? 'opacity-50' : ''} />
               </div>
             </div>
@@ -458,7 +460,7 @@ const SelectionContextmenu = () => {
                   handleSelectionContextmenuCancel()
                 }}
               >
-                {t('workflow.common.copy')}
+                {t('common.copy', { ns: 'workflow' })}
                 <ShortcutsName keys={['ctrl', 'c']} />
               </div>
               <div
@@ -468,7 +470,7 @@ const SelectionContextmenu = () => {
                   handleSelectionContextmenuCancel()
                 }}
               >
-                {t('workflow.common.duplicate')}
+                {t('common.duplicate', { ns: 'workflow' })}
                 <ShortcutsName keys={['ctrl', 'd']} />
               </div>
             </div>
@@ -481,7 +483,7 @@ const SelectionContextmenu = () => {
                   handleSelectionContextmenuCancel()
                 }}
               >
-                {t('common.operation.delete')}
+                {t('operation.delete', { ns: 'common' })}
                 <ShortcutsName keys={['del']} />
               </div>
             </div>
@@ -492,7 +494,8 @@ const SelectionContextmenu = () => {
           {ALIGN_BUTTONS.map(config => (
             <AlignButton
               key={config.type}
-              config={{ ...config, labelKey: t(config.labelKey) }}
+              config={config}
+              label={t(`operator.${config.labelKey}`, { ns: 'workflow' })}
               onClick={handleAlignNodes}
             />
           ))}
