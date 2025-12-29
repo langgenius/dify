@@ -36,9 +36,13 @@ class TestTencentCosConfiguration:
         mock_config_instance = MagicMock()
         mock_client = MagicMock()
 
-        with patch("extensions.storage.tencent_cos_storage.dify_config", mock_dify_config), patch(
-            "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance
-        ) as mock_cos_config, patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client):
+        with (
+            patch("extensions.storage.tencent_cos_storage.dify_config", mock_dify_config),
+            patch(
+                "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance
+            ) as mock_cos_config,
+            patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client),
+        ):
             TencentCosStorage()
 
             # Verify CosConfig was called with Domain parameter (not Region)
@@ -65,9 +69,13 @@ class TestTencentCosConfiguration:
         mock_config_instance = MagicMock()
         mock_client = MagicMock()
 
-        with patch("extensions.storage.tencent_cos_storage.dify_config", mock_dify_config), patch(
-            "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance
-        ) as mock_cos_config, patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client):
+        with (
+            patch("extensions.storage.tencent_cos_storage.dify_config", mock_dify_config),
+            patch(
+                "extensions.storage.tencent_cos_storage.CosConfig", return_value=mock_config_instance
+            ) as mock_cos_config,
+            patch("extensions.storage.tencent_cos_storage.CosS3Client", return_value=mock_client),
+        ):
             TencentCosStorage()
 
             # Verify CosConfig was called with Region parameter (not Domain)
