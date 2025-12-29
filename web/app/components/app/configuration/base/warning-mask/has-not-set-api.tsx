@@ -25,11 +25,11 @@ const HasNotSetAPI: FC<IHasNotSetAPIProps> = ({
 
   return (
     <WarningMask
-      title={isTrailFinished ? t('appDebug.notSetAPIKey.trailFinished') : t('appDebug.notSetAPIKey.title')}
-      description={t('appDebug.notSetAPIKey.description')}
+      title={isTrailFinished ? t('notSetAPIKey.trailFinished', { ns: 'appDebug' }) : t('notSetAPIKey.title', { ns: 'appDebug' })}
+      description={t('notSetAPIKey.description', { ns: 'appDebug' })}
       footer={(
         <Button variant="primary" className="flex space-x-2" onClick={onSetting}>
-          <span>{t('appDebug.notSetAPIKey.settingBtn')}</span>
+          <span>{t('notSetAPIKey.settingBtn', { ns: 'appDebug' })}</span>
           {icon}
         </Button>
       )}

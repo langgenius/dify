@@ -17,19 +17,19 @@ const CreateAppCard = () => {
         <Option
           href="/datasets/create"
           Icon={RiAddLine}
-          text={t('dataset.createDataset')}
+          text={t('createDataset', { ns: 'dataset' })}
         />
         <Option
           href="/datasets/create-from-pipeline"
           Icon={RiFunctionAddLine}
-          text={t('dataset.createFromPipeline')}
+          text={t('createFromPipeline', { ns: 'dataset' })}
         />
       </div>
       <div className="border-t-[0.5px] border-divider-subtle p-2">
         <Option
           href="/datasets/connect"
           Icon={ApiConnectionMod}
-          text={t('dataset.connectDataset')}
+          text={t('connectDataset', { ns: 'dataset' })}
         />
       </div>
     </div>

@@ -1,6 +1,7 @@
 import type { Viewport } from 'next'
 import { ThemeProvider } from 'next-themes'
 import { Instrument_Serif } from 'next/font/google'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getLocaleOnServer } from '@/i18n-config/server'
@@ -97,17 +98,19 @@ const LocaleLayout = async ({
           disableTransitionOnChange
           enableColorScheme={false}
         >
-          <BrowserInitializer>
-            <SentryInitializer>
-              <TanstackQueryInitializer>
-                <I18nServer>
-                  <GlobalPublicStoreProvider>
-                    {children}
-                  </GlobalPublicStoreProvider>
-                </I18nServer>
-              </TanstackQueryInitializer>
-            </SentryInitializer>
-          </BrowserInitializer>
+          <NuqsAdapter>
+            <BrowserInitializer>
+              <SentryInitializer>
+                <TanstackQueryInitializer>
+                  <I18nServer>
+                    <GlobalPublicStoreProvider>
+                      {children}
+                    </GlobalPublicStoreProvider>
+                  </I18nServer>
+                </TanstackQueryInitializer>
+              </SentryInitializer>
+            </BrowserInitializer>
+          </NuqsAdapter>
         </ThemeProvider>
         <RoutePrefixHandle />
       </body>

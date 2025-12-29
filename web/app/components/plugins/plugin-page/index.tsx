@@ -9,10 +9,6 @@ import {
 import { useBoolean } from 'ahooks'
 import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
-import {
-  useRouter,
-  useSearchParams,
-} from 'next/navigation'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -25,6 +21,7 @@ import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import I18n from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { usePluginInstallation } from '@/hooks/use-query-params'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
 import { sleep } from '@/utils'
 import { cn } from '@/utils/classnames'
@@ -42,9 +39,6 @@ import PluginTasks from './plugin-tasks'
 import useReferenceSetting from './use-reference-setting'
 import { useUploader } from './use-uploader'
 
-const PACKAGE_IDS_KEY = 'package-ids'
-const BUNDLE_INFO_KEY = 'bundle-info'
-
 export type PluginPageProps = {
   plugins: React.ReactNode
   marketplace: React.ReactNode
@@ -55,33 +49,13 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  const searchParams = useSearchParams()
-  const { replace } = useRouter()
-  useDocumentTitle(t('plugin.metadata.title'))
+  useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
-  // just support install one package now
-  const packageId = useMemo(() => {
-    const idStrings = searchParams.get(PACKAGE_IDS_KEY)
-    try {
-      return idStrings ? JSON.parse(idStrings)[0] : ''
-    }
-    catch {
-      return ''
-    }
-  }, [searchParams])
+  // Use nuqs hook for installation state
+  const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
 
   const [uniqueIdentifier, setUniqueIdentifier] = useState<string | null>(null)
-
   const [dependencies, setDependencies] = useState<Dependency[]>([])
-  const bundleInfo = useMemo(() => {
-    const info = searchParams.get(BUNDLE_INFO_KEY)
-    try {
-      return info ? JSON.parse(info) : undefined
-    }
-    catch {
-      return undefined
-    }
-  }, [searchParams])
 
   const [isShowInstallFromMarketplace, {
     setTrue: showInstallFromMarketplace,
@@ -90,11 +64,9 @@ const PluginPage = ({
 
   const hideInstallFromMarketplace = () => {
     doHideInstallFromMarketplace()
-    const url = new URL(window.location.href)
-    url.searchParams.delete(PACKAGE_IDS_KEY)
-    url.searchParams.delete(BUNDLE_INFO_KEY)
-    replace(url.toString())
+    setInstallState(null)
   }
+
   const [manifest, setManifest] = useState<PluginDeclaration | PluginManifestInMarket | null>(null)
 
   useEffect(() => {
@@ -114,12 +86,17 @@ const PluginPage = ({
         return
       }
       if (bundleInfo) {
-        const { data } = await fetchBundleInfoFromMarketPlace(bundleInfo)
-        setDependencies(data.version.dependencies)
-        showInstallFromMarketplace()
+        try {
+          const { data } = await fetchBundleInfoFromMarketPlace(bundleInfo)
+          setDependencies(data.version.dependencies)
+          showInstallFromMarketplace()
+        }
+        catch (error) {
+          console.error('Failed to load bundle info:', error)
+        }
       }
     })()
-  }, [packageId, bundleInfo])
+  }, [packageId, bundleInfo, showInstallFromMarketplace])
 
   const {
     referenceSetting,
@@ -195,7 +172,7 @@ const PluginPage = ({
                       variant="ghost"
                       className="text-text-tertiary"
                     >
-                      {t('plugin.requestAPlugin')}
+                      {t('requestAPlugin', { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <Link
@@ -207,7 +184,7 @@ const PluginPage = ({
                       variant="secondary-accent"
                     >
                       <RiBookOpenLine className="mr-1 h-4 w-4" />
-                      {t('plugin.publishPlugins')}
+                      {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
@@ -228,7 +205,7 @@ const PluginPage = ({
             {
               canSetPermissions && (
                 <Tooltip
-                  popupContent={t('plugin.privilege.title')}
+                  popupContent={t('privilege.title', { ns: 'plugin' })}
                 >
                   <Button
                     className="group h-full w-full p-2 text-components-button-secondary-text"
@@ -254,7 +231,7 @@ const PluginPage = ({
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
             <RiDragDropLine className="h-4 w-4" />
-            <span className="system-xs-regular">{t('plugin.installModal.dropPluginToInstall')}</span>
+            <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
           </div>
           {currentFile && (
             <InstallFromLocalPackage

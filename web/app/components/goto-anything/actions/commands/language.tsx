@@ -17,7 +17,7 @@ const buildLanguageCommands = (query: string): CommandSearchResult[] => {
   return list.map(item => ({
     id: `lang-${item.value}`,
     title: item.name,
-    description: i18n.t('app.gotoAnything.actions.languageChangeDesc'),
+    description: i18n.t('gotoAnything.actions.languageChangeDesc', { ns: 'app' }),
     type: 'command' as const,
     data: { command: 'i18n.set', args: { locale: item.value } },
   }))

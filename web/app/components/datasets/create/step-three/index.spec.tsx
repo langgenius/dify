@@ -1,5 +1,6 @@
 import type { createDocumentResponse, FullDocumentDetail, IconInfo } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
+import { RETRIEVE_METHOD } from '@/types/app'
 import StepThree from './index'
 
 // Mock the EmbeddingProcess component since it has complex async logic
@@ -321,7 +322,7 @@ describe('StepThree', () => {
     describe('retrievalMethod prop', () => {
       it('should pass retrievalMethod to EmbeddingProcess', () => {
         // Arrange & Act
-        renderStepThree({ retrievalMethod: 'semantic_search' })
+        renderStepThree({ retrievalMethod: RETRIEVE_METHOD.semantic })
 
         // Assert
         expect(screen.getByTestId('ep-retrieval-method')).toHaveTextContent('semantic_search')

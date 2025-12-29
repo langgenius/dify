@@ -1,6 +1,7 @@
 import type { Locale } from '.'
-import type { Namespace } from './i18next-config'
+import type { NamespaceCamelCase, NamespaceKebabCase } from './i18next-config'
 import { match } from '@formatjs/intl-localematcher'
+import { camelCase } from 'es-toolkit/compat'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
@@ -9,24 +10,28 @@ import { initReactI18next } from 'react-i18next/initReactI18next'
 import { i18n } from '.'
 
 // https://locize.com/blog/next-13-app-dir-i18n/
-const initI18next = async (lng: Locale, ns: Namespace) => {
+const initI18next = async (lng: Locale, ns: NamespaceKebabCase) => {
   const i18nInstance = createInstance()
   await i18nInstance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: Locale, namespace: Namespace) => import(`../i18n/${language}/${namespace}.ts`)))
+    .use(resourcesToBackend((language: Locale, namespace: NamespaceKebabCase) => {
+      return import(`../i18n/${language}/${namespace}.json`)
+    }))
     .init({
       lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
       ns,
+      defaultNS: ns,
       fallbackLng: 'en-US',
+      keySeparator: false,
     })
   return i18nInstance
 }
 
-export async function getTranslation(lng: Locale, ns: Namespace, options: Record<string, any> = {}) {
+export async function getTranslation(lng: Locale, ns: NamespaceKebabCase) {
+  const camelNs = camelCase(ns) as NamespaceCamelCase
   const i18nextInstance = await initI18next(lng, ns)
   return {
-    // @ts-expect-error types mismatch
-    t: i18nextInstance.getFixedT(lng, ns, options.keyPrefix),
+    t: i18nextInstance.getFixedT(lng, camelNs),
     i18n: i18nextInstance,
   }
 }

@@ -26,7 +26,7 @@ type Props = {
   isShowLastRunBlock: boolean
 }
 
-const i18nPrefix = 'appDebug.generate'
+const i18nPrefix = 'generate'
 
 const InstructionEditor: FC<Props> = ({
   editorKey,
@@ -46,16 +46,16 @@ const InstructionEditor: FC<Props> = ({
   const placeholder = isCode
     ? (
         <div className="system-sm-regular whitespace-break-spaces !leading-6 text-text-placeholder">
-          {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`)}
+          {t(`${i18nPrefix}.codeGenInstructionPlaceHolderLine`, { ns: 'appDebug' })}
         </div>
       )
     : (
         <div className="system-sm-regular text-text-placeholder">
-          <div className="leading-6">{t(`${i18nPrefix}.instructionPlaceHolderTitle`)}</div>
+          <div className="leading-6">{t(`${i18nPrefix}.instructionPlaceHolderTitle`, { ns: 'appDebug' })}</div>
           <div className="mt-2">
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine1`)}</div>
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine2`)}</div>
-            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine3`)}</div>
+            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine1`, { ns: 'appDebug' })}</div>
+            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine2`, { ns: 'appDebug' })}</div>
+            <div>{t(`${i18nPrefix}.instructionPlaceHolderLine3`, { ns: 'appDebug' })}</div>
           </div>
         </div>
       )
@@ -88,7 +88,7 @@ const InstructionEditor: FC<Props> = ({
             }
             if (node.data.type === BlockEnum.Start) {
               acc.sys = {
-                title: t('workflow.blocks.start'),
+                title: t('blocks.start', { ns: 'workflow' }),
                 type: BlockEnum.Start,
               }
             }
@@ -110,10 +110,10 @@ const InstructionEditor: FC<Props> = ({
         isSupportFileVar={false}
       />
       <div className="system-xs-regular absolute bottom-0 left-4 flex h-8 items-center space-x-0.5 text-components-input-text-placeholder">
-        <span>{t('appDebug.generate.press')}</span>
+        <span>{t('generate.press', { ns: 'appDebug' })}</span>
         <span className="system-kbd flex h-4 w-3.5 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray text-text-placeholder">/</span>
-        <span>{t('appDebug.generate.to')}</span>
-        <span onClick={handleInsertVariable} className="!ml-1 cursor-pointer hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary">{t('appDebug.generate.insertContext')}</span>
+        <span>{t('generate.to', { ns: 'appDebug' })}</span>
+        <span onClick={handleInsertVariable} className="!ml-1 cursor-pointer hover:border-b hover:border-dotted hover:border-text-tertiary hover:text-text-tertiary">{t('generate.insertContext', { ns: 'appDebug' })}</span>
       </div>
     </div>
   )
