@@ -49,7 +49,7 @@ const PluginPage = ({
 }: PluginPageProps) => {
   const { t } = useTranslation()
   const { locale } = useContext(I18n)
-  useDocumentTitle(t('plugin.metadata.title'))
+  useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
   const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
