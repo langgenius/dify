@@ -1,10 +1,11 @@
-import { type FC, useEffect } from 'react'
-import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
+import type { FC } from 'react'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import { useSelectOrDelete } from '../../hooks'
-import { CurrentBlockNode, DELETE_CURRENT_BLOCK_COMMAND } from '.'
+import { useEffect } from 'react'
+import { GeneratorType } from '@/app/components/app/configuration/config/automatic/types'
 import { cn } from '@/utils/classnames'
+import { CurrentBlockNode, DELETE_CURRENT_BLOCK_COMMAND } from '.'
 import { CodeAssistant, MagicEdit } from '../../../icons/src/vender/line/general'
+import { useSelectOrDelete } from '../../hooks'
 
 type CurrentBlockComponentProps = {
   nodeKey: string
@@ -35,8 +36,8 @@ const CurrentBlockComponent: FC<CurrentBlockComponentProps> = ({
       }}
       ref={ref}
     >
-      <Icon className='mr-0.5 h-[14px] w-[14px]' />
-      <div className='text-xs font-medium'>{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
+      <Icon className="mr-0.5 h-[14px] w-[14px]" />
+      <div className="text-xs font-medium">{generatorType === GeneratorType.prompt ? 'current_prompt' : 'current_code'}</div>
     </div>
   )
 }

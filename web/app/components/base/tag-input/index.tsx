@@ -1,10 +1,10 @@
-import { useCallback, useState } from 'react'
 import type { ChangeEvent, FC, KeyboardEvent } from 'react'
-import { useTranslation } from 'react-i18next'
-import AutosizeInput from 'react-18-input-autosize'
 import { RiAddLine, RiCloseLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useCallback, useState } from 'react'
+import AutosizeInput from 'react-18-input-autosize'
+import { useTranslation } from 'react-i18next'
 import { useToastContext } from '@/app/components/base/toast'
+import { cn } from '@/utils/classnames'
 
 type TagInputProps = {
   items: string[]
@@ -47,17 +47,17 @@ const TagInput: FC<TagInputProps> = ({
     const valueTrimmed = value.trim()
     if (!valueTrimmed) {
       if (required)
-        notify({ type: 'error', message: t('datasetDocuments.segment.keywordEmpty') })
+        notify({ type: 'error', message: t('segment.keywordEmpty', { ns: 'datasetDocuments' }) })
       return
     }
 
     if ((items.find(item => item === valueTrimmed))) {
-      notify({ type: 'error', message: t('datasetDocuments.segment.keywordDuplicate') })
+      notify({ type: 'error', message: t('segment.keywordDuplicate', { ns: 'datasetDocuments' }) })
       return
     }
 
     if (valueTrimmed.length > 20) {
-      notify({ type: 'error', message: t('datasetDocuments.segment.keywordError') })
+      notify({ type: 'error', message: t('segment.keywordError', { ns: 'datasetDocuments' }) })
       return
     }
 
@@ -95,8 +95,8 @@ const TagInput: FC<TagInputProps> = ({
             {item}
             {
               !disableRemove && (
-                <div className='flex h-4 w-4 cursor-pointer items-center justify-center' onClick={() => handleRemove(index)}>
-                  <RiCloseLine className='ml-0.5 h-3.5 w-3.5 text-text-tertiary' />
+                <div className="flex h-4 w-4 cursor-pointer items-center justify-center" onClick={() => handleRemove(index)}>
+                  <RiCloseLine className="ml-0.5 h-3.5 w-3.5 text-text-tertiary" />
                 </div>
               )
             }
@@ -106,7 +106,7 @@ const TagInput: FC<TagInputProps> = ({
       {
         !disableAdd && (
           <div className={cn('group/tag-add mt-1 flex items-center gap-x-0.5', !isSpecialMode ? 'rounded-md border border-dashed border-divider-deep px-1.5' : '')}>
-            {!isSpecialMode && !focused && <RiAddLine className='h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary' />}
+            {!isSpecialMode && !focused && <RiAddLine className="h-3.5 w-3.5 text-text-placeholder group-hover/tag-add:text-text-secondary" />}
             <AutosizeInput
               inputClassName={cn(
                 'appearance-none text-text-primary caret-[#295EFF] outline-none placeholder:text-text-placeholder group-hover/tag-add:placeholder:text-text-secondary',
@@ -127,7 +127,7 @@ const TagInput: FC<TagInputProps> = ({
                 setValue(e.target.value)
               }}
               onKeyDown={handleKeyDown}
-              placeholder={t(placeholder || (isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord'))}
+              placeholder={placeholder || (isSpecialMode ? t('model.params.stop_sequencesPlaceholder', { ns: 'common' }) : t('segment.addKeyWord', { ns: 'datasetDocuments' }))}
             />
           </div>
         )

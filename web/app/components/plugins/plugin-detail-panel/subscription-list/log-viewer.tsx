@@ -1,6 +1,5 @@
 'use client'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
 import {
   RiArrowDownSLine,
   RiArrowRightSLine,
@@ -8,12 +7,14 @@ import {
   RiErrorWarningFill,
   RiFileCopyLine,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import dayjs from 'dayjs'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
-import type { TriggerLogEntity } from '@/app/components/workflow/block-selector/types'
-import dayjs from 'dayjs'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   logs: TriggerLogEntity[]
@@ -79,9 +80,9 @@ const LogViewer = ({ logs, className }: Props) => {
     }
 
     return (
-      <div className='rounded-md bg-components-input-bg-normal'>
-        <div className='flex items-center justify-between px-2 py-1'>
-          <div className='system-xs-semibold-uppercase text-text-secondary'>
+      <div className="rounded-md bg-components-input-bg-normal">
+        <div className="flex items-center justify-between px-2 py-1">
+          <div className="system-xs-semibold-uppercase text-text-secondary">
             {title}
           </div>
           <button
@@ -90,16 +91,16 @@ const LogViewer = ({ logs, className }: Props) => {
               navigator.clipboard.writeText(String(parsedData))
               Toast.notify({
                 type: 'success',
-                message: t('common.actionMsg.copySuccessfully'),
+                message: t('actionMsg.copySuccessfully', { ns: 'common' }),
               })
             }}
-            className='rounded-md p-0.5 hover:bg-components-panel-border'
+            className="rounded-md p-0.5 hover:bg-components-panel-border"
           >
-            <RiFileCopyLine className='h-4 w-4 text-text-tertiary' />
+            <RiFileCopyLine className="h-4 w-4 text-text-tertiary" />
           </button>
         </div>
-        <div className='px-2 pb-2 pt-1'>
-          <pre className='code-xs-regular whitespace-pre-wrap break-all text-text-secondary'>
+        <div className="px-2 pb-2 pt-1">
+          <pre className="code-xs-regular whitespace-pre-wrap break-all text-text-secondary">
             {String(parsedData)}
           </pre>
         </div>
@@ -129,8 +130,8 @@ const LogViewer = ({ logs, className }: Props) => {
             )}
           >
             {isError && (
-              <div className='pointer-events-none absolute left-0 top-0 h-7 w-[179px]'>
-                <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className='h-full w-full'>
+              <div className="pointer-events-none absolute left-0 top-0 h-7 w-[179px]">
+                <svg xmlns="http://www.w3.org/2000/svg" width="179" height="28" viewBox="0 0 179 28" fill="none" className="h-full w-full">
                   <g filter="url(#filter0_f_error_glow)">
                     <circle cx="27" cy="14" r="32" fill="#F04438" fillOpacity="0.25" />
                   </g>
@@ -152,33 +153,40 @@ const LogViewer = ({ logs, className }: Props) => {
                 isExpanded ? 'pb-1 pt-2' : 'min-h-7',
               )}
             >
-              <div className='flex items-center gap-0'>
-                {isExpanded ? (
-                  <RiArrowDownSLine className='h-4 w-4 text-text-tertiary' />
-                ) : (
-                  <RiArrowRightSLine className='h-4 w-4 text-text-tertiary' />
-                )}
-                <div className='system-xs-semibold-uppercase text-text-secondary'>
-                  {t(`pluginTrigger.modal.manual.logs.${LogTypeEnum.REQUEST}`)} #{index + 1}
+              <div className="flex items-center gap-0">
+                {isExpanded
+                  ? (
+                      <RiArrowDownSLine className="h-4 w-4 text-text-tertiary" />
+                    )
+                  : (
+                      <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
+                    )}
+                <div className="system-xs-semibold-uppercase text-text-secondary">
+                  {t(`modal.manual.logs.${LogTypeEnum.REQUEST}`, { ns: 'pluginTrigger' })}
+                  {' '}
+                  #
+                  {index + 1}
                 </div>
               </div>
 
-              <div className='flex items-center gap-1'>
-                <div className='system-xs-regular text-text-tertiary'>
+              <div className="flex items-center gap-1">
+                <div className="system-xs-regular text-text-tertiary">
                   {dayjs(log.created_at).format('HH:mm:ss')}
                 </div>
-                <div className='h-3.5 w-3.5'>
-                  {isSuccess ? (
-                    <RiCheckboxCircleFill className='h-full w-full text-text-success' />
-                  ) : (
-                    <RiErrorWarningFill className='h-full w-full text-text-destructive' />
-                  )}
+                <div className="h-3.5 w-3.5">
+                  {isSuccess
+                    ? (
+                        <RiCheckboxCircleFill className="h-full w-full text-text-success" />
+                      )
+                    : (
+                        <RiErrorWarningFill className="h-full w-full text-text-destructive" />
+                      )}
                 </div>
               </div>
             </button>
 
             {isExpanded && (
-              <div className='flex flex-col gap-1 px-1 pb-1'>
+              <div className="flex flex-col gap-1 px-1 pb-1">
                 {renderJsonContent(log.request, LogTypeEnum.REQUEST)}
                 {renderJsonContent(log.response, LogTypeEnum.RESPONSE)}
               </div>

@@ -19,7 +19,7 @@ import {
   getDefaultValueByType,
   operatorNeedsValue,
 } from '../../utils'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   value?: AgentToolActivationCondition
@@ -36,7 +36,7 @@ const AgentToolConditionEditor = ({
   availableNodes,
   disabled,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
 
   const currentValue = useMemo<AgentToolActivationCondition>(() => value ?? ({
     enabled: false,
@@ -100,8 +100,8 @@ const AgentToolConditionEditor = ({
     <div className=''>
       <div className='flex items-start justify-between gap-3'>
         <div>
-          <div className='system-sm-semibold text-text-primary'>{t('workflow.nodes.agent.toolCondition.title')}</div>
-          <div className='system-xs-regular text-text-tertiary'>{t('workflow.nodes.agent.toolCondition.description')}</div>
+          <div className='system-sm-semibold text-text-primary'>{t('nodes.agent.toolCondition.title')}</div>
+          <div className='system-xs-regular text-text-tertiary'>{t('nodes.agent.toolCondition.description')}</div>
         </div>
         <Switch
           defaultValue={isEnabled}
@@ -141,12 +141,12 @@ const AgentToolConditionEditor = ({
           </div>
           {!hasConditions && (
             <div className='system-xs-regular text-text-tertiary'>
-              {t('workflow.nodes.agent.toolCondition.addFirstCondition')}
+              {t('nodes.agent.toolCondition.addFirstCondition')}
             </div>
           )}
           {hasConditions && currentValue.conditions.length <= 1 && (
             <div className='system-xs-regular text-text-tertiary'>
-              {t('workflow.nodes.agent.toolCondition.singleConditionTip')}
+              {t('nodes.agent.toolCondition.singleConditionTip')}
             </div>
           )}
         </div>

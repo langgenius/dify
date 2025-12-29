@@ -7,7 +7,7 @@ from collections.abc import Generator, Mapping
 from typing import Any, Union, cast
 
 from flask import Flask, current_app
-from sqlalchemy import and_, or_, select
+from sqlalchemy import and_, literal, or_, select
 from sqlalchemy.orm import Session
 
 from core.app.app_config.entities import (
@@ -151,20 +151,14 @@ class DatasetRetrieval:
             if ModelFeature.TOOL_CALL in features or ModelFeature.MULTI_TOOL_CALL in features:
                 planning_strategy = PlanningStrategy.ROUTER
         available_datasets = []
-        for dataset_id in dataset_ids:
-            # get dataset from dataset id
-            dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == dataset_id)
-            dataset = db.session.scalar(dataset_stmt)
 
-            # pass if dataset is not available
-            if not dataset:
+        dataset_stmt = select(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id.in_(dataset_ids))
+        datasets: list[Dataset] = db.session.execute(dataset_stmt).scalars().all()  # type: ignore
+        for dataset in datasets:
+            if dataset.available_document_count == 0 and dataset.provider != "external":
                 continue
-
-            # pass if dataset is not available
-            if dataset and dataset.available_document_count == 0 and dataset.provider != "external":
-                continue
-
             available_datasets.append(dataset)
+
         if inputs:
             inputs = {key: str(value) for key, value in inputs.items()}
         else:
@@ -282,26 +276,35 @@ class DatasetRetrieval:
                                 )
                                 context_files.append(attachment_info)
                 if show_retrieve_source:
+                    dataset_ids = [record.segment.dataset_id for record in records]
+                    document_ids = [record.segment.document_id for record in records]
+                    dataset_document_stmt = select(DatasetDocument).where(
+                        DatasetDocument.id.in_(document_ids),
+                        DatasetDocument.enabled == True,
+                        DatasetDocument.archived == False,
+                    )
+                    documents = db.session.execute(dataset_document_stmt).scalars().all()  # type: ignore
+                    dataset_stmt = select(Dataset).where(
+                        Dataset.id.in_(dataset_ids),
+                    )
+                    datasets = db.session.execute(dataset_stmt).scalars().all()  # type: ignore
+                    dataset_map = {i.id: i for i in datasets}
+                    document_map = {i.id: i for i in documents}
                     for record in records:
                         segment = record.segment
-                        dataset = db.session.query(Dataset).filter_by(id=segment.dataset_id).first()
-                        dataset_document_stmt = select(DatasetDocument).where(
-                            DatasetDocument.id == segment.document_id,
-                            DatasetDocument.enabled == True,
-                            DatasetDocument.archived == False,
-                        )
-                        document = db.session.scalar(dataset_document_stmt)
-                        if dataset and document:
+                        dataset_item = dataset_map.get(segment.dataset_id)
+                        document_item = document_map.get(segment.document_id)
+                        if dataset_item and document_item:
                             source = RetrievalSourceMetadata(
-                                dataset_id=dataset.id,
-                                dataset_name=dataset.name,
-                                document_id=document.id,
-                                document_name=document.name,
-                                data_source_type=document.data_source_type,
+                                dataset_id=dataset_item.id,
+                                dataset_name=dataset_item.name,
+                                document_id=document_item.id,
+                                document_name=document_item.name,
+                                data_source_type=document_item.data_source_type,
                                 segment_id=segment.id,
                                 retriever_from=invoke_from.to_source(),
                                 score=record.score or 0.0,
-                                doc_metadata=document.doc_metadata,
+                                doc_metadata=document_item.doc_metadata,
                             )
 
                             if invoke_from.to_source() == "dev":
@@ -1033,7 +1036,7 @@ class DatasetRetrieval:
             if automatic_metadata_filters:
                 conditions = []
                 for sequence, filter in enumerate(automatic_metadata_filters):
-                    self._process_metadata_filter_func(
+                    self.process_metadata_filter_func(
                         sequence,
                         filter.get("condition"),  # type: ignore
                         filter.get("metadata_name"),  # type: ignore
@@ -1069,7 +1072,7 @@ class DatasetRetrieval:
                             value=expected_value,
                         )
                     )
-                    filters = self._process_metadata_filter_func(
+                    filters = self.process_metadata_filter_func(
                         sequence,
                         condition.comparison_operator,
                         metadata_name,
@@ -1165,8 +1168,9 @@ class DatasetRetrieval:
             return None
         return automatic_metadata_filters
 
-    def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
+    @classmethod
+    def process_metadata_filter_func(
+        cls, sequence: int, condition: str, metadata_name: str, value: Any | None, filters: list
     ):
         if value is None and condition not in ("empty", "not empty"):
             return filters
@@ -1215,6 +1219,20 @@ class DatasetRetrieval:
 
             case "≥" | ">=":
                 filters.append(DatasetDocument.doc_metadata[metadata_name].as_float() >= value)
+            case "in" | "not in":
+                if isinstance(value, str):
+                    value_list = [v.strip() for v in value.split(",") if v.strip()]
+                elif isinstance(value, (list, tuple)):
+                    value_list = [str(v) for v in value if v is not None]
+                else:
+                    value_list = [str(value)] if value is not None else []
+
+                if not value_list:
+                    # `field in []` is False, `field not in []` is True
+                    filters.append(literal(condition == "not in"))
+                else:
+                    op = json_field.in_ if condition == "in" else json_field.notin_
+                    filters.append(op(value_list))
             case _:
                 pass
 

@@ -1,31 +1,31 @@
+import type {
+  WeightedScore,
+} from '../../types'
+import type { RerankingModelSelectorProps } from './reranking-model-selector'
+import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
+import type {
+  HybridSearchModeOption,
+  Option,
+} from './type'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import WeightedScoreComponent from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
-import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Switch from '@/app/components/base/switch'
 import Tooltip from '@/app/components/base/tooltip'
+import { DEFAULT_WEIGHTED_SCORE } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
 import {
   HybridSearchModeEnum,
   RetrievalSearchMethodEnum,
 } from '../../types'
-import type {
-  WeightedScore,
-} from '../../types'
 import OptionCard from '../option-card'
-import type {
-  HybridSearchModeOption,
-  Option,
-} from './type'
-import type { TopKAndScoreThresholdProps } from './top-k-and-score-threshold'
-import TopKAndScoreThreshold from './top-k-and-score-threshold'
-import type { RerankingModelSelectorProps } from './reranking-model-selector'
 import RerankingModelSelector from './reranking-model-selector'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
+import TopKAndScoreThreshold from './top-k-and-score-threshold'
 
 type SearchMethodOptionProps = {
   readonly?: boolean
@@ -128,10 +128,10 @@ const SearchMethodOption = ({
       onClick={onRetrievalSearchMethodChange}
       readonly={readonly}
     >
-      <div className='space-y-3'>
+      <div className="space-y-3">
         {
           isHybridSearch && (
-            <div className='space-y-1'>
+            <div className="space-y-1">
               {
                 hybridSearchModeOptions.map(hybridOption => (
                   <OptionCard
@@ -141,7 +141,7 @@ const SearchMethodOption = ({
                     enableHighlightBorder={false}
                     enableRadio
                     wrapperClassName={hybridSearchModeWrapperClassName}
-                    className='p-3'
+                    className="p-3"
                     title={hybridOption.title}
                     description={hybridOption.description}
                     onClick={onHybridSearchModeChange}
@@ -166,17 +166,17 @@ const SearchMethodOption = ({
             <div>
               {
                 showRerankModelSelectorSwitch && (
-                  <div className='system-sm-semibold mb-1 flex items-center text-text-secondary'>
+                  <div className="system-sm-semibold mb-1 flex items-center text-text-secondary">
                     <Switch
-                      className='mr-1'
+                      className="mr-1"
                       defaultValue={rerankingModelEnabled}
                       onChange={onRerankingModelEnabledChange}
                       disabled={readonly}
                     />
-                    {t('common.modelProvider.rerankModel.key')}
+                    {t('modelProvider.rerankModel.key', { ns: 'common' })}
                     <Tooltip
-                      triggerClassName='ml-0.5 shrink-0 w-3.5 h-3.5'
-                      popupContent={t('common.modelProvider.rerankModel.tip')}
+                      triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
+                      popupContent={t('modelProvider.rerankModel.tip', { ns: 'common' })}
                     />
                   </div>
                 )
@@ -187,13 +187,13 @@ const SearchMethodOption = ({
                 readonly={readonly}
               />
               {showMultiModalTip && (
-                <div className='mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]'>
-                  <div className='absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40' />
-                  <div className='p-1'>
-                    <AlertTriangle className='size-4 text-text-warning-secondary' />
+                <div className="mt-2 flex h-10 items-center gap-x-0.5 overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-2 shadow-xs backdrop-blur-[5px]">
+                  <div className="absolute bottom-0 left-0 right-0 top-0 bg-dataset-warning-message-bg opacity-40" />
+                  <div className="p-1">
+                    <AlertTriangle className="size-4 text-text-warning-secondary" />
                   </div>
-                  <span className='system-xs-medium text-text-primary'>
-                    {t('datasetSettings.form.retrievalSetting.multiModalTip')}
+                  <span className="system-xs-medium text-text-primary">
+                    {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                   </span>
                 </div>
               )}

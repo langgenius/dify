@@ -1,19 +1,21 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
 import {
   RiArrowLeftLine,
   RiArrowRightSLine,
   RiErrorWarningLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import { NodeRunningStatus } from '@/app/components/workflow/types'
-import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Iteration } from '@/app/components/base/icons/src/vender/workflow'
+import TracingPanel from '@/app/components/workflow/run/tracing-panel'
+import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
-import type { IterationDurationMap, NodeTracing } from '@/types/workflow'
-const i18nPrefix = 'workflow.singleRun'
+
+const i18nPrefix = 'singleRun'
 
 type Props = {
   list: NodeTracing[][]
@@ -48,15 +50,15 @@ const IterationResultPanel: FC<Props> = ({
     const hasDurationMap = iterDurationMap && Object.keys(iterDurationMap).length !== 0
 
     if (hasFailed)
-      return <RiErrorWarningLine className='h-4 w-4 text-text-destructive' />
+      return <RiErrorWarningLine className="h-4 w-4 text-text-destructive" />
 
     if (isRunning)
-      return <RiLoader2Line className='h-3.5 w-3.5 animate-spin text-primary-600' />
+      return <RiLoader2Line className="h-3.5 w-3.5 animate-spin text-primary-600" />
 
     return (
       <>
         {hasDurationMap && (
-          <div className='system-xs-regular text-text-tertiary'>
+          <div className="system-xs-regular text-text-tertiary">
             {countIterDuration(iteration, iterDurationMap)}
           </div>
         )}
@@ -71,20 +73,20 @@ const IterationResultPanel: FC<Props> = ({
   }
 
   return (
-    <div className='bg-components-panel-bg'>
+    <div className="bg-components-panel-bg">
       <div
-        className='flex h-8 cursor-pointer items-center border-b-[0.5px] border-b-divider-regular px-4 text-text-accent-secondary'
+        className="flex h-8 cursor-pointer items-center border-b-[0.5px] border-b-divider-regular px-4 text-text-accent-secondary"
         onClick={(e) => {
           e.stopPropagation()
           e.nativeEvent.stopImmediatePropagation()
           onBack()
         }}
       >
-        <RiArrowLeftLine className='mr-1 h-4 w-4' />
-        <div className='system-sm-medium'>{t(`${i18nPrefix}.back`)}</div>
+        <RiArrowLeftLine className="mr-1 h-4 w-4" />
+        <div className="system-sm-medium">{t(`${i18nPrefix}.back`, { ns: 'workflow' })}</div>
       </div>
       {/* List */}
-      <div className='bg-components-panel-bg p-2'>
+      <div className="bg-components-panel-bg p-2">
         {list.map((iteration, index) => (
           <div key={index} className={cn('mb-1 overflow-hidden rounded-xl border-none bg-background-section-burn')}>
             <div
@@ -96,27 +98,33 @@ const IterationResultPanel: FC<Props> = ({
               onClick={() => toggleIteration(index)}
             >
               <div className={cn('flex grow items-center gap-2')}>
-                <div className='flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500'>
-                  <Iteration className='h-3 w-3 text-text-primary-on-surface' />
+                <div className="flex h-4 w-4 shrink-0 items-center justify-center rounded-[5px] border-divider-subtle bg-util-colors-cyan-cyan-500">
+                  <Iteration className="h-3 w-3 text-text-primary-on-surface" />
                 </div>
-                <span className='system-sm-semibold-uppercase grow text-text-primary'>
-                  {t(`${i18nPrefix}.iteration`)} {index + 1}
+                <span className="system-sm-semibold-uppercase grow text-text-primary">
+                  {t(`${i18nPrefix}.iteration`, { ns: 'workflow' })}
+                  {' '}
+                  {index + 1}
                 </span>
                 {iterationStatusShow(index, iteration, iterDurationMap)}
               </div>
             </div>
-            {expandedIterations[index] && <div
-              className="h-px grow bg-divider-subtle"
-            ></div>}
+            {expandedIterations[index] && (
+              <div
+                className="h-px grow bg-divider-subtle"
+              >
+              </div>
+            )}
             <div className={cn(
               'transition-all duration-200',
               expandedIterations[index]
                 ? 'opacity-100'
                 : 'max-h-0 overflow-hidden opacity-0',
-            )}>
+            )}
+            >
               <TracingPanel
                 list={iteration}
-                className='bg-background-section-burn'
+                className="bg-background-section-burn"
               />
             </div>
           </div>

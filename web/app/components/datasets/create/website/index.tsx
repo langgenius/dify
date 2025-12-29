@@ -1,19 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import s from './index.module.css'
-import NoData from './no-data'
-import Firecrawl from './firecrawl'
-import Watercrawl from './watercrawl'
-import JinaReader from './jina-reader'
-import { cn } from '@/utils/classnames'
-import { useModalContext } from '@/context/modal-context'
-import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import { DataSourceProvider } from '@/models/common'
-import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
+import { useModalContext } from '@/context/modal-context'
+import { DataSourceProvider } from '@/models/common'
+import { cn } from '@/utils/classnames'
+import Firecrawl from './firecrawl'
+import s from './index.module.css'
+import JinaReader from './jina-reader'
+import NoData from './no-data'
+import Watercrawl from './watercrawl'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -44,7 +45,8 @@ const Website: FC<Props> = ({
     return [
       DataSourceProvider.jinaReader,
       DataSourceProvider.fireCrawl,
-      DataSourceProvider.waterCrawl].includes(item.provider as DataSourceProvider) && item.credentials_list.length > 0
+      DataSourceProvider.waterCrawl,
+    ].includes(item.provider as DataSourceProvider) && item.credentials_list.length > 0
   }), [authedDataSourceList])
 
   const handleOnConfig = useCallback(() => {
@@ -57,55 +59,58 @@ const Website: FC<Props> = ({
 
   return (
     <div>
-      <div className='mb-4'>
-        <div className='system-md-medium mb-2 text-text-secondary'>
-          {t('datasetCreation.stepOne.website.chooseProvider')}
+      <div className="mb-4">
+        <div className="system-md-medium mb-2 text-text-secondary">
+          {t('stepOne.website.chooseProvider', { ns: 'datasetCreation' })}
         </div>
-        <div className='flex space-x-2'>
-          {ENABLE_WEBSITE_JINAREADER && <button type="button"
-            className={cn('flex items-center justify-center rounded-lg px-4 py-2',
-              selectedProvider === DataSourceProvider.jinaReader
+        <div className="flex space-x-2">
+          {ENABLE_WEBSITE_JINAREADER && (
+            <button
+              type="button"
+              className={cn('flex items-center justify-center rounded-lg px-4 py-2', selectedProvider === DataSourceProvider.jinaReader
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
                 : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
-                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
-            )}
-            onClick={() => {
-              setSelectedProvider(DataSourceProvider.jinaReader)
-              onCrawlProviderChange(DataSourceProvider.jinaReader)
-            }}
-          >
-            <span className={cn(s.jinaLogo, 'mr-2')} />
-            <span>Jina Reader</span>
-          </button>}
-          {ENABLE_WEBSITE_FIRECRAWL && <button type="button"
-            className={cn('rounded-lg px-4 py-2',
-              selectedProvider === DataSourceProvider.fireCrawl
+                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`)}
+              onClick={() => {
+                setSelectedProvider(DataSourceProvider.jinaReader)
+                onCrawlProviderChange(DataSourceProvider.jinaReader)
+              }}
+            >
+              <span className={cn(s.jinaLogo, 'mr-2')} />
+              <span>Jina Reader</span>
+            </button>
+          )}
+          {ENABLE_WEBSITE_FIRECRAWL && (
+            <button
+              type="button"
+              className={cn('rounded-lg px-4 py-2', selectedProvider === DataSourceProvider.fireCrawl
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
                 : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
-                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
-            )}
-            onClick={() => {
-              setSelectedProvider(DataSourceProvider.fireCrawl)
-              onCrawlProviderChange(DataSourceProvider.fireCrawl)
-            }}
-          >
-            🔥 Firecrawl
-          </button>}
-          {ENABLE_WEBSITE_WATERCRAWL && <button type="button"
-            className={cn('flex items-center justify-center rounded-lg px-4 py-2',
-              selectedProvider === DataSourceProvider.waterCrawl
+                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`)}
+              onClick={() => {
+                setSelectedProvider(DataSourceProvider.fireCrawl)
+                onCrawlProviderChange(DataSourceProvider.fireCrawl)
+              }}
+            >
+              🔥 Firecrawl
+            </button>
+          )}
+          {ENABLE_WEBSITE_WATERCRAWL && (
+            <button
+              type="button"
+              className={cn('flex items-center justify-center rounded-lg px-4 py-2', selectedProvider === DataSourceProvider.waterCrawl
                 ? 'system-sm-medium border-[1.5px] border-components-option-card-option-selected-border bg-components-option-card-option-selected-bg text-text-primary'
                 : `system-sm-regular border border-components-option-card-option-border bg-components-option-card-option-bg text-text-secondary
-                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`,
-            )}
-            onClick={() => {
-              setSelectedProvider(DataSourceProvider.waterCrawl)
-              onCrawlProviderChange(DataSourceProvider.waterCrawl)
-            }}
-          >
-            <span className={cn(s.watercrawlLogo, 'mr-2')} />
-            <span>WaterCrawl</span>
-          </button>}
+                hover:border-components-option-card-option-border-hover hover:bg-components-option-card-option-bg-hover hover:shadow-xs hover:shadow-shadow-shadow-3`)}
+              onClick={() => {
+                setSelectedProvider(DataSourceProvider.waterCrawl)
+                onCrawlProviderChange(DataSourceProvider.waterCrawl)
+              }}
+            >
+              <span className={cn(s.watercrawlLogo, 'mr-2')} />
+              <span>WaterCrawl</span>
+            </button>
+          )}
         </div>
       </div>
       {source && selectedProvider === DataSourceProvider.fireCrawl && (

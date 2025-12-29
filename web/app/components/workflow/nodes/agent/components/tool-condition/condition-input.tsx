@@ -18,7 +18,7 @@ const ConditionInput = ({
   disabled,
   availableNodes,
 }: ConditionInputProps) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   const controlPromptEditorRerenderKey = useStore(s => s.controlPromptEditorRerenderKey)
   const pipelineId = useStore(s => s.pipelineId)
   const setShowInputFieldPanel = useStore(s => s.setShowInputFieldPanel)
@@ -28,7 +28,7 @@ const ConditionInput = ({
       key={controlPromptEditorRerenderKey}
       compact
       value={value}
-      placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
+      placeholder={t('nodes.ifElse.enterValue') || ''}
       workflowVariableBlock={{
         show: true,
         variables: [],
@@ -39,7 +39,7 @@ const ConditionInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('workflow.blocks.start'),
+              title: t('blocks.start'),
               type: BlockEnum.Start,
             }
           }

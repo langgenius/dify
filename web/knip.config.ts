@@ -37,10 +37,6 @@ const config: KnipConfig = {
       'tailwind-common-config.ts',
       'postcss.config.js',
 
-      // Testing configuration
-      'jest.config.ts',
-      'jest.setup.ts',
-
       // Linting configuration
       'eslint.config.mjs',
     ],
@@ -68,10 +64,6 @@ const config: KnipConfig = {
     'tailwind-common-config.ts!',
     'postcss.config.js!',
 
-    // Testing setup
-    'jest.config.ts!',
-    'jest.setup.ts!',
-
     // Linting setup
     'eslint.config.mjs!',
 
@@ -84,7 +76,7 @@ const config: KnipConfig = {
     // Browser initialization (runs on client startup)
     'app/components/browser-initializer.tsx!',
     'app/components/sentry-initializer.tsx!',
-    'app/components/swr-initializer.tsx!',
+    'app/components/app-initializer.tsx!',
 
     // i18n initialization (server and client)
     'app/components/i18n.tsx!',
@@ -212,7 +204,6 @@ const config: KnipConfig = {
     // ========================================================================
     'bing-translate-api',
     'uglify-js',
-    'magicast',
   ],
 
   // ============================================================================

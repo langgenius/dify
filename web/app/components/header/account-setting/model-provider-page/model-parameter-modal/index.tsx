@@ -2,34 +2,34 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
   FormValue,
   ModelParameterRule,
 } from '../declarations'
-import { ModelStatusEnum } from '../declarations'
-import ModelSelector from '../model-selector'
-import {
-  useTextGenerationCurrentProviderAndModelAndModelList,
-} from '../hooks'
-import ParameterItem from './parameter-item'
 import type { ParameterValue } from './parameter-item'
-import Trigger from './trigger'
 import type { TriggerProps } from './trigger'
-import PresetsParameter from './presets-parameter'
-import { cn } from '@/utils/classnames'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import Loading from '@/app/components/base/loading'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Loading from '@/app/components/base/loading'
-import { useProviderContext } from '@/context/provider-context'
 import { PROVIDER_WITH_PRESET_TONE, STOP_PARAMETER_RULE, TONE_LIST } from '@/config'
-import { ArrowNarrowLeft } from '@/app/components/base/icons/src/vender/line/arrows'
+import { useProviderContext } from '@/context/provider-context'
 import { useModelParameterRules } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
+import { ModelStatusEnum } from '../declarations'
+import {
+  useTextGenerationCurrentProviderAndModelAndModelList,
+} from '../hooks'
+import ModelSelector from '../model-selector'
+import ParameterItem from './parameter-item'
+import PresetsParameter from './presets-parameter'
+import Trigger from './trigger'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
@@ -37,7 +37,7 @@ export type ModelParameterModalProps = {
   isAdvancedMode: boolean
   modelId: string
   provider: string
-  setModel: (model: { modelId: string; provider: string; mode?: string; features?: string[] }) => void
+  setModel: (model: { modelId: string, provider: string, mode?: string, features?: string[] }) => void
   completionParams: FormValue
   onCompletionParamsChange: (newParams: FormValue) => void
   hideDebugWithMultipleModel?: boolean
@@ -135,47 +135,47 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       placement={isInWorkflow ? 'left' : 'bottom-end'}
       offset={4}
     >
-      <div className='relative'>
+      <div className="relative">
         <PortalToFollowElemTrigger
           onClick={() => {
             if (readonly)
               return
             setOpen(v => !v)
           }}
-          className='block'
+          className="block"
         >
           {
             renderTrigger
               ? renderTrigger({
-                open,
-                disabled,
-                modelDisabled,
-                hasDeprecated,
-                currentProvider,
-                currentModel,
-                providerName: provider,
-                modelId,
-              })
+                  open,
+                  disabled,
+                  modelDisabled,
+                  hasDeprecated,
+                  currentProvider,
+                  currentModel,
+                  providerName: provider,
+                  modelId,
+                })
               : (
-                <Trigger
-                  disabled={disabled}
-                  isInWorkflow={isInWorkflow}
-                  modelDisabled={modelDisabled}
-                  hasDeprecated={hasDeprecated}
-                  currentProvider={currentProvider}
-                  currentModel={currentModel}
-                  providerName={provider}
-                  modelId={modelId}
-                />
-              )
+                  <Trigger
+                    disabled={disabled}
+                    isInWorkflow={isInWorkflow}
+                    modelDisabled={modelDisabled}
+                    hasDeprecated={hasDeprecated}
+                    currentProvider={currentProvider}
+                    currentModel={currentModel}
+                    providerName={provider}
+                    modelId={modelId}
+                  />
+                )
           }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className={cn('z-[60]', portalToFollowElemContentClassName)}>
           <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
             <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
-              <div className='relative'>
+              <div className="relative">
                 <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
-                  {t('common.modelProvider.model').toLocaleUpperCase()}
+                  {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
                 </div>
                 <ModelSelector
                   defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
@@ -185,18 +185,18 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               </div>
               {
                 !!parameterRules.length && (
-                  <div className='my-3 h-px bg-divider-subtle' />
+                  <div className="my-3 h-px bg-divider-subtle" />
                 )
               }
               {
                 isLoading && (
-                  <div className='mt-5'><Loading /></div>
+                  <div className="mt-5"><Loading /></div>
                 )
               }
               {
                 !isLoading && !!parameterRules.length && (
-                  <div className='mb-2 flex items-center justify-between'>
-                    <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('common.modelProvider.parameters')}</div>
+                  <div className="mb-2 flex items-center justify-between">
+                    <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
                     {
                       PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                         <PresetsParameter onSelect={handleSelectPresetParameter} />
@@ -225,15 +225,15 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             </div>
             {!hideDebugWithMultipleModel && (
               <div
-                className='bg-components-section-burn system-sm-regular flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent'
+                className="bg-components-section-burn system-sm-regular flex h-[50px] cursor-pointer items-center justify-between rounded-b-xl border-t border-t-divider-subtle px-4 text-text-accent"
                 onClick={() => onDebugWithMultipleModelChange?.()}
               >
                 {
                   debugWithMultipleModel
-                    ? t('appDebug.debugAsSingleModel')
-                    : t('appDebug.debugAsMultipleModel')
+                    ? t('debugAsSingleModel', { ns: 'appDebug' })
+                    : t('debugAsMultipleModel', { ns: 'appDebug' })
                 }
-                <ArrowNarrowLeft className='h-3 w-3 rotate-180' />
+                <ArrowNarrowLeft className="h-3 w-3 rotate-180" />
               </div>
             )}
           </div>

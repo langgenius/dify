@@ -1,20 +1,21 @@
 'use client'
+import type {
+  OffsetOptions,
+  Placement,
+} from '@floating-ui/react'
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
+import type { App } from '@/types/app'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
-import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
 import AppInputsPanel from '@/app/components/plugins/plugin-detail-panel/app-selector/app-inputs-panel'
-import type { App } from '@/types/app'
-import type {
-  OffsetOptions,
-  Placement,
-} from '@floating-ui/react'
+import AppPicker from '@/app/components/plugins/plugin-detail-panel/app-selector/app-picker'
+import AppTrigger from '@/app/components/plugins/plugin-detail-panel/app-selector/app-trigger'
 import { useInfiniteAppList } from '@/service/use-apps'
 
 const PAGE_SIZE = 20
@@ -64,14 +65,16 @@ const AppSelector: FC<Props> = ({
 
   const pages = data?.pages ?? []
   const displayedApps = useMemo(() => {
-    if (!pages.length) return []
+    if (!pages.length)
+      return []
     return pages.flatMap(({ data: apps }) => apps)
   }, [pages])
 
   const hasMore = hasNextPage ?? true
 
   const handleLoadMore = useCallback(async () => {
-    if (isLoadingMore || isFetchingNextPage || !hasMore) return
+    if (isLoadingMore || isFetchingNextPage || !hasMore)
+      return
 
     setIsLoadingMore(true)
     try {
@@ -86,7 +89,8 @@ const AppSelector: FC<Props> = ({
   }, [isLoadingMore, isFetchingNextPage, hasMore, fetchNextPage])
 
   const handleTriggerClick = () => {
-    if (disabled) return
+    if (disabled)
+      return
     onShowChange(true)
   }
 
@@ -138,7 +142,7 @@ const AppSelector: FC<Props> = ({
         onOpenChange={onShowChange}
       >
         <PortalToFollowElemTrigger
-          className='w-full'
+          className="w-full"
           onClick={handleTriggerClick}
         >
           <AppTrigger
@@ -146,19 +150,19 @@ const AppSelector: FC<Props> = ({
             appDetail={currentAppInfo}
           />
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[1000]'>
+        <PortalToFollowElemContent className="z-[1000]">
           <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
-            <div className='flex flex-col gap-1 px-4 py-3'>
-              <div className='system-sm-semibold flex h-6 items-center text-text-secondary'>{t('app.appSelector.label')}</div>
+            <div className="flex flex-col gap-1 px-4 py-3">
+              <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
               <AppPicker
-                placement='bottom'
+                placement="bottom"
                 offset={offset}
-                trigger={
+                trigger={(
                   <AppTrigger
                     open={isShowChooseApp}
                     appDetail={currentAppInfo}
                   />
-                }
+                )}
                 isShow={isShowChooseApp}
                 onShowChange={setIsShowChooseApp}
                 disabled={false}

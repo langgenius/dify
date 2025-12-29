@@ -1,16 +1,17 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
 import {
   RiEqualizer2Line,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { TracingProvider } from './type'
-import { cn } from '@/utils/classnames'
 import { AliyunIconBig, ArizeIconBig, DatabricksIconBig, LangfuseIconBig, LangsmithIconBig, MlflowIconBig, OpikIconBig, PhoenixIconBig, TencentIconBig, WeaveIconBig } from '@/app/components/base/icons/src/public/tracing'
 import { Eye as View } from '@/app/components/base/icons/src/vender/solid/general'
+import { cn } from '@/utils/classnames'
+import { TracingProvider } from './type'
 
-const I18N_PREFIX = 'app.tracing'
+const I18N_PREFIX = 'tracing'
 
 type Props = {
   type: TracingProvider
@@ -78,31 +79,31 @@ const ProviderPanel: FC<Props> = ({
       )}
       onClick={handleChosen}
     >
-      <div className={'flex items-center justify-between space-x-1'}>
-        <div className='flex items-center'>
-          <Icon className='h-6' />
-          {isChosen && <div className='system-2xs-medium-uppercase ml-1 flex h-4 items-center rounded-[4px] border border-text-accent-secondary px-1 text-text-accent-secondary'>{t(`${I18N_PREFIX}.inUse`)}</div>}
+      <div className="flex items-center justify-between space-x-1">
+        <div className="flex items-center">
+          <Icon className="h-6" />
+          {isChosen && <div className="system-2xs-medium-uppercase ml-1 flex h-4 items-center rounded-[4px] border border-text-accent-secondary px-1 text-text-accent-secondary">{t(`${I18N_PREFIX}.inUse`, { ns: 'app' })}</div>}
         </div>
         {!readOnly && (
-          <div className={'flex items-center justify-between space-x-1'}>
+          <div className="flex items-center justify-between space-x-1">
             {hasConfigured && (
-              <div className='flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs' onClick={viewBtnClick} >
-                <View className='h-3 w-3' />
-                <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.view`)}</div>
+              <div className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs" onClick={viewBtnClick}>
+                <View className="h-3 w-3" />
+                <div className="text-xs font-medium">{t(`${I18N_PREFIX}.view`, { ns: 'app' })}</div>
               </div>
             )}
             <div
-              className='flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs'
+              className="flex h-6 cursor-pointer items-center space-x-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-2 text-text-secondary shadow-xs"
               onClick={handleConfigBtnClick}
             >
-              <RiEqualizer2Line className='h-3 w-3' />
-              <div className='text-xs font-medium'>{t(`${I18N_PREFIX}.config`)}</div>
+              <RiEqualizer2Line className="h-3 w-3" />
+              <div className="text-xs font-medium">{t(`${I18N_PREFIX}.config`, { ns: 'app' })}</div>
             </div>
           </div>
         )}
       </div>
-      <div className='system-xs-regular mt-2 text-text-tertiary'>
-        {t(`${I18N_PREFIX}.${type}.description`)}
+      <div className="system-xs-regular mt-2 text-text-tertiary">
+        {t(`${I18N_PREFIX}.${type}.description`, { ns: 'app' })}
       </div>
     </div>
   )

@@ -1,24 +1,24 @@
 import type { FC } from 'react'
+import type { HttpNodeType } from './types'
+import type { NodePanelProps } from '@/app/components/workflow/types'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
-import useConfig from './use-config'
-import ApiInput from './components/api-input'
-import KeyValue from './components/key-value'
-import EditBody from './components/edit-body'
-import AuthorizationModal from './components/authorization'
-import type { HttpNodeType } from './types'
-import Timeout from './components/timeout'
-import CurlPanel from './components/curl-panel'
-import { cn } from '@/utils/classnames'
+import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
+import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
 import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Split from '@/app/components/workflow/nodes/_base/components/split'
 import OutputVars, { VarItem } from '@/app/components/workflow/nodes/_base/components/output-vars'
-import { Settings01 } from '@/app/components/base/icons/src/vender/line/general'
-import { FileArrow01 } from '@/app/components/base/icons/src/vender/line/files'
-import type { NodePanelProps } from '@/app/components/workflow/types'
+import Split from '@/app/components/workflow/nodes/_base/components/split'
+import { cn } from '@/utils/classnames'
+import ApiInput from './components/api-input'
+import AuthorizationModal from './components/authorization'
+import CurlPanel from './components/curl-panel'
+import EditBody from './components/edit-body'
+import KeyValue from './components/key-value'
+import Timeout from './components/timeout'
+import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.http'
+const i18nPrefix = 'nodes.http'
 
 const Panel: FC<NodePanelProps<HttpNodeType>> = ({
   id,
@@ -55,34 +55,34 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
     return null
 
   return (
-    <div className='pt-2'>
-      <div className='space-y-4 px-4 pb-4'>
+    <div className="pt-2">
+      <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.api`)}
+          title={t(`${i18nPrefix}.api`, { ns: 'workflow' })}
           required
-          operations={
-            <div className='flex'>
+          operations={(
+            <div className="flex">
               <div
                 onClick={showAuthorization}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <Settings01 className='h-3 w-3 text-text-tertiary' />}
-                <div className='text-xs font-medium text-text-tertiary'>
-                  {t(`${i18nPrefix}.authorization.authorization`)}
-                  <span className='ml-1 text-text-secondary'>{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`)}</span>
+                {!readOnly && <Settings01 className="h-3 w-3 text-text-tertiary" />}
+                <div className="text-xs font-medium text-text-tertiary">
+                  {t(`${i18nPrefix}.authorization.authorization`, { ns: 'workflow' })}
+                  <span className="ml-1 text-text-secondary">{t(`${i18nPrefix}.authorization.${inputs.authorization.type}`, { ns: 'workflow' })}</span>
                 </div>
               </div>
               <div
                 onClick={showCurlPanel}
                 className={cn(!readOnly && 'cursor-pointer hover:bg-state-base-hover', 'flex h-6 items-center space-x-1 rounded-md px-2 ')}
               >
-                {!readOnly && <FileArrow01 className='h-3 w-3 text-text-tertiary' />}
-                <div className='text-xs font-medium text-text-tertiary'>
-                  {t(`${i18nPrefix}.curl.title`)}
+                {!readOnly && <FileArrow01 className="h-3 w-3 text-text-tertiary" />}
+                <div className="text-xs font-medium text-text-tertiary">
+                  {t(`${i18nPrefix}.curl.title`, { ns: 'workflow' })}
                 </div>
               </div>
             </div>
-          }
+          )}
         >
           <ApiInput
             nodeId={id}
@@ -94,7 +94,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.headers`)}
+          title={t(`${i18nPrefix}.headers`, { ns: 'workflow' })}
         >
           <KeyValue
             nodeId={id}
@@ -105,7 +105,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.params`)}
+          title={t(`${i18nPrefix}.params`, { ns: 'workflow' })}
         >
           <KeyValue
             nodeId={id}
@@ -116,7 +116,7 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.body`)}
+          title={t(`${i18nPrefix}.body`, { ns: 'workflow' })}
           required
         >
           <EditBody
@@ -127,16 +127,17 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.verifySSL.title`)}
-          tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`)}
-          operations={
+          title={t(`${i18nPrefix}.verifySSL.title`, { ns: 'workflow' })}
+          tooltip={t(`${i18nPrefix}.verifySSL.warningTooltip`, { ns: 'workflow' })}
+          operations={(
             <Switch
               defaultValue={!!inputs.ssl_verify}
               onChange={handleSSLVerifyChange}
-              size='md'
+              size="md"
               disabled={readOnly}
             />
-          }>
+          )}
+        >
         </Field>
       </div>
       <Split />
@@ -156,28 +157,28 @@ const Panel: FC<NodePanelProps<HttpNodeType>> = ({
         />
       )}
       <Split />
-      <div className=''>
+      <div className="">
         <OutputVars>
           <>
             <VarItem
-              name='body'
-              type='string'
-              description={t(`${i18nPrefix}.outputVars.body`)}
+              name="body"
+              type="string"
+              description={t(`${i18nPrefix}.outputVars.body`, { ns: 'workflow' })}
             />
             <VarItem
-              name='status_code'
-              type='number'
-              description={t(`${i18nPrefix}.outputVars.statusCode`)}
+              name="status_code"
+              type="number"
+              description={t(`${i18nPrefix}.outputVars.statusCode`, { ns: 'workflow' })}
             />
             <VarItem
-              name='headers'
-              type='object'
-              description={t(`${i18nPrefix}.outputVars.headers`)}
+              name="headers"
+              type="object"
+              description={t(`${i18nPrefix}.outputVars.headers`, { ns: 'workflow' })}
             />
             <VarItem
-              name='files'
-              type='Array[File]'
-              description={t(`${i18nPrefix}.outputVars.files`)}
+              name="files"
+              type="Array[File]"
+              description={t(`${i18nPrefix}.outputVars.files`, { ns: 'workflow' })}
             />
           </>
         </OutputVars>

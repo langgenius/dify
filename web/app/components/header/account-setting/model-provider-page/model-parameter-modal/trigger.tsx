@@ -1,20 +1,20 @@
 import type { FC } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiArrowDownSLine } from '@remixicon/react'
 import type {
   Model,
   ModelItem,
   ModelProvider,
 } from '../declarations'
+import { RiArrowDownSLine } from '@remixicon/react'
+import { useTranslation } from 'react-i18next'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
+import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import Tooltip from '@/app/components/base/tooltip'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 import { MODEL_STATUS_TEXT } from '../declarations'
 import { useLanguage } from '../hooks'
 import ModelIcon from '../model-icon'
 import ModelName from '../model-name'
-import { cn } from '@/utils/classnames'
-import { useProviderContext } from '@/context/provider-context'
-import { SlidersH } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
 
 export type TriggerProps = {
   open?: boolean
@@ -53,7 +53,7 @@ const Trigger: FC<TriggerProps> = ({
       {
         currentProvider && (
           <ModelIcon
-            className='mr-1.5 !h-5 !w-5'
+            className="mr-1.5 !h-5 !w-5"
             provider={currentProvider}
             modelName={currentModel?.model}
           />
@@ -62,7 +62,7 @@ const Trigger: FC<TriggerProps> = ({
       {
         !currentProvider && (
           <ModelIcon
-            className='mr-1.5 !h-5 !w-5'
+            className="mr-1.5 !h-5 !w-5"
             provider={modelProviders.find(item => item.provider === providerName)}
             modelName={modelId}
           />
@@ -71,7 +71,7 @@ const Trigger: FC<TriggerProps> = ({
       {
         currentModel && (
           <ModelName
-            className='mr-1.5 text-text-primary'
+            className="mr-1.5 text-text-primary"
             modelItem={currentModel}
             showMode
             showFeatures
@@ -80,7 +80,7 @@ const Trigger: FC<TriggerProps> = ({
       }
       {
         !currentModel && (
-          <div className='mr-1 truncate text-[13px] font-medium text-text-primary'>
+          <div className="mr-1 truncate text-[13px] font-medium text-text-primary">
             {modelId}
           </div>
         )
@@ -88,23 +88,23 @@ const Trigger: FC<TriggerProps> = ({
       {
         disabled
           ? (
-            <Tooltip
-              popupContent={
-                hasDeprecated
-                  ? t('common.modelProvider.deprecated')
-                  : (modelDisabled && currentModel)
-                    ? MODEL_STATUS_TEXT[currentModel.status as string][language]
-                    : ''
-              }
-            >
-              <AlertTriangle className='h-4 w-4 text-[#F79009]' />
-            </Tooltip>
-          )
+              <Tooltip
+                popupContent={
+                  hasDeprecated
+                    ? t('modelProvider.deprecated', { ns: 'common' })
+                    : (modelDisabled && currentModel)
+                        ? MODEL_STATUS_TEXT[currentModel.status as string][language]
+                        : ''
+                }
+              >
+                <AlertTriangle className="h-4 w-4 text-[#F79009]" />
+              </Tooltip>
+            )
           : (
-            <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-text-tertiary', 'h-4 w-4 shrink-0')} />
-          )
+              <SlidersH className={cn(!isInWorkflow ? 'text-indigo-600' : 'text-text-tertiary', 'h-4 w-4 shrink-0')} />
+            )
       }
-      {isInWorkflow && (<RiArrowDownSLine className='absolute right-2 top-[9px] h-3.5 w-3.5 text-text-tertiary' />)}
+      {isInWorkflow && (<RiArrowDownSLine className="absolute right-2 top-[9px] h-3.5 w-3.5 text-text-tertiary" />)}
     </div>
   )
 }

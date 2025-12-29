@@ -1,18 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { FormSchema } from '../../base/form/types'
+import type { PluginDetail } from '../types'
 import { RiArrowRightUpLine, RiCloseLine } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
-import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import Toast from '@/app/components/base/toast'
+import Form from '@/app/components/header/account-setting/model-provider-page/model-modal/Form'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 import { ReadmeEntrance } from '../readme-panel/entrance'
-import type { PluginDetail } from '../types'
-import type { FormSchema } from '../../base/form/types'
 
 type Props = {
   formSchemas: FormSchema[]
@@ -48,7 +48,7 @@ const EndpointModal: FC<Props> = ({
   const handleSave = () => {
     for (const field of formSchemas) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>) }) })
+        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: typeof field.label === 'string' ? field.label : getValueFromI18nObject(field.label as Record<string, string>) }) })
         return
       }
     }
@@ -81,18 +81,18 @@ const EndpointModal: FC<Props> = ({
       panelClassName={cn('mb-2 mr-2 mt-[64px] !w-[420px] !max-w-[420px] justify-start rounded-2xl border-[0.5px] border-components-panel-border !bg-components-panel-bg !p-0 shadow-xl')}
     >
       <>
-        <div className='p-4 pb-2'>
-          <div className='flex items-center justify-between'>
-            <div className='system-xl-semibold text-text-primary'>{t('plugin.detailPanel.endpointModalTitle')}</div>
+        <div className="p-4 pb-2">
+          <div className="flex items-center justify-between">
+            <div className="system-xl-semibold text-text-primary">{t('detailPanel.endpointModalTitle', { ns: 'plugin' })}</div>
             <ActionButton onClick={onCancel}>
-              <RiCloseLine className='h-4 w-4' />
+              <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
-          <div className='system-xs-regular mt-0.5 text-text-tertiary'>{t('plugin.detailPanel.endpointModalDesc')}</div>
-          <ReadmeEntrance pluginDetail={pluginDetail} className='px-0 pt-3' />
+          <div className="system-xs-regular mt-0.5 text-text-tertiary">{t('detailPanel.endpointModalDesc', { ns: 'plugin' })}</div>
+          <ReadmeEntrance pluginDetail={pluginDetail} className="px-0 pt-3" />
         </div>
-        <div className='grow overflow-y-auto'>
-          <div className='px-4 py-2'>
+        <div className="grow overflow-y-auto">
+          <div className="px-4 py-2">
             <Form
               value={tempCredential}
               onChange={(v) => {
@@ -102,23 +102,26 @@ const EndpointModal: FC<Props> = ({
               isEditMode={true}
               showOnVariableMap={{}}
               validating={false}
-              inputClassName='bg-components-input-bg-normal hover:bg-components-input-bg-hover'
+              inputClassName="bg-components-input-bg-normal hover:bg-components-input-bg-hover"
               fieldMoreInfo={item => item.url
-                ? (<a
-                  href={item.url}
-                  target='_blank' rel='noopener noreferrer'
-                  className='body-xs-regular inline-flex items-center text-text-accent-secondary'
-                >
-                  {t('tools.howToGet')}
-                  <RiArrowRightUpLine className='ml-1 h-3 w-3' />
-                </a>)
+                ? (
+                    <a
+                      href={item.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="body-xs-regular inline-flex items-center text-text-accent-secondary"
+                    >
+                      {t('howToGet', { ns: 'tools' })}
+                      <RiArrowRightUpLine className="ml-1 h-3 w-3" />
+                    </a>
+                  )
                 : null}
             />
           </div>
-          <div className={cn('flex justify-end p-4 pt-0')} >
-            <div className='flex gap-2'>
-              <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+          <div className={cn('flex justify-end p-4 pt-0')}>
+            <div className="flex gap-2">
+              <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
             </div>
           </div>
         </div>

@@ -18,8 +18,8 @@ const AddModelButton: FC<AddModelButtonProps> = ({
       className={cn('system-xs-medium flex h-6 shrink-0 cursor-pointer items-center rounded-md px-1.5 text-text-tertiary hover:bg-components-button-ghost-bg-hover hover:text-components-button-ghost-text', className)}
       onClick={onClick}
     >
-      <PlusCircle className='mr-1 h-3 w-3' />
-      {t('common.modelProvider.addModel')}
+      <PlusCircle className="mr-1 h-3 w-3" />
+      {t('modelProvider.addModel', { ns: 'common' })}
     </span>
   )
 }

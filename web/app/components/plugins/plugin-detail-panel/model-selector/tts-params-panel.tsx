@@ -1,7 +1,8 @@
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
-import { languages } from '@/i18n-config/language'
 import { PortalSelect } from '@/app/components/base/select'
+import { languages } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -34,12 +35,12 @@ const TTSParamsPanel = ({
   }
   return (
     <>
-      <div className='mb-3'>
-        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
-          {t('appDebug.voice.voiceSettings.language')}
+      <div className="mb-3">
+        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+          {t('voice.voiceSettings.language', { ns: 'appDebug' })}
         </div>
         <PortalSelect
-          triggerClassName='h-8'
+          triggerClassName="h-8"
           popupClassName={cn('z-[1000]')}
           popupInnerClassName={cn('w-[354px]')}
           value={language}
@@ -47,12 +48,12 @@ const TTSParamsPanel = ({
           onSelect={item => setLanguage(item.value as string)}
         />
       </div>
-      <div className='mb-3'>
-        <div className='system-sm-semibold mb-1 flex items-center py-1 text-text-secondary'>
-          {t('appDebug.voice.voiceSettings.voice')}
+      <div className="mb-3">
+        <div className="system-sm-semibold mb-1 flex items-center py-1 text-text-secondary">
+          {t('voice.voiceSettings.voice', { ns: 'appDebug' })}
         </div>
         <PortalSelect
-          triggerClassName='h-8'
+          triggerClassName="h-8"
           popupClassName={cn('z-[1000]')}
           popupInnerClassName={cn('w-[354px]')}
           value={voice}

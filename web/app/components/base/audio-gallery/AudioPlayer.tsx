@@ -1,9 +1,10 @@
-import React, { useCallback, useEffect, useRef, useState } from 'react'
-import { t } from 'i18next'
 import {
   RiPauseCircleFill,
   RiPlayLargeFill,
 } from '@remixicon/react'
+import { t } from 'i18next'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
@@ -291,37 +292,37 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
   }, [duration])
 
   return (
-    <div className='flex h-9 min-w-[240px] max-w-[420px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-sm'>
+    <div className="flex h-9 min-w-[240px] max-w-[420px] items-center gap-2 rounded-[10px] border border-components-panel-border-subtle bg-components-chat-input-audio-bg-alt p-2 shadow-xs backdrop-blur-sm">
       <audio ref={audioRef} src={src} preload="auto">
         {/* If srcs array is provided, render multiple source elements */}
         {srcs && srcs.map((srcUrl, index) => (
           <source key={index} src={srcUrl} />
         ))}
       </audio>
-      <button type="button" className='inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled' onClick={togglePlay} disabled={!isAudioAvailable}>
+      <button type="button" className="inline-flex shrink-0 cursor-pointer items-center justify-center border-none text-text-accent transition-all hover:text-text-accent-secondary disabled:text-components-button-primary-bg-disabled" onClick={togglePlay} disabled={!isAudioAvailable}>
         {isPlaying
           ? (
-            <RiPauseCircleFill className='h-5 w-5' />
-          )
+              <RiPauseCircleFill className="h-5 w-5" />
+            )
           : (
-            <RiPlayLargeFill className='h-5 w-5' />
-          )}
+              <RiPlayLargeFill className="h-5 w-5" />
+            )}
       </button>
       <div className={cn(isAudioAvailable && 'grow')} hidden={!isAudioAvailable}>
-        <div className='flex h-8 items-center justify-center'>
+        <div className="flex h-8 items-center justify-center">
           <canvas
             ref={canvasRef}
-            className='relative flex h-6 w-full grow cursor-pointer items-center justify-center'
+            className="relative flex h-6 w-full grow cursor-pointer items-center justify-center"
             onClick={handleCanvasInteraction}
             onMouseMove={handleMouseMove}
             onMouseDown={handleCanvasInteraction}
           />
-          <div className='system-xs-medium inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary'>
-            <span className='rounded-[10px] px-0.5 py-1'>{formatTime(duration)}</span>
+          <div className="system-xs-medium inline-flex min-w-[50px] items-center justify-center text-text-accent-secondary">
+            <span className="rounded-[10px] px-0.5 py-1">{formatTime(duration)}</span>
           </div>
         </div>
       </div>
-      <div className='absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary' hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
+      <div className="absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
     </div>
   )
 }

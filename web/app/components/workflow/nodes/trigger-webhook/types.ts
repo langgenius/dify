@@ -1,4 +1,4 @@
-import type { CommonNodeType, VarType, Variable } from '@/app/components/workflow/types'
+import type { CommonNodeType, Variable, VarType } from '@/app/components/workflow/types'
 
 export type HttpMethod = 'GET' | 'POST' | 'PUT' | 'DELETE' | 'PATCH' | 'HEAD'
 

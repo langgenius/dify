@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { VarType } from '../../../types'
 import type { Var } from '../../../types'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import { cn } from '@/utils/classnames'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import { VarType } from '../../../types'
 
 type Props = {
   nodeId: string
@@ -32,9 +33,9 @@ const ExtractInput: FC<Props> = ({
   })
 
   return (
-    <div className='flex items-start  space-x-1'>
+    <div className="flex items-start  space-x-1">
       <Input
-        instanceId='http-extract-number'
+        instanceId="http-extract-number"
         className={cn(isFocus ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs' : 'border-components-input-border-hover bg-components-input-bg-normal', 'w-0 grow rounded-lg border px-3 py-[6px]')}
         value={value}
         onChange={onChange}
@@ -42,10 +43,10 @@ const ExtractInput: FC<Props> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readOnly ? t('workflow.nodes.http.extractListPlaceholder')! : ''}
-        placeholderClassName='!leading-[21px]'
+        placeholder={!readOnly ? t('nodes.http.extractListPlaceholder', { ns: 'workflow' })! : ''}
+        placeholderClassName="!leading-[21px]"
       />
-    </div >
+    </div>
   )
 }
 export default React.memo(ExtractInput)

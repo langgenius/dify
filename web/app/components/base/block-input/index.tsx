@@ -1,12 +1,13 @@
 'use client'
 
 import type { ChangeEvent, FC } from 'react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarHighlight from '../../app/configuration/base/var-highlight'
-import Toast from '../toast'
 import { cn } from '@/utils/classnames'
 import { checkKeys } from '@/utils/var'
+import VarHighlight from '../../app/configuration/base/var-highlight'
+import Toast from '../toast'
 
 // regex to match the {{}} and replace it with a span
 const regex = /\{\{([^}]+)\}\}/g
@@ -89,11 +90,11 @@ const BlockInput: FC<IBlockInputProps> = ({
   const handleSubmit = (value: string) => {
     if (onConfirm) {
       const keys = getInputKeys(value)
-      const { isValid, errorKey, errorMessageKey } = checkKeys(keys)
-      if (!isValid) {
+      const result = checkKeys(keys)
+      if (!result.isValid) {
         Toast.notify({
           type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+          message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
         })
         return
       }
@@ -122,32 +123,35 @@ const BlockInput: FC<IBlockInputProps> = ({
   const textAreaContent = (
     <div className={cn(readonly ? 'max-h-[180px] pb-5' : 'h-[180px]', ' overflow-y-auto')} onClick={() => !readonly && setIsEditing(true)}>
       {isEditing
-        ? <div className='h-full px-4 py-2'>
-          <textarea
-            ref={contentEditableRef}
-            className={cn(editAreaClassName, 'block h-full w-full resize-none')}
-            placeholder={placeholder}
-            onChange={onValueChange}
-            value={currentValue}
-            onBlur={() => {
-              blur()
-              setIsEditing(false)
-              // click confirm also make blur. Then outer value is change. So below code has problem.
-              // setTimeout(() => {
-              //   handleCancel()
-              // }, 1000)
-            }}
-          />
-        </div>
+        ? (
+            <div className="h-full px-4 py-2">
+              <textarea
+                ref={contentEditableRef}
+                className={cn(editAreaClassName, 'block h-full w-full resize-none')}
+                placeholder={placeholder}
+                onChange={onValueChange}
+                value={currentValue}
+                onBlur={() => {
+                  blur()
+                  setIsEditing(false)
+                  // click confirm also make blur. Then outer value is change. So below code has problem.
+                  // setTimeout(() => {
+                  //   handleCancel()
+                  // }, 1000)
+                }}
+              />
+            </div>
+          )
         : <TextAreaContentView />}
-    </div>)
+    </div>
+  )
 
   return (
     <div className={cn('block-input w-full overflow-y-auto rounded-xl border-none bg-white')}>
       {textAreaContent}
       {/* footer */}
       {!readonly && (
-        <div className='flex pb-2 pl-4'>
+        <div className="flex pb-2 pl-4">
           <div className="h-[18px] rounded-md bg-gray-100 px-1 text-xs leading-[18px] text-gray-500">{currentValue?.length}</div>
         </div>
       )}

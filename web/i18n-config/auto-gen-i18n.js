@@ -1,12 +1,11 @@
-const fs = require('node:fs')
-const path = require('node:path')
-const vm = require('node:vm')
-const transpile = require('typescript').transpile
-const magicast = require('magicast')
-const { parseModule, generateCode, loadFile } = magicast
-const bingTranslate = require('bing-translate-api')
-const { translate } = bingTranslate
-const data = require('./languages.json')
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
+import { translate } from 'bing-translate-api'
+import data from './languages'
+
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = path.dirname(__filename)
 
 const targetLanguage = 'en-US'
 const i18nFolder = '../i18n' // Path to i18n folder relative to this script
@@ -38,7 +37,8 @@ function parseArgs(argv) {
     let cursor = startIndex + 1
     while (cursor < argv.length && !argv[cursor].startsWith('--')) {
       const value = argv[cursor].trim()
-      if (value) values.push(value)
+      if (value)
+        values.push(value)
       cursor++
     }
     return { values, nextIndex: cursor - 1 }
@@ -112,8 +112,8 @@ Options:
   -h, --help        Show help
 
 Examples:
-  pnpm run auto-gen-i18n -- --file app common --lang zh-Hans ja-JP
-  pnpm run auto-gen-i18n -- --dry-run
+  pnpm run auto-gen-i18n --file app common --lang zh-Hans ja-JP
+  pnpm run auto-gen-i18n --dry-run
 `)
 }
 
@@ -123,7 +123,7 @@ function protectPlaceholders(text) {
   const patterns = [
     /\{\{[^{}]+\}\}/g, // mustache
     /\$\{[^{}]+\}/g, // template expressions
-    /<[^>]+?>/g, // html-like tags
+    /<[^>]+>/g, // html-like tags
   ]
 
   patterns.forEach((pattern) => {
@@ -156,142 +156,54 @@ async function translateText(source, toLanguage) {
     const { translation } = await translate(safeText, null, languageKeyMap[toLanguage])
     return { value: restore(translation), skipped: false }
   }
- catch (error) {
+  catch (error) {
     console.error(`❌ Error translating to ${toLanguage}:`, error.message)
     return { value: source, skipped: true, error: error.message }
   }
 }
 
-async function translateMissingKeyDeeply(sourceObj, targetObject, toLanguage) {
+async function translateMissingKeys(sourceObj, targetObject, toLanguage) {
   const skippedKeys = []
   const translatedKeys = []
 
-  const entries = Object.keys(sourceObj)
-
-  const processArray = async (sourceArray, targetArray, parentKey) => {
-    for (let i = 0; i < sourceArray.length; i++) {
-      const item = sourceArray[i]
-      const pathKey = `${parentKey}[${i}]`
-
-      const existingTarget = targetArray[i]
-
-      if (typeof item === 'object' && item !== null) {
-        const targetChild = (Array.isArray(existingTarget) || typeof existingTarget === 'object') ? existingTarget : (Array.isArray(item) ? [] : {})
-        const childResult = await translateMissingKeyDeeply(item, targetChild, toLanguage)
-        targetArray[i] = targetChild
-        skippedKeys.push(...childResult.skipped.map(k => `${pathKey}.${k}`))
-        translatedKeys.push(...childResult.translated.map(k => `${pathKey}.${k}`))
-      }
-      else {
-        if (existingTarget !== undefined)
-          continue
-
-        const translationResult = await translateText(item, toLanguage)
-        targetArray[i] = translationResult.value ?? ''
-        if (translationResult.skipped)
-          skippedKeys.push(`${pathKey}: ${item}`)
-        else
-          translatedKeys.push(pathKey)
-      }
-    }
-  }
-
-  for (const key of entries) {
+  for (const key of Object.keys(sourceObj)) {
     const sourceValue = sourceObj[key]
     const targetValue = targetObject[key]
 
-    if (targetValue === undefined) {
-      if (Array.isArray(sourceValue)) {
-        const translatedArray = []
-        await processArray(sourceValue, translatedArray, key)
-        targetObject[key] = translatedArray
-      }
-      else if (typeof sourceValue === 'object' && sourceValue !== null) {
-        targetObject[key] = {}
-        const result = await translateMissingKeyDeeply(sourceValue, targetObject[key], toLanguage)
-        skippedKeys.push(...result.skipped.map(k => `${key}.${k}`))
-        translatedKeys.push(...result.translated.map(k => `${key}.${k}`))
-      }
-      else {
-        const translationResult = await translateText(sourceValue, toLanguage)
-        targetObject[key] = translationResult.value ?? ''
-        if (translationResult.skipped)
-          skippedKeys.push(`${key}: ${sourceValue}`)
-        else
-          translatedKeys.push(key)
-      }
-    }
-    else if (Array.isArray(sourceValue)) {
-      const targetArray = Array.isArray(targetValue) ? targetValue : []
-      await processArray(sourceValue, targetArray, key)
-      targetObject[key] = targetArray
-    }
-    else if (typeof sourceValue === 'object' && sourceValue !== null) {
-      const targetChild = targetValue && typeof targetValue === 'object' ? targetValue : {}
-      targetObject[key] = targetChild
-      const result = await translateMissingKeyDeeply(sourceValue, targetChild, toLanguage)
-      skippedKeys.push(...result.skipped.map(k => `${key}.${k}`))
-      translatedKeys.push(...result.translated.map(k => `${key}.${k}`))
-    }
-    else {
-      // Overwrite when type is different or value is missing to keep structure in sync
-      const shouldUpdate = typeof targetValue !== typeof sourceValue || targetValue === undefined || targetValue === null
-      if (shouldUpdate) {
-        const translationResult = await translateText(sourceValue, toLanguage)
-        targetObject[key] = translationResult.value ?? ''
-        if (translationResult.skipped)
-          skippedKeys.push(`${key}: ${sourceValue}`)
-        else
-          translatedKeys.push(key)
-      }
-    }
+    // Skip if target already has this key
+    if (targetValue !== undefined)
+      continue
+
+    const translationResult = await translateText(sourceValue, toLanguage)
+    targetObject[key] = translationResult.value ?? ''
+    if (translationResult.skipped)
+      skippedKeys.push(`${key}: ${sourceValue}`)
+    else
+      translatedKeys.push(key)
   }
 
   return { skipped: skippedKeys, translated: translatedKeys }
 }
 async function autoGenTrans(fileName, toGenLanguage, isDryRun = false) {
-  const fullKeyFilePath = path.resolve(__dirname, i18nFolder, targetLanguage, `${fileName}.ts`)
-  const toGenLanguageFilePath = path.resolve(__dirname, i18nFolder, toGenLanguage, `${fileName}.ts`)
+  const fullKeyFilePath = path.resolve(__dirname, i18nFolder, targetLanguage, `${fileName}.json`)
+  const toGenLanguageFilePath = path.resolve(__dirname, i18nFolder, toGenLanguage, `${fileName}.json`)
 
   try {
     const content = fs.readFileSync(fullKeyFilePath, 'utf8')
-
-    // Create a safer module environment for vm
-    const moduleExports = {}
-    const context = {
-      exports: moduleExports,
-      module: { exports: moduleExports },
-      require,
-      console,
-      __filename: fullKeyFilePath,
-      __dirname: path.dirname(fullKeyFilePath),
-    }
-
-    // Use vm.runInNewContext instead of eval for better security
-    vm.runInNewContext(transpile(content), context)
-
-    const fullKeyContent = moduleExports.default || moduleExports
+    const fullKeyContent = JSON.parse(content)
 
     if (!fullKeyContent || typeof fullKeyContent !== 'object')
       throw new Error(`Failed to extract translation object from ${fullKeyFilePath}`)
 
-    // if toGenLanguageFilePath is not exist, create it
-    if (!fs.existsSync(toGenLanguageFilePath)) {
-      fs.writeFileSync(toGenLanguageFilePath, `const translation = {
-}
-
-export default translation
-`)
+    // if toGenLanguageFilePath does not exist, create it with empty object
+    let toGenOutPut = {}
+    if (fs.existsSync(toGenLanguageFilePath)) {
+      const existingContent = fs.readFileSync(toGenLanguageFilePath, 'utf8')
+      toGenOutPut = JSON.parse(existingContent)
     }
-    // To keep object format and format it for magicast to work: const translation = { ... } => export default {...}
-    const readContent = await loadFile(toGenLanguageFilePath)
-    const { code: toGenContent } = generateCode(readContent)
-
-    const mod = await parseModule(`export default ${toGenContent.replace('export default translation', '').replace('const translation = ', '')}`)
-    const toGenOutPut = mod.exports.default
 
     console.log(`\n🌍 Processing ${fileName} for ${toGenLanguage}...`)
-    const result = await translateMissingKeyDeeply(fullKeyContent, toGenOutPut, toGenLanguage)
+    const result = await translateMissingKeys(fullKeyContent, toGenOutPut, toGenLanguage)
 
     // Generate summary report
     console.log(`\n📊 Translation Summary for ${fileName} -> ${toGenLanguage}:`)
@@ -305,23 +217,19 @@ export default translation
         console.log(`    ... and ${result.skipped.length - 5} more`)
     }
 
-    const { code } = generateCode(mod)
-    let res = `const translation =${code.replace('export default', '')}
-
-export default translation
-`.replace(/,\n\n/g, ',\n').replace('};', '}')
+    const res = `${JSON.stringify(toGenOutPut, null, 2)}\n`
 
     if (!isDryRun) {
       fs.writeFileSync(toGenLanguageFilePath, res)
       console.log(`💾 Saved translations to ${toGenLanguageFilePath}`)
     }
- else {
+    else {
       console.log(`🔍 [DRY RUN] Would save translations to ${toGenLanguageFilePath}`)
     }
 
     return result
   }
- catch (error) {
+  catch (error) {
     console.error(`Error processing file ${fullKeyFilePath}:`, error.message)
     throw error
   }
@@ -356,8 +264,8 @@ async function main() {
 
   const filesInEn = fs
     .readdirSync(path.resolve(__dirname, i18nFolder, targetLanguage))
-    .filter(file => /\.ts$/.test(file)) // Only process .ts files
-    .map(file => file.replace(/\.ts$/, ''))
+    .filter(file => /\.json$/.test(file)) // Only process .json files
+    .map(file => file.replace(/\.json$/, ''))
 
   // Filter by target files if specified
   const filesToProcess = targetFiles.length > 0 ? filesInEn.filter(f => targetFiles.includes(f)) : filesInEn

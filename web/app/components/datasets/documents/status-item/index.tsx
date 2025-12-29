@@ -1,20 +1,21 @@
-import React, { useMemo } from 'react'
-import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator'
-import Indicator from '@/app/components/header/indicator'
-import type { DocumentDisplayStatus } from '@/models/datasets'
-import { useContext } from 'use-context-selector'
-import { useIndexStatus } from './hooks'
-import { ToastContext } from '@/app/components/base/toast'
-import { useTranslation } from 'react-i18next'
-import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
-import type { CommonResponse } from '@/models/common'
-import { asyncRunSafe } from '@/utils'
-import { useDebounceFn } from 'ahooks'
-import s from '../style.module.css'
-import { cn } from '@/utils/classnames'
-import Tooltip from '@/app/components/base/tooltip'
-import Switch from '@/app/components/base/switch'
 import type { OperationName } from '../types'
+import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator'
+import type { CommonResponse } from '@/models/common'
+import type { DocumentDisplayStatus } from '@/models/datasets'
+import { useDebounceFn } from 'ahooks'
+import * as React from 'react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import Switch from '@/app/components/base/switch'
+import { ToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import Indicator from '@/app/components/header/indicator'
+import { useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { asyncRunSafe } from '@/utils'
+import { cn } from '@/utils/classnames'
+import s from '../style.module.css'
+import { useIndexStatus } from './hooks'
 
 const STATUS_TEXT_COLOR_MAP: ColorMap = {
   green: 'text-util-colors-green-green-600',
@@ -71,10 +72,10 @@ const StatusItem = ({
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onUpdate?.(operationName)
     }
-    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
+    else { notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
   }
 
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
@@ -89,45 +90,46 @@ const StatusItem = ({
     return ['queuing', 'indexing', 'paused'].includes(localStatus)
   }, [localStatus])
 
-  return <div className={
-    cn('flex items-center',
-      reverse ? 'flex-row-reverse' : '',
-      scene === 'detail' ? s.statusItemDetail : '')
-  }>
-    <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
-    <span className={cn(`${STATUS_TEXT_COLOR_MAP[DOC_INDEX_STATUS_MAP[localStatus].color as keyof typeof STATUS_TEXT_COLOR_MAP]} text-sm`, textCls)}>
-      {DOC_INDEX_STATUS_MAP[localStatus]?.text}
-    </span>
-    {
-      errorMessage && (
-        <Tooltip
-          popupContent={
-            <div className='max-w-[260px] break-all'>{errorMessage}</div>
-          }
-          triggerClassName='ml-1 w-4 h-4'
-          triggerTestId='error-tooltip-trigger'
-        />
-      )
+  return (
+    <div className={
+      cn('flex items-center', reverse ? 'flex-row-reverse' : '', scene === 'detail' ? s.statusItemDetail : '')
     }
-    {
-      scene === 'detail' && (
-        <div className='ml-1.5 flex items-center justify-between'>
+    >
+      <Indicator color={DOC_INDEX_STATUS_MAP[localStatus]?.color as IndicatorProps['color']} className={reverse ? 'ml-2' : 'mr-2'} />
+      <span className={cn(`${STATUS_TEXT_COLOR_MAP[DOC_INDEX_STATUS_MAP[localStatus].color as keyof typeof STATUS_TEXT_COLOR_MAP]} text-sm`, textCls)}>
+        {DOC_INDEX_STATUS_MAP[localStatus]?.text}
+      </span>
+      {
+        errorMessage && (
           <Tooltip
-            popupContent={t('datasetDocuments.list.action.enableWarning')}
-            popupClassName='text-text-secondary system-xs-medium'
-            disabled={!archived}
-          >
-            <Switch
-              defaultValue={archived ? false : enabled}
-              onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
-              disabled={embedding || archived}
-              size='md'
-            />
-          </Tooltip>
-        </div>
-      )
-    }
-  </div>
+            popupContent={
+              <div className="max-w-[260px] break-all">{errorMessage}</div>
+            }
+            triggerClassName="ml-1 w-4 h-4"
+            triggerTestId="error-tooltip-trigger"
+          />
+        )
+      }
+      {
+        scene === 'detail' && (
+          <div className="ml-1.5 flex items-center justify-between">
+            <Tooltip
+              popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })}
+              popupClassName="text-text-secondary system-xs-medium"
+              disabled={!archived}
+            >
+              <Switch
+                defaultValue={archived ? false : enabled}
+                onChange={v => !archived && handleSwitch(v ? 'enable' : 'disable')}
+                disabled={embedding || archived}
+                size="md"
+              />
+            </Tooltip>
+          </div>
+        )
+      }
+    </div>
+  )
 }
 
 export default React.memo(StatusItem)

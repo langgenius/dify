@@ -1,20 +1,22 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
-import VarItem from './var-item'
-import { ChangeType, type InputVar, type MoreInfo } from '@/app/components/workflow/types'
-import { ReactSortable } from 'react-sortablejs'
+import type { InputVar, MoreInfo } from '@/app/components/workflow/types'
 import { RiDraggable } from '@remixicon/react'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ReactSortable } from 'react-sortablejs'
+import Toast from '@/app/components/base/toast'
+import { ChangeType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 import { hasDuplicateStr } from '@/utils/var'
-import Toast from '@/app/components/base/toast'
+import VarItem from './var-item'
 
 type Props = {
   readonly: boolean
   list: InputVar[]
-  onChange: (list: InputVar[], moreInfo?: { index: number; payload: MoreInfo }) => void
+  onChange: (list: InputVar[], moreInfo?: { index: number, payload: MoreInfo }) => void
 }
 
 const VarList: FC<Props> = ({
@@ -29,21 +31,21 @@ const VarList: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index] = payload
       })
-      let errorMsgKey = ''
-      let typeName = ''
+      let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
+      let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
       if (hasDuplicateStr(newList.map(item => item.variable))) {
-        errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
-        typeName = 'appDebug.variableConfig.varName'
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.varName'
       }
       else if (hasDuplicateStr(newList.map(item => item.label as string))) {
-        errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
-        typeName = 'appDebug.variableConfig.labelName'
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.labelName'
       }
 
-      if (errorMsgKey) {
+      if (errorMsgKey && typeName) {
         Toast.notify({
           type: 'error',
-          message: t(errorMsgKey, { key: t(typeName) }),
+          message: t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }),
         })
         return false
       }
@@ -80,8 +82,8 @@ const VarList: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <div className='flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs font-normal leading-[18px] text-text-tertiary'>
-        {t('workflow.nodes.start.noVarTip')}
+      <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs font-normal leading-[18px] text-text-tertiary">
+        {t('nodes.start.noVarTip', { ns: 'workflow' })}
       </div>
     )
   }
@@ -90,15 +92,15 @@ const VarList: FC<Props> = ({
 
   return (
     <ReactSortable
-      className='space-y-1'
+      className="space-y-1"
       list={listWithIds}
       setList={(list) => { onChange(list.map(item => item.variable)) }}
-      handle='.handle'
-      ghostClass='opacity-50'
+      handle=".handle"
+      ghostClass="opacity-50"
       animation={150}
     >
       {listWithIds.map((itemWithId, index) => (
-        <div key={itemWithId.id} className='group relative'>
+        <div key={itemWithId.id} className="group relative">
           <VarItem
             className={cn(canDrag && 'handle')}
             readonly={readonly}
@@ -108,10 +110,13 @@ const VarList: FC<Props> = ({
             varKeys={list.map(item => item.variable)}
             canDrag={canDrag}
           />
-          {canDrag && <RiDraggable className={cn(
-            'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
-            'group-hover:block',
-          )} />}
+          {canDrag && (
+            <RiDraggable className={cn(
+              'handle absolute left-3 top-2.5 hidden h-3 w-3 cursor-pointer text-text-tertiary',
+              'group-hover:block',
+            )}
+            />
+          )}
         </div>
       ))}
     </ReactSortable>

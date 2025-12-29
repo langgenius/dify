@@ -1,18 +1,19 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useRouter } from 'next/navigation'
-import { DataType, type MetadataItemWithValue, isShowManageMetadataLocalStorageKey } from '../types'
-import Field from './field'
-import InputCombined from '../edit-metadata-batch/input-combined'
+import type { MetadataItemWithValue } from '../types'
 import { RiDeleteBinLine, RiQuestionLine } from '@remixicon/react'
-import Tooltip from '@/app/components/base/tooltip'
-import { cn } from '@/utils/classnames'
-import Divider from '@/app/components/base/divider'
-import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
-import AddMetadataButton from '../add-metadata-button'
-import useTimestamp from '@/hooks/use-timestamp'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Divider from '@/app/components/base/divider'
+import Tooltip from '@/app/components/base/tooltip'
+import useTimestamp from '@/hooks/use-timestamp'
+import { cn } from '@/utils/classnames'
+import AddMetadataButton from '../add-metadata-button'
+import InputCombined from '../edit-metadata-batch/input-combined'
+import SelectMetadataModal from '../metadata-dataset/select-metadata-modal'
+import { DataType, isShowManageMetadataLocalStorageKey } from '../types'
+import Field from './field'
 
 type Props = {
   dataSetId: string
@@ -59,12 +60,12 @@ const InfoGroup: FC<Props> = ({
   return (
     <div className={cn(className)}>
       {!noHeader && (
-        <div className='flex items-center justify-between'>
-          <div className='flex items-center space-x-1'>
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-1">
             <div className={cn('text-text-secondary', uppercaseTitle ? 'system-xs-semibold-uppercase' : 'system-md-semibold')}>{title}</div>
             {titleTooltip && (
-              <Tooltip popupContent={<div className='max-w-[240px]'>{titleTooltip}</div>}>
-                <div><RiQuestionLine className='size-3.5 text-text-tertiary' /></div>
+              <Tooltip popupContent={<div className="max-w-[240px]">{titleTooltip}</div>}>
+                <div><RiQuestionLine className="size-3.5 text-text-tertiary" /></div>
               </Tooltip>
             )}
           </div>
@@ -84,24 +85,26 @@ const InfoGroup: FC<Props> = ({
               onSave={data => onAdd?.(data)}
               onManage={handleMangeMetadata}
             />
-            {list.length > 0 && <Divider className='my-3 ' bgStyle='gradient' />}
+            {list.length > 0 && <Divider className="my-3 " bgStyle="gradient" />}
           </div>
         )}
         {list.map((item, i) => (
           <Field key={(item.id && item.id !== 'built-in') ? item.id : `${i}`} label={item.name}>
-            {isEdit ? (
-              <div className='flex items-center space-x-0.5'>
-                <InputCombined
-                  className='h-6'
-                  type={item.type}
-                  value={item.value}
-                  onChange={value => onChange?.({ ...item, value })}
-                />
-                <div className='shrink-0 cursor-pointer rounded-md p-1  text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'>
-                  <RiDeleteBinLine className='size-4' onClick={() => onDelete?.(item)} />
-                </div>
-              </div>
-            ) : (<div className='system-xs-regular py-1 text-text-secondary'>{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('datasetDocuments.metadata.dateTimeFormat')) : item.value}</div>)}
+            {isEdit
+              ? (
+                  <div className="flex items-center space-x-0.5">
+                    <InputCombined
+                      className="h-6"
+                      type={item.type}
+                      value={item.value}
+                      onChange={value => onChange?.({ ...item, value })}
+                    />
+                    <div className="shrink-0 cursor-pointer rounded-md p-1  text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive">
+                      <RiDeleteBinLine className="size-4" onClick={() => onDelete?.(item)} />
+                    </div>
+                  </div>
+                )
+              : (<div className="system-xs-regular py-1 text-text-secondary">{(item.value && item.type === DataType.time) ? formatTimestamp((item.value as number), t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : item.value}</div>)}
           </Field>
         ))}
       </div>

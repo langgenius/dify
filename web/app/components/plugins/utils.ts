@@ -1,11 +1,14 @@
-import { LanguagesSupported } from '@/i18n-config/language'
+import type {
+  TagKey,
+} from './constants'
 
+import { LanguagesSupported } from '@/i18n-config/language'
 import {
   categoryKeys,
   tagKeys,
 } from './constants'
 
-export const getValidTagKeys = (tags: string[]) => {
+export const getValidTagKeys = (tags: TagKey[]) => {
   return tags.filter(tag => tagKeys.includes(tag))
 }
 

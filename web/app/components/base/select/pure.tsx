@@ -1,3 +1,10 @@
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+} from '@remixicon/react'
 import {
   useCallback,
   useMemo,
@@ -5,16 +12,9 @@ import {
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
-import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import type {
-  PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 
@@ -31,14 +31,14 @@ type SharedPureSelectProps = {
   }
   triggerProps?: {
     className?: string
-  },
+  }
   popupProps?: {
     wrapperClassName?: string
     className?: string
     itemClassName?: string
     title?: string
     titleClassName?: string
-  },
+  }
   placeholder?: string
   disabled?: boolean
   triggerPopupSameWidth?: boolean
@@ -97,9 +97,9 @@ const PureSelect = (props: PureSelectProps) => {
   }, [onOpenChange])
 
   const triggerText = useMemo(() => {
-    const placeholderText = placeholder || t('common.placeholder.select')
+    const placeholderText = placeholder || t('placeholder.select', { ns: 'common' })
     if (multiple)
-      return value?.length ? t('common.dynamicSelect.selected', { count: value.length }) : placeholderText
+      return value?.length ? t('dynamicSelect.selected', { ns: 'common', count: value.length }) : placeholderText
 
     return options.find(option => option.value === value)?.label || placeholderText
   }, [multiple, value, options, placeholder])
@@ -114,7 +114,8 @@ const PureSelect = (props: PureSelectProps) => {
     >
       <PortalToFollowElemTrigger
         onClick={() => !disabled && handleOpenChange(!mergedOpen)}
-        asChild >
+        asChild
+      >
         <div
           className={cn(
             'system-sm-regular group flex h-8 items-center rounded-lg bg-components-input-bg-normal px-2 text-components-input-text-filled',
@@ -125,7 +126,7 @@ const PureSelect = (props: PureSelectProps) => {
           )}
         >
           <div
-            className='grow'
+            className="grow"
             title={triggerText}
           >
             {triggerText}
@@ -141,7 +142,8 @@ const PureSelect = (props: PureSelectProps) => {
       <PortalToFollowElemContent className={cn(
         'z-[9999]',
         popupWrapperClassName,
-      )}>
+      )}
+      >
         <div
           className={cn(
             'max-h-80 overflow-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg',
@@ -153,7 +155,8 @@ const PureSelect = (props: PureSelectProps) => {
               <div className={cn(
                 'system-xs-medium-uppercase flex h-[22px] items-center px-3 text-text-tertiary',
                 popupTitleClassName,
-              )}>
+              )}
+              >
                 {popupTitle}
               </div>
             )
@@ -168,7 +171,8 @@ const PureSelect = (props: PureSelectProps) => {
                 )}
                 title={option.label}
                 onClick={() => {
-                  if (disabled) return
+                  if (disabled)
+                    return
                   if (multiple) {
                     const currentValues = value ?? []
                     const nextValues = currentValues.includes(option.value)
@@ -181,7 +185,7 @@ const PureSelect = (props: PureSelectProps) => {
                   handleOpenChange(false)
                 }}
               >
-                <div className='mr-1 grow truncate px-1'>
+                <div className="mr-1 grow truncate px-1">
                   {option.label}
                 </div>
                 {
@@ -189,7 +193,7 @@ const PureSelect = (props: PureSelectProps) => {
                     multiple
                       ? (value ?? []).includes(option.value)
                       : value === option.value
-                  ) && <RiCheckLine className='h-4 w-4 shrink-0 text-text-accent' />
+                  ) && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
                 }
               </div>
             ))

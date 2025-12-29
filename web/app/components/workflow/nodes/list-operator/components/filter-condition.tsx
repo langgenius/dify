@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import ConditionOperator from '../../if-else/components/condition-list/condition-operator'
 import type { Condition } from '../types'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { SimpleSelect as Select } from '@/app/components/base/select'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
+import { getConditionValueAsString } from '@/app/components/workflow/nodes/utils'
+import { cn } from '@/utils/classnames'
+import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
+import { VarType } from '../../../types'
+import ConditionOperator from '../../if-else/components/condition-list/condition-operator'
 import { ComparisonOperator } from '../../if-else/types'
 import { comparisonOperatorNotRequireValue, getOperators } from '../../if-else/utils'
 import SubVariablePicker from './sub-variable-picker'
-import { FILE_TYPE_OPTIONS, TRANSFER_METHOD } from '@/app/components/workflow/nodes/constants'
-import { SimpleSelect as Select } from '@/app/components/base/select'
-import BoolValue from '../../../panel/chat-variable-panel/components/bool-value'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { cn } from '@/utils/classnames'
-import { VarType } from '../../../types'
 
-const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
-import { getConditionValueAsString } from '@/app/components/workflow/nodes/utils'
+const optionNameI18NPrefix = 'nodes.ifElse.optionName'
 
 const VAR_INPUT_SUPPORTED_KEYS: Record<string, VarType> = {
   name: VarType.string,
@@ -65,13 +66,13 @@ const FilterCondition: FC<Props> = ({
     if (isSelect) {
       if (condition.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
       if (condition.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
@@ -108,22 +109,24 @@ const FilterCondition: FC<Props> = ({
           items={selectOptions}
           defaultValue={isArrayValue ? (condition.value as string[])[0] : condition.value as string}
           onSelect={item => handleChange('value')(item.value)}
-          className='!text-[13px]'
-          wrapperClassName='grow h-8'
-          placeholder='Select value'
+          className="!text-[13px]"
+          wrapperClassName="grow h-8"
+          placeholder="Select value"
         />
       )
     }
     else if (isBoolean) {
-      inputElement = (<BoolValue
-        value={condition.value as boolean}
-        onChange={handleChange('value')}
-      />)
+      inputElement = (
+        <BoolValue
+          value={condition.value as boolean}
+          onChange={handleChange('value')}
+        />
+      )
     }
     else if (supportVariableInput) {
       inputElement = (
         <Input
-          instanceId='filter-condition-input'
+          instanceId="filter-condition-input"
           className={cn(
             isFocus
               ? 'border-components-input-border-active bg-components-input-bg-active shadow-xs'
@@ -138,8 +141,8 @@ const FilterCondition: FC<Props> = ({
           nodesOutputVars={availableVars}
           availableNodes={availableNodesWithParent}
           onFocusChange={setIsFocus}
-          placeholder={!readOnly ? t('workflow.nodes.http.insertVarPlaceholder')! : ''}
-          placeholderClassName='!leading-[21px]'
+          placeholder={!readOnly ? t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })! : ''}
+          placeholderClassName="!leading-[21px]"
         />
       )
     }
@@ -147,7 +150,7 @@ const FilterCondition: FC<Props> = ({
       inputElement = (
         <input
           type={((hasSubVariable && condition.key === 'size') || (!hasSubVariable && varType === VarType.number)) ? 'number' : 'text'}
-          className='grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]'
+          className="grow rounded-lg border border-components-input-border-hover bg-components-input-bg-normal px-3 py-[6px]"
           value={
             getConditionValueAsString(condition)
           }
@@ -167,9 +170,9 @@ const FilterCondition: FC<Props> = ({
           onChange={handleSubVariableChange}
         />
       )}
-      <div className='flex space-x-1'>
+      <div className="flex space-x-1">
         <ConditionOperator
-          className='h-8 bg-components-input-bg-normal'
+          className="h-8 bg-components-input-bg-normal"
           varType={expectedVarType ?? varType ?? VarType.string}
           value={condition.comparison_operator}
           onSelect={handleChange('comparison_operator')}

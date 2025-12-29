@@ -1,0 +1,19 @@
+{
+  "connect": "Hubungkan",
+  "continue": "Lanjut",
+  "error.authAppInfoFetchFailed": "Gagal mengambil info aplikasi untuk otorisasi",
+  "error.authorizeFailed": "Otorisasi gagal",
+  "error.invalidParams": "Parameter tidak valid",
+  "login": "Masuk",
+  "scopes.avatar": "Avatar",
+  "scopes.email": "Email",
+  "scopes.languagePreference": "Preferensi Bahasa",
+  "scopes.name": "Nama",
+  "scopes.timezone": "Zona waktu",
+  "switchAccount": "Ganti Akun",
+  "tips.common": "Kami menghormati privasi Anda dan hanya akan menggunakan informasi ini untuk meningkatkan pengalaman Anda dengan alat pengembang kami.",
+  "tips.loggedIn": "Aplikasi ini ingin mengakses informasi berikut dari akun Dify Cloud Anda.",
+  "tips.needLogin": "Silakan masuk untuk mengotorisasi",
+  "tips.notLoggedIn": "Aplikasi ini ingin mengakses akun Dify Cloud Anda",
+  "unknownApp": "Aplikasi tidak dikenal"
+}

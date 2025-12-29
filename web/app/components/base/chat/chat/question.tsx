@@ -2,6 +2,10 @@ import type {
   FC,
   ReactNode,
 } from 'react'
+import type { Theme } from '../embedded-chatbot/theme/theme-context'
+import type { ChatItem } from '../types'
+import { RiClipboardLine, RiEditLine } from '@remixicon/react'
+import copy from 'copy-to-clipboard'
 import {
   memo,
   useCallback,
@@ -9,21 +13,17 @@ import {
   useRef,
   useState,
 } from 'react'
-import type { ChatItem } from '../types'
-import type { Theme } from '../embedded-chatbot/theme/theme-context'
-import { CssTransform } from '../embedded-chatbot/theme/utils'
-import ContentSwitch from './content-switch'
+import { useTranslation } from 'react-i18next'
+import Textarea from 'react-textarea-autosize'
+import { FileList } from '@/app/components/base/file-uploader'
 import { User } from '@/app/components/base/icons/src/public/avatar'
 import { Markdown } from '@/app/components/base/markdown'
-import { FileList } from '@/app/components/base/file-uploader'
-import ActionButton from '../../action-button'
-import { RiClipboardLine, RiEditLine } from '@remixicon/react'
-import Toast from '../../toast'
-import copy from 'copy-to-clipboard'
-import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
-import Textarea from 'react-textarea-autosize'
+import ActionButton from '../../action-button'
 import Button from '../../button'
+import Toast from '../../toast'
+import { CssTransform } from '../embedded-chatbot/theme/utils'
+import ContentSwitch from './content-switch'
 import { useChatContext } from './context'
 
 type QuestionProps = {
@@ -101,7 +101,7 @@ const Question: FC<QuestionProps> = ({
   }, [])
 
   return (
-    <div className='mb-2 flex justify-end last:mb-0'>
+    <div className="mb-2 flex justify-end last:mb-0">
       <div className={cn('group relative mr-4 flex max-w-full items-start overflow-x-hidden pl-14', isEditing && 'flex-1')}>
         <div className={cn('mr-2 gap-1', isEditing ? 'hidden' : 'flex')}>
           <div
@@ -110,24 +110,27 @@ const Question: FC<QuestionProps> = ({
           >
             <ActionButton onClick={() => {
               copy(content)
-              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
-            }}>
-              <RiClipboardLine className='h-4 w-4' />
+              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
+            }}
+            >
+              <RiClipboardLine className="h-4 w-4" />
             </ActionButton>
-            {enableEdit && <ActionButton onClick={handleEdit}>
-              <RiEditLine className='h-4 w-4' />
-            </ActionButton>}
+            {enableEdit && (
+              <ActionButton onClick={handleEdit}>
+                <RiEditLine className="h-4 w-4" />
+              </ActionButton>
+            )}
           </div>
         </div>
         <div
           ref={contentRef}
-          className='w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary'
+          className="w-full rounded-2xl bg-background-gradient-bg-fill-chat-bubble-bg-3 px-4 py-3 text-sm text-text-primary"
           style={theme?.chatBubbleColorStyle ? CssTransform(theme.chatBubbleColorStyle) : {}}
         >
           {
             !!message_files?.length && (
               <FileList
-                className='mb-2'
+                className="mb-2"
                 files={message_files}
                 showDeleteAction={false}
                 showDownloadAction={true}
@@ -136,41 +139,46 @@ const Question: FC<QuestionProps> = ({
           }
           {!isEditing
             ? <Markdown content={content} />
-            : <div className="
+            : (
+                <div className="
                 flex flex-col gap-2 rounded-xl
                 border border-components-chat-input-border bg-components-panel-bg-blur p-[9px] shadow-md
-              ">
-              <div className="max-h-[158px] overflow-y-auto overflow-x-hidden">
-                <Textarea
-                  className={cn(
-                    'body-lg-regular w-full p-1 leading-6 text-text-tertiary outline-none',
-                  )}
-                  autoFocus
-                  minRows={1}
-                  value={editedContent}
-                  onChange={e => setEditedContent(e.target.value)}
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <Button variant='ghost' onClick={handleCancelEditing}>{t('common.operation.cancel')}</Button>
-                <Button variant='primary' onClick={handleResend}>{t('common.chat.resend')}</Button>
-              </div>
-            </div>}
-          {!isEditing && <ContentSwitch
-            count={item.siblingCount}
-            currentIndex={item.siblingIndex}
-            prevDisabled={!item.prevSibling}
-            nextDisabled={!item.nextSibling}
-            switchSibling={handleSwitchSibling}
-          />}
+              "
+                >
+                  <div className="max-h-[158px] overflow-y-auto overflow-x-hidden">
+                    <Textarea
+                      className={cn(
+                        'body-lg-regular w-full p-1 leading-6 text-text-tertiary outline-none',
+                      )}
+                      autoFocus
+                      minRows={1}
+                      value={editedContent}
+                      onChange={e => setEditedContent(e.target.value)}
+                    />
+                  </div>
+                  <div className="flex justify-end gap-2">
+                    <Button variant="ghost" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button variant="primary" onClick={handleResend}>{t('chat.resend', { ns: 'common' })}</Button>
+                  </div>
+                </div>
+              )}
+          {!isEditing && (
+            <ContentSwitch
+              count={item.siblingCount}
+              currentIndex={item.siblingIndex}
+              prevDisabled={!item.prevSibling}
+              nextDisabled={!item.nextSibling}
+              switchSibling={handleSwitchSibling}
+            />
+          )}
         </div>
-        <div className='mt-1 h-[18px]' />
+        <div className="mt-1 h-[18px]" />
       </div>
-      <div className='h-10 w-10 shrink-0'>
+      <div className="h-10 w-10 shrink-0">
         {
           questionIcon || (
-            <div className='h-full w-full rounded-full border-[0.5px] border-black/5'>
-              <User className='h-full w-full' />
+            <div className="h-full w-full rounded-full border-[0.5px] border-black/5">
+              <User className="h-full w-full" />
             </div>
           )
         }

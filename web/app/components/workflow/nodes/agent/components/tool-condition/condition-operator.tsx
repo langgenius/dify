@@ -12,7 +12,7 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   varType?: VarType
@@ -27,13 +27,14 @@ const ConditionOperator = ({
   onSelect,
   disabled,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   const [open, setOpen] = useState(false)
+  const placeholder = t('nodes.agent.toolCondition.operatorPlaceholder') as string
 
   const options = useMemo(() => {
     return getConditionOperators(varType).map((option) => {
-      const key = `workflow.nodes.ifElse.comparisonOperator.${option}`
-      const translated = t(key)
+      const key = `nodes.ifElse.comparisonOperator.${option}`
+      const translated = t(key as any) as string
       return {
         value: option,
         label: translated === key ? option : translated,
@@ -65,7 +66,7 @@ const ConditionOperator = ({
           variant='ghost'
           disabled={disabled}
         >
-          {selectedOption?.label ?? t('workflow.nodes.agent.toolCondition.operatorPlaceholder')}
+          {selectedOption?.label ?? placeholder}
           <RiArrowDownSLine className='ml-1 h-3.5 w-3.5' />
         </Button>
       </PortalToFollowElemTrigger>

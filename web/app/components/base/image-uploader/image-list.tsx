@@ -1,17 +1,17 @@
 import type { FC } from 'react'
-import { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ImageFile } from '@/types/app'
 import {
   RiCloseLine,
   RiLoader2Line,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { RefreshCcw01 } from '@/app/components/base/icons/src/vender/line/arrows'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import Tooltip from '@/app/components/base/tooltip'
-import type { ImageFile } from '@/types/app'
-import { TransferMethod } from '@/types/app'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
+import Tooltip from '@/app/components/base/tooltip'
+import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
 
 type ImageListProps = {
   list: ImageFile[]
@@ -38,8 +38,9 @@ const ImageList: FC<ImageListProps> = ({
       item.type === TransferMethod.remote_url
       && onImageLinkLoadSuccess
       && item.progress !== -1
-    )
+    ) {
       onImageLinkLoadSuccess(item._id)
+    }
   }
   const handleImageLinkLoadError = (item: ImageFile) => {
     if (item.type === TransferMethod.remote_url && onImageLinkLoadError)
@@ -68,7 +69,8 @@ const ImageList: FC<ImageListProps> = ({
               </div>
               {item.progress > -1 && (
                 <span className="absolute left-[50%] top-[50%] z-[1] translate-x-[-50%] translate-y-[-50%] text-sm text-white mix-blend-lighten">
-                  {item.progress}%
+                  {item.progress}
+                  %
                 </span>
               )}
             </>
@@ -88,7 +90,7 @@ const ImageList: FC<ImageListProps> = ({
               )}
               {item.progress === -1 && (
                 <Tooltip
-                  popupContent={t('common.imageUploader.pasteImageLinkInvalid')}
+                  popupContent={t('imageUploader.pasteImageLinkInvalid', { ns: 'common' })}
                 >
                   <AlertTriangle className="h-4 w-4 text-[#DC6803]" />
                 </Tooltip>
@@ -111,8 +113,7 @@ const ImageList: FC<ImageListProps> = ({
                 (item.type === TransferMethod.remote_url
                   ? item.url
                   : item.base64Url) as string,
-              )
-            }
+              )}
           />
           {!readonly && (
             <button
@@ -133,7 +134,7 @@ const ImageList: FC<ImageListProps> = ({
         <ImagePreview
           url={imagePreviewUrl}
           onCancel={() => setImagePreviewUrl('')}
-          title=''
+          title=""
         />
       )}
     </div>

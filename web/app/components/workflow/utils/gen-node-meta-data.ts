@@ -1,5 +1,5 @@
-import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 import type { BlockEnum } from '@/app/components/workflow/types'
+import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 
 export type GenNodeMetaDataParams = {
   classification?: BlockClassificationEnum

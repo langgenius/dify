@@ -1,26 +1,27 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useDebounce, useGetState } from 'ahooks'
-import { RiSettings2Line } from '@remixicon/react'
-import { produce } from 'immer'
-import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
 import type { Credential, CustomCollectionBackend, CustomParamSchema, Emoji } from '../types'
-import { AuthHeaderPrefix, AuthType } from '../types'
-import GetSchema from './get-schema'
-import ConfigCredentials from './config-credentials'
-import TestApi from './test-api'
-import { cn } from '@/utils/classnames'
-import Drawer from '@/app/components/base/drawer-plus'
+import { RiSettings2Line } from '@remixicon/react'
+import { useDebounce, useGetState } from 'ahooks'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
+import Drawer from '@/app/components/base/drawer-plus'
+import EmojiPicker from '@/app/components/base/emoji-picker'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import EmojiPicker from '@/app/components/base/emoji-picker'
-import AppIcon from '@/app/components/base/app-icon'
-import { parseParamsSchema } from '@/service/tools'
-import LabelSelector from '@/app/components/tools/labels/selector'
 import Toast from '@/app/components/base/toast'
+import LabelSelector from '@/app/components/tools/labels/selector'
+import { parseParamsSchema } from '@/service/tools'
+import { cn } from '@/utils/classnames'
+import { LinkExternal02 } from '../../base/icons/src/vender/line/general'
+import { AuthHeaderPrefix, AuthType } from '../types'
+import ConfigCredentials from './config-credentials'
+import GetSchema from './get-schema'
+import TestApi from './test-api'
 
 type Props = {
   positionLeft?: boolean
@@ -47,24 +48,34 @@ const EditCustomCollectionModal: FC<Props> = ({
 
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
+  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
     ? {
-      provider: '',
-      credentials: {
-        auth_type: AuthType.none,
-        api_key_header: 'Authorization',
-        api_key_header_prefix: AuthHeaderPrefix.basic,
-      },
-      icon: {
-        content: '🕵️',
-        background: '#FEF7C3',
-      },
-      schema_type: '',
-      schema: '',
-    }
+        provider: '',
+        credentials: {
+          auth_type: AuthType.none,
+          api_key_header: 'Authorization',
+          api_key_header_prefix: AuthHeaderPrefix.basic,
+        },
+        icon: {
+          content: '🕵️',
+          background: '#FEF7C3',
+        },
+        schema_type: '',
+        schema: '',
+      }
     : payload)
 
   const originalProvider = isEdit ? payload.provider : ''
+
+  // Sync customCollection state when payload changes
+  useEffect(() => {
+    if (isEdit) {
+      setCustomCollection(payload)
+      setParamsSchemas(payload.tools || [])
+      setLabels(payload.labels || [])
+    }
+  }, [isEdit, payload])
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
@@ -123,7 +134,6 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [currTool, setCurrTool] = useState<CustomParamSchema | null>(null)
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
-  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const handleLabelSelect = (value: string[]) => {
     setLabels(value)
   }
@@ -144,10 +154,10 @@ const EditCustomCollectionModal: FC<Props> = ({
 
     let errorMessage = ''
     if (!postData.provider)
-      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.name') })
+      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.name', { ns: 'tools' }) })
 
     if (!postData.schema)
-      errorMessage = t('common.errorMsg.fieldRequired', { field: t('tools.createTool.schema') })
+      errorMessage = t('errorMsg.fieldRequired', { ns: 'common', field: t('createTool.schema', { ns: 'tools' }) })
 
     if (errorMessage) {
       Toast.notify({
@@ -187,21 +197,26 @@ const EditCustomCollectionModal: FC<Props> = ({
         isShow
         positionCenter={isAdd && !positionLeft}
         onHide={onHide}
-        title={t(`tools.createTool.${isAdd ? 'title' : 'editTitle'}`)!}
+        title={t(`createTool.${isAdd ? 'title' : 'editTitle'}`, { ns: 'tools' })!}
         dialogClassName={dialogClassName}
-        panelClassName='mt-2 !w-[640px]'
-        maxWidthClassName='!max-w-[640px]'
-        height='calc(100vh - 16px)'
-        headerClassName='!border-b-divider-regular'
-        body={
-          <div className='flex h-full flex-col'>
-            <div className='h-0 grow space-y-4 overflow-y-auto px-6 py-3'>
+        panelClassName="mt-2 !w-[640px]"
+        maxWidthClassName="!max-w-[640px]"
+        height="calc(100vh - 16px)"
+        headerClassName="!border-b-divider-regular"
+        body={(
+          <div className="flex h-full flex-col">
+            <div className="h-0 grow space-y-4 overflow-y-auto px-6 py-3">
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.name')} <span className='ml-1 text-red-500'>*</span></div>
-                <div className='flex items-center justify-between gap-3'>
-                  <AppIcon size='large' onClick={() => { setShowEmojiPicker(true) }} className='cursor-pointer' icon={emoji.content} background={emoji.background} />
+                <div className="system-sm-medium py-2 text-text-primary">
+                  {t('createTool.name', { ns: 'tools' })}
+                  {' '}
+                  <span className="ml-1 text-red-500">*</span>
+                </div>
+                <div className="flex items-center justify-between gap-3">
+                  <AppIcon size="large" onClick={() => { setShowEmojiPicker(true) }} className="cursor-pointer" icon={emoji.content} background={emoji.background} />
                   <Input
-                    className='h-10 grow' placeholder={t('tools.createTool.toolNamePlaceHolder')!}
+                    className="h-10 grow"
+                    placeholder={t('createTool.toolNamePlaceHolder', { ns: 'tools' })!}
                     value={customCollection.provider}
                     onChange={(e) => {
                       const newCollection = produce(customCollection, (draft) => {
@@ -214,61 +229,65 @@ const EditCustomCollectionModal: FC<Props> = ({
               </div>
 
               {/* Schema */}
-              <div className='select-none'>
-                <div className='flex items-center justify-between'>
-                  <div className='flex items-center'>
-                    <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.schema')}<span className='ml-1 text-red-500'>*</span></div>
-                    <div className='mx-2 h-3 w-px bg-divider-regular'></div>
+              <div className="select-none">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center">
+                    <div className="system-sm-medium py-2 text-text-primary">
+                      {t('createTool.schema', { ns: 'tools' })}
+                      <span className="ml-1 text-red-500">*</span>
+                    </div>
+                    <div className="mx-2 h-3 w-px bg-divider-regular"></div>
                     <a
                       href="https://swagger.io/specification/"
-                      target='_blank' rel='noopener noreferrer'
-                      className='flex h-[18px] items-center space-x-1  text-text-accent'
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex h-[18px] items-center space-x-1  text-text-accent"
                     >
-                      <div className='text-xs font-normal'>{t('tools.createTool.viewSchemaSpec')}</div>
-                      <LinkExternal02 className='h-3 w-3' />
+                      <div className="text-xs font-normal">{t('createTool.viewSchemaSpec', { ns: 'tools' })}</div>
+                      <LinkExternal02 className="h-3 w-3" />
                     </a>
                   </div>
                   <GetSchema onChange={setSchema} />
 
                 </div>
                 <Textarea
-                  className='h-[240px] resize-none'
+                  className="h-[240px] resize-none"
                   value={schema}
                   onChange={e => setSchema(e.target.value)}
-                  placeholder={t('tools.createTool.schemaPlaceHolder')!}
+                  placeholder={t('createTool.schemaPlaceHolder', { ns: 'tools' })!}
                 />
               </div>
 
               {/* Available Tools  */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.availableTools.title')}</div>
-                <div className='w-full overflow-x-auto rounded-lg border border-divider-regular'>
-                  <table className='system-xs-regular w-full text-text-secondary'>
-                    <thead className='uppercase text-text-tertiary'>
+                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.availableTools.title', { ns: 'tools' })}</div>
+                <div className="w-full overflow-x-auto rounded-lg border border-divider-regular">
+                  <table className="system-xs-regular w-full text-text-secondary">
+                    <thead className="uppercase text-text-tertiary">
                       <tr className={cn(paramsSchemas.length > 0 && 'border-b', 'border-divider-regular')}>
-                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.name')}</th>
-                        <th className="w-[236px] p-2 pl-3 font-medium">{t('tools.createTool.availableTools.description')}</th>
-                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.method')}</th>
-                        <th className="p-2 pl-3 font-medium">{t('tools.createTool.availableTools.path')}</th>
-                        <th className="w-[54px] p-2 pl-3 font-medium">{t('tools.createTool.availableTools.action')}</th>
+                        <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.name', { ns: 'tools' })}</th>
+                        <th className="w-[236px] p-2 pl-3 font-medium">{t('createTool.availableTools.description', { ns: 'tools' })}</th>
+                        <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.method', { ns: 'tools' })}</th>
+                        <th className="p-2 pl-3 font-medium">{t('createTool.availableTools.path', { ns: 'tools' })}</th>
+                        <th className="w-[54px] p-2 pl-3 font-medium">{t('createTool.availableTools.action', { ns: 'tools' })}</th>
                       </tr>
                     </thead>
                     <tbody>
                       {paramsSchemas.map((item, index) => (
-                        <tr key={index} className='border-b border-divider-regular last:border-0'>
+                        <tr key={index} className="border-b border-divider-regular last:border-0">
                           <td className="p-2 pl-3">{item.operation_id}</td>
                           <td className="w-[236px] p-2 pl-3">{item.summary}</td>
                           <td className="p-2 pl-3">{item.method}</td>
                           <td className="p-2 pl-3">{getPath(item.server_url)}</td>
                           <td className="w-[62px] p-2 pl-3">
                             <Button
-                              size='small'
+                              size="small"
                               onClick={() => {
                                 setCurrTool(item)
                                 setIsShowTestApi(true)
                               }}
                             >
-                              {t('tools.createTool.availableTools.test')}
+                              {t('createTool.availableTools.test', { ns: 'tools' })}
                             </Button>
                           </td>
                         </tr>
@@ -280,22 +299,22 @@ const EditCustomCollectionModal: FC<Props> = ({
 
               {/* Authorization method */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.authMethod.title')}</div>
-                <div className='flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5' onClick={() => setCredentialsModalShow(true)}>
-                  <div className='system-xs-regular text-text-primary'>{t(`tools.createTool.authMethod.types.${credential.auth_type}`)}</div>
-                  <RiSettings2Line className='h-4 w-4 text-text-secondary' />
+                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.authMethod.title', { ns: 'tools' })}</div>
+                <div className="flex h-9 cursor-pointer items-center justify-between rounded-lg bg-components-input-bg-normal px-2.5" onClick={() => setCredentialsModalShow(true)}>
+                  <div className="system-xs-regular text-text-primary">{t(`createTool.authMethod.types.${credential.auth_type}`, { ns: 'tools' })}</div>
+                  <RiSettings2Line className="h-4 w-4 text-text-secondary" />
                 </div>
               </div>
 
               {/* Labels */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.toolInput.label')}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.toolInput.label', { ns: 'tools' })}</div>
                 <LabelSelector value={labels} onChange={handleLabelSelect} />
               </div>
 
               {/* Privacy Policy */}
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.privacyPolicy')}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.privacyPolicy', { ns: 'tools' })}</div>
                 <Input
                   value={customCollection.privacy_policy}
                   onChange={(e) => {
@@ -304,11 +323,13 @@ const EditCustomCollectionModal: FC<Props> = ({
                     })
                     setCustomCollection(newCollection)
                   }}
-                  className='h-10 grow' placeholder={t('tools.createTool.privacyPolicyPlaceholder') || ''} />
+                  className="h-10 grow"
+                  placeholder={t('createTool.privacyPolicyPlaceholder', { ns: 'tools' }) || ''}
+                />
               </div>
 
               <div>
-                <div className='system-sm-medium py-2 text-text-primary'>{t('tools.createTool.customDisclaimer')}</div>
+                <div className="system-sm-medium py-2 text-text-primary">{t('createTool.customDisclaimer', { ns: 'tools' })}</div>
                 <Input
                   value={customCollection.custom_disclaimer}
                   onChange={(e) => {
@@ -317,38 +338,42 @@ const EditCustomCollectionModal: FC<Props> = ({
                     })
                     setCustomCollection(newCollection)
                   }}
-                  className='h-10 grow' placeholder={t('tools.createTool.customDisclaimerPlaceholder') || ''} />
+                  className="h-10 grow"
+                  placeholder={t('createTool.customDisclaimerPlaceholder', { ns: 'tools' }) || ''}
+                />
               </div>
 
             </div>
-            <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')} >
+            <div className={cn(isEdit ? 'justify-between' : 'justify-end', 'mt-2 flex shrink-0 rounded-b-[10px] border-t border-divider-regular bg-background-section-burn px-6 py-4')}>
               {
                 isEdit && (
-                  <Button variant='warning' onClick={onRemove}>{t('common.operation.delete')}</Button>
+                  <Button variant="warning" onClick={onRemove}>{t('operation.delete', { ns: 'common' })}</Button>
                 )
               }
-              <div className='flex space-x-2 '>
-                <Button onClick={onHide}>{t('common.operation.cancel')}</Button>
-                <Button variant='primary' onClick={handleSave}>{t('common.operation.save')}</Button>
+              <div className="flex space-x-2 ">
+                <Button onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+                <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
               </div>
             </div>
-            {showEmojiPicker && <EmojiPicker
-              onSelect={(icon, icon_background) => {
-                setEmoji({ content: icon, background: icon_background })
-                setShowEmojiPicker(false)
-              }}
-              onClose={() => {
-                setShowEmojiPicker(false)
-              }}
-            />}
+            {showEmojiPicker && (
+              <EmojiPicker
+                onSelect={(icon, icon_background) => {
+                  setEmoji({ content: icon, background: icon_background })
+                  setShowEmojiPicker(false)
+                }}
+                onClose={() => {
+                  setShowEmojiPicker(false)
+                }}
+              />
+            )}
             {credentialsModalShow && (
               <ConfigCredentials
                 positionCenter={isAdd}
                 credential={credential}
                 onChange={setCredential}
                 onHide={() => setCredentialsModalShow(false)}
-              />)
-            }
+              />
+            )}
             {isShowTestApi && (
               <TestApi
                 positionCenter={isAdd}
@@ -358,7 +383,7 @@ const EditCustomCollectionModal: FC<Props> = ({
               />
             )}
           </div>
-        }
+        )}
         isShowMask={true}
         clickOutsideNotOpen={true}
       />

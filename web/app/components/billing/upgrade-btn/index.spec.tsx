@@ -1,3 +1,4 @@
+import type { Mock } from 'vitest'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import UpgradeBtn from './index'
@@ -6,20 +7,20 @@ import UpgradeBtn from './index'
 // PremiumBadge, Button, SparklesSoft are all base components
 
 // ✅ Mock external dependencies only
-const mockSetShowPricingModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowPricingModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContext: () => ({
     setShowPricingModal: mockSetShowPricingModal,
   }),
 }))
 
 // Mock gtag for tracking tests
-let mockGtag: jest.Mock | undefined
+let mockGtag: Mock | undefined
 
 describe('UpgradeBtn', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    mockGtag = jest.fn()
+    vi.clearAllMocks()
+    mockGtag = vi.fn()
     ;(window as any).gtag = mockGtag
   })
 
@@ -65,7 +66,7 @@ describe('UpgradeBtn', () => {
 
     it('should render custom label when labelKey is provided', () => {
       // Act
-      render(<UpgradeBtn labelKey="custom.label.key" />)
+      render(<UpgradeBtn labelKey={'custom.label.key' as any} />)
 
       // Assert
       expect(screen.getByText(/custom\.label\.key/i)).toBeInTheDocument()
@@ -73,7 +74,7 @@ describe('UpgradeBtn', () => {
 
     it('should render custom label in plain button when labelKey is provided with isPlain', () => {
       // Act
-      render(<UpgradeBtn isPlain labelKey="custom.label.key" />)
+      render(<UpgradeBtn isPlain labelKey={'custom.label.key' as any} />)
 
       // Assert
       const button = screen.getByRole('button')
@@ -110,7 +111,7 @@ describe('UpgradeBtn', () => {
 
     it('should apply custom style to premium badge', () => {
       // Arrange
-      const customStyle = { backgroundColor: 'red', padding: '10px' }
+      const customStyle = { padding: '10px' }
 
       // Act
       const { container } = render(<UpgradeBtn style={customStyle} />)
@@ -122,7 +123,7 @@ describe('UpgradeBtn', () => {
 
     it('should apply custom style to plain button', () => {
       // Arrange
-      const customStyle = { backgroundColor: 'blue', margin: '5px' }
+      const customStyle = { margin: '5px' }
 
       // Act
       render(<UpgradeBtn isPlain style={customStyle} />)
@@ -162,7 +163,7 @@ describe('UpgradeBtn', () => {
     it('should call custom onClick when provided and premium badge is clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn onClick={handleClick} />)
@@ -177,7 +178,7 @@ describe('UpgradeBtn', () => {
     it('should call custom onClick when provided and plain button is clicked', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn isPlain onClick={handleClick} />)
@@ -279,7 +280,7 @@ describe('UpgradeBtn', () => {
     it('should call both custom onClick and track gtag when both are provided', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       const loc = 'settings-page'
 
       // Act
@@ -371,7 +372,7 @@ describe('UpgradeBtn', () => {
 
     it('should handle empty string labelKey', () => {
       // Act
-      render(<UpgradeBtn labelKey="" />)
+      render(<UpgradeBtn labelKey={'' as any} />)
 
       // Assert - empty labelKey is falsy, so it falls back to default label
       expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
@@ -390,7 +391,7 @@ describe('UpgradeBtn', () => {
 
     it('should handle isPlain with custom labelKey', () => {
       // Act
-      render(<UpgradeBtn isPlain labelKey="custom.key" />)
+      render(<UpgradeBtn isPlain labelKey={'custom.key' as any} />)
 
       // Assert - labelKey should override plain text
       expect(screen.getByText(/custom\.key/i)).toBeInTheDocument()
@@ -399,7 +400,7 @@ describe('UpgradeBtn', () => {
 
     it('should handle isShort with custom labelKey', () => {
       // Act
-      render(<UpgradeBtn isShort labelKey="custom.short.key" />)
+      render(<UpgradeBtn isShort labelKey={'custom.short.key' as any} />)
 
       // Assert - labelKey should override isShort behavior
       expect(screen.getByText(/custom\.short\.key/i)).toBeInTheDocument()
@@ -409,7 +410,7 @@ describe('UpgradeBtn', () => {
     it('should handle all custom props together', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
       const customStyle = { margin: '10px' }
       const customClass = 'all-custom'
 
@@ -422,7 +423,7 @@ describe('UpgradeBtn', () => {
           isShort
           onClick={handleClick}
           loc="test-loc"
-          labelKey="custom.all"
+          labelKey={'custom.all' as any}
         />,
       )
       const badge = screen.getByText(/custom\.all/i)
@@ -445,7 +446,7 @@ describe('UpgradeBtn', () => {
     it('should be keyboard accessible with plain button', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn isPlain onClick={handleClick} />)
@@ -465,7 +466,7 @@ describe('UpgradeBtn', () => {
     it('should be keyboard accessible with Space key', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn isPlain onClick={handleClick} />)
@@ -481,7 +482,7 @@ describe('UpgradeBtn', () => {
     it('should be clickable for premium badge variant', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn onClick={handleClick} />)
@@ -524,7 +525,7 @@ describe('UpgradeBtn', () => {
     it('should integrate onClick with analytics tracking', async () => {
       // Arrange
       const user = userEvent.setup()
-      const handleClick = jest.fn()
+      const handleClick = vi.fn()
 
       // Act
       render(<UpgradeBtn onClick={handleClick} loc="integration-test" />)

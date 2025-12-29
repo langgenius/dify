@@ -1,11 +1,12 @@
 'use client'
 import type { CSSProperties, FC } from 'react'
-import React from 'react'
+import type { I18nKeysWithPrefix } from '@/types/i18n'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import PremiumBadge from '../../base/premium-badge'
 import Button from '@/app/components/base/button'
 import { SparklesSoft } from '@/app/components/base/icons/src/public/common'
 import { useModalContext } from '@/context/modal-context'
+import PremiumBadge from '../../base/premium-badge'
 
 type Props = {
   className?: string
@@ -16,7 +17,7 @@ type Props = {
   isShort?: boolean
   onClick?: () => void
   loc?: string
-  labelKey?: string
+  labelKey?: Exclude<I18nKeysWithPrefix<'billing'>, 'plans.community.features' | 'plans.enterprise.features' | 'plans.premium.features'>
 }
 
 const UpgradeBtn: FC<Props> = ({
@@ -46,8 +47,8 @@ const UpgradeBtn: FC<Props> = ({
     }
   }
 
-  const defaultBadgeLabel = t(`billing.upgradeBtn.${isShort ? 'encourageShort' : 'encourage'}`)
-  const label = labelKey ? t(labelKey) : defaultBadgeLabel
+  const defaultBadgeLabel = t(isShort ? 'upgradeBtn.encourageShort' : 'upgradeBtn.encourage', { ns: 'billing' })
+  const label = labelKey ? t(labelKey, { ns: 'billing' }) : defaultBadgeLabel
 
   if (isPlain) {
     return (
@@ -56,7 +57,7 @@ const UpgradeBtn: FC<Props> = ({
         style={style}
         onClick={onClick}
       >
-        {labelKey ? label : t('billing.upgradeBtn.plain')}
+        {labelKey ? label : t('upgradeBtn.plain', { ns: 'billing' })}
       </Button>
     )
   }
@@ -64,15 +65,15 @@ const UpgradeBtn: FC<Props> = ({
   return (
     <PremiumBadge
       size={size}
-      color='blue'
+      color="blue"
       allowHover={true}
       onClick={onClick}
       className={className}
       style={style}
     >
-      <SparklesSoft className='flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0' />
-      <div className='system-xs-medium'>
-        <span className='p-1'>
+      <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
+      <div className="system-xs-medium">
+        <span className="p-1">
           {label}
         </span>
       </div>

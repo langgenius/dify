@@ -1,3 +1,4 @@
+import type { MockInstance } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
 import StopEmbeddingModal from './index'
 
@@ -12,8 +13,8 @@ type StopEmbeddingModalProps = {
 const renderStopEmbeddingModal = (props: Partial<StopEmbeddingModalProps> = {}) => {
   const defaultProps: StopEmbeddingModalProps = {
     show: true,
-    onConfirm: jest.fn(),
-    onHide: jest.fn(),
+    onConfirm: vi.fn(),
+    onHide: vi.fn(),
     ...props,
   }
   return {
@@ -28,12 +29,12 @@ const renderStopEmbeddingModal = (props: Partial<StopEmbeddingModalProps> = {}) 
 describe('StopEmbeddingModal', () => {
   // Suppress Headless UI warnings in tests
   // These warnings are from the library's internal behavior, not our code
-  let consoleWarnSpy: jest.SpyInstance
-  let consoleErrorSpy: jest.SpyInstance
+  let consoleWarnSpy: MockInstance
+  let consoleErrorSpy: MockInstance
 
   beforeAll(() => {
-    consoleWarnSpy = jest.spyOn(console, 'warn').mockImplementation(jest.fn())
-    consoleErrorSpy = jest.spyOn(console, 'error').mockImplementation(jest.fn())
+    consoleWarnSpy = vi.spyOn(console, 'warn').mockImplementation(vi.fn())
+    consoleErrorSpy = vi.spyOn(console, 'error').mockImplementation(vi.fn())
   })
 
   afterAll(() => {
@@ -42,7 +43,7 @@ describe('StopEmbeddingModal', () => {
   })
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // --------------------------------------------------------------------------
@@ -159,8 +160,8 @@ describe('StopEmbeddingModal', () => {
 
       it('should use default value false when show is not provided', () => {
         // Arrange & Act
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         render(<StopEmbeddingModal onConfirm={onConfirm} onHide={onHide} show={false} />)
 
         // Assert
@@ -169,8 +170,8 @@ describe('StopEmbeddingModal', () => {
 
       it('should toggle visibility when show prop changes to true', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
 
         // Act - Initially hidden
         const { rerender } = render(
@@ -193,7 +194,7 @@ describe('StopEmbeddingModal', () => {
     describe('onConfirm prop', () => {
       it('should accept onConfirm callback function', () => {
         // Arrange
-        const onConfirm = jest.fn()
+        const onConfirm = vi.fn()
 
         // Act
         renderStopEmbeddingModal({ onConfirm })
@@ -206,7 +207,7 @@ describe('StopEmbeddingModal', () => {
     describe('onHide prop', () => {
       it('should accept onHide callback function', () => {
         // Arrange
-        const onHide = jest.fn()
+        const onHide = vi.fn()
 
         // Act
         renderStopEmbeddingModal({ onHide })
@@ -224,8 +225,8 @@ describe('StopEmbeddingModal', () => {
     describe('Confirm Button', () => {
       it('should call onConfirm when confirm button is clicked', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -240,8 +241,8 @@ describe('StopEmbeddingModal', () => {
 
       it('should call onHide when confirm button is clicked', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -257,8 +258,8 @@ describe('StopEmbeddingModal', () => {
       it('should call both onConfirm and onHide in correct order when confirm button is clicked', async () => {
         // Arrange
         const callOrder: string[] = []
-        const onConfirm = jest.fn(() => callOrder.push('confirm'))
-        const onHide = jest.fn(() => callOrder.push('hide'))
+        const onConfirm = vi.fn(() => callOrder.push('confirm'))
+        const onHide = vi.fn(() => callOrder.push('hide'))
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -273,8 +274,8 @@ describe('StopEmbeddingModal', () => {
 
       it('should handle multiple clicks on confirm button', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -294,8 +295,8 @@ describe('StopEmbeddingModal', () => {
     describe('Cancel Button', () => {
       it('should call onHide when cancel button is clicked', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -310,8 +311,8 @@ describe('StopEmbeddingModal', () => {
 
       it('should not call onConfirm when cancel button is clicked', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -326,8 +327,8 @@ describe('StopEmbeddingModal', () => {
 
       it('should handle multiple clicks on cancel button', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -346,8 +347,8 @@ describe('StopEmbeddingModal', () => {
     describe('Close Icon', () => {
       it('should call onHide when close span is clicked', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         const { container } = renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act - Find the close span (it should be the span with onClick handler)
@@ -372,8 +373,8 @@ describe('StopEmbeddingModal', () => {
 
       it('should not call onConfirm when close span is clicked', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         const { container } = renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act
@@ -396,8 +397,8 @@ describe('StopEmbeddingModal', () => {
     describe('Different Close Methods', () => {
       it('should distinguish between confirm and cancel actions', async () => {
         // Arrange
-        const onConfirm = jest.fn()
-        const onHide = jest.fn()
+        const onConfirm = vi.fn()
+        const onHide = vi.fn()
         renderStopEmbeddingModal({ onConfirm, onHide })
 
         // Act - Click cancel
@@ -411,7 +412,7 @@ describe('StopEmbeddingModal', () => {
         expect(onHide).toHaveBeenCalledTimes(1)
 
         // Reset
-        jest.clearAllMocks()
+        vi.clearAllMocks()
 
         // Act - Click confirm
         const confirmButton = screen.getByText('datasetCreation.stepThree.modelButtonConfirm')
@@ -432,8 +433,8 @@ describe('StopEmbeddingModal', () => {
   describe('Edge Cases', () => {
     it('should handle rapid confirm button clicks', async () => {
       // Arrange
-      const onConfirm = jest.fn()
-      const onHide = jest.fn()
+      const onConfirm = vi.fn()
+      const onHide = vi.fn()
       renderStopEmbeddingModal({ onConfirm, onHide })
 
       // Act - Rapid clicks
@@ -450,8 +451,8 @@ describe('StopEmbeddingModal', () => {
 
     it('should handle rapid cancel button clicks', async () => {
       // Arrange
-      const onConfirm = jest.fn()
-      const onHide = jest.fn()
+      const onConfirm = vi.fn()
+      const onHide = vi.fn()
       renderStopEmbeddingModal({ onConfirm, onHide })
 
       // Act - Rapid clicks
@@ -468,10 +469,10 @@ describe('StopEmbeddingModal', () => {
 
     it('should handle callbacks being replaced', async () => {
       // Arrange
-      const onConfirm1 = jest.fn()
-      const onHide1 = jest.fn()
-      const onConfirm2 = jest.fn()
-      const onHide2 = jest.fn()
+      const onConfirm1 = vi.fn()
+      const onHide1 = vi.fn()
+      const onConfirm2 = vi.fn()
+      const onHide2 = vi.fn()
 
       // Act
       const { rerender } = render(
@@ -501,8 +502,8 @@ describe('StopEmbeddingModal', () => {
       render(
         <StopEmbeddingModal
           show={true}
-          onConfirm={jest.fn()}
-          onHide={jest.fn()}
+          onConfirm={vi.fn()}
+          onHide={vi.fn()}
         />,
       )
 
@@ -553,10 +554,10 @@ describe('StopEmbeddingModal', () => {
       let confirmTime = 0
       let hideTime = 0
       let counter = 0
-      const onConfirm = jest.fn(() => {
+      const onConfirm = vi.fn(() => {
         confirmTime = ++counter
       })
-      const onHide = jest.fn(() => {
+      const onHide = vi.fn(() => {
         hideTime = ++counter
       })
       renderStopEmbeddingModal({ onConfirm, onHide })
@@ -574,8 +575,8 @@ describe('StopEmbeddingModal', () => {
 
     it('should call both callbacks exactly once per click', async () => {
       // Arrange
-      const onConfirm = jest.fn()
-      const onHide = jest.fn()
+      const onConfirm = vi.fn()
+      const onHide = vi.fn()
       renderStopEmbeddingModal({ onConfirm, onHide })
 
       // Act
@@ -591,8 +592,8 @@ describe('StopEmbeddingModal', () => {
 
     it('should pass no arguments to onConfirm', async () => {
       // Arrange
-      const onConfirm = jest.fn()
-      const onHide = jest.fn()
+      const onConfirm = vi.fn()
+      const onHide = vi.fn()
       renderStopEmbeddingModal({ onConfirm, onHide })
 
       // Act
@@ -607,8 +608,8 @@ describe('StopEmbeddingModal', () => {
 
     it('should pass no arguments to onHide when called from submit', async () => {
       // Arrange
-      const onConfirm = jest.fn()
-      const onHide = jest.fn()
+      const onConfirm = vi.fn()
+      const onHide = vi.fn()
       renderStopEmbeddingModal({ onConfirm, onHide })
 
       // Act
@@ -629,7 +630,7 @@ describe('StopEmbeddingModal', () => {
     it('should pass show prop to Modal as isShow', async () => {
       // Arrange & Act
       const { rerender } = render(
-        <StopEmbeddingModal show={true} onConfirm={jest.fn()} onHide={jest.fn()} />,
+        <StopEmbeddingModal show={true} onConfirm={vi.fn()} onHide={vi.fn()} />,
       )
 
       // Assert - Modal should be visible
@@ -637,7 +638,7 @@ describe('StopEmbeddingModal', () => {
 
       // Act - Hide modal
       await act(async () => {
-        rerender(<StopEmbeddingModal show={false} onConfirm={jest.fn()} onHide={jest.fn()} />)
+        rerender(<StopEmbeddingModal show={false} onConfirm={vi.fn()} onHide={vi.fn()} />)
       })
 
       // Assert - Modal should transition to hidden (wait for transition)
@@ -689,8 +690,8 @@ describe('StopEmbeddingModal', () => {
   describe('Component Lifecycle', () => {
     it('should unmount cleanly', () => {
       // Arrange
-      const onConfirm = jest.fn()
-      const onHide = jest.fn()
+      const onConfirm = vi.fn()
+      const onHide = vi.fn()
       const { unmount } = renderStopEmbeddingModal({ onConfirm, onHide })
 
       // Act & Assert - Should not throw
@@ -699,8 +700,8 @@ describe('StopEmbeddingModal', () => {
 
     it('should not call callbacks after unmount', () => {
       // Arrange
-      const onConfirm = jest.fn()
-      const onHide = jest.fn()
+      const onConfirm = vi.fn()
+      const onHide = vi.fn()
       const { unmount } = renderStopEmbeddingModal({ onConfirm, onHide })
 
       // Act
@@ -713,10 +714,10 @@ describe('StopEmbeddingModal', () => {
 
     it('should re-render correctly when props update', async () => {
       // Arrange
-      const onConfirm1 = jest.fn()
-      const onHide1 = jest.fn()
-      const onConfirm2 = jest.fn()
-      const onHide2 = jest.fn()
+      const onConfirm1 = vi.fn()
+      const onHide1 = vi.fn()
+      const onConfirm2 = vi.fn()
+      const onHide2 = vi.fn()
 
       // Act - Initial render
       const { rerender } = render(

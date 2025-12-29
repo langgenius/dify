@@ -1,23 +1,23 @@
 import { render, screen } from '@testing-library/react'
 import ChatVariableTrigger from './chat-variable-trigger'
 
-const mockUseNodesReadOnly = jest.fn()
-const mockUseIsChatMode = jest.fn()
+const mockUseNodesReadOnly = vi.fn()
+const mockUseIsChatMode = vi.fn()
 
-jest.mock('@/app/components/workflow/hooks', () => ({
+vi.mock('@/app/components/workflow/hooks', () => ({
   __esModule: true,
   useNodesReadOnly: () => mockUseNodesReadOnly(),
 }))
 
-jest.mock('../../hooks', () => ({
+vi.mock('../../hooks', () => ({
   __esModule: true,
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 
-jest.mock('@/app/components/workflow/header/chat-variable-button', () => ({
+vi.mock('@/app/components/workflow/header/chat-variable-button', () => ({
   __esModule: true,
   default: ({ disabled }: { disabled: boolean }) => (
-    <button data-testid='chat-variable-button' type='button' disabled={disabled}>
+    <button data-testid="chat-variable-button" type="button" disabled={disabled}>
       ChatVariableButton
     </button>
   ),
@@ -25,7 +25,7 @@ jest.mock('@/app/components/workflow/header/chat-variable-button', () => ({
 
 describe('ChatVariableTrigger', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   // Verifies conditional rendering when chat mode is off.

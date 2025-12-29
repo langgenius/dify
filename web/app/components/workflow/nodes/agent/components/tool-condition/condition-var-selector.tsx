@@ -14,7 +14,7 @@ import type {
   Var,
 } from '@/app/components/workflow/types'
 import { VarType } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   open: boolean
@@ -37,7 +37,7 @@ const ConditionVarSelector = ({
   onSelect,
   disabled,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
 
   const handleTriggerClick = useCallback(() => {
     if (disabled)
@@ -75,9 +75,7 @@ const ConditionVarSelector = ({
               availableNodes={availableNodes}
             />
           ) : (
-            <div className='inline-flex h-6 items-center rounded-md border border-dashed border-divider-subtle px-2 text-xs text-text-tertiary'>
-              {t('workflow.nodes.agent.toolCondition.selectVariable')}
-            </div>
+            <div className='system-xs-regular text-text-tertiary'>{t('nodes.agent.toolCondition.selectVariable')}</div>
           )}
         </div>
       </PortalToFollowElemTrigger>

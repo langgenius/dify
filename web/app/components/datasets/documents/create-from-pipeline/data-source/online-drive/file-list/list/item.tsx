@@ -1,13 +1,14 @@
+import type { Placement } from '@floating-ui/react'
+import type { OnlineDriveFile } from '@/models/pipeline'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import Radio from '@/app/components/base/radio/ui'
-import type { OnlineDriveFile } from '@/models/pipeline'
-import React, { useCallback } from 'react'
-import FileIcon from './file-icon'
-import { formatFileSize } from '@/utils/format'
 import Tooltip from '@/app/components/base/tooltip'
-import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
-import type { Placement } from '@floating-ui/react'
+import { formatFileSize } from '@/utils/format'
+import FileIcon from './file-icon'
 
 type ItemProps = {
   file: OnlineDriveFile
@@ -33,11 +34,13 @@ const Item = ({
   const isFolder = type === 'folder'
 
   const Wrapper = disabled ? Tooltip : React.Fragment
-  const wrapperProps = disabled ? {
-    popupContent: t('datasetPipeline.onlineDrive.notSupportedFileType'),
-    position: 'top-end' as Placement,
-    offset: { mainAxis: 4, crossAxis: -104 },
-  } : {}
+  const wrapperProps = disabled
+    ? {
+        popupContent: t('onlineDrive.notSupportedFileType', { ns: 'datasetPipeline' }),
+        position: 'top-end' as Placement,
+        offset: { mainAxis: 4, crossAxis: -104 },
+      }
+    : {}
 
   const handleSelect = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
@@ -46,7 +49,8 @@ const Item = ({
 
   const handleClickItem = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
     e.stopPropagation()
-    if (disabled) return
+    if (disabled)
+      return
     if (isBucket || isFolder) {
       onOpen(file)
       return
@@ -56,12 +60,12 @@ const Item = ({
 
   return (
     <div
-      className='flex cursor-pointer items-center gap-2 rounded-md px-2 py-[3px] hover:bg-state-base-hover'
+      className="flex cursor-pointer items-center gap-2 rounded-md px-2 py-[3px] hover:bg-state-base-hover"
       onClick={handleClickItem}
     >
       {!isBucket && isMultipleChoice && (
         <Checkbox
-          className='shrink-0'
+          className="shrink-0"
           disabled={disabled}
           id={id}
           checked={isSelected}
@@ -70,7 +74,7 @@ const Item = ({
       )}
       {!isBucket && !isMultipleChoice && (
         <Radio
-          className='shrink-0'
+          className="shrink-0"
           disabled={disabled}
           isChecked={isSelected}
           onCheck={handleSelect}
@@ -83,16 +87,17 @@ const Item = ({
           className={cn(
             'flex grow items-center gap-x-1 overflow-hidden py-0.5',
             disabled && 'opacity-30',
-          )}>
-          <FileIcon type={type} fileName={name} className='shrink-0 transform-gpu' />
+          )}
+        >
+          <FileIcon type={type} fileName={name} className="shrink-0 transform-gpu" />
           <span
-            className='system-sm-medium grow truncate text-text-secondary'
+            className="system-sm-medium grow truncate text-text-secondary"
             title={name}
           >
             {name}
           </span>
           {!isFolder && typeof size === 'number' && (
-            <span className='system-xs-regular shrink-0 text-text-tertiary'>{formatFileSize(size)}</span>
+            <span className="system-xs-regular shrink-0 text-text-tertiary">{formatFileSize(size)}</span>
           )}
         </div>
       </Wrapper>

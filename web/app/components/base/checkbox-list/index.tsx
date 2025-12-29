@@ -1,13 +1,13 @@
 'use client'
+import type { FC } from 'react'
+import Image from 'next/image'
+import { useCallback, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Checkbox from '@/app/components/base/checkbox'
 import SearchInput from '@/app/components/base/search-input'
 import SearchMenu from '@/assets/search-menu.svg'
 import { cn } from '@/utils/classnames'
-import Image from 'next/image'
-import type { FC } from 'react'
-import { useCallback, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import Button from '../button'
 
 export type CheckboxListOption = {
@@ -101,19 +101,19 @@ const CheckboxList: FC<CheckboxListProps> = ({
   return (
     <div className={cn('flex w-full flex-col gap-1', containerClassName)}>
       {label && (
-        <div className='system-sm-medium text-text-secondary'>
+        <div className="system-sm-medium text-text-secondary">
           {label}
         </div>
       )}
       {description && (
-        <div className='body-xs-regular text-text-tertiary'>
+        <div className="body-xs-regular text-text-tertiary">
           {description}
         </div>
       )}
 
-      <div className='rounded-lg border border-components-panel-border bg-components-panel-bg'>
+      <div className="rounded-lg border border-components-panel-border bg-components-panel-bg">
         {(showSelectAll || title || showSearch) && (
-          <div className='relative flex items-center gap-2 border-b border-divider-subtle px-3 py-2'>
+          <div className="relative flex items-center gap-2 border-b border-divider-subtle px-3 py-2">
             {!searchQuery && showSelectAll && (
               <Checkbox
                 checked={isAllSelected}
@@ -122,78 +122,93 @@ const CheckboxList: FC<CheckboxListProps> = ({
                 disabled={disabled}
               />
             )}
-            {!searchQuery ? <div className='flex min-w-0 flex-1 items-center gap-1'>
-              {title && (
-                <span className='system-xs-semibold-uppercase truncate leading-5 text-text-secondary'>
-                  {title}
-                </span>
-              )}
-              {showCount && selectedCount > 0 && (
-                <Badge uppercase>
-                  {t('common.operation.selectCount', { count: selectedCount })}
-                </Badge>
-              )}
-            </div> : <div className='system-sm-medium-uppercase flex-1 leading-6 text-text-secondary'>{
-              filteredOptions.length > 0
-                ? t('common.operation.searchCount', { count: filteredOptions.length, content: title })
-                : t('common.operation.noSearchCount', { content: title })}</div>}
+            {!searchQuery
+              ? (
+                  <div className="flex min-w-0 flex-1 items-center gap-1">
+                    {title && (
+                      <span className="system-xs-semibold-uppercase truncate leading-5 text-text-secondary">
+                        {title}
+                      </span>
+                    )}
+                    {showCount && selectedCount > 0 && (
+                      <Badge uppercase>
+                        {t('operation.selectCount', { ns: 'common', count: selectedCount })}
+                      </Badge>
+                    )}
+                  </div>
+                )
+              : (
+                  <div className="system-sm-medium-uppercase flex-1 leading-6 text-text-secondary">
+                    {
+                      filteredOptions.length > 0
+                        ? t('operation.searchCount', { ns: 'common', count: filteredOptions.length, content: title })
+                        : t('operation.noSearchCount', { ns: 'common', content: title })
+                    }
+                  </div>
+                )}
             {showSearch && (
               <SearchInput
                 value={searchQuery}
                 onChange={setSearchQuery}
-                placeholder={t('common.placeholder.search')}
-                className='w-40'
+                placeholder={t('placeholder.search', { ns: 'common' })}
+                className="w-40"
               />
             )}
           </div>
         )}
 
         <div
-          className='p-1'
+          className="p-1"
           style={maxHeight ? { maxHeight, overflowY: 'auto' } : {}}
         >
-          {!filteredOptions.length ? (
-            <div className='px-3 py-6 text-center text-sm text-text-tertiary'>
-              {searchQuery ? <div className='flex flex-col items-center justify-center gap-2'>
-                <Image alt='search menu' src={SearchMenu} width={32} />
-                <span className='system-sm-regular text-text-secondary'>{t('common.operation.noSearchResults', { content: title })}</span>
-                <Button variant='secondary-accent' size='small' onClick={() => setSearchQuery('')}>{t('common.operation.resetKeywords')}</Button>
-              </div> : t('common.noData')}
-            </div>
-          ) : (
-            filteredOptions.map((option) => {
-              const selected = value.includes(option.value)
-
-              return (
-                <div
-                  key={option.value}
-                  className={cn(
-                    'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
-                    option.disabled && 'cursor-not-allowed opacity-50',
-                  )}
-                  onClick={() => {
-                    if (!option.disabled && !disabled)
-                      handleToggleOption(option.value)
-                  }}
-                >
-                  <Checkbox
-                    checked={selected}
-                    onCheck={() => {
-                      if (!option.disabled && !disabled)
-                        handleToggleOption(option.value)
-                    }}
-                    disabled={option.disabled || disabled}
-                  />
-                  <div
-                    className='system-sm-medium flex-1 truncate text-text-secondary'
-                    title={option.label}
-                  >
-                    {option.label}
-                  </div>
+          {!filteredOptions.length
+            ? (
+                <div className="px-3 py-6 text-center text-sm text-text-tertiary">
+                  {searchQuery
+                    ? (
+                        <div className="flex flex-col items-center justify-center gap-2">
+                          <Image alt="search menu" src={SearchMenu} width={32} />
+                          <span className="system-sm-regular text-text-secondary">{t('operation.noSearchResults', { ns: 'common', content: title })}</span>
+                          <Button variant="secondary-accent" size="small" onClick={() => setSearchQuery('')}>{t('operation.resetKeywords', { ns: 'common' })}</Button>
+                        </div>
+                      )
+                    : t('noData', { ns: 'common' })}
                 </div>
               )
-            })
-          )}
+            : (
+                filteredOptions.map((option) => {
+                  const selected = value.includes(option.value)
+
+                  return (
+                    <div
+                      key={option.value}
+                      className={cn(
+                        'flex cursor-pointer items-center gap-2 rounded-md px-2 py-1.5 transition-colors hover:bg-state-base-hover',
+                        option.disabled && 'cursor-not-allowed opacity-50',
+                      )}
+                      onClick={() => {
+                        if (!option.disabled && !disabled)
+                          handleToggleOption(option.value)
+                      }}
+                    >
+                      <Checkbox
+                        checked={selected}
+                        onCheck={() => {
+                          if (!option.disabled && !disabled)
+                            handleToggleOption(option.value)
+                        }}
+                        disabled={option.disabled || disabled}
+                      />
+                      <div
+                        className="system-sm-medium flex-1 truncate text-text-secondary"
+                        title={option.label}
+                      >
+                        {option.label}
+                      </div>
+                    </div>
+                  )
+                })
+              )}
         </div>
       </div>
     </div>

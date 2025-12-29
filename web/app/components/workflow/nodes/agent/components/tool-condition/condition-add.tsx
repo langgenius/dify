@@ -25,7 +25,7 @@ const ConditionAdd = ({
   onSelect,
   disabled,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   const [open, setOpen] = useState(false)
 
   const handleSelect = useCallback((valueSelector: ValueSelector, varItem: Var) => {
@@ -49,7 +49,7 @@ const ConditionAdd = ({
           disabled={disabled}
         >
           <RiAddLine className='mr-1 h-3.5 w-3.5' />
-          {t('workflow.nodes.agent.toolCondition.addCondition')}
+          {t('nodes.agent.toolCondition.addCondition')}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className='z-[1000]'>

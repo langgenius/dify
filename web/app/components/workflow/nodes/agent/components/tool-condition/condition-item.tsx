@@ -21,7 +21,7 @@ import type {
 import { VarType } from '@/app/components/workflow/types'
 import Input from '@/app/components/base/input'
 import ConditionInput from './condition-input'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
 
 type Props = {
@@ -43,7 +43,7 @@ const ConditionItem = ({
   onChange,
   onRemove,
 }: Props) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   const [open, setOpen] = useState(false)
 
   const needsValue = operatorNeedsValue(condition.comparison_operator)
@@ -90,7 +90,7 @@ const ConditionItem = ({
 
   const renderValueInput = () => {
     if (!needsValue)
-      return <div className='system-xs-regular text-text-tertiary'>{t('workflow.nodes.agent.toolCondition.noValueNeeded')}</div>
+      return <div className='system-xs-regular text-text-tertiary'>{t('nodes.agent.toolCondition.noValueNeeded')}</div>
 
     if (condition.varType === VarType.boolean) {
       if (typeof condition.value === 'string' && condition.value !== 'true' && condition.value !== 'false') {
