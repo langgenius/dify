@@ -17,8 +17,7 @@ web/i18n
     └── ...
 
 web/i18n-config
-├── auto-gen-i18n.js
-├── check-i18n.js
+├── language.ts
 ├── i18next-config.ts
 └── ...
 ```
