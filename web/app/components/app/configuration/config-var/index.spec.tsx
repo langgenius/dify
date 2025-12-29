@@ -63,6 +63,9 @@ type DebugConfigurationState = any
 const defaultDebugConfigValue: DebugConfigurationState = {
   mode: AppModeEnum.CHAT,
   dataSets: [],
+  modelConfig: {
+    model_id: 'test-model',
+  },
 }
 
 const createDebugConfigValue = (overrides: Partial<DebugConfigurationState> = {}): DebugConfigurationState => ({
@@ -101,267 +104,269 @@ const renderConfigVar = (props: Partial<IConfigVarProps> = {}, debugOverrides: P
   )
 }
 
-// Rendering behavior for empty and populated states.
-describe('ConfigVar Rendering', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    latestSortableProps = null
-    subscriptionCallback = null
-    variableIndex = 0
-    notifySpy.mockClear()
-  })
-
-  it('should show empty state when no variables exist', () => {
-    renderConfigVar({ promptVariables: [] })
-
-    expect(screen.getByText('appDebug.notSetVar')).toBeInTheDocument()
-  })
-
-  it('should render variable items and allow reordering via sortable list', () => {
-    const onPromptVariablesChange = vi.fn()
-    const firstVar = createPromptVariable({ key: 'first', name: 'First' })
-    const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
-
-    renderConfigVar({
-      promptVariables: [firstVar, secondVar],
-      onPromptVariablesChange,
+describe('ConfigVar', () => {
+  // Rendering behavior for empty and populated states.
+  describe('ConfigVar Rendering', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      latestSortableProps = null
+      subscriptionCallback = null
+      variableIndex = 0
+      notifySpy.mockClear()
     })
 
-    expect(screen.getByText('first')).toBeInTheDocument()
-    expect(screen.getByText('second')).toBeInTheDocument()
+    it('should show empty state when no variables exist', () => {
+      renderConfigVar({ promptVariables: [] })
 
-    act(() => {
-      latestSortableProps?.setList([
-        { id: 'second', variable: secondVar },
-        { id: 'first', variable: firstVar },
-      ])
+      expect(screen.getByText('appDebug.notSetVar')).toBeInTheDocument()
     })
 
-    expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
-  })
-})
+    it('should render variable items and allow reordering via sortable list', () => {
+      const onPromptVariablesChange = vi.fn()
+      const firstVar = createPromptVariable({ key: 'first', name: 'First' })
+      const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
 
-// Variable creation flows using the add menu.
-describe('ConfigVar Add Variable', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    latestSortableProps = null
-    subscriptionCallback = null
-    variableIndex = 0
-    notifySpy.mockClear()
-  })
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
 
-  it('should add a text variable when selecting the string option', async () => {
-    const onPromptVariablesChange = vi.fn()
-    renderConfigVar({ promptVariables: [], onPromptVariablesChange })
+      expect(screen.getByText('first')).toBeInTheDocument()
+      expect(screen.getByText('second')).toBeInTheDocument()
 
-    fireEvent.click(screen.getByText('common.operation.add'))
-    fireEvent.click(await screen.findByText('appDebug.variableConfig.string'))
+      act(() => {
+        latestSortableProps?.setList([
+          { id: 'second', variable: secondVar },
+          { id: 'first', variable: firstVar },
+        ])
+      })
 
-    expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
-    const [nextVariables] = onPromptVariablesChange.mock.calls[0]
-    expect(nextVariables).toHaveLength(1)
-    expect(nextVariables[0].type).toBe('string')
+      expect(onPromptVariablesChange).toHaveBeenCalledWith([secondVar, firstVar])
+    })
   })
 
-  it('should open the external data tool modal when adding an api variable', async () => {
-    const onPromptVariablesChange = vi.fn()
-    renderConfigVar({ promptVariables: [], onPromptVariablesChange })
-
-    fireEvent.click(screen.getByText('common.operation.add'))
-    fireEvent.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
-
-    expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
-    expect(setShowExternalDataToolModal).toHaveBeenCalledTimes(1)
-
-    const modalState = setShowExternalDataToolModal.mock.calls[0][0]
-    expect(modalState.payload.type).toBe('api')
-
-    act(() => {
-      modalState.onCancelCallback?.()
+  // Variable creation flows using the add menu.
+  describe('ConfigVar Add Variable', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      latestSortableProps = null
+      subscriptionCallback = null
+      variableIndex = 0
+      notifySpy.mockClear()
     })
 
-    expect(onPromptVariablesChange).toHaveBeenLastCalledWith([])
-  })
-})
+    it('should add a text variable when selecting the string option', async () => {
+      const onPromptVariablesChange = vi.fn()
+      renderConfigVar({ promptVariables: [], onPromptVariablesChange })
 
-// Editing flows for variables through the modal.
-describe('ConfigVar Edit Variable', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    latestSortableProps = null
-    subscriptionCallback = null
-    variableIndex = 0
-    notifySpy.mockClear()
-  })
+      fireEvent.click(screen.getByText('common.operation.add'))
+      fireEvent.click(await screen.findByText('appDebug.variableConfig.string'))
 
-  it('should save updates when editing a basic variable', async () => {
-    const onPromptVariablesChange = vi.fn()
-    const variable = createPromptVariable({ key: 'name', name: 'Name' })
-
-    renderConfigVar({
-      promptVariables: [variable],
-      onPromptVariablesChange,
+      expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
+      const [nextVariables] = onPromptVariablesChange.mock.calls[0]
+      expect(nextVariables).toHaveLength(1)
+      expect(nextVariables[0].type).toBe('string')
     })
 
-    const item = screen.getByTitle('name · Name')
-    const actionButtons = item.querySelectorAll('div.h-6.w-6')
-    expect(actionButtons).toHaveLength(2)
-    fireEvent.click(actionButtons[0])
+    it('should open the external data tool modal when adding an api variable', async () => {
+      const onPromptVariablesChange = vi.fn()
+      renderConfigVar({ promptVariables: [], onPromptVariablesChange })
 
-    const saveButton = await screen.findByRole('button', { name: 'common.operation.save' })
-    fireEvent.click(saveButton)
+      fireEvent.click(screen.getByText('common.operation.add'))
+      fireEvent.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
 
-    expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
+      expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
+      expect(setShowExternalDataToolModal).toHaveBeenCalledTimes(1)
+
+      const modalState = setShowExternalDataToolModal.mock.calls[0][0]
+      expect(modalState.payload.type).toBe('api')
+
+      act(() => {
+        modalState.onCancelCallback?.()
+      })
+
+      expect(onPromptVariablesChange).toHaveBeenLastCalledWith([])
+    })
   })
 
-  it('should show error when variable key is duplicated', async () => {
-    const onPromptVariablesChange = vi.fn()
-    const firstVar = createPromptVariable({ key: 'first', name: 'First' })
-    const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
-
-    renderConfigVar({
-      promptVariables: [firstVar, secondVar],
-      onPromptVariablesChange,
+  // Editing flows for variables through the modal.
+  describe('ConfigVar Edit Variable', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      latestSortableProps = null
+      subscriptionCallback = null
+      variableIndex = 0
+      notifySpy.mockClear()
     })
 
-    const item = screen.getByTitle('first · First')
-    const actionButtons = item.querySelectorAll('div.h-6.w-6')
-    expect(actionButtons).toHaveLength(2)
-    fireEvent.click(actionButtons[0])
+    it('should save updates when editing a basic variable', async () => {
+      const onPromptVariablesChange = vi.fn()
+      const variable = createPromptVariable({ key: 'name', name: 'Name' })
 
-    const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
-    fireEvent.change(inputs[0], { target: { value: 'second' } })
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    expect(Toast.notify).toHaveBeenCalled()
-    expect(onPromptVariablesChange).not.toHaveBeenCalled()
-  })
-
-  it('should show error when variable label is duplicated', async () => {
-    const onPromptVariablesChange = vi.fn()
-    const firstVar = createPromptVariable({ key: 'first', name: 'First' })
-    const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
-
-    renderConfigVar({
-      promptVariables: [firstVar, secondVar],
-      onPromptVariablesChange,
-    })
-
-    const item = screen.getByTitle('first · First')
-    const actionButtons = item.querySelectorAll('div.h-6.w-6')
-    expect(actionButtons).toHaveLength(2)
-    fireEvent.click(actionButtons[0])
-
-    const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
-    fireEvent.change(inputs[1], { target: { value: 'Second' } })
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
-
-    expect(Toast.notify).toHaveBeenCalled()
-    expect(onPromptVariablesChange).not.toHaveBeenCalled()
-  })
-})
-
-// Removal behavior including confirm modal branch.
-describe('ConfigVar Remove Variable', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    latestSortableProps = null
-    subscriptionCallback = null
-    variableIndex = 0
-    notifySpy.mockClear()
-  })
-
-  it('should remove variable directly when context confirmation is not required', () => {
-    const onPromptVariablesChange = vi.fn()
-    const variable = createPromptVariable({ key: 'name', name: 'Name' })
-
-    renderConfigVar({
-      promptVariables: [variable],
-      onPromptVariablesChange,
-    })
-
-    const item = screen.getByTitle('name · Name')
-    const actionButtons = item.querySelectorAll('div.h-6.w-6')
-    expect(actionButtons).toHaveLength(2)
-    fireEvent.click(actionButtons[1])
-
-    expect(onPromptVariablesChange).toHaveBeenCalledWith([])
-  })
-
-  it('should require confirmation when removing context variable with datasets in completion mode', () => {
-    const onPromptVariablesChange = vi.fn()
-    const variable = createPromptVariable({
-      key: 'context',
-      name: 'Context',
-      is_context_var: true,
-    })
-
-    renderConfigVar(
-      {
+      renderConfigVar({
         promptVariables: [variable],
         onPromptVariablesChange,
-      },
-      {
-        mode: AppModeEnum.COMPLETION,
-        dataSets: [{ id: 'dataset-1' } as DebugConfigurationState['dataSets'][number]],
-      },
-    )
-
-    const item = screen.getByTitle('context · Context')
-    const actionButtons = item.querySelectorAll('div.h-6.w-6')
-    expect(actionButtons).toHaveLength(2)
-    fireEvent.click(actionButtons[1])
-
-    expect(screen.getByText('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle')).toBeInTheDocument()
-
-    fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
-
-    expect(onPromptVariablesChange).toHaveBeenCalledWith([])
-  })
-})
-
-// Event subscription support for external data tools.
-describe('ConfigVar External Data Tool Events', () => {
-  beforeEach(() => {
-    vi.clearAllMocks()
-    latestSortableProps = null
-    subscriptionCallback = null
-    variableIndex = 0
-    notifySpy.mockClear()
-  })
-
-  it('should append external data tool variables from event emitter', () => {
-    const onPromptVariablesChange = vi.fn()
-    renderConfigVar({
-      promptVariables: [],
-      onPromptVariablesChange,
-    })
-
-    act(() => {
-      subscriptionCallback?.({
-        type: ADD_EXTERNAL_DATA_TOOL,
-        payload: {
-          variable: 'api_var',
-          label: 'API Var',
-          enabled: true,
-          type: 'api',
-          config: {},
-          icon: 'icon',
-          icon_background: 'bg',
-        },
       })
+
+      const item = screen.getByTitle('name · Name')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+      const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
+      expect(actionButtons).toHaveLength(2)
+      fireEvent.click(actionButtons[0])
+
+      const saveButton = await screen.findByRole('button', { name: 'common.operation.save' })
+      fireEvent.click(saveButton)
+
+      expect(onPromptVariablesChange).toHaveBeenCalledTimes(1)
     })
 
-    expect(onPromptVariablesChange).toHaveBeenCalledWith([
-      expect.objectContaining({
-        key: 'api_var',
-        name: 'API Var',
-        required: true,
-        type: 'api',
-      }),
-    ])
+    it('should show error when variable key is duplicated', async () => {
+      const onPromptVariablesChange = vi.fn()
+      const firstVar = createPromptVariable({ key: 'first', name: 'First' })
+      const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
+
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
+
+      const item = screen.getByTitle('first · First')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+      const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
+      expect(actionButtons).toHaveLength(2)
+      fireEvent.click(actionButtons[0])
+
+      const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
+      fireEvent.change(inputs[0], { target: { value: 'second' } })
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(Toast.notify).toHaveBeenCalled()
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+    })
+
+    it('should show error when variable label is duplicated', async () => {
+      const onPromptVariablesChange = vi.fn()
+      const firstVar = createPromptVariable({ key: 'first', name: 'First' })
+      const secondVar = createPromptVariable({ key: 'second', name: 'Second' })
+
+      renderConfigVar({
+        promptVariables: [firstVar, secondVar],
+        onPromptVariablesChange,
+      })
+
+      const item = screen.getByTitle('first · First')
+      const itemContainer = item.closest('div.group')
+      expect(itemContainer).not.toBeNull()
+      const actionButtons = itemContainer!.querySelectorAll('div.h-6.w-6')
+      expect(actionButtons).toHaveLength(2)
+      fireEvent.click(actionButtons[0])
+
+      const inputs = await screen.findAllByPlaceholderText('appDebug.variableConfig.inputPlaceholder')
+      fireEvent.change(inputs[1], { target: { value: 'Second' } })
+
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.save' }))
+
+      expect(Toast.notify).toHaveBeenCalled()
+      expect(onPromptVariablesChange).not.toHaveBeenCalled()
+    })
+  })
+
+  // Removal behavior including confirm modal branch.
+  describe('ConfigVar Remove Variable', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      latestSortableProps = null
+      subscriptionCallback = null
+      variableIndex = 0
+      notifySpy.mockClear()
+    })
+
+    it('should remove variable directly when context confirmation is not required', () => {
+      const onPromptVariablesChange = vi.fn()
+      const variable = createPromptVariable({ key: 'name', name: 'Name' })
+
+      renderConfigVar({
+        promptVariables: [variable],
+        onPromptVariablesChange,
+      })
+
+      const removeBtn = screen.getByTestId('var-item-delete-btn')
+      fireEvent.click(removeBtn)
+
+      expect(onPromptVariablesChange).toHaveBeenCalledWith([])
+    })
+
+    it('should require confirmation when removing context variable with datasets in completion mode', () => {
+      const onPromptVariablesChange = vi.fn()
+      const variable = createPromptVariable({
+        key: 'context',
+        name: 'Context',
+        is_context_var: true,
+      })
+
+      renderConfigVar(
+        {
+          promptVariables: [variable],
+          onPromptVariablesChange,
+        },
+        {
+          mode: AppModeEnum.COMPLETION,
+          dataSets: [{ id: 'dataset-1' } as DebugConfigurationState['dataSets'][number]],
+        },
+      )
+
+      const deleteBtn = screen.getByTestId('var-item-delete-btn')
+      fireEvent.click(deleteBtn)
+      // confirmation modal should show up
+      fireEvent.click(screen.getByRole('button', { name: 'common.operation.confirm' }))
+
+      expect(onPromptVariablesChange).toHaveBeenCalledWith([])
+    })
+  })
+
+  // Event subscription support for external data tools.
+  describe('ConfigVar External Data Tool Events', () => {
+    beforeEach(() => {
+      vi.clearAllMocks()
+      latestSortableProps = null
+      subscriptionCallback = null
+      variableIndex = 0
+      notifySpy.mockClear()
+    })
+
+    it('should append external data tool variables from event emitter', () => {
+      const onPromptVariablesChange = vi.fn()
+      renderConfigVar({
+        promptVariables: [],
+        onPromptVariablesChange,
+      })
+
+      act(() => {
+        subscriptionCallback?.({
+          type: ADD_EXTERNAL_DATA_TOOL,
+          payload: {
+            variable: 'api_var',
+            label: 'API Var',
+            enabled: true,
+            type: 'api',
+            config: {},
+            icon: 'icon',
+            icon_background: 'bg',
+          },
+        })
+      })
+
+      expect(onPromptVariablesChange).toHaveBeenCalledWith([
+        expect.objectContaining({
+          key: 'api_var',
+          name: 'API Var',
+          required: true,
+          type: 'api',
+        }),
+      ])
+    })
   })
 })
