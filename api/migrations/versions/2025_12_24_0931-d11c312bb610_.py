@@ -1,4 +1,4 @@
-"""empty message
+"""Add is_archived column to workflow_runs table
 
 Revision ID: d11c312bb610
 Revises: 905527cc8fd3
