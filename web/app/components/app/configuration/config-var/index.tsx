@@ -111,8 +111,6 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
     const duplicateError = getDuplicateError(newPromptVariables)
     if (duplicateError) {
-      // const a = t(duplicateError.errorMsgKey as any, { ns: 'appDebug' }),
-
       Toast.notify({
         type: 'error',
         message: t(duplicateError.errorMsgKey as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug', key: t(duplicateError.typeName as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug' }) }) as string,
