@@ -108,7 +108,7 @@ export const useCurrentWorkspace = () => {
   return useQuery<ICurrentWorkspace>({
     queryKey: commonQueryKeys.currentWorkspace,
     // queryFn: () => post<ICurrentWorkspace>('/workspaces/current', { body: {} }),
-    queryFn: () => get<ICurrentWorkspace>('/workspaces/current'), // todo: Need to check later, POST or GET
+    queryFn: () => post<ICurrentWorkspace>('/workspaces/current'),
   })
 }
 
