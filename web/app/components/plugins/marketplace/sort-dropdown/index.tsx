@@ -23,22 +23,22 @@ const SortDropdown = ({
     {
       value: 'install_count',
       order: 'DESC',
-      text: t('plugin.marketplace.sortOption.mostPopular'),
+      text: t('marketplace.sortOption.mostPopular', { ns: 'plugin' }),
     },
     {
       value: 'version_updated_at',
       order: 'DESC',
-      text: t('plugin.marketplace.sortOption.recentlyUpdated'),
+      text: t('marketplace.sortOption.recentlyUpdated', { ns: 'plugin' }),
     },
     {
       value: 'created_at',
       order: 'DESC',
-      text: t('plugin.marketplace.sortOption.newlyReleased'),
+      text: t('marketplace.sortOption.newlyReleased', { ns: 'plugin' }),
     },
     {
       value: 'created_at',
       order: 'ASC',
-      text: t('plugin.marketplace.sortOption.firstReleased'),
+      text: t('marketplace.sortOption.firstReleased', { ns: 'plugin' }),
     },
   ]
   const sort = useMarketplaceContext(v => v.sort)
@@ -59,7 +59,7 @@ const SortDropdown = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
         <div className="flex h-8 cursor-pointer items-center rounded-lg bg-state-base-hover-alt px-2 pr-3">
           <span className="system-sm-regular mr-1 text-text-secondary">
-            {t('plugin.marketplace.sortBy')}
+            {t('marketplace.sortBy', { ns: 'plugin' })}
           </span>
           <span className="system-sm-medium mr-1 text-text-primary">
             {selectedOption.text}

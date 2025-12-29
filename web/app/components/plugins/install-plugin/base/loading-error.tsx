@@ -31,10 +31,10 @@ const LoadingError: FC = () => {
           </div>
           <div className="ml-3 grow">
             <div className="system-md-semibold flex h-5 items-center text-text-destructive">
-              {t('plugin.installModal.pluginLoadError')}
+              {t('installModal.pluginLoadError', { ns: 'plugin' })}
             </div>
             <div className="system-xs-regular mt-0.5 text-text-tertiary">
-              {t('plugin.installModal.pluginLoadErrorDesc')}
+              {t('installModal.pluginLoadErrorDesc', { ns: 'plugin' })}
             </div>
           </div>
         </div>

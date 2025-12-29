@@ -39,7 +39,7 @@ const AppTrigger = ({
         <div title={appDetail.name} className="system-sm-medium grow text-components-input-text-filled">{appDetail.name}</div>
       )}
       {!appDetail && (
-        <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('app.appSelector.placeholder')}</div>
+        <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('appSelector.placeholder', { ns: 'app' })}</div>
       )}
       <RiArrowDownSLine className={cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
     </div>
