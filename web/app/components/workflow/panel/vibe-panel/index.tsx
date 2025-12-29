@@ -139,7 +139,7 @@ const VibePanel: FC = () => {
       isShow={showVibePanel}
       onClose={handleClose}
       className="min-w-[1140px] !p-0"
-      highPriority
+      wrapperClassName="z-[900]"
     >
       <div className="flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
