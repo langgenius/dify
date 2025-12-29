@@ -205,7 +205,6 @@
     "jsdom-testing-mocks": "^1.16.0",
     "knip": "^5.66.1",
     "lint-staged": "^15.5.2",
-    "lodash": "^4.17.21",
     "magicast": "^0.3.5",
     "nock": "^14.0.10",
     "postcss": "^8.5.6",
