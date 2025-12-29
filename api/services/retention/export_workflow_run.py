@@ -283,7 +283,7 @@ class WorkflowRunExportService:
         repo = self._get_workflow_run_repo()
         table_data: dict[str, list[dict[str, Any]]] = {}
 
-        run_context = {
+        run_context: DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext = {
             "run_id": run.id,
             "tenant_id": run.tenant_id,
             "app_id": run.app_id,

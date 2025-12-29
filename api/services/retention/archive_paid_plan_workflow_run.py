@@ -390,17 +390,14 @@ class WorkflowRunArchiver:
 
     def _extract_data(self, session: Session, run: WorkflowRun) -> dict[str, list[dict[str, Any]]]:
         table_data: dict[str, list[dict[str, Any]]] = {}
-        run_context = {
+        run_context: DifyAPISQLAlchemyWorkflowNodeExecutionRepository.RunContext = {
             "run_id": run.id,
             "tenant_id": run.tenant_id,
             "app_id": run.app_id,
             "workflow_id": run.workflow_id,
             "triggered_from": run.triggered_from,
         }
-        node_exec_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_by_run(
-            session,
-            run_context,
-        )
+        node_exec_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_by_run(session, run_context)
         node_exec_ids = [record.id for record in node_exec_records]
         offload_records = DifyAPISQLAlchemyWorkflowNodeExecutionRepository.get_offloads_by_execution_ids(
             session,

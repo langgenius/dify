@@ -4,6 +4,7 @@ Celery task for exporting workflow runs asynchronously.
 
 import logging
 from datetime import UTC, datetime
+from typing import cast
 
 from celery import shared_task
 
@@ -38,10 +39,12 @@ def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str, include_
             include_manifest=include_manifest,
         )
 
+        storage_key = cast(str, export_result["storage_key"])
+
         try:
             storage = get_archive_storage()
             presigned_url = storage.generate_presigned_url(
-                export_result["storage_key"],
+                storage_key,
                 expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
             )
         except ArchiveStorageNotConfiguredError:
@@ -51,7 +54,7 @@ def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str, include_
             task_id,
             "success",
             {
-                "storage_key": export_result["storage_key"],
+                "storage_key": storage_key,
                 "checksum": export_result["checksum"],
                 "size_bytes": export_result["size_bytes"],
                 "presigned_url": presigned_url,
