@@ -3,7 +3,6 @@
 import type { ReactNode } from 'react'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useEffect, useState } from 'react'
-import { SWRConfig } from 'swr'
 import {
   EDUCATION_VERIFY_URL_SEARCHPARAMS_ACTION,
   EDUCATION_VERIFYING_LOCALSTORAGE_ITEM,
@@ -11,12 +10,13 @@ import {
 import { fetchSetupStatus } from '@/service/common'
 import { resolvePostLoginRedirect } from '../signin/utils/post-login-redirect'
 
-type SwrInitializerProps = {
+type AppInitializerProps = {
   children: ReactNode
 }
-const SwrInitializer = ({
+
+export const AppInitializer = ({
   children,
-}: SwrInitializerProps) => {
+}: AppInitializerProps) => {
   const router = useRouter()
   const searchParams = useSearchParams()
   // Tokens are now stored in cookies, no need to check localStorage
@@ -69,20 +69,5 @@ const SwrInitializer = ({
     })()
   }, [isSetupFinished, router, pathname, searchParams])
 
-  return init
-    ? (
-        <SWRConfig value={{
-          shouldRetryOnError: false,
-          revalidateOnFocus: false,
-          dedupingInterval: 60000,
-          focusThrottleInterval: 5000,
-          provider: () => new Map(),
-        }}
-        >
-          {children}
-        </SWRConfig>
-      )
-    : null
+  return init ? children : null
 }
-
-export default SwrInitializer
