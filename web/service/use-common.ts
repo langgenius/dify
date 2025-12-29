@@ -107,7 +107,6 @@ export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: b
 export const useCurrentWorkspace = () => {
   return useQuery<ICurrentWorkspace>({
     queryKey: commonQueryKeys.currentWorkspace,
-    // queryFn: () => post<ICurrentWorkspace>('/workspaces/current', { body: {} }),
     queryFn: () => post<ICurrentWorkspace>('/workspaces/current'),
   })
 }
