@@ -21,7 +21,7 @@ Implementation Notes:
 
 import logging
 import uuid
-from collections.abc import Sequence
+from collections.abc import Callable, Sequence
 from datetime import datetime
 from decimal import Decimal
 from typing import Any, cast
