@@ -853,7 +853,7 @@ class TriggerProviderService:
         """
         Create a subscription builder for rebuilding an existing subscription.
 
-        This method creates a builder pre-filled with data from the rebuild request,
+        This method rebuild the subscription by calling DELETE and CREATE API of the third party provider(e.g. GitHub API)
         keeping the same subscription_id and endpoint_id so the webhook URL remains unchanged.
 
         :param tenant_id: Tenant ID

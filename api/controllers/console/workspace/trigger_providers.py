@@ -353,6 +353,7 @@ class TriggerSubscriptionUpdateApi(Resource):
             # For rename only, just update the name
             rename = request.name is not None and not any((request.credentials, request.parameters, request.properties))
             # When credential type is UNAUTHORIZED, it indicates the subscription was manually created
+            # For Manually created subscription, they dont have credentials, parameters, only name and properties(which is input by user)
             manually_created = subscription.credential_type == CredentialType.UNAUTHORIZED
             if rename or manually_created:
                 TriggerProviderService.update_trigger_subscription(
@@ -363,7 +364,7 @@ class TriggerSubscriptionUpdateApi(Resource):
                 )
                 return 200
 
-            # For the rest cases(API_KEY, OAUTH2), call third party provider to rebuild the subscription
+            # For the rest cases(API_KEY, OAUTH2), we need to call third party provider(e.g. GitHub API) to rebuild the subscription
             TriggerProviderService.rebuild_trigger_subscription(
                 tenant_id=user.current_tenant_id,
                 name=request.name,
