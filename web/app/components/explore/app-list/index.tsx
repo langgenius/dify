@@ -3,6 +3,7 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { useDebounceFn } from 'ahooks'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,6 @@ import Category from '@/app/components/explore/category'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import ExploreContext from '@/context/explore-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import {
   DSLImportMode,
 } from '@/models/app'
@@ -47,9 +47,8 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: allCategoriesEn,
-    disableSearchParams: false,
+  const [currCategory, setCurrCategory] = useQueryState('category', {
+    defaultValue: allCategoriesEn,
   })
 
   const {
