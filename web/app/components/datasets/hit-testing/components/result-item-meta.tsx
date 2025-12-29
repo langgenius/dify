@@ -36,7 +36,7 @@ const ResultItemMeta: FC<Props> = ({
         <div className="system-xs-medium text-text-tertiary">
           {wordCount}
           {' '}
-          {t('datasetDocuments.segment.characters', { count: wordCount })}
+          {t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}
         </div>
       </div>
       <Score value={score} />

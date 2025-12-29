@@ -27,7 +27,7 @@ const PlanBadge: FC<PlanBadgeProps> = ({ plan, allowHover, sandboxAsUpgrade = fa
         <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
         <div className="system-xs-medium">
           <span className="whitespace-nowrap p-1">
-            {t('billing.upgradeBtn.encourageShort')}
+            {t('upgradeBtn.encourageShort', { ns: 'billing' })}
           </span>
         </div>
       </PremiumBadge>

@@ -62,15 +62,15 @@ const SelectVarType: FC<Props> = ({
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         <div className="min-w-[192px] rounded-lg border border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
           <div className="p-1">
-            <SelectItem type={InputVarType.textInput} value="string" text={t('appDebug.variableConfig.string')} onClick={handleChange}></SelectItem>
-            <SelectItem type={InputVarType.paragraph} value="paragraph" text={t('appDebug.variableConfig.paragraph')} onClick={handleChange}></SelectItem>
-            <SelectItem type={InputVarType.select} value="select" text={t('appDebug.variableConfig.select')} onClick={handleChange}></SelectItem>
-            <SelectItem type={InputVarType.number} value="number" text={t('appDebug.variableConfig.number')} onClick={handleChange}></SelectItem>
-            <SelectItem type={InputVarType.checkbox} value="checkbox" text={t('appDebug.variableConfig.checkbox')} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.textInput} value="string" text={t('variableConfig.string', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.paragraph} value="paragraph" text={t('variableConfig.paragraph', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.select} value="select" text={t('variableConfig.select', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.number} value="number" text={t('variableConfig.number', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
+            <SelectItem type={InputVarType.checkbox} value="checkbox" text={t('variableConfig.checkbox', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
           </div>
           <div className="h-px border-t border-components-panel-border"></div>
           <div className="p-1">
-            <SelectItem Icon={ApiConnection} value="api" text={t('appDebug.variableConfig.apiBasedVar')} onClick={handleChange}></SelectItem>
+            <SelectItem Icon={ApiConnection} value="api" text={t('variableConfig.apiBasedVar', { ns: 'appDebug' })} onClick={handleChange}></SelectItem>
           </div>
         </div>
       </PortalToFollowElemContent>

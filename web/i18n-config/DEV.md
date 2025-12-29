@@ -23,7 +23,7 @@
         - `setLocaleOnClient`
           - `changeLanguage` (defined in i18n/i18next-config, also init i18n resources (side effects))
             - is `i18next.changeLanguage`
-            - all languages text is merge & load in FrontEnd as .js (see i18n/i18next-config)
+            - loads JSON namespaces for the target locale and merges resource bundles (see i18n/i18next-config)
 - i18n context
   - `locale` - current locale code (ex `eu-US`, `zh-Hans`)
   - `i18n` - useless
@@ -32,13 +32,16 @@
 ### load i18n resources
 
 - client: i18n/i18next-config.ts
-  - ns = camalCase(filename)
+  - ns = camelCase(filename) (app-debug -> appDebug)
+  - keys are flat (dot notation); `keySeparator: false`
   - ex: `app/components/datasets/create/embedding-process/index.tsx`
-    - `t('datasetSettings.form.retrievalSetting.title')`
+    - `const { t } = useTranslation('datasetSettings')`
+    - `t('form.retrievalSetting.title')`
 - server: i18n/server.ts
-  - ns = filename
+  - ns = filename (kebab-case) mapped to camelCase namespace
   - ex: `app/(commonLayout)/datasets/(datasetDetailLayout)/[datasetId]/settings/page.tsx`
-    - `translate(locale, 'dataset-settings')`
+    - `const { t } = await getTranslation(locale, 'dataset-settings')`
+    - `t('form.retrievalSetting.title')`
 
 ## TODO
 

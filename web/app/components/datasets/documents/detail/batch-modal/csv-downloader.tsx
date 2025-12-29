@@ -50,37 +50,37 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
 
   return (
     <div className="mt-6">
-      <div className="text-sm font-medium text-text-primary">{t('share.generation.csvStructureTitle')}</div>
+      <div className="text-sm font-medium text-text-primary">{t('generation.csvStructureTitle', { ns: 'share' })}</div>
       <div className="mt-2 max-h-[500px] overflow-auto">
         {docForm === ChunkingMode.qa && (
           <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-subtle text-xs">
             <thead className="text-text-secondary">
               <tr>
-                <td className="h-9 border-b border-divider-subtle pl-3 pr-2">{t('datasetDocuments.list.batchModal.question')}</td>
-                <td className="h-9 border-b border-divider-subtle pl-3 pr-2">{t('datasetDocuments.list.batchModal.answer')}</td>
+                <td className="h-9 border-b border-divider-subtle pl-3 pr-2">{t('list.batchModal.question', { ns: 'datasetDocuments' })}</td>
+                <td className="h-9 border-b border-divider-subtle pl-3 pr-2">{t('list.batchModal.answer', { ns: 'datasetDocuments' })}</td>
               </tr>
             </thead>
             <tbody className="text-text-tertiary">
               <tr>
                 <td className="h-9 border-b border-divider-subtle pl-3 pr-2 text-[13px]">
-                  {t('datasetDocuments.list.batchModal.question')}
+                  {t('list.batchModal.question', { ns: 'datasetDocuments' })}
                   {' '}
                   1
                 </td>
                 <td className="h-9 border-b border-divider-subtle pl-3 pr-2 text-[13px]">
-                  {t('datasetDocuments.list.batchModal.answer')}
+                  {t('list.batchModal.answer', { ns: 'datasetDocuments' })}
                   {' '}
                   1
                 </td>
               </tr>
               <tr>
                 <td className="h-9 pl-3 pr-2 text-[13px]">
-                  {t('datasetDocuments.list.batchModal.question')}
+                  {t('list.batchModal.question', { ns: 'datasetDocuments' })}
                   {' '}
                   2
                 </td>
                 <td className="h-9 pl-3 pr-2 text-[13px]">
-                  {t('datasetDocuments.list.batchModal.answer')}
+                  {t('list.batchModal.answer', { ns: 'datasetDocuments' })}
                   {' '}
                   2
                 </td>
@@ -92,20 +92,20 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
           <table className="w-full table-fixed border-separate border-spacing-0 rounded-lg border border-divider-subtle text-xs">
             <thead className="text-text-secondary">
               <tr>
-                <td className="h-9 border-b border-divider-subtle pl-3 pr-2">{t('datasetDocuments.list.batchModal.contentTitle')}</td>
+                <td className="h-9 border-b border-divider-subtle pl-3 pr-2">{t('list.batchModal.contentTitle', { ns: 'datasetDocuments' })}</td>
               </tr>
             </thead>
             <tbody className="text-text-tertiary">
               <tr>
                 <td className="h-9 border-b border-divider-subtle pl-3 pr-2 text-[13px]">
-                  {t('datasetDocuments.list.batchModal.content')}
+                  {t('list.batchModal.content', { ns: 'datasetDocuments' })}
                   {' '}
                   1
                 </td>
               </tr>
               <tr>
                 <td className="h-9 pl-3 pr-2 text-[13px]">
-                  {t('datasetDocuments.list.batchModal.content')}
+                  {t('list.batchModal.content', { ns: 'datasetDocuments' })}
                   {' '}
                   2
                 </td>
@@ -123,7 +123,7 @@ const CSVDownload: FC<{ docForm: ChunkingMode }> = ({ docForm }) => {
       >
         <div className="flex h-[18px] items-center space-x-1 text-xs font-medium text-text-accent">
           <DownloadIcon className="mr-1 h-3 w-3" />
-          {t('datasetDocuments.list.batchModal.template')}
+          {t('list.batchModal.template', { ns: 'datasetDocuments' })}
         </div>
       </CSVDownloader>
     </div>

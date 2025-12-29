@@ -50,16 +50,16 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {/* Title */}
       <div className="flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5">
         <div className="system-xl-semibold flex pl-1 pr-8 text-text-primary">
-          {t('workflow.nodes.llm.jsonSchema.generateJsonSchema')}
+          {t('nodes.llm.jsonSchema.generateJsonSchema', { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular flex px-1 text-text-tertiary">
-          {t('workflow.nodes.llm.jsonSchema.generationTip')}
+          {t('nodes.llm.jsonSchema.generationTip', { ns: 'workflow' })}
         </div>
       </div>
       {/* Content */}
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="system-sm-semibold-uppercase flex h-6 items-center text-text-secondary">
-          {t('common.modelProvider.model')}
+          {t('modelProvider.model', { ns: 'common' })}
         </div>
         <ModelParameterModal
           popupClassName="!w-[448px]"
@@ -75,14 +75,14 @@ const PromptEditor: FC<PromptEditorProps> = ({
       </div>
       <div className="flex flex-col gap-y-1 px-4 py-2">
         <div className="system-sm-semibold-uppercase flex h-6 items-center text-text-secondary">
-          <span>{t('workflow.nodes.llm.jsonSchema.instruction')}</span>
-          <Tooltip popupContent={t('workflow.nodes.llm.jsonSchema.promptTooltip')} />
+          <span>{t('nodes.llm.jsonSchema.instruction', { ns: 'workflow' })}</span>
+          <Tooltip popupContent={t('nodes.llm.jsonSchema.promptTooltip', { ns: 'workflow' })} />
         </div>
         <div className="flex items-center">
           <Textarea
             className="h-[364px] resize-none px-2 py-1"
             value={instruction}
-            placeholder={t('workflow.nodes.llm.jsonSchema.promptPlaceholder')}
+            placeholder={t('nodes.llm.jsonSchema.promptPlaceholder', { ns: 'workflow' })}
             onChange={handleInstructionChange}
           />
         </div>
@@ -90,7 +90,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
       {/* Footer */}
       <div className="flex justify-end gap-x-2 p-4 pt-2">
         <Button variant="secondary" onClick={onClose}>
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
@@ -98,7 +98,7 @@ const PromptEditor: FC<PromptEditorProps> = ({
           onClick={onGenerate}
         >
           <RiSparklingFill className="h-4 w-4" />
-          <span>{t('workflow.nodes.llm.jsonSchema.generate')}</span>
+          <span>{t('nodes.llm.jsonSchema.generate', { ns: 'workflow' })}</span>
         </Button>
       </div>
     </div>

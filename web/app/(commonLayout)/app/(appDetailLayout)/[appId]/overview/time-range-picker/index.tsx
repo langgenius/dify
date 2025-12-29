@@ -2,6 +2,7 @@
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
 import type { PeriodParams, PeriodParamsWithTimeRange } from '@/app/components/app/overview/app-chart'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -13,8 +14,10 @@ import RangeSelector from './range-selector'
 
 const today = dayjs()
 
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
 type Props = {
-  ranges: { value: number, name: string }[]
+  ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
 }

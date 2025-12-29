@@ -113,12 +113,12 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
       <div className="relative z-[1] mx-3 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg shadow-md">
         <div className={cn('px-4 pt-3', userInputFieldCollapse ? 'pb-3' : 'pb-1')}>
           <div className="flex cursor-pointer items-center gap-0.5 py-0.5" onClick={() => setUserInputFieldCollapse(!userInputFieldCollapse)}>
-            <div className="system-md-semibold-uppercase text-text-secondary">{t('appDebug.inputs.userInputField')}</div>
+            <div className="system-md-semibold-uppercase text-text-secondary">{t('inputs.userInputField', { ns: 'appDebug' })}</div>
             {userInputFieldCollapse && <RiArrowRightSLine className="h-4 w-4 text-text-secondary" />}
             {!userInputFieldCollapse && <RiArrowDownSLine className="h-4 w-4 text-text-secondary" />}
           </div>
           {!userInputFieldCollapse && (
-            <div className="system-xs-regular mt-1 text-text-tertiary">{t('appDebug.inputs.completionVarTip')}</div>
+            <div className="system-xs-regular mt-1 text-text-tertiary">{t('inputs.completionVarTip', { ns: 'appDebug' })}</div>
           )}
         </div>
         {!userInputFieldCollapse && promptVariables.length > 0 && (
@@ -132,7 +132,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   {type !== 'checkbox' && (
                     <div className="system-sm-semibold mb-1 flex h-6 items-center gap-1 text-text-secondary">
                       <div className="truncate">{name || key}</div>
-                      {!required && <span className="system-xs-regular text-text-tertiary">{t('workflow.panel.optional')}</span>}
+                      {!required && <span className="system-xs-regular text-text-tertiary">{t('panel.optional', { ns: 'workflow' })}</span>}
                     </div>
                   )}
                   <div className="grow">
@@ -187,7 +187,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
             ))}
             {visionConfig?.enabled && (
               <div className="mt-3 justify-between xl:flex">
-                <div className="mr-1 w-[120px] shrink-0 py-2 text-sm text-text-primary">{t('common.imageUploader.imageUpload')}</div>
+                <div className="mr-1 w-[120px] shrink-0 py-2 text-sm text-text-primary">{t('imageUploader.imageUpload', { ns: 'common' })}</div>
                 <div className="grow">
                   <TextGenerationImageUploader
                     settings={visionConfig}
@@ -205,9 +205,9 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
         )}
         {!userInputFieldCollapse && (
           <div className="flex justify-between border-t border-divider-subtle p-4 pt-3">
-            <Button className="w-[72px]" onClick={onClear}>{t('common.operation.clear')}</Button>
+            <Button className="w-[72px]" onClick={onClear}>{t('operation.clear', { ns: 'common' })}</Button>
             {canNotRun && (
-              <Tooltip popupContent={t('appDebug.otherError.promptNoBeEmpty')}>
+              <Tooltip popupContent={t('otherError.promptNoBeEmpty', { ns: 'appDebug' })}>
                 <Button
                   variant="primary"
                   disabled={canNotRun}
@@ -215,7 +215,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                   className="w-[96px]"
                 >
                   <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                  {t('appDebug.inputs.run')}
+                  {t('inputs.run', { ns: 'appDebug' })}
                 </Button>
               </Tooltip>
             )}
@@ -227,7 +227,7 @@ const PromptValuePanel: FC<IPromptValuePanelProps> = ({
                 className="w-[96px]"
               >
                 <RiPlayLargeFill className="mr-0.5 h-4 w-4 shrink-0" aria-hidden="true" />
-                {t('appDebug.inputs.run')}
+                {t('inputs.run', { ns: 'appDebug' })}
               </Button>
             )}
           </div>
