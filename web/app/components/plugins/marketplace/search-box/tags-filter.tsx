@@ -83,7 +83,7 @@ const TagsFilter = ({
               showLeftIcon
               value={searchText}
               onChange={e => setSearchText(e.target.value)}
-              placeholder={t('pluginTags.searchTags') || ''}
+              placeholder={t('searchTags', { ns: 'pluginTags' }) || ''}
             />
           </div>
           <div className="max-h-[448px] overflow-y-auto p-1">

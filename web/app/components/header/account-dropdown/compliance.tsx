@@ -52,14 +52,14 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
         a.click()
         Toast.notify({
           type: 'success',
-          message: t('common.operation.downloadSuccess'),
+          message: t('operation.downloadSuccess', { ns: 'common' }),
         })
       }
       catch (error) {
         console.error(error)
         Toast.notify({
           type: 'error',
-          message: t('common.operation.downloadFailed'),
+          message: t('operation.downloadFailed', { ns: 'common' }),
         })
       }
     },
@@ -80,13 +80,13 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
     return (
       <Button loading={isPending} disabled={isPending} size="small" variant="secondary" className="flex items-center gap-[1px]" onClick={handleDownloadClick}>
         <RiArrowDownCircleLine className="size-[14px] text-components-button-secondary-text-disabled" />
-        <span className="system-xs-medium px-[3px] text-components-button-secondary-text">{t('common.operation.download')}</span>
+        <span className="system-xs-medium px-[3px] text-components-button-secondary-text">{t('operation.download', { ns: 'common' })}</span>
       </Button>
     )
   }
   const upgradeTooltip: Record<Plan, string> = {
-    [Plan.sandbox]: t('common.compliance.sandboxUpgradeTooltip'),
-    [Plan.professional]: t('common.compliance.professionalUpgradeTooltip'),
+    [Plan.sandbox]: t('compliance.sandboxUpgradeTooltip', { ns: 'common' }),
+    [Plan.professional]: t('compliance.professionalUpgradeTooltip', { ns: 'common' }),
     [Plan.team]: '',
     [Plan.enterprise]: '',
   }
@@ -96,7 +96,7 @@ const UpgradeOrDownload: FC<UpgradeOrDownloadProps> = ({ doc_name }) => {
         <SparklesSoft className="flex h-3.5 w-3.5 items-center py-[1px] pl-[3px] text-components-premium-badge-indigo-text-stop-0" />
         <div className="system-xs-medium">
           <span className="p-1">
-            {t('billing.upgradeBtn.encourageShort')}
+            {t('upgradeBtn.encourageShort', { ns: 'billing' })}
           </span>
         </div>
       </PremiumBadge>
@@ -121,7 +121,7 @@ export default function Compliance() {
             }
             >
               <RiVerifiedBadgeLine className="size-4 shrink-0 text-text-tertiary" />
-              <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('common.userProfile.compliance')}</div>
+              <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('userProfile.compliance', { ns: 'common' })}</div>
               <RiArrowRightSLine className="size-[14px] shrink-0 text-text-tertiary" />
             </MenuButton>
             <Transition
@@ -146,7 +146,7 @@ export default function Compliance() {
                       className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Soc2 className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.soc2Type1')}</div>
+                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.soc2Type1', { ns: 'common' })}</div>
                       <UpgradeOrDownload doc_name={DocName.SOC2_Type_I} />
                     </div>
                   </MenuItem>
@@ -155,7 +155,7 @@ export default function Compliance() {
                       className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Soc2 className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.soc2Type2')}</div>
+                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.soc2Type2', { ns: 'common' })}</div>
                       <UpgradeOrDownload doc_name={DocName.SOC2_Type_II} />
                     </div>
                   </MenuItem>
@@ -164,7 +164,7 @@ export default function Compliance() {
                       className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Iso className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.iso27001')}</div>
+                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.iso27001', { ns: 'common' })}</div>
                       <UpgradeOrDownload doc_name={DocName.ISO_27001} />
                     </div>
                   </MenuItem>
@@ -173,7 +173,7 @@ export default function Compliance() {
                       className={cn(itemClassName, 'group justify-between', 'data-[active]:bg-state-base-hover')}
                     >
                       <Gdpr className="size-7 shrink-0" />
-                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('common.compliance.gdpr')}</div>
+                      <div className="system-md-regular grow truncate px-1 text-text-secondary">{t('compliance.gdpr', { ns: 'common' })}</div>
                       <UpgradeOrDownload doc_name={DocName.GDPR} />
                     </div>
                   </MenuItem>

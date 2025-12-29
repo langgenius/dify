@@ -91,7 +91,7 @@ const Trigger: FC<TriggerProps> = ({
               <Tooltip
                 popupContent={
                   hasDeprecated
-                    ? t('common.modelProvider.deprecated')
+                    ? t('modelProvider.deprecated', { ns: 'common' })
                     : (modelDisabled && currentModel)
                         ? MODEL_STATUS_TEXT[currentModel.status as string][language]
                         : ''

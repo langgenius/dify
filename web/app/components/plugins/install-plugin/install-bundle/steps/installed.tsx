@@ -54,7 +54,7 @@ const Installed: FC<Props> = ({
             className="min-w-[72px]"
             onClick={onCancel}
           >
-            {t('common.operation.close')}
+            {t('operation.close', { ns: 'common' })}
           </Button>
         </div>
       )}

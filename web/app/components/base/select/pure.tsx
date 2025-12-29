@@ -97,9 +97,9 @@ const PureSelect = (props: PureSelectProps) => {
   }, [onOpenChange])
 
   const triggerText = useMemo(() => {
-    const placeholderText = placeholder || t('common.placeholder.select')
+    const placeholderText = placeholder || t('placeholder.select', { ns: 'common' })
     if (multiple)
-      return value?.length ? t('common.dynamicSelect.selected', { count: value.length }) : placeholderText
+      return value?.length ? t('dynamicSelect.selected', { ns: 'common', count: value.length }) : placeholderText
 
     return options.find(option => option.value === value)?.label || placeholderText
   }, [multiple, value, options, placeholder])
