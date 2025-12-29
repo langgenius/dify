@@ -7,7 +7,7 @@ import { VarType } from '../../types'
 import { LogicalOperator } from './types'
 import { isEmptyRelatedOperator } from './utils'
 
-const i18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Logic,
@@ -40,17 +40,17 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
     let errorMessages = ''
     const { cases } = payload
     if (!cases || cases.length === 0)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: 'IF' })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: 'IF' })
 
     cases.forEach((caseItem, index) => {
       if (!caseItem.conditions.length)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: index === 0 ? 'IF' : 'ELIF' })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: index === 0 ? 'IF' : 'ELIF' })
 
       caseItem.conditions.forEach((condition) => {
         if (!errorMessages && (!condition.variable_selector || condition.variable_selector.length === 0))
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
         if (!errorMessages && !condition.comparison_operator)
-          errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.ifElse.operator') })
+          errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.ifElse.operator', { ns: 'workflow' }) })
         if (!errorMessages) {
           if (condition.sub_variable_condition) {
             const isSet = condition.sub_variable_condition.conditions.every((c) => {
@@ -63,11 +63,11 @@ const nodeDefault: NodeDefault<IfElseNodeType> = {
               return (c.varType === VarType.boolean || c.varType === VarType.arrayBoolean) ? c.value === undefined : !!c.value
             })
             if (!isSet)
-              errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+              errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
           }
           else {
             if (!isEmptyRelatedOperator(condition.comparison_operator!) && ((condition.varType === VarType.boolean || condition.varType === VarType.arrayBoolean) ? condition.value === undefined : !condition.value))
-              errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+              errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
           }
         }
       })

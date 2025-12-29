@@ -145,7 +145,7 @@ const CodeEditor: FC<Props> = ({
       <Editor
         {...editorProps}
         onMount={onEditorMounted}
-        placeholder={t('workflow.common.jinjaEditorPlaceholder')!}
+        placeholder={t('common.jinjaEditorPlaceholder', { ns: 'workflow' })!}
       />
       {isShowVarPicker && (
         <div

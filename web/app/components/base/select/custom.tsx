@@ -78,7 +78,7 @@ const CustomSelect = <T extends Option>({
   }, [onOpenChange])
 
   const selectedOption = options.find(option => option.value === value)
-  const triggerText = selectedOption?.label || t('common.placeholder.select')
+  const triggerText = selectedOption?.label || t('placeholder.select', { ns: 'common' })
 
   return (
     <PortalToFollowElem

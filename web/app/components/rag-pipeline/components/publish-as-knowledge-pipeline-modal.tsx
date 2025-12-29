@@ -84,7 +84,7 @@ const PublishAsKnowledgePipelineModal = ({
         className="relative !w-[520px] !p-0"
       >
         <div className="title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary">
-          {t('pipeline.common.publishAs')}
+          {t('common.publishAs', { ns: 'pipeline' })}
           <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
@@ -93,12 +93,12 @@ const PublishAsKnowledgePipelineModal = ({
           <div className="mb-5 flex">
             <div className="mr-3 grow">
               <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
-                {t('pipeline.common.publishAsPipeline.name')}
+                {t('common.publishAsPipeline.name', { ns: 'pipeline' })}
               </div>
               <Input
                 value={pipelineName}
                 onChange={e => setPipelineName(e.target.value)}
-                placeholder={t('pipeline.common.publishAsPipeline.namePlaceholder') || ''}
+                placeholder={t('common.publishAsPipeline.namePlaceholder', { ns: 'pipeline' }) || ''}
               />
             </div>
             <AppIcon
@@ -113,11 +113,11 @@ const PublishAsKnowledgePipelineModal = ({
           </div>
           <div>
             <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary ">
-              {t('pipeline.common.publishAsPipeline.description')}
+              {t('common.publishAsPipeline.description', { ns: 'pipeline' })}
             </div>
             <Textarea
               className="resize-none"
-              placeholder={t('pipeline.common.publishAsPipeline.descriptionPlaceholder') || ''}
+              placeholder={t('common.publishAsPipeline.descriptionPlaceholder', { ns: 'pipeline' }) || ''}
               value={description}
               onChange={e => setDescription(e.target.value)}
             />
@@ -128,14 +128,14 @@ const PublishAsKnowledgePipelineModal = ({
             className="mr-2"
             onClick={onCancel}
           >
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button
             disabled={!pipelineName?.trim() || confirmDisabled}
             variant="primary"
             onClick={() => handleConfirm()}
           >
-            {t('workflow.common.publish')}
+            {t('common.publish', { ns: 'workflow' })}
           </Button>
         </div>
       </Modal>

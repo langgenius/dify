@@ -28,7 +28,7 @@ export default function FeedBack(props: DeleteAccountProps) {
       await logout()
       // Tokens are now stored in cookies and cleared by backend
       router.push('/signin')
-      Toast.notify({ type: 'info', message: t('common.account.deleteSuccessTip') })
+      Toast.notify({ type: 'info', message: t('account.deleteSuccessTip', { ns: 'common' }) })
     }
     catch (error) { console.error(error) }
   }, [router, t])
@@ -50,22 +50,22 @@ export default function FeedBack(props: DeleteAccountProps) {
     <CustomDialog
       show={true}
       onClose={props.onCancel}
-      title={t('common.account.feedbackTitle')}
+      title={t('account.feedbackTitle', { ns: 'common' })}
       className="max-w-[480px]"
       footer={false}
     >
-      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('common.account.feedbackLabel')}</label>
+      <label className="system-sm-semibold mb-1 mt-3 flex items-center text-text-secondary">{t('account.feedbackLabel', { ns: 'common' })}</label>
       <Textarea
         rows={6}
         value={userFeedback}
-        placeholder={t('common.account.feedbackPlaceholder') as string}
+        placeholder={t('account.feedbackPlaceholder', { ns: 'common' }) as string}
         onChange={(e) => {
           setUserFeedback(e.target.value)
         }}
       />
       <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('common.operation.submit')}</Button>
-        <Button className="w-full" onClick={handleSkip}>{t('common.operation.skip')}</Button>
+        <Button className="w-full" loading={isPending} variant="primary" onClick={handleSubmit}>{t('operation.submit', { ns: 'common' })}</Button>
+        <Button className="w-full" onClick={handleSkip}>{t('operation.skip', { ns: 'common' })}</Button>
       </div>
     </CustomDialog>
   )

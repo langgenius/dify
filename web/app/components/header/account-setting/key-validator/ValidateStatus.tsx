@@ -16,7 +16,7 @@ export const ValidatingTip = () => {
   const { t } = useTranslation()
   return (
     <div className="mt-2 text-xs font-normal text-primary-600">
-      {t('common.provider.validating')}
+      {t('provider.validating', { ns: 'common' })}
     </div>
   )
 }
@@ -26,7 +26,7 @@ export const ValidatedErrorMessage = ({ errorMessage }: { errorMessage: string }
 
   return (
     <div className="mt-2 text-xs font-normal text-[#D92D20]">
-      {t('common.provider.validatedError')}
+      {t('provider.validatedError', { ns: 'common' })}
       {errorMessage}
     </div>
   )

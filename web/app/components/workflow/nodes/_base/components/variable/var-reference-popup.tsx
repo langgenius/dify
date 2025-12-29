@@ -44,20 +44,20 @@ const VarReferencePopup: FC<Props> = ({
         ? (popupFor === 'toAssigned'
             ? (
                 <ListEmpty
-                  title={t('workflow.variableReference.noAvailableVars') || ''}
+                  title={t('variableReference.noAvailableVars', { ns: 'workflow' }) || ''}
                   description={(
                     <div className="system-xs-regular text-text-tertiary">
-                      {t('workflow.variableReference.noVarsForOperation')}
+                      {t('variableReference.noVarsForOperation', { ns: 'workflow' })}
                     </div>
                   )}
                 />
               )
             : (
                 <ListEmpty
-                  title={t('workflow.variableReference.noAssignedVars') || ''}
+                  title={t('variableReference.noAssignedVars', { ns: 'workflow' }) || ''}
                   description={(
                     <div className="system-xs-regular text-text-tertiary">
-                      {t('workflow.variableReference.assignedVarsDescription')}
+                      {t('variableReference.assignedVarsDescription', { ns: 'workflow' })}
                       <a
                         target="_blank"
                         rel="noopener noreferrer"
@@ -67,7 +67,7 @@ const VarReferencePopup: FC<Props> = ({
                           'ja-JP': '/guides/workflow/variables#会話変数',
                         })}
                       >
-                        {t('workflow.variableReference.conversationVars')}
+                        {t('variableReference.conversationVars', { ns: 'workflow' })}
                       </a>
                     </div>
                   )}
