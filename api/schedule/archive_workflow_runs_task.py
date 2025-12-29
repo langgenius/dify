@@ -13,9 +13,7 @@ def archive_workflow_runs_task() -> None:
     Scheduled archiving for paid-plan workflow runs.
     """
     tenant_ids = [
-        tid.strip()
-        for tid in dify_config.PAID_PLAN_WORKFLOW_RUN_ARCHIVE_TENANT_IDS.split(",")
-        if tid and tid.strip()
+        tid.strip() for tid in dify_config.PAID_PLAN_WORKFLOW_RUN_ARCHIVE_TENANT_IDS.split(",") if tid and tid.strip()
     ]
     click.echo(
         click.style(

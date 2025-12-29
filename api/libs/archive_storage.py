@@ -294,9 +294,7 @@ class ArchiveStorage:
             elif isinstance(value, dict):
                 result[key] = ArchiveStorage._serialize_record(value)
             elif isinstance(value, list):
-                result[key] = [
-                    ArchiveStorage._serialize_record(v) if isinstance(v, dict) else v for v in value
-                ]
+                result[key] = [ArchiveStorage._serialize_record(v) if isinstance(v, dict) else v for v in value]
             else:
                 result[key] = value
         return result
@@ -337,6 +335,4 @@ def build_workflow_run_prefix(
     archive_time = created_at or datetime.datetime.now(datetime.UTC)
     year = archive_time.strftime("%Y")
     month = archive_time.strftime("%m")
-    return (
-        f"{tenant_id}/app_id={app_id}/year={year}/month={month}/workflow_run_id={run_id}"
-    )
+    return f"{tenant_id}/app_id={app_id}/year={year}/month={month}/workflow_run_id={run_id}"

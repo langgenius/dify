@@ -354,9 +354,7 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
 
     @staticmethod
     def get_by_run_id(session: Session, run_id: str) -> Sequence[WorkflowNodeExecutionModel]:
-        stmt = select(WorkflowNodeExecutionModel).where(
-            WorkflowNodeExecutionModel.workflow_run_id == run_id
-        )
+        stmt = select(WorkflowNodeExecutionModel).where(WorkflowNodeExecutionModel.workflow_run_id == run_id)
         return list(session.scalars(stmt))
 
     @staticmethod

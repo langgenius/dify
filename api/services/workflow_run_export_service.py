@@ -90,9 +90,7 @@ class WorkflowRunExportService:
                 raise WorkflowRunExportError(f"Workflow run {run_id} not found")
 
             if run.tenant_id != tenant_id:
-                raise WorkflowRunExportError(
-                    f"Workflow run {run_id} does not belong to tenant {tenant_id}"
-                )
+                raise WorkflowRunExportError(f"Workflow run {run_id} does not belong to tenant {tenant_id}")
 
             if run.is_archived:
                 return self._export_from_s3(session, run, include_manifest)
@@ -114,9 +112,7 @@ class WorkflowRunExportService:
         data = self.export(tenant_id=tenant_id, run_id=run_id, include_manifest=include_manifest)
 
         task_id = task_id or str(uuid4())
-        storage_key = (
-            f"exports/workflow_runs/tenant_id={tenant_id}/workflow_run_id={run_id}/task_id={task_id}.zip"
-        )
+        storage_key = f"exports/workflow_runs/tenant_id={tenant_id}/workflow_run_id={run_id}/task_id={task_id}.zip"
 
         storage = get_archive_storage()
         checksum = storage.put_object(storage_key, data)

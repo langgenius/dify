@@ -61,4 +61,3 @@ def init_app(app: DifyApp):
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
-

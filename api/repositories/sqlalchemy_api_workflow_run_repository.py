@@ -490,9 +490,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             return 0
 
         result = session.execute(
-            WorkflowRun.__table__.update()
-            .where(WorkflowRun.id.in_(run_ids))
-            .values(is_archived=True)
+            WorkflowRun.__table__.update().where(WorkflowRun.id.in_(run_ids)).values(is_archived=True)
         )
         return cast(CursorResult, result).rowcount or 0
 
@@ -505,9 +503,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             return 0
 
         result = session.execute(
-            WorkflowRun.__table__.update()
-            .where(WorkflowRun.id.in_(run_ids))
-            .values(is_archived=False)
+            WorkflowRun.__table__.update().where(WorkflowRun.id.in_(run_ids)).values(is_archived=False)
         )
         return cast(CursorResult, result).rowcount or 0
 
