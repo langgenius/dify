@@ -14,7 +14,7 @@ import I18n from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
 import KeyValueItem from '../base/key-value-item'
 
-const i18nPrefix = 'plugin.debugInfo'
+const i18nPrefix = 'debugInfo'
 
 const DebugInfo: FC = () => {
   const { t } = useTranslation()
@@ -34,9 +34,9 @@ const DebugInfo: FC = () => {
       popupContent={(
         <>
           <div className="flex items-center gap-1 self-stretch">
-            <span className="system-sm-semibold flex shrink-0 grow basis-0 flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.title`)}</span>
+            <span className="system-sm-semibold flex shrink-0 grow basis-0 flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</span>
             <a href={getDocsUrl(locale, '/plugins/quick-start/debug-plugin')} target="_blank" className="flex cursor-pointer items-center gap-0.5 text-text-accent-light-mode-only">
-              <span className="system-xs-medium">{t(`${i18nPrefix}.viewDocs`)}</span>
+              <span className="system-xs-medium">{t(`${i18nPrefix}.viewDocs`, { ns: 'plugin' })}</span>
               <RiArrowRightUpLine className="h-3 w-3" />
             </a>
           </div>

@@ -38,7 +38,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
   if (!('provider' in props)) {
     return (
       <Tooltip
-        popupContent={t('workflow.nodes.agent.modelNotSelected')}
+        popupContent={t('nodes.agent.modelNotSelected', { ns: 'workflow' })}
         triggerMethod="hover"
       >
         <div className="relative">
@@ -61,7 +61,7 @@ export const ModelBar: FC<ModelBarProps> = (props) => {
   const showWarn = modelList && !modelInstalled
   return modelList && (
     <Tooltip
-      popupContent={t('workflow.nodes.agent.modelNotInstallTooltip')}
+      popupContent={t('nodes.agent.modelNotInstallTooltip', { ns: 'workflow' })}
       triggerMethod="hover"
       disabled={!modelList || modelInstalled}
     >

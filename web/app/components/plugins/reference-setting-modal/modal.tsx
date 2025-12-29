@@ -14,7 +14,7 @@ import AutoUpdateSetting from './auto-update-setting'
 import { defaultValue as autoUpdateDefaultValue } from './auto-update-setting/config'
 import Label from './label'
 
-const i18nPrefix = 'plugin.privilege'
+const i18nPrefix = 'privilege'
 type Props = {
   payload: ReferenceSetting
   onHide: () => void
@@ -57,12 +57,12 @@ const PluginSettingModal: FC<Props> = ({
     >
       <div className="shadows-shadow-xl flex w-full flex-col items-start rounded-2xl border border-components-panel-border bg-components-panel-bg">
         <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
-          <span className="title-2xl-semi-bold self-stretch text-text-primary">{t(`${i18nPrefix}.title`)}</span>
+          <span className="title-2xl-semi-bold self-stretch text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'plugin' })}</span>
         </div>
         <div className="flex flex-col items-start justify-center gap-4 self-stretch px-6 py-3">
           {[
-            { title: t(`${i18nPrefix}.whoCanInstall`), key: 'install_permission', value: tempPrivilege?.install_permission || PermissionType.noOne },
-            { title: t(`${i18nPrefix}.whoCanDebug`), key: 'debug_permission', value: tempPrivilege?.debug_permission || PermissionType.noOne },
+            { title: t(`${i18nPrefix}.whoCanInstall`, { ns: 'plugin' }), key: 'install_permission', value: tempPrivilege?.install_permission || PermissionType.noOne },
+            { title: t(`${i18nPrefix}.whoCanDebug`, { ns: 'plugin' }), key: 'debug_permission', value: tempPrivilege?.debug_permission || PermissionType.noOne },
           ].map(({ title, key, value }) => (
             <div key={key} className="flex flex-col items-start gap-1 self-stretch">
               <Label label={title} />
@@ -70,7 +70,7 @@ const PluginSettingModal: FC<Props> = ({
                 {[PermissionType.everyone, PermissionType.admin, PermissionType.noOne].map(option => (
                   <OptionCard
                     key={option}
-                    title={t(`${i18nPrefix}.${option}`)}
+                    title={t(`${i18nPrefix}.${option}`, { ns: 'plugin' })}
                     onSelect={() => handlePrivilegeChange(key)(option)}
                     selected={value === option}
                     className="flex-1"
@@ -90,14 +90,14 @@ const PluginSettingModal: FC<Props> = ({
             className="min-w-[72px]"
             onClick={onHide}
           >
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button
             className="min-w-[72px]"
             variant="primary"
             onClick={handleSave}
           >
-            {t('common.operation.save')}
+            {t('operation.save', { ns: 'common' })}
           </Button>
         </div>
       </div>

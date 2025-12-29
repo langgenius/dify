@@ -73,7 +73,7 @@ const ConditionString = ({
             className="border-none bg-transparent outline-none hover:bg-transparent focus:bg-transparent focus:shadow-none"
             value={value}
             onChange={e => onChange(e.target.value)}
-            placeholder={t('workflow.nodes.knowledgeRetrieval.metadata.panel.placeholder')}
+            placeholder={t('nodes.knowledgeRetrieval.metadata.panel.placeholder', { ns: 'workflow' })}
           />
         )
       }

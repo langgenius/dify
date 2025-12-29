@@ -298,7 +298,7 @@ export const useEmbeddedChatbot = () => {
     if (showNewConversationItemInList && data[0]?.id !== '') {
       data.unshift({
         id: '',
-        name: t('share.chat.newChatDefaultName'),
+        name: t('chat.newChatDefaultName', { ns: 'share' }),
         inputs: {},
         introduction: '',
       })
@@ -369,12 +369,12 @@ export const useEmbeddedChatbot = () => {
     }
 
     if (hasEmptyInput) {
-      notify({ type: 'error', message: t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }) })
+      notify({ type: 'error', message: t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }) })
       return false
     }
 
     if (fileIsUploading) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return
     }
 
@@ -411,7 +411,7 @@ export const useEmbeddedChatbot = () => {
 
   const handleFeedback = useCallback(async (messageId: string, feedback: Feedback) => {
     await updateFeedback({ url: `/messages/${messageId}/feedbacks`, body: { rating: feedback.rating, content: feedback.content } }, isInstalledApp, appId)
-    notify({ type: 'success', message: t('common.api.success') })
+    notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
   }, [isInstalledApp, appId, t, notify])
 
   return {

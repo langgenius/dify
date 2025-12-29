@@ -29,7 +29,7 @@ import Crawling from './base/crawling'
 import ErrorMessage from './base/error-message'
 import Options from './base/options'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 export type WebsiteCrawlProps = {
   nodeId: string
@@ -130,7 +130,7 @@ const WebsiteCrawl = ({
           setStep(CrawlStep.finished)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`))
+          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
           setStep(CrawlStep.finished)
         },
       },
@@ -184,7 +184,7 @@ const WebsiteCrawl = ({
           {showError && (
             <ErrorMessage
               className="mt-2"
-              title={t(`${I18N_PREFIX}.exceptionErrorTitle`)}
+              title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })}
               errorMsg={crawlErrorMessage}
             />
           )}

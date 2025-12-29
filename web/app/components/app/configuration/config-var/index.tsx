@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import type { InputVar } from '@/app/components/workflow/types'
 import type { ExternalDataTool } from '@/models/common'
 import type { PromptVariable } from '@/models/debug'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
 import * as React from 'react'
@@ -69,14 +70,14 @@ const buildPromptVariableFromInput = (payload: InputVar): PromptVariable => {
 const getDuplicateError = (list: PromptVariable[]) => {
   if (hasDuplicateStr(list.map(item => item.key))) {
     return {
-      errorMsgKey: 'appDebug.varKeyError.keyAlreadyExists',
-      typeName: 'appDebug.variableConfig.varName',
+      errorMsgKey: 'varKeyError.keyAlreadyExists',
+      typeName: 'variableConfig.varName',
     }
   }
   if (hasDuplicateStr(list.map(item => item.name as string))) {
     return {
-      errorMsgKey: 'appDebug.varKeyError.keyAlreadyExists',
-      typeName: 'appDebug.variableConfig.labelName',
+      errorMsgKey: 'varKeyError.keyAlreadyExists',
+      typeName: 'variableConfig.labelName',
     }
   }
   return null
@@ -110,10 +111,11 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     })
     const duplicateError = getDuplicateError(newPromptVariables)
     if (duplicateError) {
+      // const a = t(duplicateError.errorMsgKey as any, { ns: 'appDebug' }),
+
       Toast.notify({
         type: 'error',
-        // eslint-disable-next-line ts/no-explicit-any
-        message: t(duplicateError.errorMsgKey as any, { key: t(duplicateError.typeName as any) as string }) as string,
+        message: t(duplicateError.errorMsgKey as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug', key: t(duplicateError.typeName as I18nKeysByPrefix<'appDebug', 'duplicateError.'>, { ns: 'appDebug' }) }) as string,
       })
       return false
     }
@@ -164,7 +166,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable && i !== index) {
-            Toast.notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+            Toast.notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
             return false
           }
         }
@@ -253,12 +255,12 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       className="mt-2"
       title={(
         <div className="flex items-center">
-          <div className="mr-1">{t('appDebug.variableTitle')}</div>
+          <div className="mr-1">{t('variableTitle', { ns: 'appDebug' })}</div>
           {!readonly && (
             <Tooltip
               popupContent={(
                 <div className="w-[180px]">
-                  {t('appDebug.variableTip')}
+                  {t('variableTip', { ns: 'appDebug' })}
                 </div>
               )}
             />
@@ -270,7 +272,7 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
     >
       {!hasVar && (
         <div className="mt-1 px-3 pb-3">
-          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('appDebug.notSetVar')}</div>
+          <div className="pb-1 pt-2 text-xs text-text-tertiary">{t('notSetVar', { ns: 'appDebug' })}</div>
         </div>
       )}
       {hasVar && (
@@ -322,8 +324,8 @@ const ConfigVar: FC<IConfigVarProps> = ({ promptVariables, readonly, onPromptVar
       {isShowDeleteContextVarModal && (
         <Confirm
           isShow={isShowDeleteContextVarModal}
-          title={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTitle', { varName: promptVariables[removeIndex as number]?.name })}
-          content={t('appDebug.feature.dataSet.queryVariable.deleteContextVarTip')}
+          title={t('feature.dataSet.queryVariable.deleteContextVarTitle', { ns: 'appDebug', varName: promptVariables[removeIndex as number]?.name })}
+          content={t('feature.dataSet.queryVariable.deleteContextVarTip', { ns: 'appDebug' })}
           onConfirm={() => {
             didRemoveVar(removeIndex as number)
             hideDeleteContextVarModal()
