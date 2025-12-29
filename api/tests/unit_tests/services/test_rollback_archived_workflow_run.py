@@ -11,7 +11,7 @@ class TestWorkflowRunRollback:
 
     def test_rollback_initialization(self):
         """Rollback service should respect dry_run flag."""
-        from services.rollback_archived_workflow_run import WorkflowRunRollback
+        from services.retention.rollback_archived_workflow_run import WorkflowRunRollback
 
         rollback = WorkflowRunRollback(dry_run=True)
 
@@ -20,7 +20,7 @@ class TestWorkflowRunRollback:
     def test_convert_datetime_fields(self):
         """ISO datetime strings should be converted to datetime objects."""
         from models.workflow import WorkflowRun
-        from services.rollback_archived_workflow_run import WorkflowRunRollback
+        from services.retention.rollback_archived_workflow_run import WorkflowRunRollback
 
         record = {
             "id": "test-id",
@@ -39,7 +39,7 @@ class TestWorkflowRunRollback:
 
     def test_restore_table_records_returns_rowcount(self):
         """Restore should return inserted rowcount."""
-        from services.rollback_archived_workflow_run import WorkflowRunRollback
+        from services.retention.rollback_archived_workflow_run import WorkflowRunRollback
 
         session = MagicMock()
         session.execute.return_value = MagicMock(rowcount=2)
@@ -54,7 +54,7 @@ class TestWorkflowRunRollback:
 
     def test_restore_table_records_unknown_table(self):
         """Unknown table names should be ignored gracefully."""
-        from services.rollback_archived_workflow_run import WorkflowRunRollback
+        from services.retention.rollback_archived_workflow_run import WorkflowRunRollback
 
         session = MagicMock()
 

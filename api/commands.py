@@ -880,7 +880,7 @@ def archive_workflow_runs(
 
     The workflow_runs and workflow_app_logs tables are preserved for UI listing.
     """
-    from services.archive_paid_plan_workflow_run_logs import WorkflowRunArchiver
+    from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(
@@ -932,7 +932,7 @@ def rollback_workflow_runs(
     - workflow_pause_reasons
     - workflow_trigger_logs
     """
-    from services.rollback_archived_workflow_run import WorkflowRunRollback
+    from services.retention.rollback_archived_workflow_run import WorkflowRunRollback
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(

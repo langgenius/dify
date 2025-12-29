@@ -14,11 +14,11 @@ from unittest.mock import MagicMock, patch
 class TestWorkflowRunArchiver:
     """Tests for the WorkflowRunArchiver class."""
 
-    @patch("services.archive_paid_plan_workflow_run_logs.dify_config")
-    @patch("services.archive_paid_plan_workflow_run_logs.get_archive_storage")
+    @patch("services.retention.archive_paid_plan_workflow_run.dify_config")
+    @patch("services.retention.archive_paid_plan_workflow_run.get_archive_storage")
     def test_archiver_initialization(self, mock_get_storage, mock_config):
         """Test archiver can be initialized with various options."""
-        from services.archive_paid_plan_workflow_run_logs import WorkflowRunArchiver
+        from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
         mock_config.BILLING_ENABLED = False
 
@@ -38,7 +38,7 @@ class TestWorkflowRunArchiver:
 
     def test_model_to_dict(self):
         """Test SQLAlchemy model to dict conversion."""
-        from services.archive_paid_plan_workflow_run_logs import WorkflowRunArchiver
+        from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
         # Create a mock model with __table__.columns
         mock_model = MagicMock()
@@ -56,7 +56,7 @@ class TestWorkflowRunArchiver:
 
     def test_get_manifest_key(self):
         """Test manifest key generation."""
-        from services.archive_paid_plan_workflow_run_logs import WorkflowRunArchiver
+        from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
         archiver = WorkflowRunArchiver.__new__(WorkflowRunArchiver)
 
@@ -72,7 +72,7 @@ class TestWorkflowRunArchiver:
 
     def test_get_table_key(self):
         """Test table data key generation."""
-        from services.archive_paid_plan_workflow_run_logs import WorkflowRunArchiver
+        from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
         archiver = WorkflowRunArchiver.__new__(WorkflowRunArchiver)
 
@@ -95,7 +95,7 @@ class TestWorkflowRunExportService:
 
     def test_export_service_initialization(self):
         """Test export service can be instantiated."""
-        from services.workflow_run_export_service import WorkflowRunExportService
+        from services.retention.export_workflow_run import WorkflowRunExportService
 
         service = WorkflowRunExportService()
 
