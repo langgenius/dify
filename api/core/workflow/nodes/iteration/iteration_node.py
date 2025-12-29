@@ -37,6 +37,7 @@ from core.workflow.node_events import (
 from core.workflow.nodes.base import LLMUsageTrackingMixin
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.iteration.entities import ErrorHandleMode, IterationNodeData
+from core.workflow.nodes.variable_assigner.common.helpers import get_updated_variables
 from core.workflow.runtime import VariablePool
 from libs.datetime_utils import naive_utc_now
 from libs.flask_utils import preserve_flask_contexts
@@ -282,7 +283,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
                     usage_accumulator[0] = self._merge_usage(usage_accumulator[0], iteration_usage)
 
                     # Sync conversation variables after iteration completion
-                    self._sync_conversation_variables_from_snapshot(conversation_snapshot)
+                    self._merge_touched_conversation_variables(conversation_snapshot)
 
                 except Exception as e:
                     # Handle errors based on error_handle_mode
@@ -314,6 +315,7 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             iter_start_at = datetime.now(UTC).replace(tzinfo=None)
             events: list[GraphNodeEventBase] = []
             outputs_temp: list[object] = []
+            touched_conversation_vars: set[str] = set()
 
             graph_engine = self._create_graph_engine(index, item)
 
@@ -325,10 +327,20 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
             ):
                 events.append(event)
 
+                # Check for conversation variable updates
+                if (
+                    event.node_run_result
+                    and event.node_run_result.process_data
+                    and (updates := get_updated_variables(event.node_run_result.process_data))
+                ):
+                    for update in updates:
+                        if update.selector[0] == CONVERSATION_VARIABLE_NODE_ID:
+                            touched_conversation_vars.add(update.name)
+
             # Get the output value from the temporary outputs list
             output_value = outputs_temp[0] if outputs_temp else None
-            conversation_snapshot = self._extract_conversation_variable_snapshot(
-                variable_pool=graph_engine.graph_runtime_state.variable_pool
+            conversation_snapshot = self._extract_conversation_variable_touched(
+                variable_pool=graph_engine.graph_runtime_state.variable_pool, touched_names=touched_conversation_vars
             )
 
             return (
@@ -519,6 +531,16 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         conversation_variables = variable_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
         return {name: variable.model_copy(deep=True) for name, variable in conversation_variables.items()}
 
+    def _extract_conversation_variable_touched(
+        self, *, variable_pool: VariablePool, touched_names: set[str]
+    ) -> dict[str, VariableUnion]:
+        conversation_variables = variable_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
+        return {
+            name: variable.model_copy(deep=True)
+            for name, variable in conversation_variables.items()
+            if name in touched_names
+        }
+
     def _sync_conversation_variables_from_snapshot(self, snapshot: dict[str, VariableUnion]) -> None:
         parent_pool = self.graph_runtime_state.variable_pool
         parent_conversations = parent_pool.variable_dictionary.get(CONVERSATION_VARIABLE_NODE_ID, {})
@@ -529,6 +551,16 @@ class IterationNode(LLMUsageTrackingMixin, Node[IterationNodeData]):
         for removed_key in current_keys - snapshot_keys:
             parent_pool.remove((CONVERSATION_VARIABLE_NODE_ID, removed_key))
 
+        for name, variable in snapshot.items():
+            parent_pool.add((CONVERSATION_VARIABLE_NODE_ID, name), variable)
+
+    def _merge_touched_conversation_variables(self, snapshot: dict[str, VariableUnion]) -> None:
+        """
+        Merge conversation variables from a snapshot into the parent pool.
+        Only adds/updates variables present in the snapshot. Does not delete missing variables.
+        Used for parallel execution to avoid overwriting unrelated variables.
+        """
+        parent_pool = self.graph_runtime_state.variable_pool
         for name, variable in snapshot.items():
             parent_pool.add((CONVERSATION_VARIABLE_NODE_ID, name), variable)
 
