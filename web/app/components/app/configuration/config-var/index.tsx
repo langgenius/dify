@@ -34,7 +34,7 @@ type ExternalDataToolParams = {
   type: string
   index: number
   name: string
-  config?: Record<string, unknown>
+  config?: PromptVariable['config']
   icon?: string
   icon_background?: string
 }
