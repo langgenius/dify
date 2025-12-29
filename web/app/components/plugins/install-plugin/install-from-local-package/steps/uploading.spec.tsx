@@ -172,7 +172,13 @@ describe('Uploading', () => {
       })
     })
 
-    it('should call onPackageUploaded when package upload succeeds (no error message)', async () => {
+    // NOTE: The uploadFile API has an unconventional contract where it always rejects.
+    // Success vs failure is determined by whether response.message exists:
+    // - If response.message exists → treated as failure (calls onFailed)
+    // - If response.message is absent → treated as success (calls onPackageUploaded/onBundleUploaded)
+    // This explains why we use mockRejectedValue for "success" scenarios below.
+
+    it('should call onPackageUploaded when upload rejects without error message (success case)', async () => {
       const mockResult = {
         unique_identifier: 'test-uid',
         manifest: createMockManifest(),
@@ -198,7 +204,7 @@ describe('Uploading', () => {
       })
     })
 
-    it('should call onBundleUploaded when bundle upload succeeds (no error message)', async () => {
+    it('should call onBundleUploaded when upload rejects without error message (success case)', async () => {
       const mockDependencies = createMockDependencies()
       mockUploadFile.mockRejectedValue({
         response: mockDependencies,

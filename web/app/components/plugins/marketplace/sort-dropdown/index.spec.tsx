@@ -452,25 +452,31 @@ describe('SortDropdown', () => {
   // Edge Cases Tests
   // ================================
   describe('Edge Cases', () => {
-    it('should handle unknown sortBy value gracefully', () => {
+    // The component falls back to the first option (Most Popular) when sort values are invalid
+
+    it('should fallback to default option when sortBy is unknown', () => {
       mockSort = { sortBy: 'unknown_field', sortOrder: 'DESC' }
 
-      // This may cause an error or undefined behavior
-      // Component uses find() which returns undefined for non-matching
-      expect(() => render(<SortDropdown />)).toThrow()
+      render(<SortDropdown />)
+
+      // Should fallback to first option "Most Popular"
+      expect(screen.getByText('Most Popular')).toBeInTheDocument()
     })
 
-    it('should handle empty sortBy value', () => {
+    it('should fallback to default option when sortBy is empty', () => {
       mockSort = { sortBy: '', sortOrder: 'DESC' }
 
-      expect(() => render(<SortDropdown />)).toThrow()
+      render(<SortDropdown />)
+
+      expect(screen.getByText('Most Popular')).toBeInTheDocument()
     })
 
-    it('should handle unknown sortOrder value', () => {
+    it('should fallback to default option when sortOrder is unknown', () => {
       mockSort = { sortBy: 'install_count', sortOrder: 'UNKNOWN' }
 
-      // No matching option, selectedOption will be undefined
-      expect(() => render(<SortDropdown />)).toThrow()
+      render(<SortDropdown />)
+
+      expect(screen.getByText('Most Popular')).toBeInTheDocument()
     })
 
     it('should render correctly when handleSortChange is a no-op', () => {
