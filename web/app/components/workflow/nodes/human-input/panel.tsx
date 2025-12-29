@@ -32,7 +32,7 @@ import useConfig from './hooks/use-config'
 import { UserActionButtonType } from './types'
 import { genActionId } from './utils'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   id,
@@ -89,9 +89,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       <div className={cn('px-4 py-2', isExpandFormContent && 'fixed bottom-[8px] right-[4px] top-[189px] z-10 flex flex-col bg-components-panel-bg')} style={{ width: isExpandFormContent ? panelWidth : '100%' }}>
         <div className="mb-1 flex shrink-0 items-center justify-between">
           <div className="flex h-6 items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.formContent.title`)}</div>
+            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.formContent.title`, { ns: 'workflow' })}</div>
             <Tooltip
-              popupContent={t(`${i18nPrefix}.formContent.tooltip`)}
+              popupContent={t(`${i18nPrefix}.formContent.tooltip`, { ns: 'workflow' })}
             />
           </div>
           <div className="flex items-center ">
@@ -105,7 +105,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               onClick={togglePreview}
             >
               <RiEyeLine className="size-3.5" />
-              <div className="system-xs-medium">{t(`${i18nPrefix}.formContent.preview`)}</div>
+              <div className="system-xs-medium">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</div>
             </Button>
             <div className="mx-2 h-3 w-px bg-divider-regular"></div>
             <div className="flex items-center space-x-1">
@@ -113,7 +113,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
                 className="flex size-6 cursor-pointer items-center justify-center rounded-md hover:bg-components-button-ghost-bg-hover"
                 onClick={() => {
                   copy(inputs.form_content)
-                  Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                  Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
                 }}
               >
                 <RiClipboardLine className="h-4 w-4 text-text-secondary" />
@@ -142,9 +142,9 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       <div className="px-4 py-2">
         <div className="mb-1 flex items-center justify-between">
           <div className="flex items-center gap-0.5">
-            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.userActions.title`)}</div>
+            <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.userActions.title`, { ns: 'workflow' })}</div>
             <Tooltip
-              popupContent={t(`${i18nPrefix}.userActions.tooltip`)}
+              popupContent={t(`${i18nPrefix}.userActions.tooltip`, { ns: 'workflow' })}
             />
           </div>
           <div className="flex items-center px-1">
@@ -162,7 +162,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
           </div>
         </div>
         {!inputs.user_actions.length && (
-          <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`)}</div>
+          <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.userActions.emptyTip`, { ns: 'workflow' })}</div>
         )}
         {inputs.user_actions.length > 0 && (
           <div className="space-y-2">
@@ -182,7 +182,7 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
       </div>
       {/* timeout */}
       <div className="flex items-center justify-between px-4 py-2">
-        <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.timeout.title`)}</div>
+        <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.timeout.title`, { ns: 'workflow' })}</div>
         <TimeoutInput
           timeout={inputs.timeout}
           unit={inputs.timeout_unit}

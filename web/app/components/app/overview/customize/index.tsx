@@ -31,7 +31,7 @@ const GithubIcon = ({ className }: { className: string }) => {
   )
 }
 
-const prefixCustomize = 'appOverview.overview.appInfo.customize'
+const prefixCustomize = 'overview.appInfo.customize'
 
 const CustomizeModal: FC<IShareLinkProps> = ({
   isShow,
@@ -46,8 +46,8 @@ const CustomizeModal: FC<IShareLinkProps> = ({
 
   return (
     <Modal
-      title={t(`${prefixCustomize}.title`)}
-      description={t(`${prefixCustomize}.explanation`)}
+      title={t(`${prefixCustomize}.title`, { ns: 'appOverview' })}
+      description={t(`${prefixCustomize}.explanation`, { ns: 'appOverview' })}
       isShow={isShow}
       onClose={onClose}
       className="w-[640px] !max-w-2xl"
@@ -55,20 +55,20 @@ const CustomizeModal: FC<IShareLinkProps> = ({
     >
       <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
         <Tag bordered={true} hideBg={true} className="border-text-accent-secondary uppercase text-text-accent-secondary">
-          {t(`${prefixCustomize}.way`)}
+          {t(`${prefixCustomize}.way`, { ns: 'appOverview' })}
           {' '}
           1
         </Tag>
-        <p className="system-sm-medium my-2 text-text-secondary">{t(`${prefixCustomize}.way1.name`)}</p>
+        <p className="system-sm-medium my-2 text-text-secondary">{t(`${prefixCustomize}.way1.name`, { ns: 'appOverview' })}</p>
         <div className="flex py-4">
           <StepNum>1</StepNum>
           <div className="flex flex-col">
-            <div className="text-text-primary">{t(`${prefixCustomize}.way1.step1`)}</div>
-            <div className="mb-2 mt-1 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step1Tip`)}</div>
+            <div className="text-text-primary">{t(`${prefixCustomize}.way1.step1`, { ns: 'appOverview' })}</div>
+            <div className="mb-2 mt-1 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step1Tip`, { ns: 'appOverview' })}</div>
             <a href={`https://github.com/langgenius/${isChatApp ? 'webapp-conversation' : 'webapp-text-generator'}`} target="_blank" rel="noopener noreferrer">
               <Button>
                 <GithubIcon className="mr-2 text-text-secondary" />
-                {t(`${prefixCustomize}.way1.step1Operation`)}
+                {t(`${prefixCustomize}.way1.step1Operation`, { ns: 'appOverview' })}
               </Button>
             </a>
           </div>
@@ -76,12 +76,12 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <div className="flex pt-4">
           <StepNum>2</StepNum>
           <div className="flex flex-col">
-            <div className="text-text-primary">{t(`${prefixCustomize}.way1.step2`)}</div>
-            <div className="mb-2 mt-1 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step2Tip`)}</div>
+            <div className="text-text-primary">{t(`${prefixCustomize}.way1.step2`, { ns: 'appOverview' })}</div>
+            <div className="mb-2 mt-1 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step2Tip`, { ns: 'appOverview' })}</div>
             <a href="https://vercel.com/docs/concepts/deployments/git/vercel-for-github" target="_blank" rel="noopener noreferrer">
               <Button>
                 <div className="mr-1.5 border-b-[12px] border-l-[7px] border-r-[7px] border-t-0 border-solid border-text-primary border-l-transparent border-r-transparent border-t-transparent"></div>
-                <span>{t(`${prefixCustomize}.way1.step2Operation`)}</span>
+                <span>{t(`${prefixCustomize}.way1.step2Operation`, { ns: 'appOverview' })}</span>
               </Button>
             </a>
           </div>
@@ -89,8 +89,8 @@ const CustomizeModal: FC<IShareLinkProps> = ({
         <div className="flex py-4">
           <StepNum>3</StepNum>
           <div className="flex w-full flex-col overflow-hidden">
-            <div className="text-text-primary">{t(`${prefixCustomize}.way1.step3`)}</div>
-            <div className="mb-2 mt-1 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step3Tip`)}</div>
+            <div className="text-text-primary">{t(`${prefixCustomize}.way1.step3`, { ns: 'appOverview' })}</div>
+            <div className="mb-2 mt-1 text-xs text-text-tertiary">{t(`${prefixCustomize}.way1.step3Tip`, { ns: 'appOverview' })}</div>
             <pre className="box-border select-text overflow-x-scroll rounded-lg border-[0.5px] border-components-panel-border bg-background-section px-4 py-3 text-xs font-medium text-text-secondary">
               NEXT_PUBLIC_APP_ID=
               {`'${appId}'`}
@@ -109,11 +109,11 @@ const CustomizeModal: FC<IShareLinkProps> = ({
       </div>
       <div className="mt-4 w-full rounded-lg border-[0.5px] border-components-panel-border px-6 py-5">
         <Tag bordered={true} hideBg={true} className="border-text-accent-secondary uppercase text-text-accent-secondary">
-          {t(`${prefixCustomize}.way`)}
+          {t(`${prefixCustomize}.way`, { ns: 'appOverview' })}
           {' '}
           2
         </Tag>
-        <p className="system-sm-medium my-2 text-text-secondary">{t(`${prefixCustomize}.way2.name`)}</p>
+        <p className="system-sm-medium my-2 text-text-secondary">{t(`${prefixCustomize}.way2.name`, { ns: 'appOverview' })}</p>
         <Button
           className="mt-2"
           onClick={() =>
@@ -122,7 +122,7 @@ const CustomizeModal: FC<IShareLinkProps> = ({
               '_blank',
             )}
         >
-          <span className="text-sm text-text-secondary">{t(`${prefixCustomize}.way2.operation`)}</span>
+          <span className="text-sm text-text-secondary">{t(`${prefixCustomize}.way2.operation`, { ns: 'appOverview' })}</span>
           <ArrowTopRightOnSquareIcon className="ml-1 h-4 w-4 shrink-0 text-text-secondary" />
         </Button>
       </div>

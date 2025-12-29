@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import useNodeCrud from '../../_base/hooks/use-node-crud'
 import { isOutput } from '../utils'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type Params = {
   id: string
@@ -34,7 +34,7 @@ const useSingleRunFormParams = ({
 
   const forms = useMemo(() => {
     const forms: FormProps[] = [{
-      label: t(`${i18nPrefix}.singleRun.label`)!,
+      label: t(`${i18nPrefix}.singleRun.label`, { ns: 'workflow' })!,
       inputs: generatedInputs,
       values: runInputData,
       onChange: setRunInputData,

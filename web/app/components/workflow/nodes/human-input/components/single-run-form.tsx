@@ -78,7 +78,7 @@ const FormContent = ({
         <div className="flex items-center p-4 pb-1">
           <div className="system-sm-semibold-uppercase flex cursor-pointer items-center text-text-accent" onClick={handleBack}>
             <RiArrowLeftLine className="mr-1 h-4 w-4" />
-            {t('workflow.nodes.humanInput.singleRun.back')}
+            {t('nodes.humanInput.singleRun.back', { ns: 'workflow' })}
           </div>
           <div className="system-xs-regular mx-1 text-divider-deep">/</div>
           <div className="system-sm-semibold-uppercase text-text-secondary">{nodeName}</div>

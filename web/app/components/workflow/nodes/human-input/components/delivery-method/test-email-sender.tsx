@@ -7,7 +7,6 @@ import { RiArrowRightSFill, RiCloseLine } from '@remixicon/react'
 import { noop, unionBy } from 'es-toolkit/compat'
 import { memo, useCallback, useMemo, useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { useStore as useAppStore } from '@/app/components/app/store'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
@@ -22,13 +21,13 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/utils'
 import { InputVarType, VarType } from '@/app/components/workflow/types'
 import { useAppContext } from '@/context/app-context'
-import { fetchMembers } from '@/service/common'
+import { useMembers } from '@/service/use-common'
 import { useTestEmailSender } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
 import { isOutput } from '../../utils'
 import EmailInput from './recipient/email-input'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type EmailConfigureModalProps = {
   nodeId: string
@@ -83,13 +82,7 @@ const EmailSenderModal = ({
   const onlySpecificUsers = !config?.recipients?.whole_workspace && config?.recipients?.items && config?.recipients?.items.length > 0
   const combinedRecipients = config?.recipients?.whole_workspace && config?.recipients?.items && config?.recipients?.items.length > 0
 
-  const { data: members } = useSWR(
-    {
-      url: '/workspaces/current/members',
-      params: {},
-    },
-    fetchMembers,
-  )
+  const { data: members } = useMembers()
   const accounts = members?.accounts || []
 
   const generatedInputs = useMemo(() => {
@@ -164,7 +157,7 @@ const EmailSenderModal = ({
         className="relative !max-w-[480px] !p-0"
       >
         <div className="space-y-2 p-6 pb-3">
-          <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.done`)}</div>
+          <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.done`, { ns: 'workflow' })}</div>
           {debugEnabled && (
             <div className="system-md-regular text-text-secondary">
               <Trans
@@ -184,7 +177,7 @@ const EmailSenderModal = ({
             </div>
           )}
           {!debugEnabled && onlySpecificUsers && (
-            <div className="system-md-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone3`)}</div>
+            <div className="system-md-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone3`, { ns: 'workflow' })}</div>
           )}
           {!debugEnabled && combinedRecipients && (
             <div className="system-md-regular text-text-secondary">
@@ -215,7 +208,7 @@ const EmailSenderModal = ({
             className="w-[72px]"
             onClick={onClose}
           >
-            {t('common.operation.ok')}
+            {t('operation.ok', { ns: 'common' })}
           </Button>
         </div>
       </Modal>
@@ -232,10 +225,10 @@ const EmailSenderModal = ({
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
       <div className="space-y-1 p-6 pb-3">
-        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.title`)}</div>
+        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailSender.title`, { ns: 'workflow' })}</div>
         {debugEnabled && (
           <>
-            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip`)}</div>
+            <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip`, { ns: 'workflow' })}</div>
             <div className="system-sm-regular text-text-secondary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`}
@@ -255,7 +248,7 @@ const EmailSenderModal = ({
           </div>
         )}
         {!debugEnabled && onlySpecificUsers && (
-          <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip3`)}</div>
+          <div className="system-sm-regular text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip3`, { ns: 'workflow' })}</div>
         )}
         {!debugEnabled && combinedRecipients && (
           <div className="system-sm-regular text-text-secondary">
@@ -295,11 +288,11 @@ const EmailSenderModal = ({
         </div>
         <div className="px-6 py-2">
           <div className="group flex h-6 cursor-pointer items-center" onClick={() => setCollapsed(!collapsed)}>
-            <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`)}</div>
-            <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.optional`)}</div>
+            <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailSender.vars`, { ns: 'workflow' })}</div>
+            <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.optional`, { ns: 'workflow' })}</div>
             <RiArrowRightSFill className={cn('h-4 w-4 text-text-quaternary group-hover:text-text-primary', !collapsed && 'rotate-90')} />
           </div>
-          <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`)}</div>
+          <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailSender.varsTip`, { ns: 'workflow' })}</div>
           {!collapsed && (
             <div className="mt-3 space-y-4">
               {generatedInputs.map((variable, index) => (
@@ -326,13 +319,13 @@ const EmailSenderModal = ({
           variant="primary"
           onClick={handleConfirm}
         >
-          {t(`${i18nPrefix}.deliveryMethod.emailSender.send`)}
+          {t(`${i18nPrefix}.deliveryMethod.emailSender.send`, { ns: 'workflow' })}
         </Button>
         <Button
           className="w-[72px]"
           onClick={onClose}
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
       </div>
     </Modal>

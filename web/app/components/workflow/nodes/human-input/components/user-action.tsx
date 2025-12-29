@@ -10,7 +10,7 @@ import Input from '@/app/components/base/input'
 import { genActionId } from '../utils'
 import ButtonStyleDropdown from './button-style-dropdown'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type UserActionItemProps = {
   data: UserAction
@@ -45,14 +45,14 @@ const UserActionItem: FC<UserActionItemProps> = ({
         <Input
           wrapperClassName="w-[120px]"
           value={data.id}
-          placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`)}
+          placeholder={t(`${i18nPrefix}.userActions.actionNamePlaceholder`, { ns: 'workflow' })}
           onChange={handleIDChange}
         />
       </div>
       <div className="grow">
         <Input
           value={data.title}
-          placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`)}
+          placeholder={t(`${i18nPrefix}.userActions.buttonTextPlaceholder`, { ns: 'workflow' })}
           onChange={handleTextChange}
         />
       </div>

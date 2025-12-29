@@ -22,7 +22,7 @@ import { DeliveryMethodType } from '../../types'
 import EmailConfigureModal from './email-configure-modal'
 import TestEmailSender from './test-email-sender'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type Props = {
   nodeId: string
@@ -115,7 +115,7 @@ const DeliveryMethodItem: React.FC<Props> = ({
               size="small"
               onClick={() => setShowEmailModal(true)}
             >
-              {t(`${i18nPrefix}.deliveryMethod.notConfigured`)}
+              {t(`${i18nPrefix}.deliveryMethod.notConfigured`, { ns: 'workflow' })}
               <Indicator color="orange" className="ml-1" />
             </Button>
           )}

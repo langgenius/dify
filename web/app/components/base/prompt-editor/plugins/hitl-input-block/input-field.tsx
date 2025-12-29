@@ -11,7 +11,7 @@ import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 import Button from '../../../button'
 import PrePopulate from './pre-populate'
 
-const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
+const i18nPrefix = 'nodes.humanInput.insertInputField'
 
 type Props = {
   nodeId: string
@@ -54,15 +54,15 @@ const InputField: React.FC<Props> = ({
   }, [tempPayload])
   return (
     <div className="w-[372px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg backdrop-blur-[5px]">
-      <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`)}</div>
+      <div className="system-md-semibold text-text-primary">{t(`${i18nPrefix}.title`, { ns: 'workflow' })}</div>
       <div className="mt-3">
         <div className="system-xs-medium text-text-secondary">
-          {t(`${i18nPrefix}.saveResponseAs`)}
+          {t(`${i18nPrefix}.saveResponseAs`, { ns: 'workflow' })}
           <span className="system-xs-regular relative text-text-destructive-secondary">*</span>
         </div>
         <Input
           className="mt-1.5"
-          placeholder={t(`${i18nPrefix}.saveResponseAsPlaceholder`)}
+          placeholder={t(`${i18nPrefix}.saveResponseAsPlaceholder`, { ns: 'workflow' })}
           value={tempPayload.output_variable_name}
           onChange={(e) => {
             setTempPayload(prev => ({ ...prev, output_variable_name: e.target.value }))
@@ -72,7 +72,7 @@ const InputField: React.FC<Props> = ({
       </div>
       <div className="mt-4">
         <div className="system-xs-medium mb-1.5 text-text-secondary">
-          {t(`${i18nPrefix}.prePopulateField`)}
+          {t(`${i18nPrefix}.prePopulateField`, { ns: 'workflow' })}
         </div>
         <PrePopulate
           isVariable={placeholderConfig?.type === 'variable'}
@@ -87,14 +87,14 @@ const InputField: React.FC<Props> = ({
         />
       </div>
       <div className="mt-4 flex justify-end space-x-2">
-        <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
+        <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
         {isEdit
           ? (
               <Button
                 variant="primary"
                 onClick={handleSave}
               >
-                {t('common.operation.save')}
+                {t('operation.save', { ns: 'common' })}
               </Button>
             )
           : (
@@ -103,7 +103,7 @@ const InputField: React.FC<Props> = ({
                 variant="primary"
                 onClick={handleSave}
               >
-                <span className="mr-1">{t(`${i18nPrefix}.insert`)}</span>
+                <span className="mr-1">{t(`${i18nPrefix}.insert`, { ns: 'workflow' })}</span>
                 <span className="system-kbd mr-0.5 flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1">{getKeyboardKeyNameBySystem('ctrl')}</span>
                 <span className=" system-kbd flex h-4 items-center rounded-[4px] bg-components-kbd-bg-white px-1">↩︎</span>
               </Button>

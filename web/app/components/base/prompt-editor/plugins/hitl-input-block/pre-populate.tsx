@@ -21,7 +21,7 @@ type Props = {
   onValueChange?: (value: string) => void
 }
 
-const i18nPrefix = 'workflow.nodes.humanInput.insertInputField'
+const i18nPrefix = 'nodes.humanInput.insertInputField'
 
 type PlaceholderProps = {
   varPickerProps: any
@@ -38,12 +38,12 @@ const Placeholder = ({
         <Trans
           i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}
           components={{
-            staticContent: <TagLabel type="edit" className="mx-1" onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`)}</TagLabel>,
+            staticContent: <TagLabel type="edit" className="mx-1" onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`, { ns: 'workflow' })}</TagLabel>,
             variable: (
               <VarReferencePicker
                 {...varPickerProps}
                 trigger={
-                  <TagLabel type="variable" className="mx-1">{t(`${i18nPrefix}.variable`)}</TagLabel>
+                  <TagLabel type="variable" className="mx-1">{t(`${i18nPrefix}.variable`, { ns: 'workflow' })}</TagLabel>
                 }
               />
             ),

@@ -12,7 +12,7 @@ import { cn } from '@/utils/classnames'
 import EmailItem from './email-item'
 import MemberList from './member-list'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type Props = {
   email: string
@@ -48,7 +48,7 @@ const EmailInput = ({
 
   const placeholder = useMemo(() => {
     return (selectedEmails.length === 0 || isFocus)
-      ? t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`)
+      ? t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.placeholder`, { ns: 'workflow' })
       : ''
   }, [selectedEmails, t, isFocus])
 

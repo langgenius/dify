@@ -5,7 +5,7 @@ import { BlockEnum, VarType } from '@/app/components/workflow/types'
 // import { DeliveryMethodType, UserActionButtonType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 
-const i18nPrefix = 'workflow.nodes.humanInput.errorMsg'
+const i18nPrefix = 'nodes.humanInput.errorMsg'
 
 const metaData = genNodeMetaData({
   classification: BlockClassificationEnum.Logic,
@@ -35,22 +35,22 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
   checkValid(payload: HumanInputNodeType, t: any) {
     let errorMessages = ''
     if (!errorMessages && !payload.delivery_methods.length)
-      errorMessages = t(`${i18nPrefix}.noDeliveryMethod`)
+      errorMessages = t(`${i18nPrefix}.noDeliveryMethod`, { ns: 'workflow' })
 
     if (!errorMessages && payload.delivery_methods.length > 0 && !payload.delivery_methods.some(method => method.enabled))
-      errorMessages = t(`${i18nPrefix}.noDeliveryMethodEnabled`)
+      errorMessages = t(`${i18nPrefix}.noDeliveryMethodEnabled`, { ns: 'workflow' })
 
     if (!errorMessages && !payload.form_content)
-      errorMessages = t(`${i18nPrefix}.noFormContent`)
+      errorMessages = t(`${i18nPrefix}.noFormContent`, { ns: 'workflow' })
 
     if (!errorMessages && payload.form_content) {
       const regex = /\{\{#\$output\.[^#]+#\}\}/
       if (!regex.test(payload.form_content))
-        errorMessages = t(`${i18nPrefix}.noFormInputField`)
+        errorMessages = t(`${i18nPrefix}.noFormInputField`, { ns: 'workflow' })
     }
 
     if (!errorMessages && !payload.user_actions.length)
-      errorMessages = t(`${i18nPrefix}.noUserActions`)
+      errorMessages = t(`${i18nPrefix}.noUserActions`, { ns: 'workflow' })
 
     return {
       isValid: !errorMessages,

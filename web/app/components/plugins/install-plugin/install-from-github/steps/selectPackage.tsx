@@ -8,7 +8,7 @@ import Button from '@/app/components/base/button'
 import { PortalSelect } from '@/app/components/base/select'
 import { useGitHubUpload } from '../../hooks'
 
-const i18nPrefix = 'plugin.installFromGitHub'
+const i18nPrefix = 'installFromGitHub'
 
 type SelectPackageProps = {
   updatePayload: UpdateFromGitHubPayload
@@ -62,7 +62,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
       if (e.response?.message)
         onFailed(e.response?.message)
       else
-        onFailed(t(`${i18nPrefix}.uploadFailed`))
+        onFailed(t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' }))
     }
     finally {
       setIsUploading(false)
@@ -75,14 +75,14 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         htmlFor="version"
         className="flex flex-col items-start justify-center self-stretch text-text-secondary"
       >
-        <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`)}</span>
+        <span className="system-sm-semibold">{t(`${i18nPrefix}.selectVersion`, { ns: 'plugin' })}</span>
       </label>
       <PortalSelect
         value={selectedVersion}
         onSelect={onSelectVersion}
         items={versions}
         installedValue={updatePayload?.originalPackageInfo.version}
-        placeholder={t(`${i18nPrefix}.selectVersionPlaceholder`) || ''}
+        placeholder={t(`${i18nPrefix}.selectVersionPlaceholder`, { ns: 'plugin' }) || ''}
         popupClassName="w-[512px] z-[1001]"
         triggerClassName="text-components-input-text-filled"
       />
@@ -90,14 +90,14 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
         htmlFor="package"
         className="flex flex-col items-start justify-center self-stretch text-text-secondary"
       >
-        <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`)}</span>
+        <span className="system-sm-semibold">{t(`${i18nPrefix}.selectPackage`, { ns: 'plugin' })}</span>
       </label>
       <PortalSelect
         value={selectedPackage}
         onSelect={onSelectPackage}
         items={packages}
         readonly={!selectedVersion}
-        placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`) || ''}
+        placeholder={t(`${i18nPrefix}.selectPackagePlaceholder`, { ns: 'plugin' }) || ''}
         popupClassName="w-[512px] z-[1001]"
         triggerClassName="text-components-input-text-filled"
       />
@@ -110,7 +110,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
               onClick={onBack}
               disabled={isUploading}
             >
-              {t('plugin.installModal.back')}
+              {t('installModal.back', { ns: 'plugin' })}
             </Button>
           )}
         <Button
@@ -119,7 +119,7 @@ const SelectPackage: React.FC<SelectPackageProps> = ({
           onClick={handleUploadPackage}
           disabled={!selectedVersion || !selectedPackage || isUploading}
         >
-          {t('plugin.installModal.next')}
+          {t('installModal.next', { ns: 'plugin' })}
         </Button>
       </div>
     </>

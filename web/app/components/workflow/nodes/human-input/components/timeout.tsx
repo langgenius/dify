@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type Props = {
   timeout: number
@@ -43,7 +43,7 @@ const TimeoutInput: FC<Props> = ({
           )}
           onClick={() => onChange({ timeout, unit: 'day' })}
         >
-          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.days`)}</div>
+          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.days`, { ns: 'workflow' })}</div>
         </div>
         <div
           className={cn(
@@ -52,7 +52,7 @@ const TimeoutInput: FC<Props> = ({
           )}
           onClick={() => onChange({ timeout, unit: 'hour' })}
         >
-          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.hours`)}</div>
+          <div className="system-sm-medium p-0.5">{t(`${i18nPrefix}.timeout.hours`, { ns: 'workflow' })}</div>
         </div>
       </div>
     </div>

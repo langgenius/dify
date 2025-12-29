@@ -12,7 +12,7 @@ import { Markdown } from '@/app/components/base/markdown'
 import { useStore } from '@/app/components/workflow/store'
 import { Note, rehypeNotes, rehypeVariable, Variable } from './variable-in-markdown'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type FormContentPreviewProps = {
   content: string
@@ -38,7 +38,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
       }}
     >
       <div className="flex h-[26px] items-center justify-between px-4">
-        <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">{t(`${i18nPrefix}.formContent.preview`)}</Badge>
+        <Badge uppercase className="border-text-accent-secondary text-text-accent-secondary">{t(`${i18nPrefix}.formContent.preview`, { ns: 'workflow' })}</Badge>
         <ActionButton onClick={onClose}><RiCloseLine className="w-5 text-text-tertiary" /></ActionButton>
       </div>
       <div className="max-h-[calc(100vh-167px)] overflow-y-auto px-4">
@@ -80,7 +80,7 @@ const FormContentPreview: FC<FormContentPreviewProps> = ({
             </Button>
           ))}
         </div>
-        <div className="system-xs-regular mt-1 text-text-tertiary">{t('workflow.nodes.humanInput.editor.previewTip')}</div>
+        <div className="system-xs-regular mt-1 text-text-tertiary">{t('nodes.humanInput.editor.previewTip', { ns: 'workflow' })}</div>
       </div>
     </div>
   )

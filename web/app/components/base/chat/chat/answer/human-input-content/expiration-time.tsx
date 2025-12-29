@@ -16,7 +16,7 @@ const ExpirationTime = ({
 
   return (
     <div className="system-xs-regular mt-1 text-text-tertiary">
-      {t('share.humanInput.expirationTime', { relativeTime })}
+      {t('humanInput.expirationTime', { relativeTime, ns: 'share' })}
     </div>
   )
 }

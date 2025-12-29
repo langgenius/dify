@@ -131,7 +131,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
             hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
             onClick={() => handlePreview(index)}
           >
-            {t('common.dataSource.notion.selector.preview')}
+            {t('dataSource.notion.selector.preview', { ns: 'common' })}
           </div>
         )
       }

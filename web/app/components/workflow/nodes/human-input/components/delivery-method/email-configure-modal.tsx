@@ -17,7 +17,7 @@ import { useAppContext } from '@/context/app-context'
 import MailBodyInput from './mail-body-input'
 import Recipient from './recipient'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type EmailConfigureModalProps = {
   isShow: boolean
@@ -61,7 +61,7 @@ const EmailConfigureModal = ({
     if (!/\{\{#url#\}\}/.test(body.trim())) {
       Toast.notify({
         type: 'error',
-        message: `body must contain one ${t('common.promptEditor.requestURL.item.title')}`,
+        message: `body must contain one ${t('promptEditor.requestURL.item.title', { ns: 'common' })}`,
       })
       return false
     }
@@ -96,24 +96,24 @@ const EmailConfigureModal = ({
         <RiCloseLine className="h-5 w-5 text-text-tertiary" />
       </div>
       <div className="space-y-1 p-6 pb-3">
-        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.title`)}</div>
-        <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.description`)}</div>
+        <div className="title-2xl-semi-bold text-text-primary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.title`, { ns: 'workflow' })}</div>
+        <div className="system-xs-regular text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.description`, { ns: 'workflow' })}</div>
       </div>
       <div className="space-y-5 px-6 py-3">
         <div>
           <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
-            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.subject`)}
+            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.subject`, { ns: 'workflow' })}
           </div>
           <Input
             className="w-full"
             value={subject}
             onChange={e => setSubject(e.target.value)}
-            placeholder={t(`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`)}
+            placeholder={t(`${i18nPrefix}.deliveryMethod.emailConfigure.subjectPlaceholder`, { ns: 'workflow' })}
           />
         </div>
         <div>
           <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
-            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.body`)}
+            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.body`, { ns: 'workflow' })}
           </div>
           <MailBodyInput
             value={body}
@@ -124,7 +124,7 @@ const EmailConfigureModal = ({
         </div>
         <div>
           <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">
-            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`)}
+            {t(`${i18nPrefix}.deliveryMethod.emailConfigure.recipient`, { ns: 'workflow' })}
           </div>
           <Recipient
             data={recipients}
@@ -137,14 +137,14 @@ const EmailConfigureModal = ({
             <RiBugLine className="h-3.5 w-3.5 text-text-primary-on-surface" />
           </div>
           <div className="grow space-y-1">
-            <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`)}</div>
+            <div className="system-sm-medium text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugMode`, { ns: 'workflow' })}</div>
             <div className="body-xs-regular text-text-tertiary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`}
                 components={{ email: <span className="body-md-medium text-text-primary">{userProfile.email}</span> }}
                 values={{ email: userProfile.email }}
               />
-              <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`)}</div>
+              <div>{t(`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip2`, { ns: 'workflow' })}</div>
             </div>
           </div>
           <Switch
@@ -159,13 +159,13 @@ const EmailConfigureModal = ({
           className="w-[72px]"
           onClick={handleConfirm}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
         <Button
           className="w-[72px]"
           onClick={onClose}
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
       </div>
     </Modal>

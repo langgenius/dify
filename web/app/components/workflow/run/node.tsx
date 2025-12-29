@@ -99,16 +99,16 @@ const NodePanel: FC<Props> = ({
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
 
   const inputsTitle = useMemo(() => {
-    let text = t('workflow.common.input')
+    let text = t('common.input', { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('workflow.nodes.loop.initialLoopVariables')
+      text = t('nodes.loop.initialLoopVariables', { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
-  const processDataTitle = t('workflow.common.processData').toLocaleUpperCase()
+  const processDataTitle = t('common.processData', { ns: 'workflow' }).toLocaleUpperCase()
   const outputTitle = useMemo(() => {
-    let text = t('workflow.common.output')
+    let text = t('common.output', { ns: 'workflow' })
     if (nodeInfo.node_type === BlockEnum.Loop)
-      text = t('workflow.nodes.loop.finalLoopVariables')
+      text = t('nodes.loop.finalLoopVariables', { ns: 'workflow' })
     return text.toLocaleUpperCase()
   }, [nodeInfo.node_type, t])
 
@@ -208,7 +208,7 @@ const NodePanel: FC<Props> = ({
             <div className={cn('mb-1', hideInfo && '!px-2 !py-0.5')}>
               {(nodeInfo.status === 'stopped') && (
                 <StatusContainer status="stopped">
-                  {t('workflow.tracing.stopBy', { user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
+                  {t('tracing.stopBy', { ns: 'workflow', user: nodeInfo.created_by ? nodeInfo.created_by.name : 'N/A' })}
                 </StatusContainer>
               )}
               {(nodeInfo.status === 'exception') && (
@@ -219,7 +219,7 @@ const NodePanel: FC<Props> = ({
                     target="_blank"
                     className="text-text-accent"
                   >
-                    {t('workflow.common.learnMore')}
+                    {t('common.learnMore', { ns: 'workflow' })}
                   </a>
                 </StatusContainer>
               )}
@@ -235,7 +235,7 @@ const NodePanel: FC<Props> = ({
               )}
               {(nodeInfo.status === 'paused') && (
                 <StatusContainer status="paused">
-                  <div className="system-xs-regular text-text-warning">{t('workflow.nodes.humanInput.log.reasonContent')}</div>
+                  <div className="system-xs-regular text-text-warning">{t('nodes.humanInput.log.reasonContent', { ns: 'workflow' })}</div>
                 </StatusContainer>
               )}
             </div>

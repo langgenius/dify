@@ -27,7 +27,7 @@ const HumanInputContent = ({
           <Divider className="!my-2 w-[30px]" />
           <div className="space-y-1 pt-1">
             {showEmailTip && !isEmailDebugMode && (
-              <div className="system-xs-regular text-text-secondary">{t('workflow.common.humanInputEmailTip')}</div>
+              <div className="system-xs-regular text-text-secondary">{t('common.humanInputEmailTip', { ns: 'workflow' })}</div>
             )}
             {showEmailTip && isEmailDebugMode && (
               <div className="system-xs-regular text-text-secondary">
@@ -38,7 +38,7 @@ const HumanInputContent = ({
                 />
               </div>
             )}
-            {showDebugModeTip && <div className="system-xs-medium text-text-warning">{t('workflow.common.humanInputWebappTip')}</div>}
+            {showDebugModeTip && <div className="system-xs-medium text-text-warning">{t('common.humanInputWebappTip', { ns: 'workflow' })}</div>}
           </div>
         </>
       )}

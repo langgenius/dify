@@ -18,7 +18,7 @@ import { cn } from '@/utils/classnames'
 import Form from './form'
 import PanelWrap from './panel-wrap'
 
-const i18nPrefix = 'workflow.singleRun'
+const i18nPrefix = 'singleRun'
 
 export type BeforeRunFormProps = {
   nodeName: string
@@ -105,7 +105,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
       form.inputs.forEach((input) => {
         const value = form.values[input.variable] as any
         if (!errMsg && input.required && (input.type !== InputVarType.checkbox) && !(input.variable in existVarValuesInForm) && (value === '' || value === undefined || value === null || (input.type === InputVarType.files && value.length === 0)))
-          errMsg = t('workflow.errorMsg.fieldRequired', { field: typeof input.label === 'object' ? input.label.variable : input.label })
+          errMsg = t('errorMsg.fieldRequired', { ns: 'workflow', field: typeof input.label === 'object' ? input.label.variable : input.label })
 
         if (!errMsg && (input.type === InputVarType.singleFile || input.type === InputVarType.multiFiles) && value) {
           let fileIsUploading = false
@@ -115,7 +115,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
             fileIsUploading = value.transferMethod === TransferMethod.local_file && !value.uploadedId
 
           if (fileIsUploading)
-            errMsg = t('appDebug.errorMessage.waitForFileUpload')
+            errMsg = t('errorMessage.waitForFileUpload', { ns: 'appDebug' })
         }
       })
     })
@@ -142,7 +142,7 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
     })
     if (parseErrorJsonField) {
       Toast.notify({
-        message: t('workflow.errorMsg.invalidJson', { field: parseErrorJsonField }),
+        message: t('errorMsg.invalidJson', { ns: 'workflow', field: parseErrorJsonField }),
         type: 'error',
       })
       return
@@ -201,12 +201,12 @@ const BeforeRunForm: FC<BeforeRunFormProps> = ({
           <div className="mt-4 flex justify-between space-x-2 px-4">
             {!isHumanInput && (
               <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t(`${i18nPrefix}.startRun`)}</div>
+                <div>{t(`${i18nPrefix}.startRun`, { ns: 'workflow' })}</div>
               </Button>
             )}
             {isHumanInput && (
               <Button disabled={!isFileLoaded} variant="primary" className="w-0 grow space-x-2" onClick={handleRunOrGenerateForm}>
-                <div>{t('workflow.nodes.humanInput.singleRun.button')}</div>
+                <div>{t('nodes.humanInput.singleRun.button', { ns: 'workflow' })}</div>
               </Button>
             )}
           </div>

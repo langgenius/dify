@@ -35,7 +35,7 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
       }}
     >
       <div className="flex grow items-center">
-        {t('workflow.nodes.tool.insertPlaceholder1')}
+        {t('nodes.tool.insertPlaceholder1', { ns: 'workflow' })}
         {(!disableVariableInsertion) && (
           <>
             <div className="system-kbd mx-0.5 flex h-4 w-4 items-center justify-center rounded bg-components-kbd-bg-gray text-text-placeholder">/</div>
@@ -47,7 +47,7 @@ const Placeholder = ({ disableVariableInsertion = false, hideBadge = false }: Pl
                 handleInsert('/')
               })}
             >
-              {t('workflow.nodes.tool.insertPlaceholder2')}
+              {t('nodes.tool.insertPlaceholder2', { ns: 'workflow' })}
             </div>
           </>
         )}

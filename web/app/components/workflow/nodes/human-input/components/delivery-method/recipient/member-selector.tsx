@@ -12,7 +12,7 @@ import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigge
 import { cn } from '@/utils/classnames'
 import MemberList from './member-list'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type Props = {
   value: any[]
@@ -50,7 +50,7 @@ const MemberSelector: FC<Props> = ({
           variant="ghost-accent"
         >
           <RiContactsBookLine className="mr-1 h-4 w-4" />
-          <div className="">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`)}</div>
+          <div className="">{t(`${i18nPrefix}.deliveryMethod.emailConfigure.memberSelector.trigger`, { ns: 'workflow' })}</div>
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[1000]">

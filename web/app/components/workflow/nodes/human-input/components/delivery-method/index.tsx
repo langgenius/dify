@@ -10,7 +10,7 @@ import Tooltip from '@/app/components/base/tooltip'
 import MethodItem from './method-item'
 import MethodSelector from './method-selector'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type Props = {
   nodeId: string
@@ -52,9 +52,9 @@ const DeliveryMethodForm: React.FC<Props> = ({
     <div className="px-4 py-2">
       <div className="mb-1 flex items-center justify-between">
         <div className="flex items-center gap-0.5">
-          <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`)}</div>
+          <div className="system-sm-semibold-uppercase text-text-secondary">{t(`${i18nPrefix}.deliveryMethod.title`, { ns: 'workflow' })}</div>
           <Tooltip
-            popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`)}
+            popupContent={t(`${i18nPrefix}.deliveryMethod.tooltip`, { ns: 'workflow' })}
           />
         </div>
         <div className="flex items-center px-1">
@@ -65,7 +65,7 @@ const DeliveryMethodForm: React.FC<Props> = ({
         </div>
       </div>
       {!value.length && (
-        <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`)}</div>
+        <div className="system-xs-regular flex items-center justify-center rounded-[10px] bg-background-section p-3 text-text-tertiary">{t(`${i18nPrefix}.deliveryMethod.emptyTip`, { ns: 'workflow' })}</div>
       )}
       {value.length > 0 && (
         <div className="space-y-1">

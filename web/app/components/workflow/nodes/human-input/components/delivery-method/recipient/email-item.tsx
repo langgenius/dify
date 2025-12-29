@@ -29,7 +29,7 @@ const EmailItem = ({
       <Avatar avatar={data.avatar_url} size={16} name={data.name || data.email} />
       <div title={data.email} className="system-xs-regular max-w-[500px] truncate text-text-primary">
         {email === data.email ? data.name : data.email}
-        {email === data.email && <span className="system-xs-regular text-text-tertiary">{t('common.members.you')}</span>}
+        {email === data.email && <span className="system-xs-regular text-text-tertiary">{t('members.you', { ns: 'common' })}</span>}
       </div>
       {!disabled && (
         <RiCloseCircleFill

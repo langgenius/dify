@@ -14,7 +14,7 @@ import {
 import { cn } from '@/utils/classnames'
 import { UserActionButtonType } from '../types'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 type Props = {
   text: string
@@ -61,7 +61,7 @@ const ButtonStyleDropdown: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1000 }}>
         <div className="rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-4 shadow-lg backdrop-blur-sm">
-          <div className="system-md-medium text-text-primary">{t(`${i18nPrefix}.userActions.chooseStyle`)}</div>
+          <div className="system-md-medium text-text-primary">{t(`${i18nPrefix}.userActions.chooseStyle`, { ns: 'workflow' })}</div>
           <div className="mt-2 flex w-[324px] flex-wrap gap-1">
             <div
               className={cn(

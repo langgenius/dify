@@ -114,7 +114,7 @@ const HITLInputVariableBlockComponent = ({
       nodeTitle={node?.title}
       variables={variables}
       isExceptionVariable={isException}
-      errorMsg={!variableValid ? t('workflow.errorMsg.invalidVariable') : undefined}
+      errorMsg={!variableValid ? t('errorMsg.invalidVariable', { ns: 'workflow' }) : undefined}
       notShowFullPath={isShowAPart}
     />
   )

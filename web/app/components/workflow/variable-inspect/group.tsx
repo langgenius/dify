@@ -122,20 +122,20 @@ const Group = ({
           )}
           {!nodeData && (
             <div className="system-xs-medium-uppercase truncate text-text-tertiary">
-              {isEnv && t('workflow.debug.variableInspect.envNode')}
-              {isChatVar && t('workflow.debug.variableInspect.chatNode')}
-              {isSystem && t('workflow.debug.variableInspect.systemNode')}
+              {isEnv && t('debug.variableInspect.envNode', { ns: 'workflow' })}
+              {isChatVar && t('debug.variableInspect.chatNode', { ns: 'workflow' })}
+              {isSystem && t('debug.variableInspect.systemNode', { ns: 'workflow' })}
             </div>
           )}
         </div>
         {nodeData && !nodeData.isSingRunRunning && (
           <div className="hidden shrink-0 items-center group-hover:flex">
-            <Tooltip popupContent={t('workflow.debug.variableInspect.view')}>
+            <Tooltip popupContent={t('debug.variableInspect.view', { ns: 'workflow' })}>
               <ActionButton onClick={handleView}>
                 <RiFileList3Line className="h-4 w-4" />
               </ActionButton>
             </Tooltip>
-            <Tooltip popupContent={t('workflow.debug.variableInspect.clearNode')}>
+            <Tooltip popupContent={t('debug.variableInspect.clearNode', { ns: 'workflow' })}>
               <ActionButton onClick={handleClear}>
                 <RiDeleteBinLine className="h-4 w-4" />
               </ActionButton>
