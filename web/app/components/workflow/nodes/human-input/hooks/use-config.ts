@@ -1,4 +1,4 @@
-import type { DeliveryMethod, HumanInputNodeType, UserAction } from './types'
+import type { DeliveryMethod, HumanInputNodeType, UserAction } from '../types'
 import { produce } from 'immer'
 import { useState } from 'react'
 import {

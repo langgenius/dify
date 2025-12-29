@@ -1,7 +1,7 @@
-import type { FormInputItem, HumanInputNodeType } from './types'
+import type { FormInputItem, HumanInputNodeType } from '../types'
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
-import useNodeCrud from '../_base/hooks/use-node-crud'
+import useNodeCrud from '../../_base/hooks/use-node-crud'
 
 const useFormContent = (id: string, payload: HumanInputNodeType) => {
   const [editorKey, setEditorKey] = useState(0)

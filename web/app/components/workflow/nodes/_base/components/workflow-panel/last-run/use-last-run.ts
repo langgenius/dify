@@ -15,7 +15,7 @@ import useVariableAssignerSingleRunFormParams from '@/app/components/workflow/no
 import useCodeSingleRunFormParams from '@/app/components/workflow/nodes/code/use-single-run-form-params'
 import useDocExtractorSingleRunFormParams from '@/app/components/workflow/nodes/document-extractor/use-single-run-form-params'
 import useHttpRequestSingleRunFormParams from '@/app/components/workflow/nodes/http/use-single-run-form-params'
-import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/use-single-run-form-params'
+import useHumanInputSingleRunFormParams from '@/app/components/workflow/nodes/human-input/hooks/use-single-run-form-params'
 import useIfElseSingleRunFormParams from '@/app/components/workflow/nodes/if-else/use-single-run-form-params'
 import useIterationSingleRunFormParams from '@/app/components/workflow/nodes/iteration/use-single-run-form-params'
 import useKnowledgeBaseSingleRunFormParams from '@/app/components/workflow/nodes/knowledge-base/use-single-run-form-params'

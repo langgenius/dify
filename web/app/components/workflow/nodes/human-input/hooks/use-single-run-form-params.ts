@@ -1,10 +1,10 @@
-import type { HumanInputNodeType } from './types'
+import type { HumanInputNodeType } from '../types'
 import type { Props as FormProps } from '@/app/components/workflow/nodes/_base/components/before-run-form/form'
 import type { InputVar } from '@/app/components/workflow/types'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useNodeCrud from '../_base/hooks/use-node-crud'
-import { isOutput } from './utils'
+import useNodeCrud from '../../_base/hooks/use-node-crud'
+import { isOutput } from '../utils'
 
 const i18nPrefix = 'workflow.nodes.humanInput'
 
