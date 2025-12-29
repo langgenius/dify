@@ -81,20 +81,20 @@ const ViewAnnotationModal: FC<Props> = ({
   }, [id, isShow])
 
   const tabs = [
-    { value: TabType.annotation, text: t('appAnnotation.viewModal.annotatedResponse') },
+    { value: TabType.annotation, text: t('viewModal.annotatedResponse', { ns: 'appAnnotation' }) },
     {
       value: TabType.hitHistory,
       text: (
         hitHistoryList.length > 0
           ? (
               <div className="flex items-center space-x-1">
-                <div>{t('appAnnotation.viewModal.hitHistory')}</div>
+                <div>{t('viewModal.hitHistory', { ns: 'appAnnotation' })}</div>
                 <Badge
-                  text={`${total} ${t(`appAnnotation.viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`)}`}
+                  text={`${total} ${t(`viewModal.hit${hitHistoryList.length > 1 ? 's' : ''}`, { ns: 'appAnnotation' })}`}
                 />
               </div>
             )
-          : t('appAnnotation.viewModal.hitHistory')
+          : t('viewModal.hitHistory', { ns: 'appAnnotation' })
       ),
     },
   ]
@@ -139,12 +139,12 @@ const ViewAnnotationModal: FC<Props> = ({
           <table className={cn('w-full min-w-[440px] border-collapse border-0')}>
             <thead className="system-xs-medium-uppercase text-text-tertiary">
               <tr>
-                <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1">{t('appAnnotation.hitHistoryTable.query')}</td>
-                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appAnnotation.hitHistoryTable.match')}</td>
-                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appAnnotation.hitHistoryTable.response')}</td>
-                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appAnnotation.hitHistoryTable.source')}</td>
-                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appAnnotation.hitHistoryTable.score')}</td>
-                <td className="w-[160px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('appAnnotation.hitHistoryTable.time')}</td>
+                <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1">{t('hitHistoryTable.query', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.match', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.response', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.source', { ns: 'appAnnotation' })}</td>
+                <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.score', { ns: 'appAnnotation' })}</td>
+                <td className="w-[160px] whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('hitHistoryTable.time', { ns: 'appAnnotation' })}</td>
               </tr>
             </thead>
             <tbody className="system-sm-regular text-text-secondary">
@@ -173,7 +173,7 @@ const ViewAnnotationModal: FC<Props> = ({
                   </td>
                   <td className="p-3 pr-2">{item.source}</td>
                   <td className="p-3 pr-2">{item.score ? item.score.toFixed(2) : '-'}</td>
-                  <td className="p-3 pr-2">{formatTime(item.created_at, t('appLog.dateTimeFormat') as string)}</td>
+                  <td className="p-3 pr-2">{formatTime(item.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
                 </tr>
               ))}
             </tbody>
@@ -220,7 +220,7 @@ const ViewAnnotationModal: FC<Props> = ({
                 setShowModal(false)
                 onHide()
               }}
-              title={t('appDebug.feature.annotation.removeConfirm')}
+              title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
             />
           </div>
         )}
@@ -232,12 +232,12 @@ const ViewAnnotationModal: FC<Props> = ({
                   onClick={() => setShowModal(true)}
                 >
                   <MessageCheckRemove />
-                  <div>{t('appAnnotation.editModal.removeThisCache')}</div>
+                  <div>{t('editModal.removeThisCache', { ns: 'appAnnotation' })}</div>
                 </div>
                 <div>
-                  {t('appAnnotation.editModal.createdAt')}
+                  {t('editModal.createdAt', { ns: 'appAnnotation' })}
 &nbsp;
-                  {formatTime(createdAt, t('appLog.dateTimeFormat') as string)}
+                  {formatTime(createdAt, t('dateTimeFormat', { ns: 'appLog' }) as string)}
                 </div>
               </div>
             )

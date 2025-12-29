@@ -196,7 +196,7 @@ const InputVarList: FC<Props> = ({
                   nodesOutputVars={availableVars}
                   availableNodes={availableNodesWithParent}
                   onFocusChange={handleInputFocus(variable)}
-                  placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
+                  placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
                   placeholderClassName="!leading-[21px]"
                 />
               )}

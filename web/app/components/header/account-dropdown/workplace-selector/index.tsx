@@ -22,11 +22,11 @@ const WorkplaceSelector = () => {
       if (currentWorkspace?.id === tenant_id)
         return
       await switchWorkspace({ url: '/workspaces/switch', body: { tenant_id } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       location.assign(`${location.origin}${basePath}`)
     }
     catch {
-      notify({ type: 'error', message: t('common.provider.saveFailed') })
+      notify({ type: 'error', message: t('provider.saveFailed', { ns: 'common' }) })
     }
   }
 
@@ -70,7 +70,7 @@ const WorkplaceSelector = () => {
               >
                 <div className="flex w-full flex-col items-start self-stretch rounded-xl border-[0.5px] border-components-panel-border p-1 pb-2 shadow-lg ">
                   <div className="flex items-start self-stretch px-3 pb-0.5 pt-1">
-                    <span className="system-xs-medium-uppercase flex-1 text-text-tertiary">{t('common.userProfile.workspace')}</span>
+                    <span className="system-xs-medium-uppercase flex-1 text-text-tertiary">{t('userProfile.workspace', { ns: 'common' })}</span>
                   </div>
                   {
                     workspaces.map(workspace => (

@@ -26,7 +26,7 @@ const PreviewMode = memo(() => {
       onClick={() => handleWorkflowStartRunInChatflow()}
     >
       <RiPlayLargeLine className="mr-1 h-4 w-4" />
-      {t('workflow.common.debugAndPreview')}
+      {t('common.debugAndPreview', { ns: 'workflow' })}
     </div>
   )
 })

@@ -50,14 +50,14 @@ const Records = ({
       <table className="w-full border-collapse border-0 text-[13px] leading-4 text-text-secondary ">
         <thead className="sticky top-0 h-7 text-xs  font-medium uppercase leading-7 text-text-tertiary backdrop-blur-[5px]">
           <tr>
-            <td className="rounded-l-lg bg-background-section-burn pl-3">{t('datasetHitTesting.table.header.queryContent')}</td>
-            <td className="w-[128px]  bg-background-section-burn pl-3">{t('datasetHitTesting.table.header.source')}</td>
+            <td className="rounded-l-lg bg-background-section-burn pl-3">{t('table.header.queryContent', { ns: 'datasetHitTesting' })}</td>
+            <td className="w-[128px]  bg-background-section-burn pl-3">{t('table.header.source', { ns: 'datasetHitTesting' })}</td>
             <td className="w-48 rounded-r-lg bg-background-section-burn pl-3">
               <div
                 className="flex cursor-pointer items-center"
                 onClick={handleSortTime}
               >
-                {t('datasetHitTesting.table.header.time')}
+                {t('table.header.time', { ns: 'datasetHitTesting' })}
                 <RiArrowDownLine
                   className={cn(
                     'ml-0.5 size-3.5',
@@ -104,7 +104,7 @@ const Records = ({
                   </div>
                 </td>
                 <td className="w-48 p-3 pr-2">
-                  {formatTime(created_at, t('datasetHitTesting.dateTimeFormat') as string)}
+                  {formatTime(created_at, t('dateTimeFormat', { ns: 'datasetHitTesting' }) as string)}
                 </td>
               </tr>
             )
