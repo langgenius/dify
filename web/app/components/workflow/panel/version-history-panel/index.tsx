@@ -13,7 +13,7 @@ import { useDeleteWorkflow, useInvalidAllLastRun, useResetWorkflowVersionHistory
 import { useDSL, useNodesSyncDraft, useWorkflowRun } from '../../hooks'
 import { useHooksStore } from '../../hooks-store'
 import { useStore, useWorkflowStore } from '../../store'
-import { VersionHistoryContextMenuOptions, WorkflowVersionFilterOptions } from '../../types'
+import { VersionHistoryContextMenuOptions, WorkflowVersion, WorkflowVersionFilterOptions } from '../../types'
 import DeleteConfirmModal from './delete-confirm-modal'
 import Empty from './empty'
 import Filter from './filter'
@@ -73,9 +73,12 @@ export const VersionHistoryPanel = ({
   const handleVersionClick = useCallback((item: VersionHistory) => {
     if (item.id !== currentVersion?.id) {
       setCurrentVersion(item)
-      handleRestoreFromPublishedWorkflow(item)
+      if (item.version === WorkflowVersion.Draft)
+        handleLoadBackupDraft()
+      else
+        handleRestoreFromPublishedWorkflow(item)
     }
-  }, [currentVersion?.id, setCurrentVersion, handleRestoreFromPublishedWorkflow])
+  }, [currentVersion?.id, setCurrentVersion, handleLoadBackupDraft, handleRestoreFromPublishedWorkflow])
 
   const handleNextPage = () => {
     if (hasNextPage)
