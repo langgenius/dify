@@ -155,7 +155,7 @@ class MessageAppLogServiceBase(ABC):
         conversation_ids = {msg.conversation_id for msg in messages if msg.conversation_id}
         conversations = {}
         if conversation_ids:
-            conversation_results = session.query(Conversation).filter(Conversation.id.in_(conversation_ids)).all()
+            conversation_results = session.query(Conversation).where(Conversation.id.in_(conversation_ids)).all()
             conversations = {conv.id: conv for conv in conversation_results}
 
         for message in messages:
