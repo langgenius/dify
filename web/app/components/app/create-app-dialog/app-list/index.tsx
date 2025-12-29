@@ -20,7 +20,6 @@ import { usePluginDependencies } from '@/app/components/workflow/plugin-dependen
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import ExploreContext from '@/context/explore-context'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
@@ -64,10 +63,7 @@ const Apps = ({
   }
 
   const [currentType, setCurrentType] = useState<AppModeEnum[]>([])
-  const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: allCategoriesEn,
-    disableSearchParams: true,
-  })
+  const [currCategory, setCurrCategory] = useState<AppCategories | string>(allCategoriesEn)
 
   const {
     data,

@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic'
 import {
   useRouter,
 } from 'next/navigation'
+import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -24,7 +25,6 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import AppCard from './app-card'
@@ -47,9 +47,10 @@ const List = () => {
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'all',
-  })
+  const [activeTab, setActiveTab] = useQueryState(
+    'category',
+    parseAsString.withDefault('all').withOptions({ history: 'push' }),
+  )
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
