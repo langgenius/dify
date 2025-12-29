@@ -1,3 +1,9 @@
+import type {
+  Node,
+  NodeOutPutVar,
+  ValueSelector,
+  Var,
+} from '@/app/components/workflow/types'
 import { memo, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -5,14 +11,8 @@ import {
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import VariableTag from '@/app/components/workflow/nodes/_base/components/variable-tag'
-import type {
-  Node,
-  NodeOutPutVar,
-  ValueSelector,
-  Var,
-} from '@/app/components/workflow/types'
+import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { VarType } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 
@@ -59,7 +59,7 @@ const ConditionVarSelector = ({
         if (!disabled)
           onOpenChange(state)
       }}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{
         mainAxis: 4,
         crossAxis: 0,
@@ -67,20 +67,22 @@ const ConditionVarSelector = ({
     >
       <PortalToFollowElemTrigger onClick={handleTriggerClick}>
         <div className={cn('cursor-pointer', disabled && '!cursor-not-allowed opacity-60')}>
-          {valueSelector && valueSelector.length > 0 ? (
-            <VariableTag
-              valueSelector={valueSelector}
-              varType={varType ?? VarType.string}
-              isShort
-              availableNodes={availableNodes}
-            />
-          ) : (
-            <div className='system-xs-regular text-text-tertiary'>{t('nodes.agent.toolCondition.selectVariable')}</div>
-          )}
+          {valueSelector && valueSelector.length > 0
+            ? (
+                <VariableTag
+                  valueSelector={valueSelector}
+                  varType={varType ?? VarType.string}
+                  isShort
+                  availableNodes={availableNodes}
+                />
+              )
+            : (
+                <div className="system-xs-regular text-text-tertiary">{t('nodes.agent.toolCondition.selectVariable', { ns: 'workflow' })}</div>
+              )}
         </div>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+      <PortalToFollowElemContent className="z-[1000]">
+        <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars
             vars={availableVars}
             isSupportFileVar

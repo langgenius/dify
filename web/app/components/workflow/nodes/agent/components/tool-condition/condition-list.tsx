@@ -1,6 +1,3 @@
-import { RiLoopLeftLine } from '@remixicon/react'
-import { memo, useMemo } from 'react'
-import ConditionItem from './condition-item'
 import type {
   AgentToolCondition,
   AgentToolConditionLogicalOperator,
@@ -9,7 +6,10 @@ import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
+import { RiLoopLeftLine } from '@remixicon/react'
+import { memo, useMemo } from 'react'
 import { cn } from '@/utils/classnames'
+import ConditionItem from './condition-item'
 
 type Props = {
   conditions: AgentToolCondition[]
@@ -39,24 +39,24 @@ const ConditionList = ({
   return (
     <div className={containerClassName}>
       {hasMultiple && (
-        <div className='absolute bottom-0 left-0 top-0 w-[60px]'>
-          <div className='absolute bottom-4 left-[46px] top-4 w-2.5 rounded-l-[8px] border border-r-0 border-divider-deep'></div>
-          <div className='absolute right-0 top-1/2 h-[29px] w-4 -translate-y-1/2 bg-components-panel-bg'></div>
+        <div className="absolute bottom-0 left-0 top-0 w-[60px]">
+          <div className="absolute bottom-4 left-[46px] top-4 w-2.5 rounded-l-[8px] border border-r-0 border-divider-deep"></div>
+          <div className="absolute right-0 top-1/2 h-[29px] w-4 -translate-y-1/2 bg-components-panel-bg"></div>
           <button
-            type='button'
-            className='absolute right-1 top-1/2 flex h-5 -translate-y-1/2 items-center gap-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 text-[10px] font-semibold uppercase text-text-accent-secondary shadow-xs disabled:cursor-not-allowed disabled:opacity-60'
+            type="button"
+            className="absolute right-1 top-1/2 flex h-5 -translate-y-1/2 items-center gap-1 rounded-md border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-1.5 text-[10px] font-semibold uppercase text-text-accent-secondary shadow-xs disabled:cursor-not-allowed disabled:opacity-60"
             onClick={onToggleLogicalOperator}
             disabled={disabled}
           >
             {logicalOperator.toUpperCase()}
-            <RiLoopLeftLine className='h-3 w-3' />
+            <RiLoopLeftLine className="h-3 w-3" />
           </button>
         </div>
       )}
       {conditions.map(condition => (
         <ConditionItem
           key={condition.id}
-          className=''
+          className=""
           condition={condition}
           availableVars={availableVars}
           availableNodes={availableNodes}

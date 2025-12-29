@@ -1,11 +1,11 @@
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiAddLine } from '@remixicon/react'
 import type {
   NodeOutPutVar,
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
+import { RiAddLine } from '@remixicon/react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
@@ -37,7 +37,7 @@ const ConditionAdd = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{
         mainAxis: 4,
         crossAxis: 0,
@@ -45,15 +45,15 @@ const ConditionAdd = ({
     >
       <PortalToFollowElemTrigger onClick={() => !disabled && setOpen(!open)}>
         <Button
-          size='small'
+          size="small"
           disabled={disabled}
         >
-          <RiAddLine className='mr-1 h-3.5 w-3.5' />
-          {t('nodes.agent.toolCondition.addCondition')}
+          <RiAddLine className="mr-1 h-3.5 w-3.5" />
+          {t('nodes.agent.toolCondition.addCondition', { ns: 'workflow' })}
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg'>
+      <PortalToFollowElemContent className="z-[1000]">
+        <div className="w-[296px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <VarReferenceVars
             vars={variables}
             isSupportFileVar

@@ -1,25 +1,25 @@
 'use client'
 
-import { memo, useCallback, useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { v4 as uuid4 } from 'uuid'
-import { produce } from 'immer'
-import Switch from '@/app/components/base/switch'
-import ConditionAdd from './condition-add'
-import ConditionList from './condition-list'
 import type {
   AgentToolActivationCondition,
   AgentToolCondition,
 } from '../../types'
-import { AgentToolConditionLogicalOperator } from '../../types'
 import type { Node, NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
+import { produce } from 'immer'
+import { memo, useCallback, useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { v4 as uuid4 } from 'uuid'
+import Switch from '@/app/components/base/switch'
 import { VarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import { AgentToolConditionLogicalOperator } from '../../types'
 import {
   getConditionOperators,
   getDefaultValueByType,
   operatorNeedsValue,
 } from '../../utils'
-import { cn } from '@/utils/classnames'
+import ConditionAdd from './condition-add'
+import ConditionList from './condition-list'
 
 type Props = {
   value?: AgentToolActivationCondition
@@ -97,11 +97,11 @@ const AgentToolConditionEditor = ({
   const hasConditions = currentValue.conditions.length > 0
 
   return (
-    <div className=''>
-      <div className='flex items-start justify-between gap-3'>
+    <div className="">
+      <div className="flex items-start justify-between gap-3">
         <div>
-          <div className='system-sm-semibold text-text-primary'>{t('nodes.agent.toolCondition.title')}</div>
-          <div className='system-xs-regular text-text-tertiary'>{t('nodes.agent.toolCondition.description')}</div>
+          <div className="system-sm-semibold text-text-primary">{t('nodes.agent.toolCondition.title', { ns: 'workflow' })}</div>
+          <div className="system-xs-regular text-text-tertiary">{t('nodes.agent.toolCondition.description', { ns: 'workflow' })}</div>
         </div>
         <Switch
           defaultValue={isEnabled}
@@ -111,10 +111,10 @@ const AgentToolConditionEditor = ({
       </div>
 
       {isEnabled && (
-        <div className='space-y-3'>
-          <div className='rounded-[10px] bg-components-panel-bg px-3 py-2'>
+        <div className="space-y-3">
+          <div className="rounded-[10px] bg-components-panel-bg px-3 py-2">
             {hasConditions && (
-              <div className='mb-2'>
+              <div className="mb-2">
                 <ConditionList
                   conditions={currentValue.conditions}
                   logicalOperator={currentValue.logical_operator}
@@ -131,7 +131,8 @@ const AgentToolConditionEditor = ({
               'flex items-center justify-between pr-[30px]',
               hasConditions && currentValue.conditions.length > 1 && 'ml-[60px]',
               !hasConditions && 'mt-1',
-            )}>
+            )}
+            >
               <ConditionAdd
                 variables={availableVars}
                 onSelect={handleAddCondition}
@@ -140,13 +141,13 @@ const AgentToolConditionEditor = ({
             </div>
           </div>
           {!hasConditions && (
-            <div className='system-xs-regular text-text-tertiary'>
-              {t('nodes.agent.toolCondition.addFirstCondition')}
+            <div className="system-xs-regular text-text-tertiary">
+              {t('nodes.agent.toolCondition.addFirstCondition', { ns: 'workflow' })}
             </div>
           )}
           {hasConditions && currentValue.conditions.length <= 1 && (
-            <div className='system-xs-regular text-text-tertiary'>
-              {t('nodes.agent.toolCondition.singleConditionTip')}
+            <div className="system-xs-regular text-text-tertiary">
+              {t('nodes.agent.toolCondition.singleConditionTip', { ns: 'workflow' })}
             </div>
           )}
         </div>

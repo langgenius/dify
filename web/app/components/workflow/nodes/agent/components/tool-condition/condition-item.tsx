@@ -1,14 +1,3 @@
-import { memo, useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { RiDeleteBinLine } from '@remixicon/react'
-import { produce } from 'immer'
-import ConditionVarSelector from './condition-var-selector'
-import ConditionOperator from './condition-operator'
-import {
-  getConditionOperators,
-  getDefaultValueByType,
-  operatorNeedsValue,
-} from '../../utils'
 import type {
   AgentToolCondition,
 } from '../../types'
@@ -18,11 +7,22 @@ import type {
   ValueSelector,
   Var,
 } from '@/app/components/workflow/types'
-import { VarType } from '@/app/components/workflow/types'
+import { RiDeleteBinLine } from '@remixicon/react'
+import { produce } from 'immer'
+import { memo, useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
-import ConditionInput from './condition-input'
-import { cn } from '@/utils/classnames'
 import BoolValue from '@/app/components/workflow/panel/chat-variable-panel/components/bool-value'
+import { VarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import {
+  getConditionOperators,
+  getDefaultValueByType,
+  operatorNeedsValue,
+} from '../../utils'
+import ConditionInput from './condition-input'
+import ConditionOperator from './condition-operator'
+import ConditionVarSelector from './condition-var-selector'
 
 type Props = {
   className?: string
@@ -90,7 +90,7 @@ const ConditionItem = ({
 
   const renderValueInput = () => {
     if (!needsValue)
-      return <div className='system-xs-regular text-text-tertiary'>{t('nodes.agent.toolCondition.noValueNeeded')}</div>
+      return <div className="system-xs-regular text-text-tertiary">{t('nodes.agent.toolCondition.noValueNeeded', { ns: 'workflow' })}</div>
 
     if (condition.varType === VarType.boolean) {
       if (typeof condition.value === 'string' && condition.value !== 'true' && condition.value !== 'false') {
@@ -115,7 +115,7 @@ const ConditionItem = ({
       })()
 
       return (
-        <div className='p-1'>
+        <div className="p-1">
           <BoolValue
             value={booleanValue}
             onChange={handleBooleanValueChange}
@@ -152,9 +152,9 @@ const ConditionItem = ({
 
   return (
     <div className={cn('mb-1 flex w-full last-of-type:mb-0', className)}>
-      <div className='flex-1 rounded-lg bg-components-input-bg-normal'>
-        <div className='flex items-center p-1'>
-          <div className='w-0 grow'>
+      <div className="flex-1 rounded-lg bg-components-input-bg-normal">
+        <div className="flex items-center p-1">
+          <div className="w-0 grow">
             <ConditionVarSelector
               open={open}
               onOpenChange={setOpen}
@@ -166,7 +166,7 @@ const ConditionItem = ({
               disabled={disabled}
             />
           </div>
-          <div className='mx-1 h-3 w-[1px] bg-divider-regular' />
+          <div className="mx-1 h-3 w-[1px] bg-divider-regular" />
           <ConditionOperator
             varType={condition.varType}
             value={condition.comparison_operator}
@@ -174,17 +174,17 @@ const ConditionItem = ({
             disabled={disabled || !condition.variable_selector}
           />
         </div>
-        <div className='border-t border-divider-subtle px-3 py-2'>
+        <div className="border-t border-divider-subtle px-3 py-2">
           {renderValueInput()}
         </div>
       </div>
       <button
-        type='button'
-        className='ml-1 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-destructive-hover hover:text-text-destructive'
+        type="button"
+        className="ml-1 mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded-lg text-text-tertiary transition-colors hover:bg-state-destructive-hover hover:text-text-destructive"
         onClick={onRemove}
         disabled={disabled}
       >
-        <RiDeleteBinLine className='h-4 w-4' />
+        <RiDeleteBinLine className="h-4 w-4" />
       </button>
     </div>
   )
