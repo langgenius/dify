@@ -88,7 +88,6 @@ class WorkflowToolManageService:
         with Session(db.engine, expire_on_commit=False) as session, session.begin():
             session.add(workflow_tool_provider)
 
-
         if labels is not None:
             ToolLabelManager.update_tool_labels(
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
