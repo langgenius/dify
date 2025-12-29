@@ -1298,7 +1298,7 @@ class TestBillingServiceSubscriptionOperations:
         """Test bulk plan retrieval when one tenant has invalid plan data (should skip that tenant)."""
         # Arrange
         tenant_ids = ["tenant-valid-1", "tenant-invalid", "tenant-valid-2"]
-        
+
         # Response with one invalid tenant plan (missing expiration_date) and two valid ones
         mock_send_request.return_value = {
             "data": {
@@ -1317,13 +1317,13 @@ class TestBillingServiceSubscriptionOperations:
         assert "tenant-valid-1" in result
         assert "tenant-valid-2" in result
         assert "tenant-invalid" not in result
-        
+
         # Verify valid tenants have correct data
         assert result["tenant-valid-1"]["plan"] == "sandbox"
         assert result["tenant-valid-1"]["expiration_date"] == 1735689600
         assert result["tenant-valid-2"]["plan"] == "team"
         assert result["tenant-valid-2"]["expiration_date"] == 1767225600
-        
+
         # Verify exception was logged for the invalid tenant
         mock_logger.exception.assert_called_once()
         log_call_args = mock_logger.exception.call_args[0]

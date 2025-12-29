@@ -291,11 +291,11 @@ class BillingService:
                 continue
 
         return results
-    
+
     @classmethod
     def _make_plan_cache_key(cls, tenant_id: str) -> str:
         return f"{cls._PLAN_CACHE_KEY_PREFIX}{tenant_id}"
-    
+
     @classmethod
     def get_plan_bulk_with_cache(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
         """
@@ -310,7 +310,7 @@ class BillingService:
 
         if not tenant_ids:
             return tenant_plans
-        
+
         subscription_adapter = TypeAdapter(SubscriptionPlan)
 
         # Step 1: Batch fetch from Redis cache using mget
@@ -336,8 +336,7 @@ class BillingService:
                         tenant_plans[tenant_id] = subscription_plan
                     except (json.JSONDecodeError, Exception):
                         logger.exception(
-                            "get_plan_bulk_with_cache: process tenant(%s) failed, add to cache misses",
-                            tenant_id
+                            "get_plan_bulk_with_cache: process tenant(%s) failed, add to cache misses", tenant_id
                         )
                         cache_misses.append(tenant_id)
                 else:

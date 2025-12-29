@@ -363,4 +363,3 @@ class TestBillingServiceGetPlanBulkWithCache:
             assert ttl_1_new <= 600
             assert ttl_2 > 0
             assert ttl_2 <= 600
-
