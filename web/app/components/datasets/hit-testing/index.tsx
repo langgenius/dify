@@ -34,7 +34,6 @@ import Records from './components/records'
 import ResultItem from './components/result-item'
 import ResultItemExternal from './components/result-item-external'
 import ModifyRetrievalModal from './modify-retrieval-modal'
-import s from './style.module.css'
 
 const limit = 10
 
@@ -115,8 +114,8 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
   }, [isMobile, setShowRightPanel])
 
   return (
-    <div className={s.container}>
-      <div className="flex flex-col px-6 py-3">
+    <div className="relative flex h-full w-full gap-x-6 overflow-y-auto pl-6">
+      <div className="flex min-w-0 flex-1 flex-col py-3">
         <div className="mb-4 flex flex-col justify-center">
           <h1 className="text-base font-semibold text-text-primary">{t('datasetHitTesting.title')}</h1>
           <p className="mt-0.5 text-[13px] font-normal leading-4 text-text-tertiary">{t('datasetHitTesting.desc')}</p>
@@ -161,7 +160,7 @@ const HitTestingPage: FC<Props> = ({ datasetId }: Props) => {
         onClose={hideRightPanel}
         footer={null}
       >
-        <div className="flex flex-col pt-3">
+        <div className="flex min-w-0 flex-1 flex-col pt-3">
           {isRetrievalLoading
             ? (
                 <div className="flex h-full flex-col rounded-tl-2xl bg-background-body px-4 py-3">
