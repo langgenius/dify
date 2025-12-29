@@ -1,10 +1,10 @@
 'use client'
 
 import type { ToolDefaultValue } from '../block-selector/types'
+import type { FlowGraph } from '../store/workflow/vibe-workflow-slice'
 import type { Edge, Node, ToolWithProvider } from '../types'
 import type { Tool } from '@/app/components/tools/types'
 import type { Model } from '@/types/app'
-import { useSessionStorageState } from 'ahooks'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useStoreApi } from 'reactflow'
@@ -30,7 +30,7 @@ import {
   VIBE_COMMAND_EVENT,
 } from '../constants'
 import { useHooksStore } from '../hooks-store'
-import { useWorkflowStore } from '../store'
+import { useStore, useWorkflowStore } from '../store'
 import { BlockEnum } from '../types'
 import {
   generateNewNode,
@@ -75,11 +75,6 @@ type ParseError = {
 type ParseResult = {
   nodes: ParsedNode[]
   edges: ParsedEdge[]
-}
-
-type FlowGraph = {
-  nodes: Node[]
-  edges: Edge[]
 }
 
 const NODE_DECLARATION = /^([A-Z][\w-]*)\s*\[(?:"([^"]+)"|([^\]]+))\]\s*$/i
@@ -282,67 +277,92 @@ const buildToolParams = (parameters?: Tool['parameters']) => {
   return params
 }
 
-type UseVibeFlowDataParams = {
-  storageKey: string
+// Sync vibe flow data to sessionStorage
+const STORAGE_KEY_PREFIX = 'vibe-flow-'
+
+const loadFromSessionStorage = (flowId: string): { versions: FlowGraph[], currentIndex: number } | null => {
+  if (typeof window === 'undefined')
+    return null
+
+  try {
+    const versionsKey = `${STORAGE_KEY_PREFIX}${flowId}-versions`
+    const indexKey = `${STORAGE_KEY_PREFIX}${flowId}-version-index`
+
+    const versionsRaw = sessionStorage.getItem(versionsKey)
+    const indexRaw = sessionStorage.getItem(indexKey)
+
+    if (!versionsRaw)
+      return null
+
+    const versions = JSON.parse(versionsRaw) as FlowGraph[]
+    const currentIndex = indexRaw ? Number.parseInt(indexRaw, 10) : 0
+
+    return { versions, currentIndex }
+  }
+  catch {
+    return null
+  }
 }
 
-const keyPrefix = 'vibe-flow-'
+const saveToSessionStorage = (flowId: string, versions: FlowGraph[], currentIndex: number) => {
+  if (typeof window === 'undefined')
+    return
 
-export const useVibeFlowData = ({ storageKey }: UseVibeFlowDataParams) => {
-  const [versions, setVersions] = useSessionStorageState<FlowGraph[]>(`${keyPrefix}${storageKey}-versions`, {
-    defaultValue: [],
-  })
+  try {
+    const versionsKey = `${STORAGE_KEY_PREFIX}${flowId}-versions`
+    const indexKey = `${STORAGE_KEY_PREFIX}${flowId}-version-index`
 
-  const [currentVersionIndex, setCurrentVersionIndex] = useSessionStorageState<number>(`${keyPrefix}${storageKey}-version-index`, {
-    defaultValue: 0,
-  })
-
-  useEffect(() => {
-    if (!versions || versions.length === 0) {
-      if (currentVersionIndex !== 0 && currentVersionIndex !== -1)
-        setCurrentVersionIndex(0)
-      return
-    }
-
-    if (currentVersionIndex === -1)
-      return
-
-    const normalizedIndex = Math.min(Math.max(currentVersionIndex ?? 0, 0), versions.length - 1)
-    if (normalizedIndex !== currentVersionIndex)
-      setCurrentVersionIndex(normalizedIndex)
-  }, [versions, currentVersionIndex, setCurrentVersionIndex])
-
-  const current = useMemo(() => {
-    if (!versions || versions.length === 0)
-      return undefined
-    const index = currentVersionIndex ?? 0
-    if (index < 0)
-      return undefined
-    return versions[index] || versions[versions.length - 1]
-  }, [versions, currentVersionIndex])
-
-  const addVersion = useCallback((version: FlowGraph) => {
-    // Prevent adding empty graphs
-    if (!version || !version.nodes || version.nodes.length === 0) {
-      setCurrentVersionIndex(-1)
-      return
-    }
-
-    setVersions((prev) => {
-      const newVersions = [...(prev || []), version]
-      // Set index in setVersions callback to ensure using the latest length
-      setCurrentVersionIndex(newVersions.length - 1)
-      return newVersions
-    })
-  }, [setVersions, setCurrentVersionIndex])
-
-  return {
-    versions,
-    addVersion,
-    currentVersionIndex,
-    setCurrentVersionIndex,
-    current,
+    sessionStorage.setItem(versionsKey, JSON.stringify(versions))
+    sessionStorage.setItem(indexKey, String(currentIndex))
   }
+  catch (error) {
+    console.error('Failed to save vibe flow to sessionStorage:', error)
+  }
+}
+
+export const useVibeFlowSessionStorage = (flowId: string) => {
+  const workflowStore = useWorkflowStore()
+  const versions = useStore(s => s.vibeFlowVersions)
+  const currentIndex = useStore(s => s.vibeFlowCurrentIndex)
+  const loadedFlowIdRef = useRef<string | null>(null)
+  const isLoadingRef = useRef(false)
+
+  // Load from sessionStorage when flowId changes
+  useEffect(() => {
+    if (!flowId || loadedFlowIdRef.current === flowId)
+      return
+
+    isLoadingRef.current = true
+    const stored = loadFromSessionStorage(flowId)
+
+    if (stored) {
+      workflowStore.setState({
+        vibeFlowVersions: stored.versions,
+        vibeFlowCurrentIndex: stored.currentIndex,
+      })
+    }
+    else {
+      workflowStore.setState({
+        vibeFlowVersions: [],
+        vibeFlowCurrentIndex: 0,
+        currentVibeFlow: undefined,
+      })
+    }
+
+    loadedFlowIdRef.current = flowId
+    // Delay to prevent immediate save
+    setTimeout(() => {
+      isLoadingRef.current = false
+    }, 100)
+  }, [flowId, workflowStore])
+
+  // Save to sessionStorage when versions or index change
+  useEffect(() => {
+    if (!flowId || loadedFlowIdRef.current !== flowId || isLoadingRef.current)
+      return
+
+    saveToSessionStorage(flowId, versions, currentIndex)
+  }, [flowId, versions, currentIndex])
 }
 
 export const useWorkflowVibe = () => {
@@ -367,9 +387,7 @@ export const useWorkflowVibe = () => {
   const isGeneratingRef = useRef(false)
   const lastInstructionRef = useRef<string>('')
 
-  const { addVersion, current: currentFlowGraph } = useVibeFlowData({
-    storageKey: configsMap?.flowId || '',
-  })
+  useVibeFlowSessionStorage(configsMap?.flowId || '')
 
   useEffect(() => {
     const storedModel = (() => {
@@ -702,6 +720,8 @@ export const useWorkflowVibe = () => {
   }, [nodeTypeLookup, toolLookup])
 
   const applyFlowchartToWorkflow = useCallback(() => {
+    const currentFlowGraph = workflowStore.getState().currentVibeFlow
+
     if (!currentFlowGraph || !currentFlowGraph.nodes || currentFlowGraph.nodes.length === 0) {
       Toast.notify({ type: 'error', message: t('workflow.vibe.invalidFlowchart') })
       return
@@ -722,7 +742,6 @@ export const useWorkflowVibe = () => {
       vibePanelMermaidCode: '',
     }))
   }, [
-    currentFlowGraph,
     handleSyncWorkflowDraft,
     nodeTypeLookup,
     nodesMetaDataMap,
@@ -730,6 +749,7 @@ export const useWorkflowVibe = () => {
     store,
     t,
     toolLookup,
+    workflowStore,
   ])
 
   const handleVibeCommand = useCallback(async (dsl?: string, skipPanelPreview = false) => {
@@ -830,7 +850,7 @@ export const useWorkflowVibe = () => {
       }))
 
       const workflowGraph = await flowchartToWorkflowGraph(mermaidCode)
-      addVersion(workflowGraph)
+      workflowStore.getState().addVibeFlowVersion(workflowGraph)
 
       if (skipPanelPreview)
         applyFlowchartToWorkflow()

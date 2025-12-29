@@ -20,8 +20,6 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelModeType } from '@/types/app'
 import { VIBE_APPLY_EVENT, VIBE_COMMAND_EVENT } from '../../constants'
-import { useHooksStore } from '../../hooks-store'
-import { useVibeFlowData } from '../../hooks/use-workflow-vibe'
 import { useStore, useWorkflowStore } from '../../store'
 import WorkflowPreview from '../../workflow-preview'
 
@@ -31,11 +29,9 @@ const VibePanel: FC = () => {
   const showVibePanel = useStore(s => s.showVibePanel)
   const isVibeGenerating = useStore(s => s.isVibeGenerating)
   const vibePanelInstruction = useStore(s => s.vibePanelInstruction)
-  const configsMap = useHooksStore(s => s.configsMap)
-
-  const { current: currentFlowGraph, versions, currentVersionIndex, setCurrentVersionIndex } = useVibeFlowData({
-    storageKey: configsMap?.flowId || '',
-  })
+  const currentFlowGraph = useStore(s => s.currentVibeFlow)
+  const versions = useStore(s => s.vibeFlowVersions)
+  const currentVersionIndex = useStore(s => s.vibeFlowCurrentIndex)
 
   const vibePanelPreviewNodes = currentFlowGraph?.nodes || []
   const vibePanelPreviewEdges = currentFlowGraph?.edges || []
@@ -124,6 +120,11 @@ const VibePanel: FC = () => {
     Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
   }, [workflowStore, t])
 
+  const handleVersionChange = useCallback((index: number) => {
+    const { setVibeFlowCurrentIndex } = workflowStore.getState()
+    setVibeFlowCurrentIndex(index)
+  }, [workflowStore])
+
   if (!showVibePanel)
     return null
 
@@ -193,7 +194,8 @@ const VibePanel: FC = () => {
                   <VersionSelector
                     versionLen={versions.length}
                     value={currentVersionIndex}
-                    onChange={setCurrentVersionIndex}
+                    onChange={handleVersionChange}
+                    contentClassName="z-[1200]"
                   />
                 </div>
                 <div className="flex items-center space-x-2">
@@ -216,6 +218,7 @@ const VibePanel: FC = () => {
               </div>
               <div className="flex grow flex-col overflow-hidden pb-6">
                 <WorkflowPreview
+                  key={currentVersionIndex}
                   nodes={vibePanelPreviewNodes}
                   edges={vibePanelPreviewEdges}
                   viewport={{ x: 0, y: 0, zoom: 1 }}
