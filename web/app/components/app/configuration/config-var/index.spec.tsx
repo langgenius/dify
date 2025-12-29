@@ -58,20 +58,20 @@ vi.mock('react-sortablejs', () => ({
   },
 }))
 
-type DebugConfigurationState = any
+type DebugConfigurationState = React.ComponentProps<typeof DebugConfigurationContext.Provider>['value']
 
-const defaultDebugConfigValue: DebugConfigurationState = {
+const defaultDebugConfigValue = {
   mode: AppModeEnum.CHAT,
   dataSets: [],
   modelConfig: {
     model_id: 'test-model',
   },
-}
+} as unknown as DebugConfigurationState
 
 const createDebugConfigValue = (overrides: Partial<DebugConfigurationState> = {}): DebugConfigurationState => ({
   ...defaultDebugConfigValue,
   ...overrides,
-})
+} as unknown as DebugConfigurationState)
 
 let variableIndex = 0
 const createPromptVariable = (overrides: Partial<PromptVariable> = {}): PromptVariable => {
@@ -186,6 +186,28 @@ describe('ConfigVar', () => {
       })
 
       expect(onPromptVariablesChange).toHaveBeenLastCalledWith([])
+    })
+
+    it('should restore previous variables when cancelling api variable with existing items', async () => {
+      const onPromptVariablesChange = vi.fn()
+      const existingVar = createPromptVariable({ key: 'existing', name: 'Existing' })
+
+      renderConfigVar({ promptVariables: [existingVar], onPromptVariablesChange })
+
+      fireEvent.click(screen.getByText('common.operation.add'))
+      fireEvent.click(await screen.findByText('appDebug.variableConfig.apiBasedVar'))
+
+      const modalState = setShowExternalDataToolModal.mock.calls[0][0]
+      act(() => {
+        modalState.onCancelCallback?.()
+      })
+
+      expect(onPromptVariablesChange).toHaveBeenCalledTimes(2)
+      const [addedVariables] = onPromptVariablesChange.mock.calls[0]
+      expect(addedVariables).toHaveLength(2)
+      expect(addedVariables[0]).toBe(existingVar)
+      expect(addedVariables[1].type).toBe('api')
+      expect(onPromptVariablesChange).toHaveBeenLastCalledWith([existingVar])
     })
   })
 
