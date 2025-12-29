@@ -17,8 +17,7 @@ web/i18n
     └── ...
 
 web/i18n-config
-├── auto-gen-i18n.js
-├── check-i18n.js
+├── language.ts
 ├── i18next-config.ts
 └── ...
 ```
@@ -159,10 +158,10 @@ We have a list of languages that we support in the `languages.ts` file. But some
 
 ## Utility scripts
 
-- Auto-fill translations: `pnpm run auto-gen-i18n --file app common --lang zh-Hans ja-JP [--dry-run]`
+- Auto-fill translations: `pnpm run i18n:gen --file app common --lang zh-Hans ja-JP [--dry-run]`
   - Use space-separated values; repeat `--file` / `--lang` as needed. Defaults to all en-US files and all supported locales except en-US.
   - Protects placeholders (`{{var}}`, `${var}`, `<tag>`) before translation and restores them after.
-- Check missing/extra keys: `pnpm run check-i18n --file app billing --lang zh-Hans [--auto-remove]`
+- Check missing/extra keys: `pnpm run i18n:check --file app billing --lang zh-Hans [--auto-remove]`
   - Use space-separated values; repeat `--file` / `--lang` as needed. Returns non-zero on missing/extra keys; `--auto-remove` deletes extra keys automatically.
 
-Workflows: `.github/workflows/translate-i18n-base-on-english.yml` auto-runs the translation generator on `web/i18n/en-US/*.json` changes to main. `check-i18n` is a manual script (not run in CI).
+Workflows: `.github/workflows/translate-i18n-base-on-english.yml` auto-runs the translation generator on `web/i18n/en-US/*.json` changes to main. `i18n:check` is a manual script (not run in CI).
