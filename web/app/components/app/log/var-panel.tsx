@@ -32,7 +32,7 @@ const VarPanel: FC<Props> = ({
         onClick={toggleCollapse}
       >
         <Variable02 className="h-4 w-4" />
-        <div className="system-md-medium grow">{t('appLog.detail.variables')}</div>
+        <div className="system-md-medium grow">{t('detail.variables', { ns: 'appLog' })}</div>
         {
           isCollapse
             ? <RiArrowRightSLine className="h-4 w-4" />
@@ -54,7 +54,7 @@ const VarPanel: FC<Props> = ({
 
           {message_files.length > 0 && (
             <div className="mt-1 flex py-2">
-              <div className="system-xs-medium w-[128px] shrink-0 text-text-tertiary">{t('appLog.detail.uploadImages')}</div>
+              <div className="system-xs-medium w-[128px] shrink-0 text-text-tertiary">{t('detail.uploadImages', { ns: 'appLog' })}</div>
               <div className="flex space-x-2">
                 {message_files.map((url, index) => (
                   <div

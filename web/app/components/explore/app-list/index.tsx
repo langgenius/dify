@@ -3,6 +3,7 @@
 import type { CreateAppModalProps } from '@/app/components/explore/create-app-modal'
 import type { App } from '@/models/explore'
 import { useDebounceFn } from 'ahooks'
+import { useQueryState } from 'nuqs'
 import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +16,6 @@ import Category from '@/app/components/explore/category'
 import CreateAppModal from '@/app/components/explore/create-app-modal'
 import ExploreContext from '@/context/explore-context'
 import { useImportDSL } from '@/hooks/use-import-dsl'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import {
   DSLImportMode,
 } from '@/models/app'
@@ -33,7 +33,7 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { hasEditPermission } = useContext(ExploreContext)
-  const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
+  const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -47,9 +47,8 @@ const Apps = ({
     handleSearch()
   }
 
-  const [currCategory, setCurrCategory] = useTabSearchParams({
-    defaultTab: allCategoriesEn,
-    disableSearchParams: false,
+  const [currCategory, setCurrCategory] = useQueryState('category', {
+    defaultValue: allCategoriesEn,
   })
 
   const {
@@ -140,8 +139,8 @@ const Apps = ({
     >
 
       <div className="shrink-0 px-12 pt-6">
-        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className="text-sm text-text-tertiary">{t('explore.apps.description')}</div>
+        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('apps.title', { ns: 'explore' })}</div>
+        <div className="text-sm text-text-tertiary">{t('apps.description', { ns: 'explore' })}</div>
       </div>
 
       <div className={cn(

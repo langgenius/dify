@@ -83,7 +83,7 @@ const ViewWorkflowHistory = () => {
       return
 
     const count = index < 0 ? index * -1 : index
-    return `${index > 0 ? t('workflow.changeHistory.stepForward', { count }) : t('workflow.changeHistory.stepBackward', { count })}`
+    return `${index > 0 ? t('changeHistory.stepForward', { ns: 'workflow', count }) : t('changeHistory.stepBackward', { ns: 'workflow', count })}`
   }, [t])
 
   const calculateChangeList: ChangeHistoryList = useMemo(() => {
@@ -139,7 +139,7 @@ const ViewWorkflowHistory = () => {
       >
         <PortalToFollowElemTrigger onClick={() => !nodesReadOnly && setOpen(v => !v)}>
           <TipPopup
-            title={t('workflow.changeHistory.title')}
+            title={t('changeHistory.title', { ns: 'workflow' })}
           >
             <div
               className={
@@ -161,7 +161,7 @@ const ViewWorkflowHistory = () => {
             className="ml-2 flex min-w-[240px] max-w-[360px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]"
           >
             <div className="sticky top-0 flex items-center justify-between px-4 pt-3">
-              <div className="system-mg-regular grow text-text-secondary">{t('workflow.changeHistory.title')}</div>
+              <div className="system-mg-regular grow text-text-secondary">{t('changeHistory.title', { ns: 'workflow' })}</div>
               <div
                 className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
@@ -184,7 +184,7 @@ const ViewWorkflowHistory = () => {
                   <div className="py-12">
                     <RiHistoryLine className="mx-auto mb-2 h-8 w-8 text-text-tertiary" />
                     <div className="text-center text-[13px] text-text-tertiary">
-                      {t('workflow.changeHistory.placeholder')}
+                      {t('changeHistory.placeholder', { ns: 'workflow' })}
                     </div>
                   </div>
                 )
@@ -211,12 +211,12 @@ const ViewWorkflowHistory = () => {
                         >
                           {composeHistoryItemLabel(
                             item?.state?.workflowHistoryEventMeta?.nodeTitle,
-                            item?.label || t('workflow.changeHistory.sessionStart'),
+                            item?.label || t('changeHistory.sessionStart', { ns: 'workflow' }),
                           )}
                           {' '}
                           (
                           {calculateStepLabel(item?.index)}
-                          {item?.index === currentHistoryStateIndex && t('workflow.changeHistory.currentState')}
+                          {item?.index === currentHistoryStateIndex && t('changeHistory.currentState', { ns: 'workflow' })}
                           )
                         </div>
                       </div>
@@ -244,7 +244,7 @@ const ViewWorkflowHistory = () => {
                         >
                           {composeHistoryItemLabel(
                             item?.state?.workflowHistoryEventMeta?.nodeTitle,
-                            item?.label || t('workflow.changeHistory.sessionStart'),
+                            item?.label || t('changeHistory.sessionStart', { ns: 'workflow' }),
                           )}
                           {' '}
                           (
@@ -277,7 +277,7 @@ const ViewWorkflowHistory = () => {
                           'flex items-center text-[13px] font-medium leading-[18px]',
                         )}
                       >
-                        {t('workflow.changeHistory.clearHistory')}
+                        {t('changeHistory.clearHistory', { ns: 'workflow' })}
                       </div>
                     </div>
                   </div>
@@ -285,8 +285,8 @@ const ViewWorkflowHistory = () => {
               )
             }
             <div className="w-[240px] px-3 py-2 text-xs text-text-tertiary">
-              <div className="mb-1 flex h-[22px] items-center font-medium uppercase">{t('workflow.changeHistory.hint')}</div>
-              <div className="mb-1 leading-[18px] text-text-tertiary">{t('workflow.changeHistory.hintText')}</div>
+              <div className="mb-1 flex h-[22px] items-center font-medium uppercase">{t('changeHistory.hint', { ns: 'workflow' })}</div>
+              <div className="mb-1 leading-[18px] text-text-tertiary">{t('changeHistory.hintText', { ns: 'workflow' })}</div>
             </div>
           </div>
         </PortalToFollowElemContent>

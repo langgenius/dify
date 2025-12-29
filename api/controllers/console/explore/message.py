@@ -1,6 +1,5 @@
 import logging
 from typing import Literal
-from uuid import UUID
 
 from flask import request
 from flask_restx import marshal_with
@@ -26,6 +25,7 @@ from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotIni
 from core.model_runtime.errors.invoke import InvokeError
 from fields.message_fields import message_infinite_scroll_pagination_fields
 from libs import helper
+from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
 
 
 class MessageListQuery(BaseModel):
-    conversation_id: UUID
-    first_id: UUID | None = None
+    conversation_id: UUIDStrOrEmpty
+    first_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
 

@@ -6,8 +6,6 @@ import { BoxGroup } from '@/app/components/workflow/nodes/_base/components/layou
 import MaxIterations from './max-iterations'
 import { useNodeTools } from './use-node-tools'
 
-const i18nPrefix = 'workflow.nodes.llm'
-
 type ToolsProps = {
   nodeId: string
   tools?: ToolValue[]
@@ -39,8 +37,8 @@ const Tools = ({
         nodeOutputVars={[]}
         availableNodes={[]}
         value={tools}
-        label={t(`${i18nPrefix}.tools.title`)}
-        tooltip={t(`${i18nPrefix}.tools.title`)}
+        label={t(`nodes.llm.tools.title`, { ns: 'workflow' })}
+        tooltip={t(`nodes.llm.tools.title`, { ns: 'workflow' })}
         onChange={handleToolsChange}
         supportCollapse
       />

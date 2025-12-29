@@ -1,0 +1,22 @@
+{
+  "app.changeLogoTip": "Format SVG lub PNG o minimalnym rozmiarze 80x80px",
+  "app.title": "Dostosuj markę nagłówka aplikacji",
+  "apply": "Zastosuj",
+  "change": "Zmień",
+  "custom": "Dostosowanie",
+  "customize.contactUs": " skontaktuj się z nami ",
+  "customize.prefix": "Aby dostosować logo marki w aplikacji, proszę",
+  "customize.suffix": "dla aktualizacji do wersji Enterprise.",
+  "restore": "Przywróć domyślne",
+  "upgradeTip.des": "Zaktualizuj swój plan, aby dostosować swoją markę",
+  "upgradeTip.prefix": "Zaktualizuj swój plan, aby",
+  "upgradeTip.suffix": "dostosować swoją markę.",
+  "upgradeTip.title": "Zmień swój plan",
+  "upload": "Prześlij",
+  "uploadedFail": "Wystąpił problem podczas przesyłania obrazu, proszę spróbować ponownie.",
+  "uploading": "Przesyłanie",
+  "webapp.changeLogo": "Zmień obraz marki zasilany przez Brand",
+  "webapp.changeLogoTip": "Format SVG lub PNG o minimalnym rozmiarze 40x40px",
+  "webapp.removeBrand": "Usuń zasilane przez Dify",
+  "webapp.title": "Dostosuj markę aplikacji internetowej"
+}

@@ -65,7 +65,7 @@ const ArrayValueList: FC<Props> = ({
       ))}
       <Button variant="tertiary" className="w-full" onClick={handleItemAdd}>
         <RiAddLine className="mr-1 h-4 w-4" />
-        <span>{t('workflow.chatVariable.modal.addArrayValue')}</span>
+        <span>{t('chatVariable.modal.addArrayValue', { ns: 'workflow' })}</span>
       </Button>
     </div>
   )

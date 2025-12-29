@@ -1,4 +1,5 @@
 import type { Branch } from '@/app/components/workflow/types'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { VarType } from '@/app/components/workflow/types'
 import { ComparisonOperator } from './types'
 
@@ -13,12 +14,18 @@ const notTranslateKey = [
   ComparisonOperator.largerThanOrEqual,
   ComparisonOperator.lessThan,
   ComparisonOperator.lessThanOrEqual,
-]
+] as const
 
-export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {
+type NotTranslateOperator = typeof notTranslateKey[number]
+export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
+export type IfElseOptionName = I18nKeysByPrefix<'workflow', 'nodes.ifElse.optionName.'>
+
+export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator {
   if (!operator)
     return false
-  return !notTranslateKey.includes(operator)
+  return !(notTranslateKey as readonly ComparisonOperator[]).includes(operator)
 }
 
 export const getOperators = (type?: VarType, file?: { key: string }) => {
