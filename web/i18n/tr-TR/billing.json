@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "Ücretsiz Özellikler:",
   "plans.community.name": "Topluluk",
   "plans.community.price": "Ücretsiz",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "Satış ile İletişime Geç",
   "plans.enterprise.description": "Büyük ölçekli kritik sistemler için tam yetenekler ve destek.",
   "plans.enterprise.features": [

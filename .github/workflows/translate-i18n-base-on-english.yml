@@ -65,7 +65,7 @@ jobs:
       - name: Generate i18n translations
         if: env.FILES_CHANGED == 'true'
         working-directory: ./web
-        run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
+        run: pnpm run i18n:gen ${{ env.FILE_ARGS }}
 
       - name: Create Pull Request
         if: env.FILES_CHANGED == 'true'
