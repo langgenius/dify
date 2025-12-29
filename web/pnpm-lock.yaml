@@ -319,8 +319,8 @@ importers:
         specifier: ^6.0.0
         version: 6.0.0
       scheduler:
-        specifier: ^0.26.0
-        version: 0.26.0
+        specifier: ^0.27.0
+        version: 0.27.0
       semver:
         specifier: ^7.7.3
         version: 7.7.3
@@ -341,7 +341,7 @@ importers:
         version: 7.0.19
       use-context-selector:
         specifier: ^2.0.0
-        version: 2.0.0(react@19.2.3)(scheduler@0.26.0)
+        version: 2.0.0(react@19.2.3)(scheduler@0.27.0)
       uuid:
         specifier: ^10.0.0
         version: 10.0.0
@@ -3594,6 +3594,9 @@ packages:
   '@types/node@20.19.26':
     resolution: {integrity: sha512-0l6cjgF0XnihUpndDhk+nyD3exio3iKaYROSgvh/qSevPXax3L8p5DBRFjbvalnwatGgHEQn2R88y2fA3g4irg==}
 
+  '@types/node@20.19.27':
+    resolution: {integrity: sha512-N2clP5pJhB2YnZJ3PIHFk5RkygRX5WO/5f0WC08tp0wd+sv0rsJk3MqWn3CbNmT2J505a5336jaQj4ph1AdMug==}
+
   '@types/papaparse@5.5.1':
     resolution: {integrity: sha512-esEO+VISsLIyE+JZBmb89NzsYYbpwV8lmv2rPo6oX5y9KhBaIP7hhHgjuTut54qjdKVMufTEcrh5fUl9+58huw==}
 
@@ -6203,8 +6206,8 @@ packages:
   lexical@0.38.2:
     resolution: {integrity: sha512-JJmfsG3c4gwBHzUGffbV7ifMNkKAWMCnYE3xJl87gty7hjyV5f3xq7eqTjP5HFYvO4XpjJvvWO2/djHp5S10tw==}
 
-  lib0@0.2.115:
-    resolution: {integrity: sha512-noaW4yNp6hCjOgDnWWxW0vGXE3kZQI5Kqiwz+jIWXavI9J9WyfJ9zjsbQlQlgjIbHBrvlA/x3TSIXBUJj+0L6g==}
+  lib0@0.2.116:
+    resolution: {integrity: sha512-4zsosjzmt33rx5XjmFVYUAeLNh+BTeDTiwGdLt4muxiir2btsc60Nal0EvkvDRizg+pnlK1q+BtYi7M+d4eStw==}
     engines: {node: '>=16'}
     hasBin: true
 
@@ -7641,9 +7644,6 @@ packages:
     resolution: {integrity: sha512-xAg7SOnEhrm5zI3puOOKyy1OMcMlIJZYNJY7xLBwSze0UjhPLnWfj2GF2EpT0jmzaJKIWKHLsaSSajf35bcYnA==}
     engines: {node: '>=v12.22.7'}
 
-  scheduler@0.26.0:
-    resolution: {integrity: sha512-NlHwttCI/l5gCPR3D1nNXtWABUmBwvZpEQiD4IXSbIDq8BzLIK/7Ir5gTFSGZDUu37K5cMNp0hFtzO38sC7gWA==}
-
   scheduler@0.27.0:
     resolution: {integrity: sha512-eNv+WrVbKu1f3vbYJT/xtiF5syA5HPIMtf9IgY/nKg0sWqzAUEvqY/xm7OcZc/qafLx/iO9FgOmeSAp4v5ti/Q==}
 
@@ -8589,6 +8589,7 @@ packages:
   whatwg-encoding@3.1.1:
     resolution: {integrity: sha512-6qN4hJdMwfYBtE3YBTTHhoeuUrDBPZmbQaxWAqSALV/MeEnR5z1xd8UKud2RAkFoPkmB+hli1TZSnyi84xz1vQ==}
     engines: {node: '>=18'}
+    deprecated: Use @exodus/bytes instead for a more spec-conformant and faster implementation
 
   whatwg-mimetype@3.0.0:
     resolution: {integrity: sha512-nt+N2dzIutVRxARx1nghPKGv1xHikU7HKdfafKkLNLindmPU/ch3U31NOCGGA/dmPcmb1VlofO0vnKAcsm0o/Q==}
@@ -12091,6 +12092,11 @@ snapshots:
     dependencies:
       undici-types: 6.21.0
 
+  '@types/node@20.19.27':
+    dependencies:
+      undici-types: 6.21.0
+    optional: true
+
   '@types/papaparse@5.5.1':
     dependencies:
       '@types/node': 18.15.0
@@ -14512,7 +14518,7 @@ snapshots:
 
   happy-dom@20.0.11:
     dependencies:
-      '@types/node': 20.19.26
+      '@types/node': 20.19.27
       '@types/whatwg-mimetype': 3.0.2
       whatwg-mimetype: 3.0.0
     optional: true
@@ -15127,7 +15133,7 @@ snapshots:
 
   lexical@0.38.2: {}
 
-  lib0@0.2.115:
+  lib0@0.2.116:
     dependencies:
       isomorphic.js: 0.2.5
 
@@ -17044,8 +17050,6 @@ snapshots:
     dependencies:
       xmlchars: 2.2.0
 
-  scheduler@0.26.0: {}
-
   scheduler@0.27.0: {}
 
   schema-utils@2.7.1:
@@ -17734,10 +17738,10 @@ snapshots:
     optionalDependencies:
       '@types/react': 19.2.7
 
-  use-context-selector@2.0.0(react@19.2.3)(scheduler@0.26.0):
+  use-context-selector@2.0.0(react@19.2.3)(scheduler@0.27.0):
     dependencies:
       react: 19.2.3
-      scheduler: 0.26.0
+      scheduler: 0.27.0
 
   use-isomorphic-layout-effect@1.2.1(@types/react@19.2.7)(react@19.2.3):
     dependencies:
@@ -18202,7 +18206,7 @@ snapshots:
 
   yjs@13.6.27:
     dependencies:
-      lib0: 0.2.115
+      lib0: 0.2.116
 
   yocto-queue@0.1.0: {}
 
