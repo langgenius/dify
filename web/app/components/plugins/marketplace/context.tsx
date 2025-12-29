@@ -23,6 +23,7 @@ import {
   createContext,
   useContextSelector,
 } from 'use-context-selector'
+import { useMarketplaceFilters } from '@/hooks/use-query-params'
 import { useInstalledPluginList } from '@/service/use-plugins'
 import {
   getValidCategoryKeys,
@@ -38,7 +39,6 @@ import { PLUGIN_TYPE_SEARCH_MAP } from './plugin-type-switch'
 import {
   getMarketplaceListCondition,
   getMarketplaceListFilterType,
-  updateSearchParams,
 } from './utils'
 
 export type MarketplaceContextValue = {
@@ -108,16 +108,22 @@ export const MarketplaceContextProvider = ({
   scrollContainerId,
   showSearchParams,
 }: MarketplaceContextProviderProps) => {
+  // Use nuqs hook for URL-based filter state
+  const [urlFilters, setUrlFilters] = useMarketplaceFilters()
+
   const { data, isSuccess } = useInstalledPluginList(!shouldExclude)
   const exclude = useMemo(() => {
     if (shouldExclude)
       return data?.plugins.map(plugin => plugin.plugin_id)
   }, [data?.plugins, shouldExclude])
-  const queryFromSearchParams = searchParams?.q || ''
-  const tagsFromSearchParams = searchParams?.tags ? getValidTagKeys(searchParams.tags.split(',')) : []
+
+  // Initialize from URL params (legacy support) or use nuqs state
+  const queryFromSearchParams = searchParams?.q || urlFilters.q
+  const tagsFromSearchParams = getValidTagKeys(urlFilters.tags)
   const hasValidTags = !!tagsFromSearchParams.length
-  const hasValidCategory = getValidCategoryKeys(searchParams?.category)
+  const hasValidCategory = getValidCategoryKeys(urlFilters.category)
   const categoryFromSearchParams = hasValidCategory || PLUGIN_TYPE_SEARCH_MAP.all
+
   const [searchPluginText, setSearchPluginText] = useState(queryFromSearchParams)
   const searchPluginTextRef = useRef(searchPluginText)
   const [filterPluginTags, setFilterPluginTags] = useState<string[]>(tagsFromSearchParams)
@@ -159,10 +165,6 @@ export const MarketplaceContextProvider = ({
         sortOrder: sortRef.current.sortOrder,
         type: getMarketplaceListFilterType(activePluginTypeRef.current),
       })
-      const url = new URL(window.location.href)
-      if (searchParams?.language)
-        url.searchParams.set('language', searchParams?.language)
-      history.replaceState({}, '', url)
     }
     else {
       if (shouldExclude && isSuccess) {
@@ -184,28 +186,32 @@ export const MarketplaceContextProvider = ({
     resetPlugins()
   }, [exclude, queryMarketplaceCollectionsAndPlugins, resetPlugins])
 
-  const debouncedUpdateSearchParams = useMemo(() => debounce(() => {
-    updateSearchParams({
-      query: searchPluginTextRef.current,
-      category: activePluginTypeRef.current,
-      tags: filterPluginTagsRef.current,
-    })
-  }, 500), [])
-
-  const handleUpdateSearchParams = useCallback((debounced?: boolean) => {
+  const applyUrlFilters = useCallback(() => {
     if (!showSearchParams)
       return
+    const nextFilters = {
+      q: searchPluginTextRef.current,
+      category: activePluginTypeRef.current,
+      tags: filterPluginTagsRef.current,
+    }
+    const categoryChanged = urlFilters.category !== nextFilters.category
+    setUrlFilters(nextFilters, {
+      history: categoryChanged ? 'push' : 'replace',
+    })
+  }, [setUrlFilters, showSearchParams, urlFilters.category])
+
+  const debouncedUpdateSearchParams = useMemo(() => debounce(() => {
+    applyUrlFilters()
+  }, 500), [applyUrlFilters])
+
+  const handleUpdateSearchParams = useCallback((debounced?: boolean) => {
     if (debounced) {
       debouncedUpdateSearchParams()
     }
     else {
-      updateSearchParams({
-        query: searchPluginTextRef.current,
-        category: activePluginTypeRef.current,
-        tags: filterPluginTagsRef.current,
-      })
+      applyUrlFilters()
     }
-  }, [debouncedUpdateSearchParams, showSearchParams])
+  }, [applyUrlFilters, debouncedUpdateSearchParams])
 
   const handleQueryPlugins = useCallback((debounced?: boolean) => {
     handleUpdateSearchParams(debounced)

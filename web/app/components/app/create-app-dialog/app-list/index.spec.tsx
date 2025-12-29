@@ -21,8 +21,8 @@ vi.mock('use-context-selector', async () => {
     useContext: () => ({ hasEditPermission: true }),
   }
 })
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => ['Recommended', vi.fn()],
+vi.mock('nuqs', () => ({
+  useQueryState: () => ['Recommended', vi.fn()],
 }))
 vi.mock('@/service/use-explore', () => ({
   useExploreAppList: () => mockUseExploreAppList(),
