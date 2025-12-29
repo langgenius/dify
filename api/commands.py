@@ -911,13 +911,13 @@ def archive_workflow_runs(
 
 
 @click.command(
-    "rollback-archived-run",
-    help="Restore an archived workflow run from S3-compatible storage.",
+    "rollback-workflow-runs",
+    help="Restore archived workflow runs from S3-compatible storage.",
 )
 @click.option("--tenant-id", required=True, help="Tenant ID.")
 @click.option("--run-id", required=True, help="Workflow run ID to restore.")
 @click.option("--dry-run", is_flag=True, help="Preview without restoring.")
-def rollback_archived_run(
+def rollback_workflow_runs(
     tenant_id: str,
     run_id: str,
     dry_run: bool,

@@ -22,7 +22,7 @@ def init_app(app: DifyApp):
         reset_email,
         reset_encrypt_key_pair,
         reset_password,
-        rollback_archived_run,
+        rollback_workflow_runs,
         setup_datasource_oauth_client,
         setup_system_tool_oauth_client,
         setup_system_trigger_oauth_client,
@@ -57,7 +57,7 @@ def init_app(app: DifyApp):
         transform_datasource_credentials,
         install_rag_pipeline_plugins,
         archive_workflow_runs,
-        rollback_archived_run,
+        rollback_workflow_runs,
     ]
     for cmd in cmds_to_register:
         app.cli.add_command(cmd)
