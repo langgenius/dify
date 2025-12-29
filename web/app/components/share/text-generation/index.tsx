@@ -1,14 +1,9 @@
 'use client'
 import type { FC } from 'react'
-import type {
-  MoreLikeThisConfig,
-  PromptConfig,
-  SavedMessage,
-  TextToSpeechConfig,
-} from '@/models/debug'
+import type { Task } from './hooks/use-batch-tasks'
 import type { InstalledApp } from '@/models/explore'
-import type { SiteInfo } from '@/models/share'
-import type { VisionFile, VisionSettings } from '@/types/app'
+import type { VisionFile } from '@/types/app'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import {
   RiBookmark3Line,
   RiErrorWarningFill,
@@ -26,40 +21,21 @@ import DifyLogo from '@/app/components/base/logo/dify-logo'
 import Toast from '@/app/components/base/toast'
 import Res from '@/app/components/share/text-generation/result'
 import RunOnce from '@/app/components/share/text-generation/run-once'
-import { appDefaultIconBackground, BATCH_CONCURRENCY, DEFAULT_VALUE_MAX_LEN } from '@/config'
+import { appDefaultIconBackground } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { useWebAppStore } from '@/context/web-app-context'
 import { useAppFavicon } from '@/hooks/use-app-favicon'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useDocumentTitle from '@/hooks/use-document-title'
-import { changeLanguage } from '@/i18n-config/i18next-config'
 import { AccessMode } from '@/models/access-control'
-import { fetchSavedMessage as doFetchSavedMessage, removeMessage, saveMessage } from '@/service/share'
-import { Resolution, TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
-import { userInputsFormToPromptVariables } from '@/utils/model-config'
 import TabHeader from '../../base/tab-header'
+import { TaskStatus, useBatchTasks } from './hooks/use-batch-tasks'
+import { useSavedMessages } from './hooks/use-saved-messages'
+import { useShareAppConfig } from './hooks/use-share-app-config'
 import MenuDropdown from './menu-dropdown'
 import RunBatch from './run-batch'
 import ResDownload from './run-batch/res-download'
-
-const GROUP_SIZE = BATCH_CONCURRENCY // to avoid RPM(Request per minute) limit. The group task finished then the next group.
-enum TaskStatus {
-  pending = 'pending',
-  running = 'running',
-  completed = 'completed',
-  failed = 'failed',
-}
-
-type TaskParam = {
-  inputs: Record<string, any>
-}
-
-type Task = {
-  id: number
-  status: TaskStatus
-  params: TaskParam
-}
 
 export type IMainProps = {
   isInstalledApp?: boolean
@@ -72,9 +48,21 @@ const TextGeneration: FC<IMainProps> = ({
   installedAppInfo,
   isWorkflow = false,
 }) => {
-  const { notify } = Toast
+  const { notify: rawNotify } = Toast
+  // Adapter to match expected notify signature
+  const notify = ({ type, message }: { type: string, message: string }) => {
+    // Only allow valid types
+    const validTypes = ['success', 'error', 'warning', 'info'] as const
+    const toastType = validTypes.includes(type as any) ? type as typeof validTypes[number] : 'info'
+    rawNotify({ type: toastType, message })
+  }
 
   const { t } = useTranslation()
+  // Adapter to ensure t matches expected signature
+  const tForSavedMessages = React.useCallback(
+    (key: string, options?: Record<string, any>) => t(key as I18nKeysByPrefix<'share'>, { ...options, ns: 'share' }),
+    [t],
+  )
   const media = useBreakpoints()
   const isPC = media === MediaType.pc
 
@@ -83,7 +71,6 @@ const TextGeneration: FC<IMainProps> = ({
   const [currentTab, setCurrentTab] = useState<string>(['create', 'batch'].includes(mode) ? mode : 'create')
 
   // Notice this situation isCallBatchAPI but not in batch tab
-  const [isCallBatchAPI, setIsCallBatchAPI] = useState(false)
   const isInBatchTab = currentTab === 'batch'
   const [inputs, doSetInputs] = useState<Record<string, any>>({})
   const inputsRef = useRef(inputs)
@@ -92,41 +79,74 @@ const TextGeneration: FC<IMainProps> = ({
     inputsRef.current = newInputs
   }, [])
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  const [appId, setAppId] = useState<string>('')
-  const [siteInfo, setSiteInfo] = useState<SiteInfo | null>(null)
-  const [customConfig, setCustomConfig] = useState<Record<string, any> | null>(null)
-  const [promptConfig, setPromptConfig] = useState<PromptConfig | null>(null)
-  const [moreLikeThisConfig, setMoreLikeThisConfig] = useState<MoreLikeThisConfig | null>(null)
-  const [textToSpeechConfig, setTextToSpeechConfig] = useState<TextToSpeechConfig | null>(null)
-
-  // save message
-  const [savedMessages, setSavedMessages] = useState<SavedMessage[]>([])
-  const fetchSavedMessage = useCallback(async () => {
-    const res: any = await doFetchSavedMessage(isInstalledApp, appId)
-    setSavedMessages(res.data)
-  }, [isInstalledApp, appId])
-  const handleSaveMessage = async (messageId: string) => {
-    await saveMessage(messageId, isInstalledApp, appId)
-    notify({ type: 'success', message: t('api.saved', { ns: 'common' }) })
-    fetchSavedMessage()
-  }
-  const handleRemoveSavedMessage = async (messageId: string) => {
-    await removeMessage(messageId, isInstalledApp, appId)
-    notify({ type: 'success', message: t('api.remove', { ns: 'common' }) })
-    fetchSavedMessage()
-  }
 
   // send message task
   const [controlSend, setControlSend] = useState(0)
   const [controlStopResponding, setControlStopResponding] = useState(0)
-  const [visionConfig, setVisionConfig] = useState<VisionSettings>({
-    enabled: false,
-    number_limits: 2,
-    detail: Resolution.low,
-    transfer_methods: [TransferMethod.local_file],
-  })
   const [completionFiles, setCompletionFiles] = useState<VisionFile[]>([])
   const [runControl, setRunControl] = useState<{ onStop: () => Promise<void> | void, isStopping: boolean } | null>(null)
+  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
+  const showResultPanel = useCallback(() => {
+    // fix: useClickAway hideResSidebar will close sidebar
+    setTimeout(() => {
+      doShowResultPanel()
+    }, 0)
+  }, [doShowResultPanel])
+  const [resultExisted, setResultExisted] = useState(false)
+
+  const appData = useWebAppStore(s => s.appInfo)
+  const appParams = useWebAppStore(s => s.appParams)
+  const accessMode = useWebAppStore(s => s.webAppAccessMode)
+
+  const {
+    appId,
+    siteInfo,
+    customConfig,
+    promptConfig,
+    moreLikeThisConfig,
+    textToSpeechConfig,
+    visionConfig,
+  } = useShareAppConfig({ appData, appParams })
+
+  const {
+    savedMessages,
+    handleSaveMessage,
+    handleRemoveSavedMessage,
+  } = useSavedMessages({
+    appId,
+    isInstalledApp,
+    isWorkflow,
+    notify,
+    t: tForSavedMessages,
+  })
+
+  const handleBatchStart = useCallback(() => {
+    setControlSend(Date.now())
+    // clear run once task status
+    setControlStopResponding(Date.now())
+    showResultPanel()
+  }, [showResultPanel])
+
+  const {
+    isCallBatchAPI,
+    allTaskList,
+    noPendingTask,
+    showTaskList,
+    allSuccessTaskList,
+    allFailedTaskList,
+    allTasksRun,
+    exportRes,
+    controlRetry,
+    handleRetryAllFailedTask,
+    handleRunBatch,
+    handleCompleted,
+    resetBatchTasks,
+  } = useBatchTasks({
+    promptConfig,
+    notify,
+    t: tForSavedMessages,
+    onBatchStart: handleBatchStart,
+  })
 
   useEffect(() => {
     if (isCallBatchAPI)
@@ -134,268 +154,10 @@ const TextGeneration: FC<IMainProps> = ({
   }, [isCallBatchAPI])
 
   const handleSend = () => {
-    setIsCallBatchAPI(false)
     setControlSend(Date.now())
-
-    // eslint-disable-next-line ts/no-use-before-define
-    setAllTaskList([]) // clear batch task running status
-
-    // eslint-disable-next-line ts/no-use-before-define
+    resetBatchTasks()
     showResultPanel()
   }
-
-  const [controlRetry, setControlRetry] = useState(0)
-  const handleRetryAllFailedTask = () => {
-    setControlRetry(Date.now())
-  }
-  const [allTaskList, doSetAllTaskList] = useState<Task[]>([])
-  const allTaskListRef = useRef<Task[]>([])
-  const getLatestTaskList = () => allTaskListRef.current
-  const setAllTaskList = (taskList: Task[]) => {
-    doSetAllTaskList(taskList)
-    allTaskListRef.current = taskList
-  }
-  const pendingTaskList = allTaskList.filter(task => task.status === TaskStatus.pending)
-  const noPendingTask = pendingTaskList.length === 0
-  const showTaskList = allTaskList.filter(task => task.status !== TaskStatus.pending)
-  const currGroupNumRef = useRef(0)
-
-  const setCurrGroupNum = (num: number) => {
-    currGroupNumRef.current = num
-  }
-  const getCurrGroupNum = () => {
-    return currGroupNumRef.current
-  }
-  const allSuccessTaskList = allTaskList.filter(task => task.status === TaskStatus.completed)
-  const allFailedTaskList = allTaskList.filter(task => task.status === TaskStatus.failed)
-  const allTasksFinished = allTaskList.every(task => task.status === TaskStatus.completed)
-  const allTasksRun = allTaskList.every(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status))
-  const batchCompletionResRef = useRef<Record<string, string>>({})
-  const setBatchCompletionRes = (res: Record<string, string>) => {
-    batchCompletionResRef.current = res
-  }
-  const getBatchCompletionRes = () => batchCompletionResRef.current
-  const exportRes = allTaskList.map((task) => {
-    const batchCompletionResLatest = getBatchCompletionRes()
-    const res: Record<string, string> = {}
-    const { inputs } = task.params
-    promptConfig?.prompt_variables.forEach((v) => {
-      res[v.name] = inputs[v.key]
-    })
-    let result = batchCompletionResLatest[task.id]
-    // task might return multiple fields, should marshal object to string
-    if (typeof batchCompletionResLatest[task.id] === 'object')
-      result = JSON.stringify(result)
-
-    res[t('generation.completionResult', { ns: 'share' })] = result
-    return res
-  })
-  const checkBatchInputs = (data: string[][]) => {
-    if (!data || data.length === 0) {
-      notify({ type: 'error', message: t('generation.errorMsg.empty', { ns: 'share' }) })
-      return false
-    }
-    const headerData = data[0]
-    let isMapVarName = true
-    promptConfig?.prompt_variables.forEach((item, index) => {
-      if (!isMapVarName)
-        return
-
-      if (item.name !== headerData[index])
-        isMapVarName = false
-    })
-
-    if (!isMapVarName) {
-      notify({ type: 'error', message: t('generation.errorMsg.fileStructNotMatch', { ns: 'share' }) })
-      return false
-    }
-
-    let payloadData = data.slice(1)
-    if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
-      return false
-    }
-
-    // check middle empty line
-    const allEmptyLineIndexes = payloadData.filter(item => item.every(i => i === '')).map(item => payloadData.indexOf(item))
-    if (allEmptyLineIndexes.length > 0) {
-      let hasMiddleEmptyLine = false
-      let startIndex = allEmptyLineIndexes[0] - 1
-      allEmptyLineIndexes.forEach((index) => {
-        if (hasMiddleEmptyLine)
-          return
-
-        if (startIndex + 1 !== index) {
-          hasMiddleEmptyLine = true
-          return
-        }
-        startIndex++
-      })
-
-      if (hasMiddleEmptyLine) {
-        notify({ type: 'error', message: t('generation.errorMsg.emptyLine', { ns: 'share', rowIndex: startIndex + 2 }) })
-        return false
-      }
-    }
-
-    // check row format
-    payloadData = payloadData.filter(item => !item.every(i => i === ''))
-    // after remove empty rows in the end, checked again
-    if (payloadData.length === 0) {
-      notify({ type: 'error', message: t('generation.errorMsg.atLeastOne', { ns: 'share' }) })
-      return false
-    }
-    let errorRowIndex = 0
-    let requiredVarName = ''
-    let moreThanMaxLengthVarName = ''
-    let maxLength = 0
-    payloadData.forEach((item, index) => {
-      if (errorRowIndex !== 0)
-        return
-
-      promptConfig?.prompt_variables.forEach((varItem, varIndex) => {
-        if (errorRowIndex !== 0)
-          return
-        if (varItem.type === 'string') {
-          const maxLen = varItem.max_length || DEFAULT_VALUE_MAX_LEN
-          if (item[varIndex].length > maxLen) {
-            moreThanMaxLengthVarName = varItem.name
-            maxLength = maxLen
-            errorRowIndex = index + 1
-            return
-          }
-        }
-        if (!varItem.required)
-          return
-
-        if (item[varIndex].trim() === '') {
-          requiredVarName = varItem.name
-          errorRowIndex = index + 1
-        }
-      })
-    })
-
-    if (errorRowIndex !== 0) {
-      if (requiredVarName)
-        notify({ type: 'error', message: t('generation.errorMsg.invalidLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: requiredVarName }) })
-
-      if (moreThanMaxLengthVarName)
-        notify({ type: 'error', message: t('generation.errorMsg.moreThanMaxLengthLine', { ns: 'share', rowIndex: errorRowIndex + 1, varName: moreThanMaxLengthVarName, maxLength }) })
-
-      return false
-    }
-    return true
-  }
-  const handleRunBatch = (data: string[][]) => {
-    if (!checkBatchInputs(data))
-      return
-    if (!allTasksFinished) {
-      notify({ type: 'info', message: t('errorMessage.waitForBatchResponse', { ns: 'appDebug' }) })
-      return
-    }
-
-    const payloadData = data.filter(item => !item.every(i => i === '')).slice(1)
-    const varLen = promptConfig?.prompt_variables.length || 0
-    setIsCallBatchAPI(true)
-    const allTaskList: Task[] = payloadData.map((item, i) => {
-      const inputs: Record<string, any> = {}
-      if (varLen > 0) {
-        item.slice(0, varLen).forEach((input, index) => {
-          const varSchema = promptConfig?.prompt_variables[index]
-          inputs[varSchema?.key as string] = input
-          if (!input) {
-            if (varSchema?.type === 'string' || varSchema?.type === 'paragraph')
-              inputs[varSchema?.key as string] = ''
-            else
-              inputs[varSchema?.key as string] = undefined
-          }
-        })
-      }
-      return {
-        id: i + 1,
-        status: i < GROUP_SIZE ? TaskStatus.running : TaskStatus.pending,
-        params: {
-          inputs,
-        },
-      }
-    })
-    setAllTaskList(allTaskList)
-    setCurrGroupNum(0)
-    setControlSend(Date.now())
-    // clear run once task status
-    setControlStopResponding(Date.now())
-
-    // eslint-disable-next-line ts/no-use-before-define
-    showResultPanel()
-  }
-  const handleCompleted = (completionRes: string, taskId?: number, isSuccess?: boolean) => {
-    const allTaskListLatest = getLatestTaskList()
-    const batchCompletionResLatest = getBatchCompletionRes()
-    const pendingTaskList = allTaskListLatest.filter(task => task.status === TaskStatus.pending)
-    const runTasksCount = 1 + allTaskListLatest.filter(task => [TaskStatus.completed, TaskStatus.failed].includes(task.status)).length
-    const needToAddNextGroupTask = (getCurrGroupNum() !== runTasksCount) && pendingTaskList.length > 0 && (runTasksCount % GROUP_SIZE === 0 || (allTaskListLatest.length - runTasksCount < GROUP_SIZE))
-    // avoid add many task at the same time
-    if (needToAddNextGroupTask)
-      setCurrGroupNum(runTasksCount)
-
-    const nextPendingTaskIds = needToAddNextGroupTask ? pendingTaskList.slice(0, GROUP_SIZE).map(item => item.id) : []
-    const newAllTaskList = allTaskListLatest.map((item) => {
-      if (item.id === taskId) {
-        return {
-          ...item,
-          status: isSuccess ? TaskStatus.completed : TaskStatus.failed,
-        }
-      }
-      if (needToAddNextGroupTask && nextPendingTaskIds.includes(item.id)) {
-        return {
-          ...item,
-          status: TaskStatus.running,
-        }
-      }
-      return item
-    })
-    setAllTaskList(newAllTaskList)
-    if (taskId) {
-      setBatchCompletionRes({
-        ...batchCompletionResLatest,
-        [`${taskId}`]: completionRes,
-      })
-    }
-  }
-
-  const appData = useWebAppStore(s => s.appInfo)
-  const appParams = useWebAppStore(s => s.appParams)
-  const accessMode = useWebAppStore(s => s.webAppAccessMode)
-  useEffect(() => {
-    (async () => {
-      if (!appData || !appParams)
-        return
-      if (!isWorkflow)
-        fetchSavedMessage()
-      const { app_id: appId, site: siteInfo, custom_config } = appData
-      setAppId(appId)
-      setSiteInfo(siteInfo as SiteInfo)
-      setCustomConfig(custom_config)
-      await changeLanguage(siteInfo.default_language)
-
-      const { user_input_form, more_like_this, file_upload, text_to_speech }: any = appParams
-      setVisionConfig({
-        // legacy of image upload compatible
-        ...file_upload,
-        transfer_methods: file_upload?.allowed_file_upload_methods || file_upload?.allowed_upload_methods,
-        // legacy of image upload compatible
-        image_file_size_limit: appParams?.system_parameters.image_file_size_limit,
-        fileUploadConfig: appParams?.system_parameters,
-      } as any)
-      const prompt_variables = userInputsFormToPromptVariables(user_input_form)
-      setPromptConfig({
-        prompt_template: '', // placeholder for future
-        prompt_variables,
-      } as PromptConfig)
-      setMoreLikeThisConfig(more_like_this)
-      setTextToSpeechConfig(text_to_speech)
-    })()
-  }, [appData, appParams, fetchSavedMessage, isWorkflow])
 
   // Can Use metadata(https://beta.nextjs.org/docs/api-reference/metadata) to set title. But it only works in server side client.
   useDocumentTitle(siteInfo?.title || t('generation.title', { ns: 'share' }))
@@ -407,15 +169,6 @@ const TextGeneration: FC<IMainProps> = ({
     icon_background: siteInfo?.icon_background,
     icon_url: siteInfo?.icon_url,
   })
-
-  const [isShowResultPanel, { setTrue: doShowResultPanel, setFalse: hideResultPanel }] = useBoolean(false)
-  const showResultPanel = () => {
-    // fix: useClickAway hideResSidebar will close sidebar
-    setTimeout(() => {
-      doShowResultPanel()
-    }, 0)
-  }
-  const [resultExisted, setResultExisted] = useState(false)
 
   const renderRes = (task?: Task) => (
     <Res
@@ -450,6 +203,21 @@ const TextGeneration: FC<IMainProps> = ({
 
   const renderBatchRes = () => {
     return (showTaskList.map(task => renderRes(task)))
+  }
+
+  const badge = (
+    <Badge className="ml-1">
+      {savedMessages.length}
+    </Badge>
+  )
+  const saveTab = {
+    id: 'saved',
+    name: t('generation.tabs.saved', { ns: 'share' }),
+    isRight: true,
+    icon: <RiBookmark3Line className="h-4 w-4" />,
+    extra: savedMessages.length > 0
+      ? badge
+      : null,
   }
 
   const renderResWrap = (
@@ -547,19 +315,7 @@ const TextGeneration: FC<IMainProps> = ({
               { id: 'create', name: t('generation.tabs.create', { ns: 'share' }) },
               { id: 'batch', name: t('generation.tabs.batch', { ns: 'share' }) },
               ...(!isWorkflow
-                ? [{
-                    id: 'saved',
-                    name: t('generation.tabs.saved', { ns: 'share' }),
-                    isRight: true,
-                    icon: <RiBookmark3Line className="h-4 w-4" />,
-                    extra: savedMessages.length > 0
-                      ? (
-                          <Badge className="ml-1">
-                            {savedMessages.length}
-                          </Badge>
-                        )
-                      : null,
-                  }]
+                ? [saveTab]
                 : []),
             ]}
             value={currentTab}
