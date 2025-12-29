@@ -8,7 +8,9 @@ import { useContext } from 'use-context-selector'
 import { SimpleSelect } from '@/app/components/base/select'
 import { ToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
-import I18n from '@/context/i18n'
+
+import { useLocale } from '@/context/i18n'
+import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
@@ -18,7 +20,7 @@ const titleClassName = `
 `
 
 export default function LanguagePage() {
-  const { locale, setLocaleOnClient } = useContext(I18n)
+  const locale = useLocale()
   const { userProfile, mutateUserProfile } = useAppContext()
   const { notify } = useContext(ToastContext)
   const [editing, setEditing] = useState(false)

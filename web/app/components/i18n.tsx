@@ -5,20 +5,22 @@ import type { Locale } from '@/i18n-config'
 import { usePrefetchQuery } from '@tanstack/react-query'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import I18NContext from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { getSystemFeatures } from '@/service/common'
 import Loading from './base/loading'
+
+import '../../i18n-config/i18next-config'
 
 export type II18nProps = {
   locale: Locale
   children: React.ReactNode
 }
 const I18n: FC<II18nProps> = ({
-  locale,
   children,
 }) => {
   const [loading, setLoading] = useState(true)
+  const locale = useLocale()
 
   usePrefetchQuery({
     queryKey: ['systemFeatures'],
@@ -26,6 +28,7 @@ const I18n: FC<II18nProps> = ({
   })
 
   useEffect(() => {
+    console.log('Setting locale on client:', locale)
     setLocaleOnClient(locale, false).then(() => {
       setLoading(false)
     })
@@ -35,14 +38,9 @@ const I18n: FC<II18nProps> = ({
     return <div className="flex h-screen w-screen items-center justify-center"><Loading type="app" /></div>
 
   return (
-    <I18NContext.Provider value={{
-      locale,
-      i18n: {},
-      setLocaleOnClient,
-    }}
-    >
+    <>
       {children}
-    </I18NContext.Provider>
+    </>
   )
 }
 export default React.memo(I18n)

@@ -90,6 +90,7 @@
     "html-entities": "^2.6.0",
     "html-to-image": "1.11.13",
     "i18next": "^23.16.8",
+    "i18next-browser-languagedetector": "^8.2.0",
     "i18next-resources-to-backend": "^1.2.1",
     "immer": "^11.1.0",
     "js-audio-recorder": "^1.0.7",

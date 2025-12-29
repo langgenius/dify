@@ -2,7 +2,7 @@
 import type { Locale } from '.'
 import { camelCase, kebabCase } from 'es-toolkit/compat'
 import i18n from 'i18next'
-
+import LanguageDetector from 'i18next-browser-languagedetector'
 import { initReactI18next } from 'react-i18next'
 import appAnnotation from '../i18n/en-US/app-annotation.json'
 import appApi from '../i18n/en-US/app-api.json'
@@ -122,7 +122,7 @@ const getInitialTranslations = () => {
 }
 
 if (!i18n.isInitialized) {
-  i18n.use(initReactI18next).init({
+  i18n.use(LanguageDetector).use(initReactI18next).init({
     lng: undefined,
     fallbackLng: 'en-US',
     resources: getInitialTranslations(),
