@@ -77,7 +77,6 @@ class ChatAppLogService(MessageAppLogServiceBase):
                 "answer": message.answer,
                 "status": message.status,
                 "message_tokens": message.message_tokens,
-                "total_tokens": message.total_tokens,
                 "created_at": message.created_at,
                 "error": message.error,
                 "provider_response_latency": message.provider_response_latency,
