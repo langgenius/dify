@@ -140,7 +140,6 @@ const VibePanel: FC = () => {
       onClose={handleClose}
       className="min-w-[1140px] !p-0"
       clickOutsideNotClose
-      closable
     >
       <div className="flex h-[680px] flex-wrap">
         <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
