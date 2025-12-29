@@ -90,7 +90,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Usage: pnpm run check-i18n [options]
+  console.log(`Usage: pnpm run i18n:check [options]
 
 Options:
   --file <name...>  Check only specific files; provide space-separated names and repeat --file if needed
@@ -99,8 +99,8 @@ Options:
   -h, --help        Show help
 
 Examples:
-  pnpm run check-i18n --file app billing --lang zh-Hans ja-JP
-  pnpm run check-i18n --auto-remove
+  pnpm run i18n:check --file app billing --lang zh-Hans ja-JP
+  pnpm run i18n:check --auto-remove
 `)
 }
 
@@ -285,7 +285,7 @@ async function main() {
     return hasDiff
   }
 
-  console.log('🚀 Starting check-i18n script...')
+  console.log('🚀 Starting i18n:check script...')
   if (targetFiles.length)
     console.log(`📁 Checking files: ${targetFiles.join(', ')}`)
 
