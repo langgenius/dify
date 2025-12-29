@@ -7,7 +7,7 @@ import {
 } from '@tanstack/react-query'
 import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 import { DocumentActionType } from '@/models/datasets'
-import { del, get, patch } from '../base'
+import { del, get, patch, post } from '../base'
 import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
 import { useInvalid } from '../use-base'
 
@@ -160,6 +160,18 @@ export const useDocumentResume = () => {
       if (!datasetId || !documentId)
         throw new Error('datasetId and documentId are required')
       return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
+}
+
+export const useDocumentBatchRetryIndex = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentIds }: { datasetId: string, documentIds: string[] }) => {
+      return post<CommonResponse>(`/datasets/${datasetId}/retry`, {
+        body: {
+          document_ids: documentIds,
+        },
+      })
     },
   })
 }
