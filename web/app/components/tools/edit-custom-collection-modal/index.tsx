@@ -48,6 +48,7 @@ const EditCustomCollectionModal: FC<Props> = ({
 
   const [editFirst, setEditFirst] = useState(!isAdd)
   const [paramsSchemas, setParamsSchemas] = useState<CustomParamSchema[]>(payload?.tools || [])
+  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const [customCollection, setCustomCollection, getCustomCollection] = useGetState<CustomCollectionBackend>(isAdd
     ? {
         provider: '',
@@ -66,6 +67,15 @@ const EditCustomCollectionModal: FC<Props> = ({
     : payload)
 
   const originalProvider = isEdit ? payload.provider : ''
+
+  // Sync customCollection state when payload changes
+  useEffect(() => {
+    if (isEdit) {
+      setCustomCollection(payload)
+      setParamsSchemas(payload.tools || [])
+      setLabels(payload.labels || [])
+    }
+  }, [isEdit, payload])
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const emoji = customCollection.icon
@@ -124,7 +134,6 @@ const EditCustomCollectionModal: FC<Props> = ({
   const [currTool, setCurrTool] = useState<CustomParamSchema | null>(null)
   const [isShowTestApi, setIsShowTestApi] = useState(false)
 
-  const [labels, setLabels] = useState<string[]>(payload?.labels || [])
   const handleLabelSelect = (value: string[]) => {
     setLabels(value)
   }
