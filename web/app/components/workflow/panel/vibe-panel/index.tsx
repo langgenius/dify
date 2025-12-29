@@ -140,7 +140,6 @@ const VibePanel: FC = () => {
       isShow={showVibePanel}
       onClose={handleClose}
       className="min-w-[1140px] !p-0"
-      wrapperClassName="z-[900]"
       clickOutsideNotClose
     >
       <div className="flex h-[680px] flex-wrap">
