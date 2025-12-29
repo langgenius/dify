@@ -16,7 +16,7 @@ import Version from '../../base/version'
 import { parseGitHubUrl, pluginManifestToCardPluginProps } from '../../utils'
 
 type LoadedProps = {
-  updatePayload: UpdateFromGitHubPayload
+  updatePayload?: UpdateFromGitHubPayload
   uniqueIdentifier: string
   payload: PluginDeclaration | Plugin
   repoUrl: string
