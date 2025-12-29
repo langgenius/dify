@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "ميزات مجانية:",
   "plans.community.name": "مجتمع",
   "plans.community.price": "مجاني",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "اتصل بالمبيعات",
   "plans.enterprise.description": "للمؤسسات التي تتطلب أمانًا وامتثالًا وقابلية للتوسع وتحكمًا وحلولًا مخصصة على مستوى المؤسسة",
   "plans.enterprise.features": [

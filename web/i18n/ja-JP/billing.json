@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "無料機能：",
   "plans.community.name": "コミュニティ",
   "plans.community.price": "無料",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "営業に相談",
   "plans.enterprise.description": "企業レベルのセキュリティとカスタマイズを実現",
   "plans.enterprise.features": [
