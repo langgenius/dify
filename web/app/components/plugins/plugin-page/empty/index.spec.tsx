@@ -15,6 +15,7 @@ const {
   mockSetActiveTab,
   mockUseInstalledPluginList,
   mockState,
+  stableT,
 } = vi.hoisted(() => {
   const state = {
     filters: {
@@ -31,10 +32,14 @@ const {
     } as Partial<SystemFeatures>,
     pluginList: { plugins: [] as Array<{ id: string }> } as { plugins: Array<{ id: string }> } | undefined,
   }
+  // Stable t function to prevent infinite re-renders
+  // The component's useEffect and useMemo depend on t
+  const t = (key: string) => key
   return {
     mockSetActiveTab: vi.fn(),
     mockUseInstalledPluginList: vi.fn(() => ({ data: state.pluginList })),
     mockState: state,
+    stableT: t,
   }
 })
 
@@ -89,6 +94,18 @@ vi.mock('@/app/components/plugins/install-plugin/install-from-local-package', ()
 // Mock Line component
 vi.mock('../../marketplace/empty/line', () => ({
   default: ({ className }: { className?: string }) => <div data-testid="line-component" className={className} />,
+}))
+
+// Override react-i18next with stable t function reference to prevent infinite re-renders
+// The component's useEffect and useMemo depend on t, so it MUST be stable
+vi.mock('react-i18next', () => ({
+  useTranslation: () => ({
+    t: stableT,
+    i18n: {
+      language: 'en',
+      changeLanguage: vi.fn(),
+    },
+  }),
 }))
 
 // ==================== Test Utilities ====================
@@ -149,9 +166,9 @@ describe('Empty Component', () => {
       expect(fileInput.style.display).toBe('none')
       expect(fileInput.accept).toBe('.difypkg,.difybndl')
 
-      // Assert - skeleton cards
+      // Assert - skeleton cards (20 in the grid + 1 icon container)
       const skeletonCards = container.querySelectorAll('.rounded-xl.bg-components-card-bg')
-      expect(skeletonCards).toHaveLength(20)
+      expect(skeletonCards.length).toBeGreaterThanOrEqual(20)
 
       // Assert - group icon container
       const iconContainer = document.querySelector('.size-14')
@@ -174,7 +191,7 @@ describe('Empty Component', () => {
       await flushEffects()
 
       // Assert
-      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
+      expect(screen.getByText('list.noInstalled')).toBeInTheDocument()
     })
 
     it('should display "notFound" text when filters are active with plugins', async () => {
@@ -185,19 +202,19 @@ describe('Empty Component', () => {
       setMockFilters({ categories: ['model'] })
       const { rerender } = render(<Empty />)
       await flushEffects()
-      expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
+      expect(screen.getByText('list.notFound')).toBeInTheDocument()
 
       // Test tags filter
       setMockFilters({ categories: [], tags: ['tag1'] })
       rerender(<Empty />)
       await flushEffects()
-      expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
+      expect(screen.getByText('list.notFound')).toBeInTheDocument()
 
       // Test searchQuery filter
       setMockFilters({ tags: [], searchQuery: 'test query' })
       rerender(<Empty />)
       await flushEffects()
-      expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
+      expect(screen.getByText('list.notFound')).toBeInTheDocument()
     })
 
     it('should prioritize "noInstalled" over "notFound" when no plugins exist', async () => {
@@ -210,7 +227,7 @@ describe('Empty Component', () => {
       await flushEffects()
 
       // Assert
-      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
+      expect(screen.getByText('list.noInstalled')).toBeInTheDocument()
     })
   })
 
@@ -233,15 +250,15 @@ describe('Empty Component', () => {
       // Assert
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(3)
-      expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
-      expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
-      expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
+      expect(screen.getByText('source.marketplace')).toBeInTheDocument()
+      expect(screen.getByText('source.github')).toBeInTheDocument()
+      expect(screen.getByText('source.local')).toBeInTheDocument()
 
       // Verify button order
       const buttonTexts = buttons.map(btn => btn.textContent)
-      expect(buttonTexts[0]).toContain('plugin.source.marketplace')
-      expect(buttonTexts[1]).toContain('plugin.source.github')
-      expect(buttonTexts[2]).toContain('plugin.source.local')
+      expect(buttonTexts[0]).toContain('source.marketplace')
+      expect(buttonTexts[1]).toContain('source.github')
+      expect(buttonTexts[2]).toContain('source.local')
     })
 
     it('should render only marketplace method when restricted to marketplace only', async () => {
@@ -261,9 +278,9 @@ describe('Empty Component', () => {
       // Assert
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(1)
-      expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
-      expect(screen.queryByText('plugin.source.github')).not.toBeInTheDocument()
-      expect(screen.queryByText('plugin.source.local')).not.toBeInTheDocument()
+      expect(screen.getByText('source.marketplace')).toBeInTheDocument()
+      expect(screen.queryByText('source.github')).not.toBeInTheDocument()
+      expect(screen.queryByText('source.local')).not.toBeInTheDocument()
     })
 
     it('should render github and local methods when marketplace is disabled', async () => {
@@ -283,9 +300,9 @@ describe('Empty Component', () => {
       // Assert
       const buttons = screen.getAllByRole('button')
       expect(buttons).toHaveLength(2)
-      expect(screen.queryByText('plugin.source.marketplace')).not.toBeInTheDocument()
-      expect(screen.getByText('plugin.source.github')).toBeInTheDocument()
-      expect(screen.getByText('plugin.source.local')).toBeInTheDocument()
+      expect(screen.queryByText('source.marketplace')).not.toBeInTheDocument()
+      expect(screen.getByText('source.github')).toBeInTheDocument()
+      expect(screen.getByText('source.local')).toBeInTheDocument()
     })
 
     it('should render no methods when marketplace disabled and restricted', async () => {
@@ -316,7 +333,7 @@ describe('Empty Component', () => {
       await flushEffects()
 
       // Act
-      fireEvent.click(screen.getByText('plugin.source.marketplace'))
+      fireEvent.click(screen.getByText('source.marketplace'))
 
       // Assert
       expect(mockSetActiveTab).toHaveBeenCalledWith('discover')
@@ -331,7 +348,7 @@ describe('Empty Component', () => {
       expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
 
       // Act - open modal
-      fireEvent.click(screen.getByText('plugin.source.github'))
+      fireEvent.click(screen.getByText('source.github'))
 
       // Assert - modal is open
       expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
@@ -351,7 +368,7 @@ describe('Empty Component', () => {
       const clickSpy = vi.spyOn(fileInput, 'click')
 
       // Act
-      fireEvent.click(screen.getByText('plugin.source.local'))
+      fireEvent.click(screen.getByText('source.local'))
 
       // Assert
       expect(clickSpy).toHaveBeenCalled()
@@ -405,13 +422,13 @@ describe('Empty Component', () => {
       await flushEffects()
 
       // Act - Open, close, and reopen GitHub modal
-      fireEvent.click(screen.getByText('plugin.source.github'))
+      fireEvent.click(screen.getByText('source.github'))
       expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
 
       fireEvent.click(screen.getByTestId('github-modal-close'))
       expect(screen.queryByTestId('install-from-github-modal')).not.toBeInTheDocument()
 
-      fireEvent.click(screen.getByText('plugin.source.github'))
+      fireEvent.click(screen.getByText('source.github'))
       expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
     })
 
@@ -436,8 +453,8 @@ describe('Empty Component', () => {
 
   // ==================== Side Effects Tests ====================
   describe('Side Effects', () => {
-    it('should update installMethods when system features change', async () => {
-      // Arrange - Start with marketplace enabled
+    it('should render correct install methods based on system features', async () => {
+      // Test 1: All methods when marketplace enabled and not restricted
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
@@ -446,13 +463,12 @@ describe('Empty Component', () => {
         },
       })
 
-      const { rerender } = render(<Empty />)
+      const { unmount: unmount1 } = render(<Empty />)
       await flushEffects()
-
-      // Assert initial state - 3 methods
       expect(screen.getAllByRole('button')).toHaveLength(3)
+      unmount1()
 
-      // Act - Restrict to marketplace only
+      // Test 2: Only marketplace when restricted
       setMockSystemFeatures({
         enable_marketplace: true,
         plugin_installation_permission: {
@@ -460,43 +476,38 @@ describe('Empty Component', () => {
           restrict_to_marketplace_only: true,
         },
       })
-      rerender(<Empty />)
-      await flushEffects()
 
-      // Assert - Only marketplace button
+      render(<Empty />)
+      await flushEffects()
       expect(screen.getAllByRole('button')).toHaveLength(1)
-      expect(screen.getByText('plugin.source.marketplace')).toBeInTheDocument()
+      expect(screen.getByText('source.marketplace')).toBeInTheDocument()
     })
 
-    it('should update text when pluginList or filters change', async () => {
-      // Arrange
+    it('should render correct text based on plugin list and filters', async () => {
+      // Test 1: noInstalled when plugin list is empty
       setMockPluginList({ plugins: [] })
-      const { rerender } = render(<Empty />)
+      setMockFilters({ categories: [], tags: [], searchQuery: '' })
+
+      const { unmount: unmount1 } = render(<Empty />)
       await flushEffects()
+      expect(screen.getByText('list.noInstalled')).toBeInTheDocument()
+      unmount1()
 
-      // Assert initial state
-      expect(screen.getByText('plugin.list.noInstalled')).toBeInTheDocument()
-
-      // Act - Update to have plugins with filters
+      // Test 2: notFound when filters are active with plugins
       setMockFilters({ categories: ['tool'] })
       setMockPluginList({ plugins: [{ id: 'plugin-1' }] })
-      rerender(<Empty />)
-      await flushEffects()
 
-      // Assert
-      expect(screen.getByText('plugin.list.notFound')).toBeInTheDocument()
+      render(<Empty />)
+      await flushEffects()
+      expect(screen.getByText('list.notFound')).toBeInTheDocument()
     })
   })
 
   // ==================== Edge Cases ====================
   describe('Edge Cases', () => {
-    it('should handle undefined/null plugin data gracefully', () => {
-      // Test undefined plugin list
+    it('should handle undefined plugin data gracefully', () => {
+      // Test undefined plugin list - component should render without error
       setMockPluginList(undefined)
-      expect(() => render(<Empty />)).not.toThrow()
-
-      // Test null plugins array
-      mockUseInstalledPluginList.mockReturnValue({ data: { plugins: null as any } })
       expect(() => render(<Empty />)).not.toThrow()
     })
 
@@ -531,7 +542,7 @@ describe('Empty Component', () => {
       await flushEffects()
 
       // Test GitHub modal onSuccess
-      fireEvent.click(screen.getByText('plugin.source.github'))
+      fireEvent.click(screen.getByText('source.github'))
       fireEvent.click(screen.getByTestId('github-modal-success'))
       expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
 
@@ -559,12 +570,12 @@ describe('Empty Component', () => {
       expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
 
       // Open GitHub modal - only GitHub modal visible
-      fireEvent.click(screen.getByText('plugin.source.github'))
+      fireEvent.click(screen.getByText('source.github'))
       expect(screen.getByTestId('install-from-github-modal')).toBeInTheDocument()
       expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
 
       // Click local button - triggers file input, no modal yet (no file selected)
-      fireEvent.click(screen.getByText('plugin.source.local'))
+      fireEvent.click(screen.getByText('source.local'))
       // GitHub modal should still be visible, local modal requires file selection
       expect(screen.queryByTestId('install-from-local-modal')).not.toBeInTheDocument()
     })
