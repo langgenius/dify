@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "免费功能：",
   "plans.community.name": "Community",
   "plans.community.price": "免费",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "联系销售",
   "plans.enterprise.description": "适合需要组织级安全性、合规性、可扩展性、控制和定制解决方案的企业",
   "plans.enterprise.features": [

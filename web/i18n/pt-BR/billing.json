@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "Recursos Gratuitos:",
   "plans.community.name": "Comunidade",
   "plans.community.price": "Grátis",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "Contate Vendas",
   "plans.enterprise.description": "Obtenha capacidades completas e suporte para sistemas críticos em larga escala.",
   "plans.enterprise.features": [
