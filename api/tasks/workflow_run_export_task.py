@@ -18,14 +18,13 @@ EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
 
 @shared_task(queue="export")
-def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str, include_manifest: bool = True) -> None:
+def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str) -> None:
     set_task_status(
         task_id,
         "running",
         {
             "tenant_id": tenant_id,
             "run_id": run_id,
-            "include_manifest": include_manifest,
             "started_at": datetime.now(UTC).isoformat(),
         },
     )
@@ -36,7 +35,6 @@ def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str, include_
         export_result = service.export_to_storage(
             tenant_id=tenant_id,
             run_id=run_id,
-            include_manifest=include_manifest,
         )
 
         storage_key = cast(str, export_result["storage_key"])

@@ -241,7 +241,6 @@ class WorkflowRunExportTaskApi(Resource):
         )
         export_workflow_run_task.apply_async(
             args=(task_id, tenant_id, run_id_str),
-            kwargs={"include_manifest": True},
         )
         return {"task_id": task_id, "status": "pending"}, 202
 

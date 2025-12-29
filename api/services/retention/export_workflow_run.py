@@ -64,7 +64,6 @@ class WorkflowRunExportService:
         self,
         tenant_id: str,
         run_id: str,
-        include_manifest: bool = True,
     ) -> bytes:
         """
         Export a workflow run as a ZIP file.
@@ -72,7 +71,6 @@ class WorkflowRunExportService:
         Args:
             tenant_id: Tenant ID
             run_id: Workflow run ID
-            include_manifest: Whether to include the manifest file in the export
 
         Returns:
             ZIP file bytes containing all workflow run data
@@ -93,14 +91,13 @@ class WorkflowRunExportService:
                 raise WorkflowRunExportError(f"Workflow run {run_id} does not belong to tenant {tenant_id}")
 
             if run.is_archived:
-                return self._export_from_s3(session, run, include_manifest)
-            return self._export_from_db(session, run, include_manifest)
+                return self._export_from_s3(session, run)
+            return self._export_from_db(session, run)
 
     def export_to_storage(
         self,
         tenant_id: str,
         run_id: str,
-        include_manifest: bool = True,
         task_id: str | None = None,
     ) -> dict[str, str | int]:
         """
@@ -109,7 +106,7 @@ class WorkflowRunExportService:
         Returns:
             Dict containing task_id, storage_key, checksum, and size_bytes.
         """
-        data = self.export(tenant_id=tenant_id, run_id=run_id, include_manifest=include_manifest)
+        data = self.export(tenant_id=tenant_id, run_id=run_id)
 
         task_id = task_id or str(uuid4())
         storage_key = f"exports/workflow_runs/tenant_id={tenant_id}/workflow_run_id={run_id}/task_id={task_id}.zip"
@@ -128,7 +125,6 @@ class WorkflowRunExportService:
         self,
         session: Session,
         run: WorkflowRun,
-        include_manifest: bool,
     ) -> bytes:
         """
         Export workflow run data from the database.
@@ -136,7 +132,6 @@ class WorkflowRunExportService:
         Args:
             session: Database session
             run: WorkflowRun model instance
-            include_manifest: Whether to include a generated manifest
 
         Returns:
             ZIP file bytes
@@ -164,23 +159,21 @@ class WorkflowRunExportService:
                         json.dumps(records, indent=2, default=str),
                     )
 
-            # Add manifest if requested
-            if include_manifest:
-                manifest = {
-                    "schema_version": "1.0",
-                    "workflow_run_id": run.id,
-                    "tenant_id": run.tenant_id,
-                    "app_id": run.app_id,
-                    "workflow_id": run.workflow_id,
-                    "created_at": run.created_at.isoformat() if run.created_at else None,
-                    "exported_at": datetime.now(datetime.UTC).isoformat(),
-                    "source": "database",
-                    "tables": table_stats,
-                }
-                zf.writestr(
-                    "manifest.json",
-                    json.dumps(manifest, indent=2),
-                )
+            manifest = {
+                "schema_version": "1.0",
+                "workflow_run_id": run.id,
+                "tenant_id": run.tenant_id,
+                "app_id": run.app_id,
+                "workflow_id": run.workflow_id,
+                "created_at": run.created_at.isoformat() if run.created_at else None,
+                "exported_at": datetime.now(datetime.UTC).isoformat(),
+                "source": "database",
+                "tables": table_stats,
+            }
+            zf.writestr(
+                "manifest.json",
+                json.dumps(manifest, indent=2),
+            )
 
         zip_buffer.seek(0)
         return zip_buffer.read()
@@ -189,14 +182,12 @@ class WorkflowRunExportService:
         self,
         session: Session,
         run: WorkflowRun,
-        include_manifest: bool,
     ) -> bytes:
         """
         Export workflow run data from storage.
 
         Args:
             run: WorkflowRun model instance
-            include_manifest: Whether to include the manifest file
 
         Returns:
             ZIP file bytes
@@ -259,15 +250,13 @@ class WorkflowRunExportService:
             # Update manifest tables info
             tables["workflow_app_logs"] = {"row_count": len(app_logs)}
 
-            # Add manifest if requested
-            if include_manifest:
-                # Update manifest with export info
-                manifest["exported_at"] = datetime.now(datetime.UTC).isoformat()
-                manifest["source"] = "archive"
-                zf.writestr(
-                    "manifest.json",
-                    json.dumps(manifest, indent=2),
-                )
+            # Update manifest with export info
+            manifest["exported_at"] = datetime.now(datetime.UTC).isoformat()
+            manifest["source"] = "archive"
+            zf.writestr(
+                "manifest.json",
+                json.dumps(manifest, indent=2),
+            )
 
         zip_buffer.seek(0)
         return zip_buffer.read()
