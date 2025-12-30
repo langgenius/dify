@@ -51,7 +51,7 @@ class Site(BaseModel):
     show_workflow_steps: bool
     use_icon_as_answer_icon: bool
 
-    @computed_field(return_type=str | None)  # type; ignore[prop-decorator]
+    @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
         if self.icon is None:
