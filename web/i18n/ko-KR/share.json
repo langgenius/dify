@@ -31,7 +31,7 @@
   "generation.batchFailed.outputPlaceholder": "출력 컨텐츠 없음",
   "generation.batchFailed.retry": "재시도",
   "generation.browse": "찾아보기",
-  "generation.completionResult": "완성 결과",
+  "generation.completionResult": "완료 결과",
   "generation.copy": "복사",
   "generation.csvStructureTitle": "CSV 파일은 다음 구조를 따라야 합니다:",
   "generation.csvUploadTitle": "CSV 파일을 여기로 끌어다 놓거나",
@@ -48,7 +48,7 @@
   "generation.noData": "AI 가 필요한 내용을 제공할 것입니다.",
   "generation.queryPlaceholder": "쿼리 컨텐츠를 작성해주세요...",
   "generation.queryTitle": "컨텐츠 쿼리",
-  "generation.resultTitle": "AI 완성",
+  "generation.resultTitle": "AI 생성 결과",
   "generation.run": "실행",
   "generation.savedNoData.description": "컨텐츠 생성을 시작하고 저장된 결과를 여기서 찾아보세요.",
   "generation.savedNoData.startCreateContent": "컨텐츠 생성 시작",
@@ -57,6 +57,6 @@
   "generation.tabs.batch": "일괄 실행",
   "generation.tabs.create": "일회용 실행",
   "generation.tabs.saved": "저장된 결과",
-  "generation.title": "AI 완성",
+  "generation.title": "AI 생성",
   "login.backToHome": "홈으로 돌아가기"
 }
