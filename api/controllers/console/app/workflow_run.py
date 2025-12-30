@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field, field_validator
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
+from controllers.console.error import WorkflowRunExportRateLimitError
 from controllers.console.wraps import account_initialization_required, setup_required
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -21,7 +22,7 @@ from fields.workflow_run_fields import (
     workflow_run_pagination_fields,
 )
 from libs.custom_inputs import time_duration
-from libs.helper import uuid_value
+from libs.helper import RateLimiter, uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
 from services.retention.workflow_run_export_task_status import (
@@ -35,6 +36,8 @@ from tasks.workflow_run_export_task import export_workflow_run_task
 
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
+
+EXPORT_TASK_RATE_LIMITER = RateLimiter("workflow_run_export_task", max_attempts=10, time_window=60)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
@@ -232,6 +235,10 @@ class WorkflowRunExportTaskApi(Resource):
             status = get_task_status(task_id)
             if status:
                 return status, 200
+
+        if EXPORT_TASK_RATE_LIMITER.is_rate_limited(tenant_id):
+            raise WorkflowRunExportRateLimitError()
+        EXPORT_TASK_RATE_LIMITER.increment_rate_limit(tenant_id)
 
         # Mark pending and enqueue
         set_task_status(

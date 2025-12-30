@@ -107,3 +107,9 @@ class ComplianceRateLimitError(BaseHTTPException):
     error_code = "compliance_rate_limit"
     description = "Rate limit exceeded for downloading compliance report."
     code = 429
+
+
+class WorkflowRunExportRateLimitError(BaseHTTPException):
+    error_code = "workflow_run_export_rate_limit"
+    description = "Rate limit exceeded for exporting workflow runs."
+    code = 429
