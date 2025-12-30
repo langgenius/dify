@@ -13,6 +13,19 @@ import { useMailRegister } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
 import { sendGAEvent } from '@/utils/gtag'
 
+const parseUtmInfo = () => {
+  const utmInfoStr = Cookies.get('utm_info')
+  if (!utmInfoStr)
+    return null
+  try {
+    return JSON.parse(utmInfoStr)
+  }
+  catch (e) {
+    console.error('Failed to parse utm_info cookie:', e)
+    return null
+  }
+}
+
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -57,9 +70,7 @@ const ChangePasswordForm = () => {
       })
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
-        const utmInfoStr = Cookies.get('utm_info')
-        const utmInfo = utmInfoStr ? JSON.parse(utmInfoStr) : null
-
+        const utmInfo = parseUtmInfo()
         trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',
           ...utmInfo,

@@ -54,8 +54,16 @@ export const AppInitializer = ({
       const action = searchParams.get('action')
 
       if (oauthNewUser === 'true') {
+        let utmInfo = null
         const utmInfoStr = Cookies.get('utm_info')
-        const utmInfo = utmInfoStr ? JSON.parse(utmInfoStr) : null
+        if (utmInfoStr) {
+          try {
+            utmInfo = JSON.parse(utmInfoStr)
+          }
+          catch (e) {
+            console.error('Failed to parse utm_info cookie:', e)
+          }
+        }
 
         // Track registration event with UTM params
         trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
