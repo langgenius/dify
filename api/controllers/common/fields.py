@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from libs.helper import AppIconUrlField
 
@@ -11,7 +11,7 @@ parameters__system_parameters = {
 }
 
 
-def build_system_parameters_model(api_or_ns: Api | Namespace):
+def build_system_parameters_model(api_or_ns: Namespace):
     """Build the system parameters model for the API or Namespace."""
     return api_or_ns.model("SystemParameters", parameters__system_parameters)
 
@@ -32,7 +32,7 @@ parameters_fields = {
 }
 
 
-def build_parameters_model(api_or_ns: Api | Namespace):
+def build_parameters_model(api_or_ns: Namespace):
     """Build the parameters model for the API or Namespace."""
     copied_fields = parameters_fields.copy()
     copied_fields["system_parameters"] = fields.Nested(build_system_parameters_model(api_or_ns))
@@ -57,6 +57,6 @@ site_fields = {
 }
 
 
-def build_site_model(api_or_ns: Api | Namespace):
+def build_site_model(api_or_ns: Namespace):
     """Build the site model for the API or Namespace."""
     return api_or_ns.model("Site", site_fields)
