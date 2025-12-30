@@ -1,7 +1,7 @@
 """Add human input related models
 
 Revision ID: d411af417245
-Revises: 669ffd70119c
+Revises: 03ea244985ce
 Create Date: 2025-11-24 03:36:50.565145
 
 """
@@ -13,7 +13,7 @@ import sqlalchemy as sa
 
 # revision identifiers, used by Alembic.
 revision = "d411af417245"
-down_revision = "669ffd70119c"
+down_revision = "03ea244985ce"
 branch_labels = None
 depends_on = None
 

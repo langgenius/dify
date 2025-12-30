@@ -235,7 +235,7 @@ class GraphEngine:
                 self._graph_execution.paused = False
                 self._graph_execution.pause_reasons = []
 
-            start_event = GraphRunStartedEvent()
+            start_event = GraphRunStartedEvent(is_resumption=is_resume)
             self._event_manager.notify_layers(start_event)
             yield start_event
 

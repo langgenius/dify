@@ -65,72 +65,25 @@ def sample_form_record():
     )
 
 
-def test_enqueue_resume_dispatches_task(mocker, mock_session_factory):
+def test_enqueue_resume_dispatches_task_for_workflow(mocker, mock_session_factory):
     session_factory, session = mock_session_factory
     service = HumanInputService(session_factory)
-
-    trigger_log = MagicMock()
-    trigger_log.id = "trigger-log-id"
-    trigger_log.queue_name = "workflow_queue"
-
-    repo_cls = mocker.patch(
-        "services.human_input_service.SQLAlchemyWorkflowTriggerLogRepository",
-        autospec=True,
-    )
-    repo = repo_cls.return_value
-    repo.get_by_workflow_run_id.return_value = trigger_log
-
-    resume_task = mocker.patch("services.human_input_service.resume_workflow_execution")
-
-    service._enqueue_resume("workflow-run-id")
-
-    repo_cls.assert_called_once_with(session)
-    resume_task.apply_async.assert_called_once()
-    call_kwargs = resume_task.apply_async.call_args.kwargs
-    assert call_kwargs["queue"] == "workflow_queue"
-    payload = call_kwargs["kwargs"]["task_data_dict"]
-    assert payload["workflow_trigger_log_id"] == "trigger-log-id"
-    assert payload["workflow_run_id"] == "workflow-run-id"
-
-
-def test_enqueue_resume_no_trigger_log(mocker, mock_session_factory):
-    session_factory, session = mock_session_factory
-    service = HumanInputService(session_factory)
-
-    repo_cls = mocker.patch(
-        "services.human_input_service.SQLAlchemyWorkflowTriggerLogRepository",
-        autospec=True,
-    )
-    repo = repo_cls.return_value
-    repo.get_by_workflow_run_id.return_value = None
-
-    resume_task = mocker.patch("services.human_input_service.resume_workflow_execution")
-
-    service._enqueue_resume("workflow-run-id")
-
-    repo_cls.assert_called_once_with(session)
-    resume_task.apply_async.assert_not_called()
-
-
-def test_enqueue_resume_chatflow_fallback(mocker, mock_session_factory):
-    session_factory, session = mock_session_factory
-    service = HumanInputService(session_factory)
-
-    repo_cls = mocker.patch(
-        "services.human_input_service.SQLAlchemyWorkflowTriggerLogRepository",
-        autospec=True,
-    )
-    repo = repo_cls.return_value
-    repo.get_by_workflow_run_id.return_value = None
 
     workflow_run = MagicMock()
     workflow_run.app_id = "app-id"
+
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
+    mocker.patch(
+        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        return_value=workflow_run_repo,
+    )
+
     app = MagicMock()
-    app.mode = "advanced-chat"
+    app.mode = "workflow"
+    session.execute.return_value.scalar_one_or_none.return_value = app
 
-    session.get.side_effect = [workflow_run, app]
-
-    resume_task = mocker.patch("services.human_input_service.resume_chatflow_execution")
+    resume_task = mocker.patch("services.human_input_service.resume_app_execution")
 
     service._enqueue_resume("workflow-run-id")
 
@@ -138,6 +91,59 @@ def test_enqueue_resume_chatflow_fallback(mocker, mock_session_factory):
     call_kwargs = resume_task.apply_async.call_args.kwargs
     assert call_kwargs["queue"] == "chatflow_execute"
     assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
+
+
+def test_enqueue_resume_dispatches_task_for_advanced_chat(mocker, mock_session_factory):
+    session_factory, session = mock_session_factory
+    service = HumanInputService(session_factory)
+
+    workflow_run = MagicMock()
+    workflow_run.app_id = "app-id"
+
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
+    mocker.patch(
+        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        return_value=workflow_run_repo,
+    )
+
+    app = MagicMock()
+    app.mode = "advanced-chat"
+    session.execute.return_value.scalar_one_or_none.return_value = app
+
+    resume_task = mocker.patch("services.human_input_service.resume_app_execution")
+
+    service._enqueue_resume("workflow-run-id")
+
+    resume_task.apply_async.assert_called_once()
+    call_kwargs = resume_task.apply_async.call_args.kwargs
+    assert call_kwargs["queue"] == "chatflow_execute"
+    assert call_kwargs["kwargs"]["payload"]["workflow_run_id"] == "workflow-run-id"
+
+
+def test_enqueue_resume_skips_unsupported_app_mode(mocker, mock_session_factory):
+    session_factory, session = mock_session_factory
+    service = HumanInputService(session_factory)
+
+    workflow_run = MagicMock()
+    workflow_run.app_id = "app-id"
+
+    workflow_run_repo = MagicMock()
+    workflow_run_repo.get_workflow_run_by_id_without_tenant.return_value = workflow_run
+    mocker.patch(
+        "services.human_input_service.DifyAPIRepositoryFactory.create_api_workflow_run_repository",
+        return_value=workflow_run_repo,
+    )
+
+    app = MagicMock()
+    app.mode = "completion"
+    session.execute.return_value.scalar_one_or_none.return_value = app
+
+    resume_task = mocker.patch("services.human_input_service.resume_app_execution")
+
+    service._enqueue_resume("workflow-run-id")
+
+    resume_task.apply_async.assert_not_called()
 
 
 def test_get_form_definition_by_id_uses_repository(sample_form_record, mock_session_factory):

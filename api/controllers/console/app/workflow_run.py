@@ -411,11 +411,8 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
         is_paused = workflow_run.status == WorkflowExecutionStatus.PAUSED
         if not is_paused:
             return {
-                "is_suspended": False,
                 "paused_at": None,
                 "paused_nodes": [],
-                "pending_human_inputs": [],
-                "pause_reasons": [],
             }, 200
 
         pause_entity = workflow_run_repo.get_workflow_pause(workflow_run_id)
@@ -430,11 +427,8 @@ class ConsoleWorkflowPauseDetailsApi(Resource):
 
         # Build response
         response = {
-            "is_suspended": True,
             "paused_at": workflow_run.created_at.isoformat() + "Z" if workflow_run.created_at else None,
             "paused_nodes": [],
-            "pending_human_inputs": [],
-            "pause_reasons": pause_reasons,
         }
 
         # Add pending human input forms

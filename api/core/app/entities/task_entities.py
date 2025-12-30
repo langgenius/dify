@@ -208,6 +208,7 @@ class WorkflowStartStreamResponse(StreamResponse):
         workflow_id: str
         inputs: Mapping[str, Any]
         created_at: int
+        is_resumption: bool = False
 
     event: StreamEvent = StreamEvent.WORKFLOW_STARTED
     workflow_run_id: str

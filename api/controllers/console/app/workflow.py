@@ -527,6 +527,11 @@ class WorkflowDraftRunLoopNodeApi(Resource):
             raise InternalServerError()
 
 
+class HumanInputSubmitPayload(BaseModel):
+    inputs: dict[str, Any]
+    action: str
+
+
 @console_ns.route("/apps/<uuid:app_id>/advanced-chat/workflows/draft/human-input/nodes/<string:node_id>/form")
 class AdvancedChatDraftHumanInputFormApi(Resource):
     @console_ns.doc("get_advanced_chat_draft_human_input_form")
@@ -580,19 +585,14 @@ class AdvancedChatDraftHumanInputFormApi(Resource):
         Submit human input form preview
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("action", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
+        args = HumanInputSubmitPayload.model_validate(console_ns.payload or {})
         workflow_service = WorkflowService()
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
-            form_inputs=args["inputs"],
-            action=args["action"],
+            form_inputs=args.inputs,
+            action=args.action,
         )
         return jsonable_encoder(result)
 
@@ -650,19 +650,14 @@ class WorkflowDraftHumanInputFormApi(Resource):
         Submit human input form preview
         """
         current_user, _ = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument("inputs", type=dict, required=True, location="json")
-            .add_argument("action", type=str, required=True, location="json")
-        )
-        args = parser.parse_args()
         workflow_service = WorkflowService()
+        args = HumanInputSubmitPayload.model_validate(console_ns.payload or {})
         result = workflow_service.submit_human_input_form_preview(
             app_model=app_model,
             account=current_user,
             node_id=node_id,
-            form_inputs=args["inputs"],
-            action=args["action"],
+            form_inputs=args.inputs,
+            action=args.action,
         )
         return jsonable_encoder(result)
 

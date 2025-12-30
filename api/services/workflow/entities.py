@@ -101,7 +101,6 @@ class WorkflowTaskData(BaseModel):
 class WorkflowResumeTaskData(BaseModel):
     """Payload for workflow resumption tasks."""
 
-    workflow_trigger_log_id: str
     workflow_run_id: str
 
 

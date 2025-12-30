@@ -14,7 +14,6 @@ from core.app.apps.workflow.app_config_manager import WorkflowAppConfigManager
 from core.file import File
 from core.repositories import DifyCoreRepositoryFactory
 from core.variables import Variable
-from core.variables.consts import SELECTORS_LENGTH
 from core.variables.variables import VariableUnion
 from core.workflow.entities import GraphInitParams, WorkflowNodeExecution
 from core.workflow.entities.pause_reason import HumanInputRequired
@@ -24,12 +23,13 @@ from core.workflow.graph_events import GraphNodeEventBase, NodeRunFailedEvent, N
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.human_input.entities import _OUTPUT_VARIABLE_PATTERN, HumanInputNodeData
+from core.workflow.nodes.human_input.entities import HumanInputNodeData
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.nodes.node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
 from core.workflow.nodes.start.entities import StartNodeData
-from core.workflow.runtime import VariablePool
+from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from core.workflow.variable_loader import load_into_variable_pool
 from core.workflow.workflow_entry import WorkflowEntry
 from enums.cloud_plan import CloudPlan
 from events.app_event import app_draft_workflow_was_synced, app_published_workflow_was_updated
@@ -836,11 +836,19 @@ class WorkflowService:
             raise ValueError(f"Missing inputs: {missing_list}")
 
         rendered_content = node._render_form_content()
-        filled_inputs = dict(form_inputs)
-        rendered_content_with_outputs = self._render_content_with_output_values(rendered_content, filled_inputs)
-
-        outputs: dict[str, Any] = dict(filled_inputs)
+        outputs: dict[str, Any] = dict(form_inputs)
         outputs["__action_id"] = action
+        rendered_content_with_outputs = rendered_content
+        for field_name in node_data.outputs_field_names():
+            placeholder = f"{{{{#$outputs.{field_name}#}}}}"
+            value = outputs.get(field_name)
+            if value is None:
+                replacement = ""
+            elif isinstance(value, (dict, list)):
+                replacement = json.dumps(value, ensure_ascii=False)
+            else:
+                replacement = str(value)
+            rendered_content_with_outputs = rendered_content_with_outputs.replace(placeholder, replacement)
         outputs["__rendered_content"] = rendered_content_with_outputs
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
@@ -919,41 +927,24 @@ class WorkflowService:
             graph_config=workflow.graph_dict,
             config=node_config,
         )
-        selectors_to_load: list[list[str]] = []
-        for selector in variable_mapping.values():
-            if variable_pool.get(selector) is None:
-                selectors_to_load.append(list(selector))
-
-        loaded_variables = variable_loader.load_variables(selectors_to_load)
-        for variable in loaded_variables:
-            variable_pool.add([variable.selector[0], variable.selector[1]], variable)
-
+        normalized_user_inputs: dict[str, Any] = dict(manual_inputs)
         for raw_key, value in manual_inputs.items():
-            selector = self._parse_selector(raw_key)
-            variable_pool.add(selector, value)
+            normalized_user_inputs[f"#{raw_key}#"] = value
+
+        load_into_variable_pool(
+            variable_loader=variable_loader,
+            variable_pool=variable_pool,
+            variable_mapping=variable_mapping,
+            user_inputs=normalized_user_inputs,
+        )
+        WorkflowEntry.mapping_user_inputs_to_variable_pool(
+            variable_mapping=variable_mapping,
+            user_inputs=normalized_user_inputs,
+            variable_pool=variable_pool,
+            tenant_id=app_model.tenant_id,
+        )
 
         return variable_pool
-
-    def _parse_selector(self, selector_key: str) -> list[str]:
-        cleaned = selector_key.strip()
-        if cleaned.startswith("#") and cleaned.endswith("#"):
-            cleaned = cleaned[1:-1]
-        selector = cleaned.split(".")
-        if len(selector) != SELECTORS_LENGTH:
-            raise ValueError(f"Invalid selector '{selector_key}', expected format '<node_id>.<variable_name>'.")
-        return selector
-
-    def _render_content_with_output_values(self, content: str, outputs: Mapping[str, Any]) -> str:
-        def _replace(match):
-            field_name = match.group("field_name")
-            value = outputs.get(field_name)
-            if value is None:
-                return ""
-            if isinstance(value, (dict, list)):
-                return json.dumps(value, ensure_ascii=False)
-            return str(value)
-
-        return _OUTPUT_VARIABLE_PATTERN.sub(_replace, content)
 
     def run_free_workflow_node(
         self, node_data: dict, tenant_id: str, user_id: str, node_id: str, user_inputs: dict[str, Any]

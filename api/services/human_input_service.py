@@ -2,7 +2,7 @@ import logging
 from collections.abc import Mapping
 from typing import Any
 
-from sqlalchemy import Engine
+from sqlalchemy import Engine, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from core.repositories.human_input_reposotiry import (
@@ -16,11 +16,8 @@ from libs.exception import BaseHTTPException
 from models.account import Account
 from models.human_input import RecipientType
 from models.model import App, AppMode
-from models.workflow import WorkflowRun
-from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.workflow.entities import WorkflowResumeTaskData
-from tasks.app_generate.workflow_execute_task import resume_chatflow_execution
-from tasks.async_workflow_tasks import resume_workflow_execution
+from repositories.factory import DifyAPIRepositoryFactory
+from tasks.app_generate.workflow_execute_task import APP_EXECUTE_QUEUE, resume_app_execution
 
 
 class Form:
@@ -223,51 +220,29 @@ class HumanInputService:
             raise InvalidFormDataError(f"Missing required inputs: {', '.join(missing_inputs)}")
 
     def _enqueue_resume(self, workflow_run_id: str) -> None:
+        workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(self._session_factory)
+        workflow_run = workflow_run_repo.get_workflow_run_by_id_without_tenant(workflow_run_id)
+
+        if workflow_run is None:
+            raise AssertionError(f"WorkflowRun not found, id={workflow_run_id}")
         with self._session_factory(expire_on_commit=False) as session:
-            trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
-            trigger_log = trigger_log_repo.get_by_workflow_run_id(workflow_run_id)
-
-        if trigger_log is not None:
-            payload = WorkflowResumeTaskData(
-                workflow_trigger_log_id=trigger_log.id,
-                workflow_run_id=workflow_run_id,
+            app_query = select(App).where(App.id == workflow_run.app_id)
+            app = session.execute(app_query).scalar_one_or_none()
+        if app is None:
+            logger.error(
+                "App not found for WorkflowRun, workflow_run_id=%s, app_id=%s", workflow_run_id, workflow_run.app_id
             )
+            return
 
+        if app.mode in {AppMode.WORKFLOW, AppMode.ADVANCED_CHAT}:
+            payload = {"workflow_run_id": workflow_run_id}
             try:
-                resume_workflow_execution.apply_async(
-                    kwargs={"task_data_dict": payload.model_dump()},
-                    queue=trigger_log.queue_name,
+                resume_app_execution.apply_async(
+                    kwargs={"payload": payload},
+                    queue=APP_EXECUTE_QUEUE,
                 )
             except Exception:  # pragma: no cover
                 logger.exception("Failed to enqueue resume task for workflow run %s", workflow_run_id)
             return
 
-        if self._enqueue_chatflow_resume(workflow_run_id):
-            return
-
-        logger.warning("No workflow trigger log bound to workflow run %s; skipping resume dispatch", workflow_run_id)
-
-    def _enqueue_chatflow_resume(self, workflow_run_id: str) -> bool:
-        with self._session_factory(expire_on_commit=False) as session:
-            workflow_run = session.get(WorkflowRun, workflow_run_id)
-            if workflow_run is None:
-                return False
-
-            app = session.get(App, workflow_run.app_id)
-
-        if app is None:
-            return False
-
-        if app.mode != AppMode.ADVANCED_CHAT.value:
-            return False
-
-        try:
-            resume_chatflow_execution.apply_async(
-                kwargs={"payload": {"workflow_run_id": workflow_run_id}},
-                queue="chatflow_execute",
-            )
-        except Exception:  # pragma: no cover
-            logger.exception("Failed to enqueue chatflow resume for workflow run %s", workflow_run_id)
-            return False
-
-        return True
+        logger.warning("App mode %s does not support resume for workflow run %s", app.mode, workflow_run_id)

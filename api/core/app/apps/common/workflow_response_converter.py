@@ -197,6 +197,7 @@ class WorkflowResponseConverter:
         task_id: str,
         workflow_run_id: str,
         workflow_id: str,
+        is_resumption: bool,
     ) -> WorkflowStartStreamResponse:
         run_id = self._ensure_workflow_run_id(workflow_run_id)
         started_at = naive_utc_now()
@@ -210,6 +211,7 @@ class WorkflowResponseConverter:
                 workflow_id=workflow_id,
                 inputs=self._workflow_inputs,
                 created_at=int(started_at.timestamp()),
+                is_resumption=is_resumption,
             ),
         )
 

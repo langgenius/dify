@@ -10,6 +10,7 @@ from constants.tts_auto_play_timeout import TTS_AUTO_PLAY_TIMEOUT, TTS_AUTO_PLAY
 from core.app.apps.base_app_queue_manager import AppQueueManager
 from core.app.apps.common.graph_runtime_state_support import GraphRuntimeStateSupport
 from core.app.apps.common.workflow_response_converter import WorkflowResponseConverter
+from core.app.apps.workflow.errors import WorkflowPausedInBlockingModeError
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     AppQueueEvent,
@@ -47,6 +48,7 @@ from core.app.entities.task_entities import (
     WorkflowAppBlockingResponse,
     WorkflowAppStreamResponse,
     WorkflowFinishStreamResponse,
+    WorkflowPauseStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.app.task_pipeline.based_generate_task_pipeline import BasedGenerateTaskPipeline
@@ -133,6 +135,8 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         for stream_response in generator:
             if isinstance(stream_response, ErrorStreamResponse):
                 raise stream_response.err
+            elif isinstance(stream_response, WorkflowPauseStreamResponse):
+                raise WorkflowPausedInBlockingModeError()
             elif isinstance(stream_response, WorkflowFinishStreamResponse):
                 response = WorkflowAppBlockingResponse(
                     task_id=self._application_generate_entity.task_id,
@@ -267,6 +271,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id,
             workflow_run_id=run_id,
             workflow_id=self._workflow.id,
+            is_resumption=event.is_resumption,
         )
         yield start_resp
 
@@ -452,7 +457,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             event=event,
             task_id=self._application_generate_entity.task_id,
         )
-        yield from response
+        yield from responses
 
     def _handle_workflow_failed_and_stop_events(
         self,

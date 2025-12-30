@@ -112,7 +112,12 @@ def _build_converter():
 
 def test_queue_workflow_paused_event_to_stream_responses():
     converter = _build_converter()
-    converter.workflow_start_to_stream_response(task_id="task", workflow_run_id="run-id", workflow_id="workflow-id")
+    converter.workflow_start_to_stream_response(
+        task_id="task",
+        workflow_run_id="run-id",
+        workflow_id="workflow-id",
+        is_resumption=False,
+    )
 
     reason = HumanInputRequired(
         form_id="form-1",

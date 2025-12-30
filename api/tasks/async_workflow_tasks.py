@@ -26,7 +26,7 @@ from models.account import Account
 from models.enums import AppTriggerType, CreatorUserRole, WorkflowRunTriggeredFrom, WorkflowTriggerStatus
 from models.model import App, EndUser, Tenant
 from models.trigger import WorkflowTriggerLog
-from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom
+from models.workflow import Workflow, WorkflowNodeExecutionTriggeredFrom, WorkflowRun
 from repositories.factory import DifyAPIRepositoryFactory
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
 from services.errors.app import WorkflowNotFoundError
@@ -39,12 +39,6 @@ from tasks.workflow_cfs_scheduler.cfs_scheduler import AsyncWorkflowCFSPlanEntit
 from tasks.workflow_cfs_scheduler.entities import AsyncWorkflowQueue, AsyncWorkflowSystemStrategy
 
 logger = logging.getLogger(__name__)
-
-_TRIGGER_TO_RUN_SOURCE = {
-    AppTriggerType.TRIGGER_WEBHOOK: WorkflowRunTriggeredFrom.WEBHOOK,
-    AppTriggerType.TRIGGER_SCHEDULE: WorkflowRunTriggeredFrom.SCHEDULE,
-    AppTriggerType.TRIGGER_PLUGIN: WorkflowRunTriggeredFrom.PLUGIN,
-}
 
 
 @shared_task(queue=AsyncWorkflowQueue.PROFESSIONAL_QUEUE)
@@ -204,44 +198,135 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
     session_factory = sessionmaker(bind=db.engine, expire_on_commit=False)
     workflow_run_repo = DifyAPIRepositoryFactory.create_api_workflow_run_repository(session_factory)
 
+    pause_entity = workflow_run_repo.get_workflow_pause(task_data.workflow_run_id)
+    if pause_entity is None:
+        logger.warning("No pause state for workflow run %s", task_data.workflow_run_id)
+        return
+    workflow_run = workflow_run_repo.get_workflow_run_by_id_without_tenant(pause_entity.workflow_execution_id)
+    if workflow_run is None:
+        logger.warning("Workflow run not found for pause entity: pause_entity_id=%s", pause_entity.id)
+        return
+
+    try:
+        resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
+    except Exception as exc:
+        logger.exception("Failed to load resumption context for workflow run %s", task_data.workflow_run_id)
+        raise exc
+
+    generate_entity = resumption_context.get_generate_entity()
+    if not isinstance(generate_entity, WorkflowAppGenerateEntity):
+        logger.error(
+            "Unsupported resumption entity for workflow run %s: %s",
+            task_data.workflow_run_id,
+            type(generate_entity),
+        )
+        return
+
+    graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
+
     with session_factory() as session:
-        trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
-        trigger_log = trigger_log_repo.get_by_id(task_data.workflow_trigger_log_id)
-        if not trigger_log:
-            logger.warning("Trigger log not found for resumption: %s", task_data.workflow_trigger_log_id)
-            return
-
-        pause_entity = workflow_run_repo.get_workflow_pause(task_data.workflow_run_id)
-        if pause_entity is None:
-            logger.warning("No pause state for workflow run %s", task_data.workflow_run_id)
-            return
-
-        try:
-            resumption_context = WorkflowResumptionContext.loads(pause_entity.get_state().decode())
-        except Exception as exc:
-            logger.exception("Failed to load resumption context for workflow run %s", task_data.workflow_run_id)
-            raise exc
-
-        generate_entity = resumption_context.get_generate_entity()
-        if not isinstance(generate_entity, WorkflowAppGenerateEntity):
-            logger.error(
-                "Unsupported resumption entity for workflow run %s: %s",
-                task_data.workflow_run_id,
-                type(generate_entity),
-            )
-            return
-
-        graph_runtime_state = GraphRuntimeState.from_snapshot(resumption_context.serialized_graph_runtime_state)
-
-        workflow = session.scalar(select(Workflow).where(Workflow.id == trigger_log.workflow_id))
+        workflow = session.scalar(select(Workflow).where(Workflow.id == workflow_run.workflow_id))
         if workflow is None:
-            raise WorkflowNotFoundError(f"Workflow not found: {trigger_log.workflow_id}")
-
-        app_model = session.scalar(select(App).where(App.id == trigger_log.app_id))
+            raise WorkflowNotFoundError(
+                "Workflow not found: workflow_run_id=%s, workflow_id=%s", workflow_run.id, workflow_run.workflow_id
+            )
+        user = _get_user(session, workflow_run)
+        app_model = session.scalar(select(App).where(App.id == workflow_run.app_id))
         if app_model is None:
-            raise WorkflowNotFoundError(f"App not found: {trigger_log.app_id}")
+            raise _AppNotFoundError(
+                "App not found: app_id=%s, workflow_run_id=%s", workflow_run.app_id, workflow_run.id
+            )
 
-        user = _get_user(session, trigger_log)
+    workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
+        session_factory=session_factory,
+        user=user,
+        app_id=generate_entity.app_config.app_id,
+        triggered_from=WorkflowRunTriggeredFrom(workflow_run.triggered_from),
+    )
+    workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
+        session_factory=session_factory,
+        user=user,
+        app_id=generate_entity.app_config.app_id,
+        triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
+    )
+
+    pause_config = PauseStateLayerConfig(
+        session_factory=session_factory,
+        state_owner_user_id=workflow.created_by,
+    )
+
+    generator = WorkflowAppGenerator()
+    start_time = datetime.now(UTC)
+    graph_engine_layers = []
+    trigger_log = _query_trigger_log_info(session_factory, task_data.workflow_run_id)
+
+    if trigger_log:
+        cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
+            queue=AsyncWorkflowQueue(trigger_log.queue_name),
+            schedule_strategy=AsyncWorkflowSystemStrategy,
+            granularity=dify_config.ASYNC_WORKFLOW_SCHEDULER_GRANULARITY,
+        )
+        cfs_plan_scheduler = AsyncWorkflowCFSPlanScheduler(plan=cfs_plan_scheduler_entity)
+
+        graph_engine_layers.extend(
+            [
+                TimeSliceLayer(cfs_plan_scheduler),
+                TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
+            ]
+        )
+
+    workflow_run_repo.resume_workflow_pause(task_data.workflow_run_id, pause_entity)
+
+    generator.resume(
+        app_model=app_model,
+        workflow=workflow,
+        user=user,
+        application_generate_entity=generate_entity,
+        graph_runtime_state=graph_runtime_state,
+        workflow_execution_repository=workflow_execution_repository,
+        workflow_node_execution_repository=workflow_node_execution_repository,
+        graph_engine_layers=graph_engine_layers,
+        pause_state_config=pause_config,
+    )
+    workflow_run_repo.delete_workflow_pause(pause_entity)
+
+
+def _get_user(session: Session, workflow_run: WorkflowRun) -> Account | EndUser:
+    """Compose user from trigger log"""
+    tenant = session.scalar(select(Tenant).where(Tenant.id == workflow_run.tenant_id))
+    if not tenant:
+        raise _TenantNotFoundError(
+            "Tenant not found for WorkflowRun: tenant_id=%s, workflow_run_id=%s",
+            workflow_run.tenant_id,
+            workflow_run.id,
+        )
+
+    # Get user from trigger log
+    if workflow_run.created_by_role == CreatorUserRole.ACCOUNT:
+        user = session.scalar(select(Account).where(Account.id == workflow_run.created_by))
+        if user:
+            user.current_tenant = tenant
+    else:  # CreatorUserRole.END_USER
+        user = session.scalar(select(EndUser).where(EndUser.id == workflow_run.created_by))
+
+    if not user:
+        raise _UserNotFoundError(
+            "User not found: user_id=%s, created_by_role=%s, workflow_run_id=%s",
+            workflow_run.created_by,
+            workflow_run.created_by_role,
+            workflow_run.id,
+        )
+
+    return user
+
+
+def _query_trigger_log_info(session_factory: sessionmaker[Session], workflow_run_id) -> WorkflowTriggerLog | None:
+    with session_factory() as session, session.begin():
+        trigger_log_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
+        trigger_log = trigger_log_repo.get_by_workflow_run_id(workflow_run_id)
+        if not trigger_log:
+            logger.debug("Trigger log not found for workflow_run: workflow_run_id=%s", workflow_run_id)
+            return
 
         cfs_plan_scheduler_entity = AsyncWorkflowCFSPlanEntity(
             queue=trigger_log.queue_name,
@@ -255,74 +340,14 @@ def resume_workflow_execution(task_data_dict: dict[str, Any]) -> None:
         except ValueError:
             trigger_type = AppTriggerType.UNKNOWN
 
-        triggered_from = _TRIGGER_TO_RUN_SOURCE.get(trigger_type, WorkflowRunTriggeredFrom.APP_RUN)
 
-        workflow_execution_repository = DifyCoreRepositoryFactory.create_workflow_execution_repository(
-            session_factory=session_factory,
-            user=user,
-            app_id=generate_entity.app_config.app_id,
-            triggered_from=triggered_from,
-        )
-        workflow_node_execution_repository = DifyCoreRepositoryFactory.create_workflow_node_execution_repository(
-            session_factory=session_factory,
-            user=user,
-            app_id=generate_entity.app_config.app_id,
-            triggered_from=WorkflowNodeExecutionTriggeredFrom.WORKFLOW_RUN,
-        )
-
-        pause_config = PauseStateLayerConfig(
-            session_factory=session_factory,
-            state_owner_user_id=workflow.created_by,
-        )
-
-        workflow_run_repo.resume_workflow_pause(task_data.workflow_run_id, pause_entity)
-
-        trigger_log.status = WorkflowTriggerStatus.RUNNING
-        trigger_log_repo.update(trigger_log)
-        session.commit()
-
-        generator = WorkflowAppGenerator()
-        start_time = datetime.now(UTC)
-
-        try:
-            generator.resume(
-                app_model=app_model,
-                workflow=workflow,
-                user=user,
-                application_generate_entity=generate_entity,
-                graph_runtime_state=graph_runtime_state,
-                workflow_execution_repository=workflow_execution_repository,
-                workflow_node_execution_repository=workflow_node_execution_repository,
-                graph_engine_layers=[
-                    TimeSliceLayer(cfs_plan_scheduler),
-                    TriggerPostLayer(cfs_plan_scheduler_entity, start_time, trigger_log.id, session_factory),
-                ],
-                pause_state_config=pause_config,
-            )
-        except Exception as exc:
-            trigger_log.status = WorkflowTriggerStatus.FAILED
-            trigger_log.error = str(exc)
-            trigger_log.finished_at = datetime.now(UTC)
-            trigger_log_repo.update(trigger_log)
-            session.commit()
-            raise
+class _TenantNotFoundError(Exception):
+    pass
 
 
-def _get_user(session: Session, trigger_log: WorkflowTriggerLog) -> Account | EndUser:
-    """Compose user from trigger log"""
-    tenant = session.scalar(select(Tenant).where(Tenant.id == trigger_log.tenant_id))
-    if not tenant:
-        raise ValueError(f"Tenant not found: {trigger_log.tenant_id}")
+class _UserNotFoundError(Exception):
+    pass
 
-    # Get user from trigger log
-    if trigger_log.created_by_role == CreatorUserRole.ACCOUNT:
-        user = session.scalar(select(Account).where(Account.id == trigger_log.created_by))
-        if user:
-            user.current_tenant = tenant
-    else:  # CreatorUserRole.END_USER
-        user = session.scalar(select(EndUser).where(EndUser.id == trigger_log.created_by))
 
-    if not user:
-        raise ValueError(f"User not found: {trigger_log.created_by} (role: {trigger_log.created_by_role})")
-
-    return user
+class _AppNotFoundError(Exception):
+    pass

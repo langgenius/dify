@@ -5,7 +5,9 @@ from core.workflow.graph_events import BaseGraphEvent
 
 
 class GraphRunStartedEvent(BaseGraphEvent):
-    pass
+    # is_resumption indicating whether this `start` is a
+    # resumption of previously suspended execution.
+    is_resumption: bool = False
 
 
 class GraphRunSucceededEvent(BaseGraphEvent):

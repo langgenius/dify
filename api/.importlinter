@@ -32,6 +32,8 @@ ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine
     core.workflow.nodes.loop.loop_node -> core.workflow.graph
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
+    # TODO(QuantumGhost): fix the import violation later
+    core.workflow.entities.pause_reason -> core.workflow.nodes.human_input.entities
 
 [importlinter:contract:rsc]
 name = RSC

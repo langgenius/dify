@@ -1,3 +1,3 @@
-from .workflow_execute_task import chatflow_execute_task
+from .workflow_execute_task import AppExecutionParams, chatflow_execute_task, resume_app_execution
 
-__all__ = ["chatflow_execute_task"]
+__all__ = ["AppExecutionParams", "chatflow_execute_task", "resume_app_execution"]

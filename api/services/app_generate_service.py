@@ -7,6 +7,7 @@ from core.app.apps.advanced_chat.app_generator import AdvancedChatAppGenerator
 from core.app.apps.agent_chat.app_generator import AgentChatAppGenerator
 from core.app.apps.chat.app_generator import ChatAppGenerator
 from core.app.apps.completion.app_generator import CompletionAppGenerator
+from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.workflow.app_generator import WorkflowAppGenerator
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.features.rate_limiting import RateLimit
@@ -17,7 +18,7 @@ from models.model import Account, App, AppMode, EndUser
 from models.workflow import Workflow, WorkflowRun
 from services.errors.app import InvokeRateLimitError, QuotaExceededError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.workflow_service import WorkflowService
-from tasks.app_generate.workflow_execute_task import ChatflowExecutionParams, chatflow_execute_task
+from tasks.app_generate.workflow_execute_task import AppExecutionParams, chatflow_execute_task
 
 
 class AppGenerateService:
@@ -85,13 +86,14 @@ class AppGenerateService:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
                 with rate_limit_context(rate_limit, request_id):
-                    payload = ChatflowExecutionParams.new(
+                    payload = AppExecutionParams.new(
                         app_model=app_model,
                         workflow=workflow,
                         user=user,
                         args=args,
                         invoke_from=invoke_from,
                         streaming=streaming,
+                        call_depth=0,
                     )
                     chatflow_execute_task.delay(payload.model_dump_json())
                 generator = AdvancedChatAppGenerator()
@@ -104,6 +106,27 @@ class AppGenerateService:
             elif app_model.mode == AppMode.WORKFLOW:
                 workflow_id = args.get("workflow_id")
                 workflow = cls._get_workflow(app_model, invoke_from, workflow_id)
+                if streaming:
+                    with rate_limit_context(rate_limit, request_id):
+                        payload = AppExecutionParams.new(
+                            app_model=app_model,
+                            workflow=workflow,
+                            user=user,
+                            args=args,
+                            invoke_from=invoke_from,
+                            streaming=True,
+                            call_depth=0,
+                            root_node_id=root_node_id,
+                            workflow_run_id=uuid.uuid4(),
+                        )
+                        chatflow_execute_task.delay(payload.model_dump_json())
+                    return rate_limit.generate(
+                        WorkflowAppGenerator.convert_to_event_stream(
+                            MessageBasedAppGenerator.retrieve_events(AppMode.WORKFLOW, payload.workflow_run_id),
+                        ),
+                        request_id,
+                    )
+
                 return rate_limit.generate(
                     WorkflowAppGenerator.convert_to_event_stream(
                         WorkflowAppGenerator().generate(
@@ -112,7 +135,7 @@ class AppGenerateService:
                             user=user,
                             args=args,
                             invoke_from=invoke_from,
-                            streaming=streaming,
+                            streaming=False,
                             root_node_id=root_node_id,
                             call_depth=0,
                         ),

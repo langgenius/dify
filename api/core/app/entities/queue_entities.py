@@ -264,6 +264,10 @@ class QueueWorkflowStartedEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.WORKFLOW_STARTED
 
+    # is_resumption indicating whether this `start` is a
+    # resumption of previously suspended execution.
+    is_resumption: bool = False
+
 
 class QueueWorkflowSucceededEvent(AppQueueEvent):
     """

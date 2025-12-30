@@ -157,6 +157,7 @@ class ConsoleWorkflowEventsApi(Resource):
             app = _retrieve_app_for_workflow_run(session, workflow_run)
 
         if workflow_run.finished_at is not None:
+            # TODO(QuantumGhost): should we modify the handling for finished workflow run here?
             response = WorkflowResponseConverter.workflow_run_result_to_finish_response(
                 task_id=workflow_run.id,
                 workflow_run=workflow_run,
