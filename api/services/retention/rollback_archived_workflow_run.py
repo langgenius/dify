@@ -279,7 +279,7 @@ class WorkflowRunRollback:
     def _convert_datetime_fields(
         self,
         record: dict[str, Any],
-        model: type[DeclarativeBase],
+        model: type[DeclarativeBase] | Any,
     ) -> dict[str, Any]:
         """Convert ISO datetime strings to datetime objects."""
         from sqlalchemy import DateTime
