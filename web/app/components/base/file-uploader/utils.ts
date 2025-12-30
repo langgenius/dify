@@ -1,3 +1,4 @@
+import type { TFunction } from 'i18next'
 import type { FileEntity } from './types'
 import type { FileResponse } from '@/types/workflow'
 import mime from 'mime'
@@ -14,14 +15,14 @@ import { FileAppearanceTypeEnum } from './types'
  * @param t - Translation function
  * @returns Localized error message
  */
-export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: (key: string) => string): string => {
+export const getFileUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
   const errorCode = error?.response?.code
 
   if (errorCode === 'forbidden')
     return error?.response?.message
 
   if (errorCode === 'file_extension_blocked')
-    return t('common.fileUploader.fileExtensionBlocked')
+    return t('fileUploader.fileExtensionBlocked', { ns: 'common' })
 
   return defaultMessage
 }

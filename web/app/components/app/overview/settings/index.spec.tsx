@@ -15,11 +15,10 @@ vi.mock('react-i18next', async () => {
     ...actual,
     useTranslation: () => ({
       t: (key: string, options?: Record<string, unknown>) => {
+        const prefix = options?.ns ? `${options.ns}.` : ''
         if (options?.returnObjects)
-          return [`${key}-feature-1`, `${key}-feature-2`]
-        if (options)
-          return `${key}:${JSON.stringify(options)}`
-        return key
+          return [`${prefix}${key}-feature-1`, `${prefix}${key}-feature-2`]
+        return `${prefix}${key}`
       },
       i18n: {
         language: 'en',
