@@ -67,6 +67,9 @@ class NodeRepair:
             if node_type == "variable-aggregator":
                 cls._repair_variable_aggregator_variables(node, repairs)
 
+            if node_type == "code":
+                cls._repair_code_node_outputs(node, repairs)
+
             # Add other node type repairs here as needed
 
         return NodeRepairResult(
@@ -153,3 +156,35 @@ class NodeRepair:
         if repaired:
             config["variables"] = repaired_variables
             repairs.append(f"Repaired variable-aggregator variables format in node '{node_id}'")
+
+    @classmethod
+    def _repair_code_node_outputs(cls, node: WorkflowNodeDict, repairs: list[str]):
+        """
+        Repair code node outputs format.
+        Converts list format to dict format.
+        Expected: {"var_name": {"type": "string"}}
+        May receive: [{"variable": "var_name", "type": "string"}]
+        """
+        node_id = node.get("id", "unknown")
+        config = node.get("config", {})
+        outputs = config.get("outputs")
+
+        if not outputs or isinstance(outputs, dict):
+            return
+
+        if isinstance(outputs, list):
+            new_outputs = {}
+            for item in outputs:
+                if isinstance(item, dict):
+                    var_name = item.get("variable") or item.get("name")
+                    var_type = item.get("type")
+                    if var_name and var_type:
+                        new_outputs[var_name] = {"type": var_type}
+
+            if new_outputs:
+                config["outputs"] = new_outputs
+                repairs.append(f"Repaired code node outputs format in node '{node_id}'")
+            else:
+                # If conversion failed (e.g. empty list or invalid items), set to empty dict
+                config["outputs"] = {}
+                repairs.append(f"Reset invalid code node outputs to empty dict in node '{node_id}'")

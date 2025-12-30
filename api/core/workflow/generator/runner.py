@@ -126,6 +126,7 @@ class WorkflowGenerator:
             tool_schemas=tool_schemas,
             builtin_node_specs=node_specs,
             available_models=format_available_models(list(available_models or [])),
+            preferred_language=preferred_language or "English",
         )
         builder_user = BUILDER_USER_PROMPT.format(instruction=instruction)
 
