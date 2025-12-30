@@ -60,12 +60,12 @@ const ChangePasswordForm = () => {
         const utmInfoStr = Cookies.get('utm_info')
         const utmInfo = utmInfoStr ? JSON.parse(utmInfoStr) : null
 
-        trackEvent('user_registration_success', {
+        trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',
           ...utmInfo,
         })
 
-        sendGAEvent('user_registration_success', {
+        sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',
           ...utmInfo,
         })

@@ -58,12 +58,12 @@ export const AppInitializer = ({
         const utmInfo = utmInfoStr ? JSON.parse(utmInfoStr) : null
 
         // Track registration event with UTM params
-        trackEvent('user_registration_success', {
+        trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'oauth',
           ...utmInfo,
         })
 
-        sendGAEvent('user_registration_success', {
+        sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'oauth',
           ...utmInfo,
         })
