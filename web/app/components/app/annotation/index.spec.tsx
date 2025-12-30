@@ -18,7 +18,6 @@ import Annotation from './index'
 import { JobStatus } from './type'
 
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: { notify: vi.fn() },
 }))
 

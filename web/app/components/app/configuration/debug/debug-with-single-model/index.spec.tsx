@@ -403,7 +403,6 @@ vi.mock('@/app/components/base/toast', () => ({
 
 // Mock hooks/use-timestamp
 vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
   default: vi.fn(() => ({
     formatTime: vi.fn((timestamp: number) => new Date(timestamp).toLocaleString()),
   })),
