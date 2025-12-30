@@ -144,6 +144,7 @@ const translation = {
     offTopicTitle: 'Off-Topic Request',
     trySuggestion: 'Try one of these suggestions:',
     generateError: 'Failed to generate workflow. Please try again.',
+    regenerateReminder: 'Please verify your input and re-generate.',
   },
   publishLimit: {
     startNodeTitlePrefix: 'Upgrade to',

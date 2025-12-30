@@ -325,6 +325,9 @@ const translation = {
     'trigger-plugin': '插件触发器',
   },
   customWebhook: '自定义 Webhook',
+  vibe: {
+    regenerateReminder: '请检查输入并重新生成。',
+  },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',
     'end': '定义一个 workflow 流程的输出和结果类型',

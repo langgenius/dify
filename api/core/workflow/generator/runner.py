@@ -154,7 +154,42 @@ class WorkflowGenerator:
             return {"intent": "error", "error": f"Building failed: {str(e)}"}
 
         # --- STEP 3.4: NODE REPAIR ---
-        node_repair_result = NodeRepair.repair(workflow_data["nodes"])
+        def llm_fix_callback(node: dict, issue: str) -> dict:
+            """
+            Callback to fix a node using LLM when heuristic repair fails.
+            """
+            fix_system = """<role>
+You are a JSON Configuration Fixer.
+Your task is to fix a specific node configuration based on an error description.
+</role>
+
+<task>
+1. Analyze the 'issue' and the 'invalid_node'.
+2. Fix the node configuration to satisfy the requirements.
+3. Return ONLY the fixed configuration part (e.g. valid 'outputs' dict).
+4. Ensure the output is valid standard JSON.
+</task>
+"""
+            fix_user = f"Issue: {issue}\n\nInvalid Node:\n{json.dumps(node, indent=2)}"
+
+            try:
+                # Use same model as generation
+                fix_res = model_instance.invoke_llm(
+                    prompt_messages=[SystemPromptMessage(content=fix_system), UserPromptMessage(content=fix_user)],
+                    model_parameters=model_parameters,
+                    stream=False,
+                )
+                content = fix_res.message.content
+                # Parse JSON
+                match = re.search(r"```(?:json)?\s*([\s\S]+?)```", content)
+                if match:
+                    content = match.group(1)
+                return json_repair.loads(content)
+            except Exception as e:
+                logger.warning("LLM fix callback failed: %s", e)
+                return None
+
+        node_repair_result = NodeRepair.repair(workflow_data["nodes"], llm_callback=llm_fix_callback)
         workflow_data["nodes"] = node_repair_result.nodes
 
         # --- STEP 3.5: EDGE REPAIR ---

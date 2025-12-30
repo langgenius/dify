@@ -49,7 +49,7 @@ const ConditionValue = ({
     if (value === true || value === false)
       return value ? 'True' : 'False'
 
-    return value.replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
+    return String(value).replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
       const arr: string[] = b.split('.')
       if (isSystemVar(arr))
         return `{{${b}}}`

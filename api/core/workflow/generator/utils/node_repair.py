@@ -8,6 +8,7 @@ It can detect and fix common node configuration issues:
 
 import copy
 import logging
+import uuid
 from dataclasses import dataclass, field
 
 from core.workflow.generator.types import WorkflowNodeDict
@@ -41,13 +42,39 @@ class NodeRepair:
         "==": "=",
     }
 
+    TYPE_MAPPING = {
+        "json": "object",
+        "dict": "object",
+        "dictionary": "object",
+        "float": "number",
+        "int": "number",
+        "integer": "number",
+        "double": "number",
+        "str": "string",
+        "text": "string",
+        "bool": "boolean",
+        "list": "array[object]",
+        "array": "array[object]",
+    }
+
+    _REPAIR_HANDLERS = {
+        "if-else": "_repair_if_else_operators",
+        "variable-aggregator": "_repair_variable_aggregator_variables",
+        "code": "_repair_code_node_config",
+    }
+
     @classmethod
-    def repair(cls, nodes: list[WorkflowNodeDict]) -> NodeRepairResult:
+    def repair(
+        cls,
+        nodes: list[WorkflowNodeDict],
+        llm_callback=None,
+    ) -> NodeRepairResult:
         """
         Repair node configurations.
 
         Args:
             nodes: List of node dictionaries
+            llm_callback: Optional callback(node, issue_desc) -> fixed_config_part
 
         Returns:
             NodeRepairResult with repaired nodes and logs
@@ -59,16 +86,18 @@ class NodeRepair:
 
         for node in nodes:
             node_type = node.get("type")
-            node_id = node.get("id", "unknown")
 
-            if node_type == "if-else":
-                cls._repair_if_else_operators(node, repairs)
-
-            if node_type == "variable-aggregator":
-                cls._repair_variable_aggregator_variables(node, repairs)
-
-            if node_type == "code":
-                cls._repair_code_node_outputs(node, repairs)
+            # 1. Rule-based repairs
+            handler_name = cls._REPAIR_HANDLERS.get(node_type)
+            if handler_name:
+                handler = getattr(cls, handler_name)
+                # Check if handler accepts llm_callback (inspect signature or just pass generic kwargs?)
+                # Simplest for now: handlers signature: (node, repairs, llm_callback=None)
+                try:
+                    handler(node, repairs, llm_callback=llm_callback)
+                except TypeError:
+                    # Fallback for handlers that don't accept llm_callback yet
+                    handler(node, repairs)
 
             # Add other node type repairs here as needed
 
@@ -79,17 +108,34 @@ class NodeRepair:
         )
 
     @classmethod
-    def _repair_if_else_operators(cls, node: WorkflowNodeDict, repairs: list[str]):
+    def _repair_if_else_operators(cls, node: WorkflowNodeDict, repairs: list[str], **kwargs):
         """
         Normalize comparison operators in if-else nodes.
+        And ensure 'id' field exists for cases and conditions (frontend requirement).
         """
         node_id = node.get("id", "unknown")
         config = node.get("config", {})
         cases = config.get("cases", [])
 
         for case in cases:
+            # Ensure case_id
+            if "case_id" not in case:
+                case["case_id"] = str(uuid.uuid4())
+                repairs.append(f"Generated missing case_id for case in node '{node_id}'")
+
             conditions = case.get("conditions", [])
             for condition in conditions:
+                # Ensure condition id
+                if "id" not in condition:
+                    condition["id"] = str(uuid.uuid4())
+                    # Not logging this repair to avoid clutter, as it's a structural fix
+
+                # Ensure value type (LLM might return int/float, but we need str/bool/list)
+                val = condition.get("value")
+                if isinstance(val, (int, float)) and not isinstance(val, bool):
+                    condition["value"] = str(val)
+                    repairs.append(f"Coerced numeric value to string in node '{node_id}'")
+
                 op = condition.get("comparison_operator")
                 if op in cls.OPERATOR_MAP:
                     new_op = cls.OPERATOR_MAP[op]
@@ -158,20 +204,57 @@ class NodeRepair:
             repairs.append(f"Repaired variable-aggregator variables format in node '{node_id}'")
 
     @classmethod
-    def _repair_code_node_outputs(cls, node: WorkflowNodeDict, repairs: list[str]):
+    def _repair_code_node_config(cls, node: WorkflowNodeDict, repairs: list[str], llm_callback=None):
         """
-        Repair code node outputs format.
-        Converts list format to dict format.
-        Expected: {"var_name": {"type": "string"}}
-        May receive: [{"variable": "var_name", "type": "string"}]
+        Repair code node configuration (outputs and variables).
+        1. Outputs: Converts list format to dict format AND normalizes types.
+        2. Variables: Ensures value_selector exists.
         """
         node_id = node.get("id", "unknown")
         config = node.get("config", {})
+
+        if "variables" not in config:
+            config["variables"] = []
+
+        # --- Repair Variables ---
+        variables = config.get("variables")
+        if isinstance(variables, list):
+            for var in variables:
+                if isinstance(var, dict):
+                    # Ensure value_selector exists (frontend crashes if missing)
+                    if "value_selector" not in var:
+                        var["value_selector"] = []
+                        # Not logging trivial repairs
+
+        # --- Repair Outputs ---
         outputs = config.get("outputs")
 
-        if not outputs or isinstance(outputs, dict):
+        if not outputs:
             return
 
+        # Helper to normalize type
+        def normalize_type(t: str) -> str:
+            t_lower = str(t).lower()
+            return cls.TYPE_MAPPING.get(t_lower, t)
+
+        # 1. Handle Dict format (Standard) - Check for invalid types
+        if isinstance(outputs, dict):
+            changed = False
+            for var_name, var_config in outputs.items():
+                if isinstance(var_config, dict):
+                    original_type = var_config.get("type")
+                    if original_type:
+                        new_type = normalize_type(original_type)
+                        if new_type != original_type:
+                            var_config["type"] = new_type
+                            changed = True
+                            repairs.append(
+                                f"Normalized type '{original_type}' to '{new_type}' "
+                                f"for var '{var_name}' in node '{node_id}'"
+                            )
+            return
+
+        # 2. Handle List format (Repair needed)
         if isinstance(outputs, list):
             new_outputs = {}
             for item in outputs:
@@ -179,12 +262,34 @@ class NodeRepair:
                     var_name = item.get("variable") or item.get("name")
                     var_type = item.get("type")
                     if var_name and var_type:
-                        new_outputs[var_name] = {"type": var_type}
+                        norm_type = normalize_type(var_type)
+                        new_outputs[var_name] = {"type": norm_type}
+                        if norm_type != var_type:
+                            repairs.append(
+                                f"Normalized type '{var_type}' to '{norm_type}' "
+                                f"during list conversion in node '{node_id}'"
+                            )
 
             if new_outputs:
                 config["outputs"] = new_outputs
                 repairs.append(f"Repaired code node outputs format in node '{node_id}'")
             else:
-                # If conversion failed (e.g. empty list or invalid items), set to empty dict
+                # Fallback: Try LLM if available
+                if llm_callback:
+                    try:
+                        # Attempt to fix using LLM
+                        fixed_outputs = llm_callback(
+                            node,
+                            "outputs must be a dictionary like {'var_name': {'type': 'string'}}, "
+                            "but got a list or valid conversion failed.",
+                        )
+                        if isinstance(fixed_outputs, dict) and fixed_outputs:
+                            config["outputs"] = fixed_outputs
+                            repairs.append(f"Repaired code node outputs format using LLM in node '{node_id}'")
+                            return
+                    except Exception as e:
+                        logger.warning("LLM fallback repair failed for node '%s': %s", node_id, e)
+
+                # If conversion/LLM failed, set to empty dict
                 config["outputs"] = {}
                 repairs.append(f"Reset invalid code node outputs to empty dict in node '{node_id}'")

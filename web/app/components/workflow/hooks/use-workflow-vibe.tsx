@@ -1405,7 +1405,11 @@ export const useWorkflowVibe = () => {
 
         if (error) {
           Toast.notify({ type: 'error', message: error })
-          setIsVibeGenerating(false)
+          workflowStore.setState(state => ({
+            ...state,
+            vibePanelMessage: `${error} ${t('workflow.vibe.regenerateReminder')}`,
+            isVibeGenerating: false,
+          }))
           return
         }
 
@@ -1507,6 +1511,11 @@ export const useWorkflowVibe = () => {
       }
 
       Toast.notify({ type: 'error', message: errorMessage })
+      workflowStore.setState(state => ({
+        ...state,
+        vibePanelMessage: `${errorMessage} ${t('workflow.vibe.regenerateReminder')}`,
+        isVibeGenerating: false,
+      }))
     }
     finally {
       isGeneratingRef.current = false
