@@ -20,6 +20,15 @@ type IOperationProps = {
   onOperate: () => void
 }
 
+const roleI18nKeyMap = {
+  admin: { label: 'members.admin', tip: 'members.adminTip' },
+  editor: { label: 'members.editor', tip: 'members.editorTip' },
+  normal: { label: 'members.normal', tip: 'members.normalTip' },
+  dataset_operator: { label: 'members.datasetOperator', tip: 'members.datasetOperatorTip' },
+} as const
+
+type OperationRoleKey = keyof typeof roleI18nKeyMap
+
 const Operation = ({
   member,
   operatorRole,
@@ -29,38 +38,37 @@ const Operation = ({
   const { t } = useTranslation()
   const { datasetOperatorEnabled } = useProviderContext()
   const RoleMap = {
-    owner: t('common.members.owner'),
-    admin: t('common.members.admin'),
-    editor: t('common.members.editor'),
-    normal: t('common.members.normal'),
-    dataset_operator: t('common.members.datasetOperator'),
+    owner: t('members.owner', { ns: 'common' }),
+    admin: t('members.admin', { ns: 'common' }),
+    editor: t('members.editor', { ns: 'common' }),
+    normal: t('members.normal', { ns: 'common' }),
+    dataset_operator: t('members.datasetOperator', { ns: 'common' }),
   }
-  const roleList = useMemo(() => {
+  const roleList = useMemo((): OperationRoleKey[] => {
     if (operatorRole === 'owner') {
       return [
         'admin',
         'editor',
         'normal',
-        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     if (operatorRole === 'admin') {
       return [
         'editor',
         'normal',
-        ...(datasetOperatorEnabled ? ['dataset_operator'] : []),
+        ...(datasetOperatorEnabled ? ['dataset_operator'] as const : []),
       ]
     }
     return []
   }, [operatorRole, datasetOperatorEnabled])
   const { notify } = useContext(ToastContext)
-  const toHump = (name: string) => name.replace(/_(\w)/g, (all, letter) => letter.toUpperCase())
   const handleDeleteMemberOrCancelInvitation = async () => {
     setOpen(false)
     try {
       await deleteMemberOrCancelInvitation({ url: `/workspaces/current/members/${member.id}` })
       onOperate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
 
@@ -74,7 +82,7 @@ const Operation = ({
         body: { role },
       })
       onOperate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
 
@@ -106,8 +114,8 @@ const Operation = ({
                       : <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
                   }
                   <div>
-                    <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(`common.members.${toHump(role)}` as any)}</div>
-                    <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(`common.members.${toHump(role)}Tip` as any)}</div>
+                    <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t(roleI18nKeyMap[role].label, { ns: 'common' })}</div>
+                    <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t(roleI18nKeyMap[role].tip, { ns: 'common' })}</div>
                   </div>
                 </div>
               ))
@@ -117,8 +125,8 @@ const Operation = ({
             <div className="flex cursor-pointer rounded-lg px-3 py-2 hover:bg-state-base-hover" onClick={handleDeleteMemberOrCancelInvitation}>
               <div className="mr-1 mt-[2px] h-4 w-4 text-text-accent" />
               <div>
-                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('common.members.removeFromTeam')}</div>
-                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('common.members.removeFromTeamTip')}</div>
+                <div className="system-sm-semibold whitespace-nowrap text-text-secondary">{t('members.removeFromTeam', { ns: 'common' })}</div>
+                <div className="system-xs-regular whitespace-nowrap text-text-tertiary">{t('members.removeFromTeamTip', { ns: 'common' })}</div>
               </div>
             </div>
           </div>

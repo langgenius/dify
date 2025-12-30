@@ -33,7 +33,6 @@ vi.mock('ky', () => {
 })
 
 vi.mock('@/app/components/datasets/create/step-two', () => ({
-  __esModule: true,
   IndexingType: {
     QUALIFIED: 'high_quality',
     ECONOMICAL: 'economy',
@@ -45,7 +44,6 @@ vi.mock('@/service/datasets', () => ({
 }))
 
 vi.mock('@/service/use-common', async () => ({
-  __esModule: true,
   ...(await vi.importActual('@/service/use-common')),
   useMembers: vi.fn(),
 }))
@@ -86,7 +84,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  __esModule: true,
   useModelList: (...args: unknown[]) => mockUseModelList(...args),
   useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
@@ -95,7 +92,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  __esModule: true,
   default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
     <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}

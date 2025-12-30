@@ -14,12 +14,17 @@ const notTranslateKey = [
   ComparisonOperator.largerThanOrEqual,
   ComparisonOperator.lessThan,
   ComparisonOperator.lessThanOrEqual,
-]
+] as const
 
-export const isComparisonOperatorNeedTranslate = (operator?: ComparisonOperator) => {
+type NotTranslateOperator = typeof notTranslateKey[number]
+export type TranslatableComparisonOperator = Exclude<ComparisonOperator, NotTranslateOperator>
+
+export function isComparisonOperatorNeedTranslate(operator: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator
+export function isComparisonOperatorNeedTranslate(operator?: ComparisonOperator): operator is TranslatableComparisonOperator {
   if (!operator)
     return false
-  return !notTranslateKey.includes(operator)
+  return !(notTranslateKey as readonly ComparisonOperator[]).includes(operator)
 }
 
 export const getOperators = (type?: MetadataFilteringVariableType) => {

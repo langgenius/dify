@@ -21,20 +21,18 @@ vi.mock('use-context-selector', async () => {
     useContext: () => ({ hasEditPermission: true }),
   }
 })
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => ['Recommended', vi.fn()],
+vi.mock('nuqs', () => ({
+  useQueryState: () => ['Recommended', vi.fn()],
 }))
 vi.mock('@/service/use-explore', () => ({
   useExploreAppList: () => mockUseExploreAppList(),
 }))
 vi.mock('@/app/components/app/type-selector', () => ({
-  __esModule: true,
   default: ({ value, onChange }: { value: AppModeEnum[], onChange: (value: AppModeEnum[]) => void }) => (
     <button data-testid="type-selector" onClick={() => onChange([...value, 'chat' as AppModeEnum])}>{value.join(',')}</button>
   ),
 }))
 vi.mock('../app-card', () => ({
-  __esModule: true,
   default: ({ app, onCreate }: { app: any, onCreate: () => void }) => (
     <div
       data-testid="app-card"
@@ -46,7 +44,6 @@ vi.mock('../app-card', () => ({
   ),
 }))
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  __esModule: true,
   default: () => <div data-testid="create-from-template-modal" />,
 }))
 vi.mock('@/app/components/base/toast', () => ({

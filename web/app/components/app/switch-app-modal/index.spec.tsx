@@ -72,7 +72,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
-  __esModule: true,
   default: ({ loc }: { loc: string }) => (
     <div data-testid="apps-full">
       AppsFull

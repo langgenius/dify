@@ -61,7 +61,7 @@ const AgentSetting: FC<Props> = ({
       >
         <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
           <div className="flex flex-col text-base font-semibold text-text-primary">
-            <div className="leading-6">{t('appDebug.agent.setting.name')}</div>
+            <div className="leading-6">{t('agent.setting.name', { ns: 'appDebug' })}</div>
           </div>
           <div className="flex items-center">
             <div
@@ -85,10 +85,10 @@ const AgentSetting: FC<Props> = ({
             icon={
               <CuteRobot className="h-4 w-4 text-indigo-600" />
             }
-            name={t('appDebug.agent.agentMode')}
-            description={t('appDebug.agent.agentModeDes')}
+            name={t('agent.agentMode', { ns: 'appDebug' })}
+            description={t('agent.agentModeDes', { ns: 'appDebug' })}
           >
-            <div className="text-[13px] font-medium leading-[18px] text-text-primary">{isFunctionCall ? t('appDebug.agent.agentModeType.functionCall') : t('appDebug.agent.agentModeType.ReACT')}</div>
+            <div className="text-[13px] font-medium leading-[18px] text-text-primary">{isFunctionCall ? t('agent.agentModeType.functionCall', { ns: 'appDebug' }) : t('agent.agentModeType.ReACT', { ns: 'appDebug' })}</div>
           </ItemPanel>
 
           <ItemPanel
@@ -96,8 +96,8 @@ const AgentSetting: FC<Props> = ({
             icon={
               <Unblur className="h-4 w-4 text-[#FB6514]" />
             }
-            name={t('appDebug.agent.setting.maximumIterations.name')}
-            description={t('appDebug.agent.setting.maximumIterations.description')}
+            name={t('agent.setting.maximumIterations.name', { ns: 'appDebug' })}
+            description={t('agent.setting.maximumIterations.description', { ns: 'appDebug' })}
           >
             <div className="flex items-center">
               <Slider
@@ -138,7 +138,7 @@ const AgentSetting: FC<Props> = ({
 
           {!isFunctionCall && (
             <div className="rounded-xl bg-background-section-burn py-2 shadow-xs">
-              <div className="flex h-8 items-center px-4 text-sm font-semibold leading-6 text-text-secondary">{t('tools.builtInPromptTitle')}</div>
+              <div className="flex h-8 items-center px-4 text-sm font-semibold leading-6 text-text-secondary">{t('builtInPromptTitle', { ns: 'tools' })}</div>
               <div className="h-[396px] overflow-y-auto whitespace-pre-line px-4 text-sm font-normal leading-5 text-text-secondary">
                 {isChatModel ? DEFAULT_AGENT_PROMPT.chat : DEFAULT_AGENT_PROMPT.completion}
               </div>
@@ -156,13 +156,13 @@ const AgentSetting: FC<Props> = ({
             onClick={onCancel}
             className="mr-2"
           >
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button
             variant="primary"
             onClick={handleSave}
           >
-            {t('common.operation.save')}
+            {t('operation.save', { ns: 'common' })}
           </Button>
         </div>
       </div>

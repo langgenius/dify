@@ -69,7 +69,7 @@ const OperationDropdown: FC<Props> = ({
             }}
           >
             <RiEditLine className="h-4 w-4 text-text-tertiary" />
-            <div className="system-md-regular ml-2 text-text-secondary">{t('tools.mcp.operation.edit')}</div>
+            <div className="system-md-regular ml-2 text-text-secondary">{t('mcp.operation.edit', { ns: 'tools' })}</div>
           </div>
           <div
             className="group flex cursor-pointer items-center rounded-lg px-3 py-1.5 hover:bg-state-destructive-hover"
@@ -79,7 +79,7 @@ const OperationDropdown: FC<Props> = ({
             }}
           >
             <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive-secondary" />
-            <div className="system-md-regular ml-2 text-text-secondary group-hover:text-text-destructive">{t('tools.mcp.operation.remove')}</div>
+            <div className="system-md-regular ml-2 text-text-secondary group-hover:text-text-destructive">{t('mcp.operation.remove', { ns: 'tools' })}</div>
           </div>
         </div>
       </PortalToFollowElemContent>
