@@ -1,0 +1,221 @@
+import os
+import pathlib
+import subprocess
+from collections.abc import Mapping, Sequence
+from functools import cached_property
+from io import BytesIO
+from platform import machine
+from typing import Any
+from uuid import uuid4
+
+from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.__base.exec import ArchNotSupportedError
+from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+
+
+class LocalVirtualEnvironment(VirtualEnvironment):
+    """
+    Local virtual environment provider without isolation.
+
+    WARNING: This provider does not provide any isolation. It's only suitable for development and testing purposes.
+    NEVER USE IT IN PRODUCTION ENVIRONMENTS.
+    """
+
+    def construct_environment(self, options: Mapping[str, Any]) -> Metadata:
+        """
+        Construct the local virtual environment.
+
+        Under local without isolation, this method simply create a path for the environment and return the metadata.
+        """
+        id = uuid4().hex
+        working_path = os.path.join(self._base_working_path, id)
+        os.makedirs(working_path, exist_ok=True)
+        return Metadata(
+            id=id,
+            arch=self._get_os_architecture(),
+        )
+
+    def release_environment(self) -> None:
+        """
+        Release the local virtual environment.
+
+        Just simply remove the working directory.
+        """
+        working_path = self.get_working_path()
+        if os.path.exists(working_path):
+            os.rmdir(working_path)
+
+    def upload_file(self, path: str, content: BytesIO) -> None:
+        """
+        Upload a file to the local virtual environment.
+
+        Args:
+            path (str): The path to upload the file to.
+            content (BytesIO): The content of the file.
+        """
+        working_path = self.get_working_path()
+        full_path = os.path.join(working_path, path)
+        os.makedirs(os.path.dirname(full_path), exist_ok=True)
+        pathlib.Path(full_path).write_bytes(content.getbuffer())
+
+    def download_file(self, path: str) -> BytesIO:
+        """
+        Download a file from the local virtual environment.
+
+        Args:
+            path (str): The path to download the file from.
+        Returns:
+            BytesIO: The content of the file.
+        """
+        working_path = self.get_working_path()
+        full_path = os.path.join(working_path, path)
+        content = pathlib.Path(full_path).read_bytes()
+        return BytesIO(content)
+
+    def list_files(self, directory_path: str, limit: int) -> Sequence[FileState]:
+        """
+        List files in a directory of the local virtual environment.
+        """
+        working_path = self.get_working_path()
+        full_directory_path = os.path.join(working_path, directory_path)
+        files: list[FileState] = []
+        for root, _, filenames in os.walk(full_directory_path):
+            for filename in filenames:
+                if len(files) >= limit:
+                    break
+                file_path = os.path.relpath(os.path.join(root, filename), working_path)
+                state = os.stat(os.path.join(root, filename))
+                files.append(
+                    FileState(
+                        path=file_path,
+                        size=state.st_size,
+                        created_at=int(state.st_ctime),
+                        updated_at=int(state.st_mtime),
+                    )
+                )
+            if len(files) >= limit:
+                # break the outer loop as well
+                return files
+
+        return files
+
+    def establish_connection(self) -> ConnectionHandle:
+        """
+        Establish a connection to the local virtual environment.
+        """
+        return ConnectionHandle(
+            id=uuid4().hex,
+        )
+
+    def release_connection(self, connection_handle: ConnectionHandle) -> None:
+        """
+        Release the connection to the local virtual environment.
+        """
+        # No action needed for local without isolation
+        pass
+
+    def execute_command(self, connection_handle: ConnectionHandle, command: list[str]) -> tuple[int, int, int, int]:
+        """
+        Execute a command in the local virtual environment.
+
+        Args:
+            connection_handle (ConnectionHandle): The connection handle.
+            command (list[str]): The command to execute.
+        """
+        working_path = self.get_working_path()
+        stdin_read_fd, stdin_write_fd = os.pipe()
+        stdout_read_fd, stdout_write_fd = os.pipe()
+        stderr_read_fd, stderr_write_fd = os.pipe()
+        try:
+            process = subprocess.Popen(
+                command,
+                stdin=stdin_read_fd,
+                stdout=stdout_write_fd,
+                stderr=stderr_write_fd,
+                cwd=working_path,
+                close_fds=True,
+            )
+        except Exception:
+            # Clean up file descriptors if process creation fails
+            for fd in (
+                stdin_read_fd,
+                stdin_write_fd,
+                stdout_read_fd,
+                stdout_write_fd,
+                stderr_read_fd,
+                stderr_write_fd,
+            ):
+                try:
+                    os.close(fd)
+                except OSError:
+                    pass
+            raise
+
+        # Close unused fds in the parent process
+        os.close(stdin_read_fd)
+        os.close(stdout_write_fd)
+        os.close(stderr_write_fd)
+
+        # Return the process ID and file descriptors for stdin, stdout, and stderr
+        return process.pid, stdin_write_fd, stdout_read_fd, stderr_read_fd
+
+    def get_command_status(self, connection_handle: ConnectionHandle, pid: int) -> CommandStatus:
+        """
+        Docstring for get_command_status
+
+        :param self: Description
+        :param connection_handle: Description
+        :type connection_handle: ConnectionHandle
+        :param pid: Description
+        :type pid: int
+        :return: Description
+        :rtype: CommandStatus
+        """
+        try:
+            retcode = os.waitpid(pid, os.WNOHANG)[1]
+            if retcode == 0:
+                return CommandStatus(status=CommandStatus.Status.RUNNING, pid=pid, exit_code=None)
+            else:
+                return CommandStatus(status=CommandStatus.Status.COMPLETED, pid=pid, exit_code=retcode)
+        except ChildProcessError:
+            return CommandStatus(status=CommandStatus.Status.COMPLETED, pid=pid, exit_code=None)
+
+    def _get_os_architecture(self) -> Arch:
+        """
+        Get the operating system architecture.
+
+        Returns:
+            Arch: The operating system architecture.
+        """
+
+        arch = machine()
+        match arch:
+            case "x86_64" | "AMD64":
+                return Arch.AMD64
+            case "aarch64" | "ARM64":
+                return Arch.ARM64
+            case _:
+                raise ArchNotSupportedError(f"Unsupported architecture: {arch}")
+
+    @cached_property
+    def _base_working_path(self) -> str:
+        """
+        Get the base working path for the local virtual environment.
+
+        Args:
+            options (Mapping[str, Any]): Options for requesting the virtual environment.
+
+        Returns:
+            str: The base working path.
+        """
+        cwd = os.getcwd()
+        return self.options.get("base_working_path", os.path.join(cwd, "local_virtual_environments"))
+
+    def get_working_path(self) -> str:
+        """
+        Get the working path for the local virtual environment.
+
+        Returns:
+            str: The working path.
+        """
+        return os.path.join(self._base_working_path, self.metadata.id)

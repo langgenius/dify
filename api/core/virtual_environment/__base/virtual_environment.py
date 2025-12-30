@@ -1,9 +1,9 @@
 from abc import ABC, abstractmethod
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from io import BytesIO
 from typing import Any
 
-from core.virtual_environment.__base.entities import CommandStatus, ConnectionHandle, Metadata
+from core.virtual_environment.__base.entities import CommandStatus, ConnectionHandle, FileState, Metadata
 
 
 class VirtualEnvironment(ABC):
@@ -11,30 +11,30 @@ class VirtualEnvironment(ABC):
     Base class for virtual environment implementations.
     """
 
-    @abstractmethod
-    def request_environment(self, options: Mapping[str, Any]) -> Metadata:
+    def __init__(self, options: Mapping[str, Any]) -> None:
         """
-        Request a virtual environment with the given options.
+        Initialize the virtual environment with metadata.
+        """
 
-        Args:
-            options (Mapping[str, Any]): Options for requesting the virtual environment.
-                Those options are implementation-specific, which can be defined in environment
+        self.options = options
+        self.metadata = self.construct_environment(options)
+
+    @abstractmethod
+    def construct_environment(self, options: Mapping[str, Any]) -> Metadata:
+        """
+        Construct the unique identifier for the virtual environment.
 
         Returns:
-            Metadata: Metadata about the requested virtual environment.
-
-        Raises:
-            Exception: If the environment cannot be requested.
+            str: The unique identifier of the virtual environment.
         """
 
     @abstractmethod
-    def upload_file(self, environment_id: str, destination_path: str, content: BytesIO) -> None:
+    def upload_file(self, path: str, content: BytesIO) -> None:
         """
         Upload a file to the virtual environment.
 
         Args:
-            environment_id (str): The unique identifier of the virtual environment.
-            destination_path (str): The destination path in the virtual environment.
+            path (str): The destination path in the virtual environment.
             content (BytesIO): The content of the file to upload.
 
         Raises:
@@ -42,12 +42,49 @@ class VirtualEnvironment(ABC):
         """
 
     @abstractmethod
-    def establish_connection(self, environment_id: str) -> ConnectionHandle:
+    def download_file(self, path: str) -> BytesIO:
         """
-        Establish a connection to the virtual environment.
+        Download a file from the virtual environment.
 
         Args:
-            environment_id (str): The unique identifier of the virtual environment.
+            source_path (str): The source path in the virtual environment.
+        Returns:
+            BytesIO: The content of the downloaded file.
+        Raises:
+            Exception: If the file cannot be downloaded.
+        """
+
+    @abstractmethod
+    def list_files(self, directory_path: str, limit: int) -> Sequence[FileState]:
+        """
+        List files in a directory of the virtual environment.
+
+        Args:
+            directory_path (str): The directory path in the virtual environment.
+            limit (int): The maximum number of files(including recursive paths) to return.
+        Returns:
+            Sequence[FileState]: A list of file states in the specified directory.
+        Raises:
+            Exception: If the files cannot be listed.
+
+        Example:
+            If the directory structure is like:
+            /dir
+              /subdir1
+                file1.txt
+              /subdir2
+                file2.txt
+            And limit is 2, the returned list may look like:
+            [
+                FileState(path="/dir/subdir1/file1.txt", is_directory=False, size=1234, created_at=..., updated_at=...),
+                FileState(path="/dir/subdir2", is_directory=True, size=0, created_at=..., updated_at=...),
+            ]
+        """
+
+    @abstractmethod
+    def establish_connection(self) -> ConnectionHandle:
+        """
+        Establish a connection to the virtual environment.
 
         Returns:
             ConnectionHandle: Handle for managing the connection to the virtual environment.
@@ -69,12 +106,9 @@ class VirtualEnvironment(ABC):
         """
 
     @abstractmethod
-    def release_environment(self, environment_id: str) -> None:
+    def release_environment(self) -> None:
         """
         Release the virtual environment.
-
-        Args:
-            environment_id (str): The unique identifier of the virtual environment.
 
         Raises:
             Exception: If the environment cannot be released.
@@ -92,7 +126,7 @@ class VirtualEnvironment(ABC):
 
         Returns:
             tuple[int, int, int, int]: A tuple containing pid and 3 handle to os.pipe(): (stdin, stdout, stderr).
-            After exuection, the 3 handles will be closed by `execute_command` itself.
+            After exuection, the 3 handles will be closed by caller.
         """
 
     @abstractmethod
