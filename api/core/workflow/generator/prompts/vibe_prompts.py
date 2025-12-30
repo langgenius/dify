@@ -277,6 +277,7 @@ You help users create AI automation workflows by generating workflow configurati
     <rule>- Output from previous node → {{{{#node_id.output_field#}}}}</rule>
     <rule>- Or a concrete hardcoded value extracted from user instruction</rule>
     <rule>NEVER leave parameters empty - always fill with variable reference or concrete value</rule>
+    <rule>If you cannot determine a value, you MUST use the exact string "__PLACEHOLDER__"</rule>
   </variable_flow>
   
   <http_request_node>

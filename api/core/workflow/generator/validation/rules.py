@@ -166,17 +166,9 @@ def get_registry() -> RuleRegistry:
 # Helper Functions for Rule Implementations
 # =============================================================================
 
-# Placeholder patterns that indicate user needs to fill in values
-PLACEHOLDER_PATTERNS = [
-    "PLEASE_SELECT",
-    "YOUR_",
-    "TODO",
-    "PLACEHOLDER",
-    "EXAMPLE_",
-    "REPLACE_",
-    "INSERT_",
-    "ADD_YOUR_",
-]
+# Explicit placeholder value defined in prompt contract
+# See: api/core/workflow/generator/prompts/vibe_prompts.py
+PLACEHOLDER_VALUE = "__PLACEHOLDER__"
 
 # Variable reference pattern: {{#node_id.field#}}
 VARIABLE_REF_PATTERN = re.compile(r"\{\{#([^.#]+)\.([^#]+)#\}\}")
@@ -186,8 +178,7 @@ def is_placeholder(value: Any) -> bool:
     """Check if a value appears to be a placeholder."""
     if not isinstance(value, str):
         return False
-    value_upper = value.upper()
-    return any(p in value_upper for p in PLACEHOLDER_PATTERNS)
+    return value == PLACEHOLDER_VALUE or PLACEHOLDER_VALUE in value
 
 
 def extract_variable_refs(text: str) -> list[tuple[str, str]]:
