@@ -20,7 +20,7 @@ type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
 export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePeriodName } } = {
   1: { value: 0, name: 'today' },
   2: { value: 7, name: 'last7days' },
-  3: { value: 28, name: 'last4weeks' },
+  3: { value: 30, name: 'last30days' },
   4: { value: today.diff(today.subtract(3, 'month'), 'day'), name: 'last3months' },
   5: { value: today.diff(today.subtract(12, 'month'), 'day'), name: 'last12months' },
   6: { value: today.diff(today.startOf('month'), 'day'), name: 'monthToDate' },
