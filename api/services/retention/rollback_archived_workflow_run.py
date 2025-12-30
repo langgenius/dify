@@ -10,11 +10,12 @@ import logging
 import time
 from dataclasses import dataclass
 from datetime import datetime
-from typing import Any
+from typing import Any, cast
 
 import click
 from sqlalchemy.dialects.postgresql import insert as pg_insert
-from sqlalchemy.orm import Session, sessionmaker
+from sqlalchemy.engine import CursorResult
+from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 
 from extensions.ext_database import db
 from libs.archive_storage import (
@@ -273,12 +274,12 @@ class WorkflowRunRollback:
         stmt = stmt.on_conflict_do_nothing(index_elements=["id"])
 
         result = session.execute(stmt)
-        return result.rowcount
+        return cast(CursorResult, result).rowcount or 0
 
     def _convert_datetime_fields(
         self,
         record: dict[str, Any],
-        model: type,
+        model: type[DeclarativeBase],
     ) -> dict[str, Any]:
         """Convert ISO datetime strings to datetime objects."""
         from sqlalchemy import DateTime

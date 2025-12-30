@@ -9,7 +9,7 @@ import io
 import json
 import logging
 import zipfile
-from datetime import datetime
+from datetime import UTC, datetime
 from typing import Any
 from uuid import uuid4
 
@@ -166,7 +166,7 @@ class WorkflowRunExportService:
                 "app_id": run.app_id,
                 "workflow_id": run.workflow_id,
                 "created_at": run.created_at.isoformat() if run.created_at else None,
-                "exported_at": datetime.now(datetime.UTC).isoformat(),
+                "exported_at": datetime.now(UTC).isoformat(),
                 "source": "database",
                 "tables": table_stats,
             }
@@ -251,7 +251,7 @@ class WorkflowRunExportService:
             tables["workflow_app_logs"] = {"row_count": len(app_logs)}
 
             # Update manifest with export info
-            manifest["exported_at"] = datetime.now(datetime.UTC).isoformat()
+            manifest["exported_at"] = datetime.now(UTC).isoformat()
             manifest["source"] = "archive"
             zf.writestr(
                 "manifest.json",

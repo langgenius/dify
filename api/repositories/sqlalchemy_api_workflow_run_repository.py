@@ -27,7 +27,7 @@ from decimal import Decimal
 from typing import Any, cast
 
 import sqlalchemy as sa
-from sqlalchemy import and_, delete, func, null, or_, select
+from sqlalchemy import and_, delete, func, null, or_, select, update
 from sqlalchemy.engine import CursorResult
 from sqlalchemy.orm import Session, selectinload, sessionmaker
 
@@ -484,9 +484,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         if not run_ids:
             return 0
 
-        result = session.execute(
-            WorkflowRun.__table__.update().where(WorkflowRun.id.in_(run_ids)).values(is_archived=archived)
-        )
+        result = session.execute(update(WorkflowRun).where(WorkflowRun.id.in_(run_ids)).values(is_archived=archived))
         return cast(CursorResult, result).rowcount or 0
 
     def get_archived_runs_by_time_range(
