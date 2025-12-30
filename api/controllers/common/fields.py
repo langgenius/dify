@@ -54,9 +54,6 @@ class Site(BaseModel):
     @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
-        if self.icon is None:
-            return None
-
-        if self.icon_type == IconType.IMAGE:
+        if self.icon and self.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(self.icon)
         return None
