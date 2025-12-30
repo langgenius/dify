@@ -249,6 +249,7 @@ class WorkflowNodeExecutionMetadataKey(StrEnum):
     DATASOURCE_INFO = "datasource_info"
     LLM_CONTENT_SEQUENCE = "llm_content_sequence"
     LLM_TRACE = "llm_trace"
+    COMPLETED_REASON = "completed_reason"  # completed reason for loop node
 
 
 class WorkflowNodeExecutionStatus(StrEnum):

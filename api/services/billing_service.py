@@ -1,8 +1,13 @@
+import json
+import logging
 import os
+from collections.abc import Sequence
 from typing import Literal
 
 import httpx
+from pydantic import TypeAdapter
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
+from typing_extensions import TypedDict
 from werkzeug.exceptions import InternalServerError
 
 from enums.cloud_plan import CloudPlan
@@ -11,12 +16,26 @@ from extensions.ext_redis import redis_client
 from libs.helper import RateLimiter
 from models import Account, TenantAccountJoin, TenantAccountRole
 
+logger = logging.getLogger(__name__)
+
+
+class SubscriptionPlan(TypedDict):
+    """Tenant subscriptionplan information."""
+
+    plan: str
+    expiration_date: int
+
 
 class BillingService:
     base_url = os.environ.get("BILLING_API_URL", "BILLING_API_URL")
     secret_key = os.environ.get("BILLING_API_SECRET_KEY", "BILLING_API_SECRET_KEY")
 
     compliance_download_rate_limiter = RateLimiter("compliance_download_rate_limiter", 4, 60)
+
+    # Redis key prefix for tenant plan cache
+    _PLAN_CACHE_KEY_PREFIX = "tenant_plan:"
+    # Cache TTL: 10 minutes
+    _PLAN_CACHE_TTL = 600
 
     @classmethod
     def get_info(cls, tenant_id: str):
@@ -239,3 +258,135 @@ class BillingService:
     def sync_partner_tenants_bindings(cls, account_id: str, partner_key: str, click_id: str):
         payload = {"account_id": account_id, "click_id": click_id}
         return cls._send_request("PUT", f"/partners/{partner_key}/tenants", json=payload)
+
+    @classmethod
+    def get_plan_bulk(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
+        """
+        Bulk fetch billing subscription plan via billing API.
+        Payload: {"tenant_ids": ["t1", "t2", ...]} (max 200 per request)
+        Returns:
+            Mapping of tenant_id -> {plan: str, expiration_date: int}
+        """
+        results: dict[str, SubscriptionPlan] = {}
+        subscription_adapter = TypeAdapter(SubscriptionPlan)
+
+        chunk_size = 200
+        for i in range(0, len(tenant_ids), chunk_size):
+            chunk = tenant_ids[i : i + chunk_size]
+            try:
+                resp = cls._send_request("POST", "/subscription/plan/batch", json={"tenant_ids": chunk})
+                data = resp.get("data", {})
+
+                for tenant_id, plan in data.items():
+                    try:
+                        subscription_plan = subscription_adapter.validate_python(plan)
+                        results[tenant_id] = subscription_plan
+                    except Exception:
+                        logger.exception(
+                            "get_plan_bulk: failed to validate subscription plan for tenant(%s)", tenant_id
+                        )
+                        continue
+            except Exception:
+                logger.exception("get_plan_bulk: failed to fetch billing info batch for tenants: %s", chunk)
+                continue
+
+        return results
+
+    @classmethod
+    def _make_plan_cache_key(cls, tenant_id: str) -> str:
+        return f"{cls._PLAN_CACHE_KEY_PREFIX}{tenant_id}"
+
+    @classmethod
+    def get_plan_bulk_with_cache(cls, tenant_ids: Sequence[str]) -> dict[str, SubscriptionPlan]:
+        """
+        Bulk fetch billing subscription plan with cache to reduce billing API loads in batch job scenarios.
+
+        NOTE: if you want to high data consistency, use get_plan_bulk instead.
+
+        Returns:
+            Mapping of tenant_id -> {plan: str, expiration_date: int}
+        """
+        tenant_plans: dict[str, SubscriptionPlan] = {}
+
+        if not tenant_ids:
+            return tenant_plans
+
+        subscription_adapter = TypeAdapter(SubscriptionPlan)
+
+        # Step 1: Batch fetch from Redis cache using mget
+        redis_keys = [cls._make_plan_cache_key(tenant_id) for tenant_id in tenant_ids]
+        try:
+            cached_values = redis_client.mget(redis_keys)
+
+            if len(cached_values) != len(tenant_ids):
+                raise Exception(
+                    "get_plan_bulk_with_cache: unexpected error: redis mget failed: cached values length mismatch"
+                )
+
+            # Map cached values back to tenant_ids
+            cache_misses: list[str] = []
+
+            for tenant_id, cached_value in zip(tenant_ids, cached_values):
+                if cached_value:
+                    try:
+                        # Redis returns bytes, decode to string and parse JSON
+                        json_str = cached_value.decode("utf-8") if isinstance(cached_value, bytes) else cached_value
+                        plan_dict = json.loads(json_str)
+                        subscription_plan = subscription_adapter.validate_python(plan_dict)
+                        tenant_plans[tenant_id] = subscription_plan
+                    except Exception:
+                        logger.exception(
+                            "get_plan_bulk_with_cache: process tenant(%s) failed, add to cache misses", tenant_id
+                        )
+                        cache_misses.append(tenant_id)
+                else:
+                    cache_misses.append(tenant_id)
+
+            logger.info(
+                "get_plan_bulk_with_cache: cache hits=%s, cache misses=%s",
+                len(tenant_plans),
+                len(cache_misses),
+            )
+        except Exception:
+            logger.exception("get_plan_bulk_with_cache: redis mget failed, falling back to API")
+            cache_misses = list(tenant_ids)
+
+        # Step 2: Fetch missing plans from billing API
+        if cache_misses:
+            bulk_plans = BillingService.get_plan_bulk(cache_misses)
+
+            if bulk_plans:
+                plans_to_cache: dict[str, SubscriptionPlan] = {}
+
+                for tenant_id, subscription_plan in bulk_plans.items():
+                    tenant_plans[tenant_id] = subscription_plan
+                    plans_to_cache[tenant_id] = subscription_plan
+
+                # Step 3: Batch update Redis cache using pipeline
+                if plans_to_cache:
+                    try:
+                        pipe = redis_client.pipeline()
+                        for tenant_id, subscription_plan in plans_to_cache.items():
+                            redis_key = cls._make_plan_cache_key(tenant_id)
+                            # Serialize dict to JSON string
+                            json_str = json.dumps(subscription_plan)
+                            pipe.setex(redis_key, cls._PLAN_CACHE_TTL, json_str)
+                        pipe.execute()
+
+                        logger.info(
+                            "get_plan_bulk_with_cache: cached %s new tenant plans to Redis",
+                            len(plans_to_cache),
+                        )
+                    except Exception:
+                        logger.exception("get_plan_bulk_with_cache: redis pipeline failed")
+
+        return tenant_plans
+
+    @classmethod
+    def get_expired_subscription_cleanup_whitelist(cls) -> Sequence[str]:
+        resp = cls._send_request("GET", "/subscription/cleanup/whitelist")
+        data = resp.get("data", [])
+        tenant_whitelist = []
+        for item in data:
+            tenant_whitelist.append(item["tenant_id"])
+        return tenant_whitelist

@@ -7,7 +7,6 @@ from typing import Any
 from sqlalchemy import or_, select
 from sqlalchemy.orm import Session
 
-from core.helper.tool_provider_cache import ToolProviderListCache
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.tools.__base.tool_provider import ToolProviderController
 from core.tools.entities.api_entities import ToolApiEntity, ToolProviderApiEntity
@@ -68,34 +67,31 @@ class WorkflowToolManageService:
         if workflow is None:
             raise ValueError(f"Workflow not found for app {workflow_app_id}")
 
-        with Session(db.engine, expire_on_commit=False) as session, session.begin():
-            workflow_tool_provider = WorkflowToolProvider(
-                tenant_id=tenant_id,
-                user_id=user_id,
-                app_id=workflow_app_id,
-                name=name,
-                label=label,
-                icon=json.dumps(icon),
-                description=description,
-                parameter_configuration=json.dumps(parameters),
-                privacy_policy=privacy_policy,
-                version=workflow.version,
-            )
-            session.add(workflow_tool_provider)
+        workflow_tool_provider = WorkflowToolProvider(
+            tenant_id=tenant_id,
+            user_id=user_id,
+            app_id=workflow_app_id,
+            name=name,
+            label=label,
+            icon=json.dumps(icon),
+            description=description,
+            parameter_configuration=json.dumps(parameters),
+            privacy_policy=privacy_policy,
+            version=workflow.version,
+        )
 
         try:
             WorkflowToolProviderController.from_db(workflow_tool_provider)
         except Exception as e:
             raise ValueError(str(e))
 
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
+            session.add(workflow_tool_provider)
+
         if labels is not None:
             ToolLabelManager.update_tool_labels(
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
-
-        # Invalidate tool providers cache
-        ToolProviderListCache.invalidate_cache(tenant_id)
-
         return {"result": "success"}
 
     @classmethod
@@ -183,9 +179,6 @@ class WorkflowToolManageService:
                 ToolTransformService.workflow_provider_to_controller(workflow_tool_provider), labels
             )
 
-        # Invalidate tool providers cache
-        ToolProviderListCache.invalidate_cache(tenant_id)
-
         return {"result": "success"}
 
     @classmethod
@@ -247,9 +240,6 @@ class WorkflowToolManageService:
         ).delete()
 
         db.session.commit()
-
-        # Invalidate tool providers cache
-        ToolProviderListCache.invalidate_cache(tenant_id)
 
         return {"result": "success"}
 
