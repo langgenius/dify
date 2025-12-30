@@ -12,7 +12,7 @@
   "common.reRun": "다시 실행",
   "common.testRun": "테스트 실행",
   "inputField.create": "사용자 입력 필드 만들기",
-  "inputField.manage": "관리하다",
+  "inputField.manage": "관리",
   "publishToast.desc": "파이프라인이 게시되지 않은 경우 기술 자료 노드에서 청크 구조를 수정할 수 있으며 파이프라인 오케스트레이션 및 변경 내용은 자동으로 초안으로 저장됩니다.",
   "publishToast.title": "이 파이프라인은 아직 게시되지 않았습니다.",
   "ragToolSuggestions.noRecommendationPlugins": "추천 플러그인이 없습니다. 더 많은 플러그인은 <CustomLink>마켓플레이스</CustomLink>에서 찾아보세요.",
