@@ -140,10 +140,10 @@ const VibePanel: FC = () => {
       isShow={showVibePanel}
       onClose={handleClose}
       className="min-w-[1140px] !p-0"
-      wrapperClassName="z-[900]"
+      clickOutsideNotClose
     >
       <div className="flex h-[680px] flex-wrap">
-        <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+        <div className="h-full w-[300px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
             <div className="text-lg font-bold leading-[28px] text-text-primary">{t('app.gotoAnything.actions.vibeTitle')}</div>
             <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('app.gotoAnything.actions.vibeDesc')}</div>
