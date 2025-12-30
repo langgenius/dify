@@ -8,6 +8,7 @@ document embeddings used in retrieval-augmented generation workflows.
 import datetime
 import json
 import logging
+import math
 import uuid as _uuid
 from typing import Any
 from urllib.parse import urlparse
@@ -342,6 +343,22 @@ class WeaviateVector(BaseVector):
                 if getattr(e, "status_code", None) != 404:
                     raise
 
+    @staticmethod
+    def _sanitize_vector(vector: list[float]) -> list[float]:
+        """
+        Sanitizes a vector by replacing invalid float values (NaN, Infinity) with 0.0.
+
+        This is necessary because protobuf cannot serialize NaN or Infinity values,
+        and Weaviate's gRPC client will fail with a DecodeError if such values are present.
+
+        Args:
+            vector: The vector to sanitize
+
+        Returns:
+            A new vector with NaN and Infinity values replaced by 0.0
+        """
+        return [0.0 if not math.isfinite(v) else v for v in vector]
+
     def search_by_vector(self, query_vector: list[float], **kwargs: Any) -> list[Document]:
         """
         Performs vector similarity search using the provided query vector.
@@ -365,6 +382,9 @@ class WeaviateVector(BaseVector):
 
         top_k = int(kwargs.get("top_k", 4))
         score_threshold = float(kwargs.get("score_threshold") or 0.0)
+
+        # Sanitize query_vector to remove NaN/Infinity values that cannot be serialized by protobuf
+        query_vector = self._sanitize_vector(query_vector)
 
         res = col.query.near_vector(
             near_vector=query_vector,
