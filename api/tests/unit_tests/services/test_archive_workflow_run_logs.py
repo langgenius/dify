@@ -100,4 +100,4 @@ class TestWorkflowRunExportService:
         service = WorkflowRunExportService()
 
         assert service is not None
-        assert len(service.EXPORTED_TABLES) == 5
+        assert len(service.EXPORTED_TABLES) == 6
