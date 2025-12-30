@@ -35,7 +35,6 @@ const FormMock = ({ value, onChange }: MockFormProps) => {
   )
 }
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-modal/Form', () => ({
-  __esModule: true,
   default: (props: MockFormProps) => <FormMock {...props} />,
 }))
 
