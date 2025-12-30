@@ -4,9 +4,13 @@ import type { App } from '@/types/app'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import { omit } from 'es-toolkit/compat'
-import { usePathname, useRouter, useSearchParams } from 'next/navigation'
+import {
+  parseAsInteger,
+  parseAsString,
+  useQueryStates,
+} from 'nuqs'
 import * as React from 'react'
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
@@ -28,54 +32,38 @@ export type QueryParam = {
   sort_by?: string
 }
 
-const defaultQueryParams: QueryParam = {
-  period: '2',
-  annotation_status: 'all',
-  sort_by: '-created_at',
-}
-
-const logsStateCache = new Map<string, {
-  queryParams: QueryParam
-  currPage: number
-  limit: number
-}>()
-
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const router = useRouter()
-  const pathname = usePathname()
-  const searchParams = useSearchParams()
-  const getPageFromParams = useCallback(() => {
-    const pageParam = Number.parseInt(searchParams.get('page') || '1', 10)
-    if (Number.isNaN(pageParam) || pageParam < 1)
-      return 0
-    return pageParam - 1
-  }, [searchParams])
-  const cachedState = logsStateCache.get(appDetail.id)
-  const [queryParams, setQueryParams] = useState<QueryParam>(cachedState?.queryParams ?? defaultQueryParams)
-  const [currPage, setCurrPage] = React.useState<number>(() => cachedState?.currPage ?? getPageFromParams())
-  const [limit, setLimit] = React.useState<number>(cachedState?.limit ?? APP_PAGE_LIMIT)
+
+  const [queryParams, setQueryParams] = useQueryStates(
+    {
+      page: parseAsInteger.withDefault(1),
+      limit: parseAsInteger.withDefault(APP_PAGE_LIMIT),
+      period: parseAsString.withDefault('2'),
+      annotation_status: parseAsString.withDefault('all'),
+      keyword: parseAsString,
+      sort_by: parseAsString.withDefault('-created_at'),
+    },
+    {
+      urlKeys: {
+        page: 'page',
+        limit: 'limit',
+        period: 'period',
+        annotation_status: 'annotation_status',
+        keyword: 'keyword',
+        sort_by: 'sort_by',
+      },
+    },
+  )
+
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
-
-  useEffect(() => {
-    const pageFromParams = getPageFromParams()
-    setCurrPage(prev => (prev === pageFromParams ? prev : pageFromParams))
-  }, [getPageFromParams])
-
-  useEffect(() => {
-    logsStateCache.set(appDetail.id, {
-      queryParams,
-      currPage,
-      limit,
-    })
-  }, [appDetail.id, currPage, limit, queryParams])
 
   // Get the app type first
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
 
   const query = {
-    page: currPage + 1,
-    limit,
+    page: queryParams.page,
+    limit: queryParams.limit,
     ...((debouncedQueryParams.period !== '9')
       ? {
           start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
@@ -83,7 +71,8 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         }
       : {}),
     ...(isChatMode ? { sort_by: debouncedQueryParams.sort_by } : {}),
-    ...omit(debouncedQueryParams, ['period']),
+    ...omit(debouncedQueryParams, ['period', 'page', 'limit']),
+    keyword: debouncedQueryParams.keyword || undefined,
   }
 
   // When the details are obtained, proceed to the next request
@@ -100,27 +89,25 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 
   const handleQueryParamsChange = useCallback((next: QueryParam) => {
-    setCurrPage(0)
-    setQueryParams(next)
-  }, [])
+    setQueryParams({
+      ...next,
+      page: 1, // Reset to page 1 on filter change
+    })
+  }, [setQueryParams])
 
   const handlePageChange = useCallback((page: number) => {
-    setCurrPage(page)
-    const params = new URLSearchParams(searchParams.toString())
-    const nextPageValue = page + 1
-    if (nextPageValue === 1)
-      params.delete('page')
-    else
-      params.set('page', String(nextPageValue))
-    const queryString = params.toString()
-    router.replace(queryString ? `${pathname}?${queryString}` : pathname, { scroll: false })
-  }, [pathname, router, searchParams])
+    setQueryParams({ page: page + 1 })
+  }, [setQueryParams])
+
+  const handleLimitChange = useCallback((limit: number) => {
+    setQueryParams({ limit, page: 1 })
+  }, [setQueryParams])
 
   return (
     <div className="flex h-full grow flex-col">
       <p className="system-sm-regular shrink-0 text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4">
-        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
+        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={{ ...queryParams, keyword: queryParams.keyword || undefined }} setQueryParams={handleQueryParamsChange} />
         {total === undefined
           ? <Loading type="app" />
           : total > 0
@@ -130,11 +117,11 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
-                current={currPage}
+                current={queryParams.page - 1}
                 onChange={handlePageChange}
                 total={total}
-                limit={limit}
-                onLimitChange={setLimit}
+                limit={queryParams.limit}
+                onLimitChange={handleLimitChange}
               />
             )
           : null}
