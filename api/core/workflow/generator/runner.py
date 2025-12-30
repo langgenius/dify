@@ -8,7 +8,12 @@ import json_repair
 from core.model_manager import ModelManager
 from core.model_runtime.entities.message_entities import SystemPromptMessage, UserPromptMessage
 from core.model_runtime.entities.model_entities import ModelType
-from core.workflow.generator.prompts.builder_prompts import BUILDER_SYSTEM_PROMPT, BUILDER_USER_PROMPT
+from core.workflow.generator.prompts.builder_prompts import (
+    BUILDER_SYSTEM_PROMPT,
+    BUILDER_USER_PROMPT,
+    format_existing_nodes,
+    format_selected_nodes,
+)
 from core.workflow.generator.prompts.planner_prompts import (
     PLANNER_SYSTEM_PROMPT,
     PLANNER_USER_PROMPT,
@@ -116,10 +121,23 @@ class WorkflowGenerator:
         # --- STEP 3: BUILDER ---
         # Prepare context
         tool_schemas = format_available_tools(filtered_tools)
-        # We need to construct a fake list structure for builtin nodes formatting if using format_available_nodes
-        # Actually format_available_nodes takes None to use defaults, or a list to add custom
-        # But we want to SHOW the builtins. format_available_nodes internally uses BUILTIN_NODE_SCHEMAS.
-        node_specs = format_available_nodes([])
+        node_specs = format_available_nodes(list(available_nodes) if available_nodes else [])
+        existing_nodes_context = format_existing_nodes(list(existing_nodes) if existing_nodes else None)
+        selected_nodes_context = format_selected_nodes(
+            list(selected_node_ids) if selected_node_ids else None, list(existing_nodes) if existing_nodes else None
+        )
+
+        # Format previous attempt context for regeneration
+        previous_attempt_context = ""
+        if regenerate_mode and previous_workflow:
+            prev_warnings = previous_workflow.get("warnings", [])
+            if prev_warnings:
+                previous_attempt_context = "\n<previous_attempt>\n"
+                previous_attempt_context += "The previous generation had the following issues that need to be fixed:\n"
+                for idx, warning in enumerate(prev_warnings[:5], 1):  # Limit to 5 most important
+                    previous_attempt_context += f"{idx}. {warning}\n"
+                previous_attempt_context += "\nPlease address these issues in your new generation.\n"
+                previous_attempt_context += "</previous_attempt>\n"
 
         builder_system = BUILDER_SYSTEM_PROMPT.format(
             plan_context=json.dumps(plan_data.get("steps", []), indent=2),
@@ -127,8 +145,10 @@ class WorkflowGenerator:
             builtin_node_specs=node_specs,
             available_models=format_available_models(list(available_models or [])),
             preferred_language=preferred_language or "English",
+            existing_nodes_context=existing_nodes_context,
+            selected_nodes_context=selected_nodes_context,
         )
-        builder_user = BUILDER_USER_PROMPT.format(instruction=instruction)
+        builder_user = BUILDER_USER_PROMPT.format(instruction=instruction) + previous_attempt_context
 
         try:
             build_res = model_instance.invoke_llm(
@@ -154,10 +174,24 @@ class WorkflowGenerator:
             return {"intent": "error", "error": f"Building failed: {str(e)}"}
 
         # --- STEP 3.4: NODE REPAIR ---
+        # Create retry-limited LLM fix callback
+        retry_counts = {}  # Track retries per node
+        MAX_RETRIES = 1
+
         def llm_fix_callback(node: dict, issue: str) -> dict:
             """
             Callback to fix a node using LLM when heuristic repair fails.
+            Limited to 1 retry per node to prevent token explosion.
             """
+            node_id = node.get("id", "unknown")
+            current_retries = retry_counts.get(node_id, 0)
+
+            if current_retries >= MAX_RETRIES:
+                logger.warning(f"Max retries reached for node {node_id}, skipping LLM fix")
+                return None
+
+            retry_counts[node_id] = current_retries + 1
+
             fix_system = """<role>
 You are a JSON Configuration Fixer.
 Your task is to fix a specific node configuration based on an error description.
@@ -199,11 +233,11 @@ Your task is to fix a specific node configuration based on an error description.
             "edges": repair_result.edges,
         }
 
-        # --- STEP 4: VALIDATOR ---
-        is_valid, hints = WorkflowValidator.validate(workflow_data, available_tools_list)
-
-        # --- STEP 5: RENDERER ---
+        # --- STEP 4: RENDERER (Generate Mermaid early for validation) ---
         mermaid_code = generate_mermaid(workflow_data)
+
+        # --- STEP 5: VALIDATOR ---
+        is_valid, hints = WorkflowValidator.validate(workflow_data, available_tools_list)
 
         # --- FINALIZE ---
         # Combine validation hints with repair warnings

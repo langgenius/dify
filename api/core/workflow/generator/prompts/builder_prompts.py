@@ -26,6 +26,15 @@ Your goal is to implement the Architect's plan by generating a precise, runnable
 <available_models>
 {available_models}
 </available_models>
+
+<workflow_context>
+  <existing_nodes>
+{existing_nodes_context}
+  </existing_nodes>
+  <selected_nodes>
+{selected_nodes_context}
+  </selected_nodes>
+</workflow_context>
 </inputs>
 
 <rules>
@@ -359,3 +368,36 @@ Generate the full workflow configuration now. Pay special attention to:
 2. Using correct sourceHandle values for branching nodes
 3. Ensuring every node is connected in the graph
 """
+
+
+def format_existing_nodes(nodes: list[dict] | None) -> str:
+    """Format existing workflow nodes for context."""
+    if not nodes:
+        return "No existing nodes in workflow (creating from scratch)."
+
+    lines = []
+    for node in nodes:
+        node_id = node.get("id", "unknown")
+        node_type = node.get("type", "unknown")
+        title = node.get("title", "Untitled")
+        lines.append(f"- [{node_id}] {title} ({node_type})")
+    return "\n".join(lines)
+
+
+def format_selected_nodes(
+    selected_ids: list[str] | None,
+    existing_nodes: list[dict] | None,
+) -> str:
+    """Format selected nodes for modification context."""
+    if not selected_ids:
+        return "No nodes selected (generating new workflow)."
+
+    node_map = {n.get("id"): n for n in (existing_nodes or [])}
+    lines = []
+    for node_id in selected_ids:
+        if node_id in node_map:
+            node = node_map[node_id]
+            lines.append(f"- [{node_id}] {node.get('title', 'Untitled')} ({node.get('type', 'unknown')})")
+        else:
+            lines.append(f"- [{node_id}] (not found in current workflow)")
+    return "\n".join(lines)
