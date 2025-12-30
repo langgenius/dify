@@ -122,6 +122,10 @@ export const useShareChatList = (params: ShareChatListParams, options: ShareQuer
     enabled: isEnabled,
     refetchOnReconnect,
     refetchOnWindowFocus,
+    // Always consider chat list data stale to ensure fresh data when switching
+    // back to a conversation. This fixes issue where recent messages don't appear
+    // until switching away and back again (GitHub issue #30378).
+    staleTime: 0,
   })
 }
 
