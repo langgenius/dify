@@ -23,7 +23,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
     NEVER USE IT IN PRODUCTION ENVIRONMENTS.
     """
 
-    def construct_environment(self, options: Mapping[str, Any]) -> Metadata:
+    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, Any]) -> Metadata:
         """
         Construct the local virtual environment.
 
@@ -117,7 +117,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         pass
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str]
+        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
     ) -> tuple[str, Transport, Transport, Transport]:
         """
         Execute a command in the local virtual environment.
@@ -138,6 +138,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
                 stderr=stderr_write_fd,
                 cwd=working_path,
                 close_fds=True,
+                env=environments,
             )
         except Exception:
             # Clean up file descriptors if process creation fails

@@ -12,16 +12,16 @@ class VirtualEnvironment(ABC):
     Base class for virtual environment implementations.
     """
 
-    def __init__(self, options: Mapping[str, Any]) -> None:
+    def __init__(self, options: Mapping[str, Any], environments: Mapping[str, Any] | None = None) -> None:
         """
         Initialize the virtual environment with metadata.
         """
 
         self.options = options
-        self.metadata = self.construct_environment(options)
+        self.metadata = self.construct_environment(options, environments or {})
 
     @abstractmethod
-    def construct_environment(self, options: Mapping[str, Any]) -> Metadata:
+    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, Any]) -> Metadata:
         """
         Construct the unique identifier for the virtual environment.
 

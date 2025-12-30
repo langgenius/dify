@@ -51,7 +51,7 @@ environment.release_environment()
 class DockerDaemonEnvironment(VirtualEnvironment):
     _WORKING_DIR = "/workspace"
 
-    def construct_environment(self, options: Mapping[str, Any]) -> Metadata:
+    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, Any]) -> Metadata:
         """
         Construct the Docker daemon virtual environment.
         """
@@ -68,6 +68,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             remove=True,
             stdin_open=True,
             working_dir=self._WORKING_DIR,
+            environment=dict(environments),
         )
 
         # wait for the container to be fully started
@@ -223,7 +224,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
             return
 
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str]
+        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
     ) -> tuple[str, Transport, Transport, Transport]:
         container = self._get_container()
         container_id = container.id
@@ -240,6 +241,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
                 stderr=True,
                 tty=False,
                 workdir=self._working_dir,
+                environment=environments,
             ),
         )
 
