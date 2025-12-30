@@ -36,24 +36,6 @@ class TestWorkflowRunArchiver:
         assert archiver.limit == 50
         assert archiver.dry_run is True
 
-    def test_model_to_dict(self):
-        """Test SQLAlchemy model to dict conversion."""
-        from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver
-
-        # Create a mock model with __table__.columns
-        mock_model = MagicMock()
-        mock_column = MagicMock()
-        mock_column.name = "id"
-        mock_column.key = "id"
-        mock_model.__table__ = MagicMock()
-        mock_model.__table__.columns = [mock_column]
-        mock_model.id = "test-id"
-
-        archiver = WorkflowRunArchiver.__new__(WorkflowRunArchiver)
-        result = archiver._model_to_dict(mock_model)
-
-        assert result["id"] == "test-id"
-
     def test_get_manifest_key(self):
         """Test manifest key generation."""
         from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver

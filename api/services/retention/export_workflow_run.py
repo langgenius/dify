@@ -286,36 +286,23 @@ class WorkflowRunExportService:
             session,
             node_exec_ids,
         )
-        table_data["workflow_node_executions"] = [self._model_to_dict(row) for row in node_exec_records]
-        table_data["workflow_node_execution_offload"] = [self._model_to_dict(row) for row in offload_records]
+        table_data["workflow_node_executions"] = [row.to_dict() for row in node_exec_records]
+        table_data["workflow_node_execution_offload"] = [row.to_dict() for row in offload_records]
 
         pause_records = repo.get_pause_records_by_run_id(session, run.id)
         pause_ids = [pause.id for pause in pause_records]
         pause_reason_records = repo.get_pause_reason_records_by_run_id(session, pause_ids)
-        table_data["workflow_pauses"] = [self._model_to_dict(row) for row in pause_records]
-        table_data["workflow_pause_reasons"] = [self._model_to_dict(row) for row in pause_reason_records]
+        table_data["workflow_pauses"] = [row.to_dict() for row in pause_records]
+        table_data["workflow_pause_reasons"] = [row.to_dict() for row in pause_reason_records]
 
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         trigger_records = trigger_repo.list_by_run_id(run.id)
-        table_data["workflow_trigger_logs"] = [self._model_to_dict(row) for row in trigger_records]
+        table_data["workflow_trigger_logs"] = [row.to_dict() for row in trigger_records]
 
         app_logs = repo.get_app_logs_by_run_id(session, run.id)
-        table_data["workflow_app_logs"] = [self._model_to_dict(row) for row in app_logs]
+        table_data["workflow_app_logs"] = [row.to_dict() for row in app_logs]
 
         return table_data
-
-    def _model_to_dict(self, model: Any) -> dict[str, Any]:
-        """Convert a SQLAlchemy model to a dictionary."""
-        result = {}
-        for column in model.__table__.columns:
-            attr_name = column.key
-            value = getattr(model, attr_name, None)
-            if value is None and attr_name == "type" and hasattr(model, "type_"):
-                value = model.type_
-            if isinstance(value, datetime):
-                value = value.isoformat()
-            result[attr_name] = value
-        return result
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
