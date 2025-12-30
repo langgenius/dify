@@ -8,8 +8,11 @@ import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude/utils'
+import Button from '@/app/components/base/button'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
+import Tooltip from '@/app/components/base/tooltip'
 
 dayjs.extend(quarterOfYear)
 
@@ -34,10 +37,34 @@ type IFilterProps = {
   setQueryParams: (v: QueryParam) => void
   periodKeys: string[]
   clearPeriod: string
+  isCurrentWorkspaceManager: boolean
+  isFreePlan: boolean
+  isTeamOrProfessional: boolean
 }
 
-const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams, periodKeys, clearPeriod }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({
+  queryParams,
+  setQueryParams,
+  periodKeys,
+  clearPeriod,
+  isCurrentWorkspaceManager,
+  isFreePlan,
+  isTeamOrProfessional,
+}: IFilterProps) => {
   const { t } = useTranslation()
+  const [showUpgradeModal, setShowUpgradeModal] = React.useState(false)
+  const [showArchivedModal, setShowArchivedModal] = React.useState(false)
+  const showArchivedButton = isFreePlan || isTeamOrProfessional
+
+  const handleOpenArchived = () => {
+    if (!isCurrentWorkspaceManager)
+      return
+    if (isFreePlan)
+      setShowUpgradeModal(true)
+    else if (isTeamOrProfessional)
+      setShowArchivedModal(true)
+  }
+
   return (
     <div className="mb-2 flex flex-row flex-wrap gap-2">
       <Chip
@@ -73,6 +100,46 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams, periodKeys, cle
         }}
         onClear={() => setQueryParams({ ...queryParams, keyword: '' })}
       />
+      {showArchivedButton && (
+        <div className="ml-auto flex items-center">
+          <Tooltip popupContent={t('filter.archived.managerOnly', { ns: 'appLog' })} disabled={isCurrentWorkspaceManager}>
+            <Button
+              size="small"
+              variant="secondary"
+              disabled={!isCurrentWorkspaceManager}
+              onClick={handleOpenArchived}
+            >
+              {t('filter.archived.button', { ns: 'appLog' })}
+            </Button>
+          </Tooltip>
+        </div>
+      )}
+      <Modal
+        isShow={showUpgradeModal}
+        title={t('filter.archived.upgrade.title', { ns: 'appLog' })}
+        description={t('filter.archived.upgrade.description', { ns: 'appLog' })}
+        onClose={() => setShowUpgradeModal(false)}
+        closable
+      >
+        <div className="mt-6 flex justify-end">
+          <Button size="small" onClick={() => setShowUpgradeModal(false)}>
+            {t('operation.close', { ns: 'common' })}
+          </Button>
+        </div>
+      </Modal>
+      <Modal
+        isShow={showArchivedModal}
+        title={t('filter.archived.list.title', { ns: 'appLog' })}
+        description={t('filter.archived.list.description', { ns: 'appLog' })}
+        onClose={() => setShowArchivedModal(false)}
+        closable
+      >
+        <div className="mt-6 flex justify-end">
+          <Button size="small" onClick={() => setShowArchivedModal(false)}>
+            {t('operation.close', { ns: 'common' })}
+          </Button>
+        </div>
+      </Modal>
     </div>
   )
 }

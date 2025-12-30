@@ -35,7 +35,7 @@ export type QueryParam = {
 
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
-  const { userProfile: { timezone } } = useAppContext()
+  const { userProfile: { timezone }, isCurrentWorkspaceManager } = useAppContext()
   const { plan } = useProviderContext()
   const isFreePlan = plan.type === Plan.sandbox
   const isTeamOrProfessional = plan.type === Plan.team || plan.type === Plan.professional
@@ -81,6 +81,9 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
           setQueryParams={setQueryParams}
           periodKeys={periodKeys}
           clearPeriod={clearPeriod}
+          isCurrentWorkspaceManager={isCurrentWorkspaceManager}
+          isFreePlan={isFreePlan}
+          isTeamOrProfessional={isTeamOrProfessional}
         />
         {/* workflow log */}
         {total === undefined
