@@ -62,7 +62,7 @@
   "overview.appInfo.enableTooltip.description": "이 기능을 사용하려면 캔버스에 사용자 입력 노드를 추가하세요. (초안에 이미 있을 수 있으며, 게시 후에 적용됩니다)",
   "overview.appInfo.enableTooltip.learnMore": "자세히 알아보기",
   "overview.appInfo.explanation": "사용하기 쉬운 AI 웹앱",
-  "overview.appInfo.launch": "발사",
+  "overview.appInfo.launch": "실행",
   "overview.appInfo.preUseReminder": "계속하기 전에 웹앱을 활성화하세요.",
   "overview.appInfo.preview": "미리보기",
   "overview.appInfo.qrcode.download": "QR 코드 다운로드",

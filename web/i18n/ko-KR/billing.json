@@ -20,6 +20,7 @@
   "plans.community.includesTitle": "무료 기능:",
   "plans.community.name": "커뮤니티",
   "plans.community.price": "무료",
+  "plans.community.priceTip": "",
   "plans.enterprise.btnText": "판매 문의하기",
   "plans.enterprise.description": "대규모 미션 크리티컬 시스템을 위한 완전한 기능과 지원을 제공합니다.",
   "plans.enterprise.features": [
@@ -178,7 +179,7 @@
   "vectorSpace.fullSolution": "더 많은 공간을 얻으려면 요금제를 업그레이드하세요.",
   "vectorSpace.fullTip": "벡터 공간이 가득 찼습니다.",
   "viewBilling": "청구 및 구독 관리",
-  "viewBillingAction": "관리하다",
+  "viewBillingAction": "관리",
   "viewBillingDescription": "결제 수단, 청구서 및 구독 변경 관리",
   "viewBillingTitle": "청구 및 구독"
 }
