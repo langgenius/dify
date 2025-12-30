@@ -43,9 +43,9 @@ const EditItem: FC<Props> = ({
   const [newContent, setNewContent] = useState('')
   const showNewContent = newContent && newContent !== content
   const avatar = type === EditItemType.Query ? <User className="h-6 w-6" /> : <Robot className="h-6 w-6" />
-  const name = type === EditItemType.Query ? t('appAnnotation.editModal.queryName') : t('appAnnotation.editModal.answerName')
-  const editTitle = type === EditItemType.Query ? t('appAnnotation.editModal.yourQuery') : t('appAnnotation.editModal.yourAnswer')
-  const placeholder = type === EditItemType.Query ? t('appAnnotation.editModal.queryPlaceholder') : t('appAnnotation.editModal.answerPlaceholder')
+  const name = type === EditItemType.Query ? t('editModal.queryName', { ns: 'appAnnotation' }) : t('editModal.answerName', { ns: 'appAnnotation' })
+  const editTitle = type === EditItemType.Query ? t('editModal.yourQuery', { ns: 'appAnnotation' }) : t('editModal.yourAnswer', { ns: 'appAnnotation' })
+  const placeholder = type === EditItemType.Query ? t('editModal.queryPlaceholder', { ns: 'appAnnotation' }) : t('editModal.answerPlaceholder', { ns: 'appAnnotation' })
   const [isEdit, setIsEdit] = useState(false)
 
   // Reset newContent when content prop changes
@@ -95,7 +95,7 @@ const EditItem: FC<Props> = ({
                       }}
                     >
                       <RiEditLine className="mr-1 h-3.5 w-3.5" />
-                      <div>{t('common.operation.edit')}</div>
+                      <div>{t('operation.edit', { ns: 'common' })}</div>
                     </div>
                   )}
 
@@ -119,7 +119,7 @@ const EditItem: FC<Props> = ({
                         <div className="h-3.5 w-3.5">
                           <RiDeleteBinLine className="h-3.5 w-3.5" />
                         </div>
-                        <div>{t('common.operation.delete')}</div>
+                        <div>{t('operation.delete', { ns: 'common' })}</div>
                       </div>
                     </div>
                   )}
@@ -136,8 +136,8 @@ const EditItem: FC<Props> = ({
                   autoFocus
                 />
                 <div className="mt-2 flex space-x-2">
-                  <Button size="small" variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
-                  <Button size="small" onClick={handleCancel}>{t('common.operation.cancel')}</Button>
+                  <Button size="small" variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
+                  <Button size="small" onClick={handleCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
                 </div>
               </div>
             )}

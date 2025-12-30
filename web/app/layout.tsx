@@ -1,23 +1,19 @@
 import type { Viewport } from 'next'
 import { ThemeProvider } from 'next-themes'
-import dynamic from 'next/dynamic'
 import { Instrument_Serif } from 'next/font/google'
-import { IS_DEV } from '@/config'
+import { NuqsAdapter } from 'nuqs/adapters/next/app'
 import GlobalPublicStoreProvider from '@/context/global-public-context'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { getLocaleOnServer } from '@/i18n-config/server'
 import { DatasetAttr } from '@/types/feature'
 import { cn } from '@/utils/classnames'
 import BrowserInitializer from './components/browser-initializer'
+import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import I18nServer from './components/i18n-server'
 import SentryInitializer from './components/sentry-initializer'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
 import './styles/markdown.scss'
-
-const ReactScan = IS_DEV
-  ? dynamic(() => import('./components/react-scan').then(m => m.ReactScan), { ssr: false })
-  : () => null
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -94,7 +90,7 @@ const LocaleLayout = async ({
         className="color-scheme h-full select-auto"
         {...datasetMap}
       >
-        <ReactScan />
+        <ReactScanLoader />
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="system"
@@ -102,17 +98,19 @@ const LocaleLayout = async ({
           disableTransitionOnChange
           enableColorScheme={false}
         >
-          <BrowserInitializer>
-            <SentryInitializer>
-              <TanstackQueryInitializer>
-                <I18nServer>
-                  <GlobalPublicStoreProvider>
-                    {children}
-                  </GlobalPublicStoreProvider>
-                </I18nServer>
-              </TanstackQueryInitializer>
-            </SentryInitializer>
-          </BrowserInitializer>
+          <NuqsAdapter>
+            <BrowserInitializer>
+              <SentryInitializer>
+                <TanstackQueryInitializer>
+                  <I18nServer>
+                    <GlobalPublicStoreProvider>
+                      {children}
+                    </GlobalPublicStoreProvider>
+                  </I18nServer>
+                </TanstackQueryInitializer>
+              </SentryInitializer>
+            </BrowserInitializer>
+          </NuqsAdapter>
         </ThemeProvider>
         <RoutePrefixHandle />
       </body>

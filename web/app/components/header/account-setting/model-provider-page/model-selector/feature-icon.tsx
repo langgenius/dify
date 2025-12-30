@@ -76,7 +76,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
 
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.vision })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.vision })}
       >
         <div className="inline-block cursor-help">
           <ModelBadge
@@ -106,7 +106,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
 
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.document })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.document })}
       >
         <div className="inline-block cursor-help">
           <ModelBadge
@@ -136,7 +136,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
 
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.audio })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.audio })}
       >
         <div className="inline-block cursor-help">
           <ModelBadge
@@ -166,7 +166,7 @@ const FeatureIcon: FC<FeatureIconProps> = ({
 
     return (
       <Tooltip
-        popupContent={t('common.modelProvider.featureSupported', { feature: ModelFeatureTextEnum.video })}
+        popupContent={t('modelProvider.featureSupported', { ns: 'common', feature: ModelFeatureTextEnum.video })}
       >
         <div className="inline-block cursor-help">
           <ModelBadge

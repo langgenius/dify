@@ -1,4 +1,5 @@
 import concurrent.futures
+import logging
 from concurrent.futures import ThreadPoolExecutor
 from typing import Any
 
@@ -35,6 +36,8 @@ default_retrieval_model = {
     "top_k": 4,
     "score_threshold_enabled": False,
 }
+
+logger = logging.getLogger(__name__)
 
 
 class RetrievalService:
@@ -106,7 +109,12 @@ class RetrievalService:
                         )
                     )
 
-            concurrent.futures.wait(futures, timeout=3600, return_when=concurrent.futures.ALL_COMPLETED)
+            if futures:
+                for future in concurrent.futures.as_completed(futures, timeout=3600):
+                    if exceptions:
+                        for f in futures:
+                            f.cancel()
+                        break
 
         if exceptions:
             raise ValueError(";\n".join(exceptions))
@@ -210,6 +218,7 @@ class RetrievalService:
                 )
                 all_documents.extend(documents)
             except Exception as e:
+                logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
     @classmethod
@@ -303,6 +312,7 @@ class RetrievalService:
                     else:
                         all_documents.extend(documents)
             except Exception as e:
+                logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
     @classmethod
@@ -351,6 +361,7 @@ class RetrievalService:
                     else:
                         all_documents.extend(documents)
             except Exception as e:
+                logger.error(e, exc_info=True)
                 exceptions.append(str(e))
 
     @staticmethod
@@ -663,7 +674,14 @@ class RetrievalService:
                             document_ids_filter=document_ids_filter,
                         )
                     )
-                concurrent.futures.wait(futures, timeout=300, return_when=concurrent.futures.ALL_COMPLETED)
+                # Use as_completed for early error propagation - cancel remaining futures on first error
+                if futures:
+                    for future in concurrent.futures.as_completed(futures, timeout=300):
+                        if future.exception():
+                            # Cancel remaining futures to avoid unnecessary waiting
+                            for f in futures:
+                                f.cancel()
+                            break
 
             if exceptions:
                 raise ValueError(";\n".join(exceptions))

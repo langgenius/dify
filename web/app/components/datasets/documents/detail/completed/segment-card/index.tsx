@@ -110,11 +110,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
 
   const wordCountText = useMemo(() => {
     const total = formatNumber(word_count)
-    return `${total} ${t('datasetDocuments.segment.characters', { count: word_count })}`
+    return `${total} ${t('segment.characters', { ns: 'datasetDocuments', count: word_count })}`
   }, [word_count, t])
 
   const labelPrefix = useMemo(() => {
-    return isParentChildMode ? t('datasetDocuments.segment.parentChunk') : t('datasetDocuments.segment.chunk')
+    return isParentChildMode ? t('segment.parentChunk', { ns: 'datasetDocuments' }) : t('segment.chunk', { ns: 'datasetDocuments' })
   }, [isParentChildMode, t])
 
   const images = useMemo(() => {
@@ -155,11 +155,11 @@ const SegmentCard: FC<ISegmentCardProps> = ({
             <Dot />
             <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{wordCountText}</div>
             <Dot />
-            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{`${formatNumber(hit_count)} ${t('datasetDocuments.segment.hitCount')}`}</div>
+            <div className={cn('system-xs-medium text-text-tertiary', contentOpacity)}>{`${formatNumber(hit_count)} ${t('segment.hitCount', { ns: 'datasetDocuments' })}`}</div>
             {chunkEdited && (
               <>
                 <Dot />
-                <Badge text={t('datasetDocuments.segment.edited') as string} uppercase className={contentOpacity} />
+                <Badge text={t('segment.edited', { ns: 'datasetDocuments' }) as string} uppercase className={contentOpacity} />
               </>
             )}
           </div>
@@ -250,7 +250,7 @@ const SegmentCard: FC<ISegmentCardProps> = ({
                 className="system-xs-semibold-uppercase mb-2 mt-0.5 text-text-accent"
                 onClick={() => onClick?.()}
               >
-                {t('common.operation.viewMore')}
+                {t('operation.viewMore', { ns: 'common' })}
               </button>
             )
           : null
@@ -273,8 +273,8 @@ const SegmentCard: FC<ISegmentCardProps> = ({
         && (
           <Confirm
             isShow={showModal}
-            title={t('datasetDocuments.segment.delete')}
-            confirmText={t('common.operation.sure')}
+            title={t('segment.delete', { ns: 'datasetDocuments' })}
+            confirmText={t('operation.sure', { ns: 'common' })}
             onConfirm={async () => { await onDelete?.(id) }}
             onCancel={() => setShowModal(false)}
           />

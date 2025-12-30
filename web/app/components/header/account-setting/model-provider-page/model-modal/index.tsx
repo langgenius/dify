@@ -185,15 +185,15 @@ const ModelModal: FC<ModelModalProps> = ({
   }, [handleSaveCredential, credential?.credential_id, model, onSave, mode, selectedCredential, handleActiveCredential])
 
   const modalTitle = useMemo(() => {
-    let label = t('common.modelProvider.auth.apiKeyModal.title')
+    let label = t('modelProvider.auth.apiKeyModal.title', { ns: 'common' })
 
     if (mode === ModelModalModeEnum.configCustomModel || mode === ModelModalModeEnum.addCustomModelToModelList)
-      label = t('common.modelProvider.auth.addModel')
+      label = t('modelProvider.auth.addModel', { ns: 'common' })
     if (mode === ModelModalModeEnum.configModelCredential) {
       if (credential)
-        label = t('common.modelProvider.auth.editModelCredential')
+        label = t('modelProvider.auth.editModelCredential', { ns: 'common' })
       else
-        label = t('common.modelProvider.auth.addModelCredential')
+        label = t('modelProvider.auth.addModelCredential', { ns: 'common' })
     }
 
     return (
@@ -207,7 +207,7 @@ const ModelModal: FC<ModelModalProps> = ({
     if (providerFormSchemaPredefined) {
       return (
         <div className="system-xs-regular mt-1 text-text-tertiary">
-          {t('common.modelProvider.auth.apiKeyModal.desc')}
+          {t('modelProvider.auth.apiKeyModal.desc', { ns: 'common' })}
         </div>
       )
     }
@@ -257,8 +257,8 @@ const ModelModal: FC<ModelModalProps> = ({
   }, [mode, selectedCredential])
   const saveButtonText = useMemo(() => {
     if (mode === ModelModalModeEnum.addCustomModelToModelList || mode === ModelModalModeEnum.configCustomModel)
-      return t('common.operation.add')
-    return t('common.operation.save')
+      return t('operation.add', { ns: 'common' })
+    return t('operation.save', { ns: 'common' })
   }, [mode, t])
 
   const handleDeleteCredential = useCallback(() => {
@@ -336,7 +336,7 @@ const ModelModal: FC<ModelModalProps> = ({
               {
                 showCredentialLabel && (
                   <div className="system-xs-medium-uppercase mb-3 mt-6 flex items-center text-text-tertiary">
-                    {t('common.modelProvider.auth.modelCredential')}
+                    {t('modelProvider.auth.modelCredential', { ns: 'common' })}
                     <div className="ml-2 h-px grow bg-gradient-to-r from-divider-regular to-background-gradient-mask-transparent" />
                   </div>
                 )
@@ -391,14 +391,14 @@ const ModelModal: FC<ModelModalProps> = ({
                       variant="warning"
                       onClick={() => openConfirmDelete(credential, model)}
                     >
-                      {t('common.operation.remove')}
+                      {t('operation.remove', { ns: 'common' })}
                     </Button>
                   )
                 }
                 <Button
                   onClick={onCancel}
                 >
-                  {t('common.operation.cancel')}
+                  {t('operation.cancel', { ns: 'common' })}
                 </Button>
                 <Button
                   variant="primary"
@@ -414,7 +414,7 @@ const ModelModal: FC<ModelModalProps> = ({
                 <div className="border-t-[0.5px] border-t-divider-regular">
                   <div className="flex items-center justify-center rounded-b-2xl bg-background-section-burn py-3 text-xs text-text-tertiary">
                     <Lock01 className="mr-1 h-3 w-3 text-text-tertiary" />
-                    {t('common.modelProvider.encrypted.front')}
+                    {t('modelProvider.encrypted.front', { ns: 'common' })}
                     <a
                       className="mx-1 text-text-accent"
                       target="_blank"
@@ -423,7 +423,7 @@ const ModelModal: FC<ModelModalProps> = ({
                     >
                       PKCS1_OAEP
                     </a>
-                    {t('common.modelProvider.encrypted.back')}
+                    {t('modelProvider.encrypted.back', { ns: 'common' })}
                   </div>
                 </div>
               )
@@ -433,7 +433,7 @@ const ModelModal: FC<ModelModalProps> = ({
             deleteCredentialId && (
               <Confirm
                 isShow
-                title={t('common.modelProvider.confirmDelete')}
+                title={t('modelProvider.confirmDelete', { ns: 'common' })}
                 isDisabled={doingAction}
                 onCancel={closeConfirmDelete}
                 onConfirm={handleDeleteCredential}

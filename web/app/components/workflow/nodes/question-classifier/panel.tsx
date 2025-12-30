@@ -14,7 +14,7 @@ import AdvancedSetting from './components/advanced-setting'
 import ClassList from './components/class-list'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
   id,
@@ -49,7 +49,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
     <div className="pt-2">
       <div className="space-y-4 px-4">
         <Field
-          title={t(`${i18nPrefix}.model`)}
+          title={t(`${i18nPrefix}.model`, { ns: 'workflow' })}
           required
         >
           <ModelParameterModal
@@ -67,7 +67,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.inputVars`)}
+          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
           required
         >
           <VarReferencePicker
@@ -100,7 +100,7 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
         <Split />
       </div>
       <FieldCollapse
-        title={t(`${i18nPrefix}.advancedSetting`)}
+        title={t(`${i18nPrefix}.advancedSetting`, { ns: 'workflow' })}
       >
         <AdvancedSetting
           hideMemorySetting={!isChatMode}
@@ -123,12 +123,12 @@ const Panel: FC<NodePanelProps<QuestionClassifierNodeType>> = ({
             <VarItem
               name="class_name"
               type="string"
-              description={t(`${i18nPrefix}.outputVars.className`)}
+              description={t(`${i18nPrefix}.outputVars.className`, { ns: 'workflow' })}
             />
             <VarItem
               name="usage"
               type="object"
-              description={t(`${i18nPrefix}.outputVars.usage`)}
+              description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
             />
           </>
         </OutputVars>
