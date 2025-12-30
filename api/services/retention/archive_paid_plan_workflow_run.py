@@ -42,7 +42,7 @@ from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
 )
 from repositories.sqlalchemy_workflow_trigger_log_repository import SQLAlchemyWorkflowTriggerLogRepository
-from services.billing_service import BillingService, SubscriptionPlan
+from services.billing_service import BillingService
 
 logger = logging.getLogger(__name__)
 
@@ -127,7 +127,6 @@ class WorkflowRunArchiver:
         self.limit = limit
         self.dry_run = dry_run
         self.cutoff_date = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
-        self.billing_cache: dict[str, SubscriptionPlan | None] = {}
         self.workflow_run_repo = workflow_run_repo
 
     def run(self) -> ArchiveSummary:
@@ -258,23 +257,17 @@ class WorkflowRunArchiver:
         if not tenant_ids:
             return set()
 
-        # Fetch billing info for uncached tenants
-        uncached = [tid for tid in tenant_ids if tid not in self.billing_cache]
-        if uncached:
-            try:
-                bulk_info = BillingService.get_plan_bulk(uncached)
-                for tid in uncached:
-                    self.billing_cache[tid] = bulk_info.get(tid)
-            except Exception:
-                logger.exception("Failed to fetch billing plans for tenants")
-                # On error, skip all tenants in this batch
-                return set()
+        try:
+            bulk_info = BillingService.get_plan_bulk_with_cache(list(tenant_ids))
+        except Exception:
+            logger.exception("Failed to fetch billing plans for tenants")
+            # On error, skip all tenants in this batch
+            return set()
 
         # Filter to paid tenants (any plan except SANDBOX)
         paid = set()
-        for tid in tenant_ids:
-            info = self.billing_cache.get(tid)
-            if info and info.get("plan") != CloudPlan.SANDBOX:
+        for tid, info in bulk_info.items():
+            if info and info.get("plan") in (CloudPlan.PROFESSIONAL, CloudPlan.TEAM):
                 paid.add(tid)
 
         return paid
