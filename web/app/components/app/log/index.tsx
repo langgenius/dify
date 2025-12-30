@@ -109,7 +109,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     <div className="flex h-full grow flex-col">
       <p className="system-sm-regular shrink-0 text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4">
-        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={{ ...queryParams, keyword: queryParams.keyword || undefined }} setQueryParams={handleQueryParamsChange} />
+        <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={{ ...queryParams, keyword: queryParams.keyword ?? undefined }} setQueryParams={handleQueryParamsChange} />
         {total === undefined
           ? <Loading type="app" />
           : total > 0

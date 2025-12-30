@@ -85,11 +85,11 @@ function useDocumentListQueryState() {
     setQuery(DEFAULT_QUERY)
   }, [setQuery])
 
-  return {
+  return useMemo(() => ({
     query: finalQuery,
     updateQuery,
     resetQuery,
-  }
+  }), [finalQuery, updateQuery, resetQuery])
 }
 
 export default useDocumentListQueryState
