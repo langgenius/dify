@@ -14,13 +14,6 @@ vi.mock('ahooks', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({ isCurrentWorkspaceEditor: true }),
 }))
-vi.mock('use-context-selector', async () => {
-  const actual = await vi.importActual<typeof import('use-context-selector')>('use-context-selector')
-  return {
-    ...actual,
-    useContext: () => ({ hasEditPermission: true }),
-  }
-})
 vi.mock('nuqs', () => ({
   useQueryState: () => ['Recommended', vi.fn()],
 }))
@@ -35,10 +28,11 @@ vi.mock('@/app/components/app/type-selector', () => ({
 }))
 vi.mock('../app-card', () => ({
   __esModule: true,
-  default: ({ app, onCreate }: { app: any, onCreate: () => void }) => (
+  default: ({ app, onCreate, canCreate }: { app: any, onCreate: () => void, canCreate: boolean }) => (
     <div
       data-testid="app-card"
       data-name={app.app.name}
+      data-can-create={canCreate ? 'true' : 'false'}
       onClick={onCreate}
     >
       {app.app.name}
@@ -122,6 +116,7 @@ describe('Apps', () => {
     fireEvent.click(screen.getAllByTestId('app-card')[0])
     expect(screen.getByTestId('create-from-template-modal')).toBeInTheDocument()
   })
+
   it('shows no template message when list is empty', () => {
     mockUseExploreAppList.mockReturnValueOnce({
       data: { allList: [], categories: [] },
