@@ -905,19 +905,17 @@ class TriggerProviderService:
                     # FALLBACK: If the update api is not implemented,
                     # delete the previous subscription and create a new one
 
-                    # Unsubscribe the previous subscription (external call, but we'll handle errors)
-                    try:
-                        TriggerManager.unsubscribe_trigger(
-                            tenant_id=tenant_id,
-                            user_id=user_id,
-                            provider_id=provider_id,
-                            subscription=subscription.to_entity(),
-                            credentials=decrypted_credentials,
-                            credential_type=credential_type,
-                        )
-                    except Exception as e:
-                        logger.exception("Error unsubscribing trigger during rebuild", exc_info=e)
-                        # Continue anyway - the subscription might already be deleted externally
+                    # Unsubscribe the previous subscription (external call)
+                    unsubscribe_result = TriggerManager.unsubscribe_trigger(
+                        tenant_id=tenant_id,
+                        user_id=user_id,
+                        provider_id=provider_id,
+                        subscription=subscription.to_entity(),
+                        credentials=decrypted_credentials,
+                        credential_type=credential_type,
+                    )
+                    if not unsubscribe_result.success:
+                        raise ValueError(f"Failed to unsubscribe from trigger: {unsubscribe_result.message}")
 
                     # Create a new subscription with the same subscription_id and endpoint_id (external call)
                     new_subscription: TriggerSubscriptionEntity = TriggerManager.subscribe_trigger(
