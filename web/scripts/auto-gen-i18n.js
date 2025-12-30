@@ -2,7 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { translate } from 'bing-translate-api'
-import data from './languages'
+import data from '../i18n-config/languages'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
@@ -103,7 +103,7 @@ function parseArgs(argv) {
 }
 
 function printHelp() {
-  console.log(`Usage: pnpm run auto-gen-i18n [options]
+  console.log(`Usage: pnpm run i18n:gen [options]
 
 Options:
   --file <name...>  Process only specific files; provide space-separated names and repeat --file if needed
@@ -112,8 +112,8 @@ Options:
   -h, --help        Show help
 
 Examples:
-  pnpm run auto-gen-i18n --file app common --lang zh-Hans ja-JP
-  pnpm run auto-gen-i18n --dry-run
+  pnpm run i18n:gen --file app common --lang zh-Hans ja-JP
+  pnpm run i18n:gen --dry-run
 `)
 }
 
@@ -259,7 +259,7 @@ async function main() {
     return
   }
 
-  console.log('🚀 Starting auto-gen-i18n script...')
+  console.log('🚀 Starting i18n:gen script...')
   console.log(`📋 Mode: ${isDryRun ? 'DRY RUN (no files will be modified)' : 'LIVE MODE'}`)
 
   const filesInEn = fs
