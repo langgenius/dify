@@ -144,7 +144,7 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
 
   return (
     <Modal
-      title={t('workflow.nodes.http.curl.title')}
+      title={t('nodes.http.curl.title', { ns: 'workflow' })}
       isShow={isShow}
       onClose={onHide}
       className="!w-[400px] !max-w-[400px] !p-4"
@@ -154,14 +154,14 @@ const CurlPanel: FC<Props> = ({ nodeId, isShow, onHide, handleCurlImport }) => {
           value={inputString}
           className="my-3 h-40 w-full grow"
           onChange={e => setInputString(e.target.value)}
-          placeholder={t('workflow.nodes.http.curl.placeholder')!}
+          placeholder={t('nodes.http.curl.placeholder', { ns: 'workflow' })!}
         />
       </div>
       <div className="mt-4 flex justify-end space-x-2">
-        <Button className="!w-[95px]" onClick={onHide}>{t('common.operation.cancel')}</Button>
+        <Button className="!w-[95px]" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
         <Button className="!w-[95px]" variant="primary" onClick={handleSave}>
           {' '}
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
     </Modal>

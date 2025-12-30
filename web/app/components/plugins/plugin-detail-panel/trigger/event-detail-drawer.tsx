@@ -27,13 +27,13 @@ type EventDetailDrawerProps = {
 
 const getType = (type: string, t: TFunction) => {
   if (type === 'number-input')
-    return t('tools.setBuiltInTools.number')
+    return t('setBuiltInTools.number', { ns: 'tools' })
   if (type === 'text-input')
-    return t('tools.setBuiltInTools.string')
+    return t('setBuiltInTools.string', { ns: 'tools' })
   if (type === 'checkbox')
     return 'boolean'
   if (type === 'file')
-    return t('tools.setBuiltInTools.file')
+    return t('setBuiltInTools.file', { ns: 'tools' })
   return type
 }
 
@@ -101,7 +101,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
           onClick={onClose}
         >
           <RiArrowLeftLine className="h-4 w-4" />
-          {t('plugin.detailPanel.operation.back')}
+          {t('detailPanel.operation.back', { ns: 'plugin' })}
         </div>
         <div className="flex items-center gap-1">
           <Icon size="tiny" className="h-6 w-6" src={providerInfo.icon!} />
@@ -115,7 +115,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
         <Description className="mb-2 mt-3 h-auto" text={eventInfo.description[language]} descriptionLineRows={2}></Description>
       </div>
       <div className="flex h-full flex-col gap-2 overflow-y-auto px-4 pb-2 pt-4">
-        <div className="system-sm-semibold-uppercase text-text-secondary">{t('tools.setBuiltInTools.parameters')}</div>
+        <div className="system-sm-semibold-uppercase text-text-secondary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
         {parametersSchemas.length > 0
           ? (
               parametersSchemas.map((item, index) => (
@@ -126,7 +126,7 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                       {getType(item.type, t)}
                     </div>
                     {item.required && (
-                      <div className="system-xs-medium text-text-warning-secondary">{t('tools.setBuiltInTools.required')}</div>
+                      <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
                     )}
                   </div>
                   {item.description && (
@@ -137,10 +137,10 @@ export const EventDetailDrawer: FC<EventDetailDrawerProps> = (props) => {
                 </div>
               ))
             )
-          : <div className="system-xs-regular text-text-tertiary">{t('pluginTrigger.events.item.noParameters')}</div>}
+          : <div className="system-xs-regular text-text-tertiary">{t('events.item.noParameters', { ns: 'pluginTrigger' })}</div>}
         <Divider className="mb-2 mt-1 h-px" />
         <div className="flex flex-col gap-2">
-          <div className="system-sm-semibold-uppercase text-text-secondary">{t('pluginTrigger.events.output')}</div>
+          <div className="system-sm-semibold-uppercase text-text-secondary">{t('events.output', { ns: 'pluginTrigger' })}</div>
           <div className="relative left-[-7px]">
             {outputFields.map(item => (
               <Field

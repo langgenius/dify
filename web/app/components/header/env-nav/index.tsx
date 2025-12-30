@@ -28,7 +28,7 @@ const EnvNav = () => {
         langGeniusVersionInfo.current_env === 'TESTING' && (
           <>
             <Beaker02 className="h-3 w-3" />
-            <div className="ml-1 max-[1280px]:hidden">{t('common.environment.testing')}</div>
+            <div className="ml-1 max-[1280px]:hidden">{t('environment.testing', { ns: 'common' })}</div>
           </>
         )
       }
@@ -36,7 +36,7 @@ const EnvNav = () => {
         langGeniusVersionInfo.current_env === 'DEVELOPMENT' && (
           <>
             <TerminalSquare className="h-3 w-3" />
-            <div className="ml-1 max-[1280px]:hidden">{t('common.environment.development')}</div>
+            <div className="ml-1 max-[1280px]:hidden">{t('environment.development', { ns: 'common' })}</div>
           </>
         )
       }

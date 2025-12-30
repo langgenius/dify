@@ -20,7 +20,7 @@ import { UpdateType } from '../types'
 import AddedMetadataItem from './add-row'
 import EditMetadataBatchItem from './edit-row'
 
-const i18nPrefix = 'dataset.metadata.batchEditMetadata'
+const i18nPrefix = 'metadata.batchEditMetadata'
 
 type Props = {
   datasetId: string
@@ -89,7 +89,7 @@ const EditMetadataBatchModal: FC<Props> = ({
     await doAddMetaData(payload)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
   }, [checkName, doAddMetaData, t])
 
@@ -112,13 +112,13 @@ const EditMetadataBatchModal: FC<Props> = ({
   }, [templeList, addedList, isApplyToAllSelectDocument, onSave])
   return (
     <Modal
-      title={t(`${i18nPrefix}.editMetadata`)}
+      title={t(`${i18nPrefix}.editMetadata`, { ns: 'dataset' })}
       isShow
       closable
       onClose={onHide}
       className="!max-w-[640px]"
     >
-      <div className="system-xs-medium mt-1 text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { num: documentNum })}</div>
+      <div className="system-xs-medium mt-1 text-text-accent">{t(`${i18nPrefix}.editDocumentsNum`, { ns: 'dataset', num: documentNum })}</div>
       <div className="max-h-[305px] overflow-y-auto overflow-x-hidden">
         <div className="mt-4 space-y-2">
           {templeList.map(item => (
@@ -133,7 +133,7 @@ const EditMetadataBatchModal: FC<Props> = ({
         </div>
         <div className="mt-4 pl-[18px]">
           <div className="flex items-center">
-            <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">{t('dataset.metadata.createMetadata.title')}</div>
+            <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">{t('metadata.createMetadata.title', { ns: 'dataset' })}</div>
             <Divider bgStyle="gradient" />
           </div>
           <div className="mt-2 space-y-2">
@@ -165,9 +165,9 @@ const EditMetadataBatchModal: FC<Props> = ({
       <div className="mt-4 flex items-center justify-between">
         <div className="flex select-none items-center">
           <Checkbox checked={isApplyToAllSelectDocument} onCheck={() => setIsApplyToAllSelectDocument(!isApplyToAllSelectDocument)} />
-          <div className="system-xs-medium ml-2 mr-1 text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`)}</div>
+          <div className="system-xs-medium ml-2 mr-1 text-text-secondary">{t(`${i18nPrefix}.applyToAllSelectDocument`, { ns: 'dataset' })}</div>
           <Tooltip popupContent={
-            <div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`)}</div>
+            <div className="max-w-[240px]">{t(`${i18nPrefix}.applyToAllSelectDocumentTip`, { ns: 'dataset' })}</div>
           }
           >
             <div className="cursor-pointer p-px">
@@ -179,13 +179,13 @@ const EditMetadataBatchModal: FC<Props> = ({
           <Button
             onClick={onHide}
           >
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button
             onClick={handleSave}
             variant="primary"
           >
-            {t('common.operation.save')}
+            {t('operation.save', { ns: 'common' })}
           </Button>
         </div>
       </div>

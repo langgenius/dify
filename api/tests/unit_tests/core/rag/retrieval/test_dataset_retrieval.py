@@ -421,7 +421,18 @@ class TestRetrievalService:
             # In real code, this waits for all futures to complete
             # In tests, futures complete immediately, so wait is a no-op
             with patch("core.rag.datasource.retrieval_service.concurrent.futures.wait"):
-                yield mock_executor
+                # Mock concurrent.futures.as_completed for early error propagation
+                # In real code, this yields futures as they complete
+                # In tests, we yield all futures immediately since they're already done
+                def mock_as_completed(futures_list, timeout=None):
+                    """Mock as_completed that yields futures immediately."""
+                    yield from futures_list
+
+                with patch(
+                    "core.rag.datasource.retrieval_service.concurrent.futures.as_completed",
+                    side_effect=mock_as_completed,
+                ):
+                    yield mock_executor
 
     # ==================== Vector Search Tests ====================
 

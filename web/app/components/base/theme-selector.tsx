@@ -61,7 +61,7 @@ export default function ThemeSelector() {
           >
             <RiSunLine className="h-4 w-4 text-text-tertiary" />
             <div className="flex grow items-center justify-start px-1">
-              <span className="system-md-regular">{t('common.theme.light')}</span>
+              <span className="system-md-regular">{t('theme.light', { ns: 'common' })}</span>
             </div>
             {theme === 'light' && (
               <div className="flex h-4 w-4 shrink-0 items-center justify-center">
@@ -76,7 +76,7 @@ export default function ThemeSelector() {
           >
             <RiMoonLine className="h-4 w-4 text-text-tertiary" />
             <div className="flex grow items-center justify-start px-1">
-              <span className="system-md-regular">{t('common.theme.dark')}</span>
+              <span className="system-md-regular">{t('theme.dark', { ns: 'common' })}</span>
             </div>
             {theme === 'dark' && (
               <div className="flex h-4 w-4 shrink-0 items-center justify-center">
@@ -91,7 +91,7 @@ export default function ThemeSelector() {
           >
             <RiComputerLine className="h-4 w-4 text-text-tertiary" />
             <div className="flex grow items-center justify-start px-1">
-              <span className="system-md-regular">{t('common.theme.auto')}</span>
+              <span className="system-md-regular">{t('theme.auto', { ns: 'common' })}</span>
             </div>
             {theme === 'system' && (
               <div className="flex h-4 w-4 shrink-0 items-center justify-center">

@@ -27,11 +27,17 @@ const MetadataTrigger = ({
   useEffect(() => {
     if (selectedDatasetsLoaded) {
       conditions.forEach((condition) => {
-        if (!metadataList.find(metadata => metadata.name === condition.name))
+        // First try to match by metadata_id for reliable reference
+        const foundById = condition.metadata_id && metadataList.find(metadata => metadata.id === condition.metadata_id)
+        // Fallback to name matching only for backward compatibility with old conditions
+        const foundByName = !condition.metadata_id && metadataList.find(metadata => metadata.name === condition.name)
+
+        // Only remove condition if both metadata_id and name matching fail
+        if (!foundById && !foundByName)
           handleRemoveCondition(condition.id)
       })
     }
-  }, [metadataList, handleRemoveCondition, selectedDatasetsLoaded])
+  }, [metadataFilteringConditions, metadataList, handleRemoveCondition, selectedDatasetsLoaded])
 
   return (
     <PortalToFollowElem
@@ -46,7 +52,7 @@ const MetadataTrigger = ({
           size="small"
         >
           <RiFilter3Line className="mr-1 h-3.5 w-3.5" />
-          {t('workflow.nodes.knowledgeRetrieval.metadata.panel.conditions')}
+          {t('nodes.knowledgeRetrieval.metadata.panel.conditions', { ns: 'workflow' })}
           <div className="system-2xs-medium-uppercase ml-1 flex items-center rounded-[5px] border border-divider-deep px-1 text-text-tertiary">
             {metadataFilteringConditions?.conditions.length || 0}
           </div>

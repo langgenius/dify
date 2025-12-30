@@ -22,7 +22,7 @@ const Crawling: FC<Props> = ({
       <div className="flex h-[34px] items-center border-y-[0.5px] border-divider-regular px-4
         text-xs text-text-tertiary shadow-xs shadow-shadow-shadow-3"
       >
-        {t('datasetCreation.stepOne.website.totalPageScraped')}
+        {t('stepOne.website.totalPageScraped', { ns: 'datasetCreation' })}
         {' '}
         {crawledNum}
         /

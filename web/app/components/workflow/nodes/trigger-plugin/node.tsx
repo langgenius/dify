@@ -94,7 +94,7 @@ const Node: FC<NodeProps<PluginTriggerNodeType>> = ({
         </div>
       )}
       <div className="space-y-0.5" aria-disabled={shouldDim}>
-        {!isValidSubscription && <NodeStatus status={NodeStatusEnum.warning} message={t('pluginTrigger.node.status.warning')} />}
+        {!isValidSubscription && <NodeStatus status={NodeStatusEnum.warning} message={t('node.status.warning', { ns: 'pluginTrigger' })} />}
         {isValidSubscription && configKeys.map((key, index) => (
           <div
             key={index}

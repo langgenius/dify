@@ -79,10 +79,10 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
             })}
             mutation={mutation}
             mutate={install}
-            confirmButtonText={t('workflow.nodes.agent.installPlugin.install')}
-            cancelButtonText={t('workflow.nodes.agent.installPlugin.cancel')}
-            modelTitle={t('workflow.nodes.agent.installPlugin.title')}
-            description={t('workflow.nodes.agent.installPlugin.desc')}
+            confirmButtonText={t('nodes.agent.installPlugin.install', { ns: 'workflow' })}
+            cancelButtonText={t('nodes.agent.installPlugin.cancel', { ns: 'workflow' })}
+            modelTitle={t('nodes.agent.installPlugin.title', { ns: 'workflow' })}
+            description={t('nodes.agent.installPlugin.desc', { ns: 'workflow' })}
             cardTitleLeft={(
               <>
                 <Badge2 className="mx-1" size="s" state={BadgeState.Warning}>
@@ -97,7 +97,7 @@ export const SwitchPluginVersion: FC<SwitchPluginVersionProps> = (props) => {
                 target="_blank"
               >
                 <span className="system-xs-regular text-xs text-text-accent">
-                  {t('workflow.nodes.agent.installPlugin.changelog')}
+                  {t('nodes.agent.installPlugin.changelog', { ns: 'workflow' })}
                 </span>
                 <RiExternalLinkLine className="size-3 text-text-accent" />
               </Link>

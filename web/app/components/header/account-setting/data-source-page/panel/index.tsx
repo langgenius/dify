@@ -55,10 +55,10 @@ const Panel: FC<Props> = ({
         <div className={cn(s[`${type}-icon`], 'mr-3 h-8 w-8 rounded-lg border border-divider-subtle !bg-background-default')} />
         <div className="grow">
           <div className="flex h-5 items-center">
-            <div className="text-sm font-medium text-text-primary">{t(`common.dataSource.${type}.title`)}</div>
+            <div className="text-sm font-medium text-text-primary">{t(`dataSource.${type}.title`, { ns: 'common' })}</div>
             {isWebsite && (
               <div className="ml-1 rounded-md bg-components-badge-white-to-dark px-1.5 text-xs font-medium leading-[18px] text-text-secondary">
-                <span className="text-text-tertiary">{t('common.dataSource.website.with')}</span>
+                <span className="text-text-tertiary">{t('dataSource.website.with', { ns: 'common' })}</span>
                 {' '}
                 {getProviderName()}
               </div>
@@ -67,7 +67,7 @@ const Panel: FC<Props> = ({
           {
             !isConfigured && (
               <div className="system-xs-medium text-text-tertiary">
-                {t(`common.dataSource.${type}.description`)}
+                {t(`dataSource.${type}.description`, { ns: 'common' })}
               </div>
             )
           }
@@ -82,7 +82,7 @@ const Panel: FC<Props> = ({
                       className="ml-3"
                       onClick={onConfigure}
                     >
-                      {t('common.dataSource.configure')}
+                      {t('dataSource.configure', { ns: 'common' })}
                     </Button>
                   )
                 : (
@@ -96,7 +96,7 @@ const Panel: FC<Props> = ({
                           onClick={onConfigure}
                         >
                           <RiAddLine className="mr-[5px] h-4 w-4 text-components-button-secondary-accent-text" />
-                          {t('common.dataSource.connect')}
+                          {t('dataSource.connect', { ns: 'common' })}
                         </div>
                       )}
                     </>
@@ -114,7 +114,7 @@ const Panel: FC<Props> = ({
             }
             onClick={!readOnly ? onConfigure : undefined}
           >
-            {t('common.dataSource.configure')}
+            {t('dataSource.configure', { ns: 'common' })}
           </div>
         )}
 
@@ -124,7 +124,7 @@ const Panel: FC<Props> = ({
           <>
             <div className="flex h-[18px] items-center px-3">
               <div className="system-xs-medium text-text-tertiary">
-                {isNotion ? t('common.dataSource.notion.connectedWorkspace') : t('common.dataSource.website.configuredCrawlers')}
+                {isNotion ? t('dataSource.notion.connectedWorkspace', { ns: 'common' }) : t('dataSource.website.configuredCrawlers', { ns: 'common' })}
               </div>
               <div className="ml-3 grow border-t border-t-divider-subtle" />
             </div>

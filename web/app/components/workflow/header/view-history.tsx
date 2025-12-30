@@ -92,14 +92,14 @@ const ViewHistory = ({
                 <ClockPlay
                   className="mr-1 h-4 w-4"
                 />
-                {t('workflow.common.showRunHistory')}
+                {t('common.showRunHistory', { ns: 'workflow' })}
               </div>
             )
           }
           {
             !withText && (
               <Tooltip
-                popupContent={t('workflow.common.viewRunHistory')}
+                popupContent={t('common.viewRunHistory', { ns: 'workflow' })}
               >
                 <div
                   className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
@@ -121,7 +121,7 @@ const ViewHistory = ({
             }}
           >
             <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
-              <div className="grow">{t('workflow.common.runHistory')}</div>
+              <div className="grow">{t('common.runHistory', { ns: 'workflow' })}</div>
               <div
                 className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
@@ -147,7 +147,7 @@ const ViewHistory = ({
                       <div className="py-12">
                         <ClockPlaySlim className="mx-auto mb-2 h-8 w-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
-                          {t('workflow.common.notRunning')}
+                          {t('common.notRunning', { ns: 'workflow' })}
                         </div>
                       </div>
                     )

@@ -34,7 +34,7 @@ const StatusPanel: FC<ResultProps> = ({
           status === 'partial-succeeded' && 'min-w-[140px]',
         )}
         >
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.status')}</div>
+          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.status', { ns: 'runLog' })}</div>
           <div
             className={cn(
               'system-xs-semibold-uppercase flex items-center gap-1',
@@ -84,7 +84,7 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="max-w-[152px] flex-[33%]">
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.time')}</div>
+          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.time', { ns: 'runLog' })}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {status === 'running' && (
               <div className="h-2 w-16 rounded-sm bg-text-quaternary" />
@@ -95,7 +95,7 @@ const StatusPanel: FC<ResultProps> = ({
           </div>
         </div>
         <div className="flex-[33%]">
-          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('runLog.resultPanel.tokens')}</div>
+          <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t('resultPanel.tokens', { ns: 'runLog' })}</div>
           <div className="system-sm-medium flex items-center gap-1 text-text-secondary">
             {status === 'running' && (
               <div className="h-2 w-20 rounded-sm bg-text-quaternary" />
@@ -115,7 +115,7 @@ const StatusPanel: FC<ResultProps> = ({
               <>
                 <div className="my-2 h-[0.5px] bg-divider-subtle" />
                 <div className="system-xs-regular text-text-destructive">
-                  {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
+                  {t('nodes.common.errorHandle.partialSucceeded.tip', { ns: 'workflow', num: exceptionCounts })}
                 </div>
               </>
             )
@@ -127,7 +127,7 @@ const StatusPanel: FC<ResultProps> = ({
           <>
             <div className="my-2 h-[0.5px] bg-divider-deep" />
             <div className="system-xs-medium text-text-warning">
-              {t('workflow.nodes.common.errorHandle.partialSucceeded.tip', { num: exceptionCounts })}
+              {t('nodes.common.errorHandle.partialSucceeded.tip', { ns: 'workflow', num: exceptionCounts })}
             </div>
           </>
         )
@@ -143,7 +143,7 @@ const StatusPanel: FC<ResultProps> = ({
                 target="_blank"
                 className="text-text-accent"
               >
-                {t('workflow.common.learnMore')}
+                {t('common.learnMore', { ns: 'workflow' })}
               </a>
             </div>
           </>

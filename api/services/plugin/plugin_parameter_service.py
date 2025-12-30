@@ -146,7 +146,7 @@ class PluginParameterService:
                 provider,
                 action,
                 resolved_credentials,
-                CredentialType.API_KEY.value,
+                original_subscription.credential_type or CredentialType.UNAUTHORIZED.value,
                 parameter,
             )
             .options

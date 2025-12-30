@@ -7,7 +7,7 @@ import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type CrawledResultProps = {
   className?: string
@@ -66,6 +66,7 @@ const CrawledResult = ({
     <div className={cn('flex flex-col gap-y-2', className)}>
       <div className="system-sm-medium pt-2 text-text-primary">
         {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+          ns: 'datasetCreation',
           total: list.length,
           time: usedTime.toFixed(1),
         })}
@@ -76,7 +77,7 @@ const CrawledResult = ({
             <CheckboxWithLabel
               isChecked={isCheckAll}
               onChange={handleCheckedAll}
-              label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
+              label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
             />
           </div>
         )}

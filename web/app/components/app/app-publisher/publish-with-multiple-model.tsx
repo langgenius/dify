@@ -72,14 +72,14 @@ const PublishWithMultipleModel: FC<PublishWithMultipleModelProps> = ({
           disabled={!validModelConfigs.length}
           className="mt-3 w-full"
         >
-          {t('appDebug.operation.applyConfig')}
+          {t('operation.applyConfig', { ns: 'appDebug' })}
           <RiArrowDownSLine className="ml-0.5 h-3 w-3" />
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-50 mt-1 w-[288px]">
         <div className="rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg p-1 shadow-lg">
           <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">
-            {t('appDebug.publishAs')}
+            {t('publishAs', { ns: 'appDebug' })}
           </div>
           {
             validModelConfigs.map((item, index) => (

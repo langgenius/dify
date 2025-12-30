@@ -54,7 +54,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
     setShowConfirm(false)
     Toast.notify({
       type: 'success',
-      message: t('common.api.remove'),
+      message: t('api.remove', { ns: 'common' }),
     })
   }
 
@@ -62,7 +62,7 @@ const SideBar: FC<IExploreSideBarProps> = ({
     await updatePinStatus({ appId: id, isPinned })
     Toast.notify({
       type: 'success',
-      message: t('common.api.success'),
+      message: t('api.success', { ns: 'common' }),
     })
   }
 
@@ -92,12 +92,12 @@ const SideBar: FC<IExploreSideBarProps> = ({
           style={isDiscoverySelected ? { boxShadow: '0px 1px 2px rgba(16, 24, 40, 0.05)' } : {}}
         >
           {isDiscoverySelected ? <SelectedDiscoveryIcon /> : <DiscoveryIcon />}
-          {!isMobile && <div className="text-sm">{t('explore.sidebar.discovery')}</div>}
+          {!isMobile && <div className="text-sm">{t('sidebar.discovery', { ns: 'explore' })}</div>}
         </Link>
       </div>
       {installedApps.length > 0 && (
         <div className="mt-10">
-          <p className="break-all pl-2 text-xs font-medium uppercase text-text-tertiary mobile:px-0">{t('explore.sidebar.workspace')}</p>
+          <p className="break-all pl-2 text-xs font-medium uppercase text-text-tertiary mobile:px-0">{t('sidebar.workspace', { ns: 'explore' })}</p>
           <div
             className="mt-3 space-y-1 overflow-y-auto overflow-x-hidden"
             style={{
@@ -131,8 +131,8 @@ const SideBar: FC<IExploreSideBarProps> = ({
       )}
       {showConfirm && (
         <Confirm
-          title={t('explore.sidebar.delete.title')}
-          content={t('explore.sidebar.delete.content')}
+          title={t('sidebar.delete.title', { ns: 'explore' })}
+          content={t('sidebar.delete.content', { ns: 'explore' })}
           isShow={showConfirm}
           onConfirm={handleDelete}
           onCancel={() => setShowConfirm(false)}

@@ -8,7 +8,7 @@ import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   className?: string
@@ -63,12 +63,13 @@ const CrawledResult: FC<Props> = ({
         <CheckboxWithLabel
           isChecked={isCheckAll}
           onChange={handleCheckedAll}
-          label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
+          label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
           labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
           testId="select-all"
         />
         <div className="text-xs text-text-tertiary">
           {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+            ns: 'datasetCreation',
             total: list.length,
             time: usedTime.toFixed(1),
           })}

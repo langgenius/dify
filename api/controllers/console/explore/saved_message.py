@@ -1,5 +1,3 @@
-from uuid import UUID
-
 from flask import request
 from flask_restx import fields, marshal_with
 from pydantic import BaseModel, Field
@@ -10,19 +8,19 @@ from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
 from fields.conversation_fields import message_file_fields
-from libs.helper import TimestampField
+from libs.helper import TimestampField, UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
 
 class SavedMessageListQuery(BaseModel):
-    last_id: UUID | None = None
+    last_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
 
 class SavedMessageCreatePayload(BaseModel):
-    message_id: UUID
+    message_id: UUIDStrOrEmpty
 
 
 register_schema_models(console_ns, SavedMessageListQuery, SavedMessageCreatePayload)

@@ -12,7 +12,7 @@ import VarItem from './components/var-item'
 import VarList from './components/var-list'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.start'
+const i18nPrefix = 'nodes.start'
 
 const Panel: FC<NodePanelProps<StartNodeType>> = ({
   id,
@@ -44,7 +44,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-2">
         <Field
-          title={t(`${i18nPrefix}.inputField`)}
+          title={t(`${i18nPrefix}.inputField`, { ns: 'workflow' })}
           operations={
             !readOnly ? <AddButton onClick={showAddVarModal} /> : undefined
           }

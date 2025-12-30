@@ -57,7 +57,7 @@ const FileUpload = ({
       )}
       title={(
         <div className="flex items-center">
-          {t('appDebug.feature.imageUpload.title')}
+          {t('feature.imageUpload.title', { ns: 'appDebug' })}
           <Badge
             text="LEGACY"
             className="mx-1 shrink-0 border-text-accent-secondary text-text-accent-secondary"
@@ -72,19 +72,19 @@ const FileUpload = ({
     >
       <>
         {!file?.enabled && (
-          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('appDebug.feature.imageUpload.description')}</div>
+          <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.imageUpload.description', { ns: 'appDebug' })}</div>
         )}
         {file?.enabled && (
           <>
             {!isHovering && !modalOpen && (
               <div className="flex items-center gap-4 pt-0.5">
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.imageUpload.supportedTypes')}</div>
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.imageUpload.supportedTypes', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{supportedTypes}</div>
                 </div>
                 <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                 <div className="">
-                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.imageUpload.numberLimit')}</div>
+                  <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.imageUpload.numberLimit', { ns: 'appDebug' })}</div>
                   <div className="system-xs-regular text-text-secondary">{file?.number_limits}</div>
                 </div>
               </div>
@@ -101,7 +101,7 @@ const FileUpload = ({
               >
                 <Button className="w-full" disabled={disabled}>
                   <RiEqualizer2Line className="mr-1 h-4 w-4" />
-                  {t('common.operation.settings')}
+                  {t('operation.settings', { ns: 'common' })}
                 </Button>
               </SettingModal>
             )}

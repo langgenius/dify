@@ -318,5 +318,5 @@ For more detailed information, refer to:
 
 - `web/vitest.config.ts` - Vitest configuration
 - `web/vitest.setup.ts` - Test environment setup
-- `web/testing/analyze-component.js` - Component analysis tool
+- `web/scripts/analyze-component.js` - Component analysis tool
 - Modules are not mocked automatically. Global mocks live in `web/vitest.setup.ts` (for example `react-i18next`, `next/image`); mock other modules like `ky` or `mime` locally in test files.

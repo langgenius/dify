@@ -9,7 +9,7 @@ import { useTranslation } from 'react-i18next'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 type Props = {
   className?: string
@@ -56,8 +56,8 @@ const ClassItem: FC<Props> = ({
     <Editor
       className={className}
       headerClassName={headerClassName}
-      title={`${t(`${i18nPrefix}.class`)} ${index}`}
-      placeholder={t(`${i18nPrefix}.topicPlaceholder`)!}
+      title={`${t(`${i18nPrefix}.class`, { ns: 'workflow' })} ${index}`}
+      placeholder={t(`${i18nPrefix}.topicPlaceholder`, { ns: 'workflow' })!}
       value={payload.name}
       onChange={handleNameChange}
       showRemove

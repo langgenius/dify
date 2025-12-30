@@ -95,18 +95,18 @@ const ChatInputArea = ({
 
   const handleSend = () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return
     }
 
     if (onSend) {
       const { files, setFiles } = filesStore.getState()
       if (files.find(item => item.transferMethod === TransferMethod.local_file && !item.uploadedId)) {
-        notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+        notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
         return
       }
       if (!query || !query.trim()) {
-        notify({ type: 'info', message: t('appAnnotation.errorMessage.queryRequired') })
+        notify({ type: 'info', message: t('errorMessage.queryRequired', { ns: 'appAnnotation' }) })
         return
       }
       if (checkInputsForm(inputs, inputsForm)) {
@@ -163,7 +163,7 @@ const ChatInputArea = ({
     (Recorder as any).getPermission().then(() => {
       setShowVoiceInput(true)
     }, () => {
-      notify({ type: 'error', message: t('common.voiceInput.notAllow') })
+      notify({ type: 'error', message: t('voiceInput.notAllow', { ns: 'common' }) })
     })
   }, [t, notify])
 
@@ -205,7 +205,7 @@ const ChatInputArea = ({
                 className={cn(
                   'body-lg-regular w-full resize-none bg-transparent p-1 leading-6 text-text-primary outline-none',
                 )}
-                placeholder={decode(t('common.chat.inputPlaceholder', { botName }) || '')}
+                placeholder={decode(t('chat.inputPlaceholder', { ns: 'common', botName }) || '')}
                 autoFocus
                 minRows={1}
                 value={query}

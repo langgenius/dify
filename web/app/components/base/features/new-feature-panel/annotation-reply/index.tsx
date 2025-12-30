@@ -83,7 +83,7 @@ const AnnotationReply = ({
             <MessageFast className="h-4 w-4 text-text-primary-on-surface" />
           </div>
         )}
-        title={t('appDebug.feature.annotation.title')}
+        title={t('feature.annotation.title', { ns: 'appDebug' })}
         value={!!annotationReply?.enabled}
         onChange={state => handleSwitch(state)}
         onMouseEnter={() => setIsHovering(true)}
@@ -92,19 +92,19 @@ const AnnotationReply = ({
       >
         <>
           {!annotationReply?.enabled && (
-            <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('appDebug.feature.annotation.description')}</div>
+            <div className="system-xs-regular line-clamp-2 min-h-8 text-text-tertiary">{t('feature.annotation.description', { ns: 'appDebug' })}</div>
           )}
           {!!annotationReply?.enabled && (
             <>
               {!isHovering && (
                 <div className="flex items-center gap-4 pt-0.5">
                   <div className="">
-                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('appDebug.feature.annotation.scoreThreshold.title')}</div>
+                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('feature.annotation.scoreThreshold.title', { ns: 'appDebug' })}</div>
                     <div className="system-xs-regular text-text-secondary">{annotationReply.score_threshold || '-'}</div>
                   </div>
                   <div className="h-[27px] w-px rotate-12 bg-divider-subtle"></div>
                   <div className="">
-                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('common.modelProvider.embeddingModel.key')}</div>
+                    <div className="system-2xs-medium-uppercase mb-0.5 text-text-tertiary">{t('modelProvider.embeddingModel.key', { ns: 'common' })}</div>
                     <div className="system-xs-regular text-text-secondary">{annotationReply.embedding_model?.embedding_model_name}</div>
                   </div>
                 </div>
@@ -113,7 +113,7 @@ const AnnotationReply = ({
                 <div className="flex items-center justify-between">
                   <Button className="w-[178px]" onClick={() => setIsShowAnnotationConfigInit(true)} disabled={disabled}>
                     <RiEqualizer2Line className="mr-1 h-4 w-4" />
-                    {t('common.operation.params')}
+                    {t('operation.params', { ns: 'common' })}
                   </Button>
                   <Button
                     className="w-[178px]"
@@ -122,7 +122,7 @@ const AnnotationReply = ({
                     }}
                   >
                     <RiExternalLinkLine className="mr-1 h-4 w-4" />
-                    {t('appDebug.feature.annotation.cacheManagement')}
+                    {t('feature.annotation.cacheManagement', { ns: 'appDebug' })}
                   </Button>
                 </div>
               )}

@@ -38,8 +38,8 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
             <Home className="h-5 w-5 text-white" />
           </div>
         )}
-        title={t('workflow.onboarding.userInputFull')}
-        description={t('workflow.onboarding.userInputDescription')}
+        title={t('onboarding.userInputFull', { ns: 'workflow' })}
+        description={t('onboarding.userInputDescription', { ns: 'workflow' })}
         onClick={onSelectUserInput}
       />
 
@@ -65,8 +65,8 @@ const StartNodeSelectionPanel: FC<StartNodeSelectionPanelProps> = ({
                 <TriggerAll className="h-5 w-5 text-white" />
               </div>
             )}
-            title={t('workflow.onboarding.trigger')}
-            description={t('workflow.onboarding.triggerDescription')}
+            title={t('onboarding.trigger', { ns: 'workflow' })}
+            description={t('onboarding.triggerDescription', { ns: 'workflow' })}
             onClick={handleTriggerClick}
           />
         )}

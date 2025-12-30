@@ -22,14 +22,14 @@ export default function Sidebar({ current, categories, onClick, onCreateFromBlan
       <ul className="pt-0.5">
         <CategoryItem category={AppCategories.RECOMMENDED} active={current === AppCategories.RECOMMENDED} onClick={onClick} />
       </ul>
-      <div className="system-xs-medium-uppercase mb-0.5 mt-3 px-3 pb-1 pt-2 text-text-tertiary">{t('app.newAppFromTemplate.byCategories')}</div>
+      <div className="system-xs-medium-uppercase mb-0.5 mt-3 px-3 pb-1 pt-2 text-text-tertiary">{t('newAppFromTemplate.byCategories', { ns: 'app' })}</div>
       <ul className="flex grow flex-col gap-0.5">
         {categories.map(category => (<CategoryItem key={category} category={category} active={current === category} onClick={onClick} />))}
       </ul>
       <Divider bgStyle="gradient" />
       <div className="flex cursor-pointer items-center gap-1 px-3 py-1 text-text-tertiary" onClick={onCreateFromBlank}>
         <RiStickyNoteAddLine className="h-3.5 w-3.5" />
-        <span className="system-xs-regular">{t('app.newApp.startFromBlank')}</span>
+        <span className="system-xs-regular">{t('newApp.startFromBlank', { ns: 'app' })}</span>
       </div>
     </div>
   )
@@ -65,5 +65,5 @@ type AppCategoryLabelProps = {
 }
 export function AppCategoryLabel({ category, className }: AppCategoryLabelProps) {
   const { t } = useTranslation()
-  return <span className={className}>{category === AppCategories.RECOMMENDED ? t('app.newAppFromTemplate.sidebar.Recommended') : category}</span>
+  return <span className={className}>{category === AppCategories.RECOMMENDED ? t('newAppFromTemplate.sidebar.Recommended', { ns: 'app' }) : category}</span>
 }

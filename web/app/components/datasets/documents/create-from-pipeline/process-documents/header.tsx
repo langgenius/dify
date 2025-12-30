@@ -21,10 +21,10 @@ const Header = ({
   return (
     <div className="flex items-center gap-x-1 px-4 py-2">
       <div className="system-sm-semibold-uppercase grow text-text-secondary">
-        {t('datasetPipeline.addDocuments.stepTwo.chunkSettings')}
+        {t('addDocuments.stepTwo.chunkSettings', { ns: 'datasetPipeline' })}
       </div>
       <Button variant="ghost" disabled={resetDisabled} onClick={onReset}>
-        {t('common.operation.reset')}
+        {t('operation.reset', { ns: 'common' })}
       </Button>
       <Button
         variant="secondary-accent"
@@ -33,7 +33,7 @@ const Header = ({
         disabled={previewDisabled}
       >
         <RiSearchEyeLine className="size-4" />
-        <span className="px-0.5">{t('datasetPipeline.addDocuments.stepTwo.previewChunks')}</span>
+        <span className="px-0.5">{t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}</span>
       </Button>
     </div>
   )

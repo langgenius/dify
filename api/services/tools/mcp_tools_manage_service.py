@@ -319,8 +319,14 @@ class MCPToolManageService:
         except MCPError as e:
             raise ValueError(f"Failed to connect to MCP server: {e}")
 
-        # Update database with retrieved tools
-        db_provider.tools = json.dumps([tool.model_dump() for tool in tools])
+        # Update database with retrieved tools (ensure description is a non-null string)
+        tools_payload = []
+        for tool in tools:
+            data = tool.model_dump()
+            if data.get("description") is None:
+                data["description"] = ""
+            tools_payload.append(data)
+        db_provider.tools = json.dumps(tools_payload)
         db_provider.authed = True
         db_provider.updated_at = datetime.now()
         self._session.flush()
@@ -621,6 +627,21 @@ class MCPToolManageService:
         )
 
     @staticmethod
+    def reconnect_with_url(
+        *,
+        server_url: str,
+        headers: dict[str, str],
+        timeout: float | None,
+        sse_read_timeout: float | None,
+    ) -> ReconnectResult:
+        return MCPToolManageService._reconnect_with_url(
+            server_url=server_url,
+            headers=headers,
+            timeout=timeout,
+            sse_read_timeout=sse_read_timeout,
+        )
+
+    @staticmethod
     def _reconnect_with_url(
         *,
         server_url: str,
@@ -642,9 +663,16 @@ class MCPToolManageService:
                 sse_read_timeout=sse_read_timeout,
             ) as mcp_client:
                 tools = mcp_client.list_tools()
+                # Ensure tool descriptions are non-null in payload
+                tools_payload = []
+                for t in tools:
+                    d = t.model_dump()
+                    if d.get("description") is None:
+                        d["description"] = ""
+                    tools_payload.append(d)
                 return ReconnectResult(
                     authed=True,
-                    tools=json.dumps([tool.model_dump() for tool in tools]),
+                    tools=json.dumps(tools_payload),
                     encrypted_credentials=EMPTY_CREDENTIALS_JSON,
                 )
         except MCPAuthError:

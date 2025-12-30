@@ -31,16 +31,16 @@ const DetailPanel: FC<ILogDetail> = ({ runID, onClose, canReplay = false }) => {
         <RiCloseLine className="h-4 w-4 text-text-tertiary" />
       </span>
       <div className="flex items-center bg-components-panel-bg">
-        <h1 className="system-xl-semibold shrink-0 px-4 py-1 text-text-primary">{t('appLog.runDetail.workflowTitle')}</h1>
+        <h1 className="system-xl-semibold shrink-0 px-4 py-1 text-text-primary">{t('runDetail.workflowTitle', { ns: 'appLog' })}</h1>
         {canReplay && (
           <TooltipPlus
-            popupContent={t('appLog.runDetail.testWithParams')}
+            popupContent={t('runDetail.testWithParams', { ns: 'appLog' })}
             popupClassName="rounded-xl"
           >
             <button
               type="button"
               className="mr-1 flex h-6 w-6 items-center justify-center rounded-md hover:bg-state-base-hover"
-              aria-label={t('appLog.runDetail.testWithParams')}
+              aria-label={t('runDetail.testWithParams', { ns: 'appLog' })}
               onClick={handleReplay}
             >
               <RiPlayLargeLine className="h-4 w-4 text-text-tertiary" />

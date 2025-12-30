@@ -10,7 +10,7 @@ import {
 } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
 import { BlockEnum } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'workflow.nodes.listFilter'
+const i18nPrefix = 'nodes.listFilter'
 
 const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
   data,
@@ -27,7 +27,7 @@ const NodeComponent: FC<NodeProps<ListFilterNodeType>> = ({
   const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
   return (
     <div className="relative px-3">
-      <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t(`${i18nPrefix}.inputVar`)}</div>
+      <div className="system-2xs-medium-uppercase mb-1 text-text-tertiary">{t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })}</div>
       <VariableLabelInNode
         variables={variable}
         nodeType={node?.data.type}

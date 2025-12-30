@@ -95,7 +95,7 @@ const AddOAuthButton = ({
           </div>
           <div className="w-0 grow">
             <div className="system-sm-regular mb-1.5">
-              {t('plugin.auth.clientInfo')}
+              {t('auth.clientInfo', { ns: 'plugin' })}
             </div>
             {
               redirect_uri && (
@@ -136,15 +136,15 @@ const AddOAuthButton = ({
     if (is_system_oauth_params_exists) {
       result.unshift({
         name: '__oauth_client__',
-        label: t('plugin.auth.oauthClient'),
+        label: t('auth.oauthClient', { ns: 'plugin' }),
         type: FormTypeEnum.radio,
         options: [
           {
-            label: t('plugin.auth.default'),
+            label: t('auth.default', { ns: 'plugin' }),
             value: 'default',
           },
           {
-            label: t('plugin.auth.custom'),
+            label: t('auth.custom', { ns: 'plugin' }),
             value: 'custom',
           },
         ],
@@ -213,7 +213,7 @@ const AddOAuthButton = ({
                       buttonVariant === 'primary' && 'border-text-primary-on-surface bg-components-badge-bg-dimm text-text-primary-on-surface',
                     )}
                   >
-                    {t('plugin.auth.custom')}
+                    {t('auth.custom', { ns: 'plugin' })}
                   </Badge>
                 )
               }
@@ -225,6 +225,7 @@ const AddOAuthButton = ({
             >
             </div>
             <div
+              data-testid="oauth-settings-button"
               className={cn(
                 'flex h-full w-8 shrink-0 items-center justify-center rounded-r-lg hover:bg-components-button-primary-bg-hover',
                 buttonRightClassName,
@@ -248,7 +249,7 @@ const AddOAuthButton = ({
             className="w-full"
           >
             <RiEqualizer2Line className="mr-0.5 h-4 w-4" />
-            {t('plugin.auth.setupOAuth')}
+            {t('auth.setupOAuth', { ns: 'plugin' })}
           </Button>
         )
       }

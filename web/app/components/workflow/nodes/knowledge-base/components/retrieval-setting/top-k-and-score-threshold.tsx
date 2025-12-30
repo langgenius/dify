@@ -61,10 +61,10 @@ const TopKAndScoreThreshold = ({
     <div className="grid grid-cols-2 gap-4">
       <div>
         <div className="system-xs-medium mb-0.5 flex h-6 items-center text-text-secondary">
-          {t('appDebug.datasetConfig.top_k')}
+          {t('datasetConfig.top_k', { ns: 'appDebug' })}
           <Tooltip
             triggerClassName="ml-0.5 shrink-0 w-3.5 h-3.5"
-            popupContent={t('appDebug.datasetConfig.top_kTip')}
+            popupContent={t('datasetConfig.top_kTip', { ns: 'appDebug' })}
           />
         </div>
         <InputNumber
@@ -87,11 +87,11 @@ const TopKAndScoreThreshold = ({
                 disabled={readonly}
               />
               <div className="system-sm-medium grow truncate text-text-secondary">
-                {t('appDebug.datasetConfig.score_threshold')}
+                {t('datasetConfig.score_threshold', { ns: 'appDebug' })}
               </div>
               <Tooltip
                 triggerClassName="shrink-0 ml-0.5 w-3.5 h-3.5"
-                popupContent={t('appDebug.datasetConfig.score_thresholdTip')}
+                popupContent={t('datasetConfig.score_thresholdTip', { ns: 'appDebug' })}
               />
             </div>
             <InputNumber

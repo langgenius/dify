@@ -41,7 +41,7 @@ const ModelTrigger: FC<ModelTriggerProps> = ({
         </div>
         <div className="flex shrink-0 items-center justify-center">
           {showWarnIcon && (
-            <Tooltip popupContent={t('common.modelProvider.deprecated')}>
+            <Tooltip popupContent={t('modelProvider.deprecated', { ns: 'common' })}>
               <AlertTriangle className="h-4 w-4 text-text-warning-secondary" />
             </Tooltip>
           )}

@@ -129,7 +129,7 @@ const ChatVariablePanel = () => {
       )}
     >
       <div className="system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
-        {t('workflow.chatVariable.panelTitle')}
+        {t('chatVariable.panelTitle', { ns: 'workflow' })}
         <div className="flex items-center gap-1">
           <ActionButton state={showTip ? ActionButtonState.Active : undefined} onClick={() => setShowTip(!showTip)}>
             <RiBookOpenLine className="h-4 w-4" />
@@ -147,7 +147,7 @@ const ChatVariablePanel = () => {
           <div className="radius-2xl relative bg-background-section-burn p-3">
             <div className="system-2xs-medium-uppercase inline-block rounded-[5px] border border-divider-deep px-[5px] py-[3px] text-text-tertiary">TIPS</div>
             <div className="system-sm-regular mb-4 mt-1 text-text-secondary">
-              {t('workflow.chatVariable.panelDescription')}
+              {t('chatVariable.panelDescription', { ns: 'workflow' })}
               <a
                 target="_blank"
                 rel="noopener noreferrer"
@@ -157,7 +157,7 @@ const ChatVariablePanel = () => {
                   'ja-JP': '/guides/workflow/variables#会話変数',
                 })}
               >
-                {t('workflow.chatVariable.docLink')}
+                {t('chatVariable.docLink', { ns: 'workflow' })}
               </a>
             </div>
             <div className="flex items-center gap-2">
@@ -173,7 +173,7 @@ const ChatVariablePanel = () => {
                     <div className="system-2xs-medium shrink-0 text-text-tertiary">WRITE</div>
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.Assigner} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('workflow.blocks.assigner')}</div>
+                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.assigner', { ns: 'workflow' })}</div>
                 </div>
                 <div className="flex items-center gap-2 py-1">
                   <div className="flex h-3 w-16 shrink-0 items-center gap-1 px-1">
@@ -181,7 +181,7 @@ const ChatVariablePanel = () => {
                     <LongArrowRight className="h-2 grow text-text-quaternary" />
                   </div>
                   <BlockIcon className="shrink-0" type={BlockEnum.LLM} />
-                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('workflow.blocks.llm')}</div>
+                  <div className="system-xs-semibold grow truncate text-text-secondary">{t('blocks.llm', { ns: 'workflow' })}</div>
                 </div>
               </div>
             </div>

@@ -18,7 +18,7 @@ import { IterationStartNodeDumb } from '../iteration-start'
 import AddBlock from './add-block'
 import { useNodeIterationInteractions } from './use-interactions'
 
-const i18nPrefix = 'workflow.nodes.iteration'
+const i18nPrefix = 'nodes.iteration'
 
 const Node: FC<NodeProps<IterationNodeType>> = ({
   id,
@@ -36,7 +36,7 @@ const Node: FC<NodeProps<IterationNodeType>> = ({
     if (data.is_parallel && showTips) {
       Toast.notify({
         type: 'warning',
-        message: t(`${i18nPrefix}.answerNodeWarningDesc`),
+        message: t(`${i18nPrefix}.answerNodeWarningDesc`, { ns: 'workflow' }),
         duration: 5000,
       })
       setShowTips(false)

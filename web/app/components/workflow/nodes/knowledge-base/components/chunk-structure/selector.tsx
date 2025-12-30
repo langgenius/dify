@@ -57,7 +57,7 @@ const Selector = ({
               size="small"
               variant="ghost-accent"
             >
-              {t('workflow.panel.change')}
+              {t('panel.change', { ns: 'workflow' })}
             </Button>
           )
         }
@@ -65,7 +65,7 @@ const Selector = ({
       <PortalToFollowElemContent className="z-10">
         <div className="w-[404px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-xl backdrop-blur-[5px]">
           <div className="system-sm-semibold px-3 pt-3.5 text-text-primary">
-            {t('workflow.nodes.knowledgeBase.changeChunkStructure')}
+            {t('nodes.knowledgeBase.changeChunkStructure', { ns: 'workflow' })}
           </div>
           <div className="space-y-1 p-3 pt-2">
             {

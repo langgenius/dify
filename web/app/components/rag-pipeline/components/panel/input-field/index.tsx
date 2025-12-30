@@ -103,7 +103,7 @@ const InputFieldPanel = () => {
     <div className="mr-1 flex h-full w-[400px] flex-col rounded-2xl border-y-[0.5px] border-l-[0.5px] border-components-panel-border bg-components-panel-bg-alt shadow-xl shadow-shadow-shadow-5">
       <div className="flex shrink-0 items-center p-4 pb-0">
         <div className="system-xl-semibold grow text-text-primary">
-          {t('datasetPipeline.inputFieldPanel.title')}
+          {t('inputFieldPanel.title', { ns: 'datasetPipeline' })}
         </div>
         <Button
           variant="ghost"
@@ -116,7 +116,7 @@ const InputFieldPanel = () => {
           disabled={isEditing}
         >
           <RiEyeLine className="size-3.5" />
-          <span className="px-[3px]">{t('datasetPipeline.operations.preview')}</span>
+          <span className="px-[3px]">{t('operations.preview', { ns: 'datasetPipeline' })}</span>
         </Button>
         <Divider type="vertical" className="mx-1 h-3" />
         <button
@@ -128,16 +128,16 @@ const InputFieldPanel = () => {
         </button>
       </div>
       <div className="system-sm-regular shrink-0 px-4 pb-2 pt-1 text-text-tertiary">
-        {t('datasetPipeline.inputFieldPanel.description')}
+        {t('inputFieldPanel.description', { ns: 'datasetPipeline' })}
       </div>
       <div className="flex grow flex-col overflow-y-auto">
         {/* Unique Inputs for Each Entrance */}
         <div className="flex h-6 items-center gap-x-0.5 px-4 pt-2">
           <span className="system-sm-semibold-uppercase text-text-secondary">
-            {t('datasetPipeline.inputFieldPanel.uniqueInputs.title')}
+            {t('inputFieldPanel.uniqueInputs.title', { ns: 'datasetPipeline' })}
           </span>
           <Tooltip
-            popupContent={t('datasetPipeline.inputFieldPanel.uniqueInputs.tooltip')}
+            popupContent={t('inputFieldPanel.uniqueInputs.tooltip', { ns: 'datasetPipeline' })}
             popupClassName="max-w-[240px]"
           />
         </div>

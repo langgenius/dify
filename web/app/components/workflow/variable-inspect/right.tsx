@@ -217,7 +217,7 @@ const Right = ({
           {currentNodeVar && (
             <>
               {canShowPromptGenerator && (
-                <Tooltip popupContent={t('appDebug.generate.optimizePromptTooltip')}>
+                <Tooltip popupContent={t('generate.optimizePromptTooltip', { ns: 'appDebug' })}>
                   <div
                     className="cursor-pointer rounded-md p-1 hover:bg-state-accent-active"
                     onClick={handleShowPromptGenerator}
@@ -227,7 +227,7 @@ const Right = ({
                 </Tooltip>
               )}
               {isTruncated && (
-                <Tooltip popupContent={t('workflow.debug.variableInspect.exportToolTip')}>
+                <Tooltip popupContent={t('debug.variableInspect.exportToolTip', { ns: 'workflow' })}>
                   <ActionButton>
                     <a
                       href={fullContent?.download_url}
@@ -241,18 +241,18 @@ const Right = ({
               {!isTruncated && currentNodeVar.var.edited && (
                 <Badge>
                   <span className="ml-[2.5px] mr-[4.5px] h-[3px] w-[3px] rounded bg-text-accent-secondary"></span>
-                  <span className="system-2xs-semibold-uupercase">{t('workflow.debug.variableInspect.edited')}</span>
+                  <span className="system-2xs-semibold-uupercase">{t('debug.variableInspect.edited', { ns: 'workflow' })}</span>
                 </Badge>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type !== VarInInspectType.conversation && (
-                <Tooltip popupContent={t('workflow.debug.variableInspect.reset')}>
+                <Tooltip popupContent={t('debug.variableInspect.reset', { ns: 'workflow' })}>
                   <ActionButton onClick={resetValue}>
                     <RiArrowGoBackLine className="h-4 w-4" />
                   </ActionButton>
                 </Tooltip>
               )}
               {!isTruncated && currentNodeVar.var.edited && currentNodeVar.var.type === VarInInspectType.conversation && (
-                <Tooltip popupContent={t('workflow.debug.variableInspect.resetConversationVar')}>
+                <Tooltip popupContent={t('debug.variableInspect.resetConversationVar', { ns: 'workflow' })}>
                   <ActionButton onClick={handleClear}>
                     <RiArrowGoBackLine className="h-4 w-4" />
                   </ActionButton>

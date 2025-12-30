@@ -13,7 +13,7 @@ import Field from '@/app/components/workflow/nodes/_base/components/field'
 import ConditionWrap from './components/condition-wrap'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.ifElse'
+const i18nPrefix = 'nodes.ifElse'
 
 const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
   id,
@@ -75,10 +75,10 @@ const Panel: FC<NodePanelProps<IfElseNodeType>> = ({
       </div>
       <div className="mx-3 my-2 h-px bg-divider-subtle"></div>
       <Field
-        title={t(`${i18nPrefix}.else`)}
+        title={t(`${i18nPrefix}.else`, { ns: 'workflow' })}
         className="px-4 py-2"
       >
-        <div className="text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.elseDescription`)}</div>
+        <div className="text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.elseDescription`, { ns: 'workflow' })}</div>
       </Field>
     </div>
   )

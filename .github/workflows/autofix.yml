@@ -12,7 +12,7 @@ jobs:
     if: github.repository == 'langgenius/dify'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Check Docker Compose inputs
         id: docker-compose-changes
@@ -27,7 +27,7 @@ jobs:
         with:
           python-version: "3.11"
 
-      - uses: astral-sh/setup-uv@v6
+      - uses: astral-sh/setup-uv@v7
 
       - name: Generate Docker Compose
         if: steps.docker-compose-changes.outputs.any_changed == 'true'

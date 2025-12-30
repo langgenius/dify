@@ -118,10 +118,10 @@ const PluginItem: FC<Props> = ({
           <div className="ml-3 w-0 grow">
             <div className="flex h-5 items-center">
               <Title title={title} />
-              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('plugin.marketplace.verifiedTip')} />}
+              {verified && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
               {!isDifyVersionCompatible && (
                 <Tooltip popupContent={
-                  t('plugin.difyVersionNotCompatible', { minimalDifyVersion: declarationMeta.minimum_dify_version })
+                  t('difyVersionNotCompatible', { ns: 'plugin', minimalDifyVersion: declarationMeta.minimum_dify_version })
                 }
                 >
                   <RiErrorWarningLine color="red" className="ml-0.5 h-4 w-4 shrink-0 text-text-accent" />
@@ -169,9 +169,9 @@ const PluginItem: FC<Props> = ({
                 <RiLoginCircleLine className="size-3 shrink-0" />
                 <span
                   className="truncate"
-                  title={t('plugin.endpointsEnabled', { num: endpoints_active })}
+                  title={t('endpointsEnabled', { ns: 'plugin', num: endpoints_active })}
                 >
-                  {t('plugin.endpointsEnabled', { num: endpoints_active })}
+                  {t('endpointsEnabled', { ns: 'plugin', num: endpoints_active })}
                 </span>
               </div>
             </>
@@ -183,7 +183,7 @@ const PluginItem: FC<Props> = ({
             && (
               <>
                 <a href={`https://github.com/${meta!.repo}`} target="_blank" className="flex items-center gap-1">
-                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('plugin.from')}</div>
+                  <div className="system-2xs-medium-uppercase text-text-tertiary">{t('from', { ns: 'plugin' })}</div>
                   <div className="flex items-center space-x-0.5 text-text-secondary">
                     <Github className="h-3 w-3" />
                     <div className="system-2xs-semibold-uppercase">GitHub</div>
@@ -197,7 +197,7 @@ const PluginItem: FC<Props> = ({
               <>
                 <a href={getMarketplaceUrl(`/plugins/${author}/${name}`, { theme })} target="_blank" className="flex items-center gap-0.5">
                   <div className="system-2xs-medium-uppercase text-text-tertiary">
-                    {t('plugin.from')}
+                    {t('from', { ns: 'plugin' })}
                     {' '}
                     <span className="text-text-secondary">marketplace</span>
                   </div>
@@ -229,7 +229,7 @@ const PluginItem: FC<Props> = ({
           <div className="system-2xs-medium-uppercase flex shrink-0 items-center gap-x-2">
             <span className="text-text-tertiary">·</span>
             <span className="text-text-warning">
-              {t('plugin.deprecated')}
+              {t('deprecated', { ns: 'plugin' })}
             </span>
           </div>
         )}

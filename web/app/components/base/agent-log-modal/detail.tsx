@@ -90,7 +90,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
           )}
           onClick={() => switchTab('DETAIL')}
         >
-          {t('runLog.detail')}
+          {t('detail', { ns: 'runLog' })}
         </div>
         <div
           className={cn(
@@ -99,7 +99,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
           )}
           onClick={() => switchTab('TRACING')}
         >
-          {t('runLog.tracing')}
+          {t('tracing', { ns: 'runLog' })}
         </div>
       </div>
       {/* panel detail */}

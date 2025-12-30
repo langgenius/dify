@@ -94,7 +94,7 @@ export default function AppSelector() {
                       className="group flex h-9 cursor-pointer items-center justify-start rounded-lg px-3 hover:bg-state-base-hover"
                     >
                       <LogOut01 className="mr-1 flex h-4 w-4 text-text-tertiary" />
-                      <div className="text-[14px] font-normal text-text-secondary">{t('common.userProfile.logout')}</div>
+                      <div className="text-[14px] font-normal text-text-secondary">{t('userProfile.logout', { ns: 'common' })}</div>
                     </div>
                   </div>
                 </MenuItem>

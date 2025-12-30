@@ -196,7 +196,7 @@ const SimpleSelect: FC<ISelectProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation()
-  const localPlaceholder = placeholder || t('common.placeholder.select')
+  const localPlaceholder = placeholder || t('placeholder.select', { ns: 'common' })
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
 
@@ -349,7 +349,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const localPlaceholder = placeholder || t('common.placeholder.select')
+  const localPlaceholder = placeholder || t('placeholder.select', { ns: 'common' })
   const selectedItem = value ? items.find(item => item.value === value) : undefined
 
   return (

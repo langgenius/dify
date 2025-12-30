@@ -43,11 +43,11 @@ const UsageInfo: FC<Props> = ({
     ? 'bg-components-progress-error-progress'
     : (percent >= WARNING_THRESHOLD ? 'bg-components-progress-warning-progress' : 'bg-components-progress-bar-progress-solid')
   const isUnlimited = total === NUM_INFINITE
-  let totalDisplay: string | number = isUnlimited ? t('billing.plansCommon.unlimited') : total
+  let totalDisplay: string | number = isUnlimited ? t('plansCommon.unlimited', { ns: 'billing' }) : total
   if (!isUnlimited && unit && unitPosition === 'inline')
     totalDisplay = `${total}${unit}`
   const showUnit = !!unit && !isUnlimited && unitPosition === 'suffix'
-  const resetText = resetHint ?? (typeof resetInDays === 'number' ? t('billing.usagePage.resetsIn', { count: resetInDays }) : undefined)
+  const resetText = resetHint ?? (typeof resetInDays === 'number' ? t('usagePage.resetsIn', { ns: 'billing', count: resetInDays }) : undefined)
   const rightInfo = resetText
     ? (
         <div className="system-xs-regular ml-auto flex-1 text-right text-text-tertiary">

@@ -52,7 +52,7 @@ const Control = () => {
   return (
     <div className="pointer-events-auto flex flex-col items-center rounded-lg border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 text-text-tertiary shadow-lg">
       <AddBlock />
-      <TipPopup title={t('workflow.nodes.note.addNote')}>
+      <TipPopup title={t('nodes.note.addNote', { ns: 'workflow' })}>
         <div
           className={cn(
             'ml-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
@@ -64,7 +64,7 @@ const Control = () => {
         </div>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
-      <TipPopup title={t('workflow.common.pointerMode')} shortcuts={['v']}>
+      <TipPopup title={t('common.pointerMode', { ns: 'workflow' })} shortcuts={['v']}>
         <div
           className={cn(
             'mr-[1px] flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
@@ -76,7 +76,7 @@ const Control = () => {
           <RiCursorLine className="h-4 w-4" />
         </div>
       </TipPopup>
-      <TipPopup title={t('workflow.common.handMode')} shortcuts={['h']}>
+      <TipPopup title={t('common.handMode', { ns: 'workflow' })} shortcuts={['h']}>
         <div
           className={cn(
             'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg',
@@ -89,7 +89,7 @@ const Control = () => {
         </div>
       </TipPopup>
       <Divider className="my-1 w-3.5" />
-      <TipPopup title={t('workflow.panel.organizeBlocks')} shortcuts={['ctrl', 'o']}>
+      <TipPopup title={t('panel.organizeBlocks', { ns: 'workflow' })} shortcuts={['ctrl', 'o']}>
         <div
           className={cn(
             'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',
@@ -100,7 +100,7 @@ const Control = () => {
           <RiFunctionAddLine className="h-4 w-4" />
         </div>
       </TipPopup>
-      <TipPopup title={maximizeCanvas ? t('workflow.panel.minimize') : t('workflow.panel.maximize')} shortcuts={['f']}>
+      <TipPopup title={maximizeCanvas ? t('panel.minimize', { ns: 'workflow' }) : t('panel.maximize', { ns: 'workflow' })} shortcuts={['f']}>
         <div
           className={cn(
             'flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg hover:bg-state-base-hover hover:text-text-secondary',

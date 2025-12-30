@@ -23,14 +23,14 @@ export default function MailAndCodeAuth() {
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
         return
       }
 
       if (!emailRegex.test(email)) {
         Toast.notify({
           type: 'error',
-          message: t('login.error.emailInValid'),
+          message: t('error.emailInValid', { ns: 'login' }),
         })
         return
       }
@@ -56,12 +56,12 @@ export default function MailAndCodeAuth() {
     <form onSubmit={noop}>
       <input type="text" className="hidden" />
       <div className="mb-2">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('login.email')}</label>
+        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
         <div className="mt-1">
-          <Input id="email" type="email" value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+          <Input id="email" type="email" value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
         </div>
         <div className="mt-3">
-          <Button loading={loading} disabled={loading || !email} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t('login.signup.verifyMail')}</Button>
+          <Button loading={loading} disabled={loading || !email} variant="primary" className="w-full" onClick={handleGetEMailVerificationCode}>{t('signup.verifyMail', { ns: 'login' })}</Button>
         </div>
       </div>
     </form>

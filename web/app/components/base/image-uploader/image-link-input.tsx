@@ -39,7 +39,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
         className="mr-0.5 h-[18px] grow appearance-none bg-transparent px-1 text-[13px] text-text-primary outline-none"
         value={imageLink}
         onChange={e => setImageLink(e.target.value)}
-        placeholder={t('common.imageUploader.pasteImageLinkInputPlaceholder') || ''}
+        placeholder={t('imageUploader.pasteImageLinkInputPlaceholder', { ns: 'common' }) || ''}
       />
       <Button
         variant="primary"
@@ -47,7 +47,7 @@ const ImageLinkInput: FC<ImageLinkInputProps> = ({
         disabled={!imageLink || disabled}
         onClick={handleClick}
       >
-        {t('common.operation.ok')}
+        {t('operation.ok', { ns: 'common' })}
       </Button>
     </div>
   )

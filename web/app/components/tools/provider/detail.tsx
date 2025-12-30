@@ -100,24 +100,7 @@ const ProviderDetail = ({
   const [isShowEditCollectionToolModal, setIsShowEditCustomCollectionModal] = useState(false)
   const [showConfirmDelete, setShowConfirmDelete] = useState(false)
   const [deleteAction, setDeleteAction] = useState('')
-  const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
-    await updateCustomCollection(data)
-    onRefreshData()
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-    setIsShowEditCustomCollectionModal(false)
-  }
-  const doRemoveCustomToolCollection = async () => {
-    await removeCustomCollection(collection?.name as string)
-    onRefreshData()
-    Toast.notify({
-      type: 'success',
-      message: t('common.api.actionSuccess'),
-    })
-    setIsShowEditCustomCollectionModal(false)
-  }
+
   const getCustomProvider = useCallback(async () => {
     setIsDetailLoading(true)
     const res = await fetchCustomCollection(collection.name)
@@ -132,6 +115,28 @@ const ProviderDetail = ({
     })
     setIsDetailLoading(false)
   }, [collection.labels, collection.name])
+
+  const doUpdateCustomToolCollection = async (data: CustomCollectionBackend) => {
+    await updateCustomCollection(data)
+    onRefreshData()
+    await getCustomProvider()
+    // Use fresh data from form submission to avoid race condition with collection.labels
+    setCustomCollection(prev => prev ? { ...prev, labels: data.labels } : null)
+    Toast.notify({
+      type: 'success',
+      message: t('api.actionSuccess', { ns: 'common' }),
+    })
+    setIsShowEditCustomCollectionModal(false)
+  }
+  const doRemoveCustomToolCollection = async () => {
+    await removeCustomCollection(collection?.name as string)
+    onRefreshData()
+    Toast.notify({
+      type: 'success',
+      message: t('api.actionSuccess', { ns: 'common' }),
+    })
+    setIsShowEditCustomCollectionModal(false)
+  }
   // workflow provider
   const [isShowEditWorkflowToolModal, setIsShowEditWorkflowToolModal] = useState(false)
   const getWorkflowToolProvider = useCallback(async () => {
@@ -158,7 +163,7 @@ const ProviderDetail = ({
     onRefreshData()
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
     setIsShowEditWorkflowToolModal(false)
   }
@@ -172,7 +177,7 @@ const ProviderDetail = ({
     getWorkflowToolProvider()
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
     setIsShowEditWorkflowToolModal(false)
   }
@@ -270,7 +275,7 @@ const ProviderDetail = ({
               onClick={() => setIsShowEditCustomCollectionModal(true)}
             >
               <Settings01 className="mr-1 h-4 w-4 text-text-tertiary" />
-              <div className="system-sm-medium text-text-secondary">{t('tools.createTool.editAction')}</div>
+              <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
             </Button>
           )}
           {collection.type === CollectionType.workflow && !isDetailLoading && customCollection && (
@@ -280,7 +285,7 @@ const ProviderDetail = ({
                 className={cn('my-3 w-[183px] shrink-0')}
               >
                 <a className="flex items-center" href={`${basePath}/app/${(customCollection as WorkflowToolProviderResponse).workflow_app_id}/workflow`} rel="noreferrer" target="_blank">
-                  <div className="system-sm-medium">{t('tools.openInStudio')}</div>
+                  <div className="system-sm-medium">{t('openInStudio', { ns: 'tools' })}</div>
                   <LinkExternal02 className="ml-1 h-4 w-4" />
                 </a>
               </Button>
@@ -289,7 +294,7 @@ const ProviderDetail = ({
                 onClick={() => setIsShowEditWorkflowToolModal(true)}
                 disabled={!isCurrentWorkspaceManager}
               >
-                <div className="system-sm-medium text-text-secondary">{t('tools.createTool.editAction')}</div>
+                <div className="system-sm-medium text-text-secondary">{t('createTool.editAction', { ns: 'tools' })}</div>
               </Button>
             </>
           )}
@@ -301,7 +306,7 @@ const ProviderDetail = ({
               <div className="shrink-0">
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && isAuthed && (
                   <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
-                    {t('plugin.detailPanel.actionNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
+                    {t('detailPanel.actionNum', { ns: 'plugin', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' })}
                     {needAuth && (
                       <Button
                         variant="secondary"
@@ -313,7 +318,7 @@ const ProviderDetail = ({
                         disabled={!isCurrentWorkspaceManager}
                       >
                         <Indicator className="mr-2" color="green" />
-                        {t('tools.auth.authorized')}
+                        {t('auth.authorized', { ns: 'tools' })}
                       </Button>
                     )}
                   </div>
@@ -321,9 +326,9 @@ const ProviderDetail = ({
                 {(collection.type === CollectionType.builtIn || collection.type === CollectionType.model) && needAuth && !isAuthed && (
                   <>
                     <div className="system-sm-semibold-uppercase text-text-secondary">
-                      <span className="">{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                      <span className="">{t('includeToolNum', { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                       <span className="px-1">·</span>
-                      <span className="text-util-colors-orange-orange-600">{t('tools.auth.setup').toLocaleUpperCase()}</span>
+                      <span className="text-util-colors-orange-orange-600">{t('auth.setup', { ns: 'tools' }).toLocaleUpperCase()}</span>
                     </div>
                     <Button
                       variant="primary"
@@ -334,18 +339,18 @@ const ProviderDetail = ({
                       }}
                       disabled={!isCurrentWorkspaceManager}
                     >
-                      {t('tools.auth.unauthorized')}
+                      {t('auth.unauthorized', { ns: 'tools' })}
                     </Button>
                   </>
                 )}
                 {(collection.type === CollectionType.custom) && (
                   <div className="system-sm-semibold-uppercase text-text-secondary">
-                    <span className="">{t('tools.includeToolNum', { num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
+                    <span className="">{t('includeToolNum', { ns: 'tools', num: toolList.length, action: toolList.length > 1 ? 'actions' : 'action' }).toLocaleUpperCase()}</span>
                   </div>
                 )}
                 {(collection.type === CollectionType.workflow) && (
                   <div className="system-sm-semibold-uppercase text-text-secondary">
-                    <span className="">{t('tools.createTool.toolInput.title').toLocaleUpperCase()}</span>
+                    <span className="">{t('createTool.toolInput.title', { ns: 'tools' }).toLocaleUpperCase()}</span>
                   </div>
                 )}
               </div>
@@ -365,7 +370,7 @@ const ProviderDetail = ({
                     <div className="mb-1 flex items-center gap-2">
                       <span className="code-sm-semibold text-text-secondary">{item.name}</span>
                       <span className="system-xs-regular text-text-tertiary">{item.type}</span>
-                      <span className="system-xs-medium text-text-warning-secondary">{item.required ? t('tools.createTool.toolInput.required') : ''}</span>
+                      <span className="system-xs-medium text-text-warning-secondary">{item.required ? t('createTool.toolInput.required', { ns: 'tools' }) : ''}</span>
                     </div>
                     <div className="system-xs-regular text-text-tertiary">{item.llm_description}</div>
                   </div>
@@ -382,7 +387,7 @@ const ProviderDetail = ({
               await updateBuiltInToolCredential(collection.name, value)
               Toast.notify({
                 type: 'success',
-                message: t('common.api.actionSuccess'),
+                message: t('api.actionSuccess', { ns: 'common' }),
               })
               await onRefreshData()
               setShowSettingAuth(false)
@@ -391,7 +396,7 @@ const ProviderDetail = ({
               await removeBuiltInToolCredential(collection.name)
               Toast.notify({
                 type: 'success',
-                message: t('common.api.actionSuccess'),
+                message: t('api.actionSuccess', { ns: 'common' }),
               })
               await onRefreshData()
               setShowSettingAuth(false)
@@ -416,8 +421,8 @@ const ProviderDetail = ({
         )}
         {showConfirmDelete && (
           <Confirm
-            title={t('tools.createTool.deleteToolConfirmTitle')}
-            content={t('tools.createTool.deleteToolConfirmContent')}
+            title={t('createTool.deleteToolConfirmTitle', { ns: 'tools' })}
+            content={t('createTool.deleteToolConfirmContent', { ns: 'tools' })}
             isShow={showConfirmDelete}
             onConfirm={handleConfirmDelete}
             onCancel={() => setShowConfirmDelete(false)}

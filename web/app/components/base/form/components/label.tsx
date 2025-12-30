@@ -30,7 +30,7 @@ const Label = ({
       >
         {label}
       </label>
-      {!isRequired && showOptional && <div className="system-xs-regular ml-1 text-text-tertiary">{t('common.label.optional')}</div>}
+      {!isRequired && showOptional && <div className="system-xs-regular ml-1 text-text-tertiary">{t('label.optional', { ns: 'common' })}</div>}
       {isRequired && <div className="system-xs-regular ml-1 text-text-destructive-secondary">*</div>}
       {tooltip && (
         <Tooltip

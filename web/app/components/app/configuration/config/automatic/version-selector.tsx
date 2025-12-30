@@ -31,7 +31,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
   }, [moreThanOneVersion, handleOpenToggle])
 
   const versions = Array.from({ length: versionLen }, (_, index) => ({
-    label: `${t('appDebug.generate.version')} ${index + 1}${index === versionLen - 1 ? ` · ${t('appDebug.generate.latest')}` : ''}`,
+    label: `${t('generate.version', { ns: 'appDebug' })} ${index + 1}${index === versionLen - 1 ? ` · ${t('generate.latest', { ns: 'appDebug' })}` : ''}`,
     value: index,
   }))
 
@@ -54,10 +54,10 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
 
         <div className={cn('system-xs-medium flex items-center text-text-tertiary', isOpen && 'text-text-secondary', moreThanOneVersion && 'cursor-pointer')}>
           <div>
-            {t('appDebug.generate.version')}
+            {t('generate.version', { ns: 'appDebug' })}
             {' '}
             {value + 1}
-            {isLatest && ` · ${t('appDebug.generate.latest')}`}
+            {isLatest && ` · ${t('generate.latest', { ns: 'appDebug' })}`}
           </div>
           {moreThanOneVersion && <RiArrowDownSLine className="size-3 " />}
         </div>
@@ -72,7 +72,7 @@ const VersionSelector: React.FC<VersionSelectorProps> = ({ versionLen, value, on
           )}
         >
           <div className={cn('system-xs-medium-uppercase flex h-[22px] items-center px-3 pl-3 text-text-tertiary')}>
-            {t('appDebug.generate.versions')}
+            {t('generate.versions', { ns: 'appDebug' })}
           </div>
           {
             versions.map(option => (

@@ -87,7 +87,7 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       invalidToolsByType()
       hideSetAuthModal()

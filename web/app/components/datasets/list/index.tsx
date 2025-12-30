@@ -32,7 +32,7 @@ const List = () => {
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
   const { showExternalApiPanel, setShowExternalApiPanel } = useExternalApiPanel()
   const [includeAll, { toggle: toggleIncludeAll }] = useBoolean(false)
-  useDocumentTitle(t('dataset.knowledge'))
+  useDocumentTitle(t('knowledge', { ns: 'dataset' }))
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -66,10 +66,10 @@ const List = () => {
             <CheckboxWithLabel
               isChecked={includeAll}
               onChange={toggleIncludeAll}
-              label={t('dataset.allKnowledge')}
+              label={t('allKnowledge', { ns: 'dataset' })}
               labelClassName="system-md-regular text-text-secondary"
               className="mr-2"
-              tooltip={t('dataset.allKnowledgeDescription') as string}
+              tooltip={t('allKnowledgeDescription', { ns: 'dataset' }) as string}
             />
           )}
           <TagFilter type="knowledge" value={tagFilterValue} onChange={handleTagsChange} />
@@ -87,7 +87,7 @@ const List = () => {
             onClick={() => setShowExternalApiPanel(true)}
           >
             <ApiConnectionMod className="h-4 w-4 text-components-button-secondary-text" />
-            <div className="system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text">{t('dataset.externalAPIPanelTitle')}</div>
+            <div className="system-sm-medium flex items-center justify-center gap-1 px-0.5 text-components-button-secondary-text">{t('externalAPIPanelTitle', { ns: 'dataset' })}</div>
           </Button>
         </div>
       </div>

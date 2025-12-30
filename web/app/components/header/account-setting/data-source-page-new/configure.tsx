@@ -44,7 +44,7 @@ const Configure = ({
   const canOAuth = oAuthData.client_schema?.length
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     return {
-      buttonText: t('plugin.auth.addOAuth'),
+      buttonText: t('auth.addOAuth', { ns: 'plugin' }),
       pluginPayload,
     }
   }, [pluginPayload, t])
@@ -52,7 +52,7 @@ const Configure = ({
   const apiKeyButtonProps: AddApiKeyButtonProps = useMemo(() => {
     return {
       pluginPayload,
-      buttonText: t('plugin.auth.addApi'),
+      buttonText: t('auth.addApi', { ns: 'plugin' }),
     }
   }, [pluginPayload, t])
 
@@ -81,7 +81,7 @@ const Configure = ({
             variant="secondary-accent"
           >
             <RiAddLine className="h-4 w-4" />
-            {t('common.dataSource.configure')}
+            {t('dataSource.configure', { ns: 'common' })}
           </Button>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className="z-[61]">

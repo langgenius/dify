@@ -8,7 +8,7 @@ import { useTranslation } from 'react-i18next'
 import SearchInput from '@/app/components/base/search-input'
 import { getIcon } from '../utils/get-icon'
 
-const i18nPrefix = 'dataset.metadata.selectMetadata'
+const i18nPrefix = 'metadata.selectMetadata'
 
 type Props = {
   list: MetadataItem[]
@@ -39,7 +39,7 @@ const SelectMetadata: FC<Props> = ({
         className="mx-2"
         value={query}
         onChange={setQuery}
-        placeholder={t(`${i18nPrefix}.search`)}
+        placeholder={t(`${i18nPrefix}.search`, { ns: 'dataset' })}
       />
       <div className="mt-2">
         {list.map((item) => {
@@ -68,12 +68,12 @@ const SelectMetadata: FC<Props> = ({
       <div className="mt-1 flex justify-between border-t border-divider-subtle p-1">
         <div className="flex h-6 cursor-pointer items-center space-x-1 rounded-md px-3 text-text-secondary hover:bg-state-base-hover" onClick={onNew}>
           <RiAddLine className="size-3.5" />
-          <div className="system-sm-medium">{t(`${i18nPrefix}.newAction`)}</div>
+          <div className="system-sm-medium">{t(`${i18nPrefix}.newAction`, { ns: 'dataset' })}</div>
         </div>
         <div className="flex h-6 items-center text-text-secondary ">
           <div className="mr-[3px] h-3 w-px bg-divider-regular"></div>
           <div className="flex h-full cursor-pointer items-center rounded-md px-1.5 hover:bg-state-base-hover" onClick={onManage}>
-            <div className="system-sm-medium mr-1">{t(`${i18nPrefix}.manageAction`)}</div>
+            <div className="system-sm-medium mr-1">{t(`${i18nPrefix}.manageAction`, { ns: 'dataset' })}</div>
             <RiArrowRightUpLine className="size-3.5" />
           </div>
         </div>

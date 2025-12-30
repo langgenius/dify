@@ -21,7 +21,7 @@ const NextExecutionTimes = ({ data }: NextExecutionTimesProps) => {
   return (
     <div className="space-y-2">
       <label className="block text-xs font-medium text-gray-500">
-        {t('workflow.nodes.triggerSchedule.nextExecutionTimes')}
+        {t('nodes.triggerSchedule.nextExecutionTimes', { ns: 'workflow' })}
       </label>
       <div className="flex min-h-[80px] flex-col rounded-xl bg-components-input-bg-normal py-2">
         {executionTimes.map((time, index) => (

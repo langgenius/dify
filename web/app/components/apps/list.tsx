@@ -13,6 +13,7 @@ import dynamic from 'next/dynamic'
 import {
   useRouter,
 } from 'next/navigation'
+import { parseAsString, useQueryState } from 'nuqs'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
@@ -24,7 +25,6 @@ import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
 import { CheckModal } from '@/hooks/use-pay'
-import { useTabSearchParams } from '@/hooks/use-tab-searchparams'
 import { useInfiniteAppList } from '@/service/use-apps'
 import { AppModeEnum } from '@/types/app'
 import AppCard from './app-card'
@@ -47,9 +47,10 @@ const List = () => {
   const router = useRouter()
   const { isCurrentWorkspaceEditor, isCurrentWorkspaceDatasetOperator } = useAppContext()
   const showTagManagementModal = useTagStore(s => s.showTagManagementModal)
-  const [activeTab, setActiveTab] = useTabSearchParams({
-    defaultTab: 'all',
-  })
+  const [activeTab, setActiveTab] = useQueryState(
+    'category',
+    parseAsString.withDefault('all').withOptions({ history: 'push' }),
+  )
   const { query: { tagIDs = [], keywords = '', isCreatedByMe: queryIsCreatedByMe = false }, setQuery } = useAppsQueryState()
   const [isCreatedByMe, setIsCreatedByMe] = useState(queryIsCreatedByMe)
   const [tagFilterValue, setTagFilterValue] = useState<string[]>(tagIDs)
@@ -97,12 +98,12 @@ const List = () => {
 
   const anchorRef = useRef<HTMLDivElement>(null)
   const options = [
-    { value: 'all', text: t('app.types.all'), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.WORKFLOW, text: t('app.types.workflow'), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.ADVANCED_CHAT, text: t('app.types.advanced'), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.CHAT, text: t('app.types.chatbot'), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.AGENT_CHAT, text: t('app.types.agent'), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
-    { value: AppModeEnum.COMPLETION, text: t('app.types.completion'), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: 'all', text: t('types.all', { ns: 'app' }), icon: <RiApps2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.WORKFLOW, text: t('types.workflow', { ns: 'app' }), icon: <RiExchange2Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.ADVANCED_CHAT, text: t('types.advanced', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.CHAT, text: t('types.chatbot', { ns: 'app' }), icon: <RiMessage3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.AGENT_CHAT, text: t('types.agent', { ns: 'app' }), icon: <RiRobot3Line className="mr-1 h-[14px] w-[14px]" /> },
+    { value: AppModeEnum.COMPLETION, text: t('types.completion', { ns: 'app' }), icon: <RiFile4Line className="mr-1 h-[14px] w-[14px]" /> },
   ]
 
   useEffect(() => {
@@ -189,7 +190,7 @@ const List = () => {
           <div className="flex items-center gap-2">
             <CheckboxWithLabel
               className="mr-2"
-              label={t('app.showMyCreatedAppsOnly')}
+              label={t('showMyCreatedAppsOnly', { ns: 'app' })}
               isChecked={isCreatedByMe}
               onChange={handleCreatedByMeChange}
             />
@@ -226,10 +227,10 @@ const List = () => {
           <div
             className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}
             role="region"
-            aria-label={t('app.newApp.dropDSLToCreateApp')}
+            aria-label={t('newApp.dropDSLToCreateApp', { ns: 'app' })}
           >
             <RiDragDropLine className="h-4 w-4" />
-            <span className="system-xs-regular">{t('app.newApp.dropDSLToCreateApp')}</span>
+            <span className="system-xs-regular">{t('newApp.dropDSLToCreateApp', { ns: 'app' })}</span>
           </div>
         )}
         {!systemFeatures.branding.enabled && (

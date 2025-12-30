@@ -41,7 +41,7 @@ const ResDownload: FC<IResDownloadProps> = ({
       {!isMobile && (
         <Button className={cn('space-x-1')}>
           <RiDownloadLine className="h-4 w-4" />
-          <span>{t('common.operation.download')}</span>
+          <span>{t('operation.download', { ns: 'common' })}</span>
         </Button>
       )}
     </CSVDownloader>

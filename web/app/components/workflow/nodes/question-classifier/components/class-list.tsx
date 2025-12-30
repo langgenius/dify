@@ -15,7 +15,7 @@ import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 // Layout constants
 const HANDLE_SIDE_WIDTH = 3 // Width offset for drag handle spacing
@@ -90,7 +90,7 @@ const ClassList: FC<Props> = ({
     <>
       <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
         <div className="flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary">
-          {t(`${i18nPrefix}.class`)}
+          {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
           {' '}
           <span className="text-text-destructive">*</span>
           {list.length > 0 && (
@@ -170,7 +170,7 @@ const ClassList: FC<Props> = ({
         <div className="mt-2">
           <AddButton
             onClick={handleAddClass}
-            text={t(`${i18nPrefix}.addClass`)}
+            text={t(`${i18nPrefix}.addClass`, { ns: 'workflow' })}
           />
         </div>
       )}

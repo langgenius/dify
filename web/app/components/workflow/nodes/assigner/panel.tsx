@@ -11,7 +11,7 @@ import VarList from './components/var-list'
 import { useHandleAddOperationItem } from './hooks'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.assigner'
+const i18nPrefix = 'nodes.assigner'
 
 const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
   id,
@@ -40,7 +40,7 @@ const Panel: FC<NodePanelProps<AssignerNodeType>> = ({
     <div className="flex flex-col items-start self-stretch py-2">
       <div className="flex w-full flex-col items-start justify-center gap-1 self-stretch px-4 py-2">
         <div className="flex items-start gap-2 self-stretch">
-          <div className="system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.variables`)}</div>
+          <div className="system-sm-semibold-uppercase flex grow flex-col items-start justify-center text-text-secondary">{t(`${i18nPrefix}.variables`, { ns: 'workflow' })}</div>
           <ActionButton onClick={handleAddOperation}>
             <RiAddLine className="h-4 w-4 shrink-0 text-text-tertiary" />
           </ActionButton>

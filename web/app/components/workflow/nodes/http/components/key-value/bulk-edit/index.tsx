@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { LayoutGrid02 } from '@/app/components/base/icons/src/vender/line/layout'
 import TextEditor from '@/app/components/workflow/nodes/_base/components/editor/text-editor'
 
-const i18nPrefix = 'workflow.nodes.http'
+const i18nPrefix = 'nodes.http'
 
 type Props = {
   value: string
@@ -39,7 +39,7 @@ const BulkEdit: FC<Props> = ({
     <div>
       <TextEditor
         isInNode
-        title={<div className="uppercase">{t(`${i18nPrefix}.bulkEdit`)}</div>}
+        title={<div className="uppercase">{t(`${i18nPrefix}.bulkEdit`, { ns: 'workflow' })}</div>}
         value={tempValue}
         onChange={handleChange}
         onBlur={handleBlur}
@@ -50,7 +50,7 @@ const BulkEdit: FC<Props> = ({
               onClick={handleSwitchToKeyValueEdit}
             >
               <LayoutGrid02 className="h-3 w-3 text-gray-500" />
-              <div className="text-xs font-normal leading-[18px] text-gray-500">{t(`${i18nPrefix}.keyValueEdit`)}</div>
+              <div className="text-xs font-normal leading-[18px] text-gray-500">{t(`${i18nPrefix}.keyValueEdit`, { ns: 'workflow' })}</div>
             </div>
             <div className="ml-3 mr-1.5 h-3 w-px bg-gray-200"></div>
           </div>

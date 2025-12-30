@@ -168,7 +168,10 @@ describe('RetrievalChangeTip', () => {
 })
 
 describe('RetrievalSection', () => {
-  const t = (key: string) => key
+  const t = (key: string, options?: { ns?: string }) => {
+    const prefix = options?.ns ? `${options.ns}.` : ''
+    return `${prefix}${key}`
+  }
   const rowClass = 'row'
   const labelClass = 'label'
 

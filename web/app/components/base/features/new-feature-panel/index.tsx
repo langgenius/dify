@@ -60,8 +60,8 @@ const NewFeaturePanel = ({
         {/* header */}
         <div className="flex shrink-0 justify-between p-4 pb-3">
           <div>
-            <div className="system-xl-semibold text-text-primary">{t('workflow.common.features')}</div>
-            <div className="body-xs-regular text-text-tertiary">{t('workflow.common.featuresDescription')}</div>
+            <div className="system-xl-semibold text-text-primary">{t('common.features', { ns: 'workflow' })}</div>
+            <div className="body-xs-regular text-text-tertiary">{t('common.featuresDescription', { ns: 'workflow' })}</div>
           </div>
           <div className="h-8 w-8 cursor-pointer p-2" onClick={onClose}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
         </div>
@@ -75,14 +75,14 @@ const NewFeaturePanel = ({
                   <RiInformation2Fill className="h-5 w-5 text-text-accent" />
                 </div>
                 <div className="system-xs-medium p-1 text-text-primary">
-                  <span>{isChatMode ? t('workflow.common.fileUploadTip') : t('workflow.common.ImageUploadLegacyTip')}</span>
+                  <span>{isChatMode ? t('common.fileUploadTip', { ns: 'workflow' }) : t('common.ImageUploadLegacyTip', { ns: 'workflow' })}</span>
                   <a
                     className="text-text-accent"
                     href={docLink('/guides/workflow/bulletin')}
                     target="_blank"
                     rel="noopener noreferrer"
                   >
-                    {t('workflow.common.featuresDocLink')}
+                    {t('common.featuresDocLink', { ns: 'workflow' })}
                   </a>
                 </div>
               </div>

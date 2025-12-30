@@ -23,8 +23,8 @@ const Tab: FC<Props> = ({
   return (
     <TabHeader
       items={[
-        { id: TabType.settings, name: t('workflow.debug.settingsTab').toLocaleUpperCase() },
-        { id: TabType.lastRun, name: t('workflow.debug.lastRunTab').toLocaleUpperCase() },
+        { id: TabType.settings, name: t('debug.settingsTab', { ns: 'workflow' }).toLocaleUpperCase() },
+        { id: TabType.lastRun, name: t('debug.lastRunTab', { ns: 'workflow' }).toLocaleUpperCase() },
       ]}
       itemClassName="ml-0"
       value={value}

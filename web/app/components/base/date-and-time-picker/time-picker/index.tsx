@@ -195,7 +195,7 @@ const TimePicker = ({
 
   const placeholderDate = isOpen && isDayjsObject(selectedTime)
     ? selectedTime.format(timeFormat)
-    : (placeholder || t('time.defaultPlaceholder'))
+    : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
 
   const inputElem = (
     <input
@@ -243,7 +243,7 @@ const TimePicker = ({
                     (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block',
                   )}
                   role="button"
-                  aria-label={t('common.operation.clear')}
+                  aria-label={t('operation.clear', { ns: 'common' })}
                   onClick={handleClear}
                 />
               </div>

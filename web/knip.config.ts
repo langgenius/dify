@@ -76,7 +76,7 @@ const config: KnipConfig = {
     // Browser initialization (runs on client startup)
     'app/components/browser-initializer.tsx!',
     'app/components/sentry-initializer.tsx!',
-    'app/components/swr-initializer.tsx!',
+    'app/components/app-initializer.tsx!',
 
     // i18n initialization (server and client)
     'app/components/i18n.tsx!',
@@ -168,7 +168,7 @@ const config: KnipConfig = {
     // ========================================================================
     // 🔒 Utility scripts (not part of application runtime)
     // ========================================================================
-    // These scripts are run manually (e.g., pnpm gen-icons, pnpm check-i18n)
+    // These scripts are run manually (e.g., pnpm gen-icons, pnpm i18n:check)
     // and are not imported by the application code.
     'scripts/**',
     'bin/**',
@@ -204,7 +204,6 @@ const config: KnipConfig = {
     // ========================================================================
     'bing-translate-api',
     'uglify-js',
-    'magicast',
   ],
 
   // ============================================================================

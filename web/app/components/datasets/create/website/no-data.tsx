@@ -8,7 +8,7 @@ import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WAT
 import { DataSourceProvider } from '@/models/common'
 import s from './index.module.css'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   onConfig: () => void
@@ -29,22 +29,22 @@ const NoData: FC<Props> = ({
     [DataSourceProvider.jinaReader]: ENABLE_WEBSITE_JINAREADER
       ? {
           emoji: <span className={s.jinaLogo} />,
-          title: t(`${I18N_PREFIX}.jinaReaderNotConfigured`),
-          description: t(`${I18N_PREFIX}.jinaReaderNotConfiguredDescription`),
+          title: t(`${I18N_PREFIX}.jinaReaderNotConfigured`, { ns: 'datasetCreation' }),
+          description: t(`${I18N_PREFIX}.jinaReaderNotConfiguredDescription`, { ns: 'datasetCreation' }),
         }
       : null,
     [DataSourceProvider.fireCrawl]: ENABLE_WEBSITE_FIRECRAWL
       ? {
           emoji: '🔥',
-          title: t(`${I18N_PREFIX}.fireCrawlNotConfigured`),
-          description: t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`),
+          title: t(`${I18N_PREFIX}.fireCrawlNotConfigured`, { ns: 'datasetCreation' }),
+          description: t(`${I18N_PREFIX}.fireCrawlNotConfiguredDescription`, { ns: 'datasetCreation' }),
         }
       : null,
     [DataSourceProvider.waterCrawl]: ENABLE_WEBSITE_WATERCRAWL
       ? {
           emoji: '💧',
-          title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`),
-          description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`),
+          title: t(`${I18N_PREFIX}.waterCrawlNotConfigured`, { ns: 'datasetCreation' }),
+          description: t(`${I18N_PREFIX}.waterCrawlNotConfiguredDescription`, { ns: 'datasetCreation' }),
         }
       : null,
   }
@@ -72,7 +72,7 @@ const NoData: FC<Props> = ({
           </div>
         </div>
         <Button variant="primary" onClick={onConfig}>
-          {t(`${I18N_PREFIX}.configure`)}
+          {t(`${I18N_PREFIX}.configure`, { ns: 'datasetCreation' })}
         </Button>
       </div>
     </>

@@ -4,13 +4,16 @@ import RemoveAnnotationConfirmModal from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
       const translations: Record<string, string> = {
-        'appDebug.feature.annotation.removeConfirm': 'Remove annotation?',
-        'common.operation.confirm': 'Confirm',
-        'common.operation.cancel': 'Cancel',
+        'feature.annotation.removeConfirm': 'Remove annotation?',
+        'operation.confirm': 'Confirm',
+        'operation.cancel': 'Cancel',
       }
-      return translations[key] || key
+      if (translations[key])
+        return translations[key]
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

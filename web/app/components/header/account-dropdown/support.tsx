@@ -35,7 +35,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
             }
             >
               <RiQuestionLine className="size-4 shrink-0 text-text-tertiary" />
-              <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('common.userProfile.support')}</div>
+              <div className="system-md-regular grow px-1 text-left text-text-secondary">{t('userProfile.support', { ns: 'common' })}</div>
               <RiArrowRightSLine className="size-[14px] shrink-0 text-text-tertiary" />
             </MenuButton>
             <Transition
@@ -67,7 +67,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                               }}
                             >
                               <RiChatSmile2Line className="size-4 shrink-0 text-text-tertiary" />
-                              <div className="system-md-regular grow px-1 text-text-secondary">{t('common.userProfile.contactUs')}</div>
+                              <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.contactUs', { ns: 'common' })}</div>
                             </button>
                           )
                         : (
@@ -78,7 +78,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                               rel="noopener noreferrer"
                             >
                               <RiMailSendLine className="size-4 shrink-0 text-text-tertiary" />
-                              <div className="system-md-regular grow px-1 text-text-secondary">{t('common.userProfile.emailSupport')}</div>
+                              <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.emailSupport', { ns: 'common' })}</div>
                               <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
                             </a>
                           )}
@@ -92,7 +92,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                       rel="noopener noreferrer"
                     >
                       <RiDiscussLine className="size-4 shrink-0 text-text-tertiary" />
-                      <div className="system-md-regular grow px-1 text-text-secondary">{t('common.userProfile.forum')}</div>
+                      <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.forum', { ns: 'common' })}</div>
                       <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
                     </Link>
                   </MenuItem>
@@ -104,7 +104,7 @@ export default function Support({ closeAccountDropdown }: SupportProps) {
                       rel="noopener noreferrer"
                     >
                       <RiDiscordLine className="size-4 shrink-0 text-text-tertiary" />
-                      <div className="system-md-regular grow px-1 text-text-secondary">{t('common.userProfile.community')}</div>
+                      <div className="system-md-regular grow px-1 text-text-secondary">{t('userProfile.community', { ns: 'common' })}</div>
                       <RiArrowRightUpLine className="size-[14px] shrink-0 text-text-tertiary" />
                     </Link>
                   </MenuItem>

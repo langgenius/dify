@@ -67,8 +67,8 @@ const DisplayContent = (props: DisplayContentProps) => {
         )}
         <SegmentedControl
           options={[
-            { value: ViewMode.Code, text: t('workflow.nodes.templateTransform.code'), Icon: RiBracesLine },
-            { value: ViewMode.Preview, text: t('workflow.common.preview'), Icon: RiEyeLine },
+            { value: ViewMode.Code, text: t('nodes.templateTransform.code', { ns: 'workflow' }), Icon: RiBracesLine },
+            { value: ViewMode.Preview, text: t('common.preview', { ns: 'workflow' }), Icon: RiEyeLine },
           ]}
           value={viewMode}
           onChange={setViewMode}

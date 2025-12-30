@@ -86,6 +86,7 @@ export enum MetadataFilteringVariableType {
 export type MetadataFilteringCondition = {
   id: string
   name: string
+  metadata_id?: string
   comparison_operator: ComparisonOperator
   value?: string | number
 }

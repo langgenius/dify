@@ -24,18 +24,18 @@ const DeleteConfirmModal: FC<DeleteConfirmModalProps> = ({
     <Modal className="p-0" isShow={isOpen} onClose={onClose}>
       <div className="flex flex-col gap-y-2 p-6 pb-4 ">
         <div className="title-2xl-semi-bold text-text-primary">
-          {`${t('common.operation.delete')} ${versionInfo.marked_name || t('workflow.versionHistory.defaultName')}`}
+          {`${t('operation.delete', { ns: 'common' })} ${versionInfo.marked_name || t('versionHistory.defaultName', { ns: 'workflow' })}`}
         </div>
         <p className="system-md-regular text-text-secondary">
-          {t('workflow.versionHistory.deletionTip')}
+          {t('versionHistory.deletionTip', { ns: 'workflow' })}
         </p>
       </div>
       <div className="flex items-center justify-end gap-x-2 p-6">
         <Button onClick={onClose}>
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button variant="warning" onClick={onDelete.bind(null, versionInfo.id)}>
-          {t('common.operation.delete')}
+          {t('operation.delete', { ns: 'common' })}
         </Button>
       </div>
     </Modal>

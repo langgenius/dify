@@ -78,12 +78,12 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
           ? 0
           : total
         : childChunks.length
-      return `${text} ${t('datasetDocuments.segment.childChunks', { count })}`
+      return `${text} ${t('segment.childChunks', { ns: 'datasetDocuments', count })}`
     }
     else {
       const text = !total ? '--' : formatNumber(total)
       const count = text === '--' ? 0 : total
-      return `${count} ${t('datasetDocuments.segment.searchResults', { count })}`
+      return `${count} ${t('segment.searchResults', { ns: 'datasetDocuments', count })}`
     }
   }, [isFullDocMode, total, childChunks.length, inputValue])
 
@@ -133,7 +133,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
             }}
             disabled={isLoading}
           >
-            {t('common.operation.add')}
+            {t('operation.add', { ns: 'common' })}
           </button>
         </div>
         {isFullDocMode
@@ -167,7 +167,7 @@ const ChildSegmentList: FC<IChildSegmentCardProps> = ({
                         return (
                           <EditSlice
                             key={childChunk.id}
-                            label={`C-${childChunk.position}${edited ? ` · ${t('datasetDocuments.segment.edited')}` : ''}`}
+                            label={`C-${childChunk.position}${edited ? ` · ${t('segment.edited', { ns: 'datasetDocuments' })}` : ''}`}
                             text={childChunk.content}
                             onDelete={() => onDelete?.(childChunk.segment_id, childChunk.id)}
                             className="child-chunk"

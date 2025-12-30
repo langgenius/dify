@@ -41,10 +41,13 @@ vi.mock('react-i18next', async (importOriginal) => {
   return {
     ...actual,
     useTranslation: () => ({
-      t: (key: string, options?: { returnObjects?: boolean }) => {
+      t: (key: string, options?: { returnObjects?: boolean, ns?: string }) => {
         if (options?.returnObjects)
           return mockTranslations[key] ?? []
-        return mockTranslations[key] ?? key
+        if (mockTranslations[key])
+          return mockTranslations[key]
+        const prefix = options?.ns ? `${options.ns}.` : ''
+        return `${prefix}${key}`
       },
     }),
     Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,

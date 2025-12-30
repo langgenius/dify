@@ -32,11 +32,11 @@ const EmptyDatasetCreationModal = ({
 
   const submit = async () => {
     if (!inputValue) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.modal.nameNotEmpty') })
+      notify({ type: 'error', message: t('stepOne.modal.nameNotEmpty', { ns: 'datasetCreation' }) })
       return
     }
     if (inputValue.length > 40) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.modal.nameLengthInvalid') })
+      notify({ type: 'error', message: t('stepOne.modal.nameLengthInvalid', { ns: 'datasetCreation' }) })
       return
     }
     try {
@@ -50,7 +50,7 @@ const EmptyDatasetCreationModal = ({
       router.push(`/datasets/${dataset.id}/documents`)
     }
     catch {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.modal.failed') })
+      notify({ type: 'error', message: t('stepOne.modal.failed', { ns: 'datasetCreation' }) })
     }
   }
 
@@ -61,17 +61,17 @@ const EmptyDatasetCreationModal = ({
       className={cn(s.modal, '!max-w-[520px]', 'px-8')}
     >
       <div className={s.modalHeader}>
-        <div className={s.title}>{t('datasetCreation.stepOne.modal.title')}</div>
+        <div className={s.title}>{t('stepOne.modal.title', { ns: 'datasetCreation' })}</div>
         <span className={s.close} onClick={onHide} />
       </div>
-      <div className={s.tip}>{t('datasetCreation.stepOne.modal.tip')}</div>
+      <div className={s.tip}>{t('stepOne.modal.tip', { ns: 'datasetCreation' })}</div>
       <div className={s.form}>
-        <div className={s.label}>{t('datasetCreation.stepOne.modal.input')}</div>
-        <Input value={inputValue} placeholder={t('datasetCreation.stepOne.modal.placeholder') || ''} onChange={e => setInputValue(e.target.value)} />
+        <div className={s.label}>{t('stepOne.modal.input', { ns: 'datasetCreation' })}</div>
+        <Input value={inputValue} placeholder={t('stepOne.modal.placeholder', { ns: 'datasetCreation' }) || ''} onChange={e => setInputValue(e.target.value)} />
       </div>
       <div className="flex flex-row-reverse">
-        <Button className="ml-2 w-24" variant="primary" onClick={submit}>{t('datasetCreation.stepOne.modal.confirmButton')}</Button>
-        <Button className="w-24" onClick={onHide}>{t('datasetCreation.stepOne.modal.cancelButton')}</Button>
+        <Button className="ml-2 w-24" variant="primary" onClick={submit}>{t('stepOne.modal.confirmButton', { ns: 'datasetCreation' })}</Button>
+        <Button className="w-24" onClick={onHide}>{t('stepOne.modal.cancelButton', { ns: 'datasetCreation' })}</Button>
       </div>
     </Modal>
   )

@@ -50,7 +50,7 @@ const CSVUploader: FC<Props> = ({
       return
     const files = [...e.dataTransfer.files]
     if (files.length > 1) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.count') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.count', { ns: 'datasetCreation' }) })
       return
     }
     updateFile(files[0])
@@ -98,8 +98,8 @@ const CSVUploader: FC<Props> = ({
             <div className="flex w-full items-center justify-center space-x-2">
               <CSVIcon className="shrink-0" />
               <div className="text-text-tertiary">
-                {t('appAnnotation.batchModal.csvUploadTitle')}
-                <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('appAnnotation.batchModal.browse')}</span>
+                {t('batchModal.csvUploadTitle', { ns: 'appAnnotation' })}
+                <span className="cursor-pointer text-text-accent" onClick={selectHandle}>{t('batchModal.browse', { ns: 'appAnnotation' })}</span>
               </div>
             </div>
             {dragging && <div ref={dragRef} className="absolute left-0 top-0 h-full w-full" />}
@@ -113,7 +113,7 @@ const CSVUploader: FC<Props> = ({
               <span className="shrink-0 text-text-tertiary">.csv</span>
             </div>
             <div className="hidden items-center group-hover:flex">
-              <Button variant="secondary" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.change')}</Button>
+              <Button variant="secondary" onClick={selectHandle}>{t('stepOne.uploader.change', { ns: 'datasetCreation' })}</Button>
               <div className="mx-2 h-4 w-px bg-divider-regular" />
               <div className="cursor-pointer p-2" onClick={removeFile} data-testid="remove-file-button">
                 <RiDeleteBinLine className="h-4 w-4 text-text-tertiary" />

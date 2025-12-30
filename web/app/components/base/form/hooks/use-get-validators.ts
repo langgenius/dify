@@ -33,15 +33,15 @@ export const useGetValidators = () => {
       mergedValidators = {
         onMount: ({ value }: any) => {
           if (!value)
-            return t('common.errorMsg.fieldRequired', { field: memorizedLabel || name })
+            return t('errorMsg.fieldRequired', { ns: 'common', field: memorizedLabel || name })
         },
         onChange: ({ value }: any) => {
           if (!value)
-            return t('common.errorMsg.fieldRequired', { field: memorizedLabel || name })
+            return t('errorMsg.fieldRequired', { ns: 'common', field: memorizedLabel || name })
         },
         onBlur: ({ value }: any) => {
           if (!value)
-            return t('common.errorMsg.fieldRequired', { field: memorizedLabel })
+            return t('errorMsg.fieldRequired', { ns: 'common', field: memorizedLabel })
         },
       }
     }

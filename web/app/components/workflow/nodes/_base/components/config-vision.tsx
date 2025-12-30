@@ -13,7 +13,7 @@ import { VarType } from '@/app/components/workflow/types'
 import { Resolution } from '@/types/app'
 import VarReferencePicker from './variable/var-reference-picker'
 
-const i18nPrefix = 'workflow.nodes.llm'
+const i18nPrefix = 'nodes.llm'
 
 type Props = {
   isVisionModel: boolean
@@ -58,11 +58,11 @@ const ConfigVision: FC<Props> = ({
 
   return (
     <Field
-      title={t(`${i18nPrefix}.vision`)}
-      tooltip={t('appDebug.vision.description')!}
+      title={t(`${i18nPrefix}.vision`, { ns: 'workflow' })}
+      tooltip={t('vision.description', { ns: 'appDebug' })!}
       operations={(
         <Tooltip
-          popupContent={t('appDebug.vision.onlySupportVisionModelTip')!}
+          popupContent={t('vision.onlySupportVisionModelTip', { ns: 'appDebug' })!}
           disabled={isVisionModel}
         >
           <Switch disabled={readOnly || !isVisionModel} size="md" defaultValue={!isVisionModel ? false : enabled} onChange={onEnabledChange} />

@@ -65,6 +65,7 @@ const VarItem: FC<ItemProps> = ({
             <RiEditLine className="h-4 w-4 text-text-tertiary" />
           </div>
           <div
+            data-testid="var-item-delete-btn"
             className="flex h-6 w-6 cursor-pointer items-center  justify-center text-text-tertiary hover:text-text-destructive"
             onClick={onRemove}
             onMouseOver={() => setIsDeleting(true)}

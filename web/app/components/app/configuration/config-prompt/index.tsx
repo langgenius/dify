@@ -162,7 +162,7 @@ const Prompt: FC<IPromptProps> = ({
           className="mt-3 w-full"
         >
           <RiAddLine className="mr-2 h-4 w-4" />
-          <div>{t('appDebug.promptMode.operation.addMessage')}</div>
+          <div>{t('promptMode.operation.addMessage', { ns: 'appDebug' })}</div>
         </Button>
       )}
     </div>

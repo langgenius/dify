@@ -6,7 +6,7 @@ import { useTranslation } from 'react-i18next'
 import InfoPanel from '@/app/components/workflow/nodes/_base/components/info-panel'
 import { NodeSourceHandle } from '../../node-handle'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
   const { t } = useTranslation()
@@ -24,7 +24,7 @@ const Node: FC<NodeProps<QuestionClassifierNodeType>> = (props) => {
                 className="relative"
               >
                 <InfoPanel
-                  title={`${t(`${i18nPrefix}.class`)} ${index + 1}`}
+                  title={`${t(`${i18nPrefix}.class`, { ns: 'workflow' })} ${index + 1}`}
                   content=""
                 />
                 <NodeSourceHandle

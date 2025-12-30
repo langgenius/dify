@@ -49,7 +49,7 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
           {inModelList
             ? (
                 <Tooltip
-                  popupContent={t('workflow.nodes.agent.modelSelectorTooltips.deprecated')}
+                  popupContent={t('nodes.agent.modelSelectorTooltips.deprecated', { ns: 'workflow' })}
                   asChild={false}
                   needsDelay={false}
                 >
@@ -60,9 +60,9 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                 ? (
                     <Tooltip
                       popupContent={renderTooltipContent(
-                        t('workflow.nodes.agent.modelNotSupport.title'),
-                        t('workflow.nodes.agent.modelNotSupport.desc'),
-                        t('workflow.nodes.agent.linkToPlugin'),
+                        t('nodes.agent.modelNotSupport.title', { ns: 'workflow' }),
+                        t('nodes.agent.modelNotSupport.desc', { ns: 'workflow' }),
+                        t('nodes.agent.linkToPlugin', { ns: 'workflow' }),
                         '/plugins',
                       )}
                       asChild={false}
@@ -73,8 +73,8 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
                 : (
                     <SwitchPluginVersion
                       tooltip={renderTooltipContent(
-                        t('workflow.nodes.agent.modelNotSupport.title'),
-                        t('workflow.nodes.agent.modelNotSupport.descForVersionSwitch'),
+                        t('nodes.agent.modelNotSupport.title', { ns: 'workflow' }),
+                        t('nodes.agent.modelNotSupport.descForVersionSwitch', { ns: 'workflow' }),
                       )}
                       uniqueIdentifier={pluginList?.plugins.find(plugin => plugin.name === pluginInfo.name)?.plugin_unique_identifier ?? ''}
                     />
@@ -84,9 +84,9 @@ const StatusIndicators = ({ needsConfiguration, modelProvider, inModelList, disa
       {!modelProvider && !pluginInfo && (
         <Tooltip
           popupContent={renderTooltipContent(
-            t('workflow.nodes.agent.modelNotInMarketplace.title'),
-            t('workflow.nodes.agent.modelNotInMarketplace.desc'),
-            t('workflow.nodes.agent.linkToPlugin'),
+            t('nodes.agent.modelNotInMarketplace.title', { ns: 'workflow' }),
+            t('nodes.agent.modelNotInMarketplace.desc', { ns: 'workflow' }),
+            t('nodes.agent.linkToPlugin', { ns: 'workflow' }),
             '/plugins',
           )}
           asChild={false}

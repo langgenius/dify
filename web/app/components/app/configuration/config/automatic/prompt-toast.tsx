@@ -38,7 +38,7 @@ const PromptToast = ({
       <div className="my-3 flex h-4 items-center justify-between pr-3">
         <div className="flex items-center space-x-1">
           <RiSparklingFill className="size-3.5 text-components-input-border-active-prompt-1" />
-          <span className={cn(s.optimizationNoteText, 'system-xs-semibold-uppercase')}>{t('appDebug.generate.optimizationNote')}</span>
+          <span className={cn(s.optimizationNoteText, 'system-xs-semibold-uppercase')}>{t('generate.optimizationNote', { ns: 'appDebug' })}</span>
         </div>
         <RiArrowDownSLine className={cn('size-4 cursor-pointer text-text-tertiary', isFold && 'rotate-[-90deg]')} onClick={toggleFold} />
       </div>

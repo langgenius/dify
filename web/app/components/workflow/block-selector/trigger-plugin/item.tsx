@@ -61,10 +61,10 @@ const TriggerPluginItem: FC<Props> = ({
       return payload.author
 
     if (payload.type === CollectionType.custom)
-      return t('workflow.tabs.customTool')
+      return t('tabs.customTool', { ns: 'workflow' })
 
     if (payload.type === CollectionType.workflow)
-      return t('workflow.tabs.workflowTool')
+      return t('tabs.workflowTool', { ns: 'workflow' })
 
     return payload.author || ''
   }, [payload.author, payload.type, t])

@@ -86,7 +86,7 @@ const useEditDatasetMetadata = ({
       await toggleBuiltInStatus(enable)
       setBuiltInEnabled(enable)
       Toast.notify({
-        message: t('common.actionMsg.modifiedSuccessfully'),
+        message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }),
         type: 'success',
       })
     },

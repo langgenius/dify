@@ -65,7 +65,7 @@ const DataSourceNotion: FC<Props> = ({
       else if (data.data === 'internal') {
         Toast.notify({
           type: 'info',
-          message: t('common.dataSource.notion.integratedAlert'),
+          message: t('dataSource.notion.integratedAlert', { ns: 'common' }),
         })
       }
     }

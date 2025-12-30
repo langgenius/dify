@@ -39,7 +39,7 @@ const Operator = ({
         text: (
           <div className="flex items-center">
             <RiHome9Line className="mr-2 h-4 w-4 text-text-tertiary" />
-            <div className="system-sm-semibold text-text-secondary">{t('plugin.auth.setDefault')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('auth.setDefault', { ns: 'plugin' })}</div>
           </div>
         ),
       },
@@ -51,7 +51,7 @@ const Operator = ({
                 text: (
                   <div className="flex items-center">
                     <RiEditLine className="mr-2 h-4 w-4 text-text-tertiary" />
-                    <div className="system-sm-semibold text-text-secondary">{t('common.operation.rename')}</div>
+                    <div className="system-sm-semibold text-text-secondary">{t('operation.rename', { ns: 'common' })}</div>
                   </div>
                 ),
               },
@@ -66,7 +66,7 @@ const Operator = ({
                 text: (
                   <div className="flex items-center">
                     <RiEqualizer2Line className="mr-2 h-4 w-4 text-text-tertiary" />
-                    <div className="system-sm-semibold text-text-secondary">{t('common.operation.edit')}</div>
+                    <div className="system-sm-semibold text-text-secondary">{t('operation.edit', { ns: 'common' })}</div>
                   </div>
                 ),
               },
@@ -81,7 +81,7 @@ const Operator = ({
           text: (
             <div className="flex items-center">
               <RiStickyNoteAddLine className="mr-2 h-4 w-4 text-text-tertiary" />
-              <div className="system-sm-semibold mb-1 text-text-secondary">{t('common.dataSource.notion.changeAuthorizedPages')}</div>
+              <div className="system-sm-semibold mb-1 text-text-secondary">{t('dataSource.notion.changeAuthorizedPages', { ns: 'common' })}</div>
             </div>
           ),
         },
@@ -99,7 +99,7 @@ const Operator = ({
           <div className="flex items-center">
             <RiDeleteBinLine className="mr-2 h-4 w-4 text-text-tertiary" />
             <div className="system-sm-semibold text-text-secondary">
-              {t('common.operation.remove')}
+              {t('operation.remove', { ns: 'common' })}
             </div>
           </div>
         ),

@@ -62,7 +62,7 @@ const Card = ({
               <ApiAggregate className="size-4 text-text-primary-on-surface" />
             </div>
             <div className="system-sm-semibold grow truncate text-text-secondary">
-              {t('dataset.serviceApi.card.title')}
+              {t('serviceApi.card.title', { ns: 'dataset' })}
             </div>
           </div>
           <div className="flex items-center gap-x-1">
@@ -77,8 +77,8 @@ const Card = ({
               )}
             >
               {apiEnabled
-                ? t('dataset.serviceApi.enabled')
-                : t('dataset.serviceApi.disabled')}
+                ? t('serviceApi.enabled', { ns: 'dataset' })
+                : t('serviceApi.disabled', { ns: 'dataset' })}
             </div>
           </div>
           <Switch
@@ -89,7 +89,7 @@ const Card = ({
         </div>
         <div className="flex flex-col">
           <div className="system-xs-regular leading-6 text-text-tertiary">
-            {t('dataset.serviceApi.card.endpoint')}
+            {t('serviceApi.card.endpoint', { ns: 'dataset' })}
           </div>
           <div className="flex h-8 items-center gap-0.5 rounded-lg bg-components-input-bg-normal p-1 pl-2">
             <div className="flex h-4 min-w-0 flex-1 items-start justify-start gap-2 px-1">
@@ -113,7 +113,7 @@ const Card = ({
         >
           <RiKey2Line className="size-3.5 shrink-0" />
           <span className="system-xs-medium px-[3px]">
-            {t('dataset.serviceApi.card.apiKey')}
+            {t('serviceApi.card.apiKey', { ns: 'dataset' })}
           </span>
         </Button>
         <Link
@@ -128,7 +128,7 @@ const Card = ({
           >
             <RiBookOpenLine className="size-3.5 shrink-0" />
             <span className="system-xs-medium px-[3px]">
-              {t('dataset.serviceApi.card.apiReference')}
+              {t('serviceApi.card.apiReference', { ns: 'dataset' })}
             </span>
           </Button>
         </Link>

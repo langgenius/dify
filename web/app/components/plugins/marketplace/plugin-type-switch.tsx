@@ -41,42 +41,42 @@ const PluginTypeSwitch = ({
   const options = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: t('plugin.category.all'),
+      text: t('category.all', { ns: 'plugin' }),
       icon: null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
-      text: t('plugin.category.models'),
+      text: t('category.models', { ns: 'plugin' }),
       icon: <RiBrain2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
-      text: t('plugin.category.tools'),
+      text: t('category.tools', { ns: 'plugin' }),
       icon: <RiHammerLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t('plugin.category.datasources'),
+      text: t('category.datasources', { ns: 'plugin' }),
       icon: <RiDatabase2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.trigger,
-      text: t('plugin.category.triggers'),
+      text: t('category.triggers', { ns: 'plugin' }),
       icon: <TriggerIcon className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t('plugin.category.agents'),
+      text: t('category.agents', { ns: 'plugin' }),
       icon: <RiSpeakAiLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
-      text: t('plugin.category.extensions'),
+      text: t('category.extensions', { ns: 'plugin' }),
       icon: <RiPuzzle2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      text: t('plugin.category.bundles'),
+      text: t('category.bundles', { ns: 'plugin' }),
       icon: <RiArchive2Line className="mr-1.5 h-4 w-4" />,
     },
   ]
@@ -84,12 +84,14 @@ const PluginTypeSwitch = ({
   const handlePopState = useCallback(() => {
     if (!showSearchParams)
       return
+    // nuqs handles popstate automatically
     const url = new URL(window.location.href)
     const category = url.searchParams.get('category') || PLUGIN_TYPE_SEARCH_MAP.all
     handleActivePluginTypeChange(category)
   }, [showSearchParams, handleActivePluginTypeChange])
 
   useEffect(() => {
+    // nuqs manages popstate internally, but we keep this for URL sync
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)

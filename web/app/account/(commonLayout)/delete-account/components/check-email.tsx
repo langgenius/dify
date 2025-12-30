@@ -31,22 +31,22 @@ export default function CheckEmail(props: DeleteAccountProps) {
   return (
     <>
       <div className="body-md-medium py-1 text-text-destructive">
-        {t('common.account.deleteTip')}
+        {t('account.deleteTip', { ns: 'common' })}
       </div>
       <div className="body-md-regular pb-2 pt-1 text-text-secondary">
-        {t('common.account.deletePrivacyLinkTip')}
-        <Link href="https://dify.ai/privacy" className="text-text-accent">{t('common.account.deletePrivacyLink')}</Link>
+        {t('account.deletePrivacyLinkTip', { ns: 'common' })}
+        <Link href="https://dify.ai/privacy" className="text-text-accent">{t('account.deletePrivacyLink', { ns: 'common' })}</Link>
       </div>
-      <label className="system-sm-semibold mb-1 mt-3 flex h-6 items-center text-text-secondary">{t('common.account.deleteLabel')}</label>
+      <label className="system-sm-semibold mb-1 mt-3 flex h-6 items-center text-text-secondary">{t('account.deleteLabel', { ns: 'common' })}</label>
       <Input
-        placeholder={t('common.account.deletePlaceholder') as string}
+        placeholder={t('account.deletePlaceholder', { ns: 'common' }) as string}
         onChange={(e) => {
           setUserInputEmail(e.target.value)
         }}
       />
       <div className="mt-3 flex w-full flex-col gap-2">
-        <Button className="w-full" disabled={userInputEmail !== userProfile.email || isSendingEmail} loading={isSendingEmail} variant="primary" onClick={handleConfirm}>{t('common.account.sendVerificationButton')}</Button>
-        <Button className="w-full" onClick={props.onCancel}>{t('common.operation.cancel')}</Button>
+        <Button className="w-full" disabled={userInputEmail !== userProfile.email || isSendingEmail} loading={isSendingEmail} variant="primary" onClick={handleConfirm}>{t('account.sendVerificationButton', { ns: 'common' })}</Button>
+        <Button className="w-full" onClick={props.onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
       </div>
     </>
   )

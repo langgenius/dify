@@ -110,7 +110,7 @@ const Question: FC<QuestionProps> = ({
           >
             <ActionButton onClick={() => {
               copy(content)
-              Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+              Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
             }}
             >
               <RiClipboardLine className="h-4 w-4" />
@@ -157,8 +157,8 @@ const Question: FC<QuestionProps> = ({
                     />
                   </div>
                   <div className="flex justify-end gap-2">
-                    <Button variant="ghost" onClick={handleCancelEditing}>{t('common.operation.cancel')}</Button>
-                    <Button variant="primary" onClick={handleResend}>{t('common.chat.resend')}</Button>
+                    <Button variant="ghost" onClick={handleCancelEditing}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button variant="primary" onClick={handleResend}>{t('chat.resend', { ns: 'common' })}</Button>
                   </div>
                 </div>
               )}

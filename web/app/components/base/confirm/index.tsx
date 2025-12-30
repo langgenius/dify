@@ -43,8 +43,8 @@ function Confirm({
   const [isVisible, setIsVisible] = useState(isShow)
   const [isTitleTruncated, setIsTitleTruncated] = useState(false)
 
-  const confirmTxt = confirmText || `${t('common.operation.confirm')}`
-  const cancelTxt = cancelText || `${t('common.operation.cancel')}`
+  const confirmTxt = confirmText || `${t('operation.confirm', { ns: 'common' })}`
+  const cancelTxt = cancelText || `${t('operation.cancel', { ns: 'common' })}`
 
   useEffect(() => {
     const handleKeyDown = (event: KeyboardEvent) => {

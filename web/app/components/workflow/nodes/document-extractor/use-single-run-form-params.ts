@@ -5,7 +5,7 @@ import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputVarType } from '@/app/components/workflow/types'
 
-const i18nPrefix = 'workflow.nodes.docExtractor'
+const i18nPrefix = 'nodes.docExtractor'
 
 type Params = {
   id: string
@@ -34,7 +34,7 @@ const useSingleRunFormParams = ({
     return [
       {
         inputs: [{
-          label: t(`${i18nPrefix}.inputVar`)!,
+          label: t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })!,
           variable: 'files',
           type: InputVarType.multiFiles,
           required: true,

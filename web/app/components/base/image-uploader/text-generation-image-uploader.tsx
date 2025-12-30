@@ -55,7 +55,7 @@ const PasteImageLinkButton: FC<PasteImageLinkButtonProps> = ({
         `}
         >
           <Link03 className="mr-2 h-4 w-4" />
-          {t('common.imageUploader.pasteImageLink')}
+          {t('imageUploader.pasteImageLink', { ns: 'common' })}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-10">
@@ -105,7 +105,7 @@ const TextGenerationImageUploader: FC<TextGenerationImageUploaderProps> = ({
           `}
           >
             <ImagePlus className="mr-2 h-4 w-4" />
-            {t('common.imageUploader.uploadFromComputer')}
+            {t('imageUploader.uploadFromComputer', { ns: 'common' })}
           </div>
         )
       }

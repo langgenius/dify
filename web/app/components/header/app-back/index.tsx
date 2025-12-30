@@ -31,7 +31,7 @@ export default function AppBack({ curApp }: IAppBackProps) {
           ? <ArrowLeftIcon className="mr-1 h-[18px] w-[18px]" />
           : <Squares2X2Icon className="mr-1 h-[18px] w-[18px]" />
       }
-      {t('common.menus.apps')}
+      {t('menus.apps', { ns: 'common' })}
     </div>
   )
 }

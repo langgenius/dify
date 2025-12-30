@@ -16,8 +16,8 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => [mockTabValue, mockSetTab],
+vi.mock('nuqs', () => ({
+  useQueryState: () => [mockTabValue, mockSetTab],
 }))
 
 vi.mock('ahooks', async () => {

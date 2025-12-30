@@ -94,7 +94,7 @@ const AdvancedPromptInput: FC<Props> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
             return false
           }
         }
@@ -152,14 +152,14 @@ const AdvancedPromptInput: FC<Props> = ({
     >
       <div className="flex items-center pr-2">
         <RiErrorWarningFill className="mr-1 h-4 w-4 text-[#F79009]" />
-        <div className="text-[13px] font-medium leading-[18px] text-[#DC6803]">{t('appDebug.promptMode.contextMissing')}</div>
+        <div className="text-[13px] font-medium leading-[18px] text-[#DC6803]">{t('promptMode.contextMissing', { ns: 'appDebug' })}</div>
       </div>
       <Button
         size="small"
         variant="secondary-accent"
         onClick={onHideContextMissingTip}
       >
-        {t('common.operation.ok')}
+        {t('operation.ok', { ns: 'common' })}
       </Button>
     </div>
   )
@@ -178,12 +178,12 @@ const AdvancedPromptInput: FC<Props> = ({
                       <div className="flex items-center space-x-1">
 
                         <div className="text-sm font-semibold uppercase text-indigo-800">
-                          {t('appDebug.pageTitle.line1')}
+                          {t('pageTitle.line1', { ns: 'appDebug' })}
                         </div>
                         <Tooltip
                           popupContent={(
                             <div className="w-[180px]">
-                              {t('appDebug.promptTip')}
+                              {t('promptTip', { ns: 'appDebug' })}
                             </div>
                           )}
                         />

@@ -44,11 +44,11 @@ const Billing: FC = () => {
           disabled={isFetching}
         >
           <div className="flex flex-col gap-0.5 text-left">
-            <div className="system-md-semibold text-text-primary">{t('billing.viewBillingTitle')}</div>
-            <div className="system-sm-regular text-text-secondary">{t('billing.viewBillingDescription')}</div>
+            <div className="system-md-semibold text-text-primary">{t('viewBillingTitle', { ns: 'billing' })}</div>
+            <div className="system-sm-regular text-text-secondary">{t('viewBillingDescription', { ns: 'billing' })}</div>
           </div>
           <span className="inline-flex h-8 w-24 items-center justify-center gap-0.5 rounded-lg border-[0.5px] border-components-button-secondary-border bg-components-button-secondary-bg px-3 py-2 text-saas-dify-blue-accessible shadow-[0_1px_2px_rgba(9,9,11,0.05)] backdrop-blur-[5px]">
-            <span className="system-sm-medium leading-[1]">{t('billing.viewBillingAction')}</span>
+            <span className="system-sm-medium leading-[1]">{t('viewBillingAction', { ns: 'billing' })}</span>
             <RiArrowRightUpLine className="h-4 w-4" />
           </span>
         </button>

@@ -53,7 +53,7 @@ const PluginVersionPicker: FC<Props> = ({
   onSelect,
 }) => {
   const { t } = useTranslation()
-  const format = t('appLog.dateTimeFormat').split(' ')[0]
+  const format = t('dateTimeFormat', { ns: 'appLog' }).split(' ')[0]
   const { formatDate } = useTimestamp()
 
   const handleTriggerClick = () => {
@@ -92,7 +92,7 @@ const PluginVersionPicker: FC<Props> = ({
       <PortalToFollowElemContent className="z-[1000]">
         <div className="relative w-[209px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm">
           <div className="system-xs-medium-uppercase px-3 pb-0.5 pt-1 text-text-tertiary">
-            {t('plugin.detailPanel.switchVersion')}
+            {t('detailPanel.switchVersion', { ns: 'plugin' })}
           </div>
           <div className="relative">
             {res?.data.versions.map(version => (

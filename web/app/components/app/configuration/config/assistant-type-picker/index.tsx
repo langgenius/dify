@@ -97,11 +97,11 @@ const AssistantTypePicker: FC<Props> = ({
             <div className="mr-3 rounded-lg bg-gray-200 p-1 group-hover:bg-white">
               <Settings04 className="h-4 w-4 text-gray-600 group-hover:text-[#155EEF]" />
             </div>
-            <div className="text-sm font-medium leading-5 text-gray-900 group-hover:text-[#155EEF]">{t('appDebug.agent.setting.name')}</div>
+            <div className="text-sm font-medium leading-5 text-gray-900 group-hover:text-[#155EEF]">{t('agent.setting.name', { ns: 'appDebug' })}</div>
           </div>
           <ArrowUpRight className="h-4 w-4 text-gray-500 group-hover:text-[#155EEF]" />
         </div>
-        <div className="ml-9 text-xs font-normal leading-[18px] text-gray-500">{t('appDebug.agent.setting.description')}</div>
+        <div className="ml-9 text-xs font-normal leading-[18px] text-gray-500">{t('agent.setting.description', { ns: 'appDebug' })}</div>
       </div>
     </>
   )
@@ -119,19 +119,19 @@ const AssistantTypePicker: FC<Props> = ({
         <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)}>
           <div className={cn(open && 'bg-gray-50', 'flex h-8 cursor-pointer select-none items-center space-x-1 rounded-lg border border-black/5 px-3 text-indigo-600')}>
             {isAgent ? <BubbleText className="h-3 w-3" /> : <CuteRobot className="h-3 w-3" />}
-            <div className="text-xs font-medium">{t(`appDebug.assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`)}</div>
+            <div className="text-xs font-medium">{t(`assistantType.${isAgent ? 'agentAssistant' : 'chatAssistant'}.name`, { ns: 'appDebug' })}</div>
             <RiArrowDownSLine className="h-3 w-3" />
           </div>
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 1000 }}>
           <div className="relative left-0.5 w-[480px] rounded-xl border border-black/8 bg-white p-6 shadow-lg">
-            <div className="mb-2 text-sm font-semibold leading-5 text-gray-900">{t('appDebug.assistantType.name')}</div>
+            <div className="mb-2 text-sm font-semibold leading-5 text-gray-900">{t('assistantType.name', { ns: 'appDebug' })}</div>
             <SelectItem
               Icon={BubbleText}
               value="chat"
               disabled={disabled}
-              text={t('appDebug.assistantType.chatAssistant.name')}
-              description={t('appDebug.assistantType.chatAssistant.description')}
+              text={t('assistantType.chatAssistant.name', { ns: 'appDebug' })}
+              description={t('assistantType.chatAssistant.description', { ns: 'appDebug' })}
               isChecked={!isAgent}
               onClick={handleChange}
             />
@@ -139,8 +139,8 @@ const AssistantTypePicker: FC<Props> = ({
               Icon={CuteRobot}
               value="agent"
               disabled={disabled}
-              text={t('appDebug.assistantType.agentAssistant.name')}
-              description={t('appDebug.assistantType.agentAssistant.description')}
+              text={t('assistantType.agentAssistant.name', { ns: 'appDebug' })}
+              description={t('assistantType.agentAssistant.description', { ns: 'appDebug' })}
               isChecked={isAgent}
               onClick={handleChange}
             />

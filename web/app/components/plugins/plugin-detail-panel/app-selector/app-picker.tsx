@@ -187,7 +187,7 @@ const AppPicker: FC<Props> = ({
             <div ref={observerTarget} className="h-4 w-full">
               {isLoading && (
                 <div className="flex justify-center py-2">
-                  <div className="text-sm text-gray-500">{t('common.loading')}</div>
+                  <div className="text-sm text-gray-500">{t('loading', { ns: 'common' })}</div>
                 </div>
               )}
             </div>

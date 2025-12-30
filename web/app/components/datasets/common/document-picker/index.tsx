@@ -73,7 +73,7 @@ const DocumentPicker: FC<Props> = ({
   const parentModeLabel = useMemo(() => {
     if (!parentMode)
       return '--'
-    return parentMode === 'paragraph' ? t('dataset.parentMode.paragraph') : t('dataset.parentMode.fullDoc')
+    return parentMode === 'paragraph' ? t('parentMode.paragraph', { ns: 'dataset' }) : t('parentMode.fullDoc', { ns: 'dataset' })
   }, [parentMode, t])
 
   return (
@@ -96,9 +96,9 @@ const DocumentPicker: FC<Props> = ({
             <div className="flex h-3 items-center space-x-0.5 text-text-tertiary">
               <TypeIcon className="h-3 w-3" />
               <span className={cn('system-2xs-medium-uppercase', isParentChild && 'mt-0.5' /* to icon problem cause not ver align */)}>
-                {isGeneralMode && t('dataset.chunkingMode.general')}
-                {isQAMode && t('dataset.chunkingMode.qa')}
-                {isParentChild && `${t('dataset.chunkingMode.parentChild')} · ${parentModeLabel}`}
+                {isGeneralMode && t('chunkingMode.general', { ns: 'dataset' })}
+                {isQAMode && t('chunkingMode.qa', { ns: 'dataset' })}
+                {isParentChild && `${t('chunkingMode.parentChild', { ns: 'dataset' })} · ${parentModeLabel}`}
               </span>
             </div>
           </div>

@@ -9,7 +9,7 @@ import { cn } from '@/utils/classnames'
 export default function SignInLayout({ children }: PropsWithChildren) {
   const { t } = useTranslation()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
-  useDocumentTitle(t('login.webapp.login'))
+  useDocumentTitle(t('webapp.login', { ns: 'login' }))
   return (
     <>
       <div className={cn('flex min-h-screen w-full justify-center bg-background-default-burn p-6')}>

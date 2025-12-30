@@ -18,7 +18,7 @@ import { useGitHubReleases } from '../install-plugin/hooks'
 import PluginInfo from '../plugin-page/plugin-info'
 import { PluginSource } from '../types'
 
-const i18nPrefix = 'plugin.action'
+const i18nPrefix = 'action'
 
 type Props = {
   author: string
@@ -114,7 +114,7 @@ const Action: FC<Props> = ({
       {/* Only plugin installed from GitHub need to check if it's the new version  */}
       {isShowFetchNewVersion
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`)}>
+          <Tooltip popupContent={t(`${i18nPrefix}.checkForUpdates`, { ns: 'plugin' })}>
             <ActionButton onClick={handleFetchNewVersion}>
               <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
@@ -123,7 +123,7 @@ const Action: FC<Props> = ({
       {
         isShowInfo
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`)}>
+          <Tooltip popupContent={t(`${i18nPrefix}.pluginInfo`, { ns: 'plugin' })}>
             <ActionButton onClick={showPluginInfo}>
               <RiInformation2Line className="h-4 w-4 text-text-tertiary" />
             </ActionButton>
@@ -133,7 +133,7 @@ const Action: FC<Props> = ({
       {
         isShowDelete
         && (
-          <Tooltip popupContent={t(`${i18nPrefix}.delete`)}>
+          <Tooltip popupContent={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}>
             <ActionButton
               className="text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
               onClick={showDeleteConfirm}
@@ -154,12 +154,12 @@ const Action: FC<Props> = ({
       )}
       <Confirm
         isShow={isShowDeleteConfirm}
-        title={t(`${i18nPrefix}.delete`)}
+        title={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
         content={(
           <div>
-            {t(`${i18nPrefix}.deleteContentLeft`)}
+            {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
             <span className="system-md-semibold">{pluginName}</span>
-            {t(`${i18nPrefix}.deleteContentRight`)}
+            {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
             <br />
             {/* // todo: add usedInApps */}
             {/* {usedInApps > 0 && t(`${i18nPrefix}.usedInApps`, { num: usedInApps })} */}

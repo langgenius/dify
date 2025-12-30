@@ -175,7 +175,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
             <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
               <div className="relative">
                 <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
-                  {t('common.modelProvider.model').toLocaleUpperCase()}
+                  {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
                 </div>
                 <ModelSelector
                   defaultModel={(provider || modelId) ? { provider, model: modelId } : undefined}
@@ -196,7 +196,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               {
                 !isLoading && !!parameterRules.length && (
                   <div className="mb-2 flex items-center justify-between">
-                    <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('common.modelProvider.parameters')}</div>
+                    <div className={cn('system-sm-semibold flex h-6 items-center text-text-secondary')}>{t('modelProvider.parameters', { ns: 'common' })}</div>
                     {
                       PROVIDER_WITH_PRESET_TONE.includes(provider) && (
                         <PresetsParameter onSelect={handleSelectPresetParameter} />
@@ -230,8 +230,8 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
               >
                 {
                   debugWithMultipleModel
-                    ? t('appDebug.debugAsSingleModel')
-                    : t('appDebug.debugAsMultipleModel')
+                    ? t('debugAsSingleModel', { ns: 'appDebug' })
+                    : t('debugAsMultipleModel', { ns: 'appDebug' })
                 }
                 <ArrowNarrowLeft className="h-3 w-3 rotate-180" />
               </div>

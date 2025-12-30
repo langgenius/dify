@@ -24,7 +24,7 @@ const AddedMetadataButton: FC<Props> = ({
       onClick={onClick}
     >
       <RiAddLine className="mr-1 size-3.5" />
-      <div>{t('dataset.metadata.addMetadata')}</div>
+      <div>{t('metadata.addMetadata', { ns: 'dataset' })}</div>
     </Button>
   )
 }

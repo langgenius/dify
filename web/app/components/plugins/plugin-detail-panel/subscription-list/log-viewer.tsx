@@ -91,7 +91,7 @@ const LogViewer = ({ logs, className }: Props) => {
               navigator.clipboard.writeText(String(parsedData))
               Toast.notify({
                 type: 'success',
-                message: t('common.actionMsg.copySuccessfully'),
+                message: t('actionMsg.copySuccessfully', { ns: 'common' }),
               })
             }}
             className="rounded-md p-0.5 hover:bg-components-panel-border"
@@ -162,7 +162,7 @@ const LogViewer = ({ logs, className }: Props) => {
                       <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
                     )}
                 <div className="system-xs-semibold-uppercase text-text-secondary">
-                  {t(`pluginTrigger.modal.manual.logs.${LogTypeEnum.REQUEST}`)}
+                  {t(`modal.manual.logs.${LogTypeEnum.REQUEST}`, { ns: 'pluginTrigger' })}
                   {' '}
                   #
                   {index + 1}

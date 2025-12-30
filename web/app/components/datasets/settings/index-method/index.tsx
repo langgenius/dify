@@ -45,8 +45,8 @@ const IndexMethod = ({
         onClick={onChange}
         icon={<HighQuality className="size-[18px]" />}
         iconActiveColor="text-util-colors-orange-orange-500"
-        title={t('datasetCreation.stepTwo.qualified')}
-        description={t('datasetSettings.form.indexMethodHighQualityTip')}
+        title={t('stepTwo.qualified', { ns: 'datasetCreation' })}
+        description={t('form.indexMethodHighQualityTip', { ns: 'datasetSettings' })}
         disabled={disabled}
         isRecommended
         effectColor={EffectColor.orange}
@@ -67,8 +67,8 @@ const IndexMethod = ({
             onClick={onChange}
             icon={<Economic className="size-[18px]" />}
             iconActiveColor="text-util-colors-indigo-indigo-600"
-            title={t('datasetSettings.form.indexMethodEconomy')}
-            description={t('datasetSettings.form.indexMethodEconomyTip', { count: keywordNumber })}
+            title={t('form.indexMethodEconomy', { ns: 'datasetSettings' })}
+            description={t('form.indexMethodEconomyTip', { ns: 'datasetSettings', count: keywordNumber })}
             disabled={disabled || isEconomyDisabled}
             effectColor={EffectColor.indigo}
             showEffectColor
@@ -83,7 +83,7 @@ const IndexMethod = ({
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent style={{ zIndex: 60 }}>
           <div className="rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg">
-            {t('datasetSettings.form.indexMethodChangeToEconomyDisabledTip')}
+            {t('form.indexMethodChangeToEconomyDisabledTip', { ns: 'datasetSettings' })}
           </div>
         </PortalToFollowElemContent>
       </PortalToFollowElem>

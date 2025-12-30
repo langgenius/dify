@@ -113,7 +113,7 @@ const OptionCard = memo(({
               {
                 isRecommended && (
                   <Badge className="ml-1 h-4 border-text-accent-secondary text-text-accent-secondary">
-                    {t('datasetCreation.stepTwo.recommend')}
+                    {t('stepTwo.recommend', { ns: 'datasetCreation' })}
                   </Badge>
                 )
               }

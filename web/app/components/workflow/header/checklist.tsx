@@ -103,7 +103,7 @@ const WorkflowChecklist = ({
         >
           <div className="text-md sticky top-0 z-[1] flex h-[44px] items-center bg-components-panel-bg pl-4 pr-3 pt-3 font-semibold text-text-primary">
             <div className="grow">
-              {t('workflow.panel.checklist')}
+              {t('panel.checklist', { ns: 'workflow' })}
               {needWarningNodes.length ? `(${needWarningNodes.length})` : ''}
             </div>
             <div
@@ -117,7 +117,7 @@ const WorkflowChecklist = ({
             {
               !!needWarningNodes.length && (
                 <>
-                  <div className="px-4 pt-1 text-xs text-text-tertiary">{t('workflow.panel.checklistTip')}</div>
+                  <div className="px-4 pt-1 text-xs text-text-tertiary">{t('panel.checklistTip', { ns: 'workflow' })}</div>
                   <div className="px-4 py-2">
                     {
                       needWarningNodes.map(node => (
@@ -142,7 +142,7 @@ const WorkflowChecklist = ({
                               (showGoTo && node.canNavigate && !node.disableGoTo) && (
                                 <div className="flex h-4 w-[60px] shrink-0 items-center justify-center gap-1 opacity-0 transition-opacity duration-200 group-hover:opacity-100">
                                   <span className="whitespace-nowrap text-xs font-medium leading-4 text-primary-600">
-                                    {t('workflow.panel.goTo')}
+                                    {t('panel.goTo', { ns: 'workflow' })}
                                   </span>
                                   <IconR className="h-3.5 w-3.5 text-primary-600" />
                                 </div>
@@ -160,7 +160,7 @@ const WorkflowChecklist = ({
                                 <div className="px-3 py-1 first:pt-1.5 last:pb-1.5">
                                   <div className="flex text-xs leading-4 text-text-tertiary">
                                     <Warning className="mr-2 mt-[2px] h-3 w-3 text-[#F79009]" />
-                                    {t('workflow.common.needConnectTip')}
+                                    {t('common.needConnectTip', { ns: 'workflow' })}
                                   </div>
                                 </div>
                               )
@@ -187,7 +187,7 @@ const WorkflowChecklist = ({
               !needWarningNodes.length && (
                 <div className="mx-4 mb-3 rounded-lg bg-components-panel-bg py-4 text-center text-xs text-text-tertiary">
                   <ChecklistSquare className="mx-auto mb-[5px] h-8 w-8 text-text-quaternary" />
-                  {t('workflow.panel.checklistResolved')}
+                  {t('panel.checklistResolved', { ns: 'workflow' })}
                 </div>
               )
             }

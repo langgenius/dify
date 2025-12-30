@@ -20,8 +20,8 @@ import AddExtractParameter from './components/extract-parameter/update'
 import ReasoningModePicker from './components/reasoning-mode-picker'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
-const i18nCommonPrefix = 'workflow.common'
+const i18nPrefix = 'nodes.parameterExtractor'
+const i18nCommonPrefix = 'common'
 
 const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
   id,
@@ -60,7 +60,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
     <div className="pt-2">
       <div className="space-y-4 px-4">
         <Field
-          title={t(`${i18nCommonPrefix}.model`)}
+          title={t(`${i18nCommonPrefix}.model`, { ns: 'workflow' })}
           required
         >
           <ModelParameterModal
@@ -78,7 +78,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           />
         </Field>
         <Field
-          title={t(`${i18nPrefix}.inputVar`)}
+          title={t(`${i18nPrefix}.inputVar`, { ns: 'workflow' })}
           required
         >
           <>
@@ -103,7 +103,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           onConfigChange={handleVisionResolutionChange}
         />
         <Field
-          title={t(`${i18nPrefix}.extractParameters`)}
+          title={t(`${i18nPrefix}.extractParameters`, { ns: 'workflow' })}
           required
           operations={
             !readOnly
@@ -128,11 +128,11 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
         <Editor
           title={(
             <div className="flex items-center space-x-1">
-              <span className="uppercase">{t(`${i18nPrefix}.instruction`)}</span>
+              <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
               <Tooltip
                 popupContent={(
                   <div className="w-[120px]">
-                    {t(`${i18nPrefix}.instructionTip`)}
+                    {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
                   </div>
                 )}
                 triggerClassName="w-3.5 h-3.5 ml-0.5"
@@ -150,7 +150,7 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
           availableNodes={availableNodesWithParent}
         />
       </div>
-      <FieldCollapse title={t(`${i18nPrefix}.advancedSetting`)}>
+      <FieldCollapse title={t(`${i18nPrefix}.advancedSetting`, { ns: 'workflow' })}>
         <>
           {/* Memory */}
           {isChatMode && (
@@ -190,17 +190,17 @@ const Panel: FC<NodePanelProps<ParameterExtractorNodeType>> = ({
                 <VarItem
                   name="__is_success"
                   type={VarType.number}
-                  description={t(`${i18nPrefix}.outputVars.isSuccess`)}
+                  description={t(`${i18nPrefix}.outputVars.isSuccess`, { ns: 'workflow' })}
                 />
                 <VarItem
                   name="__reason"
                   type={VarType.string}
-                  description={t(`${i18nPrefix}.outputVars.errorReason`)}
+                  description={t(`${i18nPrefix}.outputVars.errorReason`, { ns: 'workflow' })}
                 />
                 <VarItem
                   name="__usage"
                   type="object"
-                  description={t(`${i18nPrefix}.outputVars.usage`)}
+                  description={t(`${i18nPrefix}.outputVars.usage`, { ns: 'workflow' })}
                 />
               </>
             </OutputVars>

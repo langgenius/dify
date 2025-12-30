@@ -76,7 +76,7 @@ class PluginParameter(BaseModel):
     auto_generate: PluginParameterAutoGenerate | None = None
     template: PluginParameterTemplate | None = None
     required: bool = False
-    default: Union[float, int, str, bool] | None = None
+    default: Union[float, int, str, bool, list, dict] | None = None
     min: Union[float, int] | None = None
     max: Union[float, int] | None = None
     precision: int | None = None

@@ -88,7 +88,7 @@ type StepTwoProps = {
   websiteCrawlJobId?: string
   onStepChange?: (delta: number) => void
   updateIndexingTypeCache?: (type: string) => void
-  updateRetrievalMethodCache?: (method: string) => void
+  updateRetrievalMethodCache?: (method: RETRIEVE_METHOD | '') => void
   updateResultCache?: (res: createDocumentResponse) => void
   onSave?: () => void
   onCancel?: () => void
@@ -328,13 +328,13 @@ const StepTwo = ({
 
   const getRuleName = (key: string) => {
     if (key === 'remove_extra_spaces')
-      return t('datasetCreation.stepTwo.removeExtraSpaces')
+      return t('stepTwo.removeExtraSpaces', { ns: 'datasetCreation' })
 
     if (key === 'remove_urls_emails')
-      return t('datasetCreation.stepTwo.removeUrlEmails')
+      return t('stepTwo.removeUrlEmails', { ns: 'datasetCreation' })
 
     if (key === 'remove_stopwords')
-      return t('datasetCreation.stepTwo.removeStopwords')
+      return t('stepTwo.removeStopwords', { ns: 'datasetCreation' })
   }
   const ruleChangeHandle = (id: string) => {
     const newRules = rules.map((rule) => {
@@ -360,7 +360,7 @@ const StepTwo = ({
 
   const updatePreview = () => {
     if (segmentationType === ProcessMode.general && maxChunkLength > MAXIMUM_CHUNK_TOKEN_LENGTH) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: MAXIMUM_CHUNK_TOKEN_LENGTH }) })
+      Toast.notify({ type: 'error', message: t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: MAXIMUM_CHUNK_TOKEN_LENGTH }) })
       return
     }
     fetchEstimate()
@@ -415,11 +415,11 @@ const StepTwo = ({
   const getCreationParams = () => {
     let params
     if (segmentationType === ProcessMode.general && overlap > maxChunkLength) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.overlapCheck') })
+      Toast.notify({ type: 'error', message: t('stepTwo.overlapCheck', { ns: 'datasetCreation' }) })
       return
     }
     if (segmentationType === ProcessMode.general && maxChunkLength > limitMaxChunkLength) {
-      Toast.notify({ type: 'error', message: t('datasetCreation.stepTwo.maxLengthCheck', { limit: limitMaxChunkLength }) })
+      Toast.notify({ type: 'error', message: t('stepTwo.maxLengthCheck', { ns: 'datasetCreation', limit: limitMaxChunkLength }) })
       return
     }
     if (isSetting) {
@@ -439,7 +439,7 @@ const StepTwo = ({
       if (indexMethod === IndexingType.QUALIFIED && (!embeddingModel.model || !embeddingModel.provider)) {
         Toast.notify({
           type: 'error',
-          message: t('appDebug.datasetConfig.embeddingModelRequired'),
+          message: t('datasetConfig.embeddingModelRequired', { ns: 'appDebug' }),
         })
         return
       }
@@ -450,7 +450,7 @@ const StepTwo = ({
           indexMethod: indexMethod as string,
         })
       ) {
-        Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+        Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
         return
       }
       params = {
@@ -552,7 +552,7 @@ const StepTwo = ({
           onSuccess(data) {
             updateIndexingTypeCache?.(indexType as string)
             updateResultCache?.(data)
-            updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
+            updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
           },
         },
       )
@@ -562,7 +562,7 @@ const StepTwo = ({
         onSuccess(data) {
           updateIndexingTypeCache?.(indexType as string)
           updateResultCache?.(data)
-          updateRetrievalMethodCache?.(retrievalConfig.search_method as string)
+          updateRetrievalMethodCache?.(retrievalConfig.search_method as RETRIEVE_METHOD)
         },
       })
     }
@@ -616,17 +616,17 @@ const StepTwo = ({
   return (
     <div className="flex h-full w-full">
       <div className={cn('relative h-full w-1/2 overflow-y-auto py-6', isMobile ? 'px-4' : 'px-12')}>
-        <div className="system-md-semibold mb-1 text-text-secondary">{t('datasetCreation.stepTwo.segmentation')}</div>
+        <div className="system-md-semibold mb-1 text-text-secondary">{t('stepTwo.segmentation', { ns: 'datasetCreation' })}</div>
         {((isInUpload && [ChunkingMode.text, ChunkingMode.qa].includes(currentDataset!.doc_form))
           || isUploadInEmptyDataset
           || isInInit)
         && (
           <OptionCard
             className="mb-2 bg-background-section"
-            title={t('datasetCreation.stepTwo.general')}
-            icon={<Image width={20} height={20} src={SettingCog} alt={t('datasetCreation.stepTwo.general')} />}
+            title={t('stepTwo.general', { ns: 'datasetCreation' })}
+            icon={<Image width={20} height={20} src={SettingCog} alt={t('stepTwo.general', { ns: 'datasetCreation' })} />}
             activeHeaderClassName="bg-dataset-option-card-blue-gradient"
-            description={t('datasetCreation.stepTwo.generalTip')}
+            description={t('stepTwo.generalTip', { ns: 'datasetCreation' })}
             isActive={
               [ChunkingMode.text, ChunkingMode.qa].includes(currentDocForm)
             }
@@ -636,10 +636,10 @@ const StepTwo = ({
               <>
                 <Button variant="secondary-accent" onClick={() => updatePreview()}>
                   <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
-                  {t('datasetCreation.stepTwo.previewChunk')}
+                  {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
                 </Button>
                 <Button variant="ghost" onClick={resetRules}>
-                  {t('datasetCreation.stepTwo.reset')}
+                  {t('stepTwo.reset', { ns: 'datasetCreation' })}
                 </Button>
               </>
             )}
@@ -666,7 +666,7 @@ const StepTwo = ({
               <div className="flex w-full flex-col">
                 <div className="flex items-center gap-x-2">
                   <div className="inline-flex shrink-0">
-                    <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
+                    <TextLabel>{t('stepTwo.rules', { ns: 'datasetCreation' })}</TextLabel>
                   </div>
                   <Divider className="grow" bgStyle="gradient" />
                 </div>
@@ -705,7 +705,7 @@ const StepTwo = ({
                             disabled={!!currentDataset?.doc_form}
                           />
                           <label className="system-sm-regular ml-2 cursor-pointer text-text-secondary">
-                            {t('datasetCreation.stepTwo.useQALanguage')}
+                            {t('stepTwo.useQALanguage', { ns: 'datasetCreation' })}
                           </label>
                         </div>
                         <LanguageSelect
@@ -713,7 +713,7 @@ const StepTwo = ({
                           onSelect={setDocLanguage}
                           disabled={currentDocForm !== ChunkingMode.qa}
                         />
-                        <Tooltip popupContent={t('datasetCreation.stepTwo.QATip')} />
+                        <Tooltip popupContent={t('stepTwo.QATip', { ns: 'datasetCreation' })} />
                       </div>
                       {currentDocForm === ChunkingMode.qa && (
                         <div
@@ -724,7 +724,7 @@ const StepTwo = ({
                         >
                           <RiAlertFill className="size-4 text-text-warning-secondary" />
                           <span className="system-xs-medium text-text-primary">
-                            {t('datasetCreation.stepTwo.QATip')}
+                            {t('stepTwo.QATip', { ns: 'datasetCreation' })}
                           </span>
                         </div>
                       )}
@@ -743,22 +743,22 @@ const StepTwo = ({
           )
           && (
             <OptionCard
-              title={t('datasetCreation.stepTwo.parentChild')}
+              title={t('stepTwo.parentChild', { ns: 'datasetCreation' })}
               icon={<ParentChildChunk className="h-[20px] w-[20px]" />}
               effectImg={BlueEffect.src}
               className="text-util-colors-blue-light-blue-light-500"
               activeHeaderClassName="bg-dataset-option-card-blue-gradient"
-              description={t('datasetCreation.stepTwo.parentChildTip')}
+              description={t('stepTwo.parentChildTip', { ns: 'datasetCreation' })}
               isActive={currentDocForm === ChunkingMode.parentChild}
               onSwitched={() => handleChangeDocform(ChunkingMode.parentChild)}
               actions={(
                 <>
                   <Button variant="secondary-accent" onClick={() => updatePreview()}>
                     <RiSearchEyeLine className="mr-0.5 h-4 w-4" />
-                    {t('datasetCreation.stepTwo.previewChunk')}
+                    {t('stepTwo.previewChunk', { ns: 'datasetCreation' })}
                   </Button>
                   <Button variant="ghost" onClick={resetRules}>
-                    {t('datasetCreation.stepTwo.reset')}
+                    {t('stepTwo.reset', { ns: 'datasetCreation' })}
                   </Button>
                 </>
               )}
@@ -768,15 +768,15 @@ const StepTwo = ({
                 <div>
                   <div className="flex items-center gap-x-2">
                     <div className="inline-flex shrink-0">
-                      <TextLabel>{t('datasetCreation.stepTwo.parentChunkForContext')}</TextLabel>
+                      <TextLabel>{t('stepTwo.parentChunkForContext', { ns: 'datasetCreation' })}</TextLabel>
                     </div>
                     <Divider className="grow" bgStyle="gradient" />
                   </div>
                   <RadioCard
                     className="mt-1"
                     icon={<Image src={Note} alt="" />}
-                    title={t('datasetCreation.stepTwo.paragraph')}
-                    description={t('datasetCreation.stepTwo.paragraphTip')}
+                    title={t('stepTwo.paragraph', { ns: 'datasetCreation' })}
+                    description={t('stepTwo.paragraphTip', { ns: 'datasetCreation' })}
                     isChosen={parentChildConfig.chunkForContext === 'paragraph'}
                     onChosen={() => setParentChildConfig(
                       {
@@ -788,7 +788,7 @@ const StepTwo = ({
                       <div className="flex gap-3">
                         <DelimiterInput
                           value={parentChildConfig.parent.delimiter}
-                          tooltip={t('datasetCreation.stepTwo.parentChildDelimiterTip')!}
+                          tooltip={t('stepTwo.parentChildDelimiterTip', { ns: 'datasetCreation' })!}
                           onChange={e => setParentChildConfig({
                             ...parentChildConfig,
                             parent: {
@@ -814,8 +814,8 @@ const StepTwo = ({
                   <RadioCard
                     className="mt-2"
                     icon={<Image src={FileList} alt="" />}
-                    title={t('datasetCreation.stepTwo.fullDoc')}
-                    description={t('datasetCreation.stepTwo.fullDocTip')}
+                    title={t('stepTwo.fullDoc', { ns: 'datasetCreation' })}
+                    description={t('stepTwo.fullDocTip', { ns: 'datasetCreation' })}
                     onChosen={() => setParentChildConfig(
                       {
                         ...parentChildConfig,
@@ -829,14 +829,14 @@ const StepTwo = ({
                 <div>
                   <div className="flex items-center gap-x-2">
                     <div className="inline-flex shrink-0">
-                      <TextLabel>{t('datasetCreation.stepTwo.childChunkForRetrieval')}</TextLabel>
+                      <TextLabel>{t('stepTwo.childChunkForRetrieval', { ns: 'datasetCreation' })}</TextLabel>
                     </div>
                     <Divider className="grow" bgStyle="gradient" />
                   </div>
                   <div className="mt-1 flex gap-3">
                     <DelimiterInput
                       value={parentChildConfig.child.delimiter}
-                      tooltip={t('datasetCreation.stepTwo.parentChildChunkDelimiterTip')!}
+                      tooltip={t('stepTwo.parentChildChunkDelimiterTip', { ns: 'datasetCreation' })!}
                       onChange={e => setParentChildConfig({
                         ...parentChildConfig,
                         child: {
@@ -861,7 +861,7 @@ const StepTwo = ({
                 <div>
                   <div className="flex items-center gap-x-2">
                     <div className="inline-flex shrink-0">
-                      <TextLabel>{t('datasetCreation.stepTwo.rules')}</TextLabel>
+                      <TextLabel>{t('stepTwo.rules', { ns: 'datasetCreation' })}</TextLabel>
                     </div>
                     <Divider className="grow" bgStyle="gradient" />
                   </div>
@@ -887,23 +887,23 @@ const StepTwo = ({
           )
         }
         <Divider className="my-5" />
-        <div className="system-md-semibold mb-1 text-text-secondary">{t('datasetCreation.stepTwo.indexMode')}</div>
+        <div className="system-md-semibold mb-1 text-text-secondary">{t('stepTwo.indexMode', { ns: 'datasetCreation' })}</div>
         <div className="flex items-center gap-2">
           {(!hasSetIndexType || (hasSetIndexType && indexingType === IndexingType.QUALIFIED)) && (
             <OptionCard
               className="flex-1 self-stretch"
               title={(
                 <div className="flex items-center">
-                  {t('datasetCreation.stepTwo.qualified')}
+                  {t('stepTwo.qualified', { ns: 'datasetCreation' })}
                   <Badge className={cn('ml-1 h-[18px]', (!hasSetIndexType && indexType === IndexingType.QUALIFIED) ? 'border-text-accent-secondary text-text-accent-secondary' : '')} uppercase>
-                    {t('datasetCreation.stepTwo.recommend')}
+                    {t('stepTwo.recommend', { ns: 'datasetCreation' })}
                   </Badge>
                   <span className="ml-auto">
                     {!hasSetIndexType && <span className={cn(s.radio)} />}
                   </span>
                 </div>
               )}
-              description={t('datasetCreation.stepTwo.qualifiedTip')}
+              description={t('stepTwo.qualifiedTip', { ns: 'datasetCreation' })}
               icon={<Image src={indexMethodIcon.high_quality} alt="" />}
               isActive={!hasSetIndexType && indexType === IndexingType.QUALIFIED}
               disabled={hasSetIndexType}
@@ -918,10 +918,10 @@ const StepTwo = ({
               <CustomDialog show={isQAConfirmDialogOpen} onClose={() => setIsQAConfirmDialogOpen(false)} className="w-[432px]">
                 <header className="mb-4 pt-6">
                   <h2 className="text-lg font-semibold text-text-primary">
-                    {t('datasetCreation.stepTwo.qaSwitchHighQualityTipTitle')}
+                    {t('stepTwo.qaSwitchHighQualityTipTitle', { ns: 'datasetCreation' })}
                   </h2>
                   <p className="mt-2 text-sm font-normal text-text-secondary">
-                    {t('datasetCreation.stepTwo.qaSwitchHighQualityTipContent')}
+                    {t('stepTwo.qaSwitchHighQualityTipContent', { ns: 'datasetCreation' })}
                   </p>
                 </header>
                 <div className="flex gap-2 pb-6">
@@ -931,7 +931,7 @@ const StepTwo = ({
                       setIsQAConfirmDialogOpen(false)
                     }}
                   >
-                    {t('datasetCreation.stepTwo.cancel')}
+                    {t('stepTwo.cancel', { ns: 'datasetCreation' })}
                   </Button>
                   <Button
                     variant="primary"
@@ -941,7 +941,7 @@ const StepTwo = ({
                       setDocForm(ChunkingMode.qa)
                     }}
                   >
-                    {t('datasetCreation.stepTwo.switch')}
+                    {t('stepTwo.switch', { ns: 'datasetCreation' })}
                   </Button>
                 </div>
               </CustomDialog>
@@ -950,8 +950,8 @@ const StepTwo = ({
                   <div className="rounded-lg border-components-panel-border bg-components-tooltip-bg p-3 text-xs font-medium text-text-secondary shadow-lg">
                     {
                       docForm === ChunkingMode.qa
-                        ? t('datasetCreation.stepTwo.notAvailableForQA')
-                        : t('datasetCreation.stepTwo.notAvailableForParentChild')
+                        ? t('stepTwo.notAvailableForQA', { ns: 'datasetCreation' })
+                        : t('stepTwo.notAvailableForParentChild', { ns: 'datasetCreation' })
                     }
                   </div>
                 )}
@@ -962,8 +962,8 @@ const StepTwo = ({
               >
                 <OptionCard
                   className="h-full"
-                  title={t('datasetCreation.stepTwo.economical')}
-                  description={t('datasetCreation.stepTwo.economicalTip')}
+                  title={t('stepTwo.economical', { ns: 'datasetCreation' })}
+                  description={t('stepTwo.economicalTip', { ns: 'datasetCreation' })}
                   icon={<Image src={indexMethodIcon.economical} alt="" />}
                   isActive={!hasSetIndexType && indexType === IndexingType.ECONOMICAL}
                   disabled={hasSetIndexType || docForm !== ChunkingMode.text}
@@ -981,19 +981,19 @@ const StepTwo = ({
             <div className="p-1">
               <AlertTriangle className="size-4 text-text-warning-secondary" />
             </div>
-            <span className="system-xs-medium text-text-primary">{t('datasetCreation.stepTwo.highQualityTip')}</span>
+            <span className="system-xs-medium text-text-primary">{t('stepTwo.highQualityTip', { ns: 'datasetCreation' })}</span>
           </div>
         )}
         {hasSetIndexType && indexType === IndexingType.ECONOMICAL && (
           <div className="system-xs-medium mt-2 text-text-tertiary">
-            {t('datasetCreation.stepTwo.indexSettingTip')}
-            <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+            {t('stepTwo.indexSettingTip', { ns: 'datasetCreation' })}
+            <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>{t('stepTwo.datasetSettingLink', { ns: 'datasetCreation' })}</Link>
           </div>
         )}
         {/* Embedding model */}
         {indexType === IndexingType.QUALIFIED && (
           <div className="mt-5">
-            <div className={cn('system-md-semibold mb-1 text-text-secondary', datasetId && 'flex items-center justify-between')}>{t('datasetSettings.form.embeddingModel')}</div>
+            <div className={cn('system-md-semibold mb-1 text-text-secondary', datasetId && 'flex items-center justify-between')}>{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
             <ModelSelector
               readonly={isModelAndRetrievalConfigDisabled}
               triggerClassName={isModelAndRetrievalConfigDisabled ? 'opacity-50' : ''}
@@ -1005,8 +1005,8 @@ const StepTwo = ({
             />
             {isModelAndRetrievalConfigDisabled && (
               <div className="system-xs-medium mt-2 text-text-tertiary">
-                {t('datasetCreation.stepTwo.indexSettingTip')}
-                <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>{t('datasetCreation.stepTwo.datasetSettingLink')}</Link>
+                {t('stepTwo.indexSettingTip', { ns: 'datasetCreation' })}
+                <Link className="text-text-accent" href={`/datasets/${datasetId}/settings`}>{t('stepTwo.datasetSettingLink', { ns: 'datasetCreation' })}</Link>
               </div>
             )}
           </div>
@@ -1017,7 +1017,7 @@ const StepTwo = ({
           {!isModelAndRetrievalConfigDisabled
             ? (
                 <div className="mb-1">
-                  <div className="system-md-semibold mb-0.5 text-text-secondary">{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  <div className="system-md-semibold mb-0.5 text-text-secondary">{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
                   <div className="body-xs-regular text-text-tertiary">
                     <a
                       target="_blank"
@@ -1025,15 +1025,15 @@ const StepTwo = ({
                       href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents')}
                       className="text-text-accent"
                     >
-                      {t('datasetSettings.form.retrievalSetting.learnMore')}
+                      {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
                     </a>
-                    {t('datasetSettings.form.retrievalSetting.longDescription')}
+                    {t('form.retrievalSetting.longDescription', { ns: 'datasetSettings' })}
                   </div>
                 </div>
               )
             : (
                 <div className={cn('system-md-semibold mb-0.5 text-text-secondary', 'flex items-center justify-between')}>
-                  <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+                  <div>{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
                 </div>
               )}
 
@@ -1064,15 +1064,15 @@ const StepTwo = ({
               <div className="mt-8 flex items-center py-2">
                 <Button onClick={() => onStepChange?.(-1)}>
                   <RiArrowLeftLine className="mr-1 h-4 w-4" />
-                  {t('datasetCreation.stepTwo.previousStep')}
+                  {t('stepTwo.previousStep', { ns: 'datasetCreation' })}
                 </Button>
-                <Button className="ml-auto" loading={isCreating} variant="primary" onClick={createHandle}>{t('datasetCreation.stepTwo.nextStep')}</Button>
+                <Button className="ml-auto" loading={isCreating} variant="primary" onClick={createHandle}>{t('stepTwo.nextStep', { ns: 'datasetCreation' })}</Button>
               </div>
             )
           : (
               <div className="mt-8 flex items-center py-2">
-                <Button loading={isCreating} variant="primary" onClick={createHandle}>{t('datasetCreation.stepTwo.save')}</Button>
-                <Button className="ml-2" onClick={onCancel}>{t('datasetCreation.stepTwo.cancel')}</Button>
+                <Button loading={isCreating} variant="primary" onClick={createHandle}>{t('stepTwo.save', { ns: 'datasetCreation' })}</Button>
+                <Button className="ml-2" onClick={onCancel}>{t('stepTwo.cancel', { ns: 'datasetCreation' })}</Button>
               </div>
             )}
       </div>
@@ -1080,7 +1080,7 @@ const StepTwo = ({
         <PreviewContainer
           header={(
             <PreviewHeader
-              title={t('datasetCreation.stepTwo.preview')}
+              title={t('stepTwo.preview', { ns: 'datasetCreation' })}
             >
               <div className="flex items-center gap-1">
                 {dataSourceType === DataSourceType.FILE
@@ -1147,7 +1147,8 @@ const StepTwo = ({
                 {
                   currentDocForm !== ChunkingMode.qa
                   && (
-                    <Badge text={t('datasetCreation.stepTwo.previewChunkCount', {
+                    <Badge text={t('stepTwo.previewChunkCount', {
+                      ns: 'datasetCreation',
                       count: estimate?.total_segments || 0,
                     }) as string}
                     />
@@ -1217,7 +1218,7 @@ const StepTwo = ({
               <div className="flex flex-col items-center justify-center gap-3">
                 <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
                 <p className="text-sm text-text-tertiary">
-                  {t('datasetCreation.stepTwo.previewChunkTip')}
+                  {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
                 </p>
               </div>
             </div>

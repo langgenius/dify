@@ -13,10 +13,10 @@ const ErrorHandleTip = ({
 
   const text = useMemo(() => {
     if (type === ErrorHandleTypeEnum.failBranch)
-      return t('workflow.nodes.common.errorHandle.failBranch.inLog')
+      return t('nodes.common.errorHandle.failBranch.inLog', { ns: 'workflow' })
 
     if (type === ErrorHandleTypeEnum.defaultValue)
-      return t('workflow.nodes.common.errorHandle.defaultValue.inLog')
+      return t('nodes.common.errorHandle.defaultValue.inLog', { ns: 'workflow' })
   }, [t, type])
 
   if (!type)

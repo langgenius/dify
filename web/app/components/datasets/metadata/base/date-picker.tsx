@@ -42,7 +42,7 @@ const WrappedDatePicker = ({
             value ? 'text-text-secondary' : 'text-text-tertiary',
           )}
         >
-          {value ? formatTimestamp(value, t('datasetDocuments.metadata.dateTimeFormat')) : t('dataset.metadata.chooseTime')}
+          {value ? formatTimestamp(value, t('metadata.dateTimeFormat', { ns: 'datasetDocuments' })) : t('metadata.chooseTime', { ns: 'dataset' })}
         </div>
         <RiCloseCircleFill
           className={cn(

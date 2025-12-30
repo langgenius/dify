@@ -45,7 +45,7 @@ const InputFieldEditorPanel = ({
       }}
     >
       <div className="system-xl-semibold flex items-center pb-1 pl-4 pr-11 pt-3.5 text-text-primary">
-        {initialData ? t('datasetPipeline.inputFieldPanel.editInputField') : t('datasetPipeline.inputFieldPanel.addInputField')}
+        {initialData ? t('inputFieldPanel.editInputField', { ns: 'datasetPipeline' }) : t('inputFieldPanel.addInputField', { ns: 'datasetPipeline' })}
       </div>
       <button
         type="button"

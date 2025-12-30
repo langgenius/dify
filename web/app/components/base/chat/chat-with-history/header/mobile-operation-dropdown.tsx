@@ -42,11 +42,11 @@ const MobileOperationDropdown = ({
           className="min-w-[160px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-sm"
         >
           <div className="system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover" onClick={handleResetChat}>
-            <span className="grow">{t('share.chat.resetChat')}</span>
+            <span className="grow">{t('chat.resetChat', { ns: 'share' })}</span>
           </div>
           {!hideViewChatSettings && (
             <div className="system-md-regular flex cursor-pointer items-center space-x-1 rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover" onClick={handleViewChatSettings}>
-              <span className="grow">{t('share.chat.viewChatSettings')}</span>
+              <span className="grow">{t('chat.viewChatSettings', { ns: 'share' })}</span>
             </div>
           )}
         </div>

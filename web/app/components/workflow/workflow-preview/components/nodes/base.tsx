@@ -94,14 +94,14 @@ const BaseCard = ({
                 <Tooltip popupContent={(
                   <div className="w-[180px]">
                     <div className="font-extrabold">
-                      {t('workflow.nodes.iteration.parallelModeEnableTitle')}
+                      {t('nodes.iteration.parallelModeEnableTitle', { ns: 'workflow' })}
                     </div>
-                    {t('workflow.nodes.iteration.parallelModeEnableDesc')}
+                    {t('nodes.iteration.parallelModeEnableDesc', { ns: 'workflow' })}
                   </div>
                 )}
                 >
                   <div className="system-2xs-medium-uppercase ml-1 flex items-center justify-center rounded-[5px] border-[1px] border-text-warning px-[5px] py-[3px] text-text-warning ">
-                    {t('workflow.nodes.iteration.parallelModeUpper')}
+                    {t('nodes.iteration.parallelModeUpper', { ns: 'workflow' })}
                   </div>
                 </Tooltip>
               )

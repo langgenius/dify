@@ -114,11 +114,12 @@ const Popup = () => {
         if (res) {
           notify({
             type: 'success',
-            message: t('datasetPipeline.publishPipeline.success.message'),
+            message: t('publishPipeline.success.message', { ns: 'datasetPipeline' }),
             children: (
               <div className="system-xs-regular text-text-secondary">
                 <Trans
-                  i18nKey="datasetPipeline.publishPipeline.success.tip"
+                  i18nKey="publishPipeline.success.tip"
+                  ns="datasetPipeline"
                   components={{
                     CustomLink: (
                       <Link
@@ -140,7 +141,7 @@ const Popup = () => {
       }
     }
     catch {
-      notify({ type: 'error', message: t('datasetPipeline.publishPipeline.error.message') })
+      notify({ type: 'error', message: t('publishPipeline.error.message', { ns: 'datasetPipeline' }) })
     }
     finally {
       if (publishing)
@@ -178,18 +179,18 @@ const Popup = () => {
       })
       notify({
         type: 'success',
-        message: t('datasetPipeline.publishTemplate.success.message'),
+        message: t('publishTemplate.success.message', { ns: 'datasetPipeline' }),
         children: (
           <div className="flex flex-col gap-y-1">
             <span className="system-xs-regular text-text-secondary">
-              {t('datasetPipeline.publishTemplate.success.tip')}
+              {t('publishTemplate.success.tip', { ns: 'datasetPipeline' })}
             </span>
             <Link
               href="https://docs.dify.ai"
               target="_blank"
               className="system-xs-medium-uppercase inline-block text-text-accent"
             >
-              {t('datasetPipeline.publishTemplate.success.learnMore')}
+              {t('publishTemplate.success.learnMore', { ns: 'datasetPipeline' })}
             </Link>
           </div>
         ),
@@ -197,7 +198,7 @@ const Popup = () => {
       invalidCustomizedTemplateList()
     }
     catch {
-      notify({ type: 'error', message: t('datasetPipeline.publishTemplate.error.message') })
+      notify({ type: 'error', message: t('publishTemplate.error.message', { ns: 'datasetPipeline' }) })
     }
     finally {
       hidePublishingAsCustomizedPipeline()
@@ -224,14 +225,14 @@ const Popup = () => {
     <div className={cn('rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl shadow-shadow-shadow-5', isAllowPublishAsCustomKnowledgePipelineTemplate ? 'w-[360px]' : 'w-[400px]')}>
       <div className="p-4 pt-3">
         <div className="system-xs-medium-uppercase flex h-6 items-center text-text-tertiary">
-          {publishedAt ? t('workflow.common.latestPublished') : t('workflow.common.currentDraftUnpublished')}
+          {publishedAt ? t('common.latestPublished', { ns: 'workflow' }) : t('common.currentDraftUnpublished', { ns: 'workflow' })}
         </div>
         {
           publishedAt
             ? (
                 <div className="flex items-center justify-between">
                   <div className="system-sm-medium flex items-center text-text-secondary">
-                    {t('workflow.common.publishedAt')}
+                    {t('common.publishedAt', { ns: 'workflow' })}
                     {' '}
                     {formatTimeFromNow(publishedAt)}
                   </div>
@@ -239,7 +240,7 @@ const Popup = () => {
               )
             : (
                 <div className="system-sm-medium flex items-center text-text-secondary">
-                  {t('workflow.common.autoSaved')}
+                  {t('common.autoSaved', { ns: 'workflow' })}
                   {' '}
                   ·
                   {Boolean(draftUpdatedAt) && formatTimeFromNow(draftUpdatedAt!)}
@@ -254,10 +255,10 @@ const Popup = () => {
         >
           {
             published
-              ? t('workflow.common.published')
+              ? t('common.published', { ns: 'workflow' })
               : (
                   <div className="flex gap-1">
-                    <span>{t('workflow.common.publishUpdate')}</span>
+                    <span>{t('common.publishUpdate', { ns: 'workflow' })}</span>
                     <div className="flex gap-0.5">
                       {PUBLISH_SHORTCUT.map(key => (
                         <span key={key} className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">
@@ -279,7 +280,7 @@ const Popup = () => {
         >
           <div className="flex grow items-center">
             <RiPlayCircleLine className="mr-2 h-4 w-4" />
-            {t('pipeline.common.goToAddDocuments')}
+            {t('common.goToAddDocuments', { ns: 'pipeline' })}
           </div>
           <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
         </Button>
@@ -295,7 +296,7 @@ const Popup = () => {
           >
             <div className="flex grow items-center">
               <RiTerminalBoxLine className="mr-2 h-4 w-4" />
-              {t('workflow.common.accessAPIReference')}
+              {t('common.accessAPIReference', { ns: 'workflow' })}
             </div>
             <RiArrowRightUpLine className="ml-2 h-4 w-4 shrink-0" />
           </Button>
@@ -309,14 +310,14 @@ const Popup = () => {
         >
           <div className="flex grow items-center gap-x-2 overflow-hidden">
             <RiHammerLine className="h-4 w-4 shrink-0" />
-            <span className="grow truncate text-left" title={t('pipeline.common.publishAs')}>
-              {t('pipeline.common.publishAs')}
+            <span className="grow truncate text-left" title={t('common.publishAs', { ns: 'pipeline' })}>
+              {t('common.publishAs', { ns: 'pipeline' })}
             </span>
             {!isAllowPublishAsCustomKnowledgePipelineTemplate && (
               <PremiumBadge className="shrink-0 cursor-pointer select-none" size="s" color="indigo">
                 <SparklesSoft className="flex size-3 items-center text-components-premium-badge-indigo-text-stop-0" />
                 <span className="system-2xs-medium p-0.5">
-                  {t('billing.upgradeBtn.encourageShort')}
+                  {t('upgradeBtn.encourageShort', { ns: 'billing' })}
                 </span>
               </PremiumBadge>
             )}
@@ -327,8 +328,8 @@ const Popup = () => {
         confirmVisible && (
           <Confirm
             isShow={confirmVisible}
-            title={t('pipeline.common.confirmPublish')}
-            content={t('pipeline.common.confirmPublishContent')}
+            title={t('common.confirmPublish', { ns: 'pipeline' })}
+            content={t('common.confirmPublishContent', { ns: 'pipeline' })}
             onCancel={hideConfirm}
             onConfirm={handlePublish}
             isDisabled={publishing}

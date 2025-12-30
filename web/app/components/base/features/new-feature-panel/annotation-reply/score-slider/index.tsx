@@ -32,12 +32,12 @@ const ScoreSlider: FC<Props> = ({
         <div className="flex space-x-1 text-util-colors-cyan-cyan-500">
           <div>0.8</div>
           <div>·</div>
-          <div>{t('appDebug.feature.annotation.scoreThreshold.easyMatch')}</div>
+          <div>{t('feature.annotation.scoreThreshold.easyMatch', { ns: 'appDebug' })}</div>
         </div>
         <div className="flex space-x-1 text-util-colors-blue-blue-500">
           <div>1.0</div>
           <div>·</div>
-          <div>{t('appDebug.feature.annotation.scoreThreshold.accurateMatch')}</div>
+          <div>{t('feature.annotation.scoreThreshold.accurateMatch', { ns: 'appDebug' })}</div>
         </div>
       </div>
     </div>

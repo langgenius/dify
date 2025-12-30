@@ -64,7 +64,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
           viewNewlyAddedChildChunk?.()
         }}
       >
-        {t('common.operation.view')}
+        {t('operation.view', { ns: 'common' })}
       </button>
     </>
   )
@@ -80,7 +80,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
     const params: SegmentUpdater = { content: '' }
 
     if (!content.trim())
-      return notify({ type: 'error', message: t('datasetDocuments.segment.contentEmpty') })
+      return notify({ type: 'error', message: t('segment.contentEmpty', { ns: 'datasetDocuments' }) })
 
     params.content = content
 
@@ -89,7 +89,7 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
       onSuccess(res) {
         notify({
           type: 'success',
-          message: t('datasetDocuments.segment.childChunkAdded'),
+          message: t('segment.childChunkAdded', { ns: 'datasetDocuments' }),
           className: `!w-[296px] !bottom-0 ${appSidebarExpand === 'expand' ? '!left-[216px]' : '!left-14'}
           !top-auto !right-auto !mb-[52px] !ml-11`,
           customComponent: isFullDocMode && CustomButton,
@@ -113,16 +113,16 @@ const NewChildSegmentModal: FC<NewChildSegmentModalProps> = ({
 
   const wordCountText = useMemo(() => {
     const count = content.length
-    return `${formatNumber(count)} ${t('datasetDocuments.segment.characters', { count })}`
+    return `${formatNumber(count)} ${t('segment.characters', { ns: 'datasetDocuments', count })}`
   }, [content.length])
 
   return (
     <div className="flex h-full flex-col">
       <div className={cn('flex items-center justify-between', fullScreen ? 'border border-divider-subtle py-3 pl-6 pr-4' : 'pl-4 pr-3 pt-3')}>
         <div className="flex flex-col">
-          <div className="system-xl-semibold text-text-primary">{t('datasetDocuments.segment.addChildChunk')}</div>
+          <div className="system-xl-semibold text-text-primary">{t('segment.addChildChunk', { ns: 'datasetDocuments' })}</div>
           <div className="flex items-center gap-x-2">
-            <SegmentIndexTag label={t('datasetDocuments.segment.newChildChunk') as string} />
+            <SegmentIndexTag label={t('segment.newChildChunk', { ns: 'datasetDocuments' }) as string} />
             <Dot />
             <span className="system-xs-medium text-text-tertiary">{wordCountText}</span>
           </div>

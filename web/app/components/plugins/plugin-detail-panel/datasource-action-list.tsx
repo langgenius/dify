@@ -57,7 +57,7 @@ const ActionList = ({
     <div className="px-4 pb-4 pt-2">
       <div className="mb-1 py-1">
         <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center justify-between text-text-secondary">
-          {t('plugin.detailPanel.actionNum', { num: data.length, action: data.length > 1 ? 'actions' : 'action' })}
+          {t('detailPanel.actionNum', { ns: 'plugin', num: data.length, action: data.length > 1 ? 'actions' : 'action' })}
           {/* {provider.is_team_authorization && provider.allow_delete && (
             <Button
               variant='secondary'

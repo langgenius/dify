@@ -103,7 +103,7 @@ const FieldItem = ({
         : (
             <div className="flex shrink-0 items-center gap-x-2">
               {payload.required && (
-                <Badge>{t('workflow.nodes.start.required')}</Badge>
+                <Badge>{t('nodes.start.required', { ns: 'workflow' })}</Badge>
               )}
               <InputVarTypeIcon type={payload.type as unknown as InputVarType} className="h-3 w-3 text-text-tertiary" />
             </div>

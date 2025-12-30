@@ -76,8 +76,8 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
       />
       {restoreConfirmOpen && (
         <Confirm
-          title={t('appDebug.resetConfig.title')}
-          content={t('appDebug.resetConfig.message')}
+          title={t('resetConfig.title', { ns: 'appDebug' })}
+          content={t('resetConfig.message', { ns: 'appDebug' })}
           isShow={restoreConfirmOpen}
           onConfirm={handleConfirm}
           onCancel={() => setRestoreConfirmOpen(false)}

@@ -54,7 +54,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t('workflow.nodes.variableAssigner.noVarTip')}
+        {t('nodes.variableAssigner.noVarTip', { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }

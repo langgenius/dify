@@ -24,7 +24,7 @@ const QueryBlockComponent: FC<QueryBlockComponentProps> = ({
     >
       <UserEdit02 className="mr-1 h-[14px] w-[14px] text-[#FD853A]" />
       <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'{{'}</div>
-      <div className="text-xs font-medium text-[#EC4A0A]">{t('common.promptEditor.query.item.title')}</div>
+      <div className="text-xs font-medium text-[#EC4A0A]">{t('promptEditor.query.item.title', { ns: 'common' })}</div>
       <div className="text-xs font-medium text-[#EC4A0A] opacity-60">{'}}'}</div>
     </div>
   )

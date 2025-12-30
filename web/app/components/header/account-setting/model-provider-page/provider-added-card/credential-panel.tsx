@@ -55,7 +55,7 @@ const CredentialPanel = ({
       },
     })
     if (res.result === 'success') {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       updateModelProviders()
 
       configurateMethods.forEach((method) => {
@@ -71,11 +71,11 @@ const CredentialPanel = ({
   }
   const credentialLabel = useMemo(() => {
     if (!hasCredential)
-      return t('common.modelProvider.auth.unAuthorized')
+      return t('modelProvider.auth.unAuthorized', { ns: 'common' })
     if (authorized)
       return current_credential_name
     if (authRemoved)
-      return t('common.modelProvider.auth.authRemoved')
+      return t('modelProvider.auth.authRemoved', { ns: 'common' })
 
     return ''
   }, [authorized, authRemoved, current_credential_name, hasCredential])

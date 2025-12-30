@@ -10,7 +10,7 @@ import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeh
 import Item from './item'
 import EditParam from './update'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const i18nPrefix = 'nodes.parameterExtractor'
 
 type Props = {
   readonly: boolean
@@ -59,7 +59,7 @@ const List: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`)}</ListNoDataPlaceholder>
+      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`, { ns: 'workflow' })}</ListNoDataPlaceholder>
     )
   }
   return (

@@ -30,11 +30,11 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   return (
     <div className="group relative min-w-[112px] shrink-0 rounded-lg border-[0.5px] border-components-panel-border bg-white/[0.18] px-3 py-2 shadow-xs">
       <div className="system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary">
-        {t('common.modelProvider.quota')}
+        {t('modelProvider.quota', { ns: 'common' })}
         <Tooltip popupContent={
           openaiOrAnthropic
-            ? t('common.modelProvider.card.tip')
-            : t('common.modelProvider.quotaTip')
+            ? t('modelProvider.card.tip', { ns: 'common' })
+            : t('modelProvider.quotaTip', { ns: 'common' })
         }
         />
       </div>
@@ -46,10 +46,10 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
               currentQuota?.quota_unit === QuotaUnitEnum.tokens && 'Tokens'
             }
             {
-              currentQuota?.quota_unit === QuotaUnitEnum.times && t('common.modelProvider.callTimes')
+              currentQuota?.quota_unit === QuotaUnitEnum.times && t('modelProvider.callTimes', { ns: 'common' })
             }
             {
-              currentQuota?.quota_unit === QuotaUnitEnum.credits && t('common.modelProvider.credits')
+              currentQuota?.quota_unit === QuotaUnitEnum.credits && t('modelProvider.credits', { ns: 'common' })
             }
           </div>
         )

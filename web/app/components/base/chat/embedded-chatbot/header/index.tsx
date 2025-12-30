@@ -91,7 +91,7 @@ const Header: FC<IHeaderProps> = ({
                 'flex shrink-0 items-center gap-1.5 px-2',
               )}
               >
-                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('share.chat.poweredBy')}</div>
+                <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
                 {
                   systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
                     ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
@@ -108,7 +108,7 @@ const Header: FC<IHeaderProps> = ({
           {
             showToggleExpandButton && (
               <Tooltip
-                popupContent={expanded ? t('share.chat.collapse') : t('share.chat.expand')}
+                popupContent={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
               >
                 <ActionButton size="l" onClick={handleToggleExpand}>
                   {
@@ -122,7 +122,7 @@ const Header: FC<IHeaderProps> = ({
           }
           {currentConversationId && allowResetChat && (
             <Tooltip
-              popupContent={t('share.chat.resetChat')}
+              popupContent={t('chat.resetChat', { ns: 'share' })}
             >
               <ActionButton size="l" onClick={onCreateNewChat}>
                 <RiResetLeftLine className="h-[18px] w-[18px]" />
@@ -155,7 +155,7 @@ const Header: FC<IHeaderProps> = ({
         {
           showToggleExpandButton && (
             <Tooltip
-              popupContent={expanded ? t('share.chat.collapse') : t('share.chat.expand')}
+              popupContent={expanded ? t('chat.collapse', { ns: 'share' }) : t('chat.expand', { ns: 'share' })}
             >
               <ActionButton size="l" onClick={handleToggleExpand}>
                 {
@@ -169,7 +169,7 @@ const Header: FC<IHeaderProps> = ({
         }
         {currentConversationId && allowResetChat && (
           <Tooltip
-            popupContent={t('share.chat.resetChat')}
+            popupContent={t('chat.resetChat', { ns: 'share' })}
           >
             <ActionButton size="l" onClick={onCreateNewChat}>
               <RiResetLeftLine className={cn('h-[18px] w-[18px]', theme?.colorPathOnHeader)} />

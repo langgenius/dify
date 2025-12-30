@@ -15,15 +15,15 @@ const FontSizeSelector = () => {
   const FONT_SIZE_LIST = [
     {
       key: '12px',
-      value: t('workflow.nodes.note.editor.small'),
+      value: t('nodes.note.editor.small', { ns: 'workflow' }),
     },
     {
       key: '14px',
-      value: t('workflow.nodes.note.editor.medium'),
+      value: t('nodes.note.editor.medium', { ns: 'workflow' }),
     },
     {
       key: '16px',
-      value: t('workflow.nodes.note.editor.large'),
+      value: t('nodes.note.editor.large', { ns: 'workflow' }),
     },
   ]
   const {
@@ -47,7 +47,7 @@ const FontSizeSelector = () => {
         )}
         >
           <RiFontSize className="mr-1 h-4 w-4" />
-          {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('workflow.nodes.note.editor.small')}
+          {FONT_SIZE_LIST.find(font => font.key === fontSize)?.value || t('nodes.note.editor.small', { ns: 'workflow' })}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent>

@@ -25,7 +25,7 @@ const RETRIEVAL_OUTPUT_STRUCT = `{
   }
 }`
 
-const i18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'errorMsg'
 
 const metaData = genNodeMetaData({
   sort: 1,
@@ -61,7 +61,7 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
   checkValid(payload: LLMNodeType, t: any) {
     let errorMessages = ''
     if (!errorMessages && !payload.model.provider)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.model`) })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.model`, { ns: 'workflow' }) })
 
     if (!errorMessages && !payload.memory) {
       const isChatModel = payload.model.mode === AppModeEnum.CHAT
@@ -74,14 +74,14 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
           })
         : ((payload.prompt_template as PromptItem).edition_type === EditionType.jinja2 ? (payload.prompt_template as PromptItem).jinja2_text === '' : (payload.prompt_template as PromptItem).text === '')
       if (isPromptEmpty)
-        errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t('workflow.nodes.llm.prompt') })
+        errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('nodes.llm.prompt', { ns: 'workflow' }) })
     }
 
     if (!errorMessages && !!payload.memory) {
       const isChatModel = payload.model.mode === AppModeEnum.CHAT
       // payload.memory.query_prompt_template not pass is default: {{#sys.query#}}
       if (isChatModel && !!payload.memory.query_prompt_template && !payload.memory.query_prompt_template.includes('{{#sys.query#}}'))
-        errorMessages = t('workflow.nodes.llm.sysQueryInUser')
+        errorMessages = t('nodes.llm.sysQueryInUser', { ns: 'workflow' })
     }
 
     if (!errorMessages) {
@@ -94,14 +94,14 @@ const nodeDefault: NodeDefault<LLMNodeType> = {
       if (isShowVars && payload.prompt_config?.jinja2_variables) {
         payload.prompt_config?.jinja2_variables.forEach((i) => {
           if (!errorMessages && !i.variable)
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variable`) })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variable`, { ns: 'workflow' }) })
           if (!errorMessages && !i.value_selector.length)
-            errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.variableValue`) })
+            errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.variableValue`, { ns: 'workflow' }) })
         })
       }
     }
     if (!errorMessages && payload.vision?.enabled && !payload.vision.configs?.variable_selector?.length)
-      errorMessages = t(`${i18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.fields.visionVariable`) })
+      errorMessages = t(`${i18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.fields.visionVariable`, { ns: 'workflow' }) })
     return {
       isValid: !errorMessages,
       errorMessage: errorMessages,

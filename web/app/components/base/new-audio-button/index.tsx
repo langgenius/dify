@@ -70,11 +70,11 @@ const AudioBtn = ({
   }
 
   const tooltipContent = {
-    initial: t('appApi.play'),
-    ended: t('appApi.play'),
-    paused: t('appApi.pause'),
-    playing: t('appApi.playing'),
-    loading: t('appApi.loading'),
+    initial: t('play', { ns: 'appApi' }),
+    ended: t('play', { ns: 'appApi' }),
+    paused: t('pause', { ns: 'appApi' }),
+    playing: t('playing', { ns: 'appApi' }),
+    loading: t('loading', { ns: 'appApi' }),
   }[audioState]
 
   return (

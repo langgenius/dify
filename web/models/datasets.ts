@@ -5,6 +5,7 @@ import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import type { MetadataItemWithValue } from '@/app/components/datasets/metadata/types'
 import type { MetadataFilteringVariableType } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import type { AppIconType, AppModeEnum, RetrievalConfig, TransferMethod } from '@/types/app'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import { ExternalKnowledgeBase, General, ParentChild, Qa } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
 import { GeneralChunk, ParentChildChunk, QuestionAndAnswer } from '@/app/components/base/icons/src/vender/knowledge'
 
@@ -804,7 +805,9 @@ export const DOC_FORM_ICON: Record<ChunkingMode.text | ChunkingMode.qa | Chunkin
   [ChunkingMode.parentChild]: ParentChildChunk,
 }
 
-export const DOC_FORM_TEXT: Record<ChunkingMode, string> = {
+type ChunkingModeText = I18nKeysByPrefix<'dataset', 'chunkingMode.'>
+
+export const DOC_FORM_TEXT: Record<ChunkingMode, ChunkingModeText> = {
   [ChunkingMode.text]: 'general',
   [ChunkingMode.qa]: 'qa',
   [ChunkingMode.parentChild]: 'parentChild',

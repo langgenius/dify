@@ -5,12 +5,15 @@ import Input, { inputVariants } from './index'
 // Mock the i18n hook
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
       const translations: Record<string, string> = {
-        'common.operation.search': 'Search',
-        'common.placeholder.input': 'Please input',
+        'operation.search': 'Search',
+        'placeholder.input': 'Please input',
       }
-      return translations[key] || ''
+      if (translations[key])
+        return translations[key]
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

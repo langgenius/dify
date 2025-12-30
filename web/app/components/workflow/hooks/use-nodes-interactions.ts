@@ -678,8 +678,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('workflow.nodes.iteration.deleteTitle'),
-                desc: t('workflow.nodes.iteration.deleteDesc') || '',
+                title: t('nodes.iteration.deleteTitle', { ns: 'workflow' }),
+                desc: t('nodes.iteration.deleteDesc', { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   iterationChildren.forEach((child) => {
                     handleNodeDelete(child.id)
@@ -718,8 +718,8 @@ export const useNodesInteractions = () => {
 
             if (!showConfirm) {
               setShowConfirm({
-                title: t('workflow.nodes.loop.deleteTitle'),
-                desc: t('workflow.nodes.loop.deleteDesc') || '',
+                title: t('nodes.loop.deleteTitle', { ns: 'workflow' }),
+                desc: t('nodes.loop.deleteDesc', { ns: 'workflow' }) || '',
                 onConfirm: () => {
                   loopChildren.forEach((child) => {
                     handleNodeDelete(child.id)

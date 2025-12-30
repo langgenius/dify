@@ -16,7 +16,7 @@ import { extractFunctionParams, extractReturnType } from './code-parser'
 import { CodeLanguage } from './types'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.code'
+const i18nPrefix = 'nodes.code'
 
 const codeLanguages = [
   {
@@ -69,12 +69,12 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.inputVars`)}
+          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
           operations={
             !readOnly
               ? (
                   <div className="flex gap-2">
-                    <SyncButton popupContent={t(`${i18nPrefix}.syncFunctionSignature`)} onClick={handleSyncFunctionSignature} />
+                    <SyncButton popupContent={t(`${i18nPrefix}.syncFunctionSignature`, { ns: 'workflow' })} onClick={handleSyncFunctionSignature} />
                     <AddButton onClick={handleAddVariable} />
                   </div>
                 )
@@ -112,7 +112,7 @@ const Panel: FC<NodePanelProps<CodeNodeType>> = ({
       <Split />
       <div className="px-4 pb-2 pt-4">
         <Field
-          title={t(`${i18nPrefix}.outputVars`)}
+          title={t(`${i18nPrefix}.outputVars`, { ns: 'workflow' })}
           operations={
             <AddButton onClick={handleAddOutputVariable} />
           }

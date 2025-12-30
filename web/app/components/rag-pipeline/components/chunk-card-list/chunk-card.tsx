@@ -69,7 +69,7 @@ const ChunkCard = (props: ChunkCardProps) => {
             labelPrefix={isParagraph ? 'Parent-Chunk' : 'Chunk'}
           />
           <Dot />
-          <div className="system-xs-medium text-text-tertiary">{`${formatNumber(wordCount)} ${t('datasetDocuments.segment.characters', { count: wordCount })}`}</div>
+          <div className="system-xs-medium text-text-tertiary">{`${formatNumber(wordCount)} ${t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}`}</div>
         </div>
       )}
       <div className="body-md-regular text-text-secondary">{contentElement}</div>

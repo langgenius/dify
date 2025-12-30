@@ -71,7 +71,7 @@ const OperationDropdown: FC<Props> = ({
               }}
               className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
             >
-              {t('plugin.detailPanel.operation.info')}
+              {t('detailPanel.operation.info', { ns: 'plugin' })}
             </div>
           )}
           {source === PluginSource.github && (
@@ -82,12 +82,12 @@ const OperationDropdown: FC<Props> = ({
               }}
               className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover"
             >
-              {t('plugin.detailPanel.operation.checkUpdate')}
+              {t('detailPanel.operation.checkUpdate', { ns: 'plugin' })}
             </div>
           )}
           {(source === PluginSource.marketplace || source === PluginSource.github) && enable_marketplace && (
             <a href={detailUrl} target="_blank" className="system-md-regular flex cursor-pointer items-center rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-base-hover">
-              <span className="grow">{t('plugin.detailPanel.operation.viewDetail')}</span>
+              <span className="grow">{t('detailPanel.operation.viewDetail', { ns: 'plugin' })}</span>
               <RiArrowRightUpLine className="h-3.5 w-3.5 shrink-0 text-text-tertiary" />
             </a>
           )}
@@ -101,7 +101,7 @@ const OperationDropdown: FC<Props> = ({
             }}
             className="system-md-regular cursor-pointer rounded-lg px-3 py-1.5 text-text-secondary hover:bg-state-destructive-hover hover:text-text-destructive"
           >
-            {t('plugin.detailPanel.operation.remove')}
+            {t('detailPanel.operation.remove', { ns: 'plugin' })}
           </div>
         </div>
       </PortalToFollowElemContent>

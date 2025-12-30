@@ -17,7 +17,7 @@ type Props = {
   className?: string
 }
 
-const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
+const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyFeedback = ({ content }: Props) => {
   const { t } = useTranslation()
@@ -36,8 +36,8 @@ const CopyFeedback = ({ content }: Props) => {
     <Tooltip
       popupContent={
         (isCopied
-          ? t(`${prefixEmbedded}.copied`)
-          : t(`${prefixEmbedded}.copy`)) || ''
+          ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+          : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
       }
     >
       <ActionButton>
@@ -72,8 +72,8 @@ export const CopyFeedbackNew = ({ content, className }: Pick<Props, 'className' 
     <Tooltip
       popupContent={
         (isCopied
-          ? t(`${prefixEmbedded}.copied`)
-          : t(`${prefixEmbedded}.copy`)) || ''
+          ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+          : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
       }
     >
       <div

@@ -8,7 +8,7 @@ import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from '../base/checkbox-with-label'
 import Field from '../base/field'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   className?: string
@@ -34,24 +34,24 @@ const Options: FC<Props> = ({
   return (
     <div className={cn(className, ' space-y-2')}>
       <CheckboxWithLabel
-        label={t(`${I18N_PREFIX}.crawlSubPage`)}
+        label={t(`${I18N_PREFIX}.crawlSubPage`, { ns: 'datasetCreation' })}
         isChecked={payload.crawl_sub_pages}
         onChange={handleChange('crawl_sub_pages')}
         labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"
         testId="crawl-sub-pages"
       />
       <CheckboxWithLabel
-        label={t(`${I18N_PREFIX}.useSitemap`)}
+        label={t(`${I18N_PREFIX}.useSitemap`, { ns: 'datasetCreation' })}
         isChecked={payload.use_sitemap}
         onChange={handleChange('use_sitemap')}
-        tooltip={t(`${I18N_PREFIX}.useSitemapTooltip`) as string}
+        tooltip={t(`${I18N_PREFIX}.useSitemapTooltip`, { ns: 'datasetCreation' }) as string}
         labelClassName="text-[13px] leading-[16px] font-medium text-text-secondary"
         testId="use-sitemap"
       />
       <div className="flex justify-between space-x-4">
         <Field
           className="shrink-0 grow"
-          label={t(`${I18N_PREFIX}.limit`)}
+          label={t(`${I18N_PREFIX}.limit`, { ns: 'datasetCreation' })}
           value={payload.limit}
           onChange={handleChange('limit')}
           isNumber

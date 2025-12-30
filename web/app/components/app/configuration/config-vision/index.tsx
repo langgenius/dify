@@ -65,11 +65,11 @@ const ConfigVision: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('appDebug.vision.name')}</div>
+        <div className="system-sm-semibold mr-1 text-text-secondary">{t('vision.name', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
-              {t('appDebug.vision.description')}
+              {t('vision.description', { ns: 'appDebug' })}
             </div>
           )}
         />

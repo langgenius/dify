@@ -13,17 +13,17 @@ const FailBranchCard = () => {
           <RiMindMap className="h-5 w-5 text-text-tertiary" />
         </div>
         <div className="system-sm-medium mb-1 text-text-secondary">
-          {t('workflow.nodes.common.errorHandle.failBranch.customize')}
+          {t('nodes.common.errorHandle.failBranch.customize', { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular text-text-tertiary">
-          {t('workflow.nodes.common.errorHandle.failBranch.customizeTip')}
+          {t('nodes.common.errorHandle.failBranch.customizeTip', { ns: 'workflow' })}
           &nbsp;
           <a
             href={docLink('/guides/workflow/error-handling/error-type')}
             target="_blank"
             className="text-text-accent"
           >
-            {t('workflow.common.learnMore')}
+            {t('common.learnMore', { ns: 'workflow' })}
           </a>
         </div>
       </div>

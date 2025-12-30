@@ -48,7 +48,7 @@ const Tools = () => {
     const promptVariables = modelConfig?.configs?.prompt_variables || []
     for (let i = 0; i < promptVariables.length; i++) {
       if (promptVariables[i].key === newExternalDataTool.variable) {
-        notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+        notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
         return false
       }
     }
@@ -66,7 +66,7 @@ const Tools = () => {
 
     for (let i = 0; i < existedExternalDataTools.length; i++) {
       if (existedExternalDataTools[i].variable === newExternalDataTool.variable) {
-        notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: existedExternalDataTools[i].variable }) })
+        notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: existedExternalDataTools[i].variable }) })
         return false
       }
     }
@@ -108,12 +108,12 @@ const Tools = () => {
             }
           </div>
           <div className="mr-1 text-sm font-semibold text-gray-800">
-            {t('appDebug.feature.tools.title')}
+            {t('feature.tools.title', { ns: 'appDebug' })}
           </div>
           <Tooltip
             popupContent={(
               <div className="max-w-[160px]">
-                {t('appDebug.feature.tools.tips')}
+                {t('feature.tools.tips', { ns: 'appDebug' })}
               </div>
             )}
           />
@@ -121,7 +121,7 @@ const Tools = () => {
         {
           !expanded && !!externalDataToolsConfig.length && (
             <>
-              <div className="mr-3 text-xs text-gray-500">{t('appDebug.feature.tools.toolsInUse', { count: externalDataToolsConfig.length })}</div>
+              <div className="mr-3 text-xs text-gray-500">{t('feature.tools.toolsInUse', { ns: 'appDebug', count: externalDataToolsConfig.length })}</div>
               <div className="mr-1 h-3.5 w-[1px] bg-gray-200" />
             </>
           )
@@ -131,7 +131,7 @@ const Tools = () => {
           onClick={() => handleOpenExternalDataToolModal({}, -1)}
         >
           <RiAddLine className="mr-[5px] h-3.5 w-3.5 " />
-          {t('common.operation.add')}
+          {t('operation.add', { ns: 'common' })}
         </div>
       </div>
       {
@@ -152,7 +152,7 @@ const Tools = () => {
                     />
                     <div className="mr-2 text-[13px] font-medium text-gray-800">{item.label}</div>
                     <Tooltip
-                      popupContent={copied ? t('appApi.copied') : `${item.variable}, ${t('appApi.copy')}`}
+                      popupContent={copied ? t('copied', { ns: 'appApi' }) : `${item.variable}, ${t('copy', { ns: 'appApi' })}`}
                     >
                       <div
                         className="text-xs text-gray-500"

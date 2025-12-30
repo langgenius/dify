@@ -13,7 +13,7 @@ import LoopVariable from './components/loop-variables'
 
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.loop'
+const i18nPrefix = 'nodes.loop'
 
 const Panel: FC<NodePanelProps<LoopNodeType>> = ({
   id,
@@ -44,7 +44,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
     <div className="mt-2">
       <div>
         <Field
-          title={<div className="pl-3">{t('workflow.nodes.loop.loopVariables')}</div>}
+          title={<div className="pl-3">{t('nodes.loop.loopVariables', { ns: 'workflow' })}</div>}
           operations={(
             <div
               className="mr-4 flex h-5 w-5 cursor-pointer items-center justify-center"
@@ -65,8 +65,8 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
         </Field>
         <Split className="my-2" />
         <Field
-          title={<div className="pl-3">{t(`${i18nPrefix}.breakCondition`)}</div>}
-          tooltip={t(`${i18nPrefix}.breakConditionTip`)}
+          title={<div className="pl-3">{t(`${i18nPrefix}.breakCondition`, { ns: 'workflow' })}</div>}
+          tooltip={t(`${i18nPrefix}.breakConditionTip`, { ns: 'workflow' })}
         >
           <ConditionWrap
             nodeId={id}
@@ -88,7 +88,7 @@ const Panel: FC<NodePanelProps<LoopNodeType>> = ({
         <Split className="mt-2" />
         <div className="mt-2">
           <Field
-            title={<div className="pl-3">{t(`${i18nPrefix}.loopMaxCount`)}</div>}
+            title={<div className="pl-3">{t(`${i18nPrefix}.loopMaxCount`, { ns: 'workflow' })}</div>}
           >
             <div className="px-3 py-2">
               <InputNumberWithSlider

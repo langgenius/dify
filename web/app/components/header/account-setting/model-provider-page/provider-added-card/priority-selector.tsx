@@ -22,11 +22,11 @@ const Selector: FC<SelectorProps> = ({
   const options = [
     {
       key: PreferredProviderTypeEnum.custom,
-      text: t('common.modelProvider.apiKey'),
+      text: t('modelProvider.apiKey', { ns: 'common' }),
     },
     {
       key: PreferredProviderTypeEnum.system,
-      text: t('common.modelProvider.quota'),
+      text: t('modelProvider.quota', { ns: 'common' }),
     },
   ]
 
@@ -53,7 +53,7 @@ const Selector: FC<SelectorProps> = ({
       >
         <PopoverPanel className="absolute right-0 top-7 z-10 w-[144px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg">
           <div className="p-1">
-            <div className="px-3 pb-1 pt-2 text-sm font-medium text-text-secondary">{t('common.modelProvider.card.priorityUse')}</div>
+            <div className="px-3 pb-1 pt-2 text-sm font-medium text-text-secondary">{t('modelProvider.card.priorityUse', { ns: 'common' })}</div>
             {
               options.map(option => (
                 <PopoverButton as={Fragment} key={option.key}>

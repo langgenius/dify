@@ -16,7 +16,7 @@ export type InputWithCopyProps = {
   onCopy?: (value: string) => void // Callback when copy is triggered
 } & Omit<InputProps, 'showClearIcon' | 'onCopy'> // Remove conflicting props
 
-const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
+const prefixEmbedded = 'overview.appInfo.embedded'
 
 const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
   {
@@ -78,8 +78,8 @@ const InputWithCopy = React.forwardRef<HTMLInputElement, InputWithCopyProps>((
           <Tooltip
             popupContent={
               (isCopied
-                ? t(`${prefixEmbedded}.copied`)
-                : t(`${prefixEmbedded}.copy`)) || ''
+                ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+                : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
             }
           >
             <ActionButton

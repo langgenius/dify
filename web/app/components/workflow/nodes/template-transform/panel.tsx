@@ -15,7 +15,7 @@ import VarList from '@/app/components/workflow/nodes/_base/components/variable/v
 import { CodeLanguage } from '../code/types'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.templateTransform'
+const i18nPrefix = 'nodes.templateTransform'
 
 const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
   id,
@@ -40,7 +40,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
       <div className="space-y-4 px-4 pb-4">
 
         <Field
-          title={t(`${i18nPrefix}.inputVars`)}
+          title={t(`${i18nPrefix}.inputVars`, { ns: 'workflow' })}
           operations={
             !readOnly ? <AddButton onClick={handleAddEmptyVariable} /> : undefined
           }
@@ -64,7 +64,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
           readOnly={readOnly}
           language={CodeLanguage.python3}
           title={
-            <div className="uppercase">{t(`${i18nPrefix}.code`)}</div>
+            <div className="uppercase">{t(`${i18nPrefix}.code`, { ns: 'workflow' })}</div>
           }
           headerRight={(
             <div className="flex items-center">
@@ -73,7 +73,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
                 href="https://jinja.palletsprojects.com/en/3.1.x/templates/"
                 target="_blank"
               >
-                <span>{t(`${i18nPrefix}.codeSupportTip`)}</span>
+                <span>{t(`${i18nPrefix}.codeSupportTip`, { ns: 'workflow' })}</span>
                 <RiQuestionLine className="h-3 w-3" />
               </a>
               <div className="mx-1.5 h-3 w-px bg-divider-regular"></div>
@@ -90,7 +90,7 @@ const Panel: FC<NodePanelProps<TemplateTransformNodeType>> = ({
             <VarItem
               name="output"
               type="string"
-              description={t(`${i18nPrefix}.outputVars.output`)}
+              description={t(`${i18nPrefix}.outputVars.output`, { ns: 'workflow' })}
             />
           </>
         </OutputVars>

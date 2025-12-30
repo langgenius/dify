@@ -153,7 +153,7 @@ const EnvPanel = () => {
       )}
     >
       <div className="system-xl-semibold flex shrink-0 items-center justify-between p-4 pb-0 text-text-primary">
-        {t('workflow.env.envPanelTitle')}
+        {t('env.envPanelTitle', { ns: 'workflow' })}
         <div className="flex items-center">
           <div
             className="flex h-6 w-6 cursor-pointer items-center justify-center"
@@ -163,7 +163,7 @@ const EnvPanel = () => {
           </div>
         </div>
       </div>
-      <div className="system-sm-regular shrink-0 px-4 py-1 text-text-tertiary">{t('workflow.env.envDescription')}</div>
+      <div className="system-sm-regular shrink-0 px-4 py-1 text-text-tertiary">{t('env.envDescription', { ns: 'workflow' })}</div>
       <div className="shrink-0 px-4 pb-3 pt-2">
         <VariableTrigger
           open={showVariableModal}

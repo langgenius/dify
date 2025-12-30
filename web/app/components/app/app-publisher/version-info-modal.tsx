@@ -37,7 +37,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       setTitleError(true)
       Toast.notify({
         type: 'error',
-        message: t('workflow.versionHistory.editField.titleLengthLimit', { limit: TITLE_MAX_LENGTH }),
+        message: t('versionHistory.editField.titleLengthLimit', { ns: 'workflow', limit: TITLE_MAX_LENGTH }),
       })
       return
     }
@@ -50,7 +50,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       setReleaseNotesError(true)
       Toast.notify({
         type: 'error',
-        message: t('workflow.versionHistory.editField.releaseNotesLengthLimit', { limit: RELEASE_NOTES_MAX_LENGTH }),
+        message: t('versionHistory.editField.releaseNotesLengthLimit', { ns: 'workflow', limit: RELEASE_NOTES_MAX_LENGTH }),
       })
       return
     }
@@ -75,7 +75,7 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
     <Modal className="p-0" isShow={isOpen} onClose={onClose}>
       <div className="relative w-full p-6 pb-4 pr-14">
         <div className="title-2xl-semi-bold text-text-primary first-letter:capitalize">
-          {versionInfo?.marked_name ? t('workflow.versionHistory.editVersionInfo') : t('workflow.versionHistory.nameThisVersion')}
+          {versionInfo?.marked_name ? t('versionHistory.editVersionInfo', { ns: 'workflow' }) : t('versionHistory.nameThisVersion', { ns: 'workflow' })}
         </div>
         <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center p-1.5" onClick={onClose}>
           <RiCloseLine className="h-[18px] w-[18px] text-text-tertiary" />
@@ -84,22 +84,22 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       <div className="flex flex-col gap-y-4 px-6 py-3">
         <div className="flex flex-col gap-y-1">
           <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
-            {t('workflow.versionHistory.editField.title')}
+            {t('versionHistory.editField.title', { ns: 'workflow' })}
           </div>
           <Input
             value={title}
-            placeholder={`${t('workflow.versionHistory.nameThisVersion')}${t('workflow.panel.optional')}`}
+            placeholder={`${t('versionHistory.nameThisVersion', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
             onChange={handleTitleChange}
             destructive={titleError}
           />
         </div>
         <div className="flex flex-col gap-y-1">
           <div className="system-sm-semibold flex h-6 items-center text-text-secondary">
-            {t('workflow.versionHistory.editField.releaseNotes')}
+            {t('versionHistory.editField.releaseNotes', { ns: 'workflow' })}
           </div>
           <Textarea
             value={releaseNotes}
-            placeholder={`${t('workflow.versionHistory.releaseNotesPlaceholder')}${t('workflow.panel.optional')}`}
+            placeholder={`${t('versionHistory.releaseNotesPlaceholder', { ns: 'workflow' })}${t('panel.optional', { ns: 'workflow' })}`}
             onChange={handleDescriptionChange}
             destructive={releaseNotesError}
           />
@@ -107,8 +107,8 @@ const VersionInfoModal: FC<VersionInfoModalProps> = ({
       </div>
       <div className="flex justify-end p-6 pt-5">
         <div className="flex items-center gap-x-3">
-          <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-          <Button variant="primary" onClick={handlePublish}>{t('workflow.common.publish')}</Button>
+          <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={handlePublish}>{t('common.publish', { ns: 'workflow' })}</Button>
         </div>
       </div>
     </Modal>

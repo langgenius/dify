@@ -6,7 +6,7 @@ from collections import defaultdict
 from collections.abc import Mapping, Sequence
 from typing import TYPE_CHECKING, Any, cast
 
-from sqlalchemy import and_, func, literal, or_, select
+from sqlalchemy import and_, func, or_, select
 from sqlalchemy.orm import sessionmaker
 
 from core.app.app_config.entities import DatasetRetrieveConfigEntity
@@ -460,7 +460,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
             if automatic_metadata_filters:
                 conditions = []
                 for sequence, filter in enumerate(automatic_metadata_filters):
-                    self._process_metadata_filter_func(
+                    DatasetRetrieval.process_metadata_filter_func(
                         sequence,
                         filter.get("condition", ""),
                         filter.get("metadata_name", ""),
@@ -504,7 +504,7 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
                             value=expected_value,
                         )
                     )
-                    filters = self._process_metadata_filter_func(
+                    filters = DatasetRetrieval.process_metadata_filter_func(
                         sequence,
                         condition.comparison_operator,
                         metadata_name,
@@ -602,87 +602,6 @@ class KnowledgeRetrievalNode(LLMUsageTrackingMixin, Node[KnowledgeRetrievalNodeD
         except Exception:
             return [], usage
         return automatic_metadata_filters, usage
-
-    def _process_metadata_filter_func(
-        self, sequence: int, condition: str, metadata_name: str, value: Any, filters: list[Any]
-    ) -> list[Any]:
-        if value is None and condition not in ("empty", "not empty"):
-            return filters
-
-        json_field = Document.doc_metadata[metadata_name].as_string()
-
-        match condition:
-            case "contains":
-                filters.append(json_field.like(f"%{value}%"))
-
-            case "not contains":
-                filters.append(json_field.notlike(f"%{value}%"))
-
-            case "start with":
-                filters.append(json_field.like(f"{value}%"))
-
-            case "end with":
-                filters.append(json_field.like(f"%{value}"))
-            case "in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
-
-                if not value_list:
-                    filters.append(literal(False))
-                else:
-                    filters.append(json_field.in_(value_list))
-
-            case "not in":
-                if isinstance(value, str):
-                    value_list = [v.strip() for v in value.split(",") if v.strip()]
-                elif isinstance(value, (list, tuple)):
-                    value_list = [str(v) for v in value if v is not None]
-                else:
-                    value_list = [str(value)] if value is not None else []
-
-                if not value_list:
-                    filters.append(literal(True))
-                else:
-                    filters.append(json_field.notin_(value_list))
-
-            case "is" | "=":
-                if isinstance(value, str):
-                    filters.append(json_field == value)
-                elif isinstance(value, (int, float)):
-                    filters.append(Document.doc_metadata[metadata_name].as_float() == value)
-
-            case "is not" | "≠":
-                if isinstance(value, str):
-                    filters.append(json_field != value)
-                elif isinstance(value, (int, float)):
-                    filters.append(Document.doc_metadata[metadata_name].as_float() != value)
-
-            case "empty":
-                filters.append(Document.doc_metadata[metadata_name].is_(None))
-
-            case "not empty":
-                filters.append(Document.doc_metadata[metadata_name].isnot(None))
-
-            case "before" | "<":
-                filters.append(Document.doc_metadata[metadata_name].as_float() < value)
-
-            case "after" | ">":
-                filters.append(Document.doc_metadata[metadata_name].as_float() > value)
-
-            case "≤" | "<=":
-                filters.append(Document.doc_metadata[metadata_name].as_float() <= value)
-
-            case "≥" | ">=":
-                filters.append(Document.doc_metadata[metadata_name].as_float() >= value)
-
-            case _:
-                pass
-
-        return filters
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(

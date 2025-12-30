@@ -127,8 +127,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                 <div className="flex h-6 items-center pl-1 pr-1.5 leading-6 group-hover:hidden">
                   {
                     hasModelList
-                      ? t('common.modelProvider.modelsNum', { num: modelList.length })
-                      : t('common.modelProvider.showModels')
+                      ? t('modelProvider.modelsNum', { ns: 'common', num: modelList.length })
+                      : t('modelProvider.showModels', { ns: 'common' })
                   }
                   {!loading && <RiArrowRightSLine className="h-4 w-4" />}
                 </div>
@@ -138,8 +138,8 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
                 >
                   {
                     hasModelList
-                      ? t('common.modelProvider.showModelsNum', { num: modelList.length })
-                      : t('common.modelProvider.showModels')
+                      ? t('modelProvider.showModelsNum', { ns: 'common', num: modelList.length })
+                      : t('modelProvider.showModels', { ns: 'common' })
                   }
                   {!loading && <RiArrowRightSLine className="h-4 w-4" />}
                   {
@@ -153,7 +153,7 @@ const ProviderAddedCard: FC<ProviderAddedCardProps> = ({
             {!showQuota && notConfigured && (
               <div className="flex h-6 items-center pl-1 pr-1.5">
                 <RiInformation2Fill className="mr-1 h-4 w-4 text-text-accent" />
-                <span className="system-xs-medium text-text-secondary">{t('common.modelProvider.configureTip')}</span>
+                <span className="system-xs-medium text-text-secondary">{t('modelProvider.configureTip', { ns: 'common' })}</span>
               </div>
             )}
             {
