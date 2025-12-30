@@ -161,9 +161,9 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         os.close(stderr_write_fd)
 
         # Create PipeTransport instances for stdin, stdout, and stderr
-        stdin_transport = PipeTransport(r_fd=stdin_write_fd, w_fd=stdin_write_fd)
-        stdout_transport = PipeTransport(r_fd=stdout_read_fd, w_fd=stdout_read_fd)
-        stderr_transport = PipeTransport(r_fd=stderr_read_fd, w_fd=stderr_read_fd)
+        stdin_transport = PipeTransport(r_fd=stdin_read_fd, w_fd=stdin_write_fd)
+        stdout_transport = PipeTransport(r_fd=stdout_read_fd, w_fd=stdout_write_fd)
+        stderr_transport = PipeTransport(r_fd=stderr_read_fd, w_fd=stderr_write_fd)
 
         # Return the process ID and file descriptors for stdin, stdout, and stderr
         return str(process.pid), stdin_transport, stdout_transport, stderr_transport
@@ -199,10 +199,10 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         """
 
         arch = machine()
-        match arch:
-            case "x86_64" | "AMD64":
+        match arch.lower():
+            case "x86_64" | "amd64":
                 return Arch.AMD64
-            case "aarch64" | "ARM64":
+            case "aarch64" | "arm64":
                 return Arch.ARM64
             case _:
                 raise ArchNotSupportedError(f"Unsupported architecture: {arch}")
