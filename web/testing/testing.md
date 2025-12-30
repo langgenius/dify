@@ -330,6 +330,7 @@ describe('ComponentName', () => {
 1. **i18n**: Uses global mock in `web/vitest.setup.ts` (auto-loaded by Vitest setup)
 
    The global mock provides:
+
    - `useTranslation` - returns translation keys with namespace prefix
    - `Trans` component - renders i18nKey and components
    - `useMixedTranslation` (from `@/app/components/plugins/marketplace/hooks`)
