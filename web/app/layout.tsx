@@ -8,8 +8,8 @@ import { getLocaleOnServer } from '@/i18n-config/server'
 import { DatasetAttr } from '@/types/feature'
 import { cn } from '@/utils/classnames'
 import BrowserInitializer from './components/browser-initializer'
+import { ReactScanLoader } from './components/devtools/react-scan/loader'
 import I18nServer from './components/i18n-server'
-import { ReactScan } from './components/react-scan'
 import SentryInitializer from './components/sentry-initializer'
 import RoutePrefixHandle from './routePrefixHandle'
 import './styles/globals.css'
@@ -90,7 +90,7 @@ const LocaleLayout = async ({
         className="color-scheme h-full select-auto"
         {...datasetMap}
       >
-        <ReactScan />
+        <ReactScanLoader />
         <ThemeProvider
           attribute="data-theme"
           defaultTheme="system"
