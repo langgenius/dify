@@ -13,15 +13,14 @@ import { useTranslation } from 'react-i18next'
 import {
   useCSVDownloader,
 } from 'react-papaparse'
-import { useContext } from 'use-context-selector'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
 import { FileDownload02, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
 import CustomPopover from '@/app/components/base/popover'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { clearAllAnnotations, fetchExportAnnotationList } from '@/service/annotation'
-import { cn } from '@/utils/classnames'
 
+import { cn } from '@/utils/classnames'
 import Button from '../../../base/button'
 import AddAnnotationModal from '../add-annotation-modal'
 import BatchAddModal from '../batch-add-annotation-modal'
@@ -44,7 +43,7 @@ const HeaderOptions: FC<Props> = ({
   controlUpdateList,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { CSVDownloader, Type } = useCSVDownloader()
   const [list, setList] = useState<AnnotationItemBasic[]>([])
   const annotationUnavailable = list.length === 0

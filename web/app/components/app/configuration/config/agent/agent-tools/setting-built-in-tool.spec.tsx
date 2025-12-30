@@ -3,7 +3,6 @@ import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import * as React from 'react'
 import { CollectionType } from '@/app/components/tools/types'
-import I18n from '@/context/i18n'
 import SettingBuiltInTool from './setting-built-in-tool'
 
 const fetchModelToolList = vi.fn()
@@ -54,6 +53,10 @@ vi.mock('@/app/components/plugins/plugin-auth', () => ({
 
 vi.mock('@/app/components/plugins/readme-panel/entrance', () => ({
   ReadmeEntrance: ({ className }: { className?: string }) => <div className={className}>readme</div>,
+}))
+
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(() => 'en-US'),
 }))
 
 const createParameter = (overrides?: Partial<ToolParameter>): ToolParameter => ({
@@ -129,18 +132,16 @@ const renderComponent = (props?: Partial<React.ComponentProps<typeof SettingBuil
   const onSave = vi.fn()
   const onAuthorizationItemClick = vi.fn()
   const utils = render(
-    <I18n.Provider value={{ locale: 'en-US', i18n: {}, setLocaleOnClient: vi.fn() as any }}>
-      <SettingBuiltInTool
-        collection={baseCollection as any}
-        toolName="search"
-        isModel
-        setting={{ settingParam: 'value' }}
-        onHide={onHide}
-        onSave={onSave}
-        onAuthorizationItemClick={onAuthorizationItemClick}
-        {...props}
-      />
-    </I18n.Provider>,
+    <SettingBuiltInTool
+      collection={baseCollection as any}
+      toolName="search"
+      isModel
+      setting={{ settingParam: 'value' }}
+      onHide={onHide}
+      onSave={onSave}
+      onAuthorizationItemClick={onAuthorizationItemClick}
+      {...props}
+    />,
   )
   return {
     ...utils,

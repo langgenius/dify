@@ -2,13 +2,12 @@ import type { FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
-import I18NContext from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { sendEMailLoginCode } from '@/service/common'
 
 type MailAndCodeAuthProps = {
@@ -22,7 +21,7 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
 
   const handleGetEMailVerificationCode = async () => {
     try {
