@@ -45,4 +45,3 @@ def test_skip_empty_final_chunk() -> None:
     published_event, publish_from = queue_manager.published[0]
     assert publish_from == PublishFrom.APPLICATION_MANAGER
     assert published_event.text == "hi"
-
