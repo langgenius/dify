@@ -1,10 +1,10 @@
 import type { Locale } from '@/i18n-config/language'
-import { useTranslation } from 'react-i18next'
+import { atom, useAtomValue } from 'jotai'
 import { getDocLanguage, getLanguage, getPricingPageLanguage } from '@/i18n-config/language'
 
+export const localeAtom = atom<Locale>('en-US')
 export const useLocale = () => {
-  const { i18n } = useTranslation()
-  return i18n.language as Locale
+  return useAtomValue(localeAtom)
 }
 
 export const useGetLanguage = () => {
