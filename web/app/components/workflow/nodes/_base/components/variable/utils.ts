@@ -1309,6 +1309,7 @@ const replaceOldVarInText = (
   )
 }
 
+// todo: add human-input node support
 export const getNodeUsedVars = (node: Node): ValueSelector[] => {
   const { data } = node
   const { type } = data
@@ -1505,6 +1506,7 @@ export const getNodeUsedVars = (node: Node): ValueSelector[] => {
 }
 
 // can be used in iteration node
+// todo: add human-input node
 export const getNodeUsedVarPassToServerKey = (
   node: Node,
   valueSelector: ValueSelector,
@@ -1615,6 +1617,7 @@ export const findUsedVarNodes = (
   return res
 }
 
+// todo: add human-input node
 export const updateNodeVars = (
   oldNode: Node,
   oldVarSelector: ValueSelector,

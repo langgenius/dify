@@ -389,6 +389,7 @@ export const getLayoutByDagre = async (originNodes: Node[], originEdges: Edge[])
   const edgeToPortMap = new Map<string, string>()
 
   // Build nodes with ports for If/Else nodes
+  // todo: add human-input node support
   nodes.forEach((node) => {
     if (node.data.type === BlockEnum.IfElse) {
       const portsResult = buildIfElseWithPorts(node, edges)

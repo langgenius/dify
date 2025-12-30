@@ -49,6 +49,7 @@ export const useWorkflowNodeFinished = () => {
 
         if (data.node_type === BlockEnum.QuestionClassifier)
           currentNode.data._runningBranchId = data?.outputs?.class_id
+        // todo: add human-input node support
       }
     })
     setNodes(newNodes)
