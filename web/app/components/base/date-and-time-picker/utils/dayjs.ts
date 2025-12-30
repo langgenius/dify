@@ -3,6 +3,7 @@ import type { Day } from '../types'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
+import { IS_DEV } from '@/config'
 import tz from '@/utils/timezone.json'
 
 dayjs.extend(utc)
@@ -131,7 +132,7 @@ export type ToDayjsOptions = {
 }
 
 const warnParseFailure = (value: string) => {
-  if (process.env.NODE_ENV !== 'production')
+  if (IS_DEV)
     console.warn('[TimePicker] Failed to parse time value', value)
 }
 

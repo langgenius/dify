@@ -4,6 +4,7 @@ import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
+import { IS_DEV } from '@/config'
 import { cn } from '@/utils/classnames'
 
 type ErrorBoundaryState = {
@@ -54,7 +55,7 @@ class ErrorBoundaryInner extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (process.env.NODE_ENV === 'development') {
+    if (IS_DEV) {
       console.error('ErrorBoundary caught an error:', error)
       console.error('Error Info:', errorInfo)
     }
