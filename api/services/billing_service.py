@@ -334,7 +334,7 @@ class BillingService:
                         plan_dict = json.loads(json_str)
                         subscription_plan = subscription_adapter.validate_python(plan_dict)
                         tenant_plans[tenant_id] = subscription_plan
-                    except (json.JSONDecodeError, Exception):
+                    except Exception:
                         logger.exception(
                             "get_plan_bulk_with_cache: process tenant(%s) failed, add to cache misses", tenant_id
                         )
