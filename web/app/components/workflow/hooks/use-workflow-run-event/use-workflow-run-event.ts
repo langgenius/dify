@@ -17,6 +17,7 @@ import {
   useWorkflowTextChunk,
   useWorkflowTextReplace,
 } from '.'
+import { useWorkflowResume } from './use-workflow-resume'
 
 export const useWorkflowRunEvent = () => {
   const { handleWorkflowStarted } = useWorkflowStarted()
@@ -36,6 +37,7 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowAgentLog } = useWorkflowAgentLog()
   const { handleWorkflowPaused } = useWorkflowPaused()
   const { handleWorkflowNodeHumanInputRequired } = useWorkflowNodeHumanInputRequired()
+  const { handleWorkflowResume } = useWorkflowResume()
 
   return {
     handleWorkflowStarted,
@@ -55,5 +57,6 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowAgentLog,
     handleWorkflowPaused,
     handleWorkflowNodeHumanInputRequired,
+    handleWorkflowResume,
   }
 }

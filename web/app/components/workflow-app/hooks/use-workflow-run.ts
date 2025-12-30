@@ -91,6 +91,7 @@ export const useWorkflowRun = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
     handleWorkflowPaused,
+    handleWorkflowResume,
   } = useWorkflowRunEvent()
 
   const handleBackupDraft = useCallback(() => {
@@ -376,13 +377,13 @@ export const useWorkflowRun = () => {
     const baseSseOptions: IOtherOptions = {
       ...restCallback,
       onWorkflowStarted: (params) => {
-        const state = workflowStore.getState()
-        if (state.workflowRunningData) {
-          state.setWorkflowRunningData(produce(state.workflowRunningData, (draft) => {
-            draft.resultText = ''
-          }))
+        const { is_resumption } = params.data
+        if (is_resumption) {
+          handleWorkflowResume()
         }
-        handleWorkflowStarted(params)
+        else {
+          handleWorkflowStarted(params)
+        }
 
         if (onWorkflowStarted)
           onWorkflowStarted(params)
@@ -801,7 +802,7 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowResume, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

@@ -30,6 +30,7 @@ export const useWorkflowStarted = () => {
         ...data,
         status: WorkflowRunningStatus.Running,
       }
+      draft.resultText = ''
     }))
     const nodes = getNodes()
     const newNodes = produce(nodes, (draft) => {

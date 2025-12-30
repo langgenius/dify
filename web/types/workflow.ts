@@ -165,6 +165,7 @@ export type WorkflowStartedResponse = {
     id: string
     workflow_id: string
     created_at: number
+    is_resumption: boolean
   }
 }
 

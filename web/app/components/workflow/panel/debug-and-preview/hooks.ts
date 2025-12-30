@@ -351,12 +351,17 @@ export const useChat = (
         onError() {
           handleResponding(false)
         },
-        onWorkflowStarted: ({ workflow_run_id, task_id }) => {
-          taskIdRef.current = task_id
-          responseItem.workflow_run_id = workflow_run_id
-          responseItem.workflowProcess = {
-            status: WorkflowRunningStatus.Running,
-            tracing: [],
+        onWorkflowStarted: ({ workflow_run_id, task_id, data: { is_resumption } }) => {
+          if (is_resumption) {
+            responseItem.workflowProcess!.status = WorkflowRunningStatus.Running
+          }
+          else {
+            taskIdRef.current = task_id
+            responseItem.workflow_run_id = workflow_run_id
+            responseItem.workflowProcess = {
+              status: WorkflowRunningStatus.Running,
+              tracing: [],
+            }
           }
           updateCurrentQAOnTree({
             placeholderQuestionId,
