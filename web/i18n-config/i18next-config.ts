@@ -2,7 +2,6 @@
 import type { Locale } from '.'
 import { camelCase, kebabCase } from 'es-toolkit/compat'
 import i18n from 'i18next'
-
 import { initReactI18next } from 'react-i18next'
 import appAnnotation from '../i18n/en-US/app-annotation.json'
 import appApi from '../i18n/en-US/app-api.json'

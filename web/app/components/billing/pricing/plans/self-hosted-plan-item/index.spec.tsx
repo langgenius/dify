@@ -26,7 +26,6 @@ vi.mock('react-i18next', () => ({
 }))
 
 vi.mock('../../../../base/toast', () => ({
-  __esModule: true,
   default: {
     notify: vi.fn(),
   },

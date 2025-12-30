@@ -10,7 +10,7 @@ import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { ToastContext } from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
 
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { upload } from '@/service/base'
@@ -40,7 +40,7 @@ const FileUploader = ({
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)

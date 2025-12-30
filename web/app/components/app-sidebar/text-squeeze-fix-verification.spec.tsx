@@ -13,7 +13,6 @@ vi.mock('next/navigation', () => ({
 
 // Mock classnames utility
 vi.mock('@/utils/classnames', () => ({
-  __esModule: true,
   default: (...classes: any[]) => classes.filter(Boolean).join(' '),
 }))
 

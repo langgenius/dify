@@ -12,7 +12,7 @@ import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
 import { ToastContext } from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useProviderContextSelector } from '@/context/provider-context'
 import { inviteMember } from '@/service/common'
 import { cn } from '@/utils/classnames'
@@ -47,7 +47,7 @@ const InviteModal = ({
     setIsLimitExceeded(limited && (used > licenseLimit.workspace_members.limit))
   }, [licenseLimit, emails])
 
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const [role, setRole] = useState<RoleKey>('normal')
 
   const [isSubmitting, {
