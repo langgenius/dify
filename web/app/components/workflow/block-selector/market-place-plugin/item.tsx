@@ -4,9 +4,8 @@ import type { Plugin } from '@/app/components/plugins/types.ts'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 
 import { formatNumber } from '@/utils/format'
@@ -27,7 +26,7 @@ const Item: FC<Props> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = React.useState(false)
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const getLocalizedText = (obj: Record<string, string> | undefined) =>
     obj?.[locale] || obj?.['en-US'] || obj?.en_US || ''
   const [isShowInstallModal, {

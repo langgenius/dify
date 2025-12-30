@@ -6,14 +6,14 @@ import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Loading from '@/app/components/base/loading'
 import { SimpleSelect } from '@/app/components/base/select'
 import Toast from '@/app/components/base/toast'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import I18n, { useDocLink } from '@/context/i18n'
+import { useDocLink } from '@/context/i18n'
+import { setLocaleOnClient } from '@/i18n-config'
 import { languages, LanguagesSupported } from '@/i18n-config/language'
 import { activateMember } from '@/service/common'
 import { useInvitationCheck } from '@/service/use-common'
@@ -27,7 +27,6 @@ export default function InviteSettingsPage() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const token = decodeURIComponent(searchParams.get('invite_token') as string)
-  const { setLocaleOnClient } = useContext(I18n)
   const [name, setName] = useState('')
   const [language, setLanguage] = useState(LanguagesSupported[0])
   const [timezone, setTimezone] = useState(() => Intl.DateTimeFormat().resolvedOptions().timeZone || 'America/Los_Angeles')
@@ -65,7 +64,7 @@ export default function InviteSettingsPage() {
     catch {
       recheck()
     }
-  }, [language, name, recheck, setLocaleOnClient, timezone, token, router, t])
+  }, [language, name, recheck, timezone, token, router, t])
 
   if (!checkRes)
     return <Loading />

@@ -12,10 +12,8 @@ import {
 import { noop } from 'es-toolkit/compat'
 import Image from 'next/image'
 import Link from 'next/link'
-import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
@@ -38,7 +36,7 @@ import { useDefaultModel, useModelList, useModelListAndDefaultModelAndCurrentPro
 import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { FULL_DOC_PREVIEW_LENGTH, IS_CE_EDITION } from '@/config'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import I18n, { useDocLink } from '@/context/i18n'
+import { useDocLink, useLocale } from '@/context/i18n'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { DataSourceProvider } from '@/models/common'
@@ -151,7 +149,7 @@ const StepTwo = ({
 }: StepTwoProps) => {
   const { t } = useTranslation()
   const docLink = useDocLink()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const media = useBreakpoints()
   const isMobile = media === MediaType.mobile
 
