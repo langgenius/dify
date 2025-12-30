@@ -1,6 +1,6 @@
 import type { SortType } from '@/service/datasets'
 import { parseAsInteger, parseAsString, useQueryStates } from 'nuqs'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
 import { sanitizeStatusValue } from '../status-filter'
 
 const ALLOWED_SORT_VALUES: SortType[] = ['-created_at', 'created_at', '-hit_count', 'hit_count']
@@ -77,13 +77,13 @@ function useDocumentListQueryState() {
 
   const finalQuery = useMemo(() => normalizeDocumentListQuery(query), [query])
 
-  const updateQuery = (updates: Partial<DocumentListQuery>) => {
+  const updateQuery = useCallback((updates: Partial<DocumentListQuery>) => {
     setQuery(prev => normalizeDocumentListQuery({ ...prev, ...updates }))
-  }
+  }, [setQuery])
 
-  const resetQuery = () => {
+  const resetQuery = useCallback(() => {
     setQuery(DEFAULT_QUERY)
-  }
+  }, [setQuery])
 
   return {
     query: finalQuery,
