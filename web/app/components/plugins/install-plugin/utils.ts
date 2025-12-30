@@ -1,6 +1,6 @@
 import type { Plugin, PluginDeclaration, PluginManifestInMarket } from '../types'
 import type { GitHubUrlInfo } from '@/app/components/plugins/types'
-import { isEmpty } from 'es-toolkit/compat'
+import { isEmpty } from '@/utils/toolkit-helpers'
 
 export const pluginManifestToCardPluginProps = (pluginManifest: PluginDeclaration): Plugin => {
   return {

@@ -2,12 +2,12 @@
 import type { FC } from 'react'
 import type { Topic } from '../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
-import { uniqueId } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { uniqueId } from '@/utils/toolkit-helpers'
 
 const i18nPrefix = 'nodes.questionClassifiers'
 
