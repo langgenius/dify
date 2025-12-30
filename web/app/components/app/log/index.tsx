@@ -57,13 +57,15 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   )
 
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
+  const page = queryParams.page > 0 ? queryParams.page : 1
+  const limit = queryParams.limit > 0 ? queryParams.limit : APP_PAGE_LIMIT
 
   // Get the app type first
   const isChatMode = appDetail.mode !== AppModeEnum.COMPLETION
 
   const query = {
-    page: queryParams.page,
-    limit: queryParams.limit,
+    page,
+    limit,
     ...((debouncedQueryParams.period !== '9')
       ? {
           start: dayjs().subtract(TIME_PERIOD_MAPPING[debouncedQueryParams.period].value, 'day').startOf('day').format('YYYY-MM-DD HH:mm'),
@@ -117,10 +119,10 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
         {(total && total > APP_PAGE_LIMIT)
           ? (
               <Pagination
-                current={queryParams.page - 1}
+                current={page - 1}
                 onChange={handlePageChange}
                 total={total}
-                limit={queryParams.limit}
+                limit={limit}
                 onLimitChange={handleLimitChange}
               />
             )

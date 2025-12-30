@@ -20,12 +20,38 @@ export type DocumentListQuery = {
   sort: SortType
 }
 
+type DocumentListQueryInput = {
+  page?: number
+  limit?: number
+  keyword?: string | null
+  status?: string | null
+  sort?: string | null
+}
+
 const DEFAULT_QUERY: DocumentListQuery = {
   page: 1,
   limit: 10,
   keyword: '',
   status: 'all',
   sort: '-created_at',
+}
+
+const normalizeKeywordValue = (value?: string | null) => (value && value.trim() ? value : '')
+
+const normalizeDocumentListQuery = (query: DocumentListQueryInput): DocumentListQuery => {
+  const page = (query.page && query.page > 0) ? query.page : DEFAULT_QUERY.page
+  const limit = (query.limit && query.limit > 0 && query.limit <= 100) ? query.limit : DEFAULT_QUERY.limit
+  const keyword = normalizeKeywordValue(query.keyword ?? DEFAULT_QUERY.keyword)
+  const status = sanitizeStatusValue(query.status ?? DEFAULT_QUERY.status)
+  const sort = sanitizeSortValue(query.sort ?? DEFAULT_QUERY.sort)
+
+  return {
+    page,
+    limit,
+    keyword,
+    status,
+    sort,
+  }
 }
 
 function useDocumentListQueryState() {
@@ -38,6 +64,7 @@ function useDocumentListQueryState() {
       sort: parseAsString.withDefault(DEFAULT_QUERY.sort),
     },
     {
+      history: 'push',
       urlKeys: {
         page: 'page',
         limit: 'limit',
@@ -48,21 +75,10 @@ function useDocumentListQueryState() {
     },
   )
 
-  const finalQuery = useMemo(() => {
-    const page = query.page > 0 ? query.page : 1
-    const limit = (query.limit > 0 && query.limit <= 100) ? query.limit : 10
-
-    return {
-      ...query,
-      page,
-      limit,
-      status: sanitizeStatusValue(query.status),
-      sort: sanitizeSortValue(query.sort),
-    }
-  }, [query])
+  const finalQuery = useMemo(() => normalizeDocumentListQuery(query), [query])
 
   const updateQuery = (updates: Partial<DocumentListQuery>) => {
-    setQuery(prev => ({ ...prev, ...updates }))
+    setQuery(prev => normalizeDocumentListQuery({ ...prev, ...updates }))
   }
 
   const resetQuery = () => {
