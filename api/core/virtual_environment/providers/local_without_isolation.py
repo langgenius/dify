@@ -11,6 +11,8 @@ from uuid import uuid4
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.exec import ArchNotSupportedError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
+from core.virtual_environment.channel.pipe_transport import PipeTransport
+from core.virtual_environment.channel.transport import Transport
 
 
 class LocalVirtualEnvironment(VirtualEnvironment):
@@ -114,7 +116,9 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         # No action needed for local without isolation
         pass
 
-    def execute_command(self, connection_handle: ConnectionHandle, command: list[str]) -> tuple[int, int, int, int]:
+    def execute_command(
+        self, connection_handle: ConnectionHandle, command: list[str]
+    ) -> tuple[str, Transport, Transport, Transport]:
         """
         Execute a command in the local virtual environment.
 
@@ -156,10 +160,15 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         os.close(stdout_write_fd)
         os.close(stderr_write_fd)
 
-        # Return the process ID and file descriptors for stdin, stdout, and stderr
-        return process.pid, stdin_write_fd, stdout_read_fd, stderr_read_fd
+        # Create PipeTransport instances for stdin, stdout, and stderr
+        stdin_transport = PipeTransport(r_fd=stdin_write_fd, w_fd=stdin_write_fd)
+        stdout_transport = PipeTransport(r_fd=stdout_read_fd, w_fd=stdout_read_fd)
+        stderr_transport = PipeTransport(r_fd=stderr_read_fd, w_fd=stderr_read_fd)
 
-    def get_command_status(self, connection_handle: ConnectionHandle, pid: int) -> CommandStatus:
+        # Return the process ID and file descriptors for stdin, stdout, and stderr
+        return str(process.pid), stdin_transport, stdout_transport, stderr_transport
+
+    def get_command_status(self, connection_handle: ConnectionHandle, pid: str) -> CommandStatus:
         """
         Docstring for get_command_status
 
@@ -171,14 +180,15 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         :return: Description
         :rtype: CommandStatus
         """
+        pid_int = int(pid)
         try:
-            retcode = os.waitpid(pid, os.WNOHANG)[1]
+            retcode = os.waitpid(pid_int, os.WNOHANG)[1]
             if retcode == 0:
-                return CommandStatus(status=CommandStatus.Status.RUNNING, pid=pid, exit_code=None)
+                return CommandStatus(status=CommandStatus.Status.RUNNING, exit_code=None)
             else:
-                return CommandStatus(status=CommandStatus.Status.COMPLETED, pid=pid, exit_code=retcode)
+                return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=retcode)
         except ChildProcessError:
-            return CommandStatus(status=CommandStatus.Status.COMPLETED, pid=pid, exit_code=None)
+            return CommandStatus(status=CommandStatus.Status.COMPLETED, exit_code=None)
 
     def _get_os_architecture(self) -> Arch:
         """

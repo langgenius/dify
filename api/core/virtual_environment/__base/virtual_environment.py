@@ -4,6 +4,7 @@ from io import BytesIO
 from typing import Any
 
 from core.virtual_environment.__base.entities import CommandStatus, ConnectionHandle, FileState, Metadata
+from core.virtual_environment.channel.transport import Transport
 
 
 class VirtualEnvironment(ABC):
@@ -116,7 +117,9 @@ class VirtualEnvironment(ABC):
         """
 
     @abstractmethod
-    def execute_command(self, connection_handle: ConnectionHandle, command: list[str]) -> tuple[int, int, int, int]:
+    def execute_command(
+        self, connection_handle: ConnectionHandle, command: list[str]
+    ) -> tuple[str, Transport, Transport, Transport]:
         """
         Execute a command in the virtual environment.
 
@@ -125,12 +128,13 @@ class VirtualEnvironment(ABC):
             command (list[str]): The command to execute as a list of strings.
 
         Returns:
-            tuple[int, int, int, int]: A tuple containing pid and 3 handle to os.pipe(): (stdin, stdout, stderr).
+            tuple[int, Transport, Transport, Transport]: A tuple containing pid and 3 handle
+            to os.pipe(): (stdin, stdout, stderr).
             After exuection, the 3 handles will be closed by caller.
         """
 
     @abstractmethod
-    def get_command_status(self, connection_handle: ConnectionHandle, pid: int) -> CommandStatus:
+    def get_command_status(self, connection_handle: ConnectionHandle, pid: str) -> CommandStatus:
         """
         Get the status of a command executed in the virtual environment.
 

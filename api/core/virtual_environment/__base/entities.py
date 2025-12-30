@@ -43,7 +43,6 @@ class CommandStatus(BaseModel):
         RUNNING = "running"
         COMPLETED = "completed"
 
-    pid: int = Field(description="The process ID of the command.")
     status: Status = Field(description="The status of the command execution.")
     exit_code: int | None = Field(description="The return code of the command execution.")
 
