@@ -29,6 +29,7 @@ import { BlockEnum } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { AgentLogTrigger } from './agent-log'
 import { IterationLogTrigger } from './iteration-log'
+import { LLMLogTrigger } from './llm-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
 
@@ -43,6 +44,7 @@ type Props = {
   onShowLoopDetail?: (detail: NodeTracing[][], loopDurationMap: LoopDurationMap, loopVariableMap: LoopVariableMap) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  onShowLLMDetail?: (detail: NodeTracing[]) => void
   notShowIterationNav?: boolean
   notShowLoopNav?: boolean
 }
@@ -58,6 +60,7 @@ const NodePanel: FC<Props> = ({
   onShowLoopDetail,
   onShowRetryDetail,
   onShowAgentOrToolLog,
+  onShowLLMDetail,
   notShowIterationNav,
   notShowLoopNav,
 }) => {
@@ -96,6 +99,7 @@ const NodePanel: FC<Props> = ({
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
+  const isLLMNode = nodeInfo.node_type === BlockEnum.LLM && !!nodeInfo.generation_detail
 
   const inputsTitle = useMemo(() => {
     let text = t('common.input', { ns: 'workflow' })
@@ -191,6 +195,12 @@ const NodePanel: FC<Props> = ({
               <RetryLogTrigger
                 nodeInfo={nodeInfo}
                 onShowRetryResultList={onShowRetryDetail}
+              />
+            )}
+            {isLLMNode && onShowLLMDetail && (
+              <LLMLogTrigger
+                nodeInfo={nodeInfo}
+                onShowLLMDetail={onShowLLMDetail}
               />
             )}
             {

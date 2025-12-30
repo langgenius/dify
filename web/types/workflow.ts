@@ -28,6 +28,23 @@ export type AgentLogItemWithChildren = AgentLogItem & {
   children: AgentLogItemWithChildren[]
 }
 
+export type ToolCallDetail = {
+  id: string
+  name: string
+  arguments: string
+  result: string
+}
+export type SequenceSegment
+  = | { type: 'context', start: number, end: number }
+    | { type: 'reasoning', index: number }
+    | { type: 'tool_call', index: number }
+
+export type LLMLogItem = {
+  reasoning_content: string[]
+  tool_calls: ToolCallDetail[]
+  sequence: SequenceSegment[]
+}
+
 export type NodeTracing = {
   id: string
   index: number
@@ -104,6 +121,7 @@ export type NodeTracing = {
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
   agentLog?: AgentLogItemWithChildren[] // agent log
+  generation_detail?: LLMLogItem
 }
 
 export type FetchWorkflowDraftResponse = {

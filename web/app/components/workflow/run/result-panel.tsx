@@ -15,6 +15,7 @@ import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
 import { BlockEnum } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
+import { LLMLogTrigger } from './llm-log'
 import MetaData from './meta'
 import StatusPanel from './status'
 
@@ -45,6 +46,7 @@ export type ResultPanelProps = {
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
   handleShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
+  onShowLLMDetail?: (detail: NodeTracing[]) => void
 }
 
 const ResultPanel: FC<ResultPanelProps> = ({
@@ -71,6 +73,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   handleShowLoopResultList,
   onShowRetryDetail,
   handleShowAgentOrToolLog,
+  onShowLLMDetail,
 }) => {
   const { t } = useTranslation()
   const isIterationNode = nodeInfo?.node_type === BlockEnum.Iteration && !!nodeInfo?.details?.length
@@ -78,6 +81,7 @@ const ResultPanel: FC<ResultPanelProps> = ({
   const isRetryNode = hasRetryNode(nodeInfo?.node_type) && !!nodeInfo?.retryDetail?.length
   const isAgentNode = nodeInfo?.node_type === BlockEnum.Agent && !!nodeInfo?.agentLog?.length
   const isToolNode = nodeInfo?.node_type === BlockEnum.Tool && !!nodeInfo?.agentLog?.length
+  const isLLMNode = nodeInfo?.node_type === BlockEnum.LLM && !!nodeInfo?.generation_detail
 
   return (
     <div className="bg-components-panel-bg py-2">
@@ -113,6 +117,14 @@ const ResultPanel: FC<ResultPanelProps> = ({
             <RetryLogTrigger
               nodeInfo={nodeInfo}
               onShowRetryResultList={onShowRetryDetail}
+            />
+          )
+        }
+        {
+          isLLMNode && onShowLLMDetail && (
+            <LLMLogTrigger
+              nodeInfo={nodeInfo}
+              onShowLLMDetail={onShowLLMDetail}
             />
           )
         }
