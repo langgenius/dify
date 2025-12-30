@@ -6,6 +6,7 @@ import { ArrowDownIcon } from '@heroicons/react/24/outline'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
 import Loading from '@/app/components/base/loading'
 import Indicator from '@/app/components/header/indicator'
@@ -20,11 +21,14 @@ type ILogs = {
   logs?: WorkflowLogsResponse
   appDetail?: App
   onRefresh: () => void
+  disableInteraction?: boolean
+  showExportColumn?: boolean
+  onExport?: (log: WorkflowAppLogDetail) => void
 }
 
 const defaultValue = 'N/A'
 
-const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
+const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh, disableInteraction, showExportColumn, onExport }) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
 
@@ -125,8 +129,9 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.runtime', { ns: 'appLog' })}</td>
             <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.tokens', { ns: 'appLog' })}</td>
-            <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
-            {isWorkflow && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
+            <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', !isWorkflow && !showExportColumn ? 'rounded-r-lg' : '')}>{t('table.header.user', { ns: 'appLog' })}</td>
+            {isWorkflow && <td className={cn('whitespace-nowrap bg-background-section-burn py-1.5 pl-3', showExportColumn ? '' : 'rounded-r-lg')}>{t('table.header.triggered_from', { ns: 'appLog' })}</td>}
+            {showExportColumn && <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('filter.archived.export', { ns: 'appLog' })}</td>}
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -135,8 +140,14 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
             return (
               <tr
                 key={log.id}
-                className={cn('cursor-pointer border-b border-divider-subtle hover:bg-background-default-hover', currentLog?.id !== log.id ? '' : 'bg-background-default-hover')}
+                className={cn(
+                  'border-b border-divider-subtle',
+                  disableInteraction ? '' : 'cursor-pointer hover:bg-background-default-hover',
+                  currentLog?.id !== log.id ? '' : 'bg-background-default-hover',
+                )}
                 onClick={() => {
+                  if (disableInteraction)
+                    return
                   setCurrentLog(log)
                   setShowDrawer(true)
                 }}
@@ -169,24 +180,33 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
                     <TriggerByDisplay triggeredFrom={log.workflow_run.triggered_from as WorkflowRunTriggeredFrom} triggerMetadata={log.details?.trigger_metadata} />
                   </td>
                 )}
+                {showExportColumn && (
+                  <td className="p-3 pr-2 text-right">
+                    <Button size="small" variant="secondary" onClick={() => onExport?.(log)}>
+                      {t('filter.archived.export', { ns: 'appLog' })}
+                    </Button>
+                  </td>
+                )}
               </tr>
             )
           })}
         </tbody>
       </table>
-      <Drawer
-        isOpen={showDrawer}
-        onClose={onCloseDrawer}
-        mask={isMobile}
-        footer={null}
-        panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border"
-      >
-        <DetailPanel
+      {!disableInteraction && (
+        <Drawer
+          isOpen={showDrawer}
           onClose={onCloseDrawer}
-          runID={currentLog?.workflow_run.id || ''}
-          canReplay={currentLog?.workflow_run.triggered_from === 'app-run' || currentLog?.workflow_run.triggered_from === 'debugging'}
-        />
-      </Drawer>
+          mask={isMobile}
+          footer={null}
+          panelClassName="mt-16 mx-2 sm:mr-2 mb-3 !p-0 !max-w-[600px] rounded-xl border border-components-panel-border"
+        >
+          <DetailPanel
+            onClose={onCloseDrawer}
+            runID={currentLog?.workflow_run.id || ''}
+            canReplay={currentLog?.workflow_run.triggered_from === 'app-run' || currentLog?.workflow_run.triggered_from === 'debugging'}
+          />
+        </Drawer>
+      )}
     </div>
   )
 }

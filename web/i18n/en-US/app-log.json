@@ -29,6 +29,7 @@
   "filter.annotation.annotated": "Annotated Improvements ({{count}} items)",
   "filter.annotation.not_annotated": "Not Annotated",
   "filter.archived.button": "View archived records",
+  "filter.archived.export": "Export",
   "filter.archived.list.description": "This view will list archived workflow logs for export.",
   "filter.archived.list.title": "Archived records",
   "filter.archived.managerOnly": "Only workspace owner or admin can export logs.",

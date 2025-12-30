@@ -11,7 +11,6 @@ import { trackEvent } from '@/app/components/base/amplitude/utils'
 import Button from '@/app/components/base/button'
 import Chip from '@/app/components/base/chip'
 import Input from '@/app/components/base/input'
-import Modal from '@/app/components/base/modal'
 import Tooltip from '@/app/components/base/tooltip'
 
 dayjs.extend(quarterOfYear)
@@ -40,6 +39,7 @@ type IFilterProps = {
   isCurrentWorkspaceManager: boolean
   isFreePlan: boolean
   isTeamOrProfessional: boolean
+  onArchivedClick?: () => void
 }
 
 const Filter: FC<IFilterProps> = ({
@@ -50,19 +50,15 @@ const Filter: FC<IFilterProps> = ({
   isCurrentWorkspaceManager,
   isFreePlan,
   isTeamOrProfessional,
+  onArchivedClick,
 }: IFilterProps) => {
   const { t } = useTranslation()
-  const [showUpgradeModal, setShowUpgradeModal] = React.useState(false)
-  const [showArchivedModal, setShowArchivedModal] = React.useState(false)
   const showArchivedButton = isFreePlan || isTeamOrProfessional
 
   const handleOpenArchived = () => {
     if (!isCurrentWorkspaceManager)
       return
-    if (isFreePlan)
-      setShowUpgradeModal(true)
-    else if (isTeamOrProfessional)
-      setShowArchivedModal(true)
+    onArchivedClick?.()
   }
 
   return (
@@ -114,32 +110,6 @@ const Filter: FC<IFilterProps> = ({
           </Tooltip>
         </div>
       )}
-      <Modal
-        isShow={showUpgradeModal}
-        title={t('filter.archived.upgrade.title', { ns: 'appLog' })}
-        description={t('filter.archived.upgrade.description', { ns: 'appLog' })}
-        onClose={() => setShowUpgradeModal(false)}
-        closable
-      >
-        <div className="mt-6 flex justify-end">
-          <Button size="small" onClick={() => setShowUpgradeModal(false)}>
-            {t('operation.close', { ns: 'common' })}
-          </Button>
-        </div>
-      </Modal>
-      <Modal
-        isShow={showArchivedModal}
-        title={t('filter.archived.list.title', { ns: 'appLog' })}
-        description={t('filter.archived.list.description', { ns: 'appLog' })}
-        onClose={() => setShowArchivedModal(false)}
-        closable
-      >
-        <div className="mt-6 flex justify-end">
-          <Button size="small" onClick={() => setShowArchivedModal(false)}>
-            {t('operation.close', { ns: 'common' })}
-          </Button>
-        </div>
-      </Modal>
     </div>
   )
 }
