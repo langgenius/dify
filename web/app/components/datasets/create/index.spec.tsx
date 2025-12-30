@@ -91,7 +91,6 @@ let stepThreeProps: Record<string, any> = {}
 let _topBarProps: Record<string, any> = {}
 
 vi.mock('./step-one', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepOneProps = props
     return (
@@ -165,7 +164,6 @@ vi.mock('./step-one', () => ({
 }))
 
 vi.mock('./step-two', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepTwoProps = props
     return (
@@ -200,7 +198,6 @@ vi.mock('./step-two', () => ({
 }))
 
 vi.mock('./step-three', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepThreeProps = props
     return (
