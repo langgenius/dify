@@ -81,13 +81,6 @@ class FlowchartGeneratePayload(BaseModel):
     language: str | None = Field(default=None, description="Preferred language for generated content")
     # Available models that user has configured (for LLM/question-classifier nodes)
     available_models: list[dict[str, Any]] = Field(default_factory=list, description="User's configured models")
-    # Validate-fix iteration loop configuration
-    max_fix_iterations: int = Field(
-        default=2,
-        ge=0,
-        le=5,
-        description="Maximum number of validate-fix iterations (0 to disable auto-fix)",
-    )
 
 
 def reg(cls: type[BaseModel]):
@@ -322,7 +315,6 @@ class FlowchartGenerateApi(Resource):
                 regenerate_mode=args.regenerate_mode,
                 preferred_language=args.language,
                 available_models=args.available_models,
-                max_fix_iterations=args.max_fix_iterations,
             )
 
         except ProviderTokenNotInitError as ex:

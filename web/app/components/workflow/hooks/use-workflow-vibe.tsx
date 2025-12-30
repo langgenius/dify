@@ -845,22 +845,35 @@ export const useWorkflowVibe = () => {
         }
       }
 
-      // For any node with model config, ALWAYS use user's configured model
-      // This prevents "Model not exist" errors when LLM generates models the user doesn't have configured
-      // Applies to: LLM, QuestionClassifier, ParameterExtractor, and any future model-dependent nodes
+      // For any node with model config, validate against user's available models
+      // Only fallback to default if backend generated an invalid/unavailable model
+      // This prevents "Model not exist" errors while trusting valid backend model selections
       if (backendConfig.model) {
-        // Try to use defaultModel first, fallback to first available model from modelList
-        const fallbackModel = modelList?.[0]?.models?.[0]
-        const modelProvider = defaultModel?.provider?.provider || modelList?.[0]?.provider
-        const modelName = defaultModel?.model || fallbackModel?.model
+        const backendModel = backendConfig.model as { provider?: string, name?: string, mode?: string }
+        const backendProvider = backendModel.provider
+        const backendName = backendModel.name
 
-        if (modelProvider && modelName) {
-          mergedConfig.model = {
-            provider: modelProvider,
-            name: modelName,
-            mode: 'chat',
+        // Check if backend model exists in user's available models
+        const isValidModel = backendProvider && backendName && modelList?.some(provider =>
+          provider.provider === backendProvider
+          && provider.models.some(m => m.model === backendName),
+        )
+
+        if (!isValidModel) {
+          // Backend model is invalid or not available - fallback to user's default
+          const fallbackModel = modelList?.[0]?.models?.[0]
+          const modelProvider = defaultModel?.provider?.provider || modelList?.[0]?.provider
+          const modelName = defaultModel?.model || fallbackModel?.model
+
+          if (modelProvider && modelName) {
+            mergedConfig.model = {
+              provider: modelProvider,
+              name: modelName,
+              mode: 'chat',
+            }
           }
         }
+        // else: backend model is valid, keep it as-is
       }
 
       const data = {
@@ -976,6 +989,7 @@ export const useWorkflowVibe = () => {
     }
   }, [
     defaultModel,
+    modelList,
     nodeTypeLookup,
     nodesMetaDataMap,
     store,

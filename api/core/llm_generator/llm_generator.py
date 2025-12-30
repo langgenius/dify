@@ -297,9 +297,7 @@ class LLMGenerator:
         regenerate_mode: bool = False,
         preferred_language: str | None = None,
         available_models: Sequence[dict[str, object]] | None = None,
-        max_fix_iterations: int = 2,
     ):
-
         return WorkflowGenerator.generate_workflow_flowchart(
             tenant_id=tenant_id,
             instruction=instruction,
@@ -312,7 +310,6 @@ class LLMGenerator:
             regenerate_mode=regenerate_mode,
             preferred_language=preferred_language,
             available_models=available_models,
-            max_fix_iterations=max_fix_iterations,
         )
 
     @classmethod

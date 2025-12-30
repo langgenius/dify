@@ -48,7 +48,6 @@ class WorkflowGenerator:
         regenerate_mode: bool = False,
         preferred_language: str | None = None,
         available_models: Sequence[dict[str, object]] | None = None,
-        max_fix_iterations: int = 2,
     ):
         """
         Generates a Dify Workflow Flowchart from natural language instruction.
@@ -191,6 +190,5 @@ class WorkflowGenerator:
             "warnings": all_warnings,
             "tool_recommendations": [],  # Legacy field
             "error": "",
-            "fix_iterations": 0,  # Legacy
             "fixed_issues": all_fixes,  # Track what was auto-fixed
         }
