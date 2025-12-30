@@ -9,6 +9,8 @@ class PipeTransport(Transport):
     one for reading and one for writing.
 
     NOTE: r_fd and w_fd must be a pair created by os.pipe(). or returned from subprocess.Popen
+
+    NEVER FORGET TO CALL `close()` METHOD TO AVOID FILE DESCRIPTOR LEAKAGE.
     """
 
     def __init__(self, r_fd: int, w_fd: int):
