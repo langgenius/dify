@@ -31,9 +31,11 @@ const ContentItem = ({
   }, [formInputFields, fieldName])
 
   const placeholder = useMemo(() => {
-    return formInputField?.placeholder.type === 'variable'
-      ? resolvedPlaceholderValues?.[fieldName]
-      : formInputField?.placeholder.value
+    if (!formInputField)
+      return ''
+    return formInputField.placeholder.type === 'variable'
+      ? resolvedPlaceholderValues?.[fieldName] || ''
+      : formInputField.placeholder.value
   }, [formInputField, resolvedPlaceholderValues, fieldName])
 
   if (!isInputField(content)) {

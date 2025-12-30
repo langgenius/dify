@@ -2,7 +2,6 @@ import type { NodeDefault, Var } from '../../types'
 import type { HumanInputNodeType } from './types'
 import { BlockClassificationEnum } from '@/app/components/workflow/block-selector/types'
 import { BlockEnum, VarType } from '@/app/components/workflow/types'
-// import { DeliveryMethodType, UserActionButtonType } from './types'
 import { genNodeMetaData } from '@/app/components/workflow/utils'
 
 const i18nPrefix = 'nodes.humanInput.errorMsg'
@@ -39,15 +38,6 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
 
     if (!errorMessages && payload.delivery_methods.length > 0 && !payload.delivery_methods.some(method => method.enabled))
       errorMessages = t(`${i18nPrefix}.noDeliveryMethodEnabled`, { ns: 'workflow' })
-
-    if (!errorMessages && !payload.form_content)
-      errorMessages = t(`${i18nPrefix}.noFormContent`, { ns: 'workflow' })
-
-    if (!errorMessages && payload.form_content) {
-      const regex = /\{\{#\$output\.[^#]+#\}\}/
-      if (!regex.test(payload.form_content))
-        errorMessages = t(`${i18nPrefix}.noFormInputField`, { ns: 'workflow' })
-    }
 
     if (!errorMessages && !payload.user_actions.length)
       errorMessages = t(`${i18nPrefix}.noUserActions`, { ns: 'workflow' })
