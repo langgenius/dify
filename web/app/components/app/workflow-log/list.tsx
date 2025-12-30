@@ -24,11 +24,20 @@ type ILogs = {
   disableInteraction?: boolean
   showExportColumn?: boolean
   onExport?: (log: WorkflowAppLogDetail) => void
+  exportLoadingRunId?: string
 }
 
 const defaultValue = 'N/A'
 
-const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh, disableInteraction, showExportColumn, onExport }) => {
+const WorkflowAppLogList: FC<ILogs> = ({
+  logs,
+  appDetail,
+  onRefresh,
+  disableInteraction,
+  showExportColumn,
+  onExport,
+  exportLoadingRunId,
+}) => {
   const { t } = useTranslation()
   const { formatTime } = useTimestamp()
 
@@ -182,7 +191,13 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh, disableInte
                 )}
                 {showExportColumn && (
                   <td className="p-3 pr-2 text-right">
-                    <Button size="small" variant="secondary" onClick={() => onExport?.(log)}>
+                    <Button
+                      size="small"
+                      variant="secondary"
+                      loading={exportLoadingRunId === log.workflow_run.id}
+                      disabled={exportLoadingRunId === log.workflow_run.id}
+                      onClick={() => onExport?.(log)}
+                    >
                       {t('filter.archived.export', { ns: 'appLog' })}
                     </Button>
                   </td>

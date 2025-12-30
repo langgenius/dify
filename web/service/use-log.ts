@@ -6,10 +6,11 @@ import type {
   CompletionConversationFullDetailResponse,
   CompletionConversationsRequest,
   CompletionConversationsResponse,
+  WorkflowLogExportTaskStatus,
   WorkflowLogsResponse,
 } from '@/models/log'
-import { useQuery } from '@tanstack/react-query'
-import { get } from './base'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { get, post } from './base'
 
 const NAME_SPACE = 'log'
 
@@ -85,5 +86,27 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
     queryKey: [NAME_SPACE, 'workflow-logs', appId, params],
     queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-app-logs`, { params }),
     enabled: !!appId,
+  })
+}
+
+// ============ Workflow Run Export Tasks ============
+
+export const useCreateWorkflowRunExportTask = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'workflow-run-export-task', 'create'],
+    mutationFn: ({ appId, runId }: { appId: string, runId: string }) =>
+      post<WorkflowLogExportTaskStatus>(`/apps/${appId}/workflow-runs/${runId}/export-task`, {}),
+  })
+}
+
+export const useWorkflowRunExportTaskStatus = (taskId: string, enabled: boolean) => {
+  return useQuery<WorkflowLogExportTaskStatus>({
+    queryKey: [NAME_SPACE, 'workflow-run-export-task', taskId],
+    queryFn: () => get<WorkflowLogExportTaskStatus>(`/workflow-run-export-tasks/${taskId}`),
+    enabled: enabled && !!taskId,
+    refetchInterval: (query) => {
+      const data = query.state.data
+      return data && (data.status === 'success' || data.status === 'failed') ? false : 2000
+    },
   })
 }

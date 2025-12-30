@@ -286,6 +286,15 @@ export type WorkflowLogsRequest = {
   limit: number // The default value is 20 and the range is 1-100
 }
 
+export type WorkflowLogExportTaskStatus = {
+  task_id: string
+  status: 'pending' | 'running' | 'success' | 'failed'
+  presigned_url?: string
+  storage_key?: string
+  checksum?: string
+  size_bytes?: number
+}
+
 export type WorkflowRunDetailResponse = {
   id: string
   version: string
