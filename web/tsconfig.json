@@ -27,7 +27,6 @@
     "forceConsistentCasingInFileNames": true,
     "isolatedModules": true,
     "skipLibCheck": true,
-    "incremental": true,
     "plugins": [
       {
         "name": "next"
