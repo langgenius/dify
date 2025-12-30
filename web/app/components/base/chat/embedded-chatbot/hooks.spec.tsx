@@ -3,6 +3,7 @@ import type { ChatConfig } from '../types'
 import type { AppConversationData, AppData, AppMeta, ConversationItem } from '@/models/share'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { act, renderHook, waitFor } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { ToastProvider } from '@/app/components/base/toast'
 import {
   fetchChatList,
@@ -74,9 +75,11 @@ const createQueryClient = () => new QueryClient({
 
 const createWrapper = (queryClient: QueryClient) => {
   return ({ children }: { children: ReactNode }) => (
-    <QueryClientProvider client={queryClient}>
-      <ToastProvider>{children}</ToastProvider>
-    </QueryClientProvider>
+    <NuqsTestingAdapter>
+      <QueryClientProvider client={queryClient}>
+        <ToastProvider>{children}</ToastProvider>
+      </QueryClientProvider>
+    </NuqsTestingAdapter>
   )
 }
 

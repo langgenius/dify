@@ -1,11 +1,8 @@
+import type { ReactNode } from 'react'
 import { act, renderHook } from '@testing-library/react'
+import { NuqsTestingAdapter } from 'nuqs/adapters/testing'
 import { PARTNER_STACK_CONFIG } from '@/config'
 import usePSInfo from './use-ps-info'
-
-let searchParamsValues: Record<string, string | null> = {}
-const setSearchParams = (values: Record<string, string | null>) => {
-  searchParamsValues = values
-}
 
 type PartnerStackGlobal = typeof globalThis & {
   __partnerStackCookieMocks?: {
@@ -49,11 +46,6 @@ vi.mock('js-cookie', () => {
     remove,
   }
 })
-vi.mock('next/navigation', () => ({
-  useSearchParams: () => ({
-    get: (key: string) => searchParamsValues[key] ?? null,
-  }),
-}))
 vi.mock('@/service/use-billing', () => {
   const mutateAsync = vi.fn()
   const globals = getPartnerStackGlobal()
@@ -64,6 +56,15 @@ vi.mock('@/service/use-billing', () => {
     }),
   }
 })
+
+const renderWithAdapter = (searchParams = '') => {
+  const wrapper = ({ children }: { children: ReactNode }) => (
+    <NuqsTestingAdapter searchParams={searchParams}>
+      {children}
+    </NuqsTestingAdapter>
+  )
+  return renderHook(() => usePSInfo(), { wrapper })
+}
 
 describe('usePSInfo', () => {
   const originalLocationDescriptor = Object.getOwnPropertyDescriptor(globalThis, 'location')
@@ -76,7 +77,6 @@ describe('usePSInfo', () => {
   })
 
   beforeEach(() => {
-    setSearchParams({})
     const { get, set, remove } = ensureCookieMocks()
     get.mockReset()
     set.mockReset()
@@ -95,12 +95,7 @@ describe('usePSInfo', () => {
   it('saves partner info when query params change', () => {
     const { get, set } = ensureCookieMocks()
     get.mockReturnValue(JSON.stringify({ partnerKey: 'old', clickId: 'old-click' }))
-    setSearchParams({
-      ps_partner_key: 'new-partner',
-      ps_xid: 'new-click',
-    })
-
-    const { result } = renderHook(() => usePSInfo())
+    const { result } = renderWithAdapter('?ps_partner_key=new-partner&ps_xid=new-click')
 
     expect(result.current.psPartnerKey).toBe('new-partner')
     expect(result.current.psClickId).toBe('new-click')
@@ -124,17 +119,13 @@ describe('usePSInfo', () => {
   })
 
   it('does not overwrite cookie when params do not change', () => {
-    setSearchParams({
-      ps_partner_key: 'existing',
-      ps_xid: 'existing-click',
-    })
     const { get } = ensureCookieMocks()
     get.mockReturnValue(JSON.stringify({
       partnerKey: 'existing',
       clickId: 'existing-click',
     }))
 
-    const { result } = renderHook(() => usePSInfo())
+    const { result } = renderWithAdapter('?ps_partner_key=existing&ps_xid=existing-click')
 
     act(() => {
       result.current.saveOrUpdate()
@@ -145,12 +136,7 @@ describe('usePSInfo', () => {
   })
 
   it('binds partner info and clears cookie once', async () => {
-    setSearchParams({
-      ps_partner_key: 'bind-partner',
-      ps_xid: 'bind-click',
-    })
-
-    const { result } = renderHook(() => usePSInfo())
+    const { result } = renderWithAdapter('?ps_partner_key=bind-partner&ps_xid=bind-click')
 
     const mutate = ensureMutateAsync()
     const { remove } = ensureCookieMocks()
@@ -177,12 +163,7 @@ describe('usePSInfo', () => {
   it('still removes cookie when bind fails with status 400', async () => {
     const mutate = ensureMutateAsync()
     mutate.mockRejectedValueOnce({ status: 400 })
-    setSearchParams({
-      ps_partner_key: 'bind-partner',
-      ps_xid: 'bind-click',
-    })
-
-    const { result } = renderHook(() => usePSInfo())
+    const { result } = renderWithAdapter('?ps_partner_key=bind-partner&ps_xid=bind-click')
 
     await act(async () => {
       await result.current.bind()
