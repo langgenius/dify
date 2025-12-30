@@ -19,7 +19,6 @@ vi.mock('@/context/dataset-detail', () => ({
 
 // Mock document picker - needs mock for simplified interaction testing
 vi.mock('../../../common/document-picker/preview-document-picker', () => ({
-  __esModule: true,
   default: ({ files, onChange, value }: {
     files: Array<{ id: string, name: string, extension: string }>
     onChange: (selected: { id: string, name: string, extension: string }) => void

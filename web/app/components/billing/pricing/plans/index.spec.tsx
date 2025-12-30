@@ -9,7 +9,6 @@ import Plans from './index'
 import selfHostedPlanItem from './self-hosted-plan-item'
 
 vi.mock('./cloud-plan-item', () => ({
-  __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`cloud-plan-${props.plan}`} data-current-plan={props.currentPlan}>
       Cloud
@@ -20,7 +19,6 @@ vi.mock('./cloud-plan-item', () => ({
 }))
 
 vi.mock('./self-hosted-plan-item', () => ({
-  __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`self-plan-${props.plan}`}>
       Self

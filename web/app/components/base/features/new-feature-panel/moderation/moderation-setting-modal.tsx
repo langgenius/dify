@@ -5,7 +5,6 @@ import { RiCloseLine } from '@remixicon/react'
 import { noop } from 'es-toolkit/compat'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
 import { BookOpen01 } from '@/app/components/base/icons/src/vender/line/education'
@@ -15,7 +14,7 @@ import { useToastContext } from '@/app/components/base/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { CustomConfigurationStatusEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import I18n, { useDocLink } from '@/context/i18n'
+import { useDocLink, useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions, useModelProviders } from '@/service/use-common'
@@ -45,7 +44,7 @@ const ModerationSettingModal: FC<ModerationSettingModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { data: modelProviders, isPending: isLoading, refetch: refetchModelProviders } = useModelProviders()
   const [localeData, setLocaleData] = useState<ModerationConfig>(data)
   const { setShowAccountSettingModal } = useModalContext()

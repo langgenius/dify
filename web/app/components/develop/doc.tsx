@@ -2,8 +2,7 @@
 import { RiCloseLine, RiListUnordered } from '@remixicon/react'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { AppModeEnum, Theme } from '@/types/app'
@@ -26,7 +25,7 @@ type IDocProps = {
 }
 
 const Doc = ({ appDetail }: IDocProps) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { t } = useTranslation()
   const [toc, setToc] = useState<Array<{ href: string, text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)

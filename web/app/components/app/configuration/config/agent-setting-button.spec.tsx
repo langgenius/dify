@@ -16,7 +16,6 @@ vi.mock('react-i18next', () => ({
 
 let latestAgentSettingProps: any
 vi.mock('./agent/agent-setting', () => ({
-  __esModule: true,
   default: (props: any) => {
     latestAgentSettingProps = props
     return (
