@@ -2,7 +2,8 @@ import type { FC } from 'react'
 import { Editor } from '@monaco-editor/react'
 import { RiClipboardLine, RiIndentIncrease } from '@remixicon/react'
 import copy from 'copy-to-clipboard'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import useTheme from '@/hooks/use-theme'
@@ -121,7 +122,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
           </div>
           <div className="flex items-center gap-x-0.5">
             {showFormatButton && (
-              <Tooltip popupContent={t('common.operation.format')}>
+              <Tooltip popupContent={t('operation.format', { ns: 'common' })}>
                 <button
                   type="button"
                   className="flex h-6 w-6 items-center justify-center"
@@ -131,7 +132,7 @@ const CodeEditor: FC<CodeEditorProps> = ({
                 </button>
               </Tooltip>
             )}
-            <Tooltip popupContent={t('common.operation.copy')}>
+            <Tooltip popupContent={t('operation.copy', { ns: 'common' })}>
               <button
                 type="button"
                 className="flex h-6 w-6 items-center justify-center"

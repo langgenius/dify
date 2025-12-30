@@ -1,5 +1,5 @@
 import { RiImageAddLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { ACCEPT_TYPES } from '../constants'
@@ -30,7 +30,8 @@ const ImageUploader = () => {
       />
       <div className="flex flex-wrap gap-1">
         <Tooltip
-          popupContent={t('datasetHitTesting.imageUploader.tooltip', {
+          popupContent={t('imageUploader.tooltip', {
+            ns: 'datasetHitTesting',
             size: fileUploadConfig.imageFileSizeLimit,
             batchCount: fileUploadConfig.imageFileBatchLimit,
           })}
@@ -48,7 +49,8 @@ const ImageUploader = () => {
             </div>
             {files.length === 0 && (
               <span className="system-sm-regular text-text-quaternary group-hover:text-text-tertiary">
-                {t('datasetHitTesting.imageUploader.tip', {
+                {t('imageUploader.tip', {
+                  ns: 'datasetHitTesting',
                   size: fileUploadConfig.imageFileSizeLimit,
                   batchCount: fileUploadConfig.imageFileBatchLimit,
                 })}

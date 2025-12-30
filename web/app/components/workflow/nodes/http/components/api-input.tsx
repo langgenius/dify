@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { Var } from '../../../types'
 import { RiArrowDownSLine } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import { cn } from '@/utils/classnames'
@@ -72,7 +73,7 @@ const ApiInput: FC<Props> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readonly ? t('workflow.nodes.http.apiPlaceholder')! : ''}
+        placeholder={!readonly ? t('nodes.http.apiPlaceholder', { ns: 'workflow' })! : ''}
         placeholderClassName="!leading-[21px]"
       />
     </div>

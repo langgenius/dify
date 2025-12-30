@@ -4,7 +4,7 @@ import {
   RiAddLine,
   RiBookmark3Line,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 
@@ -23,10 +23,10 @@ const NoData: FC<INoDataProps> = ({
         <RiBookmark3Line className="h-4 w-4 text-text-accent" />
       </div>
       <div className="mt-3">
-        <span className="system-xl-semibold text-text-secondary">{t('share.generation.savedNoData.title')}</span>
+        <span className="system-xl-semibold text-text-secondary">{t('generation.savedNoData.title', { ns: 'share' })}</span>
       </div>
       <div className="system-sm-regular mt-1 text-text-tertiary">
-        {t('share.generation.savedNoData.description')}
+        {t('generation.savedNoData.description', { ns: 'share' })}
       </div>
       <Button
         variant="primary"
@@ -34,7 +34,7 @@ const NoData: FC<INoDataProps> = ({
         onClick={onStartCreateContent}
       >
         <RiAddLine className="mr-1 h-4 w-4" />
-        <span>{t('share.generation.savedNoData.startCreateContent')}</span>
+        <span>{t('generation.savedNoData.startCreateContent', { ns: 'share' })}</span>
       </Button>
     </div>
   )

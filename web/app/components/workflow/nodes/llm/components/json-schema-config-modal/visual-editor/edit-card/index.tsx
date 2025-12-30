@@ -3,7 +3,8 @@ import type { SchemaEnumType } from '../../../../types'
 import type { AdvancedOptionsType } from './advanced-options'
 import type { TypeItem } from './type-selector'
 import { useUnmount } from 'ahooks'
-import React, { useCallback, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { JSON_SCHEMA_MAX_DEPTH } from '@/config'
@@ -221,7 +222,7 @@ const EditCard: FC<EditCardProps> = ({
         <div className="flex grow items-center gap-x-1">
           <AutoWidthInput
             value={currentFields.name}
-            placeholder={t('workflow.nodes.llm.jsonSchema.fieldNamePlaceholder')}
+            placeholder={t('nodes.llm.jsonSchema.fieldNamePlaceholder', { ns: 'workflow' })}
             minWidth={80}
             maxWidth={300}
             onChange={handlePropertyNameChange}
@@ -236,7 +237,7 @@ const EditCard: FC<EditCardProps> = ({
           {
             currentFields.required && (
               <div className="system-2xs-medium-uppercase px-1 py-0.5 text-text-warning">
-                {t('workflow.nodes.llm.jsonSchema.required')}
+                {t('nodes.llm.jsonSchema.required', { ns: 'workflow' })}
               </div>
             )
           }
@@ -269,7 +270,7 @@ const EditCard: FC<EditCardProps> = ({
           <input
             value={currentFields.description}
             className="system-xs-regular placeholder:system-xs-regular h-4 w-full p-0 text-text-tertiary caret-[#295EFF] outline-none placeholder:text-text-placeholder"
-            placeholder={t('workflow.nodes.llm.jsonSchema.descriptionPlaceholder')}
+            placeholder={t('nodes.llm.jsonSchema.descriptionPlaceholder', { ns: 'workflow' })}
             onChange={handleDescriptionChange}
             onBlur={handleDescriptionBlur}
             onKeyUp={e => e.key === 'Enter' && e.currentTarget.blur()}

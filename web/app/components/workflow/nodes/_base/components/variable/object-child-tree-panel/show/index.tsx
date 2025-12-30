@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { StructuredOutput } from '../../../../../llm/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from './field'
 
@@ -19,7 +19,7 @@ const ShowPanel: FC<Props> = ({
     ...payload,
     schema: {
       ...payload.schema,
-      description: t('app.structOutput.LLMResponse'),
+      description: t('structOutput.LLMResponse', { ns: 'app' }),
     },
   }
   return (

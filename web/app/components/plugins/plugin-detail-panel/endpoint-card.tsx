@@ -2,7 +2,8 @@ import type { EndpointListItem, PluginDetail } from '../types'
 import { RiClipboardLine, RiDeleteBinLine, RiEditLine, RiLoginCircleLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import copy from 'copy-to-clipboard'
-import React, { useEffect, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Confirm from '@/app/components/base/confirm'
@@ -46,7 +47,7 @@ const EndpointCard = ({
       await handleChange()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       setActive(false)
     },
   })
@@ -56,7 +57,7 @@ const EndpointCard = ({
       hideDisableConfirm()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       setActive(false)
     },
   })
@@ -82,7 +83,7 @@ const EndpointCard = ({
       hideDeleteConfirm()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     },
   })
 
@@ -107,7 +108,7 @@ const EndpointCard = ({
       hideEndpointModalConfirm()
     },
     onError: () => {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     },
   })
   const handleUpdate = (state: Record<string, any>) => updateEndpoint({
@@ -156,7 +157,7 @@ const EndpointCard = ({
             <div className="system-xs-regular w-12 shrink-0 text-text-tertiary">{endpoint.method}</div>
             <div className="group/item system-xs-regular flex grow items-center truncate text-text-secondary">
               <div title={`${data.url}${endpoint.path}`} className="truncate">{`${data.url}${endpoint.path}`}</div>
-              <Tooltip popupContent={t(`common.operation.${isCopied ? 'copied' : 'copy'}`)} position="top">
+              <Tooltip popupContent={t(`operation.${isCopied ? 'copied' : 'copy'}`, { ns: 'common' })} position="top">
                 <ActionButton className="ml-2 hidden shrink-0 group-hover/item:flex" onClick={() => handleCopy(`${data.url}${endpoint.path}`)}>
                   <CopyIcon className="h-3.5 w-3.5 text-text-tertiary" />
                 </ActionButton>
@@ -169,13 +170,13 @@ const EndpointCard = ({
         {active && (
           <div className="system-xs-semibold-uppercase flex items-center gap-1 text-util-colors-green-green-600">
             <Indicator color="green" />
-            {t('plugin.detailPanel.serviceOk')}
+            {t('detailPanel.serviceOk', { ns: 'plugin' })}
           </div>
         )}
         {!active && (
           <div className="system-xs-semibold-uppercase flex items-center gap-1 text-text-tertiary">
             <Indicator color="gray" />
-            {t('plugin.detailPanel.disabled')}
+            {t('detailPanel.disabled', { ns: 'plugin' })}
           </div>
         )}
         <Switch
@@ -188,8 +189,8 @@ const EndpointCard = ({
       {isShowDisableConfirm && (
         <Confirm
           isShow
-          title={t('plugin.detailPanel.endpointDisableTip')}
-          content={<div>{t('plugin.detailPanel.endpointDisableContent', { name: data.name })}</div>}
+          title={t('detailPanel.endpointDisableTip', { ns: 'plugin' })}
+          content={<div>{t('detailPanel.endpointDisableContent', { ns: 'plugin', name: data.name })}</div>}
           onCancel={() => {
             hideDisableConfirm()
             setActive(true)
@@ -200,8 +201,8 @@ const EndpointCard = ({
       {isShowDeleteConfirm && (
         <Confirm
           isShow
-          title={t('plugin.detailPanel.endpointDeleteTip')}
-          content={<div>{t('plugin.detailPanel.endpointDeleteContent', { name: data.name })}</div>}
+          title={t('detailPanel.endpointDeleteTip', { ns: 'plugin' })}
+          content={<div>{t('detailPanel.endpointDeleteContent', { ns: 'plugin', name: data.name })}</div>}
           onCancel={hideDeleteConfirm}
           onConfirm={() => deleteEndpoint(endpointID)}
         />

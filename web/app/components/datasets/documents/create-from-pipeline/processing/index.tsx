@@ -1,7 +1,7 @@
 'use client'
 import type { InitialDocumentDetail } from '@/models/pipeline'
 import { RiBookOpenLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useDocLink } from '@/context/i18n'
@@ -41,15 +41,15 @@ const Processing = ({
             <RiBookOpenLine className="size-5 text-text-accent" />
           </div>
           <div className="flex flex-col gap-y-2">
-            <div className="system-xl-semibold text-text-secondary">{t('datasetCreation.stepThree.sideTipTitle')}</div>
-            <div className="system-sm-regular text-text-tertiary">{t('datasetCreation.stepThree.sideTipContent')}</div>
+            <div className="system-xl-semibold text-text-secondary">{t('stepThree.sideTipTitle', { ns: 'datasetCreation' })}</div>
+            <div className="system-sm-regular text-text-tertiary">{t('stepThree.sideTipContent', { ns: 'datasetCreation' })}</div>
             <a
               href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
               target="_blank"
               rel="noreferrer noopener"
               className="system-sm-regular text-text-accent"
             >
-              {t('datasetPipeline.addDocuments.stepThree.learnMore')}
+              {t('addDocuments.stepThree.learnMore', { ns: 'datasetPipeline' })}
             </a>
           </div>
         </div>

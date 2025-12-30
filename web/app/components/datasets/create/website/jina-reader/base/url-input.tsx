@@ -1,12 +1,13 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useDocLink } from '@/context/i18n'
 import Input from '../../base/input'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   isRunning: boolean
@@ -43,7 +44,7 @@ const UrlInput: FC<Props> = ({
         loading={isRunning}
         data-testid="url-input-run-button"
       >
-        {!isRunning ? t(`${I18N_PREFIX}.run`) : ''}
+        {!isRunning ? t(`${I18N_PREFIX}.run`, { ns: 'datasetCreation' }) : ''}
       </Button>
     </div>
   )

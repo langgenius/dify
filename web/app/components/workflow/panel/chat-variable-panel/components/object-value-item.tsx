@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import { produce } from 'immer'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { ToastContext } from '@/app/components/base/toast'
@@ -96,7 +97,7 @@ const ObjectValueItem: FC<Props> = ({
       <div className="w-[120px] border-r border-gray-200">
         <input
           className="system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t('workflow.chatVariable.modal.objectKey') || ''}
+          placeholder={t('chatVariable.modal.objectKey', { ns: 'workflow' }) || ''}
           value={list[index].key}
           onChange={handleKeyChange(index)}
         />
@@ -115,7 +116,7 @@ const ObjectValueItem: FC<Props> = ({
       <div className="relative w-[230px]">
         <input
           className="system-xs-regular placeholder:system-xs-regular block h-7 w-full appearance-none px-2 text-text-secondary caret-primary-600 outline-none placeholder:text-components-input-text-placeholder  hover:bg-state-base-hover focus:bg-components-input-bg-active"
-          placeholder={t('workflow.chatVariable.modal.objectValue') || ''}
+          placeholder={t('chatVariable.modal.objectValue', { ns: 'workflow' }) || ''}
           value={list[index].value}
           onChange={handleValueChange(index)}
           onFocus={() => handleFocusChange()}

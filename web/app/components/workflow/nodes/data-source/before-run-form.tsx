@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { CustomRunFormProps } from './types'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'
@@ -92,7 +93,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
         )}
         <div className="flex justify-end gap-x-2">
           <Button onClick={onCancel}>
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
           <Button
             onClick={handleRunWithSyncDraft}
@@ -100,7 +101,7 @@ const BeforeRunForm: FC<CustomRunFormProps> = (props) => {
             loading={isPending}
             disabled={isPending || startRunBtnDisabled}
           >
-            {t('workflow.singleRun.startRun')}
+            {t('singleRun.startRun', { ns: 'workflow' })}
           </Button>
         </div>
       </div>

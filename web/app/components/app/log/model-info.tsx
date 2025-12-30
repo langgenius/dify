@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiInformation2Line,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -89,7 +89,7 @@ const ModelInfo: FC<Props> = ({
           </PortalToFollowElemTrigger>
           <PortalToFollowElemContent className="z-[1002]">
             <div className="relative w-[280px] overflow-hidden rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg px-4 pb-2 pt-3 shadow-xl">
-              <div className="system-sm-semibold-uppercase mb-1 h-6 text-text-secondary">{t('appLog.detail.modelParams')}</div>
+              <div className="system-sm-semibold-uppercase mb-1 h-6 text-text-secondary">{t('detail.modelParams', { ns: 'appLog' })}</div>
               <div className="py-1">
                 {['temperature', 'top_p', 'presence_penalty', 'max_tokens', 'stop'].map((param: string, index: number) => {
                   return (

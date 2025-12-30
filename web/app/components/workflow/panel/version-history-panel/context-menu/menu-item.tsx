@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { VersionHistoryContextMenuOptions } from '../../../types'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 type MenuItemProps = {

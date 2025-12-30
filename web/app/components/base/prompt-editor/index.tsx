@@ -26,7 +26,8 @@ import {
   $getRoot,
   TextNode,
 } from 'lexical'
-import React, { useEffect } from 'react'
+import * as React from 'react'
+import { useEffect } from 'react'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { cn } from '@/utils/classnames'
 import {

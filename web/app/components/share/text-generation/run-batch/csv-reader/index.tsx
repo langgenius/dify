@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   useCSVReader,
@@ -61,8 +62,8 @@ const CSVReader: FC<Props> = ({
                     <div className="flex w-full items-center justify-center space-x-2">
                       <CSVIcon className="shrink-0" />
                       <div className="text-text-tertiary">
-                        {t('share.generation.csvUploadTitle')}
-                        <span className="cursor-pointer text-text-accent">{t('share.generation.browse')}</span>
+                        {t('generation.csvUploadTitle', { ns: 'share' })}
+                        <span className="cursor-pointer text-text-accent">{t('generation.browse', { ns: 'share' })}</span>
                       </div>
                     </div>
                   )

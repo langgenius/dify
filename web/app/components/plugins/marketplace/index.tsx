@@ -1,5 +1,6 @@
 import type { MarketplaceCollection, SearchParams } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { Locale } from '@/i18n-config'
 import { TanstackQueryInitializer } from '@/context/query-client'
 import { MarketplaceContextProvider } from './context'
 import Description from './description'
@@ -8,7 +9,7 @@ import StickySearchAndSwitchWrapper from './sticky-search-and-switch-wrapper'
 import { getMarketplaceCollectionsAndPlugins } from './utils'
 
 type MarketplaceProps = {
-  locale: string
+  locale: Locale
   showInstallButton?: boolean
   shouldExclude?: boolean
   searchParams?: SearchParams

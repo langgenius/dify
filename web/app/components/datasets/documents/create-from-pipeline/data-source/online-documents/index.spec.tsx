@@ -1,7 +1,7 @@
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
 import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
 import OnlineDocuments from './index'
 
@@ -44,7 +44,6 @@ const { mockToastNotify } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: {
     notify: mockToastNotify,
   },

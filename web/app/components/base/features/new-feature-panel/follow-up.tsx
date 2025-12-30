@@ -1,6 +1,7 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { produce } from 'immer'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
@@ -44,9 +45,9 @@ const FollowUp = ({
           <VirtualAssistant className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('appDebug.feature.suggestedQuestionsAfterAnswer.title')}
+      title={t('feature.suggestedQuestionsAfterAnswer.title', { ns: 'appDebug' })}
       value={!!features.suggested?.enabled}
-      description={t('appDebug.feature.suggestedQuestionsAfterAnswer.description')!}
+      description={t('feature.suggestedQuestionsAfterAnswer.description', { ns: 'appDebug' })!}
       onChange={state => handleChange(FeatureEnum.suggested, state)}
       disabled={disabled}
     />

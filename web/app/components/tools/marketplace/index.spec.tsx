@@ -2,7 +2,7 @@ import type { Plugin } from '@/app/components/plugins/types'
 import type { Collection } from '@/app/components/tools/types'
 import { act, render, renderHook, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
+import * as React from 'react'
 import { SCROLL_BOTTOM_THRESHOLD } from '@/app/components/plugins/marketplace/constants'
 import { getMarketplaceListCondition } from '@/app/components/plugins/marketplace/utils'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
@@ -14,7 +14,6 @@ import Marketplace from './index'
 
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  __esModule: true,
   default: (props: {
     marketplaceCollections: unknown[]
     marketplaceCollectionPluginsMap: Record<string, unknown[]>
@@ -40,7 +39,6 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/utils/var', () => ({
-  __esModule: true,
   getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
 }))
 

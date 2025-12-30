@@ -1,13 +1,13 @@
 'use client'
 import type { FC } from 'react'
 import type { Memory, Node, NodeOutPutVar } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import MemoryConfig from '../../_base/components/memory-config'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 type Props = {
   instruction: string
@@ -47,11 +47,11 @@ const AdvancedSetting: FC<Props> = ({
       <Editor
         title={(
           <div className="flex items-center space-x-1">
-            <span className="uppercase">{t(`${i18nPrefix}.instruction`)}</span>
+            <span className="uppercase">{t(`${i18nPrefix}.instruction`, { ns: 'workflow' })}</span>
             <Tooltip
               popupContent={(
                 <div className="w-[120px]">
-                  {t(`${i18nPrefix}.instructionTip`)}
+                  {t(`${i18nPrefix}.instructionTip`, { ns: 'workflow' })}
                 </div>
               )}
               triggerClassName="w-3.5 h-3.5 ml-0.5"

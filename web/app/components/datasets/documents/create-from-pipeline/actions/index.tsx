@@ -1,7 +1,8 @@
 import { RiArrowRightLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
@@ -55,7 +56,7 @@ const Actions = ({
               checked={checked}
             />
             <span className="system-sm-medium text-text-accent">
-              {t('common.operation.selectAll')}
+              {t('operation.selectAll', { ns: 'common' })}
             </span>
           </div>
           {tip && (
@@ -74,7 +75,7 @@ const Actions = ({
             variant="ghost"
             className="px-3 py-2"
           >
-            {t('common.operation.cancel')}
+            {t('operation.cancel', { ns: 'common' })}
           </Button>
         </Link>
         <Button
@@ -83,7 +84,7 @@ const Actions = ({
           onClick={handleNextStep}
           className="gap-x-0.5"
         >
-          <span className="px-0.5">{t('datasetCreation.stepOne.button')}</span>
+          <span className="px-0.5">{t('stepOne.button', { ns: 'datasetCreation' })}</span>
           <RiArrowRightLine className="size-4" />
         </Button>
       </div>

@@ -1,6 +1,6 @@
 import type { SlashCommandHandler } from './types'
 import { RiFullscreenLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { isInWorkflowPage } from '@/app/components/workflow/constants'
 import i18n from '@/i18n-config/i18next-config'
 import { registerCommands, unregisterCommands } from './command-bus'
@@ -34,8 +34,8 @@ export const zenCommand: SlashCommandHandler<ZenDeps> = {
   async search(_args: string, locale: string = 'en') {
     return [{
       id: 'zen',
-      title: i18n.t('app.gotoAnything.actions.zenTitle', { lng: locale }) || 'Zen Mode',
-      description: i18n.t('app.gotoAnything.actions.zenDesc', { lng: locale }) || 'Toggle canvas focus mode',
+      title: i18n.t('gotoAnything.actions.zenTitle', { ns: 'app', lng: locale }) || 'Zen Mode',
+      description: i18n.t('gotoAnything.actions.zenDesc', { ns: 'app', lng: locale }) || 'Toggle canvas focus mode',
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

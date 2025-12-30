@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
@@ -25,7 +25,7 @@ const Drive = ({
         onClick={handleBackToRoot}
         disabled={breadcrumbs.length === 0}
       >
-        {t('datasetPipeline.onlineDrive.breadcrumbs.allFiles')}
+        {t('onlineDrive.breadcrumbs.allFiles', { ns: 'datasetPipeline' })}
       </button>
       {breadcrumbs.length > 0 && <span className="system-xs-regular text-divider-deep">/</span>}
     </>

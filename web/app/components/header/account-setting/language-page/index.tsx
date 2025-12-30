@@ -1,13 +1,16 @@
 'use client'
 
 import type { Item } from '@/app/components/base/select'
+import type { Locale } from '@/i18n-config'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import { SimpleSelect } from '@/app/components/base/select'
 import { ToastContext } from '@/app/components/base/toast'
 import { useAppContext } from '@/context/app-context'
-import I18n from '@/context/i18n'
+
+import { useLocale } from '@/context/i18n'
+import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 import { updateUserProfile } from '@/service/common'
 import { timezones } from '@/utils/timezone'
@@ -17,7 +20,7 @@ const titleClassName = `
 `
 
 export default function LanguagePage() {
-  const { locale, setLocaleOnClient } = useContext(I18n)
+  const locale = useLocale()
   const { userProfile, mutateUserProfile } = useAppContext()
   const { notify } = useContext(ToastContext)
   const [editing, setEditing] = useState(false)
@@ -30,9 +33,9 @@ export default function LanguagePage() {
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
 
-      setLocaleOnClient(item.value.toString())
+      setLocaleOnClient(item.value.toString() as Locale)
     }
     catch (e) {
       notify({ type: 'error', message: (e as Error).message })
@@ -49,7 +52,7 @@ export default function LanguagePage() {
     setEditing(true)
     try {
       await updateUserProfile({ url, body: { [bodyKey]: item.value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
 
       mutateUserProfile()
     }
@@ -64,7 +67,7 @@ export default function LanguagePage() {
   return (
     <>
       <div className="mb-8">
-        <div className={titleClassName}>{t('common.language.displayLanguage')}</div>
+        <div className={titleClassName}>{t('language.displayLanguage', { ns: 'common' })}</div>
         <SimpleSelect
           defaultValue={locale || userProfile.interface_language}
           items={languages.filter(item => item.supported)}
@@ -74,7 +77,7 @@ export default function LanguagePage() {
         />
       </div>
       <div className="mb-8">
-        <div className={titleClassName}>{t('common.language.timezone')}</div>
+        <div className={titleClassName}>{t('language.timezone', { ns: 'common' })}</div>
         <SimpleSelect
           defaultValue={userProfile.timezone}
           items={timezones}

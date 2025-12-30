@@ -6,7 +6,8 @@ import {
   RiDraggable,
   RiEditLine,
 } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import Badge from '@/app/components/base/badge'
 import { BracketsX as VarIcon } from '@/app/components/base/icons/src/vender/line/development'
 import { cn } from '@/utils/classnames'
@@ -64,6 +65,7 @@ const VarItem: FC<ItemProps> = ({
             <RiEditLine className="h-4 w-4 text-text-tertiary" />
           </div>
           <div
+            data-testid="var-item-delete-btn"
             className="flex h-6 w-6 cursor-pointer items-center  justify-center text-text-tertiary hover:text-text-destructive"
             onClick={onRemove}
             onMouseOver={() => setIsDeleting(true)}

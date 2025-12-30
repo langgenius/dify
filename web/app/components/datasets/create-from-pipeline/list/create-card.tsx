@@ -1,6 +1,7 @@
 import { RiAddCircleLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Toast from '@/app/components/base/toast'
@@ -21,7 +22,7 @@ const CreateCard = () => {
           const { id } = data
           Toast.notify({
             type: 'success',
-            message: t('datasetPipeline.creation.successTip'),
+            message: t('creation.successTip', { ns: 'datasetPipeline' }),
           })
           invalidDatasetList()
           trackEvent('create_datasets_from_scratch', {
@@ -33,7 +34,7 @@ const CreateCard = () => {
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.creation.errorTip'),
+          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -49,11 +50,11 @@ const CreateCard = () => {
           <RiAddCircleLine className="size-5 text-text-quaternary group-hover:text-text-accent" />
         </div>
         <div className="system-md-semibold truncate text-text-primary">
-          {t('datasetPipeline.creation.createFromScratch.title')}
+          {t('creation.createFromScratch.title', { ns: 'datasetPipeline' })}
         </div>
       </div>
       <p className="system-xs-regular line-clamp-3 px-4 py-1 text-text-tertiary">
-        {t('datasetPipeline.creation.createFromScratch.description')}
+        {t('creation.createFromScratch.description', { ns: 'datasetPipeline' })}
       </p>
     </div>
   )

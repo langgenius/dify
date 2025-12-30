@@ -1,6 +1,6 @@
 import type { ILanguageSelectProps } from './index'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { languages } from '@/i18n-config/language'
 import LanguageSelect from './index'
 

@@ -1,7 +1,8 @@
 import type { FC } from 'react'
 import type { SchemaRoot } from '../../../types'
 import { RiArrowLeftLine, RiCloseLine, RiSparklingLine } from '@remixicon/react'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Loading from '@/app/components/base/loading'
@@ -63,7 +64,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
         isGenerating ? (
           <div className="flex h-[600px] flex-col items-center justify-center gap-y-3">
             <Loading type="area" />
-            <div className="system-xs-regular text-text-tertiary">{t('workflow.nodes.llm.jsonSchema.generating')}</div>
+            <div className="system-xs-regular text-text-tertiary">{t('nodes.llm.jsonSchema.generating', { ns: 'workflow' })}</div>
           </div>
         ) : (
           <>
@@ -73,10 +74,10 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
             {/* Title */}
             <div className="flex flex-col gap-y-[0.5px] px-3 pb-1 pt-3.5">
               <div className="system-xl-semibold flex pl-1 pr-8 text-text-primary">
-                {t('workflow.nodes.llm.jsonSchema.generatedResult')}
+                {t('nodes.llm.jsonSchema.generatedResult', { ns: 'workflow' })}
               </div>
               <div className="system-xs-regular flex px-1 text-text-tertiary">
-                {t('workflow.nodes.llm.jsonSchema.resultTip')}
+                {t('nodes.llm.jsonSchema.resultTip', { ns: 'workflow' })}
               </div>
             </div>
             {/* Content */}
@@ -95,7 +96,7 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
             <div className="flex items-center justify-between p-4 pt-2">
               <Button variant="secondary" className="flex items-center gap-x-0.5" onClick={onBack}>
                 <RiArrowLeftLine className="h-4 w-4" />
-                <span>{t('workflow.nodes.llm.jsonSchema.back')}</span>
+                <span>{t('nodes.llm.jsonSchema.back', { ns: 'workflow' })}</span>
               </Button>
               <div className="flex items-center gap-x-2">
                 <Button
@@ -104,10 +105,10 @@ const GeneratedResult: FC<GeneratedResultProps> = ({
                   onClick={onRegenerate}
                 >
                   <RiSparklingLine className="h-4 w-4" />
-                  <span>{t('workflow.nodes.llm.jsonSchema.regenerate')}</span>
+                  <span>{t('nodes.llm.jsonSchema.regenerate', { ns: 'workflow' })}</span>
                 </Button>
                 <Button variant="primary" onClick={handleApply}>
-                  {t('workflow.nodes.llm.jsonSchema.apply')}
+                  {t('nodes.llm.jsonSchema.apply', { ns: 'workflow' })}
                 </Button>
               </div>
             </div>

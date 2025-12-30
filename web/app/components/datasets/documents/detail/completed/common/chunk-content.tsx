@@ -1,5 +1,6 @@
 import type { ComponentProps, FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { ChunkingMode } from '@/models/datasets'
@@ -118,7 +119,7 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
       <AutoResizeTextArea
         className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
         value={question}
-        placeholder={t('datasetDocuments.segment.questionPlaceholder') || ''}
+        placeholder={t('segment.questionPlaceholder', { ns: 'datasetDocuments' }) || ''}
         onChange={e => onQuestionChange(e.target.value)}
         disabled={!isEditMode}
         containerRef={containerRef}
@@ -128,7 +129,7 @@ const QATextArea: FC<IQATextAreaProps> = React.memo(({
       <AutoResizeTextArea
         className="text-sm tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
         value={answer}
-        placeholder={t('datasetDocuments.segment.answerPlaceholder') || ''}
+        placeholder={t('segment.answerPlaceholder', { ns: 'datasetDocuments' }) || ''}
         onChange={e => onAnswerChange?.(e.target.value)}
         disabled={!isEditMode}
         autoFocus
@@ -186,7 +187,7 @@ const ChunkContent: FC<IChunkContentProps> = ({
     <Textarea
       className="body-md-regular h-full w-full pb-6 tracking-[-0.07px] text-text-secondary caret-[#295EFF]"
       value={question}
-      placeholder={t('datasetDocuments.segment.contentPlaceholder') || ''}
+      placeholder={t('segment.contentPlaceholder', { ns: 'datasetDocuments' }) || ''}
       onChange={e => onQuestionChange(e.target.value)}
       disabled={!isEditMode}
       autoFocus

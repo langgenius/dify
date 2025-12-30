@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { UploadFileSetting } from '../../../types'
 import { produce } from 'immer'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
 import { useFileSizeLimit } from '@/app/components/base/file-uploader/hooks'
@@ -98,7 +99,7 @@ const FileUploadSetting: FC<Props> = ({
     <div>
       {!inFeaturePanel && (
         <Field
-          title={t('appDebug.variableConfig.file.supportFileTypes')}
+          title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}
         >
           <div className="space-y-1">
             {
@@ -122,12 +123,12 @@ const FileUploadSetting: FC<Props> = ({
         </Field>
       )}
       <Field
-        title={t('appDebug.variableConfig.uploadFileTypes')}
+        title={t('variableConfig.uploadFileTypes', { ns: 'appDebug' })}
         className="mt-4"
       >
         <div className="grid grid-cols-3 gap-2">
           <OptionCard
-            title={t('appDebug.variableConfig.localUpload')}
+            title={t('variableConfig.localUpload', { ns: 'appDebug' })}
             selected={allowed_file_upload_methods.length === 1 && allowed_file_upload_methods.includes(TransferMethod.local_file)}
             onSelect={handleUploadMethodChange(TransferMethod.local_file)}
           />
@@ -137,7 +138,7 @@ const FileUploadSetting: FC<Props> = ({
             onSelect={handleUploadMethodChange(TransferMethod.remote_url)}
           />
           <OptionCard
-            title={t('appDebug.variableConfig.both')}
+            title={t('variableConfig.both', { ns: 'appDebug' })}
             selected={allowed_file_upload_methods.includes(TransferMethod.local_file) && allowed_file_upload_methods.includes(TransferMethod.remote_url)}
             onSelect={handleUploadMethodChange(TransferMethod.all)}
           />
@@ -146,11 +147,12 @@ const FileUploadSetting: FC<Props> = ({
       {isMultiple && (
         <Field
           className="mt-4"
-          title={t('appDebug.variableConfig.maxNumberOfUploads')!}
+          title={t('variableConfig.maxNumberOfUploads', { ns: 'appDebug' })!}
         >
           <div>
             <div className="body-xs-regular mb-1.5 text-text-tertiary">
-              {t('appDebug.variableConfig.maxNumberTip', {
+              {t('variableConfig.maxNumberTip', {
+                ns: 'appDebug',
                 imgLimit: formatFileSize(imgSizeLimit),
                 docLimit: formatFileSize(docSizeLimit),
                 audioLimit: formatFileSize(audioSizeLimit),
@@ -169,7 +171,7 @@ const FileUploadSetting: FC<Props> = ({
       )}
       {inFeaturePanel && !hideSupportFileType && (
         <Field
-          title={t('appDebug.variableConfig.file.supportFileTypes')}
+          title={t('variableConfig.file.supportFileTypes', { ns: 'appDebug' })}
           className="mt-4"
         >
           <div className="space-y-1">

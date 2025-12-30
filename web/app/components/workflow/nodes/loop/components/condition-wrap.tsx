@@ -5,7 +5,8 @@ import type { Condition, HandleAddCondition, HandleAddSubVariableCondition, Hand
 import {
   RiAddLine,
 } from '@remixicon/react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { PortalSelect as Select } from '@/app/components/base/select'
@@ -124,7 +125,7 @@ const ConditionWrap: FC<Props> = ({
                         disabled={readOnly}
                       >
                         <RiAddLine className="mr-1 h-3.5 w-3.5" />
-                        {t('workflow.nodes.ifElse.addSubVariable')}
+                        {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
                       </Button>
                     )}
                     hideChecked

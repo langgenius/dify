@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { FileAppearanceType } from '@/app/components/base/file-uploader/types'
-import React from 'react'
+import * as React from 'react'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import FileTypeIcon from '../../base/file-uploader/file-type-icon'
 

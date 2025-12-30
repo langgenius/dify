@@ -1,7 +1,8 @@
 import {
   RiExternalLinkLine,
 } from '@remixicon/react'
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -92,7 +93,7 @@ function Confirm({
           </div>
           {email && (
             <div className="w-full space-y-1 px-6 py-3">
-              <div className="system-sm-semibold py-1 text-text-secondary">{t('education.emailLabel')}</div>
+              <div className="system-sm-semibold py-1 text-text-secondary">{t('emailLabel', { ns: 'education' })}</div>
               <div className="system-sm-regular rounded-lg bg-components-input-bg-disabled px-3 py-2 text-components-input-text-filled-disabled">{email}</div>
             </div>
           )}
@@ -100,12 +101,12 @@ function Confirm({
             <div className="flex items-center gap-1">
               {showLink && (
                 <>
-                  <a onClick={handleClick} href={eduDocLink} target="_blank" className="system-xs-regular cursor-pointer text-text-accent">{t('education.learn')}</a>
+                  <a onClick={handleClick} href={eduDocLink} target="_blank" className="system-xs-regular cursor-pointer text-text-accent">{t('learn', { ns: 'education' })}</a>
                   <RiExternalLinkLine className="h-3 w-3 text-text-accent" />
                 </>
               )}
             </div>
-            <Button variant="primary" className="!w-20" onClick={onConfirm}>{t('common.operation.ok')}</Button>
+            <Button variant="primary" className="!w-20" onClick={onConfirm}>{t('operation.ok', { ns: 'common' })}</Button>
           </div>
         </div>
       </div>

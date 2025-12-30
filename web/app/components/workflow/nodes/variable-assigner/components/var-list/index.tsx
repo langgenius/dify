@@ -1,9 +1,10 @@
 'use client'
 import type { FC } from 'react'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { noop } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
 import { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
@@ -53,7 +54,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t('workflow.nodes.variableAssigner.noVarTip')}
+        {t('nodes.variableAssigner.noVarTip', { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }

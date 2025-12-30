@@ -1,6 +1,6 @@
 import type { InputProps } from '../../../input'
 import type { LabelProps } from '../label'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Input from '../../../input'

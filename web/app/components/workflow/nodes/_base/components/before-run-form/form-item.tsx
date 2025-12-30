@@ -6,7 +6,8 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { produce } from 'immer'
-import React, { useCallback, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileUploaderInAttachmentWrapper } from '@/app/components/base/file-uploader'
 import { Line3 } from '@/app/components/base/icons/src/public/common'
@@ -124,13 +125,13 @@ const FormItem: FC<Props> = ({
           {payload.hide === true
             ? (
                 <span className="system-xs-regular text-text-tertiary">
-                  {t('workflow.panel.optional_and_hidden')}
+                  {t('panel.optional_and_hidden', { ns: 'workflow' })}
                 </span>
               )
             : (
                 !payload.required && (
                   <span className="system-xs-regular text-text-tertiary">
-                    {t('workflow.panel.optional')}
+                    {t('panel.optional', { ns: 'workflow' })}
                   </span>
                 )
               )}
@@ -322,7 +323,7 @@ const FormItem: FC<Props> = ({
                   value={item}
                   title={(
                     <span>
-                      {t('appDebug.variableConfig.content')}
+                      {t('variableConfig.content', { ns: 'appDebug' })}
                       {' '}
                       {index + 1}
                       {' '}

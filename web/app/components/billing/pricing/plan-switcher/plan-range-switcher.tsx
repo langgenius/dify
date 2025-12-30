@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '../../../base/switch'
 
@@ -30,7 +30,7 @@ const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
         }}
       />
       <span className="system-md-regular text-text-tertiary">
-        {t('billing.plansCommon.annualBilling', { percent: 17 })}
+        {t('plansCommon.annualBilling', { ns: 'billing', percent: 17 })}
       </span>
     </div>
   )

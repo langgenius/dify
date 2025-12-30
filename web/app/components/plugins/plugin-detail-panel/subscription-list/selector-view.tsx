@@ -1,7 +1,8 @@
 'use client'
 import type { TriggerSubscription } from '@/app/components/workflow/block-selector/types'
 import { RiCheckLine, RiDeleteBinLine, RiWebhookLine } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -30,9 +31,9 @@ export const SubscriptionSelectorView: React.FC<SubscriptionSelectorProps> = ({
         <div className="ml-7 mr-1.5 flex h-8 items-center justify-between">
           <div className="flex shrink-0 items-center gap-1">
             <span className="system-sm-semibold-uppercase text-text-secondary">
-              {t('pluginTrigger.subscription.listNum', { num: subscriptionCount })}
+              {t('subscription.listNum', { ns: 'pluginTrigger', num: subscriptionCount })}
             </span>
-            <Tooltip popupContent={t('pluginTrigger.subscription.list.tip')} />
+            <Tooltip popupContent={t('subscription.list.tip', { ns: 'pluginTrigger' })} />
           </div>
           <CreateSubscriptionButton
             buttonType={CreateButtonType.ICON_BUTTON}

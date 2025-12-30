@@ -1,7 +1,8 @@
 'use client'
 import type { NotionPage } from '@/models/common'
 import { RiCloseLine } from '@remixicon/react'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Notion } from '@/app/components/base/icons/src/public/common'
 import { Markdown } from '@/app/components/base/markdown'
@@ -55,13 +56,13 @@ const OnlineDocumentPreview = ({
     <div className="flex h-full w-full flex-col rounded-t-xl border-l border-t border-components-panel-border bg-background-default-lighter shadow-md shadow-shadow-shadow-5">
       <div className="flex gap-x-2 border-b border-divider-subtle pb-3 pl-6 pr-4 pt-4">
         <div className="flex grow flex-col gap-y-1">
-          <div className="system-2xs-semibold-uppercase text-text-accent">{t('datasetPipeline.addDocuments.stepOne.preview')}</div>
+          <div className="system-2xs-semibold-uppercase text-text-accent">{t('addDocuments.stepOne.preview', { ns: 'datasetPipeline' })}</div>
           <div className="title-md-semi-bold text-tex-primary">{currentPage?.page_name}</div>
           <div className="system-xs-medium flex items-center gap-x-1 text-text-tertiary">
             <Notion className="size-3.5" />
             <span>{currentPage.type}</span>
             <span>·</span>
-            <span>{`${formatNumberAbbreviated(content.length)} ${t('datasetPipeline.addDocuments.characters')}`}</span>
+            <span>{`${formatNumberAbbreviated(content.length)} ${t('addDocuments.characters', { ns: 'datasetPipeline' })}`}</span>
           </div>
         </div>
         <button

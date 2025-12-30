@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { Var } from '../../../types'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
@@ -42,7 +43,7 @@ const ExtractInput: FC<Props> = ({
         nodesOutputVars={availableVars}
         availableNodes={availableNodesWithParent}
         onFocusChange={setIsFocus}
-        placeholder={!readOnly ? t('workflow.nodes.http.extractListPlaceholder')! : ''}
+        placeholder={!readOnly ? t('nodes.http.extractListPlaceholder', { ns: 'workflow' })! : ''}
         placeholderClassName="!leading-[21px]"
       />
     </div>

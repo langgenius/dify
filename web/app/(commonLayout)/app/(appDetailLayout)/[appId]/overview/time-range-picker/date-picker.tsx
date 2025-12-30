@@ -4,10 +4,11 @@ import type { FC } from 'react'
 import type { TriggerProps } from '@/app/components/base/date-and-time-picker/types'
 import { RiCalendarLine } from '@remixicon/react'
 import dayjs from 'dayjs'
-import { noop } from 'lodash-es'
-import React, { useCallback } from 'react'
+import { noop } from 'es-toolkit/compat'
+import * as React from 'react'
+import { useCallback } from 'react'
 import Picker from '@/app/components/base/date-and-time-picker/date-picker'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 import { formatToLocalTime } from '@/utils/format'
 
@@ -25,7 +26,7 @@ const DatePicker: FC<Props> = ({
   onStartChange,
   onEndChange,
 }) => {
-  const { locale } = useI18N()
+  const locale = useLocale()
 
   const renderDate = useCallback(({ value, handleClickTrigger, isOpen }: TriggerProps) => {
     return (

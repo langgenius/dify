@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
+import * as React from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import VarHighlight from '../../base/var-highlight'
@@ -53,7 +54,7 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
             {VarIcon}
           </div>
           <div className="grow-1">
-            <div className="text-sm font-medium text-text-primary">{t('appDebug.autoAddVar')}</div>
+            <div className="text-sm font-medium text-text-primary">{t('autoAddVar', { ns: 'appDebug' })}</div>
             <div className="mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1">
               {varNameArr.map(name => (
                 <VarHighlight key={name} name={name} />
@@ -62,8 +63,8 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
           </div>
         </div>
         <div className="mt-7 flex justify-end space-x-2">
-          <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-          <Button variant="primary" onClick={onConfirm}>{t('common.operation.add')}</Button>
+          <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={onConfirm}>{t('operation.add', { ns: 'common' })}</Button>
         </div>
       </div>
 

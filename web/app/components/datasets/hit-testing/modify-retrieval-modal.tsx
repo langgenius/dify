@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import type { IndexingType } from '../create/step-two'
 import type { RetrievalConfig } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
-import React, { useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
@@ -54,7 +55,7 @@ const ModifyRetrievalModal: FC<Props> = ({
         indexMethod,
       })
     ) {
-      Toast.notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      Toast.notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
       return
     }
     onSave(retrievalConfig)
@@ -90,7 +91,7 @@ const ModifyRetrievalModal: FC<Props> = ({
     >
       <div className="h-15 flex shrink-0 justify-between px-3 pb-1 pt-3.5">
         <div className="text-base font-semibold text-text-primary">
-          <div>{t('datasetSettings.form.retrievalSetting.title')}</div>
+          <div>{t('form.retrievalSetting.title', { ns: 'datasetSettings' })}</div>
           <div className="text-xs font-normal leading-[18px] text-text-tertiary">
             <a
               target="_blank"
@@ -101,9 +102,9 @@ const ModifyRetrievalModal: FC<Props> = ({
               })}
               className="text-text-accent"
             >
-              {t('datasetSettings.form.retrievalSetting.learnMore')}
+              {t('form.retrievalSetting.learnMore', { ns: 'datasetSettings' })}
             </a>
-            {t('datasetSettings.form.retrievalSetting.description')}
+            {t('form.retrievalSetting.description', { ns: 'datasetSettings' })}
           </div>
         </div>
         <div className="flex">
@@ -118,7 +119,7 @@ const ModifyRetrievalModal: FC<Props> = ({
 
       <div className="px-4 py-2">
         <div className="mb-1 text-[13px] font-semibold leading-6 text-text-secondary">
-          {t('datasetSettings.form.retrievalSetting.method')}
+          {t('form.retrievalSetting.method', { ns: 'datasetSettings' })}
         </div>
         {indexMethod === 'high_quality'
           ? (
@@ -136,8 +137,8 @@ const ModifyRetrievalModal: FC<Props> = ({
             )}
       </div>
       <div className="flex justify-end p-4 pt-2">
-        <Button className="mr-2 shrink-0" onClick={onHide}>{t('common.operation.cancel')}</Button>
-        <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('common.operation.save')}</Button>
+        <Button className="mr-2 shrink-0" onClick={onHide}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
       </div>
     </div>
   )

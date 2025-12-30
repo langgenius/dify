@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { BlockEnum, ToolWithProvider } from '../../../types'
 import type { ToolDefaultValue, ToolValue } from '../../types'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { ViewType } from '../../view-type-select'
 import Tool from '../tool'
 

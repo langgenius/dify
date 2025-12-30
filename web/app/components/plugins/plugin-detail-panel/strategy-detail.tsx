@@ -8,7 +8,8 @@ import {
   RiArrowLeftLine,
   RiCloseLine,
 } from '@remixicon/react'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Divider from '@/app/components/base/divider'
@@ -60,13 +61,13 @@ const StrategyDetail: FC<Props> = ({
 
   const getType = (type: string) => {
     if (type === 'number-input')
-      return t('tools.setBuiltInTools.number')
+      return t('setBuiltInTools.number', { ns: 'tools' })
     if (type === 'text-input')
-      return t('tools.setBuiltInTools.string')
+      return t('setBuiltInTools.string', { ns: 'tools' })
     if (type === 'checkbox')
       return 'boolean'
     if (type === 'file')
-      return t('tools.setBuiltInTools.file')
+      return t('setBuiltInTools.file', { ns: 'tools' })
     if (type === 'array[tools]')
       return 'multiple-tool-select'
     return type
@@ -107,7 +108,7 @@ const StrategyDetail: FC<Props> = ({
         {/* form */}
         <div className="h-full">
           <div className="flex h-full flex-col overflow-y-auto">
-            <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('tools.setBuiltInTools.parameters')}</div>
+            <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
             <div className="px-4">
               {detail.parameters.length > 0 && (
                 <div className="space-y-1 py-2">
@@ -119,7 +120,7 @@ const StrategyDetail: FC<Props> = ({
                           {getType(item.type)}
                         </div>
                         {item.required && (
-                          <div className="system-xs-medium text-text-warning-secondary">{t('tools.setBuiltInTools.required')}</div>
+                          <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
                         )}
                       </div>
                       {item.human_description && (

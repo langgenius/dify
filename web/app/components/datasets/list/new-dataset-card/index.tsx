@@ -3,7 +3,7 @@ import {
   RiAddLine,
   RiFunctionAddLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import Option from './option'
@@ -17,19 +17,19 @@ const CreateAppCard = () => {
         <Option
           href="/datasets/create"
           Icon={RiAddLine}
-          text={t('dataset.createDataset')}
+          text={t('createDataset', { ns: 'dataset' })}
         />
         <Option
           href="/datasets/create-from-pipeline"
           Icon={RiFunctionAddLine}
-          text={t('dataset.createFromPipeline')}
+          text={t('createFromPipeline', { ns: 'dataset' })}
         />
       </div>
       <div className="border-t-[0.5px] border-divider-subtle p-2">
         <Option
           href="/datasets/connect"
           Icon={ApiConnectionMod}
-          text={t('dataset.connectDataset')}
+          text={t('connectDataset', { ns: 'dataset' })}
         />
       </div>
     </div>

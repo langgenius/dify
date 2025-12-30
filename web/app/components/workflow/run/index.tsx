@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { WorkflowRunDetailResponse } from '@/models/log'
 import type { NodeTracing } from '@/types/workflow'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Loading from '@/app/components/base/loading'
@@ -129,7 +130,7 @@ const RunPanel: FC<RunProps> = ({
             )}
             onClick={() => switchTab('RESULT')}
           >
-            {t('runLog.result')}
+            {t('result', { ns: 'runLog' })}
           </div>
         )}
         <div
@@ -139,7 +140,7 @@ const RunPanel: FC<RunProps> = ({
           )}
           onClick={() => switchTab('DETAIL')}
         >
-          {t('runLog.detail')}
+          {t('detail', { ns: 'runLog' })}
         </div>
         <div
           className={cn(
@@ -148,7 +149,7 @@ const RunPanel: FC<RunProps> = ({
           )}
           onClick={() => switchTab('TRACING')}
         >
-          {t('runLog.tracing')}
+          {t('tracing', { ns: 'runLog' })}
         </div>
       </div>
       {/* panel detail */}

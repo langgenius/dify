@@ -1,14 +1,13 @@
 import type { Mock } from 'vitest'
 import type { AnnotationItem, HitHistoryItem } from '../type'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { fetchHitHistoryList } from '@/service/annotation'
 import ViewAnnotationModal from './index'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
   default: () => ({
     formatTime: mockFormatTime,
   }),
@@ -24,7 +23,6 @@ vi.mock('../edit-annotation-modal/edit-item', () => {
     Answer: 'answer',
   }
   return {
-    __esModule: true,
     default: ({ type, content, onSave }: { type: string, content: string, onSave: (value: string) => void }) => (
       <div>
         <div data-testid={`content-${type}`}>{content}</div>

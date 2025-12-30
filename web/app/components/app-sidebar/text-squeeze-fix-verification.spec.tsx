@@ -4,7 +4,7 @@
  */
 
 import { render } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
@@ -13,7 +13,6 @@ vi.mock('next/navigation', () => ({
 
 // Mock classnames utility
 vi.mock('@/utils/classnames', () => ({
-  __esModule: true,
   default: (...classes: any[]) => classes.filter(Boolean).join(' '),
 }))
 

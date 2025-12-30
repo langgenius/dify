@@ -1,6 +1,6 @@
 import type { Mock } from 'vitest'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { useProviderContext } from '@/context/provider-context'
 import AddAnnotationModal from './index'
 
@@ -10,7 +10,6 @@ vi.mock('@/context/provider-context', () => ({
 
 const mockToastNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: {
     notify: vi.fn(args => mockToastNotify(args)),
   },

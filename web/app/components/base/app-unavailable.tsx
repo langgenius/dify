@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
@@ -29,7 +29,7 @@ const AppUnavailable: FC<IAppUnavailableProps> = ({
       >
         {code}
       </h1>
-      <div className="text-sm">{unknownReason || (isUnknownReason ? t('share.common.appUnknownError') : t('share.common.appUnavailable'))}</div>
+      <div className="text-sm">{unknownReason || (isUnknownReason ? t('common.appUnknownError', { ns: 'share' }) : t('common.appUnavailable', { ns: 'share' }))}</div>
     </div>
   )
 }

@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import { Combobox, ComboboxButton, ComboboxInput, ComboboxOption, ComboboxOptions, Listbox, ListboxButton, ListboxOption, ListboxOptions } from '@headlessui/react'
 import { ChevronDownIcon, ChevronUpIcon, XMarkIcon } from '@heroicons/react/20/solid'
 import { RiCheckLine, RiLoader4Line } from '@remixicon/react'
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -195,7 +196,7 @@ const SimpleSelect: FC<ISelectProps> = ({
   isLoading = false,
 }) => {
   const { t } = useTranslation()
-  const localPlaceholder = placeholder || t('common.placeholder.select')
+  const localPlaceholder = placeholder || t('placeholder.select', { ns: 'common' })
 
   const [selectedItem, setSelectedItem] = useState<Item | null>(null)
 
@@ -348,7 +349,7 @@ const PortalSelect: FC<PortalSelectProps> = ({
 }) => {
   const { t } = useTranslation()
   const [open, setOpen] = useState(false)
-  const localPlaceholder = placeholder || t('common.placeholder.select')
+  const localPlaceholder = placeholder || t('placeholder.select', { ns: 'common' })
   const selectedItem = value ? items.find(item => item.value === value) : undefined
 
   return (

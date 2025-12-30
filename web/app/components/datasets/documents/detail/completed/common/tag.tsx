@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 
 const Tag = ({ text, className }: { text: string, className?: string }) => {

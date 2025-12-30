@@ -3,7 +3,8 @@ import type { ColorMap, IndicatorProps } from '@/app/components/header/indicator
 import type { CommonResponse } from '@/models/common'
 import type { DocumentDisplayStatus } from '@/models/datasets'
 import { useDebounceFn } from 'ahooks'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import Switch from '@/app/components/base/switch'
@@ -71,10 +72,10 @@ const StatusItem = ({
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onUpdate?.(operationName)
     }
-    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
+    else { notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
   }
 
   const { run: handleSwitch } = useDebounceFn((operationName: OperationName) => {
@@ -113,7 +114,7 @@ const StatusItem = ({
         scene === 'detail' && (
           <div className="ml-1.5 flex items-center justify-between">
             <Tooltip
-              popupContent={t('datasetDocuments.list.action.enableWarning')}
+              popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })}
               popupClassName="text-text-secondary system-xs-medium"
               disabled={!archived}
             >

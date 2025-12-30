@@ -1,12 +1,12 @@
 import type { FC } from 'react'
 import type { StartNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import InputVarTypeIcon from '../_base/components/input-var-type-icon'
 
-const i18nPrefix = 'workflow.nodes.start'
+const i18nPrefix = 'nodes.start'
 
 const Node: FC<NodeProps<StartNodeType>> = ({
   data,
@@ -28,7 +28,7 @@ const Node: FC<NodeProps<StartNodeType>> = ({
             </div>
 
             <div className="ml-1 flex items-center space-x-1">
-              {variable.required && <span className="system-2xs-regular-uppercase text-text-tertiary">{t(`${i18nPrefix}.required`)}</span>}
+              {variable.required && <span className="system-2xs-regular-uppercase text-text-tertiary">{t(`${i18nPrefix}.required`, { ns: 'workflow' })}</span>}
               <InputVarTypeIcon type={variable.type} className="h-3 w-3 text-text-tertiary" />
             </div>
           </div>

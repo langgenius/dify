@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import { useKnowledge } from '@/hooks/use-knowledge'
@@ -69,10 +70,10 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
               {dataset.name}
             </div>
             <div className="system-2xs-medium-uppercase text-text-tertiary">
-              {isExternalProvider && t('dataset.externalTag')}
+              {isExternalProvider && t('externalTag', { ns: 'dataset' })}
               {!isExternalProvider && isPipelinePublished && dataset.doc_form && dataset.indexing_technique && (
                 <div className="flex items-center gap-x-2">
-                  <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>
+                  <span>{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
                   <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
                 </div>
               )}

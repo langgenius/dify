@@ -1,17 +1,16 @@
-import {
-  getLocaleOnServer,
-  useTranslation as translate,
-} from '@/i18n-config/server'
+/* eslint-disable dify-i18n/require-ns-option */
+import type { Locale } from '@/i18n-config'
+import { getLocaleOnServer, getTranslation } from '@/i18n-config/server'
 
 type DescriptionProps = {
-  locale?: string
+  locale?: Locale
 }
 const Description = async ({
   locale: localeFromProps,
 }: DescriptionProps) => {
   const localeDefault = await getLocaleOnServer()
-  const { t } = await translate(localeFromProps || localeDefault, 'plugin')
-  const { t: tCommon } = await translate(localeFromProps || localeDefault, 'common')
+  const { t } = await getTranslation(localeFromProps || localeDefault, 'plugin')
+  const { t: tCommon } = await getTranslation(localeFromProps || localeDefault, 'common')
   const isZhHans = localeFromProps === 'zh-Hans'
 
   return (

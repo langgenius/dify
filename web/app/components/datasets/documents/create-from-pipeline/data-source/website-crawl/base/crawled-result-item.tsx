@@ -1,6 +1,7 @@
 'use client'
 import type { CrawlResultItem as CrawlResultItemType } from '@/models/datasets'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Checkbox from '@/app/components/base/checkbox'
@@ -75,7 +76,7 @@ const CrawledResultItem = ({
           onClick={onPreview}
           className="system-xs-medium-uppercase right-2 top-2 hidden px-1.5 group-hover:absolute group-hover:block"
         >
-          {t('datasetCreation.stepOne.website.preview')}
+          {t('stepOne.website.preview', { ns: 'datasetCreation' })}
         </Button>
       )}
     </div>

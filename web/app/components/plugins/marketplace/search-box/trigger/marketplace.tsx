@@ -1,6 +1,6 @@
 import type { Tag } from '../../../hooks'
 import { RiArrowDownSLine, RiCloseCircleFill, RiFilter3Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import { useMixedTranslation } from '../../hooks'
 
@@ -36,7 +36,7 @@ const MarketplaceTrigger = ({
       </div>
       <div className="system-sm-medium flex items-center gap-x-1 p-1">
         {
-          !selectedTagsLength && <span>{t('pluginTags.allTags')}</span>
+          !selectedTagsLength && <span>{t('allTags', { ns: 'pluginTags' })}</span>
         }
         {
           !!selectedTagsLength && (

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { useKeyPress } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
@@ -38,7 +38,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
   return (
     <div className="flex items-center gap-x-1">
       <Button size="small" variant="secondary" onClick={onCancel}>
-        {t('common.operation.cancel')}
+        {t('operation.cancel', { ns: 'common' })}
       </Button>
       <Button
         className="flex items-center gap-x-1"
@@ -47,7 +47,7 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
         variant="primary"
         onClick={onConfirm}
       >
-        <span>{t('common.operation.confirm')}</span>
+        <span>{t('operation.confirm', { ns: 'common' })}</span>
         <div className="flex items-center gap-x-0.5">
           <Key keyName={getKeyboardKeyNameBySystem('ctrl')} />
           <Key keyName="⏎" />

@@ -1,7 +1,7 @@
 'use client'
 import type { EnvironmentVariable } from '@/app/components/workflow/types'
 import { RiAddLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import {
@@ -50,7 +50,7 @@ const VariableTrigger = ({
       >
         <Button variant="primary">
           <RiAddLine className="mr-1 h-4 w-4" />
-          <span className="system-sm-medium">{t('workflow.env.envPanelButton')}</span>
+          <span className="system-sm-medium">{t('env.envPanelButton', { ns: 'workflow' })}</span>
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">

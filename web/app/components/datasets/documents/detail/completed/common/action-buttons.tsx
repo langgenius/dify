@@ -1,6 +1,7 @@
 import type { FC } from 'react'
 import { useKeyPress } from 'ahooks'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
@@ -52,7 +53,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         onClick={handleCancel}
       >
         <div className="flex items-center gap-x-1">
-          <span className="system-sm-medium text-components-button-secondary-text">{t('common.operation.cancel')}</span>
+          <span className="system-sm-medium text-components-button-secondary-text">{t('operation.cancel', { ns: 'common' })}</span>
           <span className="system-kbd rounded-[4px] bg-components-kbd-bg-gray px-[1px] text-text-tertiary">ESC</span>
         </div>
       </Button>
@@ -63,7 +64,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
               disabled={loading}
             >
               <span className="system-sm-medium text-components-button-secondary-text">
-                {t('common.operation.saveAndRegenerate')}
+                {t('operation.saveAndRegenerate', { ns: 'common' })}
               </span>
             </Button>
           )
@@ -74,7 +75,7 @@ const ActionButtons: FC<IActionButtonsProps> = ({
         disabled={loading}
       >
         <div className="flex items-center gap-x-1">
-          <span className="text-components-button-primary-text">{t('common.operation.save')}</span>
+          <span className="text-components-button-primary-text">{t('operation.save', { ns: 'common' })}</span>
           <div className="flex items-center gap-x-0.5">
             <span className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white capitalize text-text-primary-on-surface">{getKeyboardKeyNameBySystem('ctrl')}</span>
             <span className="system-kbd h-4 w-4 rounded-[4px] bg-components-kbd-bg-white text-text-primary-on-surface">S</span>

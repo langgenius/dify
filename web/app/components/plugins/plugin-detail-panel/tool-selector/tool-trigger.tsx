@@ -4,7 +4,7 @@ import {
   RiArrowDownSLine,
   RiEqualizer2Line,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import BlockIcon from '@/app/components/workflow/block-icon'
 import { BlockEnum } from '@/app/components/workflow/types'
@@ -48,7 +48,7 @@ const ToolTrigger = ({
       )}
       {!value?.provider_name && (
         <div className="system-sm-regular grow text-components-input-text-placeholder">
-          {!isConfigure ? t('plugin.detailPanel.toolSelector.placeholder') : t('plugin.detailPanel.configureTool')}
+          {!isConfigure ? t('detailPanel.toolSelector.placeholder', { ns: 'plugin' }) : t('detailPanel.configureTool', { ns: 'plugin' })}
         </div>
       )}
       {isConfigure && (

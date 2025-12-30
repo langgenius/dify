@@ -1,5 +1,5 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import InputWithCopy from './index'
 
 // Create a mock function that we can track using vi.hoisted
@@ -13,20 +13,23 @@ vi.mock('copy-to-clipboard', () => ({
 // Mock the i18n hook
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
       const translations: Record<string, string> = {
-        'common.operation.copy': 'Copy',
-        'common.operation.copied': 'Copied',
-        'appOverview.overview.appInfo.embedded.copy': 'Copy',
-        'appOverview.overview.appInfo.embedded.copied': 'Copied',
+        'operation.copy': 'Copy',
+        'operation.copied': 'Copied',
+        'overview.appInfo.embedded.copy': 'Copy',
+        'overview.appInfo.embedded.copied': 'Copied',
       }
-      return translations[key] || key
+      if (translations[key])
+        return translations[key]
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))
 
-// Mock lodash-es debounce
-vi.mock('lodash-es', () => ({
+// Mock es-toolkit/compat debounce
+vi.mock('es-toolkit/compat', () => ({
   debounce: (fn: any) => fn,
 }))
 

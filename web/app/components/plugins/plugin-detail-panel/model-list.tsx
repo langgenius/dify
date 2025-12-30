@@ -1,5 +1,5 @@
 import type { PluginDetail } from '@/app/components/plugins/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ModelIcon from '@/app/components/header/account-setting/model-provider-page/model-icon'
 import ModelName from '@/app/components/header/account-setting/model-provider-page/model-name'
@@ -20,7 +20,7 @@ const ModelList = ({
 
   return (
     <div className="px-4 py-2">
-      <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center text-text-secondary">{t('plugin.detailPanel.modelNum', { num: res.data.length })}</div>
+      <div className="system-sm-semibold-uppercase mb-1 flex h-6 items-center text-text-secondary">{t('detailPanel.modelNum', { ns: 'plugin', num: res.data.length })}</div>
       <div className="flex flex-col">
         {res.data.map(model => (
           <div key={model.model} className="flex h-6 items-center py-1">

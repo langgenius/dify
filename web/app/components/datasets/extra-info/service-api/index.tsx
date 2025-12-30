@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiAggregate } from '@/app/components/base/icons/src/vender/knowledge'
 import { PortalToFollowElem, PortalToFollowElemContent, PortalToFollowElemTrigger } from '@/app/components/base/portal-to-follow-elem'
@@ -46,7 +47,7 @@ const ServiceApi = ({
           )}
           >
             <ApiAggregate className="size-4 shrink-0 text-text-secondary" />
-            {expand && <div className="system-sm-medium grow text-text-secondary">{t('dataset.serviceApi.title')}</div>}
+            {expand && <div className="system-sm-medium grow text-text-secondary">{t('serviceApi.title', { ns: 'dataset' })}</div>}
             <Indicator
               className={cn('shrink-0', !expand && 'absolute -right-px -top-px')}
               color={apiEnabled ? 'green' : 'yellow'}

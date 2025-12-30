@@ -1,7 +1,8 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { PipelineTemplate } from '@/models/pipeline'
 import { RiCloseLine } from '@remixicon/react'
-import React, { useCallback, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import AppIconPicker from '@/app/components/base/app-icon-picker'
@@ -96,7 +97,7 @@ const EditPipelineInfo = ({
       {/* Header */}
       <div className="pb-3 pl-6 pr-14 pt-6">
         <span className="title-2xl-semi-bold text-text-primary">
-          {t('datasetPipeline.editPipelineInfo')}
+          {t('editPipelineInfo', { ns: 'datasetPipeline' })}
         </span>
       </div>
       <button
@@ -111,12 +112,12 @@ const EditPipelineInfo = ({
         <div className="flex items-end gap-x-3 self-stretch">
           <div className="flex grow flex-col gap-y-1 pb-1">
             <label className="system-sm-medium flex h-6 items-center text-text-secondary">
-              {t('datasetPipeline.pipelineNameAndIcon')}
+              {t('pipelineNameAndIcon', { ns: 'datasetPipeline' })}
             </label>
             <Input
               onChange={handleAppNameChange}
               value={name}
-              placeholder={t('datasetPipeline.knowledgeNameAndIconPlaceholder')}
+              placeholder={t('knowledgeNameAndIconPlaceholder', { ns: 'datasetPipeline' })}
             />
           </div>
           <AppIcon
@@ -132,12 +133,12 @@ const EditPipelineInfo = ({
         </div>
         <div className="flex flex-col gap-y-1">
           <label className="system-sm-medium flex h-6 items-center text-text-secondary">
-            {t('datasetPipeline.knowledgeDescription')}
+            {t('knowledgeDescription', { ns: 'datasetPipeline' })}
           </label>
           <Textarea
             onChange={handleDescriptionChange}
             value={description}
-            placeholder={t('datasetPipeline.knowledgeDescriptionPlaceholder')}
+            placeholder={t('knowledgeDescriptionPlaceholder', { ns: 'datasetPipeline' })}
           />
         </div>
       </div>
@@ -147,13 +148,13 @@ const EditPipelineInfo = ({
           variant="secondary"
           onClick={onClose}
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           onClick={handleSave}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
       {showAppIconPicker && (

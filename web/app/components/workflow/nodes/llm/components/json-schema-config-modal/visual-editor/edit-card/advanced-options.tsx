@@ -1,5 +1,6 @@
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import Textarea from '@/app/components/base/textarea'
@@ -39,7 +40,7 @@ const AdvancedOptions: FC<AdvancedOptionsProps> = ({
       <div className="flex flex-col gap-y-1 px-2 py-1.5">
         <div className="flex w-full items-center gap-x-2">
           <span className="system-2xs-medium-uppercase text-text-tertiary">
-            {t('workflow.nodes.llm.jsonSchema.stringValidations')}
+            {t('nodes.llm.jsonSchema.stringValidations', { ns: 'workflow' })}
           </span>
           <div className="grow">
             <Divider type="horizontal" className="my-0 h-px bg-line-divider-bg" />

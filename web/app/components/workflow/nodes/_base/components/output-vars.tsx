@@ -1,6 +1,6 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FieldCollapse } from '@/app/components/workflow/nodes/_base/components/collapse'
 import { cn } from '@/utils/classnames'
@@ -25,7 +25,7 @@ const OutputVars: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <FieldCollapse
-      title={title || t('workflow.nodes.common.outputVars')}
+      title={title || t('nodes.common.outputVars', { ns: 'workflow' })}
       operations={operations}
       collapsed={collapsed}
       onCollapse={onCollapse}

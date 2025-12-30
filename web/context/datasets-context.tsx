@@ -1,7 +1,7 @@
 'use client'
 
 import type { DataSet } from '@/models/datasets'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/compat'
 import { createContext, useContext } from 'use-context-selector'
 
 export type DatasetsContextValue = {

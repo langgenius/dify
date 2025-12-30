@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { useInfiniteScroll } from 'ahooks'
 import Link from 'next/link'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Badge from '@/app/components/base/badge'
@@ -115,7 +116,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       isShow={isShow}
       onClose={onClose}
       className="w-[400px]"
-      title={t('appDebug.feature.dataSet.selectTitle')}
+      title={t('feature.dataSet.selectTitle', { ns: 'appDebug' })}
     >
       {(isLoading && datasets.length === 0) && (
         <div className="flex h-[200px]">
@@ -131,8 +132,8 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
             borderColor: 'rgba(0, 0, 0, 0.02',
           }}
         >
-          <span className="text-text-tertiary">{t('appDebug.feature.dataSet.noDataSet')}</span>
-          <Link href="/datasets/create" className="font-normal text-text-accent">{t('appDebug.feature.dataSet.toCreate')}</Link>
+          <span className="text-text-tertiary">{t('feature.dataSet.noDataSet', { ns: 'appDebug' })}</span>
+          <Link href="/datasets/create" className="font-normal text-text-accent">{t('feature.dataSet.toCreate', { ns: 'appDebug' })}</Link>
         </div>
       )}
 
@@ -165,7 +166,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                   </div>
                   <div className={cn('max-w-[200px] truncate text-[13px] font-medium text-text-secondary', !item.embedding_available && '!max-w-[120px] opacity-30')}>{item.name}</div>
                   {!item.embedding_available && (
-                    <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs font-normal leading-[18px] text-text-tertiary">{t('dataset.unavailable')}</span>
+                    <span className="ml-1 shrink-0 rounded-md border border-divider-deep px-1 text-xs font-normal leading-[18px] text-text-tertiary">{t('unavailable', { ns: 'dataset' })}</span>
                   )}
                 </div>
                 {item.is_multimodal && (
@@ -183,7 +184,7 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
                 }
                 {
                   item.provider === 'external' && (
-                    <Badge className="shrink-0" text={t('dataset.externalTag')} />
+                    <Badge className="shrink-0" text={t('externalTag', { ns: 'dataset' })} />
                   )
                 }
               </div>
@@ -194,11 +195,11 @@ const SelectDataSet: FC<ISelectDataSetProps> = ({
       {!isLoading && (
         <div className="mt-8 flex items-center justify-between">
           <div className="text-sm  font-medium text-text-secondary">
-            {selected.length > 0 && `${selected.length} ${t('appDebug.feature.dataSet.selected')}`}
+            {selected.length > 0 && `${selected.length} ${t('feature.dataSet.selected', { ns: 'appDebug' })}`}
           </div>
           <div className="flex space-x-2">
-            <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-            <Button variant="primary" onClick={handleSelect} disabled={hasNoData}>{t('common.operation.add')}</Button>
+            <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+            <Button variant="primary" onClick={handleSelect} disabled={hasNoData}>{t('operation.add', { ns: 'common' })}</Button>
           </div>
         </div>
       )}

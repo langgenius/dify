@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Switch from '@/app/components/base/switch'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
@@ -19,8 +19,8 @@ const ReasoningFormatConfig: FC<ReasoningFormatConfigProps> = ({
 
   return (
     <Field
-      title={t('workflow.nodes.llm.reasoningFormat.title')}
-      tooltip={t('workflow.nodes.llm.reasoningFormat.tooltip')}
+      title={t('nodes.llm.reasoningFormat.title', { ns: 'workflow' })}
+      tooltip={t('nodes.llm.reasoningFormat.tooltip', { ns: 'workflow' })}
       operations={(
         // ON = separated, OFF = tagged
         <Switch

@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { MetadataItemWithEdit } from '../types'
 import { RiDeleteBinLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import { UpdateType } from '../types'
 import EditedBeacon from './edited-beacon'

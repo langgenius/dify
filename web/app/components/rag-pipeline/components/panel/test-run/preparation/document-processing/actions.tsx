@@ -1,5 +1,5 @@
 import type { CustomActionsProps } from '@/app/components/base/form/components/form/actions'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { useStore } from '@/app/components/workflow/store'
@@ -27,7 +27,7 @@ const Actions = ({
         variant="secondary"
         onClick={onBack}
       >
-        {t('datasetPipeline.operations.backToDataSource')}
+        {t('operations.backToDataSource', { ns: 'datasetPipeline' })}
       </Button>
       <Button
         variant="primary"
@@ -37,7 +37,7 @@ const Actions = ({
         disabled={runDisabled || isSubmitting || !canSubmit || isRunning}
         loading={isSubmitting || isRunning}
       >
-        {t('datasetPipeline.operations.process')}
+        {t('operations.process', { ns: 'datasetPipeline' })}
       </Button>
     </div>
   )

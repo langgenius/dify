@@ -1,5 +1,6 @@
 import type { Datasource } from '../types'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useShallow } from 'zustand/react/shallow'
 import { trackEvent } from '@/app/components/base/amplitude'
 import LocalFile from '@/app/components/datasets/documents/create-from-pipeline/data-source/local-file'

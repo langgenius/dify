@@ -5,7 +5,8 @@ import type {
 } from '@floating-ui/react'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -152,7 +153,7 @@ const AppSelector: FC<Props> = ({
         <PortalToFollowElemContent className="z-[1000]">
           <div className="relative min-h-20 w-[389px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-sm">
             <div className="flex flex-col gap-1 px-4 py-3">
-              <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('app.appSelector.label')}</div>
+              <div className="system-sm-semibold flex h-6 items-center text-text-secondary">{t('appSelector.label', { ns: 'app' })}</div>
               <AppPicker
                 placement="bottom"
                 offset={offset}

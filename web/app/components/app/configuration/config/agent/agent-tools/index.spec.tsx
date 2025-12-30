@@ -12,7 +12,8 @@ import type { AgentTool } from '@/types/app'
 import { act, render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
 import copy from 'copy-to-clipboard'
-import React, {
+import * as React from 'react'
+import {
   useEffect,
   useMemo,
   useState,
@@ -75,7 +76,6 @@ const ToolPickerMock = (props: ToolPickerProps) => (
   </div>
 )
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
-  __esModule: true,
   default: (props: ToolPickerProps) => <ToolPickerMock {...props} />,
 }))
 
@@ -95,7 +95,6 @@ const SettingBuiltInToolMock = (props: SettingBuiltInToolProps) => {
   )
 }
 vi.mock('./setting-built-in-tool', () => ({
-  __esModule: true,
   default: (props: SettingBuiltInToolProps) => <SettingBuiltInToolMock {...props} />,
 }))
 

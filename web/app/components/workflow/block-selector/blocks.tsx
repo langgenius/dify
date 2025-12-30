@@ -1,5 +1,6 @@
 import type { NodeDefault } from '../types'
-import { groupBy } from 'lodash-es'
+import type { BlockClassificationEnum } from './types'
+import { groupBy } from 'es-toolkit/compat'
 import {
   memo,
   useCallback,
@@ -38,6 +39,7 @@ const Blocks = ({
       type: block.type,
       title: block.title,
       author: 'Dify',
+      // @ts-expect-error Fix this missing field later
       description: block.description,
     },
     defaultValue: {},
@@ -66,7 +68,7 @@ const Blocks = ({
   }, [blocks, searchText, availableBlocksTypes])
   const isEmpty = Object.values(groups).every(list => !list.length)
 
-  const renderGroup = useCallback((classification: string) => {
+  const renderGroup = useCallback((classification: BlockClassificationEnum) => {
     const list = groups[classification].sort((a, b) => (a.metaData.sort || 0) - (b.metaData.sort || 0))
     const { getNodes } = store.getState()
     const nodes = getNodes()
@@ -85,7 +87,7 @@ const Blocks = ({
         {
           classification !== '-' && !!filteredList.length && (
             <div className="flex h-[22px] items-start px-3 text-xs font-medium text-text-tertiary">
-              {t(`workflow.tabs.${classification}`)}
+              {t(`tabs.${classification}`, { ns: 'workflow' })}
             </div>
           )
         }
@@ -121,7 +123,7 @@ const Blocks = ({
                 {
                   block.metaData.type === BlockEnum.LoopEnd && (
                     <Badge
-                      text={t('workflow.nodes.loop.loopNode')}
+                      text={t('nodes.loop.loopNode', { ns: 'workflow' })}
                       className="ml-2 shrink-0"
                     />
                   )
@@ -138,7 +140,7 @@ const Blocks = ({
     <div className="max-h-[480px] max-w-[500px] overflow-y-auto p-1">
       {
         isEmpty && (
-          <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">{t('workflow.tabs.noResult')}</div>
+          <div className="flex h-[22px] items-center px-3 text-xs font-medium text-text-tertiary">{t('tabs.noResult', { ns: 'workflow' })}</div>
         )
       }
       {

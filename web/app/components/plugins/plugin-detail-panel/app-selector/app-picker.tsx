@@ -5,7 +5,8 @@ import type {
 } from '@floating-ui/react'
 import type { FC } from 'react'
 import type { App } from '@/types/app'
-import React, { useCallback, useEffect, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import Input from '@/app/components/base/input'
@@ -186,7 +187,7 @@ const AppPicker: FC<Props> = ({
             <div ref={observerTarget} className="h-4 w-full">
               {isLoading && (
                 <div className="flex justify-center py-2">
-                  <div className="text-sm text-gray-500">{t('common.loading')}</div>
+                  <div className="text-sm text-gray-500">{t('loading', { ns: 'common' })}</div>
                 </div>
               )}
             </div>

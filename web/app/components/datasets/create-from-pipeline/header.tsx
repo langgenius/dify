@@ -1,6 +1,6 @@
 import { RiArrowLeftLine } from '@remixicon/react'
 import Link from 'next/link'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '../../base/button'
 
@@ -9,7 +9,7 @@ const Header = () => {
 
   return (
     <div className="system-md-semibold relative flex px-16 pb-2 pt-5 text-text-primary">
-      <span>{t('datasetPipeline.creation.backToKnowledge')}</span>
+      <span>{t('creation.backToKnowledge', { ns: 'datasetPipeline' })}</span>
       <Link
         className="absolute bottom-0 left-5"
         href="/datasets"

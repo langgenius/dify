@@ -2,7 +2,7 @@ import type { DataSet } from '@/models/datasets'
 import { RiEditLine } from '@remixicon/react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import React from 'react'
+import * as React from 'react'
 import {
   ChunkingMode,
   DatasetPermission,
@@ -132,7 +132,6 @@ vi.mock('@/hooks/use-knowledge', () => ({
 }))
 
 vi.mock('@/app/components/datasets/rename-modal', () => ({
-  __esModule: true,
   default: ({
     show,
     onClose,

@@ -54,7 +54,7 @@ const CustomWebAppBrand = () => {
       return
 
     if (file.size > 5 * 1024 * 1024) {
-      notify({ type: 'error', message: t('common.imageUploader.uploadFromComputerLimit', { size: 5 }) })
+      notify({ type: 'error', message: t('imageUploader.uploadFromComputerLimit', { ns: 'common', size: 5 }) })
       return
     }
 
@@ -68,7 +68,7 @@ const CustomWebAppBrand = () => {
         setFileId(res.id)
       },
       onErrorCallback: (error?: any) => {
-        const errorMessage = getImageUploadErrorMessage(error, t('common.imageUploader.uploadFromComputerUploadError'), t)
+        const errorMessage = getImageUploadErrorMessage(error, t('imageUploader.uploadFromComputerUploadError', { ns: 'common' }), t as any)
         notify({ type: 'error', message: errorMessage })
         setUploadProgress(-1)
       },
@@ -117,7 +117,7 @@ const CustomWebAppBrand = () => {
   return (
     <div className="py-4">
       <div className="system-md-medium mb-2 flex items-center justify-between rounded-xl bg-background-section-burn p-4 text-text-primary">
-        {t('custom.webapp.removeBrand')}
+        {t('webapp.removeBrand', { ns: 'custom' })}
         <Switch
           size="l"
           defaultValue={webappBrandRemoved}
@@ -127,8 +127,8 @@ const CustomWebAppBrand = () => {
       </div>
       <div className={cn('flex h-14 items-center justify-between rounded-xl bg-background-section-burn px-4', webappBrandRemoved && 'opacity-30')}>
         <div>
-          <div className="system-md-medium text-text-primary">{t('custom.webapp.changeLogo')}</div>
-          <div className="system-xs-regular text-text-tertiary">{t('custom.webapp.changeLogoTip')}</div>
+          <div className="system-md-medium text-text-primary">{t('webapp.changeLogo', { ns: 'custom' })}</div>
+          <div className="system-xs-regular text-text-tertiary">{t('webapp.changeLogoTip', { ns: 'custom' })}</div>
         </div>
         <div className="flex items-center">
           {(!uploadDisabled && webappLogo && !webappBrandRemoved) && (
@@ -138,7 +138,7 @@ const CustomWebAppBrand = () => {
                 disabled={uploadDisabled || (!webappLogo && !webappBrandRemoved)}
                 onClick={handleRestore}
               >
-                {t('custom.restore')}
+                {t('restore', { ns: 'custom' })}
               </Button>
               <div className="mx-2 h-5 w-[1px] bg-divider-regular"></div>
             </>
@@ -152,8 +152,8 @@ const CustomWebAppBrand = () => {
                 <RiImageAddLine className="mr-1 h-4 w-4" />
                 {
                   (webappLogo || fileId)
-                    ? t('custom.change')
-                    : t('custom.upload')
+                    ? t('change', { ns: 'custom' })
+                    : t('upload', { ns: 'custom' })
                 }
                 <input
                   className={cn('absolute inset-0 block w-full text-[0] opacity-0', uploadDisabled ? 'cursor-not-allowed' : 'cursor-pointer')}
@@ -173,7 +173,7 @@ const CustomWebAppBrand = () => {
                 disabled={true}
               >
                 <RiLoader2Line className="mr-1 h-4 w-4 animate-spin" />
-                {t('custom.uploading')}
+                {t('uploading', { ns: 'custom' })}
               </Button>
             )
           }
@@ -185,7 +185,7 @@ const CustomWebAppBrand = () => {
                   onClick={handleCancel}
                   disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
                 >
-                  {t('common.operation.cancel')}
+                  {t('operation.cancel', { ns: 'common' })}
                 </Button>
                 <Button
                   variant="primary"
@@ -193,7 +193,7 @@ const CustomWebAppBrand = () => {
                   onClick={handleApply}
                   disabled={webappBrandRemoved || !isCurrentWorkspaceManager}
                 >
-                  {t('custom.apply')}
+                  {t('apply', { ns: 'custom' })}
                 </Button>
               </>
             )
@@ -201,10 +201,10 @@ const CustomWebAppBrand = () => {
         </div>
       </div>
       {uploadProgress === -1 && (
-        <div className="mt-2 text-xs text-[#D92D20]">{t('custom.uploadedFail')}</div>
+        <div className="mt-2 text-xs text-[#D92D20]">{t('uploadedFail', { ns: 'custom' })}</div>
       )}
       <div className="mb-2 mt-5 flex items-center gap-2">
-        <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('appOverview.overview.appInfo.preview')}</div>
+        <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('overview.appInfo.preview', { ns: 'appOverview' })}</div>
         <Divider bgStyle="gradient" className="grow" />
       </div>
       <div className="relative mb-2 flex items-center gap-3">

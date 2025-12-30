@@ -1,5 +1,5 @@
 import { RiAddLine, RiArrowRightUpLine, RiMoreFill } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import CustomPopover from '@/app/components/base/popover'
@@ -32,7 +32,7 @@ const Actions = ({
         className="grow gap-x-0.5"
       >
         <RiAddLine className="size-4" />
-        <span className="px-0.5">{t('datasetPipeline.operations.choose')}</span>
+        <span className="px-0.5">{t('operations.choose', { ns: 'datasetPipeline' })}</span>
       </Button>
       <Button
         variant="secondary"
@@ -40,7 +40,7 @@ const Actions = ({
         className="grow gap-x-0.5"
       >
         <RiArrowRightUpLine className="size-4" />
-        <span className="px-0.5">{t('datasetPipeline.operations.details')}</span>
+        <span className="px-0.5">{t('operations.details', { ns: 'datasetPipeline' })}</span>
       </Button>
       {
         showMoreOperations && (

@@ -3,6 +3,7 @@ import antfu from '@antfu/eslint-config'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
+import difyI18n from './eslint-rules/index.js'
 
 export default antfu(
   {
@@ -11,6 +12,7 @@ export default antfu(
         'react/no-context-provider': 'off',
         'react/no-forward-ref': 'off',
         'react/no-use-context': 'off',
+        'react/prefer-namespace-import': 'error',
       },
     },
     nextjs: true,
@@ -18,6 +20,7 @@ export default antfu(
     typescript: {
       overrides: {
         'ts/consistent-type-definitions': ['error', 'type'],
+        'ts/no-explicit-any': 'warn',
       },
     },
     test: {
@@ -39,7 +42,6 @@ export default antfu(
       'next/inline-script-id': 'warn',
       'no-console': 'warn',
       'no-irregular-whitespace': 'warn',
-      'no-unused-vars': 'warn',
       'node/prefer-global/buffer': 'warn',
       'node/prefer-global/process': 'warn',
       'react/no-create-ref': 'warn',
@@ -54,7 +56,6 @@ export default antfu(
       'test/no-identical-title': 'warn',
       'test/prefer-hooks-in-order': 'warn',
       'ts/no-empty-object-type': 'warn',
-      'ts/no-require-imports': 'warn',
       'unicorn/prefer-number-properties': 'warn',
       'unused-imports/no-unused-vars': 'warn',
     },
@@ -115,6 +116,7 @@ export default antfu(
     rules: {
       'sonarjs/max-lines': 'off',
       'max-lines': 'off',
+      'jsonc/sort-keys': 'error',
     },
   },
   tailwind.configs['flat/recommended'],
@@ -153,6 +155,20 @@ export default antfu(
       'tailwindcss/classnames-order': 'warn',
       'tailwindcss/enforces-negative-arbitrary-values': 'warn',
       'tailwindcss/migration-from-tailwind-2': 'warn',
+    },
+  },
+  // dify i18n namespace migration
+  {
+    files: ['**/*.ts', '**/*.tsx'],
+    ignores: ['eslint-rules/**', 'i18n/**', 'i18n-config/**'],
+    plugins: {
+      'dify-i18n': difyI18n,
+    },
+    rules: {
+      // 'dify-i18n/no-as-any-in-t': ['error', { mode: 'all' }],
+      'dify-i18n/no-as-any-in-t': 'error',
+      // 'dify-i18n/no-legacy-namespace-prefix': 'error',
+      'dify-i18n/require-ns-option': 'error',
     },
   },
 )

@@ -1,5 +1,5 @@
 import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
 import Divider from '../../base/divider'
@@ -26,13 +26,13 @@ const Menu = ({
       <div className="flex flex-col p-1">
         <MenuItem
           Icon={RiEditLine}
-          name={t('common.operation.edit')}
+          name={t('operation.edit', { ns: 'common' })}
           handleClick={openRenameModal}
         />
         {runtimeMode === 'rag_pipeline' && (
           <MenuItem
             Icon={RiFileDownloadLine}
-            name={t('datasetPipeline.operations.exportPipeline')}
+            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
             handleClick={handleExportPipeline}
           />
         )}
@@ -43,7 +43,7 @@ const Menu = ({
           <div className="flex flex-col p-1">
             <MenuItem
               Icon={RiDeleteBinLine}
-              name={t('common.operation.delete')}
+              name={t('operation.delete', { ns: 'common' })}
               handleClick={detectIsUsedByApp}
             />
           </div>

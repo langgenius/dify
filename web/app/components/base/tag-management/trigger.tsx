@@ -1,5 +1,5 @@
 import { RiPriceTag3Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type TriggerProps = {
@@ -18,7 +18,7 @@ const Trigger = ({
             <div className="flex items-center gap-x-0.5 rounded-[5px] border border-dashed border-divider-deep bg-components-badge-bg-dimm px-[5px] py-[3px]">
               <RiPriceTag3Line className="h-3 w-3 shrink-0 text-text-quaternary" />
               <div className="system-2xs-medium-uppercase text-nowrap text-text-tertiary">
-                {t('common.tag.addTag')}
+                {t('tag.addTag', { ns: 'common' })}
               </div>
             </div>
           )

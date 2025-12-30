@@ -1,21 +1,22 @@
 import type { TimePickerProps } from '../types'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import dayjs, { isDayjsObject } from '../utils/dayjs'
 import TimePicker from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      if (key === 'time.defaultPlaceholder')
+    t: (key: string, options?: { ns?: string }) => {
+      if (key === 'defaultPlaceholder')
         return 'Pick a time...'
-      if (key === 'time.operation.now')
+      if (key === 'operation.now')
         return 'Now'
-      if (key === 'time.operation.ok')
+      if (key === 'operation.ok')
         return 'OK'
-      if (key === 'common.operation.clear')
+      if (key === 'operation.clear')
         return 'Clear'
-      return key
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

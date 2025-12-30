@@ -1,7 +1,8 @@
 'use client'
 import type { NotionPage } from '@/models/common'
 import { XMarkIcon } from '@heroicons/react/20/solid'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import NotionIcon from '@/app/components/base/notion-icon'
@@ -50,7 +51,7 @@ const NotionPagePreview = ({
     <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title, 'title-md-semi-bold')}>
-          <span>{t('datasetCreation.stepOne.pagePreview')}</span>
+          <span>{t('stepOne.pagePreview', { ns: 'datasetCreation' })}</span>
           <div className="flex h-6 w-6 cursor-pointer items-center justify-center" onClick={hidePreview}>
             <XMarkIcon className="h-4 w-4"></XMarkIcon>
           </div>

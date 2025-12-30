@@ -1,7 +1,7 @@
 import type { AppCardProps } from './index'
 import type { App } from '@/models/explore'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 import AppCard from './index'
 

@@ -1,5 +1,5 @@
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
 
 // Import after mocks
@@ -39,7 +39,6 @@ const mockQueryState = {
   isCreatedByMe: false,
 }
 vi.mock('./hooks/use-apps-query-state', () => ({
-  __esModule: true,
   default: () => ({
     query: mockQueryState,
     setQuery: mockSetQuery,
@@ -57,8 +56,13 @@ vi.mock('./hooks/use-dsl-drag-drop', () => ({
 }))
 
 const mockSetActiveTab = vi.fn()
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => ['all', mockSetActiveTab],
+vi.mock('nuqs', () => ({
+  useQueryState: () => ['all', mockSetActiveTab],
+  parseAsString: {
+    withDefault: () => ({
+      withOptions: () => ({}),
+    }),
+  },
 }))
 
 // Mock service hooks - use object for mutable state (vi.mock is hoisted)
@@ -139,9 +143,7 @@ vi.mock('@/service/tag', () => ({
 // Store TagFilter onChange callback for testing
 let mockTagFilterOnChange: ((value: string[]) => void) | null = null
 vi.mock('@/app/components/base/tag-management/filter', () => ({
-  __esModule: true,
   default: ({ onChange }: { onChange: (value: string[]) => void }) => {
-    const React = require('react')
     mockTagFilterOnChange = onChange
     return React.createElement('div', { 'data-testid': 'tag-filter' }, 'common.tag.placeholder')
   },
@@ -161,7 +163,6 @@ vi.mock('@/hooks/use-pay', () => ({
 vi.mock('ahooks', () => ({
   useDebounceFn: (fn: () => void) => ({ run: fn }),
   useMount: (fn: () => void) => {
-    const React = require('react')
     const fnRef = React.useRef(fn)
     fnRef.current = fn
     React.useEffect(() => {
@@ -171,28 +172,25 @@ vi.mock('ahooks', () => ({
 }))
 
 // Mock dynamic imports
-vi.mock('next/dynamic', () => {
-  const React = require('react')
-  return {
-    default: (importFn: () => Promise<any>) => {
-      const fnString = importFn.toString()
+vi.mock('next/dynamic', () => ({
+  default: (importFn: () => Promise<any>) => {
+    const fnString = importFn.toString()
 
-      if (fnString.includes('tag-management')) {
-        return function MockTagManagement() {
-          return React.createElement('div', { 'data-testid': 'tag-management-modal' })
-        }
+    if (fnString.includes('tag-management')) {
+      return function MockTagManagement() {
+        return React.createElement('div', { 'data-testid': 'tag-management-modal' })
       }
-      if (fnString.includes('create-from-dsl-modal')) {
-        return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
-          if (!show)
-            return null
-          return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
-        }
+    }
+    if (fnString.includes('create-from-dsl-modal')) {
+      return function MockCreateFromDSLModal({ show, onClose, onSuccess }: any) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'create-dsl-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-dsl-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'success-dsl-modal' }, 'Success'))
       }
-      return () => null
-    },
-  }
-})
+    }
+    return () => null
+  },
+}))
 
 /**
  * Mock child components for focused List component testing.
@@ -200,34 +198,25 @@ vi.mock('next/dynamic', () => {
  * Each child component (AppCard, NewAppCard, Empty, Footer) has its own dedicated tests.
  */
 vi.mock('./app-card', () => ({
-  __esModule: true,
   default: ({ app }: any) => {
-    const React = require('react')
     return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
   },
 }))
 
-vi.mock('./new-app-card', () => {
-  const React = require('react')
-  return {
-    default: React.forwardRef((_props: any, _ref: any) => {
-      return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
-    }),
-  }
-})
+vi.mock('./new-app-card', () => ({
+  default: React.forwardRef((_props: any, _ref: any) => {
+    return React.createElement('div', { 'data-testid': 'new-app-card', 'role': 'button' }, 'New App Card')
+  }),
+}))
 
 vi.mock('./empty', () => ({
-  __esModule: true,
   default: () => {
-    const React = require('react')
     return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
   },
 }))
 
 vi.mock('./footer', () => ({
-  __esModule: true,
   default: () => {
-    const React = require('react')
     return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
   },
 }))

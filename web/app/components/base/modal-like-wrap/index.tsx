@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Button from '../button'
@@ -47,13 +47,13 @@ const ModalLikeWrap: FC<Props> = ({
           className="mr-2"
           onClick={onClose}
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
           onClick={onConfirm}
           variant="primary"
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
     </div>

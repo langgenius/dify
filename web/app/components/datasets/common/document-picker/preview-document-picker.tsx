@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import type { DocumentItem } from '@/models/datasets'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import {
@@ -65,7 +66,7 @@ const PreviewDocumentPicker: FC<Props> = ({
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className="z-[11]">
         <div className="w-[392px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg backdrop-blur-[5px]">
-          {files?.length > 1 && <div className="system-xs-medium-uppercase flex h-8 items-center pl-2 text-text-tertiary">{t('dataset.preprocessDocument', { num: files.length })}</div>}
+          {files?.length > 1 && <div className="system-xs-medium-uppercase flex h-8 items-center pl-2 text-text-tertiary">{t('preprocessDocument', { ns: 'dataset', num: files.length })}</div>}
           {files?.length > 0
             ? (
                 <DocumentList

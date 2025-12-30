@@ -2,10 +2,12 @@
 import type { FC } from 'react'
 import type { ModelConfig } from '../../../types'
 import type { MultipleRetrievalConfig, SingleRetrievalConfig } from '../types'
+import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { DataSet } from '@/models/datasets'
 import type { DatasetConfigs } from '@/models/debug'
 import { RiEqualizer2Line } from '@remixicon/react'
-import React, { useCallback, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigRetrievalContent from '@/app/components/app/configuration/dataset-config/params-config/config-content'
 import Button from '@/app/components/base/button'
@@ -27,8 +29,8 @@ type Props = {
   onRetrievalModeChange: (mode: RETRIEVE_TYPE) => void
   onMultipleRetrievalConfigChange: (config: MultipleRetrievalConfig) => void
   singleRetrievalModelConfig?: ModelConfig
-  onSingleRetrievalModelChange?: (config: ModelConfig) => void
-  onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
+  onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
+  onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
   readonly?: boolean
   rerankModalOpen: boolean
   onRerankModelOpenChange: (open: boolean) => void
@@ -134,7 +136,7 @@ const RetrievalConfig: FC<Props> = ({
           className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
         >
           <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
-          {t('dataset.retrievalSettings')}
+          {t('retrievalSettings', { ns: 'dataset' })}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiPlayLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { ClockPlay } from '@/app/components/base/icons/src/vender/line/time'
@@ -19,7 +19,7 @@ const NoData: FC<Props> = ({
   return (
     <div className="flex h-0 grow flex-col items-center justify-center">
       <ClockPlay className="h-8 w-8 text-text-quaternary" />
-      <div className="system-xs-regular my-2 text-text-tertiary">{t('workflow.debug.noData.description')}</div>
+      <div className="system-xs-regular my-2 text-text-tertiary">{t('debug.noData.description', { ns: 'workflow' })}</div>
       {canSingleRun && (
         <Button
           className="flex"
@@ -27,7 +27,7 @@ const NoData: FC<Props> = ({
           onClick={onSingleRun}
         >
           <RiPlayLine className="mr-1 h-3.5 w-3.5" />
-          <div>{t('workflow.debug.noData.runThisNode')}</div>
+          <div>{t('debug.noData.runThisNode', { ns: 'workflow' })}</div>
         </Button>
       )}
     </div>

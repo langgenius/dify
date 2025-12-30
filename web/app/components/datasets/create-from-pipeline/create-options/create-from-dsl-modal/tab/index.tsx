@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
 import Item from './item'
@@ -17,11 +17,11 @@ const Tab = ({
   const tabs = [
     {
       key: CreateFromDSLModalTab.FROM_FILE,
-      label: t('app.importFromDSLFile'),
+      label: t('importFromDSLFile', { ns: 'app' }),
     },
     {
       key: CreateFromDSLModalTab.FROM_URL,
-      label: t('app.importFromDSLUrl'),
+      label: t('importFromDSLUrl', { ns: 'app' }),
     },
   ]
 

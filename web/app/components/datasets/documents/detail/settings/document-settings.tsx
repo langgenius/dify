@@ -11,7 +11,8 @@ import type {
 } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
 import { useRouter } from 'next/navigation'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AppUnavailable from '@/app/components/base/app-unavailable'
@@ -125,7 +126,7 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const websiteCrawlJobId = websiteInfo?.job_id ?? legacyInfo?.job_id
 
   if (error)
-    return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
+    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
     <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>

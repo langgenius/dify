@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import type { Props as EditorProps } from '.'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
-import React, { useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import { cn } from '@/utils/classnames'
@@ -144,7 +145,7 @@ const CodeEditor: FC<Props> = ({
       <Editor
         {...editorProps}
         onMount={onEditorMounted}
-        placeholder={t('workflow.common.jinjaEditorPlaceholder')!}
+        placeholder={t('common.jinjaEditorPlaceholder', { ns: 'workflow' })!}
       />
       {isShowVarPicker && (
         <div

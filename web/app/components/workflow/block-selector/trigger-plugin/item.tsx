@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { TriggerDefaultValue, TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
-import React, { useEffect, useMemo, useRef } from 'react'
+import * as React from 'react'
+import { useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CollectionType } from '@/app/components/tools/types'
 import BlockIcon from '@/app/components/workflow/block-icon'
@@ -60,10 +61,10 @@ const TriggerPluginItem: FC<Props> = ({
       return payload.author
 
     if (payload.type === CollectionType.custom)
-      return t('workflow.tabs.customTool')
+      return t('tabs.customTool', { ns: 'workflow' })
 
     if (payload.type === CollectionType.workflow)
-      return t('workflow.tabs.workflowTool')
+      return t('tabs.workflowTool', { ns: 'workflow' })
 
     return payload.author || ''
   }, [payload.author, payload.type, t])

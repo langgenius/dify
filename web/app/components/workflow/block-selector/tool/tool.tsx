@@ -5,7 +5,8 @@ import type { ToolWithProvider } from '../../types'
 import type { ToolDefaultValue, ToolValue } from '../types'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
-import React, { useCallback, useEffect, useMemo, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Mcp } from '@/app/components/base/icons/src/vender/other'
 import { useGetLanguage } from '@/context/i18n'
@@ -91,7 +92,7 @@ const Tool: FC<Props> = ({
     if (isAllSelected) {
       return (
         <span className="system-xs-regular text-text-tertiary">
-          {t('tools.addToolModal.added')}
+          {t('addToolModal.added', { ns: 'tools' })}
         </span>
       )
     }
@@ -128,7 +129,7 @@ const Tool: FC<Props> = ({
             }))
           }}
         >
-          {t('workflow.tabs.addAll')}
+          {t('tabs.addAll', { ns: 'workflow' })}
         </span>
       )
     }
@@ -139,7 +140,7 @@ const Tool: FC<Props> = ({
     return (
       <span className="system-xs-regular text-text-tertiary">
         {isAllSelected
-          ? t('workflow.tabs.allAdded')
+          ? t('tabs.allAdded', { ns: 'workflow' })
           : `${selectedToolsNum} / ${totalToolsNum}`}
       </span>
     )
@@ -161,10 +162,10 @@ const Tool: FC<Props> = ({
       return payload.author
 
     if (payload.type === CollectionType.custom)
-      return t('workflow.tabs.customTool')
+      return t('tabs.customTool', { ns: 'workflow' })
 
     if (payload.type === CollectionType.workflow)
-      return t('workflow.tabs.workflowTool')
+      return t('tabs.workflowTool', { ns: 'workflow' })
 
     return ''
   }, [payload.author, payload.type, t])

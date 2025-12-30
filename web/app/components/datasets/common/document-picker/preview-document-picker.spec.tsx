@@ -1,16 +1,17 @@
 import type { DocumentItem } from '@/models/datasets'
 import { fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import PreviewDocumentPicker from './preview-document-picker'
 
 // Override shared i18n mock for custom translations
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
-      if (key === 'dataset.preprocessDocument' && params?.num)
+      if (key === 'preprocessDocument' && params?.num)
         return `${params.num} files`
 
-      return key
+      const prefix = params?.ns ? `${params.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

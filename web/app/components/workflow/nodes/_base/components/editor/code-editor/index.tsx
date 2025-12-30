@@ -1,8 +1,9 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import { noop } from 'lodash-es'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import { noop } from 'es-toolkit/compat'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'

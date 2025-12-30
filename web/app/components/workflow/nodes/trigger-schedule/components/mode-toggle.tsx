@@ -1,5 +1,5 @@
 import type { ScheduleMode } from '../types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Asterisk, CalendarCheckLine } from '@/app/components/base/icons/src/vender/workflow'
 
@@ -17,8 +17,8 @@ const ModeToggle = ({ mode, onChange }: ModeToggleProps) => {
   }
 
   const currentText = mode === 'visual'
-    ? t('workflow.nodes.triggerSchedule.useCronExpression')
-    : t('workflow.nodes.triggerSchedule.useVisualPicker')
+    ? t('nodes.triggerSchedule.useCronExpression', { ns: 'workflow' })
+    : t('nodes.triggerSchedule.useVisualPicker', { ns: 'workflow' })
 
   const currentIcon = mode === 'visual' ? Asterisk : CalendarCheckLine
 

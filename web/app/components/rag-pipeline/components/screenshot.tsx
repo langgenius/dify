@@ -1,5 +1,5 @@
 import Image from 'next/image'
-import React from 'react'
+import * as React from 'react'
 import useTheme from '@/hooks/use-theme'
 import { basePath } from '@/utils/var'
 

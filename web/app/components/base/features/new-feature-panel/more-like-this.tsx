@@ -1,7 +1,8 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { RiSparklingFill } from '@remixicon/react'
 import { produce } from 'immer'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
@@ -44,10 +45,10 @@ const MoreLikeThis = ({
           <RiSparklingFill className="h-4 w-4 text-text-primary-on-surface" />
         </div>
       )}
-      title={t('appDebug.feature.moreLikeThis.title')}
-      tooltip={t('appDebug.feature.moreLikeThis.tip')}
+      title={t('feature.moreLikeThis.title', { ns: 'appDebug' })}
+      tooltip={t('feature.moreLikeThis.tip', { ns: 'appDebug' })}
       value={!!features.moreLikeThis?.enabled}
-      description={t('appDebug.feature.moreLikeThis.description')!}
+      description={t('feature.moreLikeThis.description', { ns: 'appDebug' })!}
       onChange={state => handleChange(FeatureEnum.moreLikeThis, state)}
       disabled={disabled}
     />

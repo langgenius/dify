@@ -1,6 +1,6 @@
 import type { RelatedAppResponse } from '@/models/datasets'
 import { RiInformation2Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import LinkedAppsPanel from '@/app/components/base/linked-apps-panel'
@@ -30,7 +30,7 @@ const Statistics = ({
           {documentCount ?? '--'}
         </div>
         <div className="system-2xs-medium-uppercase text-text-tertiary">
-          {t('common.datasetMenus.documents')}
+          {t('datasetMenus.documents', { ns: 'common' })}
         </div>
       </div>
       <div className="py-2 pl-0.5 pr-1.5">
@@ -56,7 +56,7 @@ const Statistics = ({
           }
         >
           <div className="system-2xs-medium-uppercase flex cursor-pointer items-center gap-x-0.5 text-text-tertiary">
-            <span>{t('common.datasetMenus.relatedApp')}</span>
+            <span>{t('datasetMenus.relatedApp', { ns: 'common' })}</span>
             <RiInformation2Line className="size-3" />
           </div>
         </Tooltip>

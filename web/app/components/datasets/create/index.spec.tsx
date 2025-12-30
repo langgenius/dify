@@ -1,7 +1,7 @@
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { DataSet } from '@/models/datasets'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { DataSourceProvider } from '@/models/common'
 import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
@@ -21,7 +21,10 @@ const IndexingTypeValues = {
 // Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: { ns?: string }) => {
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
+    },
   }),
 }))
 
@@ -88,7 +91,6 @@ let stepThreeProps: Record<string, any> = {}
 let _topBarProps: Record<string, any> = {}
 
 vi.mock('./step-one', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepOneProps = props
     return (
@@ -162,7 +164,6 @@ vi.mock('./step-one', () => ({
 }))
 
 vi.mock('./step-two', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepTwoProps = props
     return (
@@ -197,7 +198,6 @@ vi.mock('./step-two', () => ({
 }))
 
 vi.mock('./step-three', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepThreeProps = props
     return (

@@ -7,7 +7,8 @@ import {
   RiEditLine,
 } from '@remixicon/react'
 import { useHover } from 'ahooks'
-import React, { useCallback, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Badge from '@/app/components/base/badge'
@@ -102,7 +103,7 @@ const FieldItem = ({
         : (
             <div className="flex shrink-0 items-center gap-x-2">
               {payload.required && (
-                <Badge>{t('workflow.nodes.start.required')}</Badge>
+                <Badge>{t('nodes.start.required', { ns: 'workflow' })}</Badge>
               )}
               <InputVarTypeIcon type={payload.type as unknown as InputVarType} className="h-3 w-3 text-text-tertiary" />
             </div>

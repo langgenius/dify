@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { WebhookTriggerNodeType } from './types'
 import type { NodeProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 
 const Node: FC<NodeProps<WebhookTriggerNodeType>> = ({
   data,

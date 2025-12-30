@@ -1,5 +1,5 @@
 import { RiCheckLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
@@ -33,7 +33,7 @@ const MemberItem = ({
           {name}
           {isMe && (
             <span className="system-xs-regular text-text-tertiary">
-              {t('datasetSettings.form.me')}
+              {t('form.me', { ns: 'datasetSettings' })}
             </span>
           )}
         </div>

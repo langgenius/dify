@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { DataSet } from '@/models/datasets'
 import { produce } from 'immer'
-import React, { useCallback, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useSelector as useAppContextSelector } from '@/context/app-context'
 import { hasEditPermissionForDataset } from '@/utils/permission'
@@ -71,7 +72,7 @@ const DatasetList: FC<Props> = ({
           })
         : (
             <div className="cursor-default select-none rounded-lg bg-background-section p-3 text-center text-xs text-text-tertiary">
-              {t('appDebug.datasetConfig.knowledgeTip')}
+              {t('datasetConfig.knowledgeTip', { ns: 'appDebug' })}
             </div>
           )}
 

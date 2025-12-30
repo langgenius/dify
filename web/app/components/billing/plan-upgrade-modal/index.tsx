@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Modal from '@/app/components/base/modal'
@@ -72,14 +73,14 @@ const PlanUpgradeModal: FC<Props> = ({
         <Button
           onClick={onClose}
         >
-          {t('billing.triggerLimitModal.dismiss')}
+          {t('triggerLimitModal.dismiss', { ns: 'billing' })}
         </Button>
         <UpgradeBtn
           size="custom"
           isShort
           onClick={handleUpgrade}
           className="!h-8 !rounded-lg px-2"
-          labelKey="billing.triggerLimitModal.upgrade"
+          labelKey="triggerLimitModal.upgrade"
           loc="trigger-events-limit-modal"
         />
       </div>

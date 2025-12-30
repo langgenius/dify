@@ -1,6 +1,7 @@
 'use client'
 
 import type { FC } from 'react'
+import type { ModelParameterModalProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import type { ModelConfig } from '@/app/components/workflow/types'
 import type {
   DataSet,
@@ -8,7 +9,6 @@ import type {
 import type {
   DatasetConfigs,
 } from '@/models/debug'
-import { noop } from 'lodash-es'
 import { memo, useCallback, useEffect, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
@@ -33,17 +33,20 @@ type Props = {
   selectedDatasets?: DataSet[]
   isInWorkflow?: boolean
   singleRetrievalModelConfig?: ModelConfig
-  onSingleRetrievalModelChange?: (config: ModelConfig) => void
-  onSingleRetrievalModelParamsChange?: (config: ModelConfig) => void
+  onSingleRetrievalModelChange?: ModelParameterModalProps['setModel']
+  onSingleRetrievalModelParamsChange?: ModelParameterModalProps['onCompletionParamsChange']
 }
+
+const noopModelChange: ModelParameterModalProps['setModel'] = () => {}
+const noopParamsChange: ModelParameterModalProps['onCompletionParamsChange'] = () => {}
 
 const ConfigContent: FC<Props> = ({
   datasetConfigs,
   onChange,
   isInWorkflow,
   singleRetrievalModelConfig: singleRetrievalConfig = {} as ModelConfig,
-  onSingleRetrievalModelChange = noop,
-  onSingleRetrievalModelParamsChange = noop,
+  onSingleRetrievalModelChange = noopModelChange,
+  onSingleRetrievalModelParamsChange = noopParamsChange,
   selectedDatasets = [],
 }) => {
   const { t } = useTranslation()
@@ -133,7 +136,7 @@ const ConfigContent: FC<Props> = ({
       return
 
     if (mode === RerankingModeEnum.RerankingModel && !currentRerankModel)
-      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
 
     onChange({
       ...datasetConfigs,
@@ -146,13 +149,13 @@ const ConfigContent: FC<Props> = ({
   const rerankingModeOptions = [
     {
       value: RerankingModeEnum.WeightedScore,
-      label: t('dataset.weightedScore.title'),
-      tips: t('dataset.weightedScore.description'),
+      label: t('weightedScore.title', { ns: 'dataset' }),
+      tips: t('weightedScore.description', { ns: 'dataset' }),
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t('common.modelProvider.rerankModel.key'),
-      tips: t('common.modelProvider.rerankModel.tip'),
+      label: t('modelProvider.rerankModel.key', { ns: 'common' }),
+      tips: t('modelProvider.rerankModel.tip', { ns: 'common' }),
     },
   ]
 
@@ -176,7 +179,7 @@ const ConfigContent: FC<Props> = ({
 
   const handleManuallyToggleRerank = useCallback((enable: boolean) => {
     if (!currentRerankModel && enable)
-      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
     onChange({
       ...datasetConfigs,
       reranking_enable: enable,
@@ -185,15 +188,15 @@ const ConfigContent: FC<Props> = ({
 
   return (
     <div>
-      <div className="system-xl-semibold text-text-primary">{t('dataset.retrievalSettings')}</div>
+      <div className="system-xl-semibold text-text-primary">{t('retrievalSettings', { ns: 'dataset' })}</div>
       <div className="system-xs-regular text-text-tertiary">
-        {t('dataset.defaultRetrievalTip')}
+        {t('defaultRetrievalTip', { ns: 'dataset' })}
       </div>
       {type === RETRIEVE_TYPE.multiWay && (
         <>
           <div className="my-2 flex h-6 items-center py-1">
             <div className="system-xs-semibold-uppercase mr-2 shrink-0 text-text-secondary">
-              {t('dataset.rerankSettings')}
+              {t('rerankSettings', { ns: 'dataset' })}
             </div>
             <Divider bgStyle="gradient" className="mx-0 !h-px" />
           </div>
@@ -201,21 +204,21 @@ const ConfigContent: FC<Props> = ({
             selectedDatasetsMode.inconsistentEmbeddingModel
             && (
               <div className="system-xs-medium mt-4 text-text-warning">
-                {t('dataset.inconsistentEmbeddingModelTip')}
+                {t('inconsistentEmbeddingModelTip', { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.mixtureInternalAndExternal && (
               <div className="system-xs-medium mt-4 text-text-warning">
-                {t('dataset.mixtureInternalAndExternalTip')}
+                {t('mixtureInternalAndExternalTip', { ns: 'dataset' })}
               </div>
             )
           }
           {
             selectedDatasetsMode.allExternal && (
               <div className="system-xs-medium mt-4 text-text-warning">
-                {t('dataset.allExternalTip')}
+                {t('allExternalTip', { ns: 'dataset' })}
               </div>
             )
           }
@@ -223,7 +226,7 @@ const ConfigContent: FC<Props> = ({
             selectedDatasetsMode.mixtureHighQualityAndEconomic
             && (
               <div className="system-xs-medium mt-4 text-text-warning">
-                {t('dataset.mixtureHighQualityAndEconomicTip')}
+                {t('mixtureHighQualityAndEconomicTip', { ns: 'dataset' })}
               </div>
             )
           }
@@ -269,11 +272,11 @@ const ConfigContent: FC<Props> = ({
                       />
                     )
                   }
-                  <div className="system-sm-semibold ml-1 leading-[32px] text-text-secondary">{t('common.modelProvider.rerankModel.key')}</div>
+                  <div className="system-sm-semibold ml-1 leading-[32px] text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</div>
                   <Tooltip
                     popupContent={(
                       <div className="w-[200px]">
-                        {t('common.modelProvider.rerankModel.tip')}
+                        {t('modelProvider.rerankModel.tip', { ns: 'common' })}
                       </div>
                     )}
                     popupClassName="ml-1"
@@ -359,9 +362,9 @@ const ConfigContent: FC<Props> = ({
       {isInWorkflow && type === RETRIEVE_TYPE.oneWay && (
         <div className="mt-4">
           <div className="flex items-center space-x-0.5">
-            <div className="text-[13px] font-medium leading-[32px] text-text-primary">{t('common.modelProvider.systemReasoningModel.key')}</div>
+            <div className="text-[13px] font-medium leading-[32px] text-text-primary">{t('modelProvider.systemReasoningModel.key', { ns: 'common' })}</div>
             <Tooltip
-              popupContent={t('common.modelProvider.systemReasoningModel.tip')}
+              popupContent={t('modelProvider.systemReasoningModel.tip', { ns: 'common' })}
             />
           </div>
           <ModelParameterModal

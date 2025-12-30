@@ -1,6 +1,7 @@
 import { RiArrowLeftLine } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Effect from '@/app/components/base/effect'
@@ -25,13 +26,13 @@ const LeftHeader = ({
         {title}
       </div>
       <div className="system-md-semibold text-text-primary">
-        {t('datasetPipeline.addDocuments.steps.processDocuments')}
+        {t('addDocuments.steps.processDocuments', { ns: 'datasetPipeline' })}
       </div>
       <Button
         variant="secondary-accent"
         className="absolute -left-11 top-3.5 size-9 rounded-full p-0"
         onClick={navigateBack}
-        aria-label={t('common.operation.back')}
+        aria-label={t('operation.back', { ns: 'common' })}
       >
         <RiArrowLeftLine className="size-5 " />
       </Button>

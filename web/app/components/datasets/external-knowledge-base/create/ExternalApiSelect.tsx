@@ -3,7 +3,8 @@ import {
   RiArrowDownSLine,
 } from '@remixicon/react'
 import { useRouter } from 'next/navigation'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
 import { useExternalKnowledgeApi } from '@/context/external-knowledge-api-context'
@@ -73,7 +74,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               </div>
             )
           : (
-              <span className="system-sm-regular text-components-input-text-placeholder">{t('dataset.selectExternalKnowledgeAPI.placeholder')}</span>
+              <span className="system-sm-regular text-components-input-text-placeholder">{t('selectExternalKnowledgeAPI.placeholder', { ns: 'dataset' })}</span>
             )}
         <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary transition-transform ${isOpen ? 'text-text-secondary' : ''}`} />
       </div>
@@ -98,7 +99,7 @@ const ExternalApiSelect: React.FC<ExternalApiSelectProps> = ({ items, value, onS
               onClick={handleAddNewAPI}
             >
               <RiAddLine className="h-4 w-4 text-text-secondary" />
-              <span className="system-sm-medium grow overflow-hidden text-ellipsis text-text-secondary">{t('dataset.createNewExternalAPI')}</span>
+              <span className="system-sm-medium grow overflow-hidden text-ellipsis text-text-secondary">{t('createNewExternalAPI', { ns: 'dataset' })}</span>
             </div>
           </div>
         </div>

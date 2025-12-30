@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ListEmpty from '@/app/components/base/list-empty'
 import VarReferenceVars from './var-reference-vars'
@@ -23,8 +23,8 @@ const AssignedVarReferencePopup: FC<Props> = ({
       {(!vars || vars.length === 0)
         ? (
             <ListEmpty
-              title={t('workflow.nodes.assigner.noAssignedVars') || ''}
-              description={t('workflow.nodes.assigner.assignedVarsDescription')}
+              title={t('nodes.assigner.noAssignedVars', { ns: 'workflow' }) || ''}
+              description={t('nodes.assigner.assignedVarsDescription', { ns: 'workflow' })}
             />
           )
         : (

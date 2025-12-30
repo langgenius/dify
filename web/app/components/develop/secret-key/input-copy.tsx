@@ -1,7 +1,8 @@
 'use client'
 import copy from 'copy-to-clipboard'
 import { t } from 'i18next'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import CopyFeedback from '@/app/components/base/copy-feedback'
 import Tooltip from '@/app/components/base/tooltip'
 
@@ -43,7 +44,7 @@ const InputCopy = ({
             }}
           >
             <Tooltip
-              popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+              popupContent={isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`}
               position="bottom"
             >
               <span className="text-text-secondary">{value}</span>

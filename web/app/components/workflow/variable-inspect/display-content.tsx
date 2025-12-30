@@ -2,7 +2,8 @@ import type { VarType } from '../types'
 import type { ChunkInfo } from '@/app/components/rag-pipeline/components/chunk-card-list/types'
 import type { ParentMode } from '@/models/datasets'
 import { RiBracesLine, RiEyeLine } from '@remixicon/react'
-import React, { useMemo, useState } from 'react'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Markdown } from '@/app/components/base/markdown'
 import { SegmentedControl } from '@/app/components/base/segmented-control'
@@ -66,8 +67,8 @@ const DisplayContent = (props: DisplayContentProps) => {
         )}
         <SegmentedControl
           options={[
-            { value: ViewMode.Code, text: t('workflow.nodes.templateTransform.code'), Icon: RiBracesLine },
-            { value: ViewMode.Preview, text: t('workflow.common.preview'), Icon: RiEyeLine },
+            { value: ViewMode.Code, text: t('nodes.templateTransform.code', { ns: 'workflow' }), Icon: RiBracesLine },
+            { value: ViewMode.Preview, text: t('common.preview', { ns: 'workflow' }), Icon: RiEyeLine },
           ]}
           value={viewMode}
           onChange={setViewMode}

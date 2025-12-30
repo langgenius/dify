@@ -3,7 +3,8 @@ import type { DataSet } from '@/models/datasets'
 import {
   RiMenuLine,
 } from '@remixicon/react'
-import React, { useCallback, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -112,10 +113,10 @@ const DatasetSidebarDropdown = ({
                     {dataset.name}
                   </div>
                   <div className="system-2xs-medium-uppercase text-text-tertiary">
-                    {isExternalProvider && t('dataset.externalTag')}
+                    {isExternalProvider && t('externalTag', { ns: 'dataset' })}
                     {!isExternalProvider && dataset.doc_form && dataset.indexing_technique && (
                       <div className="flex items-center gap-x-2">
-                        <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>
+                        <span>{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
                         <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
                       </div>
                     )}

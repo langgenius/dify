@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import {
   RiSparklingFill,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type INoDataProps = {}
@@ -14,7 +14,7 @@ const NoData: FC<INoDataProps> = () => {
       <div
         className="system-sm-regular mt-2 text-text-quaternary"
       >
-        {t('share.generation.noData')}
+        {t('generation.noData', { ns: 'share' })}
       </div>
     </div>
   )

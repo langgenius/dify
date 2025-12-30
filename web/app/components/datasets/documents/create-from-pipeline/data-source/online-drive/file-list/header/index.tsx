@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Breadcrumbs from './breadcrumbs'
@@ -39,7 +39,7 @@ const Header = ({
         value={inputValue}
         onChange={handleInputChange}
         onClear={handleResetKeywords}
-        placeholder={t('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')}
+        placeholder={t('onlineDrive.breadcrumbs.searchPlaceholder', { ns: 'datasetPipeline' })}
         showLeftIcon
         showClearIcon
         wrapperClassName="w-[200px] h-8 shrink-0"

@@ -1,6 +1,7 @@
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { RiLoader2Line } from '@remixicon/react'
-import React, { useEffect, useRef } from 'react'
+import * as React from 'react'
+import { useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Loading from '@/app/components/base/loading'
 import { useDataSourceStore } from '../../../store'
@@ -93,7 +94,7 @@ const List = ({
                 className="flex items-center justify-center py-2"
                 role="status"
                 aria-live="polite"
-                aria-label={t('appApi.loading')}
+                aria-label={t('loading', { ns: 'appApi' })}
               >
                 <RiLoader2Line className="animation-spin size-4 text-text-tertiary" />
               </div>

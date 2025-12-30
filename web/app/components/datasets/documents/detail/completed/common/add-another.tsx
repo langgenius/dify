@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { cn } from '@/utils/classnames'
@@ -25,7 +25,7 @@ const AddAnother: FC<AddAnotherProps> = ({
         checked={isChecked}
         onCheck={onCheck}
       />
-      <span className="system-xs-medium text-text-tertiary">{t('datasetDocuments.segment.addAnother')}</span>
+      <span className="system-xs-medium text-text-tertiary">{t('segment.addAnother', { ns: 'datasetDocuments' })}</span>
     </div>
   )
 }

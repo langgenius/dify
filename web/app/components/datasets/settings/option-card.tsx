@@ -1,5 +1,5 @@
 import type { ReactNode } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import { cn } from '@/utils/classnames'
@@ -95,7 +95,7 @@ const OptionCard = <T,>({
             {
               isRecommended && (
                 <Badge className="h-[18px] border-text-accent-secondary text-text-accent-secondary">
-                  {t('datasetCreation.stepTwo.recommend')}
+                  {t('stepTwo.recommend', { ns: 'datasetCreation' })}
                 </Badge>
               )
             }

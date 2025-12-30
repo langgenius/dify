@@ -12,7 +12,7 @@ import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
 import {
   noop,
-} from 'lodash-es'
+} from 'es-toolkit/compat'
 import { useContext } from 'react'
 import {
   useStore as useZustandStore,

@@ -2,7 +2,8 @@ import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, DocumentItem, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile } from '@/models/pipeline'
 import { RiSearchEyeLine } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge from '@/app/components/base/badge'
 import Button from '@/app/components/base/button'
@@ -61,7 +62,7 @@ const ChunkPreview = ({
     <PreviewContainer
       header={(
         <PreviewHeader
-          title={t('datasetCreation.stepTwo.preview')}
+          title={t('stepTwo.preview', { ns: 'datasetCreation' })}
         >
           <div className="flex items-center gap-1">
             {dataSourceType === DatasourceType.localFile
@@ -148,7 +149,8 @@ const ChunkPreview = ({
             {
               currentDocForm !== ChunkingMode.qa
               && (
-                <Badge text={t('datasetCreation.stepTwo.previewChunkCount', {
+                <Badge text={t('stepTwo.previewChunkCount', {
+                  ns: 'datasetCreation',
                   count: estimateData?.total_segments || 0,
                 }) as string}
                 />
@@ -215,10 +217,10 @@ const ChunkPreview = ({
           <div className="flex flex-col items-center justify-center gap-3 pb-4">
             <RiSearchEyeLine className="size-10 text-text-empty-state-icon" />
             <p className="text-sm text-text-tertiary">
-              {t('datasetCreation.stepTwo.previewChunkTip')}
+              {t('stepTwo.previewChunkTip', { ns: 'datasetCreation' })}
             </p>
             <Button onClick={onPreview}>
-              {t('datasetPipeline.addDocuments.stepTwo.previewChunks')}
+              {t('addDocuments.stepTwo.previewChunks', { ns: 'datasetPipeline' })}
             </Button>
           </div>
         </div>

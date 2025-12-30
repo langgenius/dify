@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { Category } from '../index'
 import type { PlanRange } from './plan-range-switcher'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import { Cloud, SelfHosted } from '../assets'
@@ -27,12 +27,12 @@ const PlanSwitcher: FC<PlanSwitcherProps> = ({
   const tabs = {
     cloud: {
       value: 'cloud' as Category,
-      label: t('billing.plansCommon.cloud'),
+      label: t('plansCommon.cloud', { ns: 'billing' }),
       Icon: Cloud,
     },
     self: {
       value: 'self' as Category,
-      label: t('billing.plansCommon.self'),
+      label: t('plansCommon.self', { ns: 'billing' }),
       Icon: SelfHosted,
     },
   }

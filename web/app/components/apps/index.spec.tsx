@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 
 // Import after mocks
 import Apps from './index'
@@ -10,7 +10,6 @@ let educationInitCalls: number = 0
 
 // Mock useDocumentTitle hook
 vi.mock('@/hooks/use-document-title', () => ({
-  __esModule: true,
   default: (title: string) => {
     documentTitleCalls.push(title)
   },
@@ -25,9 +24,7 @@ vi.mock('@/app/education-apply/hooks', () => ({
 
 // Mock List component
 vi.mock('./list', () => ({
-  __esModule: true,
   default: () => {
-    const React = require('react')
     return React.createElement('div', { 'data-testid': 'apps-list' }, 'Apps List')
   },
 }))

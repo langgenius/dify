@@ -7,7 +7,8 @@ import {
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { produce } from 'immer'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Folder } from '@/app/components/base/icons/src/vender/line/files'
 import Toast from '@/app/components/base/toast'
@@ -18,7 +19,7 @@ import { checkKeys, replaceSpaceWithUnderscoreInVarNameInput } from '@/utils/var
 import VarReferencePicker from '../../_base/components/variable/var-reference-picker'
 import VarList from '../components/var-list'
 
-const i18nPrefix = 'workflow.nodes.variableAssigner'
+const i18nPrefix = 'nodes.variableAssigner'
 
 type Payload = VarGroupItemType & {
   group_name?: string
@@ -95,7 +96,7 @@ const VarGroupItem: FC<Props> = ({
     if (!isValid) {
       Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
       })
       return
     }
@@ -145,7 +146,7 @@ const VarGroupItem: FC<Props> = ({
               )}
             </div>
           )
-        : t(`${i18nPrefix}.title`)!}
+        : t(`${i18nPrefix}.title`, { ns: 'workflow' })!}
       operations={(
         <div className="flex h-6 items-center  space-x-2">
           {payload.variables.length > 0 && (

@@ -6,7 +6,7 @@
  */
 
 import { cleanup, render } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import BlockInput from '../app/components/base/block-input'
 import SupportVarInput from '../app/components/workflow/nodes/_base/components/support-var-input'
 

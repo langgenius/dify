@@ -1,6 +1,7 @@
 import type { PipelineTemplate } from '@/models/pipeline'
 import { useRouter } from 'next/navigation'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Confirm from '@/app/components/base/confirm'
@@ -51,7 +52,7 @@ const TemplateCard = ({
     if (!pipelineTemplateInfo) {
       Toast.notify({
         type: 'error',
-        message: t('datasetPipeline.creation.errorTip'),
+        message: t('creation.errorTip', { ns: 'datasetPipeline' }),
       })
       return
     }
@@ -62,7 +63,7 @@ const TemplateCard = ({
       onSuccess: async (newDataset) => {
         Toast.notify({
           type: 'success',
-          message: t('datasetPipeline.creation.successTip'),
+          message: t('creation.successTip', { ns: 'datasetPipeline' }),
         })
         invalidDatasetList()
         if (newDataset.pipeline_id)
@@ -77,7 +78,7 @@ const TemplateCard = ({
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.creation.errorTip'),
+          message: t('creation.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -113,13 +114,13 @@ const TemplateCard = ({
         })
         Toast.notify({
           type: 'success',
-          message: t('datasetPipeline.exportDSL.successTip'),
+          message: t('exportDSL.successTip', { ns: 'datasetPipeline' }),
         })
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.exportDSL.errorTip'),
+          message: t('exportDSL.errorTip', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -175,8 +176,8 @@ const TemplateCard = ({
       )}
       {showDeleteConfirm && (
         <Confirm
-          title={t('datasetPipeline.deletePipeline.title')}
-          content={t('datasetPipeline.deletePipeline.content')}
+          title={t('deletePipeline.title', { ns: 'datasetPipeline' })}
+          content={t('deletePipeline.content', { ns: 'datasetPipeline' })}
           isShow={showDeleteConfirm}
           onConfirm={onConfirmDelete}
           onCancel={onCancelDelete}

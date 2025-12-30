@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
@@ -25,7 +25,7 @@ const Field: FC<Props> = ({
         {isOptional && (
           <span className="system-xs-regular ml-1 text-text-tertiary">
             (
-            {t('appDebug.variableConfig.optional')}
+            {t('variableConfig.optional', { ns: 'appDebug' })}
             )
           </span>
         )}

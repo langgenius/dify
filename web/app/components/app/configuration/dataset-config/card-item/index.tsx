@@ -5,7 +5,8 @@ import {
   RiDeleteBinLine,
   RiEditLine,
 } from '@remixicon/react'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
 import AppIcon from '@/app/components/base/app-icon'
@@ -101,7 +102,7 @@ const Item: FC<ItemProps> = ({
         config.provider === 'external' && (
           <Badge
             className="shrink-0 group-hover:hidden"
-            text={t('dataset.externalTag') as string}
+            text={t('externalTag', { ns: 'dataset' }) as string}
           />
         )
       }

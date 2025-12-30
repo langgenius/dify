@@ -1,5 +1,6 @@
 import { useKeyPress } from 'ahooks'
-import React, { useCallback, useEffect, useRef } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { createPortal } from 'react-dom'
 import { cn } from '@/utils/classnames'
 import { useSegmentListContext } from '..'

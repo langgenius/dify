@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
-import React, { useMemo } from 'react'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import ListEmpty from '@/app/components/base/list-empty'
 import { useStore } from '@/app/components/workflow/store'
@@ -43,20 +44,20 @@ const VarReferencePopup: FC<Props> = ({
         ? (popupFor === 'toAssigned'
             ? (
                 <ListEmpty
-                  title={t('workflow.variableReference.noAvailableVars') || ''}
+                  title={t('variableReference.noAvailableVars', { ns: 'workflow' }) || ''}
                   description={(
                     <div className="system-xs-regular text-text-tertiary">
-                      {t('workflow.variableReference.noVarsForOperation')}
+                      {t('variableReference.noVarsForOperation', { ns: 'workflow' })}
                     </div>
                   )}
                 />
               )
             : (
                 <ListEmpty
-                  title={t('workflow.variableReference.noAssignedVars') || ''}
+                  title={t('variableReference.noAssignedVars', { ns: 'workflow' }) || ''}
                   description={(
                     <div className="system-xs-regular text-text-tertiary">
-                      {t('workflow.variableReference.assignedVarsDescription')}
+                      {t('variableReference.assignedVarsDescription', { ns: 'workflow' })}
                       <a
                         target="_blank"
                         rel="noopener noreferrer"
@@ -66,7 +67,7 @@ const VarReferencePopup: FC<Props> = ({
                           'ja-JP': '/guides/workflow/variables#会話変数',
                         })}
                       >
-                        {t('workflow.variableReference.conversationVars')}
+                        {t('variableReference.conversationVars', { ns: 'workflow' })}
                       </a>
                     </div>
                   )}

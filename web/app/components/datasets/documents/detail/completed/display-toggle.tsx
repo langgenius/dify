@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { RiLineHeight } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Collapse } from '@/app/components/base/icons/src/vender/knowledge'
 import Tooltip from '@/app/components/base/tooltip'
@@ -18,7 +18,7 @@ const DisplayToggle: FC<DisplayToggleProps> = ({
 
   return (
     <Tooltip
-      popupContent={isCollapsed ? t('datasetDocuments.segment.expandChunks') : t('datasetDocuments.segment.collapseChunks')}
+      popupContent={isCollapsed ? t('segment.expandChunks', { ns: 'datasetDocuments' }) : t('segment.collapseChunks', { ns: 'datasetDocuments' })}
       popupClassName="text-text-secondary system-xs-medium border-[0.5px] border-components-panel-border"
     >
       <button

@@ -1,5 +1,6 @@
 import { RiCloseLine, RiDatabase2Line, RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
 import { useWorkflowRun, useWorkflowStartRun } from '@/app/components/workflow/hooks'
@@ -60,19 +61,19 @@ const RunMode = ({
         {!isDisabled && (
           <>
             <RiPlayLargeLine className="mr-1 size-4" />
-            {workflowRunningData ? t('pipeline.common.reRun') : (text ?? t('pipeline.common.testRun'))}
+            {workflowRunningData ? t('common.reRun', { ns: 'pipeline' }) : (text ?? t('common.testRun', { ns: 'pipeline' }))}
           </>
         )}
         {isRunning && (
           <>
             <RiLoader2Line className="mr-1 size-4 animate-spin" />
-            {t('pipeline.common.processing')}
+            {t('common.processing', { ns: 'pipeline' })}
           </>
         )}
         {isPreparingDataSource && (
           <>
             <RiDatabase2Line className="mr-1 size-4" />
-            {t('pipeline.common.preparingDataSource')}
+            {t('common.preparingDataSource', { ns: 'pipeline' })}
           </>
         )}
         {

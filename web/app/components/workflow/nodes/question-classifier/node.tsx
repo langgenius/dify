@@ -2,7 +2,7 @@ import type { TFunction } from 'i18next'
 import type { FC } from 'react'
 import type { NodeProps } from 'reactflow'
 import type { QuestionClassifierNodeType } from './types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import {
@@ -12,7 +12,7 @@ import ModelSelector from '@/app/components/header/account-setting/model-provide
 import { NodeSourceHandle } from '../_base/components/node-handle'
 import ReadonlyInputWithSelectVar from '../_base/components/readonly-input-with-select-var'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 const MAX_CLASS_TEXT_LENGTH = 50
 
@@ -43,7 +43,7 @@ const TruncatedClassItem: FC<TruncatedClassItemProps> = ({ topic, index, nodeId,
   return (
     <div className="flex flex-col gap-y-0.5 rounded-md bg-workflow-block-parma-bg px-[5px] py-[3px]">
       <div className="system-2xs-semibold-uppercase uppercase text-text-secondary">
-        {`${t(`${i18nPrefix}.class`)} ${index + 1}`}
+        {`${t(`${i18nPrefix}.class`, { ns: 'workflow' })} ${index + 1}`}
       </div>
       {shouldShowTooltip
         ? (

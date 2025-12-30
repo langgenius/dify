@@ -1,6 +1,6 @@
 import type { PluginDetail } from '../types'
 import { RiBookReadLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import { BUILTIN_TOOLS_ARRAY } from './constants'
@@ -43,7 +43,7 @@ export const ReadmeEntrance = ({
           <RiBookReadLine className="h-3 w-3" />
         </div>
         <span className="text-xs font-normal leading-4">
-          {!showShortTip ? t('plugin.readmeInfo.needHelpCheckReadme') : t('plugin.readmeInfo.title')}
+          {!showShortTip ? t('readmeInfo.needHelpCheckReadme', { ns: 'plugin' }) : t('readmeInfo.title', { ns: 'plugin' })}
         </span>
       </button>
     </div>

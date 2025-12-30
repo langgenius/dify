@@ -1,6 +1,6 @@
 import type { CredentialSelectorProps } from './credential-selector'
 import { RiBookOpenLine, RiEqualizer2Line } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
@@ -31,7 +31,7 @@ const Header = ({
         />
         <Divider type="vertical" className="mx-1 h-3.5 shrink-0" />
         <Tooltip
-          popupContent={t('datasetPipeline.configurationTip', { pluginName })}
+          popupContent={t('configurationTip', { ns: 'datasetPipeline', pluginName })}
           position="top"
         >
           <Button

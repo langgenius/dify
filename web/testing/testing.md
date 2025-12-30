@@ -21,10 +21,10 @@ pnpm test
 pnpm test:watch
 
 # Generate coverage report
-pnpm test -- --coverage
+pnpm test:coverage
 
 # Run specific file
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 ```
 
 ## Project Test Setup
@@ -33,7 +33,7 @@ pnpm test -- path/to/file.spec.tsx
 - **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`, `next/image`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
-- **Script utilities**: `web/testing/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
+- **Script utilities**: `web/scripts/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
   - `pnpm analyze-component <path>` - Analyze and generate test prompt
   - `pnpm analyze-component <path> --json` - Output analysis as JSON
   - `pnpm analyze-component <path> --review` - Generate test review prompt

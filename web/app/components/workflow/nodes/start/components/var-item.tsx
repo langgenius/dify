@@ -5,8 +5,9 @@ import {
   RiDeleteBinLine,
 } from '@remixicon/react'
 import { useBoolean, useHover } from 'ahooks'
-import { noop } from 'lodash-es'
-import React, { useCallback, useRef } from 'react'
+import { noop } from 'es-toolkit/compat'
+import * as React from 'react'
+import { useCallback, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import Badge from '@/app/components/base/badge'
@@ -78,7 +79,7 @@ const VarItem: FC<Props> = ({
               ? (
                   <>
                     {payload.required && (
-                      <div className="mr-2 text-xs font-normal text-text-tertiary">{t('workflow.nodes.start.required')}</div>
+                      <div className="mr-2 text-xs font-normal text-text-tertiary">{t('nodes.start.required', { ns: 'workflow' })}</div>
                     )}
                     <InputVarTypeIcon type={payload.type} className="h-3.5 w-3.5 text-text-tertiary" />
                   </>

@@ -4,7 +4,7 @@ import {
   RiLoader2Line,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
@@ -51,7 +51,7 @@ const RunBatch: FC<IRunBatchProps> = ({
           disabled={!isParsed || !isAllFinished}
         >
           <Icon className={cn(!isAllFinished && 'animate-spin', 'mr-1 h-4 w-4 shrink-0')} aria-hidden="true" />
-          <span className="text-[13px] uppercase">{t('share.generation.run')}</span>
+          <span className="text-[13px] uppercase">{t('generation.run', { ns: 'share' })}</span>
         </Button>
       </div>
     </div>

@@ -1,5 +1,6 @@
 import { useParams } from 'next/navigation'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
@@ -22,7 +23,7 @@ const Conversion = () => {
         if (res.status === 'success') {
           Toast.notify({
             type: 'success',
-            message: t('datasetPipeline.conversion.successMessage'),
+            message: t('conversion.successMessage', { ns: 'datasetPipeline' }),
           })
           setShowConfirmModal(false)
           invalidDatasetDetail()
@@ -30,14 +31,14 @@ const Conversion = () => {
         else if (res.status === 'failed') {
           Toast.notify({
             type: 'error',
-            message: t('datasetPipeline.conversion.errorMessage'),
+            message: t('conversion.errorMessage', { ns: 'datasetPipeline' }),
           })
         }
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('datasetPipeline.conversion.errorMessage'),
+          message: t('conversion.errorMessage', { ns: 'datasetPipeline' }),
         })
       },
     })
@@ -57,11 +58,11 @@ const Conversion = () => {
         <div className="flex max-w-[480px] flex-col justify-between p-10">
           <div className="flex flex-col gap-y-2.5">
             <div className="title-4xl-semi-bold text-text-primary">
-              {t('datasetPipeline.conversion.title')}
+              {t('conversion.title', { ns: 'datasetPipeline' })}
             </div>
             <div className="body-md-medium">
-              <span className="text-text-secondary">{t('datasetPipeline.conversion.descriptionChunk1')}</span>
-              <span className="text-text-tertiary">{t('datasetPipeline.conversion.descriptionChunk2')}</span>
+              <span className="text-text-secondary">{t('conversion.descriptionChunk1', { ns: 'datasetPipeline' })}</span>
+              <span className="text-text-tertiary">{t('conversion.descriptionChunk2', { ns: 'datasetPipeline' })}</span>
             </div>
           </div>
           <div className="flex items-center gap-x-4">
@@ -70,10 +71,10 @@ const Conversion = () => {
               className="w-32"
               onClick={handleShowConfirmModal}
             >
-              {t('datasetPipeline.operations.convert')}
+              {t('operations.convert', { ns: 'datasetPipeline' })}
             </Button>
             <span className="system-xs-regular text-text-warning">
-              {t('datasetPipeline.conversion.warning')}
+              {t('conversion.warning', { ns: 'datasetPipeline' })}
             </span>
           </div>
         </div>
@@ -87,8 +88,8 @@ const Conversion = () => {
       </div>
       {showConfirmModal && (
         <Confirm
-          title={t('datasetPipeline.conversion.confirm.title')}
-          content={t('datasetPipeline.conversion.confirm.content')}
+          title={t('conversion.confirm.title', { ns: 'datasetPipeline' })}
+          content={t('conversion.confirm.content', { ns: 'datasetPipeline' })}
           isShow={showConfirmModal}
           onConfirm={handleConvert}
           onCancel={handleCancelConversion}

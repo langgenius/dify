@@ -6,7 +6,7 @@ import {
   RiAddLine,
 } from '@remixicon/react'
 import { produce } from 'immer'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
 import AdvancedMessageInput from '@/app/components/app/configuration/config-prompt/advanced-prompt-input'
@@ -162,7 +162,7 @@ const Prompt: FC<IPromptProps> = ({
           className="mt-3 w-full"
         >
           <RiAddLine className="mr-2 h-4 w-4" />
-          <div>{t('appDebug.promptMode.operation.addMessage')}</div>
+          <div>{t('promptMode.operation.addMessage', { ns: 'appDebug' })}</div>
         </Button>
       )}
     </div>

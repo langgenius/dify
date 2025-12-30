@@ -3,13 +3,14 @@ import type { FC } from 'react'
 import type { Param } from '../../types'
 import type { MoreInfo } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import ListNoDataPlaceholder from '../../../_base/components/list-no-data-placeholder'
 import Item from './item'
 import EditParam from './update'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
+const i18nPrefix = 'nodes.parameterExtractor'
 
 type Props = {
   readonly: boolean
@@ -58,7 +59,7 @@ const List: FC<Props> = ({
 
   if (list.length === 0) {
     return (
-      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`)}</ListNoDataPlaceholder>
+      <ListNoDataPlaceholder>{t(`${i18nPrefix}.extractParametersNotSet`, { ns: 'workflow' })}</ListNoDataPlaceholder>
     )
   }
   return (

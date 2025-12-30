@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { SegmentDetailModel } from '@/models/datasets'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import TagInput from '@/app/components/base/tag-input'
 import { cn } from '@/utils/classnames'
@@ -25,7 +25,7 @@ const Keywords: FC<IKeywordsProps> = ({
   const { t } = useTranslation()
   return (
     <div className={cn('flex flex-col', className)}>
-      <div className="system-xs-medium-uppercase text-text-tertiary">{t('datasetDocuments.segment.keywords')}</div>
+      <div className="system-xs-medium-uppercase text-text-tertiary">{t('segment.keywords', { ns: 'datasetDocuments' })}</div>
       <div className="flex max-h-[200px] w-full flex-wrap gap-1 overflow-auto text-text-tertiary">
         {(!segInfo?.keywords?.length && actionType === 'view')
           ? '-'

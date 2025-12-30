@@ -1,5 +1,6 @@
 import { RiQuestionLine } from '@remixicon/react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { InputNumber } from '@/app/components/base/input-number'
 import Slider from '@/app/components/base/slider'
@@ -25,7 +26,7 @@ const KeyWordNumber = ({
     <div className="flex items-center gap-x-1">
       <div className="flex grow items-center gap-x-0.5">
         <div className="system-xs-medium truncate text-text-secondary">
-          {t('datasetSettings.form.numberOfKeywords')}
+          {t('form.numberOfKeywords', { ns: 'datasetSettings' })}
         </div>
         <Tooltip
           popupContent="number of keywords"

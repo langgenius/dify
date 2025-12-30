@@ -5,9 +5,8 @@ import {
   RiArrowDownSLine,
   RiMenu4Line,
 } from '@remixicon/react'
-import
-React,
-{
+import * as React from 'react'
+import {
   useCallback,
   useState,
 } from 'react'

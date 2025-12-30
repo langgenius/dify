@@ -5,7 +5,8 @@ import type { ToastHandle } from '@/app/components/base/toast'
 import type { VarType } from '@/app/components/workflow/types'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
@@ -39,18 +40,18 @@ const OutputVarList: FC<Props> = ({
   })
 
   const { run: validateVarInput } = useDebounceFn((existingVariables: typeof list, newKey: string) => {
-    const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-    if (!isValid) {
+    const result = checkKeys([newKey], true)
+    if (!result.isValid) {
       setToastHandler(Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
       }))
       return
     }
     if (existingVariables.some(key => key.variable?.trim() === newKey.trim())) {
       setToastHandler(Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
       }))
     }
     else {

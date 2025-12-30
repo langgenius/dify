@@ -1,5 +1,5 @@
 import type { ChangeEvent } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { Corner } from '@/app/components/base/icons/src/vender/solid/shapes'
 import Tooltip from '@/app/components/base/tooltip'
@@ -26,7 +26,7 @@ const Textarea = ({
         className="system-md-regular h-full w-full resize-none border-none bg-transparent text-text-secondary caret-[#295EFF] placeholder:text-components-input-text-placeholder focus-visible:outline-none"
         value={text}
         onChange={handleTextChange}
-        placeholder={t('datasetHitTesting.input.placeholder') as string}
+        placeholder={t('input.placeholder', { ns: 'datasetHitTesting' }) as string}
       />
       <div className="absolute right-0 top-0 flex items-center">
         <Corner className={cn(
@@ -37,7 +37,7 @@ const Textarea = ({
         {text.length > 200
           ? (
               <Tooltip
-                popupContent={t('datasetHitTesting.input.countWarning')}
+                popupContent={t('input.countWarning', { ns: 'datasetHitTesting' })}
               >
                 <div
                   className={cn('system-2xs-medium-uppercase bg-util-colors-red-red-100 py-1 pr-2 text-util-colors-red-red-600')}

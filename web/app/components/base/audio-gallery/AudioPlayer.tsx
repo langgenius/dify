@@ -3,7 +3,8 @@ import {
   RiPlayLargeFill,
 } from '@remixicon/react'
 import { t } from 'i18next'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Toast from '@/app/components/base/toast'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
@@ -321,7 +322,7 @@ const AudioPlayer: React.FC<AudioPlayerProps> = ({ src, srcs }) => {
           </div>
         </div>
       </div>
-      <div className="absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('common.operation.audioSourceUnavailable')}</div>
+      <div className="absolute left-0 top-0 flex h-full w-full items-center justify-center text-text-quaternary" hidden={isAudioAvailable}>{t('operation.audioSourceUnavailable', { ns: 'common' })}</div>
     </div>
   )
 }

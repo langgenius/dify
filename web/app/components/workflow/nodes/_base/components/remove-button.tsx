@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiDeleteBinLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import ActionButton from '@/app/components/base/action-button'
 
 type Props = {

@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import { RiResetLeftLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
-import React, { useRef } from 'react'
+import * as React from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 
@@ -21,7 +22,7 @@ const EditedBeacon: FC<Props> = ({
     <div ref={ref} className="size-4 cursor-pointer">
       {isHovering
         ? (
-            <Tooltip popupContent={t('common.operation.reset')}>
+            <Tooltip popupContent={t('operation.reset', { ns: 'common' })}>
               <div className="flex size-4 items-center justify-center rounded-full bg-text-accent-secondary" onClick={onReset}>
                 <RiResetLeftLine className="size-[10px] text-text-primary-on-surface" />
               </div>

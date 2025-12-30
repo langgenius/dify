@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { ClockFastForward } from '@/app/components/base/icons/src/vender/line/time'
 
@@ -11,7 +11,7 @@ const HitHistoryNoData: FC = () => {
       <div className="inline-block rounded-lg border border-divider-subtle p-3">
         <ClockFastForward className="h-5 w-5 text-text-tertiary" />
       </div>
-      <div className="system-sm-regular text-text-tertiary">{t('appAnnotation.viewModal.noHitHistory')}</div>
+      <div className="system-sm-regular text-text-tertiary">{t('viewModal.noHitHistory', { ns: 'appAnnotation' })}</div>
     </div>
   )
 }

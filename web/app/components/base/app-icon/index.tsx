@@ -6,7 +6,8 @@ import { RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
 import { cva } from 'class-variance-authority'
 import { init } from 'emoji-mart'
-import React, { useRef } from 'react'
+import * as React from 'react'
+import { useRef } from 'react'
 import { cn } from '@/utils/classnames'
 
 init({ data })

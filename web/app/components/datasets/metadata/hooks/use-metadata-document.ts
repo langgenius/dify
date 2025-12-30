@@ -1,6 +1,6 @@
 import type { BuiltInMetadataItem, MetadataItemWithValue } from '../types'
 import type { FullDocumentDetail } from '@/models/datasets'
-import { get } from 'lodash-es'
+import { get } from 'es-toolkit/compat'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
@@ -61,7 +61,7 @@ const useMetadataDocument = ({
     await doAddMetaData(payload)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
   }, [checkName, doAddMetaData, t])
 
@@ -77,7 +77,7 @@ const useMetadataDocument = ({
     setIsEdit(false)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
   }
 

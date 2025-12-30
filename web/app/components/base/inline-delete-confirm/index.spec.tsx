@@ -1,18 +1,24 @@
 import { cleanup, fireEvent, render } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import InlineDeleteConfirm from './index'
 
 // Mock react-i18next
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, defaultValueOrOptions?: string | { ns?: string }) => {
       const translations: Record<string, string> = {
-        'common.operation.deleteConfirmTitle': 'Delete?',
-        'common.operation.yes': 'Yes',
-        'common.operation.no': 'No',
-        'common.operation.confirmAction': 'Please confirm your action.',
+        'operation.deleteConfirmTitle': 'Delete?',
+        'operation.yes': 'Yes',
+        'operation.no': 'No',
+        'operation.confirmAction': 'Please confirm your action.',
       }
-      return translations[key] || key
+      if (translations[key])
+        return translations[key]
+      // Handle case where second arg is default value string
+      if (typeof defaultValueOrOptions === 'string')
+        return defaultValueOrOptions
+      const prefix = defaultValueOrOptions?.ns ? `${defaultValueOrOptions.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

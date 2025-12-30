@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
-import { noop } from 'lodash-es'
-import React, { useCallback, useState } from 'react'
+import { noop } from 'es-toolkit/compat'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
@@ -52,7 +53,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
                 onClose?.()
               }}
             >
-              {t('app.iconPicker.cancel')}
+              {t('iconPicker.cancel', { ns: 'app' })}
             </Button>
             <Button
               disabled={selectedEmoji === '' || !selectedBackground}
@@ -62,7 +63,7 @@ const EmojiPicker: FC<IEmojiPickerProps> = ({
                 onSelect?.(selectedEmoji, selectedBackground!)
               }}
             >
-              {t('app.iconPicker.ok')}
+              {t('iconPicker.ok', { ns: 'app' })}
             </Button>
           </div>
         </Modal>

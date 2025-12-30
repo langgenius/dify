@@ -2,7 +2,8 @@ import type { MermaidConfig } from 'mermaid'
 import { ExclamationTriangleIcon } from '@heroicons/react/24/outline'
 import { MoonIcon, SunIcon } from '@heroicons/react/24/solid'
 import mermaid from 'mermaid'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import ImagePreview from '@/app/components/base/image-uploader/image-preview'
@@ -514,7 +515,7 @@ const Flowchart = (props: FlowchartProps) => {
                 }
               }}
             >
-              <div className="msh-segmented-item-label">{t('app.mermaid.classic')}</div>
+              <div className="msh-segmented-item-label">{t('mermaid.classic', { ns: 'app' })}</div>
             </div>
             <div
               key="handDrawn"
@@ -527,7 +528,7 @@ const Flowchart = (props: FlowchartProps) => {
                 }
               }}
             >
-              <div className="msh-segmented-item-label">{t('app.mermaid.handDrawn')}</div>
+              <div className="msh-segmented-item-label">{t('mermaid.handDrawn', { ns: 'app' })}</div>
             </div>
           </label>
         </div>
@@ -539,7 +540,7 @@ const Flowchart = (props: FlowchartProps) => {
         <div className="px-[26px] py-4">
           <LoadingAnim type="text" />
           <div className="mt-2 text-sm text-gray-500">
-            {t('common.wait_for_completion', 'Waiting for diagram code to complete...')}
+            {t('wait_for_completion', { ns: 'common', defaultValue: 'Waiting for diagram code to complete...' })}
           </div>
         </div>
       )}
@@ -554,7 +555,7 @@ const Flowchart = (props: FlowchartProps) => {
                 toggleTheme()
               }}
               className={themeClasses.themeToggle}
-              title={(currentTheme === Theme.light ? t('app.theme.switchDark') : t('app.theme.switchLight')) || ''}
+              title={(currentTheme === Theme.light ? t('theme.switchDark', { ns: 'app' }) : t('theme.switchLight', { ns: 'app' })) || ''}
               style={{ transform: 'translate3d(0, 0, 0)' }}
             >
               {currentTheme === Theme.light ? <MoonIcon className="h-5 w-5" /> : <SunIcon className="h-5 w-5" />}

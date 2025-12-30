@@ -3,7 +3,7 @@
  * Extracted from the main markdown renderer for modularity.
  * Handles special rendering for "abbr:" type links for interactive chat actions.
  */
-import React from 'react'
+import * as React from 'react'
 import { useChatContext } from '@/app/components/base/chat/chat/context'
 import { isValidUrl } from './utils'
 

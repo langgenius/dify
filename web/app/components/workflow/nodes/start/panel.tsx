@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import type { StartNodeType } from './types'
 import type { InputVar, NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ConfigVarModal from '@/app/components/app/configuration/config-var/config-modal'
 import AddButton from '@/app/components/base/button/add-button'
@@ -12,7 +12,7 @@ import VarItem from './components/var-item'
 import VarList from './components/var-list'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.start'
+const i18nPrefix = 'nodes.start'
 
 const Panel: FC<NodePanelProps<StartNodeType>> = ({
   id,
@@ -44,7 +44,7 @@ const Panel: FC<NodePanelProps<StartNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-2">
         <Field
-          title={t(`${i18nPrefix}.inputField`)}
+          title={t(`${i18nPrefix}.inputField`, { ns: 'workflow' })}
           operations={
             !readOnly ? <AddButton onClick={showAddVarModal} /> : undefined
           }

@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { WriteMode } from '../types'
+import type { Item } from '../utils'
 import type { VarType } from '@/app/components/workflow/types'
 import {
   RiArrowDownSLine,
@@ -14,12 +15,7 @@ import {
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
-import { getOperationItems } from '../utils'
-
-type Item = {
-  value: string | number
-  name: string
-}
+import { getOperationItems, isOperationItem } from '../utils'
 
 type OperationSelectorProps = {
   value: string | number
@@ -33,8 +29,6 @@ type OperationSelectorProps = {
   writeModeTypesArr?: WriteMode[]
   writeModeTypesNum?: WriteMode[]
 }
-
-const i18nPrefix = 'workflow.nodes.assigner'
 
 const OperationSelector: FC<OperationSelectorProps> = ({
   value,
@@ -72,7 +66,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
               className={`system-sm-regular overflow-hidden truncate text-ellipsis
                 ${selectedItem ? 'text-components-input-text-filled' : 'text-components-input-text-disabled'}`}
             >
-              {selectedItem?.name ? t(`${i18nPrefix}.operations.${selectedItem?.name}`) : t(`${i18nPrefix}.operations.title`)}
+              {selectedItem && isOperationItem(selectedItem) ? t(`nodes.assigner.operations.${selectedItem.name}`, { ns: 'workflow' }) : t('nodes.assigner.operations.title', { ns: 'workflow' })}
             </span>
           </div>
           <RiArrowDownSLine className={`h-4 w-4 text-text-quaternary ${disabled && 'text-components-input-text-placeholder'} ${open && 'text-text-secondary'}`} />
@@ -83,10 +77,10 @@ const OperationSelector: FC<OperationSelectorProps> = ({
         <div className="flex w-[140px] flex-col items-start rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg">
           <div className="flex flex-col items-start self-stretch p-1">
             <div className="flex items-start self-stretch px-3 pb-0.5 pt-1">
-              <div className="system-xs-medium-uppercase flex grow text-text-tertiary">{t(`${i18nPrefix}.operations.title`)}</div>
+              <div className="system-xs-medium-uppercase flex grow text-text-tertiary">{t('nodes.assigner.operations.title', { ns: 'workflow' })}</div>
             </div>
             {items.map(item => (
-              item.value === 'divider'
+              !isOperationItem(item)
                 ? (
                     <Divider key="divider" className="my-1" />
                   )
@@ -100,7 +94,7 @@ const OperationSelector: FC<OperationSelectorProps> = ({
                       }}
                     >
                       <div className="flex min-h-5 grow items-center gap-1 px-1">
-                        <span className="system-sm-medium flex grow text-text-secondary">{t(`${i18nPrefix}.operations.${item.name}`)}</span>
+                        <span className="system-sm-medium flex grow text-text-secondary">{t(`nodes.assigner.operations.${item.name}`, { ns: 'workflow' })}</span>
                       </div>
                       {item.value === value && (
                         <div className="flex items-center justify-center">

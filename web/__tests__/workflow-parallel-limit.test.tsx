@@ -6,7 +6,7 @@
  */
 
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 
 // Mock environment variables before importing constants
 const originalEnv = process.env.NEXT_PUBLIC_MAX_PARALLEL_LIMIT
@@ -64,7 +64,6 @@ vi.mock('i18next', () => ({
 
 // Mock the useConfig hook
 vi.mock('@/app/components/workflow/nodes/iteration/use-config', () => ({
-  __esModule: true,
   default: () => ({
     inputs: {
       is_parallel: true,

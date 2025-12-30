@@ -1,5 +1,5 @@
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Button from '../base/button'
@@ -19,7 +19,7 @@ const TooltipContent = ({
 
   return (
     <div className="flex items-center gap-x-1">
-      <span className="system-xs-medium px-0.5 text-text-secondary">{expand ? t('layout.sidebar.collapseSidebar') : t('layout.sidebar.expandSidebar')}</span>
+      <span className="system-xs-medium px-0.5 text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
       <div className="flex items-center gap-x-0.5">
         {
           TOGGLE_SHORTCUT.map(key => (

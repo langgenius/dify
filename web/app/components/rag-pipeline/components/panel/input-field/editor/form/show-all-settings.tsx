@@ -1,6 +1,6 @@
 import { RiArrowRightSLine } from '@remixicon/react'
 import { useStore } from '@tanstack/react-form'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { withForm } from '@/app/components/base/form'
 import { useHiddenFieldNames } from './hooks'
@@ -27,7 +27,7 @@ const ShowAllSettings = ({
       <div className="flex cursor-pointer items-center gap-x-4" onClick={handleShowAllSettings}>
         <div className="flex grow flex-col">
           <span className="system-sm-medium flex min-h-6 items-center text-text-secondary">
-            {t('appDebug.variableConfig.showAllSettings')}
+            {t('variableConfig.showAllSettings', { ns: 'appDebug' })}
           </span>
           <span className="body-xs-regular pb-0.5 text-text-tertiary first-letter:capitalize">
             {hiddenFieldNames}

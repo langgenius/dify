@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { Field as FieldType } from '../../../../../llm/types'
 import type { ValueSelector } from '@/app/components/workflow/types'
 import { RiMoreFill } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'
@@ -38,7 +38,7 @@ const Field: FC<Props> = ({
     return null
   return (
     <div>
-      <Tooltip popupContent={t('app.structOutput.moreFillTip')} disabled={depth !== MAX_DEPTH + 1}>
+      <Tooltip popupContent={t('structOutput.moreFillTip', { ns: 'app' })} disabled={depth !== MAX_DEPTH + 1}>
         <div
           className={cn('flex items-center justify-between rounded-md pr-2', !readonly && 'hover:bg-state-base-hover', depth !== MAX_DEPTH + 1 && 'cursor-pointer')}
           onMouseDown={() => !readonly && onSelect?.([...valueSelector, name])}

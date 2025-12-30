@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
 import type { CrawlOptions, CrawlResultItem } from '@/models/datasets'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
@@ -60,7 +61,7 @@ const Website: FC<Props> = ({
     <div>
       <div className="mb-4">
         <div className="system-md-medium mb-2 text-text-secondary">
-          {t('datasetCreation.stepOne.website.chooseProvider')}
+          {t('stepOne.website.chooseProvider', { ns: 'datasetCreation' })}
         </div>
         <div className="flex space-x-2">
           {ENABLE_WEBSITE_JINAREADER && (

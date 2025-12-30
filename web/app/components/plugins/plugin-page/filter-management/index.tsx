@@ -1,4 +1,5 @@
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { usePluginPageContext } from '../context'
 import CategoriesFilter from './category-filter'
 import SearchBox from './search-box'

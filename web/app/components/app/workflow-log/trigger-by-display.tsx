@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { TriggerMetadata } from '@/models/log'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   Code,
@@ -28,13 +28,13 @@ const getTriggerDisplayName = (triggeredFrom: WorkflowRunTriggeredFrom, t: any, 
     return metadata.event_name
 
   const nameMap: Record<WorkflowRunTriggeredFrom, string> = {
-    'debugging': t('appLog.triggerBy.debugging'),
-    'app-run': t('appLog.triggerBy.appRun'),
-    'webhook': t('appLog.triggerBy.webhook'),
-    'schedule': t('appLog.triggerBy.schedule'),
-    'plugin': t('appLog.triggerBy.plugin'),
-    'rag-pipeline-run': t('appLog.triggerBy.ragPipelineRun'),
-    'rag-pipeline-debugging': t('appLog.triggerBy.ragPipelineDebugging'),
+    'debugging': t('triggerBy.debugging', { ns: 'appLog' }),
+    'app-run': t('triggerBy.appRun', { ns: 'appLog' }),
+    'webhook': t('triggerBy.webhook', { ns: 'appLog' }),
+    'schedule': t('triggerBy.schedule', { ns: 'appLog' }),
+    'plugin': t('triggerBy.plugin', { ns: 'appLog' }),
+    'rag-pipeline-run': t('triggerBy.ragPipelineRun', { ns: 'appLog' }),
+    'rag-pipeline-debugging': t('triggerBy.ragPipelineDebugging', { ns: 'appLog' }),
   }
 
   return nameMap[triggeredFrom] || triggeredFrom

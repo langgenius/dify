@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 
 export const Item: FC<{ title: string, tooltip: string, children: React.JSX.Element }> = ({

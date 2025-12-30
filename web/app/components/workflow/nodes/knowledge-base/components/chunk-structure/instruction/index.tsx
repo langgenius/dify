@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { AddChunks } from '@/app/components/base/icons/src/vender/knowledge'
 import { useDocLink } from '@/context/i18n'
@@ -26,17 +26,17 @@ const Instruction = ({
       </div>
       <div className="flex flex-col gap-y-1">
         <div className="system-sm-medium text-text-secondary">
-          {t('workflow.nodes.knowledgeBase.chunkStructureTip.title')}
+          {t('nodes.knowledgeBase.chunkStructureTip.title', { ns: 'workflow' })}
         </div>
         <div className="system-xs-regular">
-          <p className="text-text-tertiary">{t('workflow.nodes.knowledgeBase.chunkStructureTip.message')}</p>
+          <p className="text-text-tertiary">{t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' })}</p>
           <a
             href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/chunking-and-cleaning-text')}
             target="_blank"
             rel="noopener noreferrer"
             className="text-text-accent"
           >
-            {t('workflow.nodes.knowledgeBase.chunkStructureTip.learnMore')}
+            {t('nodes.knowledgeBase.chunkStructureTip.learnMore', { ns: 'workflow' })}
           </a>
         </div>
       </div>

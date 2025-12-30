@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSourceItem } from '@/models/common'
-import React, { useCallback, useEffect, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import s from '@/app/components/datasets/create/website/index.module.css'
@@ -71,7 +72,7 @@ const DataSourceWebsite: FC<Props> = ({ provider }) => {
         setSources(sources.filter(item => item.provider !== provider))
         Toast.notify({
           type: 'success',
-          message: t('common.api.remove'),
+          message: t('api.remove', { ns: 'common' }),
         })
       }
     }

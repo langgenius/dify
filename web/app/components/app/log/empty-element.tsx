@@ -2,7 +2,7 @@
 import type { FC, SVGProps } from 'react'
 import type { App } from '@/types/app'
 import Link from 'next/link'
-import React from 'react'
+import * as React from 'react'
 import { Trans, useTranslation } from 'react-i18next'
 import { AppModeEnum } from '@/types/app'
 import { getRedirectionPath } from '@/utils/app-redirection'
@@ -29,12 +29,13 @@ const EmptyElement: FC<{ appDetail: App }> = ({ appDetail }) => {
     <div className="flex h-full items-center justify-center">
       <div className="box-border h-fit w-[560px] rounded-2xl bg-background-section-burn px-5 py-4">
         <span className="system-md-semibold text-text-secondary">
-          {t('appLog.table.empty.element.title')}
+          {t('table.empty.element.title', { ns: 'appLog' })}
           <ThreeDotsIcon className="relative -left-1.5 -top-3 inline text-text-secondary" />
         </span>
         <div className="system-sm-regular mt-2 text-text-tertiary">
           <Trans
-            i18nKey="appLog.table.empty.element.content"
+            i18nKey="table.empty.element.content"
+            ns="appLog"
             components={{
               shareLink: <Link href={`${appDetail.site.app_base_url}${basePath}/${getWebAppType(appDetail.mode)}/${appDetail.site.access_token}`} className="text-util-colors-blue-blue-600" target="_blank" rel="noopener noreferrer" />,
               testLink: <Link href={getRedirectionPath(true, appDetail)} className="text-util-colors-blue-blue-600" />,

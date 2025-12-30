@@ -1,6 +1,6 @@
 import type { BasicPlan } from '../../../type'
 import { RiArrowRightLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import { Plan } from '../../../type'
 

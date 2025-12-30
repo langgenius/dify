@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import type { UsagePlanInfo } from '../../type'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { Plan } from '../../type'
 import { PlanRange } from '../plan-switcher/plan-range-switcher'
 import cloudPlanItem from './cloud-plan-item'
@@ -9,7 +9,6 @@ import Plans from './index'
 import selfHostedPlanItem from './self-hosted-plan-item'
 
 vi.mock('./cloud-plan-item', () => ({
-  __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`cloud-plan-${props.plan}`} data-current-plan={props.currentPlan}>
       Cloud
@@ -20,7 +19,6 @@ vi.mock('./cloud-plan-item', () => ({
 }))
 
 vi.mock('./self-hosted-plan-item', () => ({
-  __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`self-plan-${props.plan}`}>
       Self

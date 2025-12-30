@@ -2,7 +2,8 @@
 import type { Reducer } from 'react'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
-import React, { useReducer } from 'react'
+import * as React from 'react'
+import { useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { SimpleSelect } from '@/app/components/base/select'
@@ -71,7 +72,7 @@ const OneMoreStep = () => {
     }
     catch (error: any) {
       if (error && error.status === 400)
-        Toast.notify({ type: 'error', message: t('login.invalidInvitationCode') })
+        Toast.notify({ type: 'error', message: t('invalidInvitationCode', { ns: 'login' }) })
       dispatch({ type: 'failed', payload: null })
     }
   }
@@ -79,26 +80,26 @@ const OneMoreStep = () => {
   return (
     <>
       <div className="mx-auto w-full">
-        <h2 className="title-4xl-semi-bold text-text-secondary">{t('login.oneMoreStep')}</h2>
-        <p className="body-md-regular mt-1 text-text-tertiary">{t('login.createSample')}</p>
+        <h2 className="title-4xl-semi-bold text-text-secondary">{t('oneMoreStep', { ns: 'login' })}</h2>
+        <p className="body-md-regular mt-1 text-text-tertiary">{t('createSample', { ns: 'login' })}</p>
       </div>
 
       <div className="mx-auto mt-6 w-full">
         <div className="relative">
           <div className="mb-5">
             <label className="system-md-semibold my-2 flex items-center justify-between text-text-secondary">
-              {t('login.invitationCode')}
+              {t('invitationCode', { ns: 'login' })}
               <Tooltip
                 popupContent={(
                   <div className="w-[256px] text-xs font-medium">
-                    <div className="font-medium">{t('login.sendUsMail')}</div>
+                    <div className="font-medium">{t('sendUsMail', { ns: 'login' })}</div>
                     <div className="cursor-pointer text-xs font-medium text-text-accent-secondary">
                       <a href="mailto:request-invitation@langgenius.ai">request-invitation@langgenius.ai</a>
                     </div>
                   </div>
                 )}
               >
-                <span className="cursor-pointer text-text-accent-secondary">{t('login.dontHave')}</span>
+                <span className="cursor-pointer text-text-accent-secondary">{t('dontHave', { ns: 'login' })}</span>
               </Tooltip>
             </label>
             <div className="mt-1">
@@ -106,7 +107,7 @@ const OneMoreStep = () => {
                 id="invitation_code"
                 value={state.invitation_code}
                 type="text"
-                placeholder={t('login.invitationCodePlaceholder') || ''}
+                placeholder={t('invitationCodePlaceholder', { ns: 'login' }) || ''}
                 onChange={(e) => {
                   dispatch({ type: 'invitation_code', value: e.target.value.trim() })
                 }}
@@ -115,7 +116,7 @@ const OneMoreStep = () => {
           </div>
           <div className="mb-5">
             <label htmlFor="name" className="system-md-semibold my-2 text-text-secondary">
-              {t('login.interfaceLanguage')}
+              {t('interfaceLanguage', { ns: 'login' })}
             </label>
             <div className="mt-1">
               <SimpleSelect
@@ -129,7 +130,7 @@ const OneMoreStep = () => {
           </div>
           <div className="mb-4">
             <label htmlFor="timezone" className="system-md-semibold text-text-tertiary">
-              {t('login.timezone')}
+              {t('timezone', { ns: 'login' })}
             </label>
             <div className="mt-1">
               <SimpleSelect
@@ -148,11 +149,11 @@ const OneMoreStep = () => {
               disabled={isPending}
               onClick={handleSubmit}
             >
-              {t('login.go')}
+              {t('go', { ns: 'login' })}
             </Button>
           </div>
           <div className="system-xs-regular mt-2 block w-full text-text-tertiary">
-            {t('login.license.tip')}
+            {t('license.tip', { ns: 'login' })}
             &nbsp;
             <Link
               className="system-xs-medium text-text-accent-secondary"
@@ -160,7 +161,7 @@ const OneMoreStep = () => {
               rel="noopener noreferrer"
               href={docLink('/policies/agreement/README')}
             >
-              {t('login.license.link')}
+              {t('license.link', { ns: 'login' })}
             </Link>
           </div>
         </div>

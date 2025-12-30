@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
-import { noop } from 'lodash-es'
-import React from 'react'
+import { noop } from 'es-toolkit/compat'
+import * as React from 'react'
 import Toast, { ToastProvider, useToastContext } from '.'
 
 const TestComponent = () => {

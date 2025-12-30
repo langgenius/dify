@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 export type IPreviewItemProps = {
@@ -55,7 +55,7 @@ const PreviewItem: FC<IPreviewItemProps> = ({
           <span>
             {charNums}
             {' '}
-            {t('datasetCreation.stepTwo.characters')}
+            {t('stepTwo.characters', { ns: 'datasetCreation' })}
           </span>
         </div>
       </div>

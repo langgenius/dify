@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { InstallStatus, Plugin } from '../../../types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Badge, { BadgeState } from '@/app/components/base/badge/index'
 import Button from '@/app/components/base/button'
@@ -54,7 +54,7 @@ const Installed: FC<Props> = ({
             className="min-w-[72px]"
             onClick={onCancel}
           >
-            {t('common.operation.close')}
+            {t('operation.close', { ns: 'common' })}
           </Button>
         </div>
       )}

@@ -1,5 +1,5 @@
 import type { ReactMarkdownWrapperProps, SimplePluginInfo } from './react-markdown-wrapper'
-import { flow } from 'lodash-es'
+import { flow } from 'es-toolkit/compat'
 import dynamic from 'next/dynamic'
 import { cn } from '@/utils/classnames'
 import { preprocessLaTeX, preprocessThinkTag } from './markdown-utils'

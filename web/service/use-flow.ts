@@ -1,5 +1,5 @@
 import type { FlowType } from '@/types/common'
-import { curry } from 'lodash-es'
+import { curry } from 'es-toolkit/compat'
 import {
   useDeleteAllInspectorVars as useDeleteAllInspectorVarsInner,
   useDeleteInspectVar as useDeleteInspectVarInner,

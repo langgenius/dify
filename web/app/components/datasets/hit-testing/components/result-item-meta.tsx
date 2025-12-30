@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 import Dot from '../../documents/detail/completed/common/dot'
@@ -36,7 +36,7 @@ const ResultItemMeta: FC<Props> = ({
         <div className="system-xs-medium text-text-tertiary">
           {wordCount}
           {' '}
-          {t('datasetDocuments.segment.characters', { count: wordCount })}
+          {t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}
         </div>
       </div>
       <Score value={score} />

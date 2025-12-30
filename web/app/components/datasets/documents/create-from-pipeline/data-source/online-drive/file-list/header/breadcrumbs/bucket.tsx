@@ -1,4 +1,5 @@
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { BucketsGray } from '@/app/components/base/icons/src/public/knowledge/online-drive'
 import Tooltip from '@/app/components/base/tooltip'
@@ -30,7 +31,7 @@ const Bucket = ({
   return (
     <>
       <Tooltip
-        popupContent={t('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')}
+        popupContent={t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
       >
         <button
           type="button"

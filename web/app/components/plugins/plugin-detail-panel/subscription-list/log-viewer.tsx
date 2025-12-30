@@ -8,7 +8,8 @@ import {
   RiFileCopyLine,
 } from '@remixicon/react'
 import dayjs from 'dayjs'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Toast from '@/app/components/base/toast'
 import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/code-editor'
@@ -90,7 +91,7 @@ const LogViewer = ({ logs, className }: Props) => {
               navigator.clipboard.writeText(String(parsedData))
               Toast.notify({
                 type: 'success',
-                message: t('common.actionMsg.copySuccessfully'),
+                message: t('actionMsg.copySuccessfully', { ns: 'common' }),
               })
             }}
             className="rounded-md p-0.5 hover:bg-components-panel-border"
@@ -161,7 +162,7 @@ const LogViewer = ({ logs, className }: Props) => {
                       <RiArrowRightSLine className="h-4 w-4 text-text-tertiary" />
                     )}
                 <div className="system-xs-semibold-uppercase text-text-secondary">
-                  {t(`pluginTrigger.modal.manual.logs.${LogTypeEnum.REQUEST}`)}
+                  {t(`modal.manual.logs.${LogTypeEnum.REQUEST}`, { ns: 'pluginTrigger' })}
                   {' '}
                   #
                   {index + 1}

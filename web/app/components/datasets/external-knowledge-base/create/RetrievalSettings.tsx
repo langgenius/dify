@@ -1,5 +1,5 @@
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ScoreThresholdItem from '@/app/components/base/param-item/score-threshold-item'
 import TopKItem from '@/app/components/base/param-item/top-k-item'
@@ -32,7 +32,7 @@ const RetrievalSettings: FC<RetrievalSettingsProps> = ({
     <div className={cn('flex flex-col gap-2 self-stretch', isInRetrievalSetting && 'w-full max-w-[480px]')}>
       {!isInHitTesting && !isInRetrievalSetting && (
         <div className="flex h-7 flex-col gap-2 self-stretch pt-1">
-          <label className="system-sm-semibold text-text-secondary">{t('dataset.retrievalSettings')}</label>
+          <label className="system-sm-semibold text-text-secondary">{t('retrievalSettings', { ns: 'dataset' })}</label>
         </div>
       )}
       <div className={cn(

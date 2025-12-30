@@ -1,7 +1,7 @@
 import type { ListChildComponentProps } from 'react-window'
 import type { DataSourceNotionPage, DataSourceNotionPageMap } from '@/models/common'
 import { RiArrowDownSLine, RiArrowRightSLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { areEqual } from 'react-window'
 import Checkbox from '@/app/components/base/checkbox'
@@ -131,7 +131,7 @@ const Item = ({ index, style, data }: ListChildComponentProps<{
             hover:border-components-button-secondary-border-hover hover:bg-components-button-secondary-bg-hover group-hover:flex"
             onClick={() => handlePreview(index)}
           >
-            {t('common.dataSource.notion.selector.preview')}
+            {t('dataSource.notion.selector.preview', { ns: 'common' })}
           </div>
         )
       }

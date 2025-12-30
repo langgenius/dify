@@ -4,9 +4,10 @@ import type { ToolVarInputs } from '../types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { noop } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
@@ -195,7 +196,7 @@ const InputVarList: FC<Props> = ({
                   nodesOutputVars={availableVars}
                   availableNodes={availableNodesWithParent}
                   onFocusChange={handleInputFocus(variable)}
-                  placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
+                  placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
                   placeholderClassName="!leading-[21px]"
                 />
               )}

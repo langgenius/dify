@@ -1,7 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { Var } from '@/app/components/workflow/types'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
@@ -70,7 +71,7 @@ const InputItem: FC<Props> = ({
               nodesOutputVars={availableVars}
               availableNodes={availableNodesWithParent}
               onFocusChange={setIsFocus}
-              placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
+              placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
               placeholderClassName="!leading-[21px]"
               promptMinHeightClassName="h-full"
               insertVarTipToLeft={insertVarTipToLeft}
@@ -91,7 +92,7 @@ const InputItem: FC<Props> = ({
                   nodesOutputVars={availableVars}
                   availableNodes={availableNodesWithParent}
                   onFocusChange={setIsFocus}
-                  placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
+                  placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
                   placeholderClassName="!leading-[21px]"
                   promptMinHeightClassName="h-full"
                   insertVarTipToLeft={insertVarTipToLeft}

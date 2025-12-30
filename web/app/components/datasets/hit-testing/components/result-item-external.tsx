@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
 import { useBoolean } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
 import Modal from '@/app/components/base/modal'
@@ -10,7 +10,7 @@ import { cn } from '@/utils/classnames'
 import ResultItemFooter from './result-item-footer'
 import ResultItemMeta from './result-item-meta'
 
-const i18nPrefix = 'datasetHitTesting'
+const i18nPrefix = ''
 type Props = {
   payload: ExternalKnowledgeBaseHitTesting
   positionId: number
@@ -39,7 +39,7 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
 
       {isShowDetailModal && (
         <Modal
-          title={t(`${i18nPrefix}.chunkDetail`)}
+          title={t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
           className="!min-w-[800px]"
           closable
           onClose={hideDetailModal}

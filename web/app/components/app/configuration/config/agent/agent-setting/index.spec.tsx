@@ -1,6 +1,6 @@
 import type { AgentConfig } from '@/models/debug'
 import { act, fireEvent, render, screen } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import { MAX_ITERATIONS_NUM } from '@/config'
 import AgentSetting from './index'
 

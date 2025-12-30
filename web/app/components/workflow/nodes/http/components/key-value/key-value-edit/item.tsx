@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import type { KeyValue } from '../../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { produce } from 'immer'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { PortalSelect } from '@/app/components/base/select'
 import { VarType } from '@/app/components/workflow/types'
@@ -12,7 +13,7 @@ import VarReferencePicker from '../../../../_base/components/variable/var-refere
 import InputItem from './input-item'
 // import Input from '@/app/components/base/input'
 
-const i18nPrefix = 'workflow.nodes.http'
+const i18nPrefix = 'nodes.http'
 
 type Props = {
   instanceId: string
@@ -72,7 +73,7 @@ const KeyValueItem: FC<Props> = ({
                 value={payload.key}
                 onChange={handleChange('key')}
                 hasRemove={false}
-                placeholder={t(`${i18nPrefix}.key`)!}
+                placeholder={t(`${i18nPrefix}.key`, { ns: 'workflow' })!}
                 readOnly={readonly}
                 insertVarTipToLeft={insertVarTipToLeft}
               />
@@ -122,7 +123,7 @@ const KeyValueItem: FC<Props> = ({
                 onChange={handleChange('value')}
                 hasRemove={!readonly && canRemove}
                 onRemove={onRemove}
-                placeholder={t(`${i18nPrefix}.value`)!}
+                placeholder={t(`${i18nPrefix}.value`, { ns: 'workflow' })!}
                 readOnly={readonly}
                 isSupportFile={isSupportFile}
                 insertVarTipToLeft={insertVarTipToLeft}

@@ -1,5 +1,5 @@
 import type { ChunkingMode, IconInfo } from '@/models/datasets'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
 import { General } from '@/app/components/base/icons/src/public/knowledge/dataset-card'
@@ -44,7 +44,7 @@ const Content = ({
             {name}
           </div>
           <div className="system-2xs-medium-uppercase text-text-tertiary">
-            {t(`dataset.chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`)}
+            {t(`chunkingMode.${DOC_FORM_TEXT[chunkStructure]}`, { ns: 'dataset' })}
           </div>
         </div>
       </div>

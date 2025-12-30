@@ -2,7 +2,8 @@ import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import type { ModelAndParameter } from '@/app/components/app/configuration/debug/types'
 import type { FileUpload } from '@/app/components/base/features/types'
 import { produce } from 'immer'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppPublisher from '@/app/components/app/app-publisher'
 import Confirm from '@/app/components/base/confirm'
@@ -75,8 +76,8 @@ const FeaturesWrappedAppPublisher = (props: Props) => {
       />
       {restoreConfirmOpen && (
         <Confirm
-          title={t('appDebug.resetConfig.title')}
-          content={t('appDebug.resetConfig.message')}
+          title={t('resetConfig.title', { ns: 'appDebug' })}
+          content={t('resetConfig.message', { ns: 'appDebug' })}
           isShow={restoreConfirmOpen}
           onConfirm={handleConfirm}
           onCancel={() => setRestoreConfirmOpen(false)}

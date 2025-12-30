@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import { RiAddLine } from '@remixicon/react'
 import { produce } from 'immer'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import RemoveButton from '@/app/components/workflow/nodes/_base/components/remove-button'
@@ -64,7 +65,7 @@ const ArrayValueList: FC<Props> = ({
       ))}
       <Button variant="tertiary" className="w-full" onClick={handleItemAdd}>
         <RiAddLine className="mr-1 h-4 w-4" />
-        <span>{t('workflow.chatVariable.modal.addArrayValue')}</span>
+        <span>{t('chatVariable.modal.addArrayValue', { ns: 'workflow' })}</span>
       </Button>
     </div>
   )

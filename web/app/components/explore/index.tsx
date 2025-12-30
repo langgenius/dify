@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { InstalledApp } from '@/models/explore'
 import { useRouter } from 'next/navigation'
-import React, { useEffect, useState } from 'react'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Sidebar from '@/app/components/explore/sidebar'
 import { useAppContext } from '@/context/app-context'
@@ -26,7 +27,7 @@ const Explore: FC<IExploreProps> = ({
   const { t } = useTranslation()
   const { data: membersData } = useMembers()
 
-  useDocumentTitle(t('common.menus.explore'))
+  useDocumentTitle(t('menus.explore', { ns: 'common' }))
 
   useEffect(() => {
     if (!membersData?.accounts)

@@ -15,7 +15,7 @@ import {
 import { cn } from '@/utils/classnames'
 import { getOperators, isComparisonOperatorNeedTranslate } from '../../utils'
 
-const i18nPrefix = 'workflow.nodes.ifElse'
+const i18nPrefix = 'nodes.ifElse'
 
 type ConditionOperatorProps = {
   className?: string
@@ -39,7 +39,7 @@ const ConditionOperator = ({
   const options = useMemo(() => {
     return getOperators(varType, file).map((o) => {
       return {
-        label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`) : o,
+        label: isComparisonOperatorNeedTranslate(o) ? t(`${i18nPrefix}.comparisonOperator.${o}`, { ns: 'workflow' }) : o,
         value: o,
       }
     })
@@ -65,7 +65,7 @@ const ConditionOperator = ({
           {
             selectedOption
               ? selectedOption.label
-              : t(`${i18nPrefix}.select`)
+              : t(`${i18nPrefix}.select`, { ns: 'workflow' })
           }
           <RiArrowDownSLine className="ml-1 h-3.5 w-3.5" />
         </Button>

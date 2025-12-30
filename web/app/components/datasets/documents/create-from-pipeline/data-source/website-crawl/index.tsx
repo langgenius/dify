@@ -6,7 +6,8 @@ import type {
   DataSourceNodeErrorResponse,
   DataSourceNodeProcessingResponse,
 } from '@/types/pipeline'
-import React, { useCallback, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
 import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
@@ -28,7 +29,7 @@ import Crawling from './base/crawling'
 import ErrorMessage from './base/error-message'
 import Options from './base/options'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 export type WebsiteCrawlProps = {
   nodeId: string
@@ -129,7 +130,7 @@ const WebsiteCrawl = ({
           setStep(CrawlStep.finished)
         },
         onDataSourceNodeError: (error: DataSourceNodeErrorResponse) => {
-          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`))
+          setCrawlErrorMessage(error.error || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
           setStep(CrawlStep.finished)
         },
       },
@@ -183,7 +184,7 @@ const WebsiteCrawl = ({
           {showError && (
             <ErrorMessage
               className="mt-2"
-              title={t(`${I18N_PREFIX}.exceptionErrorTitle`)}
+              title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })}
               errorMsg={crawlErrorMessage}
             />
           )}

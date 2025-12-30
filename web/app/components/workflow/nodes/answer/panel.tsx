@@ -1,13 +1,13 @@
 import type { FC } from 'react'
 import type { AnswerNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Editor from '@/app/components/workflow/nodes/_base/components/prompt/editor'
 import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.answer'
+const i18nPrefix = 'nodes.answer'
 
 const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
   id,
@@ -34,7 +34,7 @@ const Panel: FC<NodePanelProps<AnswerNodeType>> = ({
       <Editor
         readOnly={readOnly}
         justVar
-        title={t(`${i18nPrefix}.answer`)!}
+        title={t(`${i18nPrefix}.answer`, { ns: 'workflow' })!}
         value={inputs.answer}
         onChange={handleAnswerChange}
         nodesOutputVars={availableVars}

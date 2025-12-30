@@ -1,7 +1,8 @@
 'use client'
 
 import type { Dependency, Plugin, PluginManifestInMarket } from '../../types'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import { cn } from '@/utils/classnames'
@@ -12,7 +13,7 @@ import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
 import ReadyToInstallBundle from '../install-bundle/ready-to-install'
 import Install from './steps/install'
 
-const i18nPrefix = 'plugin.installModal'
+const i18nPrefix = 'installModal'
 
 type InstallFromMarketplaceProps = {
   uniqueIdentifier: string
@@ -46,12 +47,12 @@ const InstallFromMarketplace: React.FC<InstallFromMarketplaceProps> = ({
 
   const getTitle = useCallback(() => {
     if (isBundle && step === InstallStep.installed)
-      return t(`${i18nPrefix}.installComplete`)
+      return t(`${i18nPrefix}.installComplete`, { ns: 'plugin' })
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`)
+      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
     if (step === InstallStep.installFailed)
-      return t(`${i18nPrefix}.installFailed`)
-    return t(`${i18nPrefix}.installPlugin`)
+      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
+    return t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
   }, [isBundle, step, t])
 
   const handleInstalled = useCallback((notRefresh?: boolean) => {

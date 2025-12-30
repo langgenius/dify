@@ -1,7 +1,8 @@
 import type { Dayjs } from 'dayjs'
 import type { TimePickerProps } from '../types'
 import { RiCloseCircleFill, RiTimeLine } from '@remixicon/react'
-import React, { useCallback, useEffect, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -194,7 +195,7 @@ const TimePicker = ({
 
   const placeholderDate = isOpen && isDayjsObject(selectedTime)
     ? selectedTime.format(timeFormat)
-    : (placeholder || t('time.defaultPlaceholder'))
+    : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
 
   const inputElem = (
     <input
@@ -242,7 +243,7 @@ const TimePicker = ({
                     (displayValue || (isOpen && selectedTime)) && !notClearable && 'hover:text-text-secondary group-hover:inline-block',
                   )}
                   role="button"
-                  aria-label={t('common.operation.clear')}
+                  aria-label={t('operation.clear', { ns: 'common' })}
                   onClick={handleClear}
                 />
               </div>

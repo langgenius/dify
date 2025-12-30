@@ -3,7 +3,8 @@ import type { FC } from 'react'
 import type { RetrievalConfig } from '@/types/app'
 import Image from 'next/image'
 
-import React, { useCallback, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import WeightedScore from '@/app/components/app/configuration/dataset-config/params-config/weighted-score'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -59,7 +60,7 @@ const RetrievalParamConfig: FC<Props> = ({
 
   const handleToggleRerankEnable = useCallback((enable: boolean) => {
     if (enable && !currentModel)
-      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
     onChange({
       ...value,
       reranking_enable: enable,
@@ -96,20 +97,20 @@ const RetrievalParamConfig: FC<Props> = ({
       }
     }
     if (v === RerankingModeEnum.RerankingModel && !currentModel)
-      Toast.notify({ type: 'error', message: t('workflow.errorMsg.rerankModelRequired') })
+      Toast.notify({ type: 'error', message: t('errorMsg.rerankModelRequired', { ns: 'workflow' }) })
     onChange(result)
   }
 
   const rerankingModeOptions = [
     {
       value: RerankingModeEnum.WeightedScore,
-      label: t('dataset.weightedScore.title'),
-      tips: t('dataset.weightedScore.description'),
+      label: t('weightedScore.title', { ns: 'dataset' }),
+      tips: t('weightedScore.description', { ns: 'dataset' }),
     },
     {
       value: RerankingModeEnum.RerankingModel,
-      label: t('common.modelProvider.rerankModel.key'),
-      tips: t('common.modelProvider.rerankModel.tip'),
+      label: t('modelProvider.rerankModel.key', { ns: 'common' }),
+      tips: t('modelProvider.rerankModel.tip', { ns: 'common' }),
     },
   ]
 
@@ -126,10 +127,10 @@ const RetrievalParamConfig: FC<Props> = ({
               />
             )}
             <div className="flex items-center">
-              <span className="system-sm-semibold mr-0.5 text-text-secondary">{t('common.modelProvider.rerankModel.key')}</span>
+              <span className="system-sm-semibold mr-0.5 text-text-secondary">{t('modelProvider.rerankModel.key', { ns: 'common' })}</span>
               <Tooltip
                 popupContent={
-                  <div className="w-[200px]">{t('common.modelProvider.rerankModel.tip')}</div>
+                  <div className="w-[200px]">{t('modelProvider.rerankModel.tip', { ns: 'common' })}</div>
                 }
               />
             </div>
@@ -157,7 +158,7 @@ const RetrievalParamConfig: FC<Props> = ({
                       <AlertTriangle className="size-4 text-text-warning-secondary" />
                     </div>
                     <span className="system-xs-medium text-text-primary">
-                      {t('datasetSettings.form.retrievalSetting.multiModalTip')}
+                      {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                     </span>
                   </div>
                 )}
@@ -281,7 +282,7 @@ const RetrievalParamConfig: FC<Props> = ({
                         <AlertTriangle className="size-4 text-text-warning-secondary" />
                       </div>
                       <span className="system-xs-medium text-text-primary">
-                        {t('datasetSettings.form.retrievalSetting.multiModalTip')}
+                        {t('form.retrievalSetting.multiModalTip', { ns: 'datasetSettings' })}
                       </span>
                     </div>
                   )}

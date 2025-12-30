@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import InputsFormContent from '@/app/components/base/chat/embedded-chatbot/inputs-form/content'
@@ -43,12 +43,12 @@ const InputsFormNode = ({
         )}
         >
           <Message3Fill className="h-6 w-6 shrink-0" />
-          <div className="system-xl-semibold grow text-text-secondary">{t('share.chat.chatSettingsTitle')}</div>
+          <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
           {collapsed && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('common.operation.edit')}</Button>
+            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(false)}>{t('operation.edit', { ns: 'common' })}</Button>
           )}
           {!collapsed && currentConversationId && (
-            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('common.operation.close')}</Button>
+            <Button className="uppercase text-text-tertiary" size="small" variant="ghost" onClick={() => setCollapsed(true)}>{t('operation.close', { ns: 'common' })}</Button>
           )}
         </div>
         {!collapsed && (
@@ -70,7 +70,7 @@ const InputsFormNode = ({
                   : {}
               }
             >
-              {t('share.chat.startChat')}
+              {t('chat.startChat', { ns: 'share' })}
             </Button>
           </div>
         )}

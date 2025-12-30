@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { InputVarType } from '@/app/components/workflow/types'
 import { ChevronDownIcon } from '@heroicons/react/20/solid'
-import React, { useState } from 'react'
+import * as React from 'react'
+import { useState } from 'react'
 import Badge from '@/app/components/base/badge'
 import {
   PortalToFollowElem,

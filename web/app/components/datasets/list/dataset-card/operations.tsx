@@ -1,5 +1,5 @@
 import { RiDeleteBinLine, RiEditLine, RiFileDownloadLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Divider from '@/app/components/base/divider'
 import OperationItem from './operation-item'
@@ -26,13 +26,13 @@ const Operations = ({
       <div className="flex flex-col p-1">
         <OperationItem
           Icon={RiEditLine}
-          name={t('common.operation.edit')}
+          name={t('operation.edit', { ns: 'common' })}
           handleClick={openRenameModal}
         />
         {showExportPipeline && (
           <OperationItem
             Icon={RiFileDownloadLine}
-            name={t('datasetPipeline.operations.exportPipeline')}
+            name={t('operations.exportPipeline', { ns: 'datasetPipeline' })}
             handleClick={handleExportPipeline}
           />
         )}
@@ -43,7 +43,7 @@ const Operations = ({
           <div className="flex flex-col p-1">
             <OperationItem
               Icon={RiDeleteBinLine}
-              name={t('common.operation.delete')}
+              name={t('operation.delete', { ns: 'common' })}
               handleClick={detectIsUsedByApp}
             />
           </div>

@@ -5,7 +5,8 @@ import type { ValueSelector, Var, Variable } from '@/app/components/workflow/typ
 import { RiDraggable } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
 import { produce } from 'immer'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
@@ -52,18 +53,18 @@ const VarList: FC<Props> = ({
   }), [list])
 
   const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
-    const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-    if (!isValid) {
+    const result = checkKeys([newKey], true)
+    if (!result.isValid) {
       setToastHandle(Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
       }))
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
       setToastHandle(Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
       }))
     }
     else {
@@ -151,7 +152,7 @@ const VarList: FC<Props> = ({
               disabled={readonly}
               value={variable.variable}
               onChange={handleVarNameChange(index)}
-              placeholder={t('workflow.common.variableNamePlaceholder')!}
+              placeholder={t('common.variableNamePlaceholder', { ns: 'workflow' })!}
             />
             <VarReferencePicker
               nodeId={nodeId}

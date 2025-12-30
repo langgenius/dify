@@ -1,12 +1,11 @@
 import type { AnnotationItem } from './type'
 import { fireEvent, render, screen, within } from '@testing-library/react'
-import React from 'react'
+import * as React from 'react'
 import List from './list'
 
 const mockFormatTime = vi.fn(() => 'formatted-time')
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
   default: () => ({
     formatTime: mockFormatTime,
   }),

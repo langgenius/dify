@@ -1,7 +1,8 @@
 import type { Dayjs } from 'dayjs'
 import type { DatePickerProps, Period } from '../types'
 import { RiCalendarLine, RiCloseCircleFill } from '@remixicon/react'
-import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
@@ -204,10 +205,10 @@ const DatePicker = ({
     setView(ViewType.date)
   }
 
-  const timeFormat = needTimePicker ? t('time.dateFormats.displayWithTime') : t('time.dateFormats.display')
+  const timeFormat = needTimePicker ? t('dateFormats.displayWithTime', { ns: 'time' }) : t('dateFormats.display', { ns: 'time' })
   const displayValue = normalizedValue?.format(timeFormat) || ''
   const displayTime = selectedDate?.format('hh:mm A') || '--:-- --'
-  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('time.defaultPlaceholder'))
+  const placeholderDate = isOpen && selectedDate ? selectedDate.format(timeFormat) : (placeholder || t('defaultPlaceholder', { ns: 'time' }))
 
   return (
     <PortalToFollowElem

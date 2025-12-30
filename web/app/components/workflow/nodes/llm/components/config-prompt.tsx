@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { ModelConfig, PromptItem, ValueSelector, Var, Variable } from '../../../types'
 import { produce } from 'immer'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ReactSortable } from 'react-sortablejs'
 import { v4 as uuid4 } from 'uuid'
@@ -15,7 +16,7 @@ import { EditionType, PromptRole } from '../../../types'
 import useAvailableVarList from '../../_base/hooks/use-available-var-list'
 import ConfigPromptItem from './config-prompt-item'
 
-const i18nPrefix = 'workflow.nodes.llm'
+const i18nPrefix = 'nodes.llm'
 
 type Props = {
   readOnly: boolean
@@ -214,7 +215,7 @@ const ConfigPrompt: FC<Props> = ({
               </div>
               <AddButton
                 className="mt-2"
-                text={t(`${i18nPrefix}.addMessage`)}
+                text={t(`${i18nPrefix}.addMessage`, { ns: 'workflow' })}
                 onClick={handleAddPrompt}
               />
             </div>
@@ -223,7 +224,7 @@ const ConfigPrompt: FC<Props> = ({
             <div>
               <Editor
                 instanceId={`${nodeId}-chat-workflow-llm-prompt-editor`}
-                title={<span className="capitalize">{t(`${i18nPrefix}.prompt`)}</span>}
+                title={<span className="capitalize">{t(`${i18nPrefix}.prompt`, { ns: 'workflow' })}</span>}
                 value={((payload as PromptItem).edition_type === EditionType.basic || !(payload as PromptItem).edition_type) ? (payload as PromptItem).text : ((payload as PromptItem).jinja2_text || '')}
                 onChange={handleCompletionPromptChange}
                 readOnly={readOnly}

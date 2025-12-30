@@ -4,7 +4,7 @@ import {
   RiEditLine,
   RiFileEditLine,
 } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
 import Toast from '@/app/components/base/toast'
@@ -47,7 +47,7 @@ const AnnotationCtrlButton: FC<Props> = ({
       answer,
     })
     Toast.notify({
-      message: t('common.api.actionSuccess') as string,
+      message: t('api.actionSuccess', { ns: 'common' }) as string,
       type: 'success',
     })
     onAdded(res.id, res.account?.name ?? '')
@@ -57,7 +57,7 @@ const AnnotationCtrlButton: FC<Props> = ({
     <>
       {cached && (
         <Tooltip
-          popupContent={t('appDebug.feature.annotation.edit')}
+          popupContent={t('feature.annotation.edit', { ns: 'appDebug' })}
         >
           <ActionButton onClick={onEdit}>
             <RiEditLine className="h-4 w-4" />
@@ -66,7 +66,7 @@ const AnnotationCtrlButton: FC<Props> = ({
       )}
       {!cached && answer && (
         <Tooltip
-          popupContent={t('appDebug.feature.annotation.add')}
+          popupContent={t('feature.annotation.add', { ns: 'appDebug' })}
         >
           <ActionButton onClick={handleAdd}>
             <RiFileEditLine className="h-4 w-4" />

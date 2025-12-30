@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import { RiCloseLine } from '@remixicon/react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
 import { LoadingPlaceholder } from '@/app/components/plugins/card/base/placeholder'
@@ -31,10 +31,10 @@ const LoadingError: FC = () => {
           </div>
           <div className="ml-3 grow">
             <div className="system-md-semibold flex h-5 items-center text-text-destructive">
-              {t('plugin.installModal.pluginLoadError')}
+              {t('installModal.pluginLoadError', { ns: 'plugin' })}
             </div>
             <div className="system-xs-regular mt-0.5 text-text-tertiary">
-              {t('plugin.installModal.pluginLoadErrorDesc')}
+              {t('installModal.pluginLoadErrorDesc', { ns: 'plugin' })}
             </div>
           </div>
         </div>

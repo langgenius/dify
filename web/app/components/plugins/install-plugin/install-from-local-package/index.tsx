@@ -1,7 +1,8 @@
 'use client'
 
 import type { Dependency, PluginDeclaration } from '../../types'
-import React, { useCallback, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Modal from '@/app/components/base/modal'
 import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
@@ -12,7 +13,7 @@ import ReadyToInstallBundle from '../install-bundle/ready-to-install'
 import ReadyToInstallPackage from './ready-to-install'
 import Uploading from './steps/uploading'
 
-const i18nPrefix = 'plugin.installModal'
+const i18nPrefix = 'installModal'
 
 type InstallFromLocalPackageProps = {
   file: File
@@ -42,15 +43,15 @@ const InstallFromLocalPackage: React.FC<InstallFromLocalPackageProps> = ({
 
   const getTitle = useCallback(() => {
     if (step === InstallStep.uploadFailed)
-      return t(`${i18nPrefix}.uploadFailed`)
+      return t(`${i18nPrefix}.uploadFailed`, { ns: 'plugin' })
     if (isBundle && step === InstallStep.installed)
-      return t(`${i18nPrefix}.installComplete`)
+      return t(`${i18nPrefix}.installComplete`, { ns: 'plugin' })
     if (step === InstallStep.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`)
+      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
     if (step === InstallStep.installFailed)
-      return t(`${i18nPrefix}.installFailed`)
+      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
 
-    return t(`${i18nPrefix}.installPlugin`)
+    return t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
   }, [isBundle, step, t])
 
   const { getIconUrl } = useGetIcon()

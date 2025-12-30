@@ -14,6 +14,15 @@ class TemplateTransformer(ABC):
     _result_tag: str = "<<RESULT>>"
 
     @classmethod
+    def serialize_code(cls, code: str) -> str:
+        """
+        Serialize template code to base64 to safely embed in generated script.
+        This prevents issues with special characters like quotes breaking the script.
+        """
+        code_bytes = code.encode("utf-8")
+        return b64encode(code_bytes).decode("utf-8")
+
+    @classmethod
     def transform_caller(cls, code: str, inputs: Mapping[str, Any]) -> tuple[str, str]:
         """
         Transform code to python runner

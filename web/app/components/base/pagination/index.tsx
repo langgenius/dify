@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
@@ -158,7 +158,7 @@ const CustomizedPagination: FC<Props> = ({
       </div>
       {onLimitChange && (
         <div className="flex shrink-0 items-center gap-2">
-          <div className="system-2xs-regular-uppercase w-[51px] shrink-0 text-end text-text-tertiary">{showPerPageTip ? t('common.pagination.perPage') : ''}</div>
+          <div className="system-2xs-regular-uppercase w-[51px] shrink-0 text-end text-text-tertiary">{showPerPageTip ? t('pagination.perPage', { ns: 'common' }) : ''}</div>
           <div
             className="flex items-center gap-[1px] rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
             onMouseEnter={() => setShowPerPageTip(true)}
