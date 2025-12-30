@@ -12,8 +12,10 @@ import { useTranslation } from 'react-i18next'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
+import { Plan } from '@/app/components/billing/type'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
 import { useWorkflowLogs } from '@/service/use-log'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
@@ -34,6 +36,15 @@ export type QueryParam = {
 const Logs: FC<ILogsProps> = ({ appDetail }) => {
   const { t } = useTranslation()
   const { userProfile: { timezone } } = useAppContext()
+  const { plan } = useProviderContext()
+  const isFreePlan = plan.type === Plan.sandbox
+  const isTeamOrProfessional = plan.type === Plan.team || plan.type === Plan.professional
+  const periodKeys = isFreePlan
+    ? ['1', '2', '3']
+    : isTeamOrProfessional
+      ? ['1', '2', '3', '4']
+      : Object.keys(TIME_PERIOD_MAPPING)
+  const clearPeriod = isFreePlan ? '3' : (isTeamOrProfessional ? '4' : '9')
   const [queryParams, setQueryParams] = useState<QueryParam>({ status: 'all', period: '2' })
   const [currPage, setCurrPage] = React.useState<number>(0)
   const debouncedQueryParams = useDebounce(queryParams, { wait: 500 })
@@ -65,7 +76,12 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
       <h1 className="system-xl-semibold text-text-primary">{t('workflowTitle', { ns: 'appLog' })}</h1>
       <p className="system-sm-regular text-text-tertiary">{t('workflowSubtitle', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
-        <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
+        <Filter
+          queryParams={queryParams}
+          setQueryParams={setQueryParams}
+          periodKeys={periodKeys}
+          clearPeriod={clearPeriod}
+        />
         {/* workflow log */}
         {total === undefined
           ? <Loading type="app" />

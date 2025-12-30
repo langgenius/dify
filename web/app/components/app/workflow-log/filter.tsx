@@ -32,9 +32,11 @@ export const TIME_PERIOD_MAPPING: { [key: string]: { value: number, name: TimePe
 type IFilterProps = {
   queryParams: QueryParam
   setQueryParams: (v: QueryParam) => void
+  periodKeys: string[]
+  clearPeriod: string
 }
 
-const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps) => {
+const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams, periodKeys, clearPeriod }: IFilterProps) => {
   const { t } = useTranslation()
   return (
     <div className="mb-2 flex flex-row flex-wrap gap-2">
@@ -57,8 +59,8 @@ const Filter: FC<IFilterProps> = ({ queryParams, setQueryParams }: IFilterProps)
         onSelect={(item) => {
           setQueryParams({ ...queryParams, period: item.value })
         }}
-        onClear={() => setQueryParams({ ...queryParams, period: '9' })}
-        items={Object.entries(TIME_PERIOD_MAPPING).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
+        onClear={() => setQueryParams({ ...queryParams, period: clearPeriod })}
+        items={periodKeys.map(k => ({ value: k, name: t(`filter.period.${TIME_PERIOD_MAPPING[k].name}`, { ns: 'appLog' }) }))}
       />
       <Input
         wrapperClassName="w-[200px]"
