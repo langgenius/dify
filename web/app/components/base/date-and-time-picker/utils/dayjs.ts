@@ -132,7 +132,7 @@ export type ToDayjsOptions = {
 }
 
 const warnParseFailure = (value: string) => {
-  if (IS_DEV)
+  if (!IS_PROD)
     console.warn('[TimePicker] Failed to parse time value', value)
 }
 
