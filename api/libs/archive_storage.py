@@ -11,7 +11,7 @@ import hashlib
 import json
 import logging
 from collections.abc import Generator
-from typing import Any
+from typing import Any, cast
 
 import boto3
 from botocore.client import Config
@@ -285,19 +285,16 @@ class ArchiveStorage:
     @staticmethod
     def _serialize_record(record: dict[str, Any]) -> dict[str, Any]:
         """Serialize a single record, converting special types."""
-        from datetime import datetime
+        def _serialize(item: Any) -> Any:
+            if isinstance(item, datetime.datetime):
+                return item.isoformat()
+            if isinstance(item, dict):
+                return {key: _serialize(value) for key, value in item.items()}
+            if isinstance(item, list):
+                return [_serialize(value) for value in item]
+            return item
 
-        result = {}
-        for key, value in record.items():
-            if isinstance(value, datetime):
-                result[key] = value.isoformat()
-            elif isinstance(value, dict):
-                result[key] = ArchiveStorage._serialize_record(value)
-            elif isinstance(value, list):
-                result[key] = [ArchiveStorage._serialize_record(v) if isinstance(v, dict) else v for v in value]
-            else:
-                result[key] = value
-        return result
+        return cast(dict[str, Any], _serialize(record))
 
     @staticmethod
     def compute_checksum(data: bytes) -> str:
