@@ -1,5 +1,15 @@
-import CheckboxList from '@/app/components/base/checkbox-list'
+import type { AnyFieldApi } from '@tanstack/react-form'
 import type { FieldState, FormSchema, TypeWithI18N } from '@/app/components/base/form/types'
+import { RiExternalLinkLine } from '@remixicon/react'
+import { useStore } from '@tanstack/react-form'
+import {
+  isValidElement,
+  memo,
+  useCallback,
+  useMemo,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import CheckboxList from '@/app/components/base/checkbox-list'
 import { FormItemValidateStatusEnum, FormTypeEnum } from '@/app/components/base/form/types'
 import Input from '@/app/components/base/input'
 import Radio from '@/app/components/base/radio'
@@ -9,16 +19,6 @@ import Tooltip from '@/app/components/base/tooltip'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { useTriggerPluginDynamicOptions } from '@/service/use-triggers'
 import { cn } from '@/utils/classnames'
-import { RiExternalLinkLine } from '@remixicon/react'
-import type { AnyFieldApi } from '@tanstack/react-form'
-import { useStore } from '@tanstack/react-form'
-import {
-  isValidElement,
-  memo,
-  useCallback,
-  useMemo,
-} from 'react'
-import { useTranslation } from 'react-i18next'
 
 const getExtraProps = (type: FormTypeEnum) => {
   switch (type) {
@@ -119,7 +119,8 @@ const BaseField = ({
       description,
       help,
     ].map(v => getTranslatedContent({ content: v, render: renderI18nObject }))
-    if (!results[1]) results[1] = t('common.placeholder.input')
+    if (!results[1])
+      results[1] = t('placeholder.input', { ns: 'common' })
     return results
   }, [label, placeholder, tooltip, description, help, renderI18nObject])
 
@@ -192,13 +193,13 @@ const BaseField = ({
           {translatedLabel}
           {
             required && !isValidElement(label) && (
-              <span className='ml-1 text-text-destructive-secondary'>*</span>
+              <span className="ml-1 text-text-destructive-secondary">*</span>
             )
           }
           {tooltip && (
             <Tooltip
-              popupContent={<div className='w-[200px]'>{translatedTooltip}</div>}
-              triggerClassName='ml-0.5 w-4 h-4'
+              popupContent={<div className="w-[200px]">{translatedTooltip}</div>}
+              triggerClassName="ml-0.5 w-4 h-4"
             />
           )}
         </div>
@@ -243,7 +244,7 @@ const BaseField = ({
                 value={value}
                 onChange={v => field.handleChange(v)}
                 options={memorizedOptions}
-                maxHeight='200px'
+                maxHeight="200px"
               />
             )
           }
@@ -256,11 +257,12 @@ const BaseField = ({
                 disabled={disabled || isDynamicOptionsLoading}
                 placeholder={
                   isDynamicOptionsLoading
-                    ? t('common.dynamicSelect.loading')
+                    ? t('dynamicSelect.loading', { ns: 'common' })
                     : translatedPlaceholder
                 }
-                {...(dynamicOptionsError ? { popupProps: { title: t('common.dynamicSelect.error'), titleClassName: 'text-text-destructive-secondary' } }
-                  : (!dynamicOptions.length ? { popupProps: { title: t('common.dynamicSelect.noData') } } : {}))}
+                {...(dynamicOptionsError
+                  ? { popupProps: { title: t('dynamicSelect.error', { ns: 'common' }), titleClassName: 'text-text-destructive-secondary' } }
+                  : (!dynamicOptions.length ? { popupProps: { title: t('dynamicSelect.noData', { ns: 'common' }) } } : {}))}
                 triggerPopupSameWidth
                 multiple={multiple}
               />
@@ -270,7 +272,8 @@ const BaseField = ({
             formItemType === FormTypeEnum.radio && (
               <div className={cn(
                 memorizedOptions.length < 3 ? 'flex items-center space-x-2' : 'space-y-2',
-              )}>
+              )}
+              >
                 {
                   memorizedOptions.map(option => (
                     <div
@@ -286,7 +289,7 @@ const BaseField = ({
                       {
                         formSchema.showRadioUI && (
                           <RadioE
-                            className='mr-2'
+                            className="mr-2"
                             isChecked={value === option.value}
                           />
                         )
@@ -301,11 +304,11 @@ const BaseField = ({
           {
             formItemType === FormTypeEnum.boolean && (
               <Radio.Group
-                className='flex w-fit items-center'
+                className="flex w-fit items-center"
                 value={value}
                 onChange={v => field.handleChange(v)}
               >
-                <Radio value={true} className='!mr-1'>True</Radio>
+                <Radio value={true} className="!mr-1">True</Radio>
                 <Radio value={false}>False</Radio>
               </Radio.Group>
             )
@@ -314,28 +317,29 @@ const BaseField = ({
             <div className={cn(
               'system-xs-regular mt-1 px-0 py-[2px]',
               VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].textClassName,
-            )}>
+            )}
+            >
               {fieldState?.[VALIDATE_STATUS_STYLE_MAP[fieldState?.validateStatus].infoFieldName as keyof FieldState]}
             </div>
           )}
         </div>
       </div>
       {description && (
-        <div className='system-xs-regular mt-4 text-text-tertiary'>
+        <div className="system-xs-regular mt-4 text-text-tertiary">
           {translatedDescription}
         </div>
       )}
       {
         url && (
           <a
-            className='system-xs-regular mt-4 flex items-center text-text-accent'
+            className="system-xs-regular mt-4 flex items-center text-text-accent"
             href={url}
-            target='_blank'
+            target="_blank"
           >
-            <span className='break-all'>
+            <span className="break-all">
               {translatedHelp}
             </span>
-            <RiExternalLinkLine className='ml-1 h-3 w-3 shrink-0' />
+            <RiExternalLinkLine className="ml-1 h-3 w-3 shrink-0" />
           </a>
         )
       }

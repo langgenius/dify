@@ -1,15 +1,15 @@
+import type { NodeProps } from 'reactflow'
+import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import {
   memo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import type { NodeProps } from 'reactflow'
+import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
 import {
   NoteEditor,
   NoteEditorContextProvider,
 } from '@/app/components/workflow/note-node/note-editor'
-import { THEME_MAP } from '@/app/components/workflow/note-node/constants'
-import type { NoteNodeType } from '@/app/components/workflow/note-node/types'
 import { cn } from '@/utils/classnames'
 
 const NoteNode = ({
@@ -41,20 +41,23 @@ const NoteNode = ({
             className={cn(
               'h-2 shrink-0 rounded-t-md opacity-50',
               THEME_MAP[theme].title,
-            )}></div>
-          <div className='grow overflow-y-auto px-3 py-2.5'>
+            )}
+          >
+          </div>
+          <div className="grow overflow-y-auto px-3 py-2.5">
             <div className={cn(
               data.selected && 'nodrag nopan nowheel cursor-text',
-            )}>
+            )}
+            >
               <NoteEditor
                 containerElement={ref.current}
-                placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
+                placeholder={t('nodes.note.editor.placeholder', { ns: 'workflow' }) || ''}
               />
             </div>
           </div>
           {
             data.showAuthor && (
-              <div className='p-3 pt-0 text-xs text-text-tertiary'>
+              <div className="p-3 pt-0 text-xs text-text-tertiary">
                 {data.author}
               </div>
             )

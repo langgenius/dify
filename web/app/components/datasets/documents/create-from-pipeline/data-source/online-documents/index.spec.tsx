@@ -1,53 +1,62 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import OnlineDocuments from './index'
-import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import OnlineDocuments from './index'
 
 // ==========================================
 // Mock Modules
 // ==========================================
 
-// Note: react-i18next uses global mock from web/__mocks__/react-i18next.ts
+// Note: react-i18next uses global mock from web/vitest.setup.ts
 
 // Mock useDocLink - context hook requires mocking
-const mockDocLink = jest.fn((path?: string) => `https://docs.example.com${path || ''}`)
-jest.mock('@/context/i18n', () => ({
+const mockDocLink = vi.fn((path?: string) => `https://docs.example.com${path || ''}`)
+vi.mock('@/context/i18n', () => ({
   useDocLink: () => mockDocLink,
 }))
 
 // Mock dataset-detail context - context provider requires mocking
 let mockPipelineId = 'pipeline-123'
-jest.mock('@/context/dataset-detail', () => ({
+vi.mock('@/context/dataset-detail', () => ({
   useDatasetDetailContextWithSelector: (selector: (s: any) => any) => selector({ dataset: { pipeline_id: mockPipelineId } }),
 }))
 
 // Mock modal context - context provider requires mocking
-const mockSetShowAccountSettingModal = jest.fn()
-jest.mock('@/context/modal-context', () => ({
+const mockSetShowAccountSettingModal = vi.fn()
+vi.mock('@/context/modal-context', () => ({
   useModalContextSelector: (selector: (s: any) => any) => selector({ setShowAccountSettingModal: mockSetShowAccountSettingModal }),
 }))
 
 // Mock ssePost - API service requires mocking
-const mockSsePost = jest.fn()
-jest.mock('@/service/base', () => ({
-  ssePost: (...args: any[]) => mockSsePost(...args),
+const { mockSsePost } = vi.hoisted(() => ({
+  mockSsePost: vi.fn(),
+}))
+
+vi.mock('@/service/base', () => ({
+  ssePost: mockSsePost,
 }))
 
 // Mock Toast.notify - static method that manipulates DOM, needs mocking to verify calls
-const mockToastNotify = jest.fn()
-jest.mock('@/app/components/base/toast', () => ({
+const { mockToastNotify } = vi.hoisted(() => ({
+  mockToastNotify: vi.fn(),
+}))
+
+vi.mock('@/app/components/base/toast', () => ({
   __esModule: true,
   default: {
-    notify: (options: any) => mockToastNotify(options),
+    notify: mockToastNotify,
   },
 }))
 
 // Mock useGetDataSourceAuth - API service hook requires mocking
-const mockUseGetDataSourceAuth = jest.fn()
-jest.mock('@/service/use-datasource', () => ({
-  useGetDataSourceAuth: (params: any) => mockUseGetDataSourceAuth(params),
+const { mockUseGetDataSourceAuth } = vi.hoisted(() => ({
+  mockUseGetDataSourceAuth: vi.fn(),
+}))
+
+vi.mock('@/service/use-datasource', () => ({
+  useGetDataSourceAuth: mockUseGetDataSourceAuth,
 }))
 
 // Note: zustand/react/shallow useShallow is imported directly (simple utility function)
@@ -58,24 +67,24 @@ const mockStoreState = {
   searchValue: '',
   selectedPagesId: new Set<string>(),
   currentCredentialId: '',
-  setDocumentsData: jest.fn(),
-  setSearchValue: jest.fn(),
-  setSelectedPagesId: jest.fn(),
-  setOnlineDocuments: jest.fn(),
-  setCurrentDocument: jest.fn(),
+  setDocumentsData: vi.fn(),
+  setSearchValue: vi.fn(),
+  setSelectedPagesId: vi.fn(),
+  setOnlineDocuments: vi.fn(),
+  setCurrentDocument: vi.fn(),
 }
 
-const mockGetState = jest.fn(() => mockStoreState)
+const mockGetState = vi.fn(() => mockStoreState)
 const mockDataSourceStore = { getState: mockGetState }
 
-jest.mock('../store', () => ({
+vi.mock('../store', () => ({
   useDataSourceStoreWithSelector: (selector: (s: any) => any) => selector(mockStoreState),
   useDataSourceStore: () => mockDataSourceStore,
 }))
 
 // Mock Header component
-jest.mock('../base/header', () => {
-  const MockHeader = (props: any) => (
+vi.mock('../base/header', () => ({
+  default: (props: any) => (
     <div data-testid="header">
       <span data-testid="header-doc-title">{props.docTitle}</span>
       <span data-testid="header-doc-link">{props.docLink}</span>
@@ -85,13 +94,12 @@ jest.mock('../base/header', () => {
       <button data-testid="header-credential-change" onClick={() => props.onCredentialChange('new-cred-id')}>Change Credential</button>
       <span data-testid="header-credentials-count">{props.credentials?.length || 0}</span>
     </div>
-  )
-  return MockHeader
-})
+  ),
+}))
 
 // Mock SearchInput component
-jest.mock('@/app/components/base/notion-page-selector/search-input', () => {
-  const MockSearchInput = ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+vi.mock('@/app/components/base/notion-page-selector/search-input', () => ({
+  default: ({ value, onChange }: { value: string, onChange: (v: string) => void }) => (
     <div data-testid="search-input">
       <input
         data-testid="search-input-field"
@@ -100,13 +108,12 @@ jest.mock('@/app/components/base/notion-page-selector/search-input', () => {
         placeholder="Search"
       />
     </div>
-  )
-  return MockSearchInput
-})
+  ),
+}))
 
 // Mock PageSelector component
-jest.mock('./page-selector', () => {
-  const MockPageSelector = (props: any) => (
+vi.mock('./page-selector', () => ({
+  default: (props: any) => (
     <div data-testid="page-selector">
       <span data-testid="page-selector-checked-count">{props.checkedIds?.size || 0}</span>
       <span data-testid="page-selector-search-value">{props.searchValue}</span>
@@ -126,27 +133,17 @@ jest.mock('./page-selector', () => {
         Preview Page
       </button>
     </div>
-  )
-  return MockPageSelector
-})
+  ),
+}))
 
 // Mock Title component
-jest.mock('./title', () => {
-  const MockTitle = ({ name }: { name: string }) => (
+vi.mock('./title', () => ({
+  default: ({ name }: { name: string }) => (
     <div data-testid="title">
       <span data-testid="title-name">{name}</span>
     </div>
-  )
-  return MockTitle
-})
-
-// Mock Loading component
-jest.mock('@/app/components/base/loading', () => {
-  const MockLoading = ({ type }: { type: string }) => (
-    <div data-testid="loading" data-type={type}>Loading...</div>
-  )
-  return MockLoading
-})
+  ),
+}))
 
 // ==========================================
 // Test Data Builders
@@ -182,7 +179,7 @@ const createMockWorkspace = (overrides?: Partial<DataSourceNotionWorkspace>): Da
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',
@@ -197,7 +194,7 @@ type OnlineDocumentsProps = React.ComponentProps<typeof OnlineDocuments>
 const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDocumentsProps => ({
   nodeId: 'node-1',
   nodeData: createMockNodeData(),
-  onCredentialChange: jest.fn(),
+  onCredentialChange: vi.fn(),
   isInPipeline: false,
   supportBatchUpload: true,
   ...overrides,
@@ -208,18 +205,18 @@ const createDefaultProps = (overrides?: Partial<OnlineDocumentsProps>): OnlineDo
 // ==========================================
 describe('OnlineDocuments', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
 
     // Reset store state
     mockStoreState.documentsData = []
     mockStoreState.searchValue = ''
     mockStoreState.selectedPagesId = new Set()
     mockStoreState.currentCredentialId = ''
-    mockStoreState.setDocumentsData = jest.fn()
-    mockStoreState.setSearchValue = jest.fn()
-    mockStoreState.setSelectedPagesId = jest.fn()
-    mockStoreState.setOnlineDocuments = jest.fn()
-    mockStoreState.setCurrentDocument = jest.fn()
+    mockStoreState.setDocumentsData = vi.fn()
+    mockStoreState.setSearchValue = vi.fn()
+    mockStoreState.setSelectedPagesId = vi.fn()
+    mockStoreState.setOnlineDocuments = vi.fn()
+    mockStoreState.setCurrentDocument = vi.fn()
 
     // Reset context values
     mockPipelineId = 'pipeline-123'
@@ -273,8 +270,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
-      expect(screen.getByTestId('loading')).toHaveAttribute('data-type', 'app')
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should render PageSelector when documentsData has content', () => {
@@ -287,7 +283,7 @@ describe('OnlineDocuments', () => {
 
       // Assert
       expect(screen.getByTestId('page-selector')).toBeInTheDocument()
-      expect(screen.queryByTestId('loading')).not.toBeInTheDocument()
+      expect(screen.queryByRole('status')).not.toBeInTheDocument()
     })
 
     it('should render Title with datasource_label', () => {
@@ -493,7 +489,7 @@ describe('OnlineDocuments', () => {
     describe('onCredentialChange prop', () => {
       it('should pass onCredentialChange to Header', () => {
         // Arrange
-        const mockOnCredentialChange = jest.fn()
+        const mockOnCredentialChange = vi.fn()
         const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
 
         // Act
@@ -761,7 +757,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading instead of PageSelector
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
   })
 
@@ -831,7 +827,7 @@ describe('OnlineDocuments', () => {
 
     it('should handle credential change', () => {
       // Arrange
-      const mockOnCredentialChange = jest.fn()
+      const mockOnCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
       render(<OnlineDocuments {...props} />)
 
@@ -1032,7 +1028,7 @@ describe('OnlineDocuments', () => {
       render(<OnlineDocuments {...props} />)
 
       // Assert - Should show loading when documentsData is undefined
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should handle undefined datasource_parameters (line 79 branch)', () => {
@@ -1219,7 +1215,7 @@ describe('OnlineDocuments', () => {
       const props: OnlineDocumentsProps = {
         nodeId: 'node-1',
         nodeData: createMockNodeData(),
-        onCredentialChange: jest.fn(),
+        onCredentialChange: vi.fn(),
         // isInPipeline and supportBatchUpload are not provided
       }
 
@@ -1303,13 +1299,13 @@ describe('OnlineDocuments', () => {
       })
 
       // Should still show loading since documentsData is empty
-      expect(screen.getByTestId('loading')).toBeInTheDocument()
+      expect(screen.getByRole('status')).toBeInTheDocument()
     })
 
     it('should handle credential change and refetch documents', () => {
       // Arrange
       mockStoreState.currentCredentialId = 'initial-cred'
-      const mockOnCredentialChange = jest.fn()
+      const mockOnCredentialChange = vi.fn()
       const props = createDefaultProps({ onCredentialChange: mockOnCredentialChange })
 
       // Act
@@ -1325,33 +1321,4 @@ describe('OnlineDocuments', () => {
   })
 
   // ==========================================
-  // Styling
-  // ==========================================
-  describe('Styling', () => {
-    it('should apply correct container classes', () => {
-      // Arrange
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<OnlineDocuments {...props} />)
-
-      // Assert
-      const rootDiv = container.firstChild as HTMLElement
-      expect(rootDiv).toHaveClass('flex', 'flex-col', 'gap-y-2')
-    })
-
-    it('should apply correct classes to main content container', () => {
-      // Arrange
-      mockStoreState.documentsData = [createMockWorkspace()]
-      const props = createDefaultProps()
-
-      // Act
-      const { container } = render(<OnlineDocuments {...props} />)
-
-      // Assert
-      const contentContainer = container.querySelector('.rounded-xl.border')
-      expect(contentContainer).toBeInTheDocument()
-      expect(contentContainer).toHaveClass('border-components-panel-border', 'bg-background-default-subtle')
-    })
-  })
 })

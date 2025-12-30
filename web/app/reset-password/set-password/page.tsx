@@ -1,15 +1,15 @@
 'use client'
-import { useCallback, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter, useSearchParams } from 'next/navigation'
-import { cn } from '@/utils/classnames'
 import { RiCheckboxCircleFill } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
+import { useRouter, useSearchParams } from 'next/navigation'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import { changePasswordWithToken } from '@/service/common'
-import Toast from '@/app/components/base/toast'
 import Input from '@/app/components/base/input'
+import Toast from '@/app/components/base/toast'
 import { validPassword } from '@/config'
+import { changePasswordWithToken } from '@/service/common'
+import { cn } from '@/utils/classnames'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -50,15 +50,15 @@ const ChangePasswordForm = () => {
 
   const valid = useCallback(() => {
     if (!password.trim()) {
-      showErrorMessage(t('login.error.passwordEmpty'))
+      showErrorMessage(t('error.passwordEmpty', { ns: 'login' }))
       return false
     }
     if (!validPassword.test(password)) {
-      showErrorMessage(t('login.error.passwordInvalid'))
+      showErrorMessage(t('error.passwordInvalid', { ns: 'login' }))
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t('common.account.notEqual'))
+      showErrorMessage(t('account.notEqual', { ns: 'common' }))
       return false
     }
     return true
@@ -91,62 +91,64 @@ const ChangePasswordForm = () => {
         'px-6',
         'md:px-[108px]',
       )
-    }>
+    }
+    >
       {!showSuccess && (
-        <div className='flex flex-col md:w-[400px]'>
+        <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <h2 className="title-4xl-semi-bold text-text-primary">
-              {t('login.changePassword')}
+              {t('changePassword', { ns: 'login' })}
             </h2>
-            <p className='body-md-regular mt-2 text-text-secondary'>
-              {t('login.changePasswordTip')}
+            <p className="body-md-regular mt-2 text-text-secondary">
+              {t('changePasswordTip', { ns: 'login' })}
             </p>
           </div>
 
           <div className="mx-auto mt-6 w-full">
             <div>
               {/* Password */}
-              <div className='mb-5'>
+              <div className="mb-5">
                 <label htmlFor="password" className="system-md-semibold my-2 text-text-secondary">
-                  {t('common.account.newPassword')}
+                  {t('account.newPassword', { ns: 'common' })}
                 </label>
-                <div className='relative mt-1'>
+                <div className="relative mt-1">
                   <Input
-                    id="password" type={showPassword ? 'text' : 'password'}
+                    id="password"
+                    type={showPassword ? 'text' : 'password'}
                     value={password}
                     onChange={e => setPassword(e.target.value)}
-                    placeholder={t('login.passwordPlaceholder') || ''}
+                    placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
                   />
 
                   <div className="absolute inset-y-0 right-0 flex items-center">
                     <Button
                       type="button"
-                      variant='ghost'
+                      variant="ghost"
                       onClick={() => setShowPassword(!showPassword)}
                     >
                       {showPassword ? '👀' : '😝'}
                     </Button>
                   </div>
                 </div>
-                <div className='body-xs-regular mt-1 text-text-secondary'>{t('login.error.passwordInvalid')}</div>
+                <div className="body-xs-regular mt-1 text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
               </div>
               {/* Confirm Password */}
-              <div className='mb-5'>
+              <div className="mb-5">
                 <label htmlFor="confirmPassword" className="system-md-semibold my-2 text-text-secondary">
-                  {t('common.account.confirmPassword')}
+                  {t('account.confirmPassword', { ns: 'common' })}
                 </label>
-                <div className='relative mt-1'>
+                <div className="relative mt-1">
                   <Input
                     id="confirmPassword"
                     type={showConfirmPassword ? 'text' : 'password'}
                     value={confirmPassword}
                     onChange={e => setConfirmPassword(e.target.value)}
-                    placeholder={t('login.confirmPasswordPlaceholder') || ''}
+                    placeholder={t('confirmPasswordPlaceholder', { ns: 'login' }) || ''}
                   />
                   <div className="absolute inset-y-0 right-0 flex items-center">
                     <Button
                       type="button"
-                      variant='ghost'
+                      variant="ghost"
                       onClick={() => setShowConfirmPassword(!showConfirmPassword)}
                     >
                       {showConfirmPassword ? '👀' : '😝'}
@@ -156,11 +158,11 @@ const ChangePasswordForm = () => {
               </div>
               <div>
                 <Button
-                  variant='primary'
-                  className='w-full'
+                  variant="primary"
+                  className="w-full"
                   onClick={handleChangePassword}
                 >
-                  {t('login.changePasswordBtn')}
+                  {t('changePasswordBtn', { ns: 'login' })}
                 </Button>
               </div>
             </div>
@@ -171,17 +173,28 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-14 w-14 items-center justify-center rounded-2xl border border-components-panel-border-subtle font-bold shadow-lg">
-              <RiCheckboxCircleFill className='h-6 w-6 text-text-success' />
+              <RiCheckboxCircleFill className="h-6 w-6 text-text-success" />
             </div>
             <h2 className="title-4xl-semi-bold text-text-primary">
-              {t('login.passwordChangedTip')}
+              {t('passwordChangedTip', { ns: 'login' })}
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant='primary' className='w-full' onClick={() => {
-              setLeftTime(undefined)
-              router.replace(getSignInUrl())
-            }}>{t('login.passwordChanged')} ({Math.round(countdown / 1000)}) </Button>
+            <Button
+              variant="primary"
+              className="w-full"
+              onClick={() => {
+                setLeftTime(undefined)
+                router.replace(getSignInUrl())
+              }}
+            >
+              {t('passwordChanged', { ns: 'login' })}
+              {' '}
+              (
+              {Math.round(countdown / 1000)}
+              )
+              {' '}
+            </Button>
           </div>
         </div>
       )}

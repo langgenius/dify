@@ -1,24 +1,3 @@
-import {
-  Fragment,
-  memo,
-  useCallback,
-  useState,
-} from 'react'
-import {
-  RiAddLine,
-} from '@remixicon/react'
-import { useTranslation } from 'react-i18next'
-import {
-  PortalToFollowElem,
-  PortalToFollowElemContent,
-  PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import type {
-  PortalToFollowElemOptions,
-} from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import { cn } from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
 import type {
   ConfigurationMethodEnum,
   Credential,
@@ -27,13 +6,34 @@ import type {
   ModelModalModeEnum,
   ModelProvider,
 } from '../../declarations'
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  RiAddLine,
+} from '@remixicon/react'
+import {
+  Fragment,
+  memo,
+  useCallback,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import {
+  PortalToFollowElem,
+  PortalToFollowElemContent,
+  PortalToFollowElemTrigger,
+} from '@/app/components/base/portal-to-follow-elem'
+import { cn } from '@/utils/classnames'
 import { useAuth } from '../hooks'
 import AuthorizedItem from './authorized-item'
 
 type AuthorizedProps = {
-  provider: ModelProvider,
-  configurationMethod: ConfigurationMethodEnum,
-  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields,
+  provider: ModelProvider
+  configurationMethod: ConfigurationMethodEnum
+  currentCustomConfigurationModelFixedFields?: CustomConfigurationModelFixedFields
   authParams?: {
     isModelCredential?: boolean
     onUpdate?: (newPayload?: any, formValues?: Record<string, any>) => void
@@ -164,19 +164,20 @@ const Authorized = ({
         >
           {renderTrigger(mergedIsOpen)}
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[100]'>
+        <PortalToFollowElemContent className="z-[100]">
           <div className={cn(
             'w-[360px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]',
             popupClassName,
-          )}>
+          )}
+          >
             {
               popupTitle && (
-                <div className='system-xs-medium px-3 pb-0.5 pt-[10px] text-text-tertiary'>
+                <div className="system-xs-medium px-3 pb-0.5 pt-[10px] text-text-tertiary">
                   {popupTitle}
                 </div>
               )
             }
-            <div className='max-h-[304px] overflow-y-auto'>
+            <div className="max-h-[304px] overflow-y-auto">
               {
                 items.map((item, index) => (
                   <Fragment key={index}>
@@ -197,14 +198,14 @@ const Authorized = ({
                     />
                     {
                       index !== items.length - 1 && (
-                        <div className='h-[1px] bg-divider-subtle'></div>
+                        <div className="h-[1px] bg-divider-subtle"></div>
                       )
                     }
                   </Fragment>
                 ))
               }
             </div>
-            <div className='h-[1px] bg-divider-subtle'></div>
+            <div className="h-[1px] bg-divider-subtle"></div>
             {
               isModelCredential && !notAllowCustomCredential && !hideAddAction && (
                 <div
@@ -212,26 +213,26 @@ const Authorized = ({
                     undefined,
                     currentCustomConfigurationModelFixedFields
                       ? {
-                        model: currentCustomConfigurationModelFixedFields.__model_name,
-                        model_type: currentCustomConfigurationModelFixedFields.__model_type,
-                      }
+                          model: currentCustomConfigurationModelFixedFields.__model_name,
+                          model_type: currentCustomConfigurationModelFixedFields.__model_type,
+                        }
                       : undefined,
                   )}
-                  className='system-xs-medium flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only'
+                  className="system-xs-medium flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only"
                 >
-                  <RiAddLine className='mr-1 h-4 w-4' />
-                  {t('common.modelProvider.auth.addModelCredential')}
+                  <RiAddLine className="mr-1 h-4 w-4" />
+                  {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
                 </div>
               )
             }
             {
               !isModelCredential && !notAllowCustomCredential && !hideAddAction && (
-                <div className='p-2'>
+                <div className="p-2">
                   <Button
                     onClick={() => handleEdit()}
-                    className='w-full'
+                    className="w-full"
                   >
-                    {t('common.modelProvider.auth.addApiKey')}
+                    {t('modelProvider.auth.addApiKey', { ns: 'common' })}
                   </Button>
                 </div>
               )
@@ -243,7 +244,7 @@ const Authorized = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title={t('common.modelProvider.confirmDelete')}
+            title={t('modelProvider.confirmDelete', { ns: 'common' })}
             isDisabled={doingAction}
             onCancel={closeConfirmDelete}
             onConfirm={handleConfirmDelete}

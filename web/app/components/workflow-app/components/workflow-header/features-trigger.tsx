@@ -1,48 +1,48 @@
+import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
+import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
+import type {
+  CommonEdgeType,
+  Node,
+} from '@/app/components/workflow/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
+import { RiApps2AddLine } from '@remixicon/react'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
-import { useEdges } from 'reactflow'
-import { RiApps2AddLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
-import {
-  useStore,
-  useWorkflowStore,
-} from '@/app/components/workflow/store'
+import { useEdges } from 'reactflow'
+import AppPublisher from '@/app/components/app/app-publisher'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import Button from '@/app/components/base/button'
+import { useFeatures } from '@/app/components/base/features/hooks'
+import { useToastContext } from '@/app/components/base/toast'
+import { Plan } from '@/app/components/billing/type'
 import {
   useChecklist,
   useChecklistBeforePublish,
+  useIsChatMode,
   useNodesReadOnly,
   useNodesSyncDraft,
   // useWorkflowRunValidation,
 } from '@/app/components/workflow/hooks'
-import Button from '@/app/components/base/button'
-import AppPublisher from '@/app/components/app/app-publisher'
-import { useFeatures } from '@/app/components/base/features/hooks'
-import type {
-  CommonEdgeType,
-  Node,
-} from '@/app/components/workflow/types'
+import {
+  useStore,
+  useWorkflowStore,
+} from '@/app/components/workflow/store'
+import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
 import {
   BlockEnum,
   InputVarType,
   isTriggerNode,
 } from '@/app/components/workflow/types'
-import { useToastContext } from '@/app/components/base/toast'
-import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
-import { useInvalidateAppTriggers } from '@/service/use-tools'
-import type { PublishWorkflowParams } from '@/types/workflow'
-import { fetchAppDetail } from '@/service/apps'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
-import { useIsChatMode } from '@/app/components/workflow/hooks'
-import type { StartNodeType } from '@/app/components/workflow/nodes/start/types'
-import type { EndNodeType } from '@/app/components/workflow/nodes/end/types'
 import { useProviderContext } from '@/context/provider-context'
-import { Plan } from '@/app/components/billing/type'
-import useNodes from '@/app/components/workflow/store/workflow/use-nodes'
+import useTheme from '@/hooks/use-theme'
+import { fetchAppDetail } from '@/service/apps'
+import { useInvalidateAppTriggers } from '@/service/use-tools'
+import { useInvalidateAppWorkflow, usePublishWorkflow, useResetWorkflowVersionHistory } from '@/service/use-workflow'
+import { cn } from '@/utils/classnames'
 
 const FeaturesTrigger = () => {
   const { t } = useTranslation()
@@ -146,7 +146,7 @@ const FeaturesTrigger = () => {
     //   throw new Error('Checklist has unresolved items')
 
     if (needWarningNodes.length > 0) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       throw new Error('Checklist has unresolved items')
     }
 
@@ -159,7 +159,7 @@ const FeaturesTrigger = () => {
       })
 
       if (res) {
-        notify({ type: 'success', message: t('common.api.actionSuccess') })
+        notify({ type: 'success', message: t('api.actionSuccess', { ns: 'common' }) })
         updatePublishedWorkflow(appID!)
         updateAppDetail()
         invalidateAppTriggers(appID!)
@@ -188,13 +188,13 @@ const FeaturesTrigger = () => {
       {isChatMode && (
         <Button
           className={cn(
-            'text-components-button-secondary-text',
-            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+            'rounded-lg border border-transparent text-components-button-secondary-text',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
           )}
           onClick={handleShowFeatures}
         >
-          <RiApps2AddLine className='mr-1 h-4 w-4 text-components-button-secondary-text' />
-          {t('workflow.common.features')}
+          <RiApps2AddLine className="mr-1 h-4 w-4 text-components-button-secondary-text" />
+          {t('common.features', { ns: 'workflow' })}
         </Button>
       )}
       <AppPublisher

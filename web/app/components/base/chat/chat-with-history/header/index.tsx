@@ -1,22 +1,22 @@
-import { useCallback, useState } from 'react'
+import type { ConversationItem } from '@/models/share'
 import {
   RiEditBoxLine,
   RiLayoutRight2Line,
   RiResetLeftLine,
 } from '@remixicon/react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
+import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
+import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import Confirm from '@/app/components/base/confirm'
+import Tooltip from '@/app/components/base/tooltip'
+import { cn } from '@/utils/classnames'
 import {
   useChatWithHistoryContext,
 } from '../context'
 import Operation from './operation'
-import ActionButton, { ActionButtonState } from '@/app/components/base/action-button'
-import AppIcon from '@/app/components/base/app-icon'
-import Tooltip from '@/app/components/base/tooltip'
-import ViewFormDropdown from '@/app/components/base/chat/chat-with-history/inputs-form/view-form-dropdown'
-import Confirm from '@/app/components/base/confirm'
-import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
-import type { ConversationItem } from '@/models/share'
-import { cn } from '@/utils/classnames'
 
 const Header = () => {
   const {
@@ -72,14 +72,14 @@ const Header = () => {
 
   return (
     <>
-      <div className='flex h-14 shrink-0 items-center justify-between p-3'>
+      <div className="flex h-14 shrink-0 items-center justify-between p-3">
         <div className={cn('flex items-center gap-1 transition-all duration-200 ease-in-out', !isSidebarCollapsed && 'user-select-none opacity-0')}>
-          <ActionButton className={cn(!isSidebarCollapsed && 'cursor-default')} size='l' onClick={() => handleSidebarCollapse(false)}>
-            <RiLayoutRight2Line className='h-[18px] w-[18px]' />
+          <ActionButton className={cn(!isSidebarCollapsed && 'cursor-default')} size="l" onClick={() => handleSidebarCollapse(false)}>
+            <RiLayoutRight2Line className="h-[18px] w-[18px]" />
           </ActionButton>
-          <div className='mr-1 shrink-0'>
+          <div className="mr-1 shrink-0">
             <AppIcon
-              size='large'
+              size="large"
               iconType={appData?.site.icon_type}
               icon={appData?.site.icon}
               background={appData?.site.icon_background}
@@ -91,7 +91,7 @@ const Header = () => {
           )}
           {currentConversationId && currentConversationItem && isSidebarCollapsed && (
             <>
-              <div className='p-1 text-divider-deep'>/</div>
+              <div className="p-1 text-divider-deep">/</div>
               <Operation
                 title={currentConversationItem?.name || ''}
                 isPinned={!!isPin}
@@ -103,34 +103,34 @@ const Header = () => {
               />
             </>
           )}
-          <div className='flex items-center px-1'>
-            <div className='h-[14px] w-px bg-divider-regular'></div>
+          <div className="flex items-center px-1">
+            <div className="h-[14px] w-px bg-divider-regular"></div>
           </div>
           {isSidebarCollapsed && (
             <Tooltip
               disabled={!!currentConversationId}
-              popupContent={t('share.chat.newChatTip')}
+              popupContent={t('chat.newChatTip', { ns: 'share' })}
             >
               <div>
                 <ActionButton
-                  size='l'
+                  size="l"
                   state={(!currentConversationId || isResponding) ? ActionButtonState.Disabled : ActionButtonState.Default}
                   disabled={!currentConversationId || isResponding}
                   onClick={handleNewConversation}
                 >
-                  <RiEditBoxLine className='h-[18px] w-[18px]' />
+                  <RiEditBoxLine className="h-[18px] w-[18px]" />
                 </ActionButton>
               </div>
             </Tooltip>
           )}
         </div>
-        <div className='flex items-center gap-1'>
+        <div className="flex items-center gap-1">
           {currentConversationId && (
             <Tooltip
-              popupContent={t('share.chat.resetChat')}
+              popupContent={t('chat.resetChat', { ns: 'share' })}
             >
-              <ActionButton size='l' onClick={handleNewConversation}>
-                <RiResetLeftLine className='h-[18px] w-[18px]' />
+              <ActionButton size="l" onClick={handleNewConversation}>
+                <RiResetLeftLine className="h-[18px] w-[18px]" />
               </ActionButton>
             </Tooltip>
           )}
@@ -141,8 +141,8 @@ const Header = () => {
       </div>
       {!!showConfirm && (
         <Confirm
-          title={t('share.chat.deleteConversation.title')}
-          content={t('share.chat.deleteConversation.content') || ''}
+          title={t('chat.deleteConversation.title', { ns: 'share' })}
+          content={t('chat.deleteConversation.content', { ns: 'share' }) || ''}
           isShow
           onCancel={handleCancelConfirm}
           onConfirm={handleDelete}

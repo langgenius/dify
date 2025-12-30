@@ -105,8 +105,9 @@ class BaseAppGenerator:
             variable_entity.type in {VariableEntityType.FILE, VariableEntityType.FILE_LIST}
             and not variable_entity.required
         ):
-            # Treat empty string (frontend default) or empty list as unset
-            if not value and isinstance(value, (str, list)):
+            # Treat empty string (frontend default) as unset
+            # For FILE_LIST, allow empty list [] to pass through
+            if isinstance(value, str) and not value:
                 return None
 
         if variable_entity.type in {

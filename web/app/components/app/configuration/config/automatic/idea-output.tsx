@@ -1,13 +1,13 @@
 'use client'
-import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
-import { useBoolean } from 'ahooks'
 import type { FC } from 'react'
-import React from 'react'
-import { cn } from '@/utils/classnames'
-import Textarea from '@/app/components/base/textarea'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { ArrowDownRoundFill } from '@/app/components/base/icons/src/vender/solid/general'
+import Textarea from '@/app/components/base/textarea'
+import { cn } from '@/utils/classnames'
 
-const i18nPrefix = 'appDebug.generate'
+const i18nPrefix = 'generate'
 
 type Props = {
   value: string
@@ -25,19 +25,23 @@ const IdeaOutput: FC<Props> = ({
   }] = useBoolean(true)
 
   return (
-    <div className='mt-4 text-[0px]'>
+    <div className="mt-4 text-[0px]">
       <div
-        className='mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary'
+        className="mb-1.5 flex  cursor-pointer items-center text-sm font-medium leading-5 text-text-primary"
         onClick={toggleFoldIdeaOutput}
       >
-        <div className='system-sm-semibold-uppercase mr-1 text-text-secondary'>{t(`${i18nPrefix}.idealOutput`)}</div>
-        <div className='system-xs-regular text-text-tertiary'>({t(`${i18nPrefix}.optional`)})</div>
+        <div className="system-sm-semibold-uppercase mr-1 text-text-secondary">{t(`${i18nPrefix}.idealOutput`, { ns: 'appDebug' })}</div>
+        <div className="system-xs-regular text-text-tertiary">
+          (
+          {t(`${i18nPrefix}.optional`, { ns: 'appDebug' })}
+          )
+        </div>
         <ArrowDownRoundFill className={cn('size text-text-quaternary', isFoldIdeaOutput && 'relative top-[1px] rotate-[-90deg]')} />
       </div>
       {!isFoldIdeaOutput && (
         <Textarea
           className="h-[80px]"
-          placeholder={t(`${i18nPrefix}.idealOutputPlaceholder`)}
+          placeholder={t(`${i18nPrefix}.idealOutputPlaceholder`, { ns: 'appDebug' })}
           value={value}
           onChange={e => onChange(e.target.value)}
         />

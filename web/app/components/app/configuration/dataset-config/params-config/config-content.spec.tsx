@@ -1,22 +1,23 @@
+import type { MockedFunction, MockInstance } from 'vitest'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
+import type { RetrievalConfig } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ConfigContent from './config-content'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
-import type { DatasetConfigs } from '@/models/debug'
-import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import type { RetrievalConfig } from '@/types/app'
 import Toast from '@/app/components/base/toast'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import ConfigContent from './config-content'
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string; model: string }
-    onSelect?: (model: { provider: string; model: string }) => void
+    defaultModel?: { provider: string, model: string }
+    onSelect?: (model: { provider: string, model: string }) => void
   }
 
   const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
@@ -34,20 +35,20 @@ jest.mock('@/app/components/header/account-setting/model-provider-page/model-sel
   }
 })
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
+vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
   __esModule: true,
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 
-jest.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  useModelListAndDefaultModelAndCurrentProviderAndModel: jest.fn(),
-  useCurrentProviderAndModel: jest.fn(),
+vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
+  useModelListAndDefaultModelAndCurrentProviderAndModel: vi.fn(),
+  useCurrentProviderAndModel: vi.fn(),
 }))
 
-const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as jest.MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
-const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as jest.MockedFunction<typeof useCurrentProviderAndModel>
+const mockedUseModelListAndDefaultModelAndCurrentProviderAndModel = useModelListAndDefaultModelAndCurrentProviderAndModel as MockedFunction<typeof useModelListAndDefaultModelAndCurrentProviderAndModel>
+const mockedUseCurrentProviderAndModel = useCurrentProviderAndModel as MockedFunction<typeof useCurrentProviderAndModel>
 
-let toastNotifySpy: jest.SpyInstance
+let toastNotifySpy: MockInstance
 
 const baseRetrievalConfig: RetrievalConfig = {
   search_method: RETRIEVE_METHOD.semantic,
@@ -172,8 +173,8 @@ const createDatasetConfigs = (overrides: Partial<DatasetConfigs> = {}): DatasetC
 
 describe('ConfigContent', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
-    toastNotifySpy = jest.spyOn(Toast, 'notify').mockImplementation(() => ({}))
+    vi.clearAllMocks()
+    toastNotifySpy = vi.spyOn(Toast, 'notify').mockImplementation(() => ({}))
     mockedUseModelListAndDefaultModelAndCurrentProviderAndModel.mockReturnValue({
       modelList: [],
       defaultModel: undefined,
@@ -194,7 +195,7 @@ describe('ConfigContent', () => {
   describe('Effects', () => {
     it('should normalize oneWay retrieval mode to multiWay', async () => {
       // Arrange
-      const onChange = jest.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({ retrieval_model: RETRIEVE_TYPE.oneWay })
 
       // Act
@@ -213,7 +214,7 @@ describe('ConfigContent', () => {
   describe('Rendering', () => {
     it('should render weighted score panel when datasets are high-quality and consistent', () => {
       // Arrange
-      const onChange = jest.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_mode: RerankingModeEnum.WeightedScore,
       })
@@ -252,7 +253,7 @@ describe('ConfigContent', () => {
     it('should update weights when user changes weighted score slider', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onChange = jest.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_mode: RerankingModeEnum.WeightedScore,
         weights: {
@@ -306,7 +307,7 @@ describe('ConfigContent', () => {
     it('should warn when switching to rerank model mode without a valid model', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onChange = jest.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_mode: RerankingModeEnum.WeightedScore,
       })
@@ -348,7 +349,7 @@ describe('ConfigContent', () => {
     it('should warn when enabling rerank without a valid model in manual toggle mode', async () => {
       // Arrange
       const user = userEvent.setup()
-      const onChange = jest.fn<void, [DatasetConfigs, boolean?]>()
+      const onChange = vi.fn<(configs: DatasetConfigs, isRetrievalModeChange?: boolean) => void>()
       const datasetConfigs = createDatasetConfigs({
         reranking_enable: false,
       })

@@ -1,22 +1,23 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import {
-  RiArrowLeftLine,
-  RiCloseLine,
-} from '@remixicon/react'
-import Drawer from '@/app/components/base/drawer'
-import ActionButton from '@/app/components/base/action-button'
-import Icon from '@/app/components/plugins/card/base/card-icon'
-import Description from '@/app/components/plugins/card/base/description'
-import Divider from '@/app/components/base/divider'
 import type {
   StrategyDetail as StrategyDetailType,
 } from '@/app/components/plugins/types'
 import type { Locale } from '@/i18n-config'
-import { useRenderI18nObject } from '@/hooks/use-i18n'
+import {
+  RiArrowLeftLine,
+  RiCloseLine,
+} from '@remixicon/react'
+import * as React from 'react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import ActionButton from '@/app/components/base/action-button'
+import Divider from '@/app/components/base/divider'
+import Drawer from '@/app/components/base/drawer'
+import Icon from '@/app/components/plugins/card/base/card-icon'
+import Description from '@/app/components/plugins/card/base/description'
 import { API_PREFIX } from '@/config'
+import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -60,13 +61,13 @@ const StrategyDetail: FC<Props> = ({
 
   const getType = (type: string) => {
     if (type === 'number-input')
-      return t('tools.setBuiltInTools.number')
+      return t('setBuiltInTools.number', { ns: 'tools' })
     if (type === 'text-input')
-      return t('tools.setBuiltInTools.string')
+      return t('setBuiltInTools.string', { ns: 'tools' })
     if (type === 'checkbox')
       return 'boolean'
     if (type === 'file')
-      return t('tools.setBuiltInTools.file')
+      return t('setBuiltInTools.file', { ns: 'tools' })
     if (type === 'array[tools]')
       return 'multiple-tool-select'
     return type
@@ -84,46 +85,46 @@ const StrategyDetail: FC<Props> = ({
     >
       <>
         {/* header */}
-        <div className='relative border-b border-divider-subtle p-4 pb-3'>
-          <div className='absolute right-3 top-3'>
+        <div className="relative border-b border-divider-subtle p-4 pb-3">
+          <div className="absolute right-3 top-3">
             <ActionButton onClick={onHide}>
-              <RiCloseLine className='h-4 w-4' />
+              <RiCloseLine className="h-4 w-4" />
             </ActionButton>
           </div>
           <div
-            className='system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary'
+            className="system-xs-semibold-uppercase mb-2 flex cursor-pointer items-center gap-1 text-text-accent-secondary"
             onClick={onHide}
           >
-            <RiArrowLeftLine className='h-4 w-4' />
+            <RiArrowLeftLine className="h-4 w-4" />
             BACK
           </div>
-          <div className='flex items-center gap-1'>
-            <Icon size='tiny' className='h-6 w-6' src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${provider.tenant_id}&filename=${provider.icon}`} />
-            <div className=''>{getValueFromI18nObject(provider.label)}</div>
+          <div className="flex items-center gap-1">
+            <Icon size="tiny" className="h-6 w-6" src={`${API_PREFIX}/workspaces/current/plugin/icon?tenant_id=${provider.tenant_id}&filename=${provider.icon}`} />
+            <div className="">{getValueFromI18nObject(provider.label)}</div>
           </div>
-          <div className='system-md-semibold mt-1 text-text-primary'>{getValueFromI18nObject(detail.identity.label)}</div>
-          <Description className='mt-3' text={getValueFromI18nObject(detail.description)} descriptionLineRows={2}></Description>
+          <div className="system-md-semibold mt-1 text-text-primary">{getValueFromI18nObject(detail.identity.label)}</div>
+          <Description className="mt-3" text={getValueFromI18nObject(detail.description)} descriptionLineRows={2}></Description>
         </div>
         {/* form */}
-        <div className='h-full'>
-          <div className='flex h-full flex-col overflow-y-auto'>
-            <div className='system-sm-semibold-uppercase p-4 pb-1 text-text-primary'>{t('tools.setBuiltInTools.parameters')}</div>
-            <div className='px-4'>
+        <div className="h-full">
+          <div className="flex h-full flex-col overflow-y-auto">
+            <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">{t('setBuiltInTools.parameters', { ns: 'tools' })}</div>
+            <div className="px-4">
               {detail.parameters.length > 0 && (
-                <div className='space-y-1 py-2'>
+                <div className="space-y-1 py-2">
                   {detail.parameters.map((item: any, index) => (
-                    <div key={index} className='py-1'>
-                      <div className='flex items-center gap-2'>
-                        <div className='code-sm-semibold text-text-secondary'>{getValueFromI18nObject(item.label)}</div>
-                        <div className='system-xs-regular text-text-tertiary'>
+                    <div key={index} className="py-1">
+                      <div className="flex items-center gap-2">
+                        <div className="code-sm-semibold text-text-secondary">{getValueFromI18nObject(item.label)}</div>
+                        <div className="system-xs-regular text-text-tertiary">
                           {getType(item.type)}
                         </div>
                         {item.required && (
-                          <div className='system-xs-medium text-text-warning-secondary'>{t('tools.setBuiltInTools.required')}</div>
+                          <div className="system-xs-medium text-text-warning-secondary">{t('setBuiltInTools.required', { ns: 'tools' })}</div>
                         )}
                       </div>
                       {item.human_description && (
-                        <div className='system-xs-regular mt-0.5 text-text-tertiary'>
+                        <div className="system-xs-regular mt-0.5 text-text-tertiary">
                           {getValueFromI18nObject(item.human_description)}
                         </div>
                       )}
@@ -134,20 +135,20 @@ const StrategyDetail: FC<Props> = ({
             </div>
             {detail.output_schema && (
               <>
-                <div className='px-4'>
+                <div className="px-4">
                   <Divider className="!mt-2" />
                 </div>
-                <div className='system-sm-semibold-uppercase p-4 pb-1 text-text-primary'>OUTPUT</div>
+                <div className="system-sm-semibold-uppercase p-4 pb-1 text-text-primary">OUTPUT</div>
                 {outputSchema.length > 0 && (
-                  <div className='space-y-1 px-4 py-2'>
+                  <div className="space-y-1 px-4 py-2">
                     {outputSchema.map((outputItem, index) => (
-                      <div key={index} className='py-1'>
-                        <div className='flex items-center gap-2'>
-                          <div className='code-sm-semibold text-text-secondary'>{outputItem.name}</div>
-                          <div className='system-xs-regular text-text-tertiary'>{outputItem.type}</div>
+                      <div key={index} className="py-1">
+                        <div className="flex items-center gap-2">
+                          <div className="code-sm-semibold text-text-secondary">{outputItem.name}</div>
+                          <div className="system-xs-regular text-text-tertiary">{outputItem.type}</div>
                         </div>
                         {outputItem.description && (
-                          <div className='system-xs-regular mt-0.5 text-text-tertiary'>
+                          <div className="system-xs-regular mt-0.5 text-text-tertiary">
                             {outputItem.description}
                           </div>
                         )}

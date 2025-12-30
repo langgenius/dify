@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import type { CrawlResultItem } from '@/models/datasets'
+import * as React from 'react'
+import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import CheckboxWithLabel from './checkbox-with-label'
 import CrawledResultItem from './crawled-result-item'
-import { cn } from '@/utils/classnames'
-import type { CrawlResultItem } from '@/models/datasets'
 
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   className?: string
@@ -58,22 +59,23 @@ const CrawledResult: FC<Props> = ({
 
   return (
     <div className={cn(className, 'border-t-[0.5px] border-divider-regular shadow-xs shadow-shadow-shadow-3')}>
-      <div className='flex h-[34px] items-center justify-between px-4'>
+      <div className="flex h-[34px] items-center justify-between px-4">
         <CheckboxWithLabel
           isChecked={isCheckAll}
           onChange={handleCheckedAll}
-          label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`) : t(`${I18N_PREFIX}.selectAll`)}
-          labelClassName='system-[13px] leading-[16px] font-medium text-text-secondary'
-          testId='select-all'
+          label={isCheckAll ? t(`${I18N_PREFIX}.resetAll`, { ns: 'datasetCreation' }) : t(`${I18N_PREFIX}.selectAll`, { ns: 'datasetCreation' })}
+          labelClassName="system-[13px] leading-[16px] font-medium text-text-secondary"
+          testId="select-all"
         />
-        <div className='text-xs text-text-tertiary'>
+        <div className="text-xs text-text-tertiary">
           {t(`${I18N_PREFIX}.scrapTimeInfo`, {
+            ns: 'datasetCreation',
             total: list.length,
             time: usedTime.toFixed(1),
           })}
         </div>
       </div>
-      <div className='p-2'>
+      <div className="p-2">
         {list.map((item, index) => (
           <CrawledResultItem
             key={item.source_url}

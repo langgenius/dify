@@ -1,18 +1,18 @@
-import {
-  useEffect,
-  useState,
-} from 'react'
+import type { ChatItem, WorkflowProcess } from '../../types'
 import {
   RiArrowRightSLine,
   RiErrorWarningFill,
   RiLoader2Line,
 } from '@remixicon/react'
+import {
+  useEffect,
+  useState,
+} from 'react'
 import { useTranslation } from 'react-i18next'
-import type { ChatItem, WorkflowProcess } from '../../types'
-import TracingPanel from '@/app/components/workflow/run/tracing-panel'
-import { cn } from '@/utils/classnames'
 import { CheckCircle } from '@/app/components/base/icons/src/vender/solid/general'
+import TracingPanel from '@/app/components/workflow/run/tracing-panel'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type WorkflowProcessProps = {
   data: WorkflowProcess
@@ -39,7 +39,8 @@ const WorkflowProcessItem = ({
     setCollapse(!expand)
   }, [expand])
 
-  if (readonly) return null
+  if (readonly)
+    return null
 
   return (
     <div
@@ -58,34 +59,32 @@ const WorkflowProcessItem = ({
       >
         {
           running && (
-            <RiLoader2Line className='mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary' />
+            <RiLoader2Line className="mr-1 h-3.5 w-3.5 shrink-0 animate-spin text-text-tertiary" />
           )
         }
         {
           succeeded && (
-            <CheckCircle className='mr-1 h-3.5 w-3.5 shrink-0 text-text-success' />
+            <CheckCircle className="mr-1 h-3.5 w-3.5 shrink-0 text-text-success" />
           )
         }
         {
           failed && (
-            <RiErrorWarningFill className='mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive' />
+            <RiErrorWarningFill className="mr-1 h-3.5 w-3.5 shrink-0 text-text-destructive" />
           )
         }
         <div className={cn('system-xs-medium text-text-secondary', !collapse && 'grow')}>
-          {t('workflow.common.workflowProcess')}
+          {t('common.workflowProcess', { ns: 'workflow' })}
         </div>
         <RiArrowRightSLine className={cn('ml-1 h-4 w-4 text-text-tertiary', !collapse && 'rotate-90')} />
       </div>
       {
         !collapse && (
-          <div className='mt-1.5'>
-            {
-              <TracingPanel
-                list={data.tracing}
-                hideNodeInfo={hideInfo}
-                hideNodeProcessDetail={hideProcessDetail}
-              />
-            }
+          <div className="mt-1.5">
+            <TracingPanel
+              list={data.tracing}
+              hideNodeInfo={hideInfo}
+              hideNodeProcessDetail={hideProcessDetail}
+            />
           </div>
         )
       }

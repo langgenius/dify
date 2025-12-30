@@ -1,15 +1,11 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import AppCard, { type AppCardProps } from './index'
+import type { AppCardProps } from './index'
 import type { App } from '@/models/explore'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import { AppModeEnum } from '@/types/app'
+import AppCard from './index'
 
-jest.mock('@/app/components/base/app-icon', () => ({
-  __esModule: true,
-  default: ({ children }: any) => <div data-testid="app-icon">{children}</div>,
-}))
-
-jest.mock('../../app/type-selector', () => ({
+vi.mock('../../app/type-selector', () => ({
   AppTypeIcon: ({ type }: any) => <div data-testid="app-type-icon">{type}</div>,
 }))
 
@@ -42,7 +38,7 @@ const createApp = (overrides?: Partial<App>): App => ({
 })
 
 describe('AppCard', () => {
-  const onCreate = jest.fn()
+  const onCreate = vi.fn()
 
   const renderComponent = (props?: Partial<AppCardProps>) => {
     const mergedProps: AppCardProps = {
@@ -56,7 +52,7 @@ describe('AppCard', () => {
   }
 
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   it('should render app info with correct mode label when mode is CHAT', () => {

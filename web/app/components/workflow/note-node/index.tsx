@@ -1,26 +1,26 @@
+import type { NodeProps } from 'reactflow'
+import type { NoteNodeType } from './types'
+import { useClickAway } from 'ahooks'
 import {
   memo,
   useRef,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useClickAway } from 'ahooks'
-import type { NodeProps } from 'reactflow'
-import NodeResizer from '../nodes/_base/components/node-resizer'
-import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { cn } from '@/utils/classnames'
 import {
   useNodeDataUpdate,
   useNodesInteractions,
 } from '../hooks'
+import NodeResizer from '../nodes/_base/components/node-resizer'
 import { useStore } from '../store'
+import { useWorkflowHistoryStore } from '../workflow-history-store'
+import { THEME_MAP } from './constants'
+import { useNote } from './hooks'
 import {
   NoteEditor,
   NoteEditorContextProvider,
   NoteEditorToolbar,
 } from './note-editor'
-import { THEME_MAP } from './constants'
-import { useNote } from './hooks'
-import type { NoteNodeType } from './types'
-import { cn } from '@/utils/classnames'
 
 const Icon = () => {
   return (
@@ -90,10 +90,12 @@ const NoteNode = ({
             className={cn(
               'h-2 shrink-0 rounded-t-md opacity-50',
               THEME_MAP[theme].title,
-            )}></div>
+            )}
+          >
+          </div>
           {
             data.selected && !data._isTempNode && (
-              <div className='absolute left-1/2 top-[-41px] -translate-x-1/2'>
+              <div className="absolute left-1/2 top-[-41px] -translate-x-1/2">
                 <NoteEditorToolbar
                   theme={theme}
                   onThemeChange={handleThemeChange}
@@ -106,13 +108,14 @@ const NoteNode = ({
               </div>
             )
           }
-          <div className='grow overflow-y-auto px-3 py-2.5'>
+          <div className="grow overflow-y-auto px-3 py-2.5">
             <div className={cn(
               data.selected && 'nodrag nopan nowheel cursor-text',
-            )}>
+            )}
+            >
               <NoteEditor
                 containerElement={ref.current}
-                placeholder={t('workflow.nodes.note.editor.placeholder') || ''}
+                placeholder={t('nodes.note.editor.placeholder', { ns: 'workflow' }) || ''}
                 onChange={handleEditorChange}
                 setShortcutsEnabled={setShortcutsEnabled}
               />
@@ -120,7 +123,7 @@ const NoteNode = ({
           </div>
           {
             data.showAuthor && (
-              <div className='p-3 pt-0 text-xs text-text-tertiary'>
+              <div className="p-3 pt-0 text-xs text-text-tertiary">
                 {data.author}
               </div>
             )

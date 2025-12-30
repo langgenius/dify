@@ -1,9 +1,6 @@
 'use client'
-import type { FC } from 'react'
-import React, { useEffect, useMemo, useState } from 'react'
-import { usePathname } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
 import type { RemixiconComponentType } from '@remixicon/react'
+import type { FC } from 'react'
 import {
   RiEqualizer2Fill,
   RiEqualizer2Line,
@@ -12,17 +9,21 @@ import {
   RiFocus2Fill,
   RiFocus2Line,
 } from '@remixicon/react'
+import { usePathname } from 'next/navigation'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import AppSideBar from '@/app/components/app-sidebar'
-import Loading from '@/app/components/base/loading'
-import DatasetDetailContext from '@/context/dataset-detail'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import { useStore } from '@/app/components/app/store'
-import { useAppContext } from '@/context/app-context'
 import { PipelineFill, PipelineLine } from '@/app/components/base/icons/src/vender/pipeline'
-import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
-import useDocumentTitle from '@/hooks/use-document-title'
+import Loading from '@/app/components/base/loading'
 import ExtraInfo from '@/app/components/datasets/extra-info'
+import { useAppContext } from '@/context/app-context'
+import DatasetDetailContext from '@/context/dataset-detail'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { useDatasetDetail, useDatasetRelatedApps } from '@/service/knowledge/use-dataset'
 import { cn } from '@/utils/classnames'
 
 export type IAppDetailLayoutProps = {
@@ -69,14 +70,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   const navigation = useMemo(() => {
     const baseNavigation = [
       {
-        name: t('common.datasetMenus.hitTesting'),
+        name: t('datasetMenus.hitTesting', { ns: 'common' }),
         href: `/datasets/${datasetId}/hitTesting`,
         icon: RiFocus2Line,
         selectedIcon: RiFocus2Fill,
         disabled: isButtonDisabledWithPipeline,
       },
       {
-        name: t('common.datasetMenus.settings'),
+        name: t('datasetMenus.settings', { ns: 'common' }),
         href: `/datasets/${datasetId}/settings`,
         icon: RiEqualizer2Line,
         selectedIcon: RiEqualizer2Fill,
@@ -86,14 +87,14 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
     if (datasetRes?.provider !== 'external') {
       baseNavigation.unshift({
-        name: t('common.datasetMenus.pipeline'),
+        name: t('datasetMenus.pipeline', { ns: 'common' }),
         href: `/datasets/${datasetId}/pipeline`,
         icon: PipelineLine as RemixiconComponentType,
         selectedIcon: PipelineFill as RemixiconComponentType,
         disabled: false,
       })
       baseNavigation.unshift({
-        name: t('common.datasetMenus.documents'),
+        name: t('datasetMenus.documents', { ns: 'common' }),
         href: `/datasets/${datasetId}/documents`,
         icon: RiFileTextLine,
         selectedIcon: RiFileTextFill,
@@ -104,7 +105,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return baseNavigation
   }, [t, datasetId, isButtonDisabledWithPipeline, datasetRes?.provider])
 
-  useDocumentTitle(datasetRes?.name || t('common.menus.datasets'))
+  useDocumentTitle(datasetRes?.name || t('menus.datasets', { ns: 'common' }))
 
   const setAppSidebarExpand = useStore(state => state.setAppSidebarExpand)
 
@@ -115,7 +116,7 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
   }, [isMobile, setAppSidebarExpand])
 
   if (!datasetRes && !error)
-    return <Loading type='app' />
+    return <Loading type="app" />
 
   return (
     <div
@@ -128,7 +129,8 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         indexingTechnique: datasetRes?.indexing_technique,
         dataset: datasetRes,
         mutateDatasetRes,
-      }}>
+      }}
+      >
         {!hideSideBar && (
           <AppSideBar
             navigation={navigation}
@@ -137,10 +139,10 @@ const DatasetDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
                 ? mode => <ExtraInfo relatedApps={relatedApps} expand={mode === 'expand'} documentCount={datasetRes?.document_count} />
                 : undefined
             }
-            iconType='dataset'
+            iconType="dataset"
           />
         )}
-        <div className='grow overflow-hidden bg-background-default-subtle'>{children}</div>
+        <div className="grow overflow-hidden bg-background-default-subtle">{children}</div>
       </DatasetDetailContext.Provider>
     </div>
   )

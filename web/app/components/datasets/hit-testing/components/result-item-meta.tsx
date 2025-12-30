@@ -1,11 +1,11 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
-import Dot from '../../documents/detail/completed/common/dot'
-import Score from './score'
 import { cn } from '@/utils/classnames'
+import Dot from '../../documents/detail/completed/common/dot'
+import { SegmentIndexTag } from '../../documents/detail/completed/common/segment-index-tag'
+import Score from './score'
 
 type Props = {
   labelPrefix: string
@@ -34,7 +34,9 @@ const ResultItemMeta: FC<Props> = ({
         />
         <Dot />
         <div className="system-xs-medium text-text-tertiary">
-          {wordCount} {t('datasetDocuments.segment.characters', { count: wordCount })}
+          {wordCount}
+          {' '}
+          {t('segment.characters', { ns: 'datasetDocuments', count: wordCount })}
         </div>
       </div>
       <Score value={score} />

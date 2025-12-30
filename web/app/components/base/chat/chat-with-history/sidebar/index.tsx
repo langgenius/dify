@@ -1,25 +1,25 @@
-import {
-  useCallback,
-  useState,
-} from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ConversationItem } from '@/models/share'
 import {
   RiEditBoxLine,
   RiExpandRightLine,
   RiLayoutLeft2Line,
 } from '@remixicon/react'
-import { useChatWithHistoryContext } from '../context'
-import AppIcon from '@/app/components/base/app-icon'
+import {
+  useCallback,
+  useState,
+} from 'react'
+import { useTranslation } from 'react-i18next'
 import ActionButton from '@/app/components/base/action-button'
+import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import List from '@/app/components/base/chat/chat-with-history/sidebar/list'
-import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
-import Confirm from '@/app/components/base/confirm'
 import RenameModal from '@/app/components/base/chat/chat-with-history/sidebar/rename-modal'
+import Confirm from '@/app/components/base/confirm'
 import DifyLogo from '@/app/components/base/logo/dify-logo'
-import type { ConversationItem } from '@/models/share'
-import { cn } from '@/utils/classnames'
+import MenuDropdown from '@/app/components/share/text-generation/menu-dropdown'
 import { useGlobalPublicStore } from '@/context/global-public-context'
+import { cn } from '@/utils/classnames'
+import { useChatWithHistoryContext } from '../context'
 
 type Props = {
   isPanel?: boolean
@@ -83,13 +83,15 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
     <div className={cn(
       'flex w-full grow flex-col',
       isPanel && 'rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-bg shadow-lg',
-    )}>
+    )}
+    >
       <div className={cn(
         'flex shrink-0 items-center gap-3 p-3 pr-2',
-      )}>
-        <div className='shrink-0'>
+      )}
+      >
+        <div className="shrink-0">
           <AppIcon
-            size='large'
+            size="large"
             iconType={appData?.site.icon_type}
             icon={appData?.site.icon}
             background={appData?.site.icon_background}
@@ -98,29 +100,29 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
         </div>
         <div className={cn('system-md-semibold grow truncate text-text-secondary')}>{appData?.site.title}</div>
         {!isMobile && isSidebarCollapsed && (
-          <ActionButton size='l' onClick={() => handleSidebarCollapse(false)}>
-            <RiExpandRightLine className='h-[18px] w-[18px]' />
+          <ActionButton size="l" onClick={() => handleSidebarCollapse(false)}>
+            <RiExpandRightLine className="h-[18px] w-[18px]" />
           </ActionButton>
         )}
         {!isMobile && !isSidebarCollapsed && (
-          <ActionButton size='l' onClick={() => handleSidebarCollapse(true)}>
-            <RiLayoutLeft2Line className='h-[18px] w-[18px]' />
+          <ActionButton size="l" onClick={() => handleSidebarCollapse(true)}>
+            <RiLayoutLeft2Line className="h-[18px] w-[18px]" />
           </ActionButton>
         )}
       </div>
-      <div className='shrink-0 px-3 py-4'>
-        <Button variant='secondary-accent' disabled={isResponding} className='w-full justify-center' onClick={handleNewConversation}>
-          <RiEditBoxLine className='mr-1 h-4 w-4' />
-          {t('share.chat.newChat')}
+      <div className="shrink-0 px-3 py-4">
+        <Button variant="secondary-accent" disabled={isResponding} className="w-full justify-center" onClick={handleNewConversation}>
+          <RiEditBoxLine className="mr-1 h-4 w-4" />
+          {t('chat.newChat', { ns: 'share' })}
         </Button>
       </div>
-      <div className='h-0 grow space-y-2 overflow-y-auto px-3 pt-4'>
+      <div className="h-0 grow space-y-2 overflow-y-auto px-3 pt-4">
         {/* pinned list */}
         {!!pinnedConversationList.length && (
-          <div className='mb-4'>
+          <div className="mb-4">
             <List
               isPin
-              title={t('share.chat.pinnedTitle') || ''}
+              title={t('chat.pinnedTitle', { ns: 'share' }) || ''}
               list={pinnedConversationList}
               onChangeConversation={handleChangeConversation}
               onOperate={handleOperate}
@@ -130,7 +132,7 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
         )}
         {!!conversationList.length && (
           <List
-            title={(pinnedConversationList.length && t('share.chat.unpinnedTitle')) || ''}
+            title={(pinnedConversationList.length && t('chat.unpinnedTitle', { ns: 'share' })) || ''}
             list={conversationList}
             onChangeConversation={handleChangeConversation}
             onOperate={handleOperate}
@@ -138,34 +140,35 @@ const Sidebar = ({ isPanel, panelVisible }: Props) => {
           />
         )}
       </div>
-      <div className='flex shrink-0 items-center justify-between p-3'>
+      <div className="flex shrink-0 items-center justify-between p-3">
         <MenuDropdown
           hideLogout={isInstalledApp}
-          placement='top-start'
+          placement="top-start"
           data={appData?.site}
           forceClose={isPanel && !panelVisible}
         />
         {/* powered by */}
-        <div className='shrink-0'>
+        <div className="shrink-0">
           {!appData?.custom_config?.remove_webapp_brand && (
             <div className={cn(
               'flex shrink-0 items-center gap-1.5 px-1',
-            )}>
-              <div className='system-2xs-medium-uppercase text-text-tertiary'>{t('share.chat.poweredBy')}</div>
+            )}
+            >
+              <div className="system-2xs-medium-uppercase text-text-tertiary">{t('chat.poweredBy', { ns: 'share' })}</div>
               {
                 systemFeatures.branding.enabled && systemFeatures.branding.workspace_logo
-                  ? <img src={systemFeatures.branding.workspace_logo} alt='logo' className='block h-5 w-auto' />
+                  ? <img src={systemFeatures.branding.workspace_logo} alt="logo" className="block h-5 w-auto" />
                   : appData?.custom_config?.replace_webapp_logo
-                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt='logo' className='block h-5 w-auto' />
-                    : <DifyLogo size='small' />
+                    ? <img src={`${appData?.custom_config?.replace_webapp_logo}`} alt="logo" className="block h-5 w-auto" />
+                    : <DifyLogo size="small" />
               }
             </div>
           )}
         </div>
         {!!showConfirm && (
           <Confirm
-            title={t('share.chat.deleteConversation.title')}
-            content={t('share.chat.deleteConversation.content') || ''}
+            title={t('chat.deleteConversation.title', { ns: 'share' })}
+            content={t('chat.deleteConversation.content', { ns: 'share' }) || ''}
             isShow
             onCancel={handleCancelConfirm}
             onConfirm={handleDelete}

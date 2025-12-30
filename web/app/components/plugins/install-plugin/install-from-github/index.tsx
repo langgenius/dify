@@ -1,25 +1,26 @@
 'use client'
 
-import React, { useCallback, useState } from 'react'
-import Modal from '@/app/components/base/modal'
+import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
 import type { Item } from '@/app/components/base/select'
 import type { InstallState } from '@/app/components/plugins/types'
-import { useGitHubReleases } from '../hooks'
-import { convertRepoToUrl, parseGitHubUrl } from '../utils'
-import type { PluginDeclaration, UpdateFromGitHubPayload } from '../../types'
-import { InstallStepFromGitHub } from '../../types'
-import Toast from '@/app/components/base/toast'
-import SetURL from './steps/setURL'
-import SelectPackage from './steps/selectPackage'
-import Installed from '../base/installed'
-import Loaded from './steps/loaded'
-import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
+import Modal from '@/app/components/base/modal'
+import Toast from '@/app/components/base/toast'
+import useGetIcon from '@/app/components/plugins/install-plugin/base/use-get-icon'
 import { cn } from '@/utils/classnames'
+import { InstallStepFromGitHub } from '../../types'
+import Installed from '../base/installed'
+import { useGitHubReleases } from '../hooks'
 import useHideLogic from '../hooks/use-hide-logic'
+import useRefreshPluginList from '../hooks/use-refresh-plugin-list'
+import { convertRepoToUrl, parseGitHubUrl } from '../utils'
+import Loaded from './steps/loaded'
+import SelectPackage from './steps/selectPackage'
+import SetURL from './steps/setURL'
 
-const i18nPrefix = 'plugin.installFromGitHub'
+const i18nPrefix = 'installFromGitHub'
 
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
@@ -60,21 +61,21 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
 
   const packages: Item[] = state.selectedVersion
     ? (state.releases
-      .find(release => release.tag_name === state.selectedVersion)
-      ?.assets
-      .map(asset => ({
-        value: asset.name,
-        name: asset.name,
-      })) || [])
+        .find(release => release.tag_name === state.selectedVersion)
+        ?.assets
+        .map(asset => ({
+          value: asset.name,
+          name: asset.name,
+        })) || [])
     : []
 
   const getTitle = useCallback(() => {
     if (state.step === InstallStepFromGitHub.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`)
+      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
     if (state.step === InstallStepFromGitHub.installFailed)
-      return t(`${i18nPrefix}.installFailed`)
+      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
 
-    return updatePayload ? t(`${i18nPrefix}.updatePlugin`) : t(`${i18nPrefix}.installPlugin`)
+    return updatePayload ? t(`${i18nPrefix}.updatePlugin`, { ns: 'plugin' }) : t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
   }, [state.step, t, updatePayload])
 
   const handleUrlSubmit = async () => {
@@ -82,7 +83,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     if (!isValid || !owner || !repo) {
       Toast.notify({
         type: 'error',
-        message: t('plugin.error.inValidGitHubUrl'),
+        message: t('error.inValidGitHubUrl', { ns: 'plugin' }),
       })
       return
     }
@@ -98,20 +99,20 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       else {
         Toast.notify({
           type: 'error',
-          message: t('plugin.error.noReleasesFound'),
+          message: t('error.noReleasesFound', { ns: 'plugin' }),
         })
       }
     }
     catch {
       Toast.notify({
         type: 'error',
-        message: t('plugin.error.fetchReleasesError'),
+        message: t('error.fetchReleasesError', { ns: 'plugin' }),
       })
     }
   }
 
   const handleError = (e: any, isInstall: boolean) => {
-    const message = e?.response?.message || t('plugin.installModal.installFailedDesc')
+    const message = e?.response?.message || t('installModal.installFailedDesc', { ns: 'plugin' })
     setErrorMsg(message)
     setState(prevState => ({ ...prevState, step: isInstall ? InstallStepFromGitHub.installFailed : InstallStepFromGitHub.uploadFailed }))
   }
@@ -172,62 +173,66 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
         border-components-panel-border bg-components-panel-bg p-0`)}
       closable
     >
-      <div className='flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6'>
-        <div className='flex grow flex-col items-start gap-1'>
-          <div className='title-2xl-semi-bold self-stretch text-text-primary'>
+      <div className="flex items-start gap-2 self-stretch pb-3 pl-6 pr-14 pt-6">
+        <div className="flex grow flex-col items-start gap-1">
+          <div className="title-2xl-semi-bold self-stretch text-text-primary">
             {getTitle()}
           </div>
-          <div className='system-xs-regular self-stretch text-text-tertiary'>
-            {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('plugin.installFromGitHub.installNote')}
+          <div className="system-xs-regular self-stretch text-text-tertiary">
+            {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('installFromGitHub.installNote', { ns: 'plugin' })}
           </div>
         </div>
       </div>
       {([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step))
-        ? <Installed
-          payload={manifest}
-          isFailed={[InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installFailed].includes(state.step)}
-          errMsg={errorMsg}
-          onCancel={onClose}
-        />
-        : <div className={`flex flex-col items-start justify-center self-stretch px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
-          {state.step === InstallStepFromGitHub.setUrl && (
-            <SetURL
-              repoUrl={state.repoUrl}
-              onChange={value => setState(prevState => ({ ...prevState, repoUrl: value }))}
-              onNext={handleUrlSubmit}
+        ? (
+            <Installed
+              payload={manifest}
+              isFailed={[InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installFailed].includes(state.step)}
+              errMsg={errorMsg}
               onCancel={onClose}
             />
+          )
+        : (
+            <div className={`flex flex-col items-start justify-center self-stretch px-6 py-3 ${state.step === InstallStepFromGitHub.installed ? 'gap-2' : 'gap-4'}`}>
+              {state.step === InstallStepFromGitHub.setUrl && (
+                <SetURL
+                  repoUrl={state.repoUrl}
+                  onChange={value => setState(prevState => ({ ...prevState, repoUrl: value }))}
+                  onNext={handleUrlSubmit}
+                  onCancel={onClose}
+                />
+              )}
+              {state.step === InstallStepFromGitHub.selectPackage && (
+                <SelectPackage
+                  updatePayload={updatePayload!}
+                  repoUrl={state.repoUrl}
+                  selectedVersion={state.selectedVersion}
+                  versions={versions}
+                  onSelectVersion={item => setState(prevState => ({ ...prevState, selectedVersion: item.value as string }))}
+                  selectedPackage={state.selectedPackage}
+                  packages={packages}
+                  onSelectPackage={item => setState(prevState => ({ ...prevState, selectedPackage: item.value as string }))}
+                  onUploaded={handleUploaded}
+                  onFailed={handleUploadFail}
+                  onBack={handleBack}
+                />
+              )}
+              {state.step === InstallStepFromGitHub.readyToInstall && (
+                <Loaded
+                  updatePayload={updatePayload!}
+                  uniqueIdentifier={uniqueIdentifier!}
+                  payload={manifest as any}
+                  repoUrl={state.repoUrl}
+                  selectedVersion={state.selectedVersion}
+                  selectedPackage={state.selectedPackage}
+                  onBack={handleBack}
+                  onStartToInstall={handleStartToInstall}
+                  onInstalled={handleInstalled}
+                  onFailed={handleFailed}
+                />
+              )}
+            </div>
           )}
-          {state.step === InstallStepFromGitHub.selectPackage && (
-            <SelectPackage
-              updatePayload={updatePayload!}
-              repoUrl={state.repoUrl}
-              selectedVersion={state.selectedVersion}
-              versions={versions}
-              onSelectVersion={item => setState(prevState => ({ ...prevState, selectedVersion: item.value as string }))}
-              selectedPackage={state.selectedPackage}
-              packages={packages}
-              onSelectPackage={item => setState(prevState => ({ ...prevState, selectedPackage: item.value as string }))}
-              onUploaded={handleUploaded}
-              onFailed={handleUploadFail}
-              onBack={handleBack}
-            />
-          )}
-          {state.step === InstallStepFromGitHub.readyToInstall && (
-            <Loaded
-              updatePayload={updatePayload!}
-              uniqueIdentifier={uniqueIdentifier!}
-              payload={manifest as any}
-              repoUrl={state.repoUrl}
-              selectedVersion={state.selectedVersion}
-              selectedPackage={state.selectedPackage}
-              onBack={handleBack}
-              onStartToInstall={handleStartToInstall}
-              onInstalled={handleInstalled}
-              onFailed={handleFailed}
-            />
-          )}
-        </div>}
     </Modal>
   )
 }

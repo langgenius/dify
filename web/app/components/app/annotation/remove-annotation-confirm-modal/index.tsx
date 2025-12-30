@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import Confirm from '@/app/components/base/confirm'
 
@@ -22,7 +22,7 @@ const RemoveAnnotationConfirmModal: FC<Props> = ({
       isShow={isShow}
       onCancel={onHide}
       onConfirm={onRemove}
-      title={t('appDebug.feature.annotation.removeConfirm')}
+      title={t('feature.annotation.removeConfirm', { ns: 'appDebug' })}
     />
   )
 }

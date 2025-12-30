@@ -1,21 +1,21 @@
+import type { FileUpload } from '@/app/components/base/features/types'
+import { RiUploadCloud2Line } from '@remixicon/react'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiUploadCloud2Line } from '@remixicon/react'
-import FileInput from '../file-input'
-import { useFile } from '../hooks'
-import { useStore } from '../store'
-import { FILE_URL_REGEX } from '../constants'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
-import type { FileUpload } from '@/app/components/base/features/types'
 import { cn } from '@/utils/classnames'
+import { FILE_URL_REGEX } from '../constants'
+import FileInput from '../file-input'
+import { useFile } from '../hooks'
+import { useStore } from '../store'
 
 type FileFromLinkOrLocalProps = {
   showFromLink?: boolean
@@ -51,7 +51,7 @@ const FileFromLinkOrLocal = ({
 
   return (
     <PortalToFollowElem
-      placement='top'
+      placement="top"
       offset={4}
       open={open}
       onOpenChange={setOpen}
@@ -59,18 +59,19 @@ const FileFromLinkOrLocal = ({
       <PortalToFollowElemTrigger onClick={() => setOpen(v => !v)} asChild>
         {trigger(open)}
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1001]'>
-        <div className='w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg'>
+      <PortalToFollowElemContent className="z-[1001]">
+        <div className="w-[280px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-3 shadow-lg">
           {
             showFromLink && (
               <>
                 <div className={cn(
                   'flex h-8 items-center rounded-lg border border-components-input-border-active bg-components-input-bg-active p-1 shadow-xs',
                   showError && 'border-components-input-border-destructive',
-                )}>
+                )}
+                >
                   <input
-                    className='system-sm-regular mr-0.5 block grow appearance-none bg-transparent px-1 outline-none'
-                    placeholder={t('common.fileUploader.pasteFileLinkInputPlaceholder') || ''}
+                    className="system-sm-regular mr-0.5 block grow appearance-none bg-transparent px-1 outline-none"
+                    placeholder={t('fileUploader.pasteFileLinkInputPlaceholder', { ns: 'common' }) || ''}
                     value={url}
                     onChange={(e) => {
                       setShowError(false)
@@ -79,19 +80,19 @@ const FileFromLinkOrLocal = ({
                     disabled={disabled}
                   />
                   <Button
-                    className='shrink-0'
-                    size='small'
-                    variant='primary'
+                    className="shrink-0"
+                    size="small"
+                    variant="primary"
                     disabled={!url || disabled}
                     onClick={handleSaveUrl}
                   >
-                    {t('common.operation.ok')}
+                    {t('operation.ok', { ns: 'common' })}
                   </Button>
                 </div>
                 {
                   showError && (
-                    <div className='body-xs-regular mt-0.5 text-text-destructive'>
-                      {t('common.fileUploader.pasteFileLinkInvalid')}
+                    <div className="body-xs-regular mt-0.5 text-text-destructive">
+                      {t('fileUploader.pasteFileLinkInvalid', { ns: 'common' })}
                     </div>
                   )
                 }
@@ -100,22 +101,22 @@ const FileFromLinkOrLocal = ({
           }
           {
             showFromLink && showFromLocal && (
-              <div className='system-2xs-medium-uppercase flex h-7 items-center p-2 text-text-quaternary'>
-                <div className='mr-2 h-px w-[93px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]' />
+              <div className="system-2xs-medium-uppercase flex h-7 items-center p-2 text-text-quaternary">
+                <div className="mr-2 h-px w-[93px] bg-gradient-to-l from-[rgba(16,24,40,0.08)]" />
                 OR
-                <div className='ml-2 h-px w-[93px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]' />
+                <div className="ml-2 h-px w-[93px] bg-gradient-to-r from-[rgba(16,24,40,0.08)]" />
               </div>
             )
           }
           {
             showFromLocal && (
               <Button
-                className='relative w-full'
-                variant='secondary-accent'
+                className="relative w-full"
+                variant="secondary-accent"
                 disabled={disabled}
               >
-                <RiUploadCloud2Line className='mr-1 h-4 w-4' />
-                {t('common.fileUploader.uploadFromComputer')}
+                <RiUploadCloud2Line className="mr-1 h-4 w-4" />
+                {t('fileUploader.uploadFromComputer', { ns: 'common' })}
                 <FileInput fileConfig={fileConfig} />
               </Button>
             )
