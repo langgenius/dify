@@ -69,4 +69,4 @@ const GA: FC<IGAProps> = ({
     </>
   )
 }
-export default GA
+export default React.memo(GA)
