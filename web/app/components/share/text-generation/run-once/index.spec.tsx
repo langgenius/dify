@@ -15,14 +15,12 @@ vi.mock('@/hooks/use-breakpoints', () => {
   }
   const mockUseBreakpoints = vi.fn(() => MediaType.pc)
   return {
-    __esModule: true,
     default: mockUseBreakpoints,
     MediaType,
   }
 })
 
 vi.mock('@/app/components/workflow/nodes/_base/components/editor/code-editor', () => ({
-  __esModule: true,
   default: ({ value, onChange }: { value?: string, onChange?: (val: string) => void }) => (
     <textarea data-testid="code-editor-mock" value={value} onChange={e => onChange?.(e.target.value)} />
   ),
@@ -36,7 +34,6 @@ vi.mock('@/app/components/base/image-uploader/text-generation-image-uploader', (
     return <div data-testid="vision-uploader-mock" />
   }
   return {
-    __esModule: true,
     default: TextGenerationImageUploaderMock,
   }
 })

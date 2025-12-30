@@ -160,7 +160,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
-  __esModule: true,
   default: () => <div data-testid="annotation-full" />,
 }))
 

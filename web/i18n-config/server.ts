@@ -2,7 +2,7 @@ import type { i18n as I18nInstance } from 'i18next'
 import type { Locale } from '.'
 import type { NamespaceCamelCase, NamespaceKebabCase } from './i18next-config'
 import { match } from '@formatjs/intl-localematcher'
-import { camelCase } from 'es-toolkit/compat'
+import { camelCase, kebabCase } from 'es-toolkit/compat'
 import { createInstance } from 'i18next'
 import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
@@ -22,8 +22,9 @@ const getOrCreateI18next = async (lng: Locale) => {
   instance = createInstance()
   await instance
     .use(initReactI18next)
-    .use(resourcesToBackend((language: Locale, namespace: NamespaceKebabCase) => {
-      return import(`../i18n/${language}/${namespace}.json`)
+    .use(resourcesToBackend((language: Locale, namespace: NamespaceCamelCase | NamespaceKebabCase) => {
+      const fileNamespace = kebabCase(namespace) as NamespaceKebabCase
+      return import(`../i18n/${language}/${fileNamespace}.json`)
     }))
     .init({
       lng,
