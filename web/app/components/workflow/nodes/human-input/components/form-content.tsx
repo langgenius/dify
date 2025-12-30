@@ -144,7 +144,8 @@ const FormContent: FC<FormContentProps> = ({
       {isFocus && (
         <div className="system-xs-regular flex h-8 shrink-0 items-center px-3 text-components-input-text-placeholder">
           <Trans
-            i18nKey="workflow.nodes.humanInput.formContent.hotkeyTip"
+            i18nKey="nodes.humanInput.formContent.hotkeyTip"
+            ns="workflow"
             components={
               {
                 Key: <Key>/</Key>,

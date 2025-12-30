@@ -32,7 +32,8 @@ const HumanInputContent = ({
             {showEmailTip && isEmailDebugMode && (
               <div className="system-xs-regular text-text-secondary">
                 <Trans
-                  i18nKey="workflow.common.humanInputEmailTipInDebugMode"
+                  i18nKey="common.humanInputEmailTipInDebugMode"
+                  ns="workflow"
                   components={{ email: <span className="system-xs-semibold"></span> }}
                   values={{ email }}
                 />

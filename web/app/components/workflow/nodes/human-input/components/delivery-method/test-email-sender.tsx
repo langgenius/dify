@@ -162,6 +162,7 @@ const EmailSenderModal = ({
             <div className="system-md-regular text-text-secondary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugDone`}
+                ns="workflow"
                 components={{ email: <span className="system-md-semibold text-text-secondary"></span> }}
                 values={{ email: userProfile.email }}
               />
@@ -171,6 +172,7 @@ const EmailSenderModal = ({
             <div className="system-md-regular text-text-secondary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone2`}
+                ns="workflow"
                 components={{ team: <span className="system-md-medium text-text-secondary"></span> }}
                 values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
               />
@@ -183,6 +185,7 @@ const EmailSenderModal = ({
             <div className="system-md-regular text-text-secondary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamDone1`}
+                ns="workflow"
                 components={{ team: <span className="system-md-medium text-text-secondary"></span> }}
                 values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
               />
@@ -232,6 +235,7 @@ const EmailSenderModal = ({
             <div className="system-sm-regular text-text-secondary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.debugModeTip2`}
+                ns="workflow"
                 components={{ email: <span className="system-sm-semibold text-text-primary"></span> }}
                 values={{ email: userProfile.email }}
               />
@@ -242,6 +246,7 @@ const EmailSenderModal = ({
           <div className="system-sm-regular text-text-secondary">
             <Trans
               i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip2`}
+              ns="workflow"
               components={{ team: <span className="system-sm-semibold text-text-primary"></span> }}
               values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
             />
@@ -254,6 +259,7 @@ const EmailSenderModal = ({
           <div className="system-sm-regular text-text-secondary">
             <Trans
               i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.wholeTeamTip1`}
+              ns="workflow"
               components={{ team: <span className="system-sm-semibold text-text-primary"></span> }}
               values={{ team: currentWorkspace.name.replace(/'/g, '’') }}
             />
@@ -276,6 +282,7 @@ const EmailSenderModal = ({
           <div className="system-xs-regular px-6 pt-1 text-text-tertiary">
             <Trans
               i18nKey={`${i18nPrefix}.deliveryMethod.emailSender.tip`}
+              ns="workflow"
               components={{ strong: <span className="system-xs-regular text-text-accent"></span> }}
             />
           </div>

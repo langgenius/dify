@@ -37,6 +37,7 @@ const Placeholder = ({
       <div className="flex flex-wrap items-center leading-5">
         <Trans
           i18nKey={`${i18nPrefix}.prePopulateFieldPlaceholder`}
+          ns="workflow"
           components={{
             staticContent: <TagLabel type="edit" className="mx-1" onClick={() => onTypeClick(false)}>{t(`${i18nPrefix}.staticContent`, { ns: 'workflow' })}</TagLabel>,
             variable: (

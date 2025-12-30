@@ -170,6 +170,7 @@ const MethodSelector: FC<Props> = ({
                 <div>{t(`${i18nPrefix}.deliveryMethod.contactTip1`, { ns: 'workflow' })}</div>
                 <Trans
                   i18nKey={t(`${i18nPrefix}.deliveryMethod.contactTip2`, { ns: 'workflow' })}
+                  ns="workflow"
                   components={{ email: <a href="mailto:support@dify.ai" className="text-text-accent-light-mode-only">support@dify.ai</a> }}
                 />
               </div>

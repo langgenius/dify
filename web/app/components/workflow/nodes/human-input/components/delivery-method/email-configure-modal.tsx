@@ -141,6 +141,7 @@ const EmailConfigureModal = ({
             <div className="body-xs-regular text-text-tertiary">
               <Trans
                 i18nKey={`${i18nPrefix}.deliveryMethod.emailConfigure.debugModeTip1`}
+                ns="workflow"
                 components={{ email: <span className="body-md-medium text-text-primary">{userProfile.email}</span> }}
                 values={{ email: userProfile.email }}
               />
