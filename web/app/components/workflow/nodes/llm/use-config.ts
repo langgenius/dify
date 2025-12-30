@@ -1,33 +1,31 @@
-import { useCallback, useEffect, useRef, useState } from 'react'
-import { EditionType, PromptRole, VarType } from '../../types'
-import { produce } from 'immer'
 import type { Memory, PromptItem, ValueSelector, Var, Variable } from '../../types'
-import type { ToolValue } from '../../block-selector/types'
-import { useStore } from '../../store'
-import {
-  useIsChatMode,
-  useNodesReadOnly,
-} from '../../hooks'
-import useAvailableVarList from '../_base/hooks/use-available-var-list'
-import useConfigVision from '../../hooks/use-config-vision'
 import type { LLMNodeType, StructuredOutput } from './types'
-import { useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { produce } from 'immer'
+import { useCallback, useEffect, useRef, useState } from 'react'
+import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
 import {
   ModelFeatureEnum,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
-import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock } from '@/app/components/base/prompt-editor/constants'
+import { useModelList, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import useInspectVarsCrud from '@/app/components/workflow/hooks/use-inspect-vars-crud'
-import { REACT_PROMPT_TEMPLATE } from './constants'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { AppModeEnum } from '@/types/app'
+import {
+  useIsChatMode,
+  useNodesReadOnly,
+} from '../../hooks'
+import useConfigVision from '../../hooks/use-config-vision'
+import { useStore } from '../../store'
+import { EditionType, VarType } from '../../types'
+import useAvailableVarList from '../_base/hooks/use-available-var-list'
 
 const useConfig = (id: string, payload: LLMNodeType) => {
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
   const isChatMode = useIsChatMode()
 
   const defaultConfig = useStore(s => s.nodesDefaultConfigs)?.[payload.type]
-  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string; assistant: string }>({ user: '', assistant: '' })
+  const [defaultRolePrefix, setDefaultRolePrefix] = useState<{ user: string, assistant: string }>({ user: '', assistant: '' })
   const { inputs, setInputs: doSetInputs } = useNodeCrud<LLMNodeType>(id, payload)
   const inputRef = useRef(inputs)
   useEffect(() => {
@@ -130,7 +128,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     },
   })
 
-  const handleModelChanged = useCallback((model: { provider: string; modelId: string; mode?: string }) => {
+  const handleModelChanged = useCallback((model: { provider: string, modelId: string, mode?: string }) => {
     const newInputs = produce(inputRef.current, (draft) => {
       draft.model.provider = model.provider
       draft.model.name = model.modelId
@@ -252,7 +250,7 @@ const useConfig = (id: string, payload: LLMNodeType) => {
   }, [setInputs])
 
   const handlePromptChange = useCallback((newPrompt: PromptItem[] | PromptItem) => {
-    const newInputs = produce(inputs, (draft) => {
+    const newInputs = produce(inputRef.current, (draft) => {
       draft.prompt_template = newPrompt
     })
     setInputs(newInputs)
@@ -285,13 +283,12 @@ const useConfig = (id: string, payload: LLMNodeType) => {
 
   // structure output
   const { data: modelList } = useModelList(ModelTypeEnum.textGeneration)
-  const currentModelFeatures = modelList
+  const isModelSupportStructuredOutput = modelList
     ?.find(provideItem => provideItem.provider === model?.provider)
-    ?.models.find(modelItem => modelItem.model === model?.name)
-    ?.features || []
-
-  const isModelSupportStructuredOutput = currentModelFeatures.includes(ModelFeatureEnum.StructuredOutput)
-  const isModelSupportToolCall = currentModelFeatures.includes(ModelFeatureEnum.toolCall) || currentModelFeatures.includes(ModelFeatureEnum.streamToolCall)
+    ?.models
+    .find(modelItem => modelItem.model === model?.name)
+    ?.features
+    ?.includes(ModelFeatureEnum.StructuredOutput)
 
   const [structuredOutputCollapsed, setStructuredOutputCollapsed] = useState(true)
   const handleStructureOutputEnableChange = useCallback((enabled: boolean) => {
@@ -332,91 +329,6 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     setInputs(newInputs)
   }, [setInputs])
 
-  const handleToolsChange = useCallback((tools: ToolValue[]) => {
-    const newInputs = produce(inputs, (draft) => {
-      draft.tools = tools
-    })
-    setInputs(newInputs)
-  }, [inputs, setInputs])
-
-  // Auto-manage ReAct prompt based on model support and tool selection
-  useEffect(() => {
-    if (!isChatModel) return
-
-    // Add a small delay to ensure all state updates have settled
-    const timeoutId = setTimeout(() => {
-      const promptTemplate = inputs.prompt_template as PromptItem[]
-      const systemPromptIndex = promptTemplate.findIndex(item => item.role === 'system')
-
-      const shouldHaveReactPrompt = inputs.tools && inputs.tools.length > 0 && !isModelSupportToolCall
-
-      if (shouldHaveReactPrompt) {
-        // Should have ReAct prompt
-        let needsAdd = false
-        if (systemPromptIndex >= 0) {
-          const currentSystemPrompt = promptTemplate[systemPromptIndex].text
-          // Check if ReAct prompt is already present by looking for key phrases
-          needsAdd = !currentSystemPrompt.includes('{{tools}}') && !currentSystemPrompt.includes('{{tool_names}}')
-        }
-        else {
-          needsAdd = true
-        }
-
-        if (needsAdd) {
-          const newInputs = produce(inputs, (draft) => {
-            const draftPromptTemplate = draft.prompt_template as PromptItem[]
-            const sysPromptIdx = draftPromptTemplate.findIndex(item => item.role === 'system')
-
-            if (sysPromptIdx >= 0) {
-              // Append ReAct prompt to existing system prompt
-              draftPromptTemplate[sysPromptIdx].text
-                = `${draftPromptTemplate[sysPromptIdx].text}\n\n${REACT_PROMPT_TEMPLATE}`
-            }
-            else {
-              // Create new system prompt with ReAct template
-              draftPromptTemplate.unshift({
-                role: PromptRole.system,
-                text: REACT_PROMPT_TEMPLATE,
-              })
-            }
-          })
-          setInputs(newInputs)
-        }
-      }
-      else {
-        // Should NOT have ReAct prompt - remove it if present
-        if (systemPromptIndex >= 0) {
-          const currentSystemPrompt = promptTemplate[systemPromptIndex].text
-          const hasReactPrompt = currentSystemPrompt.includes('{{tools}}') || currentSystemPrompt.includes('{{tool_names}}')
-
-          if (hasReactPrompt) {
-            const newInputs = produce(inputs, (draft) => {
-              const draftPromptTemplate = draft.prompt_template as PromptItem[]
-              const sysPromptIdx = draftPromptTemplate.findIndex(item => item.role === 'system')
-
-              if (sysPromptIdx >= 0) {
-                // Remove ReAct prompt from system prompt
-                let cleanedText = draftPromptTemplate[sysPromptIdx].text
-                // Remove the ReAct template
-                cleanedText = cleanedText.replace(`\n\n${REACT_PROMPT_TEMPLATE}`, '')
-                cleanedText = cleanedText.replace(REACT_PROMPT_TEMPLATE, '')
-
-                // If system prompt is now empty, remove it entirely
-                if (cleanedText.trim() === '')
-                  draftPromptTemplate.splice(sysPromptIdx, 1)
-                else
-                  draftPromptTemplate[sysPromptIdx].text = cleanedText.trim()
-              }
-            })
-            setInputs(newInputs)
-          }
-        }
-      }
-    }, 100) // Small delay to let other state updates settle
-
-    return () => clearTimeout(timeoutId)
-  }, [inputs.tools?.length, isModelSupportToolCall, isChatModel, setInputs])
-
   const {
     availableVars,
     availableNodesWithParent,
@@ -452,14 +364,12 @@ const useConfig = (id: string, payload: LLMNodeType) => {
     handleVisionResolutionEnabledChange,
     handleVisionResolutionChange,
     isModelSupportStructuredOutput,
-    isModelSupportToolCall,
     handleStructureOutputChange,
     structuredOutputCollapsed,
     setStructuredOutputCollapsed,
     handleStructureOutputEnableChange,
     filterJinja2InputVar,
     handleReasoningFormatChange,
-    handleToolsChange,
   }
 }
 

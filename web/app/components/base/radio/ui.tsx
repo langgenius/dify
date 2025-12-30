@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import cn from '@/utils/classnames'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   isChecked: boolean
@@ -18,6 +18,9 @@ const RadioUI: FC<Props> = ({
 }) => {
   return (
     <div
+      role="radio"
+      aria-checked={isChecked}
+      aria-disabled={disabled}
       className={cn(
         'size-4 rounded-full',
         isChecked && !disabled && 'border-[5px] border-components-radio-border-checked hover:border-components-radio-border-checked-hover',
@@ -28,7 +31,8 @@ const RadioUI: FC<Props> = ({
         className,
       )}
       onClick={(event) => {
-        if (disabled) return
+        if (disabled)
+          return
         onCheck?.(event)
       }}
     />

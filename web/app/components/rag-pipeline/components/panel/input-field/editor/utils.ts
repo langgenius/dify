@@ -1,5 +1,5 @@
-import type { InputVar } from '@/models/pipeline'
 import type { FormData } from './form/types'
+import type { InputVar } from '@/models/pipeline'
 import { VAR_ITEM_TEMPLATE_IN_PIPELINE } from '@/config'
 
 const getNewInputVarInRagPipeline = (): InputVar => {

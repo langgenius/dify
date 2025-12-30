@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import type { InstalledApp } from '@/models/explore'
 import { useRouter } from 'next/navigation'
-import ExploreContext from '@/context/explore-context'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Sidebar from '@/app/components/explore/sidebar'
 import { useAppContext } from '@/context/app-context'
-import { fetchMembers } from '@/service/common'
-import type { InstalledApp } from '@/models/explore'
-import { useTranslation } from 'react-i18next'
+import ExploreContext from '@/context/explore-context'
 import useDocumentTitle from '@/hooks/use-document-title'
+import { useMembers } from '@/service/use-common'
 
 export type IExploreProps = {
   children: React.ReactNode
@@ -24,18 +25,16 @@ const Explore: FC<IExploreProps> = ({
   const [installedApps, setInstalledApps] = useState<InstalledApp[]>([])
   const [isFetchingInstalledApps, setIsFetchingInstalledApps] = useState(false)
   const { t } = useTranslation()
+  const { data: membersData } = useMembers()
 
-  useDocumentTitle(t('common.menus.explore'))
+  useDocumentTitle(t('menus.explore', { ns: 'common' }))
 
   useEffect(() => {
-    (async () => {
-      const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-      if (!accounts)
-        return
-      const currUser = accounts.find(account => account.id === userProfile.id)
-      setHasEditPermission(currUser?.role !== 'normal')
-    })()
-  }, [])
+    if (!membersData?.accounts)
+      return
+    const currUser = membersData.accounts.find(account => account.id === userProfile.id)
+    setHasEditPermission(currUser?.role !== 'normal')
+  }, [membersData, userProfile.id])
 
   useEffect(() => {
     if (isCurrentWorkspaceDatasetOperator)
@@ -43,7 +42,7 @@ const Explore: FC<IExploreProps> = ({
   }, [isCurrentWorkspaceDatasetOperator])
 
   return (
-    <div className='flex h-full overflow-hidden border-t border-divider-regular bg-background-body'>
+    <div className="flex h-full overflow-hidden border-t border-divider-regular bg-background-body">
       <ExploreContext.Provider
         value={
           {
@@ -58,7 +57,7 @@ const Explore: FC<IExploreProps> = ({
         }
       >
         <Sidebar controlUpdateInstalledApps={controlUpdateInstalledApps} />
-        <div className='w-0 grow'>
+        <div className="w-0 grow">
           {children}
         </div>
       </ExploreContext.Provider>

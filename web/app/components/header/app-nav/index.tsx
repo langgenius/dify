@@ -1,23 +1,23 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useParams } from 'next/navigation'
-import { flatten } from 'lodash-es'
-import { produce } from 'immer'
+import type { NavItem } from '../nav/nav-selector'
 import {
   RiRobot2Fill,
   RiRobot2Line,
 } from '@remixicon/react'
-import Nav from '../nav'
-import type { NavItem } from '../nav/nav-selector'
+import { flatten } from 'es-toolkit/compat'
+import { produce } from 'immer'
+import { useParams } from 'next/navigation'
+import { useCallback, useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import CreateAppTemplateDialog from '@/app/components/app/create-app-dialog'
 import CreateAppModal from '@/app/components/app/create-app-modal'
 import CreateFromDSLModal from '@/app/components/app/create-from-dsl-modal'
-import { useAppContext } from '@/context/app-context'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import { AppModeEnum } from '@/types/app'
+import { useAppContext } from '@/context/app-context'
 import { useInfiniteAppList } from '@/service/use-apps'
+import { AppModeEnum } from '@/types/app'
+import Nav from '../nav'
 
 const AppNav = () => {
   const { t } = useTranslation()
@@ -101,14 +101,14 @@ const AppNav = () => {
     <>
       <Nav
         isApp
-        icon={<RiRobot2Line className='h-4 w-4' />}
-        activeIcon={<RiRobot2Fill className='h-4 w-4' />}
-        text={t('common.menus.apps')}
+        icon={<RiRobot2Line className="h-4 w-4" />}
+        activeIcon={<RiRobot2Fill className="h-4 w-4" />}
+        text={t('menus.apps', { ns: 'common' })}
         activeSegment={['apps', 'app']}
-        link='/apps'
+        link="/apps"
         curNav={appDetail}
         navigationItems={navItems}
-        createText={t('common.menus.newApp')}
+        createText={t('menus.newApp', { ns: 'common' })}
         onCreate={openModal}
         onLoadMore={handleLoadMore}
       />

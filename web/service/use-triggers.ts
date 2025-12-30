@@ -1,5 +1,4 @@
-import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, post } from './base'
+import type { FormOption } from '@/app/components/base/form/types'
 import type {
   TriggerLogEntity,
   TriggerOAuthClientParams,
@@ -9,7 +8,9 @@ import type {
   TriggerSubscriptionBuilder,
   TriggerWithProvider,
 } from '@/app/components/workflow/block-selector/types'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { CollectionType } from '@/app/components/tools/types'
+import { del, get, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'triggers'
@@ -149,9 +150,9 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
       provider: string
       subscriptionBuilderId: string
       name?: string
-      properties?: Record<string, any>
-      parameters?: Record<string, any>
-      credentials?: Record<string, any>
+      properties?: Record<string, unknown>
+      parameters?: Record<string, unknown>
+      credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post<TriggerSubscriptionBuilder>(
@@ -162,17 +163,35 @@ export const useUpdateTriggerSubscriptionBuilder = () => {
   })
 }
 
-export const useVerifyTriggerSubscriptionBuilder = () => {
+export const useVerifyAndUpdateTriggerSubscriptionBuilder = () => {
   return useMutation({
-    mutationKey: [NAME_SPACE, 'verify-subscription-builder'],
+    mutationKey: [NAME_SPACE, 'verify-and-update-subscription-builder'],
     mutationFn: (payload: {
       provider: string
       subscriptionBuilderId: string
-      credentials?: Record<string, any>
+      credentials?: Record<string, unknown>
     }) => {
       const { provider, subscriptionBuilderId, ...body } = payload
       return post<{ verified: boolean }>(
-        `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify/${subscriptionBuilderId}`,
+        `/workspaces/current/trigger-provider/${provider}/subscriptions/builder/verify-and-update/${subscriptionBuilderId}`,
+        { body },
+        { silent: true },
+      )
+    },
+  })
+}
+
+export const useVerifyTriggerSubscription = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'verify-subscription'],
+    mutationFn: (payload: {
+      provider: string
+      subscriptionId: string
+      credentials?: Record<string, unknown>
+    }) => {
+      const { provider, subscriptionId, ...body } = payload
+      return post<{ verified: boolean }>(
+        `/workspaces/current/trigger-provider/${provider}/subscriptions/verify/${subscriptionId}`,
         { body },
         { silent: true },
       )
@@ -184,7 +203,7 @@ export type BuildTriggerSubscriptionPayload = {
   provider: string
   subscriptionBuilderId: string
   name?: string
-  parameters?: Record<string, any>
+  parameters?: Record<string, unknown>
 }
 
 export const useBuildTriggerSubscription = () => {
@@ -206,6 +225,27 @@ export const useDeleteTriggerSubscription = () => {
     mutationFn: (subscriptionId: string) => {
       return post<{ result: string }>(
         `/workspaces/current/trigger-provider/${subscriptionId}/subscriptions/delete`,
+      )
+    },
+  })
+}
+
+export type UpdateTriggerSubscriptionPayload = {
+  subscriptionId: string
+  name?: string
+  properties?: Record<string, unknown>
+  parameters?: Record<string, unknown>
+  credentials?: Record<string, unknown>
+}
+
+export const useUpdateTriggerSubscription = () => {
+  return useMutation({
+    mutationKey: [NAME_SPACE, 'update-subscription'],
+    mutationFn: (payload: UpdateTriggerSubscriptionPayload) => {
+      const { subscriptionId, ...body } = payload
+      return post<{ result: string, id: string }>(
+        `/workspaces/current/trigger-provider/${subscriptionId}/subscriptions/update`,
+        { body },
       )
     },
   })
@@ -274,7 +314,7 @@ export const useInitiateTriggerOAuth = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'initiate-oauth'],
     mutationFn: (provider: string) => {
-      return get<{ authorization_url: string; subscription_builder: TriggerSubscriptionBuilder }>(
+      return get<{ authorization_url: string, subscription_builder: TriggerSubscriptionBuilder }>(
         `/workspaces/current/trigger-provider/${provider}/subscriptions/oauth/authorize`,
         {},
         { silent: true },
@@ -290,22 +330,49 @@ export const useTriggerPluginDynamicOptions = (payload: {
   action: string
   parameter: string
   credential_id: string
-  extra?: Record<string, any>
+  credentials?: Record<string, unknown>
+  extra?: Record<string, unknown>
 }, enabled = true) => {
-  return useQuery<{ options: Array<{ value: string; label: any }> }>({
-    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.extra],
-    queryFn: () => get<{ options: Array<{ value: string; label: any }> }>(
-      '/workspaces/current/plugin/parameters/dynamic-options',
-      {
-        params: {
-          ...payload,
-          provider_type: 'trigger', // Add required provider_type parameter
+  return useQuery<{ options: FormOption[] }>({
+    queryKey: [NAME_SPACE, 'dynamic-options', payload.plugin_id, payload.provider, payload.action, payload.parameter, payload.credential_id, payload.credentials, payload.extra],
+    queryFn: () => {
+      // Use new endpoint with POST when credentials provided (for edit mode)
+      if (payload.credentials) {
+        return post<{ options: FormOption[] }>(
+          '/workspaces/current/plugin/parameters/dynamic-options-with-credentials',
+          {
+            body: {
+              plugin_id: payload.plugin_id,
+              provider: payload.provider,
+              action: payload.action,
+              parameter: payload.parameter,
+              credential_id: payload.credential_id,
+              credentials: payload.credentials,
+            },
+          },
+          { silent: true },
+        )
+      }
+      // Use original GET endpoint for normal cases
+      return get<{ options: FormOption[] }>(
+        '/workspaces/current/plugin/parameters/dynamic-options',
+        {
+          params: {
+            plugin_id: payload.plugin_id,
+            provider: payload.provider,
+            action: payload.action,
+            parameter: payload.parameter,
+            credential_id: payload.credential_id,
+            provider_type: 'trigger',
+          },
         },
-      },
-      { silent: true },
-    ),
+        { silent: true },
+      )
+    },
     enabled: enabled && !!payload.plugin_id && !!payload.provider && !!payload.action && !!payload.parameter && !!payload.credential_id,
     retry: 0,
+    staleTime: 0,
+    gcTime: 0,
   })
 }
 

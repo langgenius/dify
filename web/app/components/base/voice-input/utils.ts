@@ -1,7 +1,7 @@
 import lamejs from 'lamejs'
-import MPEGMode from 'lamejs/src/js/MPEGMode'
-import Lame from 'lamejs/src/js/Lame'
 import BitStream from 'lamejs/src/js/BitStream'
+import Lame from 'lamejs/src/js/Lame'
+import MPEGMode from 'lamejs/src/js/MPEGMode'
 
 if (globalThis) {
   (globalThis as any).MPEGMode = MPEGMode
