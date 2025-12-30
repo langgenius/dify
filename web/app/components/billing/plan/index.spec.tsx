@@ -47,13 +47,11 @@ const verifyStateModalMock = vi.fn(props => (
   </div>
 ))
 vi.mock('@/app/education-apply/verify-state-modal', () => ({
-  __esModule: true,
   // eslint-disable-next-line ts/no-explicit-any
   default: (props: any) => verifyStateModalMock(props),
 }))
 
 vi.mock('../upgrade-btn', () => ({
-  __esModule: true,
   default: () => <button data-testid="plan-upgrade-btn" type="button">Upgrade</button>,
 }))
 

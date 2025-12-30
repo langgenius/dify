@@ -38,7 +38,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 // Mock child component RetrievalParamConfig to simplify testing
 vi.mock('../retrieval-param-config', () => ({
-  __esModule: true,
   default: ({ type, value, onChange, showMultiModalTip }: {
     type: RETRIEVE_METHOD
     value: RetrievalConfig

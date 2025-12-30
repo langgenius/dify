@@ -5,12 +5,11 @@ import { RiSettings2Line } from '@remixicon/react'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer-plus'
 import Input from '@/app/components/base/input'
 import { AuthType } from '@/app/components/tools/types'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { testAPIAvailable } from '@/service/tools'
 import ConfigCredentials from './config-credentials'
@@ -29,7 +28,7 @@ const TestApi: FC<Props> = ({
   onHide,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const language = getLanguage(locale)
   const [credentialsModalShow, setCredentialsModalShow] = useState(false)
   const [tempCredential, setTempCredential] = React.useState<Credential>(customCollection.credentials)

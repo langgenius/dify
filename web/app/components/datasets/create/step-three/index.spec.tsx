@@ -5,7 +5,6 @@ import StepThree from './index'
 
 // Mock the EmbeddingProcess component since it has complex async logic
 vi.mock('../embedding-process', () => ({
-  __esModule: true,
   default: vi.fn(({ datasetId, batchId, documents, indexingType, retrievalMethod }) => (
     <div data-testid="embedding-process">
       <span data-testid="ep-dataset-id">{datasetId}</span>
@@ -20,7 +19,6 @@ vi.mock('../embedding-process', () => ({
 // Mock useBreakpoints hook
 let mockMediaType = 'pc'
 vi.mock('@/hooks/use-breakpoints', () => ({
-  __esModule: true,
   MediaType: {
     mobile: 'mobile',
     tablet: 'tablet',

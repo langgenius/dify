@@ -24,7 +24,6 @@ vi.mock('@/context/modal-context', () => ({
 // Mock the complex CustomWebAppBrand component to avoid dependency issues
 // This is acceptable because it has complex dependencies (fetch, APIs)
 vi.mock('../custom-web-app-brand', () => ({
-  __esModule: true,
   default: () => <div data-testid="custom-web-app-brand">CustomWebAppBrand</div>,
 }))
 

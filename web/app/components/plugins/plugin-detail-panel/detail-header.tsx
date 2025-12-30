@@ -26,7 +26,7 @@ import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-v
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useGetLanguage, useI18N } from '@/context/i18n'
+import { useGetLanguage, useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
@@ -67,7 +67,7 @@ const DetailHeader = ({
 
   const { theme } = useTheme()
   const locale = useGetLanguage()
-  const { locale: currentLocale } = useI18N()
+  const currentLocale = useLocale()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()

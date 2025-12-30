@@ -31,7 +31,6 @@ const defaultPromptVariables: PromptVariable[] = [
 let mockSimplePromptInputProps: IPromptProps | null = null
 
 vi.mock('./simple-prompt-input', () => ({
-  __esModule: true,
   default: (props: IPromptProps) => {
     mockSimplePromptInputProps = props
     return (
@@ -67,7 +66,6 @@ type AdvancedMessageInputProps = {
 }
 
 vi.mock('./advanced-prompt-input', () => ({
-  __esModule: true,
   default: (props: AdvancedMessageInputProps) => {
     return (
       <div

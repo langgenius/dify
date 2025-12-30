@@ -10,7 +10,6 @@ vi.mock('@/context/provider-context', () => ({
 
 const mockToastNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: {
     notify: vi.fn(args => mockToastNotify(args)),
   },

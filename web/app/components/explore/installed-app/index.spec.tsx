@@ -48,7 +48,6 @@ vi.mock('@/service/use-explore', () => ({
  * in their own dedicated test files.
  */
 vi.mock('@/app/components/share/text-generation', () => ({
-  __esModule: true,
   default: ({ isInstalledApp, installedAppInfo, isWorkflow }: {
     isInstalledApp?: boolean
     installedAppInfo?: InstalledAppType
@@ -63,7 +62,6 @@ vi.mock('@/app/components/share/text-generation', () => ({
 }))
 
 vi.mock('@/app/components/base/chat/chat-with-history', () => ({
-  __esModule: true,
   default: ({ installedAppInfo, className }: {
     installedAppInfo?: InstalledAppType
     className?: string

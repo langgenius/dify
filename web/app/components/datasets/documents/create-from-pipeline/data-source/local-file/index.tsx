@@ -11,7 +11,7 @@ import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/u
 import { ToastContext } from '@/app/components/base/toast'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import { IS_CE_EDITION } from '@/config'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { upload } from '@/service/base'
@@ -33,7 +33,7 @@ const LocalFile = ({
 }: LocalFileProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const localFileList = useDataSourceStoreWithSelector(state => state.localFileList)
   const dataSourceStore = useDataSourceStore()
   const [dragging, setDragging] = useState(false)

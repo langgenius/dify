@@ -4,13 +4,13 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import Countdown from '@/app/components/signin/countdown'
-import I18NContext from '@/context/i18n'
+
+import { useLocale } from '@/context/i18n'
 import { emailLoginWithCode, sendEMailLoginCode } from '@/service/common'
 import { encryptVerificationCode } from '@/utils/encryption'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
@@ -25,7 +25,7 @@ export default function CheckCode() {
   const language = i18n.language
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
   const codeInputRef = useRef<HTMLInputElement>(null)
 
   const verify = async () => {

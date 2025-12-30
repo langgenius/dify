@@ -9,7 +9,6 @@ import { RETRIEVE_METHOD } from '@/types/app'
 import SelectDataSet from './index'
 
 vi.mock('@/i18n-config/i18next-config', () => ({
-  __esModule: true,
   default: {
     changeLanguage: vi.fn(),
     addResourceBundle: vi.fn(),

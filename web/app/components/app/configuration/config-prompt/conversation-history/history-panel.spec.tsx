@@ -8,7 +8,6 @@ vi.mock('@/context/i18n', () => ({
 }))
 
 vi.mock('@/app/components/app/configuration/base/operation-btn', () => ({
-  __esModule: true,
   default: ({ onClick }: { onClick: () => void }) => (
     <button type="button" data-testid="edit-button" onClick={onClick}>
       edit
@@ -17,7 +16,6 @@ vi.mock('@/app/components/app/configuration/base/operation-btn', () => ({
 }))
 
 vi.mock('@/app/components/app/configuration/base/feature-panel', () => ({
-  __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 

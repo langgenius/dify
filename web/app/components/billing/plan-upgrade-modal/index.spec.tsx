@@ -10,7 +10,6 @@ vi.mock('@/app/components/base/modal', () => {
     isShow ? <div data-testid="plan-upgrade-modal">{children}</div> : null
   )
   return {
-    __esModule: true,
     default: MockModal,
   }
 })

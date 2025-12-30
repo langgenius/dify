@@ -44,7 +44,6 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock the EmbeddingProcess component to track props
 let embeddingProcessProps: Record<string, unknown> = {}
 vi.mock('./embedding-process', () => ({
-  __esModule: true,
   default: (props: Record<string, unknown>) => {
     embeddingProcessProps = props
     return (

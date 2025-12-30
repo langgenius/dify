@@ -6,7 +6,6 @@ import type {
 import { noop } from 'es-toolkit/compat'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
 import EmojiPicker from '@/app/components/base/emoji-picker'
@@ -16,7 +15,7 @@ import Modal from '@/app/components/base/modal'
 import { SimpleSelect } from '@/app/components/base/select'
 import { useToastContext } from '@/app/components/base/toast'
 import ApiBasedExtensionSelector from '@/app/components/header/account-setting/api-based-extension-page/selector'
-import I18n, { useDocLink } from '@/context/i18n'
+import { useDocLink, useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useCodeBasedExtensions } from '@/service/use-common'
 
@@ -41,7 +40,7 @@ const ExternalDataToolModal: FC<ExternalDataToolModalProps> = ({
   const { t } = useTranslation()
   const docLink = useDocLink()
   const { notify } = useToastContext()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const [localeData, setLocaleData] = useState(data.type ? data : { ...data, type: 'api' })
   const [showEmojiPicker, setShowEmojiPicker] = useState(false)
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('external_data_tool')

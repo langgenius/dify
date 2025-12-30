@@ -51,12 +51,10 @@ const mockAppStore = (overrides: Partial<App> = {}) => {
 }
 
 vi.mock('@/app/components/app/store', () => ({
-  __esModule: true,
   useStore: (selector: (state: { appDetail?: App, setCurrentLogItem: typeof mockSetCurrentLogItem, setShowMessageLogModal: typeof mockSetShowMessageLogModal }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
 vi.mock('@/app/components/workflow/header', () => ({
-  __esModule: true,
   default: (props: HeaderProps) => {
     return (
       <div
@@ -83,7 +81,6 @@ vi.mock('@/app/components/workflow/header', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  __esModule: true,
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 

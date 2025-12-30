@@ -3,10 +3,9 @@ import type { DocExtractorNodeType } from './types'
 import type { NodePanelProps } from '@/app/components/workflow/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import { BlockEnum } from '@/app/components/workflow/types'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { useFileSupportTypes } from '@/service/use-common'
 import OutputVars, { VarItem } from '../_base/components/output-vars'
@@ -22,7 +21,7 @@ const Panel: FC<NodePanelProps<DocExtractorNodeType>> = ({
   data,
 }) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const link = useNodeHelpLink(BlockEnum.DocExtractor)
   const { data: supportFileTypesResponse } = useFileSupportTypes()
   const supportTypes = supportFileTypesResponse?.allowed_extensions || []

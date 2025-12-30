@@ -21,7 +21,6 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/hooks/use-breakpoints', () => ({
-  __esModule: true,
   default: () => MediaType.pc,
   MediaType: {
     mobile: 'mobile',
@@ -53,7 +52,6 @@ vi.mock('@/service/use-common', () => ({
 }))
 
 vi.mock('@/hooks/use-document-title', () => ({
-  __esModule: true,
   default: vi.fn(),
 }))
 

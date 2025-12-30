@@ -1,13 +1,17 @@
 import type { CustomCollectionBackend, CustomParamSchema } from '@/app/components/tools/types'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import { AuthType } from '@/app/components/tools/types'
-import I18n from '@/context/i18n'
 import { testAPIAvailable } from '@/service/tools'
 import TestApi from './test-api'
 
 vi.mock('@/service/tools', () => ({
   testAPIAvailable: vi.fn(),
 }))
+
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(() => 'en-US'),
+}))
+
 const testAPIAvailableMock = vi.mocked(testAPIAvailable)
 
 describe('TestApi', () => {
@@ -40,19 +44,12 @@ describe('TestApi', () => {
   }
 
   const renderTestApi = () => {
-    const providerValue = {
-      locale: 'en-US',
-      i18n: {},
-      setLocaleOnClient: vi.fn(),
-    }
     return render(
-      <I18n.Provider value={providerValue as any}>
-        <TestApi
-          customCollection={customCollection}
-          tool={tool}
-          onHide={vi.fn()}
-        />
-      </I18n.Provider>,
+      <TestApi
+        customCollection={customCollection}
+        tool={tool}
+        onHide={vi.fn()}
+      />,
     )
   }
 

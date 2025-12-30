@@ -14,21 +14,18 @@ vi.mock('next/navigation', () => ({
 }))
 
 vi.mock('@/app/components/app/annotation', () => ({
-  __esModule: true,
   default: ({ appDetail }: { appDetail: App }) => (
     <div data-testid="annotation" data-app-id={appDetail.id} />
   ),
 }))
 
 vi.mock('@/app/components/app/log', () => ({
-  __esModule: true,
   default: ({ appDetail }: { appDetail: App }) => (
     <div data-testid="log" data-app-id={appDetail.id} />
   ),
 }))
 
 vi.mock('@/app/components/app/workflow-log', () => ({
-  __esModule: true,
   default: ({ appDetail }: { appDetail: App }) => (
     <div data-testid="workflow-log" data-app-id={appDetail.id} />
   ),

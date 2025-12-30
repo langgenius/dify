@@ -6,7 +6,6 @@ import {
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Confirm from '@/app/components/base/confirm'
@@ -24,7 +23,7 @@ import EditCustomToolModal from '@/app/components/tools/edit-custom-collection-m
 import ConfigCredential from '@/app/components/tools/setting/build-in/config-credentials'
 import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import { useAppContext } from '@/context/app-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 
@@ -60,7 +59,7 @@ const ProviderDetail = ({
   onRefreshData,
 }: Props) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const language = getLanguage(locale)
 
   const needAuth = collection.allow_delete || collection.type === CollectionType.model

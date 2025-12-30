@@ -1,12 +1,11 @@
 'use client'
 import type { Locale } from '@/i18n-config'
 import dynamic from 'next/dynamic'
-import * as React from 'react'
-import { useContext } from 'use-context-selector'
 import Divider from '@/app/components/base/divider'
 import LocaleSigninSelect from '@/app/components/base/select/locale-signin'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
+import { setLocaleOnClient } from '@/i18n-config'
 import { languages } from '@/i18n-config/language'
 
 // Avoid rendering the logo and theme selector on the server
@@ -20,7 +19,7 @@ const ThemeSelector = dynamic(() => import('@/app/components/base/theme-selector
 })
 
 const Header = () => {
-  const { locale, setLocaleOnClient } = useContext(I18n)
+  const locale = useLocale()
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
 
   return (

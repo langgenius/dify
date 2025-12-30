@@ -12,7 +12,7 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
@@ -31,7 +31,7 @@ const CardWrapperComponent = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
-  const { locale: localeFromLocale } = useI18N()
+  const localeFromLocale = useLocale()
   const { getTagLabel } = useTags(t)
 
   // Memoize marketplace link params to prevent unnecessary re-renders

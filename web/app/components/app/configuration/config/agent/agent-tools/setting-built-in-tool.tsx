@@ -9,7 +9,6 @@ import {
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import ActionButton from '@/app/components/base/action-button'
 import Button from '@/app/components/base/button'
 import Drawer from '@/app/components/base/drawer'
@@ -26,7 +25,7 @@ import {
 import { ReadmeEntrance } from '@/app/components/plugins/readme-panel/entrance'
 import { CollectionType } from '@/app/components/tools/types'
 import { toolParametersToFormSchemas } from '@/app/components/tools/utils/to-form-schema'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { fetchBuiltInToolList, fetchCustomToolList, fetchModelToolList, fetchWorkflowToolList } from '@/service/tools'
 import { cn } from '@/utils/classnames'
@@ -58,7 +57,7 @@ const SettingBuiltInTool: FC<Props> = ({
   credentialId,
   onAuthorizationItemClick,
 }) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const language = getLanguage(locale)
   const { t } = useTranslation()
   const passedTools = (collection as ToolWithProvider).tools

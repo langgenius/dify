@@ -46,7 +46,6 @@ vi.mock('../marketplace/hooks', () => ({
 // Mock useGetLanguage context
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
-  useI18N: () => ({ locale: 'en-US' }),
 }))
 
 // Mock useTheme hook

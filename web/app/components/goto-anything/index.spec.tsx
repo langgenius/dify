@@ -67,7 +67,6 @@ const matchActionMock = vi.fn(() => undefined)
 const searchAnythingMock = vi.fn(async () => mockQueryResult.data)
 
 vi.mock('./actions', () => ({
-  __esModule: true,
   createActions: () => createActionsMock(),
   matchAction: () => matchActionMock(),
   searchAnything: () => searchAnythingMock(),

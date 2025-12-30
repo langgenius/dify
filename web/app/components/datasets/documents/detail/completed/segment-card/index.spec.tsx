@@ -59,7 +59,6 @@ vi.mock('../index', () => ({
 
 // StatusItem uses React Query hooks which require QueryClientProvider
 vi.mock('../../../status-item', () => ({
-  __esModule: true,
   default: ({ status, reverse, textCls }: { status: string, reverse?: boolean, textCls?: string }) => (
     <div data-testid="status-item" data-status={status} data-reverse={reverse} className={textCls}>
       Status:
@@ -71,7 +70,6 @@ vi.mock('../../../status-item', () => ({
 
 // ImageList has deep dependency: FileThumb → file-uploader → react-pdf-highlighter (ESM)
 vi.mock('@/app/components/datasets/common/image-list', () => ({
-  __esModule: true,
   default: ({ images, size, className }: { images: Array<{ sourceUrl: string, name: string }>, size?: string, className?: string }) => (
     <div data-testid="image-list" data-image-count={images.length} data-size={size} className={className}>
       {images.map((img, idx: number) => (
@@ -83,7 +81,6 @@ vi.mock('@/app/components/datasets/common/image-list', () => ({
 
 // Markdown uses next/dynamic and react-syntax-highlighter (ESM)
 vi.mock('@/app/components/base/markdown', () => ({
-  __esModule: true,
   Markdown: ({ content, className }: { content: string, className?: string }) => (
     <div data-testid="markdown" className={`markdown-body ${className || ''}`}>{content}</div>
   ),

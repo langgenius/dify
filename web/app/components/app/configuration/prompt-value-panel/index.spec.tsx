@@ -11,7 +11,6 @@ vi.mock('@/app/components/app/store', () => ({
   useStore: vi.fn(),
 }))
 vi.mock('@/app/components/base/features/new-feature-panel/feature-bar', () => ({
-  __esModule: true,
   default: ({ onFeatureBarClick }: { onFeatureBarClick: () => void }) => (
     <button type="button" onClick={onFeatureBarClick}>
       feature bar

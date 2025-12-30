@@ -188,13 +188,11 @@ vi.mock('@/app/components/base/popover', () => {
 
 // Tooltip uses portals - minimal mock preserving popup content as title attribute
 vi.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
   default: ({ children, popupContent }: any) => React.createElement('div', { title: popupContent }, children),
 }))
 
 // TagSelector has API dependency (service/tag) - mock for isolated testing
 vi.mock('@/app/components/base/tag-management/selector', () => ({
-  __esModule: true,
   default: ({ tags }: any) => {
     return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: any) => React.createElement('span', { key: tag.id }, tag.name)))
   },

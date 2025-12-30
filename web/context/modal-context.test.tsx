@@ -39,7 +39,6 @@ const triggerEventsLimitModalMock = vi.fn((props: any) => {
 })
 
 vi.mock('@/app/components/billing/trigger-events-limit-modal', () => ({
-  __esModule: true,
   default: (props: any) => triggerEventsLimitModalMock(props),
 }))
 

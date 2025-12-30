@@ -13,7 +13,6 @@ vi.mock('@/config', () => ({
 }))
 
 vi.mock('./use-ps-info', () => ({
-  __esModule: true,
   default: () => ({
     saveOrUpdate,
     bind,

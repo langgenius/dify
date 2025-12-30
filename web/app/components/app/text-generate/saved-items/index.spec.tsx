@@ -8,7 +8,6 @@ import Toast from '@/app/components/base/toast'
 import SavedItems from './index'
 
 vi.mock('copy-to-clipboard', () => ({
-  __esModule: true,
   default: vi.fn(),
 }))
 vi.mock('next/navigation', () => ({

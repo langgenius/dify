@@ -92,6 +92,7 @@
     "i18next": "^25.7.3",
     "i18next-resources-to-backend": "^1.2.1",
     "immer": "^11.1.0",
+    "jotai": "^2.16.1",
     "js-audio-recorder": "^1.0.7",
     "js-cookie": "^3.0.5",
     "js-yaml": "^4.1.0",

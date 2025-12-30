@@ -1,7 +1,7 @@
 import dayjs from 'dayjs'
 import relativeTime from 'dayjs/plugin/relativeTime'
 import { useCallback } from 'react'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { localeMap } from '@/i18n-config/language'
 import 'dayjs/locale/de'
 import 'dayjs/locale/es'
@@ -27,7 +27,7 @@ import 'dayjs/locale/zh-tw'
 dayjs.extend(relativeTime)
 
 export const useFormatTimeFromNow = () => {
-  const { locale } = useI18N()
+  const locale = useLocale()
   const formatTimeFromNow = useCallback((time: number) => {
     const dayjsLocale = localeMap[locale] ?? 'en'
     return dayjs(time).locale(dayjsLocale).fromNow()

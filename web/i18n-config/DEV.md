@@ -7,7 +7,7 @@
 
 - useTranslation
 - useGetLanguage
-- useI18N
+- useLocale
 - useRenderI18nObject
 
 ## impl
@@ -46,6 +46,6 @@
 ## TODO
 
 - [ ] ts docs for useGetLanguage
-- [ ] ts docs for useI18N
+- [ ] ts docs for useLocale
 - [ ] client docs for i18n
 - [ ] server docs for i18n

@@ -3,9 +3,10 @@
 import type { FC } from 'react'
 import type { Locale } from '@/i18n-config'
 import { usePrefetchQuery } from '@tanstack/react-query'
+import { useHydrateAtoms } from 'jotai/utils'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
-import I18NContext from '@/context/i18n'
+import { localeAtom } from '@/context/i18n'
 import { setLocaleOnClient } from '@/i18n-config'
 import { getSystemFeatures } from '@/service/common'
 import Loading from './base/loading'
@@ -18,6 +19,7 @@ const I18n: FC<II18nProps> = ({
   locale,
   children,
 }) => {
+  useHydrateAtoms([[localeAtom, locale]])
   const [loading, setLoading] = useState(true)
 
   usePrefetchQuery({
@@ -35,14 +37,9 @@ const I18n: FC<II18nProps> = ({
     return <div className="flex h-screen w-screen items-center justify-center"><Loading type="app" /></div>
 
   return (
-    <I18NContext.Provider value={{
-      locale,
-      i18n: {},
-      setLocaleOnClient,
-    }}
-    >
+    <>
       {children}
-    </I18NContext.Provider>
+    </>
   )
 }
 export default React.memo(I18n)

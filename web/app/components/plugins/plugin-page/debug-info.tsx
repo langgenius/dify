@@ -6,11 +6,10 @@ import {
 } from '@remixicon/react'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
 import { getDocsUrl } from '@/app/components/plugins/utils'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useDebugKey } from '@/service/use-plugins'
 import KeyValueItem from '../base/key-value-item'
 
@@ -18,7 +17,7 @@ const i18nPrefix = 'debugInfo'
 
 const DebugInfo: FC = () => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { data: info, isLoading } = useDebugKey()
 
   // info.key likes 4580bdb7-b878-471c-a8a4-bfd760263a53 mask the middle part using *.

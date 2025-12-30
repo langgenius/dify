@@ -43,7 +43,6 @@ vi.mock('emoji-mart', () => ({
   SearchIndex: { search: vi.fn().mockResolvedValue([]) },
 }))
 vi.mock('@emoji-mart/data', () => ({
-  __esModule: true,
   default: {
     categories: [
       { id: 'people', emojis: ['😀'] },
