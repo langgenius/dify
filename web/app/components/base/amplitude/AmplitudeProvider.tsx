@@ -58,8 +58,8 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
 }) => {
   useEffect(() => {
     // Only enable in Saas edition with valid API key
-    if (!isAmplitudeEnabled())
-      return
+    // if (!isAmplitudeEnabled())
+    //   return
 
     // Initialize Amplitude
     amplitude.init(AMPLITUDE_API_KEY, {
