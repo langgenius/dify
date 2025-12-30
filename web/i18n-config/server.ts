@@ -1,3 +1,4 @@
+import type { i18n as I18nInstance } from 'i18next'
 import type { Locale } from '.'
 import type { NamespaceCamelCase, NamespaceKebabCase } from './i18next-config'
 import { match } from '@formatjs/intl-localematcher'
@@ -7,29 +8,39 @@ import resourcesToBackend from 'i18next-resources-to-backend'
 import Negotiator from 'negotiator'
 import { cookies, headers } from 'next/headers'
 import { initReactI18next } from 'react-i18next/initReactI18next'
+import serverOnlyContext from '@/utils/server-only-context'
 import { i18n } from '.'
 
-// https://locize.com/blog/next-13-app-dir-i18n/
-const initI18next = async (lng: Locale, ns: NamespaceKebabCase) => {
-  const i18nInstance = createInstance()
-  await i18nInstance
+const [getLocaleCache, setLocaleCache] = serverOnlyContext<Locale | null>(null)
+const [getI18nInstance, setI18nInstance] = serverOnlyContext<I18nInstance | null>(null)
+
+const getOrCreateI18next = async (lng: Locale) => {
+  let instance = getI18nInstance()
+  if (instance)
+    return instance
+
+  instance = createInstance()
+  await instance
     .use(initReactI18next)
     .use(resourcesToBackend((language: Locale, namespace: NamespaceKebabCase) => {
       return import(`../i18n/${language}/${namespace}.json`)
     }))
     .init({
-      lng: lng === 'zh-Hans' ? 'zh-Hans' : lng,
-      ns,
-      defaultNS: ns,
+      lng,
       fallbackLng: 'en-US',
       keySeparator: false,
     })
-  return i18nInstance
+  setI18nInstance(instance)
+  return instance
 }
 
 export async function getTranslation(lng: Locale, ns: NamespaceKebabCase) {
   const camelNs = camelCase(ns) as NamespaceCamelCase
-  const i18nextInstance = await initI18next(lng, ns)
+  const i18nextInstance = await getOrCreateI18next(lng)
+
+  if (!i18nextInstance.hasLoadedNamespace(camelNs))
+    await i18nextInstance.loadNamespaces(camelNs)
+
   return {
     t: i18nextInstance.getFixedT(lng, camelNs),
     i18n: i18nextInstance,
@@ -37,6 +48,10 @@ export async function getTranslation(lng: Locale, ns: NamespaceKebabCase) {
 }
 
 export const getLocaleOnServer = async (): Promise<Locale> => {
+  const cached = getLocaleCache()
+  if (cached)
+    return cached
+
   const locales: string[] = i18n.locales
 
   let languages: string[] | undefined
@@ -58,5 +73,6 @@ export const getLocaleOnServer = async (): Promise<Locale> => {
 
   // match locale
   const matchedLocale = match(languages, locales, i18n.defaultLocale) as Locale
+  setLocaleCache(matchedLocale)
   return matchedLocale
 }
