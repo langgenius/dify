@@ -191,11 +191,9 @@ vi.mock('next-themes', () => ({
   }),
 }))
 
-// Mock useI18N context
+// Mock useLocale context
 vi.mock('@/context/i18n', () => ({
-  useI18N: () => ({
-    locale: 'en-US',
-  }),
+  useLocale: () => 'en-US',
 }))
 
 // Mock i18n-config/language
