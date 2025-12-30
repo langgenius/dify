@@ -20,8 +20,6 @@ import { useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/com
 import ModelParameterModal from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal'
 import { ModelModeType } from '@/types/app'
 import { VIBE_APPLY_EVENT, VIBE_COMMAND_EVENT } from '../../constants'
-import { useHooksStore } from '../../hooks-store'
-import { useVibeFlowData } from '../../hooks/use-workflow-vibe'
 import { useStore, useWorkflowStore } from '../../store'
 import WorkflowPreview from '../../workflow-preview'
 
@@ -35,11 +33,9 @@ const VibePanel: FC = () => {
   const vibePanelInstruction = useStore(s => s.vibePanelInstruction)
   const vibePanelMermaidCode = useStore(s => s.vibePanelMermaidCode)
   const setVibePanelMermaidCode = useStore(s => s.setVibePanelMermaidCode)
-  const configsMap = useHooksStore(s => s.configsMap)
-
-  const { current: currentFlowGraph, versions, currentVersionIndex, setCurrentVersionIndex } = useVibeFlowData({
-    storageKey: configsMap?.flowId || '',
-  })
+  const currentFlowGraph = useStore(s => s.currentVibeFlow)
+  const versions = useStore(s => s.vibeFlowVersions)
+  const currentVersionIndex = useStore(s => s.vibeFlowCurrentIndex)
 
   const vibePanelPreviewNodes = currentFlowGraph?.nodes || []
   const vibePanelPreviewEdges = currentFlowGraph?.edges || []
@@ -144,6 +140,11 @@ const VibePanel: FC = () => {
     document.dispatchEvent(event)
   }, [setVibePanelInstruction])
 
+  const handleVersionChange = useCallback((index: number) => {
+    const { setVibeFlowCurrentIndex } = workflowStore.getState()
+    setVibeFlowCurrentIndex(index)
+  }, [workflowStore])
+
   if (!showVibePanel)
     return null
 
@@ -193,10 +194,10 @@ const VibePanel: FC = () => {
       isShow={showVibePanel}
       onClose={handleClose}
       className="min-w-[1140px] !p-0"
-      highPriority
+      clickOutsideNotClose
     >
       <div className="flex h-[680px] flex-wrap">
-        <div className="h-full w-[570px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
+        <div className="h-full w-[300px] shrink-0 overflow-y-auto border-r border-divider-regular p-6">
           <div className="mb-5">
             <div className="text-lg font-bold leading-[28px] text-text-primary">{t('app.gotoAnything.actions.vibeTitle')}</div>
             <div className="mt-1 text-[13px] font-normal text-text-tertiary">{t('app.gotoAnything.actions.vibeDesc')}</div>
@@ -248,7 +249,8 @@ const VibePanel: FC = () => {
                   <VersionSelector
                     versionLen={versions.length}
                     value={currentVersionIndex}
-                    onChange={setCurrentVersionIndex}
+                    onChange={handleVersionChange}
+                    contentClassName="z-[1200]"
                   />
                 </div>
                 <div className="flex items-center space-x-2">
@@ -271,6 +273,7 @@ const VibePanel: FC = () => {
               </div>
               <div className="flex grow flex-col overflow-hidden pb-6">
                 <WorkflowPreview
+                  key={currentVersionIndex}
                   nodes={vibePanelPreviewNodes}
                   edges={vibePanelPreviewEdges}
                   viewport={{ x: 0, y: 0, zoom: 1 }}
