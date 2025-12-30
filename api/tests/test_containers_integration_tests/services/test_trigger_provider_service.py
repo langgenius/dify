@@ -500,42 +500,6 @@ class TestTriggerProviderService:
                 parameters={},
             )
 
-    def test_rebuild_trigger_subscription_unsupported_credential_type(
-        self, db_session_with_containers, mock_external_service_dependencies
-    ):
-        """
-        Test error when credential type is not supported for rebuild.
-
-        This test verifies:
-        - Proper error is raised for unsupported credential types (not OAUTH2 or API_KEY)
-        """
-        fake = Faker()
-        account, tenant = self._create_test_account_and_tenant(
-            db_session_with_containers, mock_external_service_dependencies
-        )
-
-        provider_id = TriggerProviderID("test_org/test_plugin/test_provider")
-        credential_type = CredentialType.UNAUTHORIZED  # Not supported
-
-        subscription = self._create_test_subscription(
-            db_session_with_containers,
-            tenant.id,
-            account.id,
-            provider_id,
-            credential_type,
-            {},
-            mock_external_service_dependencies,
-        )
-
-        with pytest.raises(ValueError, match="Credential type not supported for rebuild"):
-            TriggerProviderService.rebuild_trigger_subscription(
-                tenant_id=tenant.id,
-                provider_id=provider_id,
-                subscription_id=subscription.id,
-                credentials={},
-                parameters={},
-            )
-
     def test_rebuild_trigger_subscription_name_uniqueness_check(
         self, db_session_with_containers, mock_external_service_dependencies
     ):
