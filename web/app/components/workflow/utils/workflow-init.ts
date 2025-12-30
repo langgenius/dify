@@ -113,8 +113,8 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     const currentNode = nodes[i] as Node<IterationNodeType | LoopNodeType>
 
     if (currentNode.data.type === BlockEnum.Iteration) {
-      if (currentNode.data.start_node_id) {
-        if (nodesMap[currentNode.data.start_node_id]?.type !== CUSTOM_ITERATION_START_NODE)
+      if (currentNode.data.start_node_id && nodesMap[currentNode.data.start_node_id]) {
+        if (nodesMap[currentNode.data.start_node_id].type !== CUSTOM_ITERATION_START_NODE)
           iterationNodesWithStartNode.push(currentNode)
       }
       else {
@@ -123,8 +123,8 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     }
 
     if (currentNode.data.type === BlockEnum.Loop) {
-      if (currentNode.data.start_node_id) {
-        if (nodesMap[currentNode.data.start_node_id]?.type !== CUSTOM_LOOP_START_NODE)
+      if (currentNode.data.start_node_id && nodesMap[currentNode.data.start_node_id]) {
+        if (nodesMap[currentNode.data.start_node_id].type !== CUSTOM_LOOP_START_NODE)
           loopNodesWithStartNode.push(currentNode)
       }
       else {
