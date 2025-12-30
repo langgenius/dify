@@ -232,12 +232,25 @@ class MessageCycleManager:
         answer: str,
         message_id: str,
         from_variable_selector: list[str] | None = None,
+        chunk_type: str | None = None,
+        tool_call_id: str | None = None,
+        tool_name: str | None = None,
+        tool_arguments: str | None = None,
+        tool_files: list[str] | None = None,
+        tool_error: str | None = None,
         event_type: StreamEvent | None = None,
     ) -> MessageStreamResponse:
         """
         Message to stream response.
         :param answer: answer
         :param message_id: message id
+        :param from_variable_selector: from variable selector
+        :param chunk_type: type of the chunk (text, function_call, tool_result, thought)
+        :param tool_call_id: unique identifier for this tool call
+        :param tool_name: name of the tool being called
+        :param tool_arguments: accumulated tool arguments JSON
+        :param tool_files: file IDs produced by tool
+        :param tool_error: error message if tool failed
         :return:
         """
         return MessageStreamResponse(
@@ -245,6 +258,12 @@ class MessageCycleManager:
             id=message_id,
             answer=answer,
             from_variable_selector=from_variable_selector,
+            chunk_type=chunk_type,
+            tool_call_id=tool_call_id,
+            tool_name=tool_name,
+            tool_arguments=tool_arguments,
+            tool_files=tool_files,
+            tool_error=tool_error,
             event=event_type or StreamEvent.MESSAGE,
         )
 

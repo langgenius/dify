@@ -89,6 +89,7 @@ message_detail_fields = {
     "status": fields.String,
     "error": fields.String,
     "parent_message_id": fields.String,
+    "generation_detail": fields.Raw,
 }
 
 feedback_stat_fields = {"like": fields.Integer, "dislike": fields.Integer}

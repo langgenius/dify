@@ -1,10 +1,11 @@
 from collections.abc import Sequence
 from datetime import datetime
+from enum import StrEnum
 
 from pydantic import Field
 
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit
+from core.workflow.entities import AgentNodeStrategyInit, ToolCall, ToolResult
 from core.workflow.entities.pause_reason import PauseReason
 
 from .base import GraphNodeEventBase
@@ -21,13 +22,37 @@ class NodeRunStartedEvent(GraphNodeEventBase):
     provider_id: str = ""
 
 
+class ChunkType(StrEnum):
+    """Stream chunk type for LLM-related events."""
+
+    TEXT = "text"  # Normal text streaming
+    TOOL_CALL = "tool_call"  # Tool call arguments streaming
+    TOOL_RESULT = "tool_result"  # Tool execution result
+    THOUGHT = "thought"  # Agent thinking process (ReAct)
+
+
 class NodeRunStreamChunkEvent(GraphNodeEventBase):
-    # Spec-compliant fields
+    """Stream chunk event for workflow node execution."""
+
+    # Base fields
     selector: Sequence[str] = Field(
         ..., description="selector identifying the output location (e.g., ['nodeA', 'text'])"
     )
     chunk: str = Field(..., description="the actual chunk content")
     is_final: bool = Field(default=False, description="indicates if this is the last chunk")
+    chunk_type: ChunkType = Field(default=ChunkType.TEXT, description="type of the chunk")
+
+    # Tool call fields (when chunk_type == TOOL_CALL)
+    tool_call: ToolCall | None = Field(
+        default=None,
+        description="structured payload for tool_call chunks",
+    )
+
+    # Tool result fields (when chunk_type == TOOL_RESULT)
+    tool_result: ToolResult | None = Field(
+        default=None,
+        description="structured payload for tool_result chunks",
+    )
 
 
 class NodeRunRetrieverResourceEvent(GraphNodeEventBase):

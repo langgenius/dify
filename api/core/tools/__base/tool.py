@@ -6,6 +6,7 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from models.model import File
 
+from core.model_runtime.entities.message_entities import PromptMessageTool
 from core.tools.__base.tool_runtime import ToolRuntime
 from core.tools.entities.tool_entities import (
     ToolEntity,
@@ -151,6 +152,60 @@ class Tool(ABC):
                 parameters.append(parameter)
 
         return parameters
+
+    def to_prompt_message_tool(self) -> PromptMessageTool:
+        message_tool = PromptMessageTool(
+            name=self.entity.identity.name,
+            description=self.entity.description.llm if self.entity.description else "",
+            parameters={
+                "type": "object",
+                "properties": {},
+                "required": [],
+            },
+        )
+
+        parameters = self.get_merged_runtime_parameters()
+        for parameter in parameters:
+            if parameter.form != ToolParameter.ToolParameterForm.LLM:
+                continue
+
+            parameter_type = parameter.type.as_normal_type()
+            if parameter.type in {
+                ToolParameter.ToolParameterType.SYSTEM_FILES,
+                ToolParameter.ToolParameterType.FILE,
+                ToolParameter.ToolParameterType.FILES,
+            }:
+                # Determine the description based on parameter type
+                if parameter.type == ToolParameter.ToolParameterType.FILE:
+                    file_format_desc = " Input the file id with format: [File: file_id]."
+                else:
+                    file_format_desc = "Input the file id with format: [Files: file_id1, file_id2, ...]. "
+
+                message_tool.parameters["properties"][parameter.name] = {
+                    "type": "string",
+                    "description": (parameter.llm_description or "") + file_format_desc,
+                }
+                continue
+            enum = []
+            if parameter.type == ToolParameter.ToolParameterType.SELECT:
+                enum = [option.value for option in parameter.options] if parameter.options else []
+
+            message_tool.parameters["properties"][parameter.name] = (
+                {
+                    "type": parameter_type,
+                    "description": parameter.llm_description or "",
+                }
+                if parameter.input_schema is None
+                else parameter.input_schema
+            )
+
+            if len(enum) > 0:
+                message_tool.parameters["properties"][parameter.name]["enum"] = enum
+
+            if parameter.required:
+                message_tool.parameters["required"].append(parameter.name)
+
+        return message_tool
 
     def create_image_message(
         self,

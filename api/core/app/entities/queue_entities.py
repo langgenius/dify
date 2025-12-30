@@ -7,7 +7,7 @@ from pydantic import BaseModel, ConfigDict, Field
 
 from core.model_runtime.entities.llm_entities import LLMResult, LLMResultChunk
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.workflow.entities import AgentNodeStrategyInit
+from core.workflow.entities import AgentNodeStrategyInit, ToolCall, ToolResult
 from core.workflow.enums import WorkflowNodeExecutionMetadataKey
 from core.workflow.nodes import NodeType
 
@@ -177,6 +177,15 @@ class QueueLoopCompletedEvent(AppQueueEvent):
     error: str | None = None
 
 
+class ChunkType(StrEnum):
+    """Stream chunk type for LLM-related events."""
+
+    TEXT = "text"  # Normal text streaming
+    TOOL_CALL = "tool_call"  # Tool call arguments streaming
+    TOOL_RESULT = "tool_result"  # Tool execution result
+    THOUGHT = "thought"  # Agent thinking process (ReAct)
+
+
 class QueueTextChunkEvent(AppQueueEvent):
     """
     QueueTextChunkEvent entity
@@ -190,6 +199,16 @@ class QueueTextChunkEvent(AppQueueEvent):
     """iteration id if node is in iteration"""
     in_loop_id: str | None = None
     """loop id if node is in loop"""
+
+    # Extended fields for Agent/Tool streaming
+    chunk_type: ChunkType = ChunkType.TEXT
+    """type of the chunk"""
+
+    # Tool streaming payloads
+    tool_call: ToolCall | None = None
+    """structured tool call info"""
+    tool_result: ToolResult | None = None
+    """structured tool result info"""
 
 
 class QueueAgentMessageEvent(AppQueueEvent):
