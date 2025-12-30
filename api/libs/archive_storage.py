@@ -285,6 +285,7 @@ class ArchiveStorage:
     @staticmethod
     def _serialize_record(record: dict[str, Any]) -> dict[str, Any]:
         """Serialize a single record, converting special types."""
+
         def _serialize(item: Any) -> Any:
             if isinstance(item, datetime.datetime):
                 return item.isoformat()
