@@ -179,7 +179,7 @@ class TestOAuthCallback:
 
         oauth_setup["provider"].get_access_token.assert_called_once_with("test_code")
         oauth_setup["provider"].get_user_info.assert_called_once_with("access_token")
-        mock_redirect.assert_called_once_with("http://localhost:3000")
+        mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=true")
 
     @pytest.mark.parametrize(
         ("exception", "expected_error"),
@@ -223,7 +223,7 @@ class TestOAuthCallback:
             # This documents actual behavior. See test_defensive_check_for_closed_account_status for details
             (
                 AccountStatus.CLOSED.value,
-                "http://localhost:3000",
+                "http://localhost:3000?oauth_new_user=false",
             ),
         ],
     )
@@ -374,7 +374,7 @@ class TestOAuthCallback:
             resource.get("github")
 
         # Verify current behavior: login succeeds (this is NOT ideal)
-        mock_redirect.assert_called_once_with("http://localhost:3000")
+        mock_redirect.assert_called_once_with("http://localhost:3000?oauth_new_user=false")
         mock_account_service.login.assert_called_once()
 
         # Document expected behavior in comments:
