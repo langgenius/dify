@@ -254,6 +254,135 @@ describe('InputFieldForm', () => {
       // Assert
       expect(submitEvent.defaultPrevented).toBe(true)
     })
+
+    it('should show Toast error when form validation fails on submit', async () => {
+      // Arrange - Create invalid form data with empty variable name (validation should fail)
+      const Toast = await import('@/app/components/base/toast')
+      const initialData = createFormData({
+        variable: '', // Empty variable should fail validation
+        label: 'Test Label',
+      })
+      const onSubmit = vi.fn()
+      const props = createInputFieldFormProps({ initialData, onSubmit })
+
+      // Act
+      const { container } = renderWithProviders(<InputFieldForm {...props} />)
+      const form = container.querySelector('form')!
+      fireEvent.submit(form)
+
+      // Assert - Toast should be called with error message when validation fails
+      await waitFor(() => {
+        expect(Toast.default.notify).toHaveBeenCalledWith(
+          expect.objectContaining({
+            type: 'error',
+            message: expect.any(String),
+          }),
+        )
+      })
+      // onSubmit should not be called when validation fails
+      expect(onSubmit).not.toHaveBeenCalled()
+    })
+
+    it('should call onSubmit with moreInfo when variable name changes in edit mode', async () => {
+      // Arrange - Initial variable name is 'original_var', we change it to 'new_var'
+      const initialData = createFormData({
+        variable: 'original_var',
+        label: 'Test Label',
+      })
+      const onSubmit = vi.fn()
+      const props = createInputFieldFormProps({
+        initialData,
+        onSubmit,
+        isEditMode: true,
+      })
+
+      // Act
+      renderWithProviders(<InputFieldForm {...props} />)
+
+      // Find and change the variable input by id
+      const variableInput = document.getElementById('variable') as HTMLInputElement
+      fireEvent.change(variableInput, { target: { value: 'new_var' } })
+
+      // Submit the form
+      const form = document.querySelector('form')!
+      fireEvent.submit(form)
+
+      // Assert - onSubmit should be called with moreInfo containing variable name change info
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variable: 'new_var',
+          }),
+          expect.objectContaining({
+            type: 'changeVarName',
+            payload: {
+              beforeKey: 'original_var',
+              afterKey: 'new_var',
+            },
+          }),
+        )
+      })
+    })
+
+    it('should call onSubmit without moreInfo when variable name does not change in edit mode', async () => {
+      // Arrange - Variable name stays the same
+      const initialData = createFormData({
+        variable: 'same_var',
+        label: 'Test Label',
+      })
+      const onSubmit = vi.fn()
+      const props = createInputFieldFormProps({
+        initialData,
+        onSubmit,
+        isEditMode: true,
+      })
+
+      // Act
+      renderWithProviders(<InputFieldForm {...props} />)
+
+      // Submit without changing variable name
+      const form = document.querySelector('form')!
+      fireEvent.submit(form)
+
+      // Assert - onSubmit should be called without moreInfo (undefined)
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.objectContaining({
+            variable: 'same_var',
+          }),
+          undefined,
+        )
+      })
+    })
+
+    it('should call onSubmit without moreInfo when not in edit mode', async () => {
+      // Arrange
+      const initialData = createFormData({
+        variable: 'test_var',
+        label: 'Test Label',
+      })
+      const onSubmit = vi.fn()
+      const props = createInputFieldFormProps({
+        initialData,
+        onSubmit,
+        isEditMode: false,
+      })
+
+      // Act
+      renderWithProviders(<InputFieldForm {...props} />)
+
+      // Submit the form
+      const form = document.querySelector('form')!
+      fireEvent.submit(form)
+
+      // Assert - onSubmit should be called without moreInfo since not in edit mode
+      await waitFor(() => {
+        expect(onSubmit).toHaveBeenCalledWith(
+          expect.any(Object),
+          undefined,
+        )
+      })
+    })
   })
 
   // -------------------------------------------------------------------------
@@ -1487,5 +1616,129 @@ describe('TEXT_MAX_LENGTH', () => {
 
   it('should be 256', () => {
     expect(TEXT_MAX_LENGTH).toBe(256)
+  })
+})
+
+// ============================================================================
+// InitialFields Component Tests
+// ============================================================================
+
+describe('InitialFields', () => {
+  beforeEach(() => {
+    vi.clearAllMocks()
+  })
+
+  // -------------------------------------------------------------------------
+  // Rendering Tests
+  // -------------------------------------------------------------------------
+  describe('Rendering', () => {
+    it('should render InitialFields component without crashing', () => {
+      // Arrange
+      const initialData = createFormData()
+      const props = createInputFieldFormProps({ initialData })
+
+      // Act
+      const { container } = renderWithProviders(<InputFieldForm {...props} />)
+
+      // Assert
+      expect(container.querySelector('form')).toBeInTheDocument()
+    })
+  })
+
+  // -------------------------------------------------------------------------
+  // getFieldValue and setFieldValue Callbacks Tests
+  // -------------------------------------------------------------------------
+  describe('getFieldValue and setFieldValue Callbacks', () => {
+    it('should trigger getFieldValue when variable name blur event fires with empty label', async () => {
+      // Arrange - Create initial data with empty label
+      const initialData = createFormData({
+        variable: '',
+        label: '', // Empty label to trigger the condition
+      })
+      const props = createInputFieldFormProps({ initialData })
+
+      // Act
+      renderWithProviders(<InputFieldForm {...props} />)
+
+      // Find the variable input and trigger blur with a value
+      const variableInput = document.getElementById('variable') as HTMLInputElement
+      fireEvent.change(variableInput, { target: { value: 'test_var' } })
+      fireEvent.blur(variableInput)
+
+      // Assert - The label field should be updated via setFieldValue when variable blurs
+      // The getFieldValue is called to check if label is empty
+      await waitFor(() => {
+        const labelInput = document.getElementById('label') as HTMLInputElement
+        // Label should be set to the variable value when it was empty
+        expect(labelInput.value).toBe('test_var')
+      })
+    })
+
+    it('should not update label when it already has a value on variable blur', async () => {
+      // Arrange - Create initial data with existing label
+      const initialData = createFormData({
+        variable: '',
+        label: 'Existing Label', // Label already has value
+      })
+      const props = createInputFieldFormProps({ initialData })
+
+      // Act
+      renderWithProviders(<InputFieldForm {...props} />)
+
+      // Find the variable input and trigger blur with a value
+      const variableInput = document.getElementById('variable') as HTMLInputElement
+      fireEvent.change(variableInput, { target: { value: 'new_var' } })
+      fireEvent.blur(variableInput)
+
+      // Assert - The label field should remain unchanged because it already has a value
+      await waitFor(() => {
+        const labelInput = document.getElementById('label') as HTMLInputElement
+        expect(labelInput.value).toBe('Existing Label')
+      })
+    })
+
+    it('should trigger setFieldValue when display name blur event fires with empty value', async () => {
+      // Arrange - Create initial data with a variable but we will clear the label
+      const initialData = createFormData({
+        variable: 'original_var',
+        label: 'Some Label',
+      })
+      const props = createInputFieldFormProps({ initialData })
+
+      // Act
+      renderWithProviders(<InputFieldForm {...props} />)
+
+      // Find the label input, clear it, and trigger blur
+      const labelInput = document.getElementById('label') as HTMLInputElement
+      fireEvent.change(labelInput, { target: { value: '' } })
+      fireEvent.blur(labelInput)
+
+      // Assert - When label is cleared and blurred, it should be reset to variable name
+      await waitFor(() => {
+        expect(labelInput.value).toBe('original_var')
+      })
+    })
+
+    it('should keep label value when display name blur event fires with non-empty value', async () => {
+      // Arrange
+      const initialData = createFormData({
+        variable: 'test_var',
+        label: 'Original Label',
+      })
+      const props = createInputFieldFormProps({ initialData })
+
+      // Act
+      renderWithProviders(<InputFieldForm {...props} />)
+
+      // Find the label input, change it to a new value, and trigger blur
+      const labelInput = document.getElementById('label') as HTMLInputElement
+      fireEvent.change(labelInput, { target: { value: 'New Label' } })
+      fireEvent.blur(labelInput)
+
+      // Assert - Label should keep the new non-empty value
+      await waitFor(() => {
+        expect(labelInput.value).toBe('New Label')
+      })
+    })
   })
 })
