@@ -40,7 +40,7 @@ class Site(BaseModel):
     title: str
     chat_color_theme: str | None = None
     chat_color_theme_inverted: bool
-    icon_type: str | None = None
+    icon_type: IconType | None = None
     icon: str | None = None
     icon_background: str | None = None
     description: str | None = None
@@ -57,6 +57,6 @@ class Site(BaseModel):
         if self.icon is None:
             return None
 
-        if self.icon_type in (IconType.IMAGE, IconType.IMAGE.value):
+        if self.icon_type == IconType.IMAGE:
             return file_helpers.get_signed_file_url(self.icon)
         return None
