@@ -3,7 +3,7 @@ import type { Day } from '../types'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { IS_DEV } from '@/config'
+import { IS_PROD } from '@/config'
 import tz from '@/utils/timezone.json'
 
 dayjs.extend(utc)
