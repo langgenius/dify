@@ -46,7 +46,7 @@ const ToolCredentialForm: FC<Props> = ({
   const handleSave = () => {
     for (const field of credentialSchema) {
       if (field.required && !tempCredential[field.name]) {
-        Toast.notify({ type: 'error', message: t('common.errorMsg.fieldRequired', { field: getValueFromI18nObject(field.label) }) })
+        Toast.notify({ type: 'error', message: t('errorMsg.fieldRequired', { ns: 'common', field: getValueFromI18nObject(field.label) }) })
         return
       }
     }
@@ -78,7 +78,7 @@ const ToolCredentialForm: FC<Props> = ({
                           rel="noopener noreferrer"
                           className="inline-flex items-center text-xs text-text-accent"
                         >
-                          {t('tools.howToGet')}
+                          {t('howToGet', { ns: 'tools' })}
                           <RiArrowRightUpLine className="ml-1 h-3 w-3" />
                         </a>
                       )
@@ -87,8 +87,8 @@ const ToolCredentialForm: FC<Props> = ({
               </div>
               <div className={cn('mt-1 flex justify-end px-4')}>
                 <div className="flex space-x-2">
-                  <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-                  <Button variant="primary" onClick={handleSave}>{t('common.operation.save')}</Button>
+                  <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+                  <Button variant="primary" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
                 </div>
               </div>
             </>

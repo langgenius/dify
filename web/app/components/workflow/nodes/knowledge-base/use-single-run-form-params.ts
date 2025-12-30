@@ -30,7 +30,7 @@ const useSingleRunFormParams = ({
     return [
       {
         inputs: [{
-          label: t('workflow.nodes.common.inputVars'),
+          label: t('nodes.common.inputVars', { ns: 'workflow' }),
           variable: 'query',
           type: InputVarType.paragraph,
           required: true,

@@ -18,7 +18,7 @@ const nodeDefault: NodeDefault<AnswerNodeType> = {
     let errorMessages = ''
     const { answer } = payload
     if (!answer)
-      errorMessages = t('workflow.errorMsg.fieldRequired', { field: t('workflow.nodes.answer.answer') })
+      errorMessages = t('errorMsg.fieldRequired', { ns: 'workflow', field: t('nodes.answer.answer', { ns: 'workflow' }) })
 
     return {
       isValid: !errorMessages,

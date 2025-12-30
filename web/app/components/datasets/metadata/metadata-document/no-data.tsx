@@ -15,10 +15,10 @@ const NoData: FC<Props> = ({
   const { t } = useTranslation()
   return (
     <div className="rounded-xl bg-gradient-to-r from-workflow-workflow-progress-bg-1 to-workflow-workflow-progress-bg-2 p-4 pt-3">
-      <div className="text-xs font-semibold leading-5 text-text-secondary">{t('dataset.metadata.metadata')}</div>
-      <div className="system-xs-regular mt-1 text-text-tertiary">{t('dataset.metadata.documentMetadata.metadataToolTip')}</div>
+      <div className="text-xs font-semibold leading-5 text-text-secondary">{t('metadata.metadata', { ns: 'dataset' })}</div>
+      <div className="system-xs-regular mt-1 text-text-tertiary">{t('metadata.documentMetadata.metadataToolTip', { ns: 'dataset' })}</div>
       <Button variant="primary" className="mt-2" onClick={onStart}>
-        <div>{t('dataset.metadata.documentMetadata.startLabeling')}</div>
+        <div>{t('metadata.documentMetadata.startLabeling', { ns: 'dataset' })}</div>
         <RiArrowRightLine className="ml-1 size-4" />
       </Button>
     </div>

@@ -17,8 +17,8 @@ import OptionsWrap from '../base/options-wrap'
 import UrlInput from '../base/url-input'
 import Options from './options'
 
-const ERROR_I18N_PREFIX = 'common.errorMsg'
-const I18N_PREFIX = 'datasetCreation.stepOne.website'
+const ERROR_I18N_PREFIX = 'errorMsg'
+const I18N_PREFIX = 'stepOne.website'
 
 type Props = {
   onPreview: (payload: CrawlResultItem) => void
@@ -61,16 +61,18 @@ const JinaReader: FC<Props> = ({
     let errorMsg = ''
     if (!url) {
       errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
+        ns: 'common',
         field: 'url',
       })
     }
 
     if (!errorMsg && !((url.startsWith('http://') || url.startsWith('https://'))))
-      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`)
+      errorMsg = t(`${ERROR_I18N_PREFIX}.urlError`, { ns: 'common' })
 
     if (!errorMsg && (crawlOptions.limit === null || crawlOptions.limit === undefined || crawlOptions.limit === '')) {
       errorMsg = t(`${ERROR_I18N_PREFIX}.fieldRequired`, {
-        field: t(`${I18N_PREFIX}.limit`),
+        ns: 'common',
+        field: t(`${I18N_PREFIX}.limit`, { ns: 'datasetCreation' }),
       })
     }
 
@@ -173,7 +175,7 @@ const JinaReader: FC<Props> = ({
         onJobIdChange(jobId)
         const { isError, data, errorMessage } = await waitForCrawlFinished(jobId)
         if (isError) {
-          setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`))
+          setCrawlErrorMessage(errorMessage || t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' }))
         }
         else {
           setCrawlResult(data)
@@ -183,7 +185,7 @@ const JinaReader: FC<Props> = ({
       }
     }
     catch (e) {
-      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`)!)
+      setCrawlErrorMessage(t(`${I18N_PREFIX}.unknownError`, { ns: 'datasetCreation' })!)
       console.log(e)
     }
     finally {
@@ -195,9 +197,9 @@ const JinaReader: FC<Props> = ({
     <div>
       <Header
         onClickConfiguration={handleSetting}
-        title={t(`${I18N_PREFIX}.jinaReaderTitle`)}
-        buttonText={t(`${I18N_PREFIX}.configureJinaReader`)}
-        docTitle={t(`${I18N_PREFIX}.jinaReaderDoc`)}
+        title={t(`${I18N_PREFIX}.jinaReaderTitle`, { ns: 'datasetCreation' })}
+        buttonText={t(`${I18N_PREFIX}.configureJinaReader`, { ns: 'datasetCreation' })}
+        docTitle={t(`${I18N_PREFIX}.jinaReaderDoc`, { ns: 'datasetCreation' })}
         docLink="https://jina.ai/reader"
       />
       <div className="mt-2 rounded-xl border border-components-panel-border bg-background-default-subtle p-4 pb-0">
@@ -220,7 +222,7 @@ const JinaReader: FC<Props> = ({
                 />
               )}
             {showError && (
-              <ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`)} errorMsg={crawlErrorMessage} />
+              <ErrorMessage className="rounded-b-xl" title={t(`${I18N_PREFIX}.exceptionErrorTitle`, { ns: 'datasetCreation' })} errorMsg={crawlErrorMessage} />
             )}
             {isCrawlFinished && !showError
               && (
