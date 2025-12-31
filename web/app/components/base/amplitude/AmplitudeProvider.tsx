@@ -68,6 +68,7 @@ const AmplitudeProvider: FC<IAmplitudeProps> = ({
         pageViews: true,
         formInteractions: true,
         fileDownloads: true,
+        attribution: true,
       },
     })
 

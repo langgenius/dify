@@ -16,14 +16,13 @@ import {
   useMemo,
   useState,
 } from 'react'
-import { useContext } from 'use-context-selector'
 import {
   useMarketplacePlugins,
   useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
 import { PluginCategoryEnum } from '@/app/components/plugins/types'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useModalContextSelector } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import {
@@ -70,7 +69,7 @@ export const useSystemDefaultModelAndModelList: UseDefaultModelAndModelList = (
 }
 
 export const useLanguage = () => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   return locale.replace('-', '_')
 }
 

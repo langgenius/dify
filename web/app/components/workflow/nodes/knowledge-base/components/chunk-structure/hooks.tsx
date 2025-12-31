@@ -20,8 +20,8 @@ export const useChunkStructure = () => {
         )}
       />
     ),
-    title: t('datasetCreation.stepTwo.general'),
-    description: t('datasetCreation.stepTwo.generalTip'),
+    title: t('stepTwo.general', { ns: 'datasetCreation' }),
+    description: t('stepTwo.generalTip', { ns: 'datasetCreation' }),
     effectColor: 'blue',
   }
   const ParentChildOption: Option = {
@@ -34,8 +34,8 @@ export const useChunkStructure = () => {
         )}
       />
     ),
-    title: t('datasetCreation.stepTwo.parentChild'),
-    description: t('datasetCreation.stepTwo.parentChildTip'),
+    title: t('stepTwo.parentChild', { ns: 'datasetCreation' }),
+    description: t('stepTwo.parentChildTip', { ns: 'datasetCreation' }),
     effectColor: 'blue-light',
   }
   const QuestionAnswerOption: Option = {
@@ -49,7 +49,7 @@ export const useChunkStructure = () => {
       />
     ),
     title: 'Q&A',
-    description: t('datasetCreation.stepTwo.qaTip'),
+    description: t('stepTwo.qaTip', { ns: 'datasetCreation' }),
     effectColor: 'teal',
   }
 

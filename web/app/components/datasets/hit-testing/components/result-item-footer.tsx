@@ -11,7 +11,7 @@ type Props = {
   docTitle: string
   showDetailModal: () => void
 }
-const i18nPrefix = 'datasetHitTesting'
+const i18nPrefix = ''
 
 const ResultItemFooter: FC<Props> = ({
   docType,
@@ -32,7 +32,7 @@ const ResultItemFooter: FC<Props> = ({
         className="flex cursor-pointer items-center space-x-1 text-text-tertiary"
         onClick={showDetailModal}
       >
-        <div className="text-xs uppercase">{t(`${i18nPrefix}.open`)}</div>
+        <div className="text-xs uppercase">{t(`${i18nPrefix}open`, { ns: 'datasetHitTesting' })}</div>
         <RiArrowRightUpLine className="size-3.5" />
       </div>
     </div>

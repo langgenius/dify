@@ -34,7 +34,7 @@ const Item = ({
               className="h-6"
               value={renameValue}
               onChange={e => setRenameValue(e.target.value)}
-              placeholder={t('common.placeholder.input')}
+              placeholder={t('placeholder.input', { ns: 'common' })}
               onClick={e => e.stopPropagation()}
             />
             <Button
@@ -53,7 +53,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('common.operation.save')}
+              {t('operation.save', { ns: 'common' })}
             </Button>
             <Button
               size="small"
@@ -62,7 +62,7 @@ const Item = ({
                 setRenaming(false)
               }}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
         )

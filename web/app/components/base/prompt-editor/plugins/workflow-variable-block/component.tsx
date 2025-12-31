@@ -144,7 +144,7 @@ const WorkflowVariableBlockComponent = ({
         handleVariableJump()
       }}
       isExceptionVariable={isException}
-      errorMsg={!variableValid ? t('workflow.errorMsg.invalidVariable') : undefined}
+      errorMsg={!variableValid ? t('errorMsg.invalidVariable', { ns: 'workflow' }) : undefined}
       isSelected={isSelected}
       ref={ref}
       notShowFullPath={isShowAPart}
