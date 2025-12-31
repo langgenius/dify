@@ -347,4 +347,3 @@ def get_export_storage() -> ArchiveStorage:
             )
         _export_storage = ArchiveStorage(bucket=export_bucket)
     return _export_storage
-
