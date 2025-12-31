@@ -19,26 +19,11 @@ export default {
   create(context) {
     const sourceCode = context.sourceCode
 
-    // Track all t() calls to fix
-    /** @type {Array<{ node: import('estree').CallExpression }>} */
     const tCallsToFix = []
-
-    // Track variables with namespace prefix
-    /** @type {Map<string, { node: import('estree').VariableDeclarator, name: string, oldValue: string, newValue: string, ns: string }>} */
     const variablesToFix = new Map()
-
-    // Track all namespaces used in the file (from legacy prefix detection)
-    /** @type {Set<string>} */
     const namespacesUsed = new Set()
-
-    // Track variable values for template literal analysis
-    /** @type {Map<string, string>} */
     const variableValues = new Map()
 
-    /**
-     * Analyze a template literal and extract namespace info
-     * @param {import('estree').TemplateLiteral} node
-     */
     function analyzeTemplateLiteral(node) {
       const quasis = node.quasis
       const expressions = node.expressions
@@ -78,11 +63,6 @@ export default {
       return { ns: null, canFix: false, fixedQuasis: null, variableToUpdate: null }
     }
 
-    /**
-     * Build a fixed template literal string
-     * @param {string[]} quasis
-     * @param {import('estree').Expression[]} expressions
-     */
     function buildTemplateLiteral(quasis, expressions) {
       let result = '`'
       for (let i = 0; i < quasis.length; i++) {
@@ -95,11 +75,6 @@ export default {
       return result
     }
 
-    /**
-     * Check if a t() call already has ns in its second argument
-     * @param {import('estree').CallExpression} node
-     * @returns {boolean}
-     */
     function hasNsArgument(node) {
       if (node.arguments.length < 2)
         return false
