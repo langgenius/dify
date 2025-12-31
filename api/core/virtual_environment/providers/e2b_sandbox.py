@@ -10,7 +10,7 @@ from uuid import uuid4
 from e2b_code_interpreter import Sandbox
 
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
-from core.virtual_environment.__base.exec import ArchNotSupportedError
+from core.virtual_environment.__base.exec import ArchNotSupportedError, NotSupportedOperationError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
 from core.virtual_environment.channel.queue_transport import QueueTransportReadCloser
 from core.virtual_environment.channel.transport import (
@@ -180,7 +180,10 @@ class E2BEnvironment(VirtualEnvironment):
         )
 
     def get_command_status(self, connection_handle: ConnectionHandle, pid: str) -> CommandStatus:
-        return super().get_command_status(connection_handle, pid)
+        """
+        Nop, E2B does not support getting command status yet.
+        """
+        raise NotSupportedOperationError("E2B does not support getting command status yet.")
 
     def _cmd_thread(
         self,

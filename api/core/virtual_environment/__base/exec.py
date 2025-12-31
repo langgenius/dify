@@ -8,3 +8,9 @@ class VirtualEnvironmentLaunchFailedError(Exception):
     """Exception raised when launching the virtual environment fails."""
 
     pass
+
+
+class NotSupportedOperationError(Exception):
+    """Exception raised when an operation is not supported."""
+
+    pass
