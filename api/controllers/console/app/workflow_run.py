@@ -32,7 +32,7 @@ from tasks.workflow_run_export_task import export_workflow_run_task
 # Workflow run status choices for filtering
 WORKFLOW_RUN_STATUS_CHOICES = ["running", "succeeded", "failed", "stopped", "partial-succeeded"]
 
-EXPORT_TASK_RATE_LIMITER = RateLimiter("workflow_run_export_task", max_attempts=10, time_window=60)
+EXPORT_TASK_RATE_LIMITER = RateLimiter("workflow_run_export_task", max_attempts=3, time_window=60)
 
 # Register models for flask_restx to avoid dict type issues in Swagger
 # Register in dependency order: base models first, then dependent models
