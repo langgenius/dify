@@ -127,23 +127,30 @@ const NodeGroupItem = ({
         !!item.variables.length && (
           <div className="space-y-0.5">
             {
-              item.variables.map((variable = [], index) => {
-                const isSystem = isSystemVar(variable)
+              item.variables
+                .map((variable = [], index) => {
+                  // Ensure variable is an array
+                  const safeVariable = Array.isArray(variable) ? variable : []
+                  if (!safeVariable.length)
+                    return null
 
-                const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === variable[0])
-                const varName = isSystem ? `sys.${variable[variable.length - 1]}` : variable.slice(1).join('.')
-                const isException = isExceptionVariable(varName, node?.data.type)
+                  const isSystem = isSystemVar(safeVariable)
 
-                return (
-                  <VariableLabelInNode
-                    key={index}
-                    variables={variable}
-                    nodeType={node?.data.type}
-                    nodeTitle={node?.data.title}
-                    isExceptionVariable={isException}
-                  />
-                )
-              })
+                  const node = isSystem ? nodes.find(node => node.data.type === BlockEnum.Start) : nodes.find(node => node.id === safeVariable[0])
+                  const varName = isSystem ? `sys.${safeVariable[safeVariable.length - 1]}` : safeVariable.slice(1).join('.')
+                  const isException = isExceptionVariable(varName, node?.data.type)
+
+                  return (
+                    <VariableLabelInNode
+                      key={index}
+                      variables={safeVariable}
+                      nodeType={node?.data.type}
+                      nodeTitle={node?.data.title}
+                      isExceptionVariable={isException}
+                    />
+                  )
+                })
+                .filter(Boolean)
             }
           </div>
         )

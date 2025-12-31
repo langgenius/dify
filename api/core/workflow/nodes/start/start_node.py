@@ -16,6 +16,27 @@ class StartNode(Node[StartNodeData]):
     execution_type = NodeExecutionType.ROOT
 
     @classmethod
+    def get_default_config_schema(cls) -> dict[str, Any] | None:
+        return {
+            "description": "Workflow entry point - defines input variables",
+            "required": [],
+            "parameters": {
+                "variables": {
+                    "type": "array",
+                    "description": "Input variables for the workflow",
+                    "item_schema": {
+                        "variable": "string - variable name",
+                        "label": "string - display label",
+                        "type": "enum: text-input, paragraph, number, select, file, file-list",
+                        "required": "boolean",
+                        "max_length": "number (optional)",
+                    },
+                },
+            },
+            "outputs": ["All defined variables are available as {{#start.variable_name#}}"],
+        }
+
+    @classmethod
     def version(cls) -> str:
         return "1"
 

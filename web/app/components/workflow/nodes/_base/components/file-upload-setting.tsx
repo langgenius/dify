@@ -33,9 +33,9 @@ const FileUploadSetting: FC<Props> = ({
   const { t } = useTranslation()
 
   const {
-    allowed_file_upload_methods,
+    allowed_file_upload_methods = [],
     max_length,
-    allowed_file_types,
+    allowed_file_types = [],
     allowed_file_extensions,
   } = payload
   const { data: fileUploadConfigResponse } = useFileUploadConfig()

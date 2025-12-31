@@ -140,6 +140,11 @@ const translation = {
     regenerate: 'Regenerate',
     apply: 'Apply',
     noFlowchart: 'No flowchart provided',
+    offTopicDefault: 'I\'m the Dify workflow design assistant. I can help you create AI automation workflows, but I can\'t answer general questions. Would you like to create a workflow instead?',
+    offTopicTitle: 'Off-Topic Request',
+    trySuggestion: 'Try one of these suggestions:',
+    generateError: 'Failed to generate workflow. Please try again.',
+    regenerateReminder: 'Please verify your input and re-generate.',
   },
   publishLimit: {
     startNodeTitlePrefix: 'Upgrade to',

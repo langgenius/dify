@@ -1,8 +1,12 @@
+import logging
 from collections.abc import Sequence
 from typing import Any
 
 from flask_restx import Resource
 from pydantic import BaseModel, Field
+
+logger = logging.getLogger(__name__)
+
 
 from controllers.console import console_ns
 from controllers.console.app.error import (
@@ -18,6 +22,7 @@ from core.helper.code_executor.javascript.javascript_code_provider import Javasc
 from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.llm_generator.llm_generator import LLMGenerator
 from core.model_runtime.errors.invoke import InvokeError
+from core.workflow.generator import WorkflowGenerator
 from extensions.ext_database import db
 from libs.login import current_account_with_tenant, login_required
 from models import App
@@ -55,12 +60,28 @@ class InstructionTemplatePayload(BaseModel):
     type: str = Field(..., description="Instruction template type")
 
 
+class PreviousWorkflow(BaseModel):
+    """Previous workflow attempt for regeneration context."""
+
+    nodes: list[dict[str, Any]] = Field(default_factory=list, description="Previously generated nodes")
+    edges: list[dict[str, Any]] = Field(default_factory=list, description="Previously generated edges")
+    warnings: list[str] = Field(default_factory=list, description="Warnings from previous generation")
+
+
 class FlowchartGeneratePayload(BaseModel):
     instruction: str = Field(..., description="Workflow flowchart generation instruction")
     model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
     available_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Available node types")
     existing_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Existing workflow nodes")
+    existing_edges: list[dict[str, Any]] = Field(default_factory=list, description="Existing workflow edges")
     available_tools: list[dict[str, Any]] = Field(default_factory=list, description="Available tools")
+    selected_node_ids: list[str] = Field(default_factory=list, description="IDs of selected nodes for context")
+    previous_workflow: PreviousWorkflow | None = Field(default=None, description="Previous workflow for regeneration")
+    regenerate_mode: bool = Field(default=False, description="Whether this is a regeneration request")
+    # Language preference for generated content (node titles, descriptions)
+    language: str | None = Field(default=None, description="Preferred language for generated content")
+    # Available models that user has configured (for LLM/question-classifier nodes)
+    available_models: list[dict[str, Any]] = Field(default_factory=list, description="User's configured models")
 
 
 def reg(cls: type[BaseModel]):
@@ -267,7 +288,7 @@ class InstructionGenerateApi(Resource):
 @console_ns.route("/flowchart-generate")
 class FlowchartGenerateApi(Resource):
     @console_ns.doc("generate_workflow_flowchart")
-    @console_ns.doc(description="Generate workflow flowchart using LLM")
+    @console_ns.doc(description="Generate workflow flowchart using LLM with intent classification")
     @console_ns.expect(console_ns.models[FlowchartGeneratePayload.__name__])
     @console_ns.response(200, "Flowchart generated successfully")
     @console_ns.response(400, "Invalid request parameters")
@@ -280,14 +301,24 @@ class FlowchartGenerateApi(Resource):
         _, current_tenant_id = current_account_with_tenant()
 
         try:
-            result = LLMGenerator.generate_workflow_flowchart(
+            # Convert PreviousWorkflow to dict if present
+            previous_workflow_dict = args.previous_workflow.model_dump() if args.previous_workflow else None
+
+            result = WorkflowGenerator.generate_workflow_flowchart(
                 tenant_id=current_tenant_id,
                 instruction=args.instruction,
                 model_config=args.model_config_data,
                 available_nodes=args.available_nodes,
                 existing_nodes=args.existing_nodes,
+                existing_edges=args.existing_edges,
                 available_tools=args.available_tools,
+                selected_node_ids=args.selected_node_ids,
+                previous_workflow=previous_workflow_dict,
+                regenerate_mode=args.regenerate_mode,
+                preferred_language=args.language,
+                available_models=args.available_models,
             )
+
         except ProviderTokenNotInitError as ex:
             raise ProviderNotInitializeError(ex.description)
         except QuotaExceededError:

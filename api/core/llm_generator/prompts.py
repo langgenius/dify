@@ -147,6 +147,8 @@ WORKFLOW_FLOWCHART_PROMPT_TEMPLATE = """
 You are an expert workflow designer. Generate a Mermaid flowchart based on the user's request.
 
 Constraints:
+- Detect the language of the user's request. Generate all node titles in the same language as the user's input.
+- If the input language cannot be determined, use {{PREFERRED_LANGUAGE}} as the fallback language.
 - Use only node types listed in <available_nodes>.
 - Use only tools listed in <available_tools>. When using a tool node, set type=tool and tool=<tool_key>.
 - Tools may include MCP providers (provider_type=mcp). Tool selection still uses tool_key.

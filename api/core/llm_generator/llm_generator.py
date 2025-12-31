@@ -1,6 +1,5 @@
 import json
 import logging
-import re
 from collections.abc import Sequence
 from typing import Protocol, cast
 
@@ -12,13 +11,10 @@ from core.llm_generator.prompts import (
     CONVERSATION_TITLE_PROMPT,
     GENERATOR_QA_PROMPT,
     JAVASCRIPT_CODE_GENERATOR_PROMPT_TEMPLATE,
-    LLM_MODIFY_CODE_SYSTEM,
-    LLM_MODIFY_PROMPT_SYSTEM,
     PYTHON_CODE_GENERATOR_PROMPT_TEMPLATE,
     SUGGESTED_QUESTIONS_MAX_TOKENS,
     SUGGESTED_QUESTIONS_TEMPERATURE,
     SYSTEM_STRUCTURED_OUTPUT_GENERATE,
-    WORKFLOW_FLOWCHART_PROMPT_TEMPLATE,
     WORKFLOW_RULE_CONFIG_PROMPT_GENERATE_TEMPLATE,
 )
 from core.model_manager import ModelManager
@@ -31,6 +27,7 @@ from core.ops.ops_trace_manager import TraceQueueManager, TraceTask
 from core.ops.utils import measure_time
 from core.prompt.utils.prompt_template_parser import PromptTemplateParser
 from core.workflow.entities.workflow_node_execution import WorkflowNodeExecutionMetadataKey
+from core.workflow.generator import WorkflowGenerator
 from extensions.ext_database import db
 from extensions.ext_storage import storage
 from models import App, Message, WorkflowNodeExecutionModel
@@ -295,51 +292,25 @@ class LLMGenerator:
         available_nodes: Sequence[dict[str, object]] | None = None,
         existing_nodes: Sequence[dict[str, object]] | None = None,
         available_tools: Sequence[dict[str, object]] | None = None,
+        selected_node_ids: Sequence[str] | None = None,
+        previous_workflow: dict[str, object] | None = None,
+        regenerate_mode: bool = False,
+        preferred_language: str | None = None,
+        available_models: Sequence[dict[str, object]] | None = None,
     ):
-        model_parameters = model_config.get("completion_params", {})
-        prompt_template = PromptTemplateParser(WORKFLOW_FLOWCHART_PROMPT_TEMPLATE)
-        prompt_generate = prompt_template.format(
-            inputs={
-                "TASK_DESCRIPTION": instruction,
-                "AVAILABLE_NODES": json.dumps(available_nodes or [], ensure_ascii=False),
-                "EXISTING_NODES": json.dumps(existing_nodes or [], ensure_ascii=False),
-                "AVAILABLE_TOOLS": json.dumps(available_tools or [], ensure_ascii=False),
-            },
-            remove_template_variables=False,
-        )
-
-        prompt_messages = [UserPromptMessage(content=prompt_generate)]
-
-        model_manager = ModelManager()
-        model_instance = model_manager.get_model_instance(
+        return WorkflowGenerator.generate_workflow_flowchart(
             tenant_id=tenant_id,
-            model_type=ModelType.LLM,
-            provider=model_config.get("provider", ""),
-            model=model_config.get("name", ""),
+            instruction=instruction,
+            model_config=model_config,
+            available_nodes=available_nodes,
+            existing_nodes=existing_nodes,
+            available_tools=available_tools,
+            selected_node_ids=selected_node_ids,
+            previous_workflow=previous_workflow,
+            regenerate_mode=regenerate_mode,
+            preferred_language=preferred_language,
+            available_models=available_models,
         )
-
-        flowchart = ""
-        error = ""
-
-        try:
-            response: LLMResult = model_instance.invoke_llm(
-                prompt_messages=list(prompt_messages),
-                model_parameters=model_parameters,
-                stream=False,
-            )
-            content = response.message.get_text_content()
-            if not isinstance(content, str):
-                raise ValueError("Flowchart response is not a string")
-
-            match = re.search(r"```(?:mermaid)?\s*([\s\S]+?)```", content, flags=re.IGNORECASE)
-            flowchart = (match.group(1) if match else content).strip()
-        except InvokeError as e:
-            error = str(e)
-        except Exception as e:
-            logger.exception("Failed to generate workflow flowchart, model: %s", model_config.get("name"))
-            error = str(e)
-
-        return {"flowchart": flowchart, "error": error}
 
     @classmethod
     def generate_code(cls, tenant_id: str, instruction: str, model_config: dict, code_language: str = "javascript"):
