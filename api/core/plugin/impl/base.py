@@ -124,6 +124,9 @@ class BasePluginClient:
         This ensures trace context is propagated to plugin daemon even if
         HTTPXClientInstrumentor doesn't cover module-level httpx functions.
         """
+        if not dify_config.ENABLE_OTEL:
+            return
+
         import contextlib
 
         # Skip if already present (case-insensitive check)
