@@ -60,8 +60,6 @@ export const useEducationStatus = (disable?: boolean) => {
     },
     retry: false,
     staleTime: 0, // Data expires immediately, ensuring fresh data on refetch
-    refetchOnMount: true, // Refetch when component mounts if data is stale
-    refetchOnWindowFocus: true, // Refetch when window regains focus
   })
 }
 
