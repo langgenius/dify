@@ -78,9 +78,9 @@ class AppListQuery(BaseModel):
 # Includes: script tags, iframe tags, javascript: protocol, SVG with onload, etc.
 _XSS_PATTERNS = [
     r"<script[^>]*>.*?</script>",  # Script tags
-    r"<iframe[^>]*>.*?</iframe>",  # Iframe tags
+    r"<iframe\b[^>]*?(?:/>|>.*?</iframe>)",  # Iframe tags (including self-closing)
     r"javascript:",  # JavaScript protocol
-    r"<svg[^>]*onload[^>]*>",  # SVG with onload handler
+    r"<svg[^>]*?\s+onload\s*=[^>]*>",  # SVG with onload handler (attribute-aware, flexible whitespace)
     r"<.*?on\s*\w+\s*=",  # Event handlers like onclick, onerror, etc.
     r"<object\b[^>]*(?:\s*/>|>.*?</object\s*>)",  # Object tags (opening tag)
     r"<embed[^>]*>",  # Embed tags (self-closing)
