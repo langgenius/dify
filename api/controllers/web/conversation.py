@@ -1,4 +1,4 @@
-from flask_restx import fields, marshal_with, reqparse
+from flask_restx import reqparse
 from flask_restx.inputs import int_range
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
@@ -8,7 +8,11 @@ from controllers.web.error import NotChatAppError
 from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from fields.conversation_fields import conversation_infinite_scroll_pagination_fields, simple_conversation_fields
+from fields.conversation_fields import (
+    ResultResponse,
+    build_conversation_infinite_scroll_pagination,
+    build_simple_conversation,
+)
 from libs.helper import uuid_value
 from models.model import AppMode
 from services.conversation_service import ConversationService
@@ -54,7 +58,6 @@ class ConversationListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(conversation_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -82,7 +85,7 @@ class ConversationListApi(WebApiResource):
 
         try:
             with Session(db.engine) as session:
-                return WebConversationService.pagination_by_last_id(
+                pagination = WebConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
                     user=end_user,
@@ -92,16 +95,13 @@ class ConversationListApi(WebApiResource):
                     pinned=pinned,
                     sort_by=args["sort_by"],
                 )
+                return build_conversation_infinite_scroll_pagination(pagination).model_dump(mode="json")
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
 
 @web_ns.route("/conversations/<uuid:c_id>")
 class ConversationApi(WebApiResource):
-    delete_response_fields = {
-        "result": fields.String,
-    }
-
     @web_ns.doc("Delete Conversation")
     @web_ns.doc(description="Delete a specific conversation.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -115,7 +115,6 @@ class ConversationApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(delete_response_fields)
     def delete(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -126,7 +125,7 @@ class ConversationApi(WebApiResource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return {"result": "success"}, 204
+        return ResultResponse(result="success").model_dump(mode="json"), 204
 
 
 @web_ns.route("/conversations/<uuid:c_id>/name")
@@ -155,7 +154,6 @@ class ConversationRenameApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(simple_conversation_fields)
     def post(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -171,17 +169,16 @@ class ConversationRenameApi(WebApiResource):
         args = parser.parse_args()
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, args["name"], args["auto_generate"])
+            conversation = ConversationService.rename(
+                app_model, conversation_id, end_user, args["name"], args["auto_generate"]
+            )
+            return build_simple_conversation(conversation).model_dump(mode="json")
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
 
 @web_ns.route("/conversations/<uuid:c_id>/pin")
 class ConversationPinApi(WebApiResource):
-    pin_response_fields = {
-        "result": fields.String,
-    }
-
     @web_ns.doc("Pin Conversation")
     @web_ns.doc(description="Pin a specific conversation to keep it at the top of the list.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -195,7 +192,6 @@ class ConversationPinApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(pin_response_fields)
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -208,15 +204,11 @@ class ConversationPinApi(WebApiResource):
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")
 
 
 @web_ns.route("/conversations/<uuid:c_id>/unpin")
 class ConversationUnPinApi(WebApiResource):
-    unpin_response_fields = {
-        "result": fields.String,
-    }
-
     @web_ns.doc("Unpin Conversation")
     @web_ns.doc(description="Unpin a specific conversation to remove it from the top of the list.")
     @web_ns.doc(params={"c_id": {"description": "Conversation UUID", "type": "string", "required": True}})
@@ -230,7 +222,6 @@ class ConversationUnPinApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(unpin_response_fields)
     def patch(self, app_model, end_user, c_id):
         app_mode = AppMode.value_of(app_model.mode)
         if app_mode not in {AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT}:
@@ -239,4 +230,4 @@ class ConversationUnPinApi(WebApiResource):
         conversation_id = str(c_id)
         WebConversationService.unpin(app_model, conversation_id, end_user)
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")

@@ -1,40 +1,19 @@
-from flask_restx import fields, marshal_with, reqparse
+from flask_restx import reqparse
 from flask_restx.inputs import int_range
 from werkzeug.exceptions import NotFound
 
 from controllers.web import web_ns
 from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
-from fields.conversation_fields import message_file_fields
-from libs.helper import TimestampField, uuid_value
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import build_saved_message_infinite_scroll_pagination
+from libs.helper import uuid_value
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
-
-feedback_fields = {"rating": fields.String}
-
-message_fields = {
-    "id": fields.String,
-    "inputs": fields.Raw,
-    "query": fields.String,
-    "answer": fields.String,
-    "message_files": fields.List(fields.Nested(message_file_fields)),
-    "feedback": fields.Nested(feedback_fields, attribute="user_feedback", allow_null=True),
-    "created_at": TimestampField,
-}
 
 
 @web_ns.route("/saved-messages")
 class SavedMessageListApi(WebApiResource):
-    saved_message_infinite_scroll_pagination_fields = {
-        "limit": fields.Integer,
-        "has_more": fields.Boolean,
-        "data": fields.List(fields.Nested(message_fields)),
-    }
-
-    post_response_fields = {
-        "result": fields.String,
-    }
-
     @web_ns.doc("Get Saved Messages")
     @web_ns.doc(description="Retrieve paginated list of saved messages for a completion application.")
     @web_ns.doc(
@@ -58,7 +37,6 @@ class SavedMessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(saved_message_infinite_scroll_pagination_fields)
     def get(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -70,7 +48,8 @@ class SavedMessageListApi(WebApiResource):
         )
         args = parser.parse_args()
 
-        return SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
+        pagination = SavedMessageService.pagination_by_last_id(app_model, end_user, args["last_id"], args["limit"])
+        return build_saved_message_infinite_scroll_pagination(pagination).model_dump(mode="json")
 
     @web_ns.doc("Save Message")
     @web_ns.doc(description="Save a specific message for later reference.")
@@ -89,7 +68,6 @@ class SavedMessageListApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(post_response_fields)
     def post(self, app_model, end_user):
         if app_model.mode != "completion":
             raise NotCompletionAppError()
@@ -102,15 +80,11 @@ class SavedMessageListApi(WebApiResource):
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")
 
 
 @web_ns.route("/saved-messages/<uuid:message_id>")
 class SavedMessageApi(WebApiResource):
-    delete_response_fields = {
-        "result": fields.String,
-    }
-
     @web_ns.doc("Delete Saved Message")
     @web_ns.doc(description="Remove a message from saved messages.")
     @web_ns.doc(params={"message_id": {"description": "Message UUID to delete", "type": "string", "required": True}})
@@ -124,7 +98,6 @@ class SavedMessageApi(WebApiResource):
             500: "Internal Server Error",
         }
     )
-    @marshal_with(delete_response_fields)
     def delete(self, app_model, end_user, message_id):
         message_id = str(message_id)
 
@@ -133,4 +106,4 @@ class SavedMessageApi(WebApiResource):
 
         SavedMessageService.delete(app_model, end_user, message_id)
 
-        return {"result": "success"}, 204
+        return ResultResponse(result="success").model_dump(mode="json"), 204
