@@ -1,6 +1,6 @@
 import { Popover, PopoverButton, PopoverPanel, Transition } from '@headlessui/react'
-import { Fragment, cloneElement, useRef } from 'react'
-import cn from '@/utils/classnames'
+import { cloneElement, Fragment, isValidElement, useRef } from 'react'
+import { cn } from '@/utils/classnames'
 
 export type HtmlContentProps = {
   open?: boolean
@@ -59,9 +59,9 @@ export default function CustomPopover({
               {...(trigger !== 'hover'
                 ? {}
                 : {
-                  onMouseLeave: () => onMouseLeave(open),
-                  onMouseEnter: () => onMouseEnter(open),
-                })}
+                    onMouseLeave: () => onMouseLeave(open),
+                    onMouseEnter: () => onMouseEnter(open),
+                  })}
             >
               <PopoverButton
                 ref={buttonRef}
@@ -87,9 +87,9 @@ export default function CustomPopover({
                   {...(trigger !== 'hover'
                     ? {}
                     : {
-                      onMouseLeave: () => onMouseLeave(open),
-                      onMouseEnter: () => onMouseEnter(open),
-                    })
+                        onMouseLeave: () => onMouseLeave(open),
+                        onMouseEnter: () => onMouseEnter(open),
+                      })
                   }
                 >
                   {({ close }) => (
@@ -98,20 +98,22 @@ export default function CustomPopover({
                       {...(trigger !== 'hover'
                         ? {}
                         : {
-                          onMouseLeave: () => onMouseLeave(open),
-                          onMouseEnter: () => onMouseEnter(open),
-                        })
+                            onMouseLeave: () => onMouseLeave(open),
+                            onMouseEnter: () => onMouseEnter(open),
+                          })
                       }
                     >
-                      {cloneElement(htmlContent as React.ReactElement, {
-                        open,
-                        onClose: close,
-                        ...(manualClose
-                          ? {
-                            onClick: close,
-                          }
-                          : {}),
-                      })}
+                      {isValidElement(htmlContent)
+                        ? cloneElement(htmlContent as React.ReactElement<HtmlContentProps>, {
+                            open,
+                            onClose: close,
+                            ...(manualClose
+                              ? {
+                                  onClick: close,
+                                }
+                              : {}),
+                          })
+                        : htmlContent}
                     </div>
                   )}
                 </PopoverPanel>

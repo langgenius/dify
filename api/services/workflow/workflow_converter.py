@@ -1,5 +1,5 @@
 import json
-from typing import Any
+from typing import Any, TypedDict
 
 from sqlalchemy import select
 
@@ -28,6 +28,12 @@ from models import Account
 from models.api_based_extension import APIBasedExtension, APIBasedExtensionPoint
 from models.model import App, AppMode, AppModelConfig
 from models.workflow import Workflow, WorkflowType
+
+
+class _NodeType(TypedDict):
+    id: str
+    position: None
+    data: dict[str, Any]
 
 
 class WorkflowConverter:
@@ -219,7 +225,7 @@ class WorkflowConverter:
 
         return app_config
 
-    def _convert_to_start_node(self, variables: list[VariableEntity]):
+    def _convert_to_start_node(self, variables: list[VariableEntity]) -> _NodeType:
         """
         Convert to Start Node
         :param variables: list of variables
@@ -237,7 +243,7 @@ class WorkflowConverter:
 
     def _convert_to_http_request_node(
         self, app_model: App, variables: list[VariableEntity], external_data_variables: list[ExternalDataVariableEntity]
-    ) -> tuple[list[dict], dict[str, str]]:
+    ) -> tuple[list[_NodeType], dict[str, str]]:
         """
         Convert API Based Extension to HTTP Request Node
         :param app_model: App instance
@@ -287,7 +293,7 @@ class WorkflowConverter:
             request_body_json = json.dumps(request_body)
             request_body_json = request_body_json.replace(r"\{\{", "{{").replace(r"\}\}", "}}")
 
-            http_request_node = {
+            http_request_node: _NodeType = {
                 "id": f"http_request_{index}",
                 "position": None,
                 "data": {
@@ -305,7 +311,7 @@ class WorkflowConverter:
             nodes.append(http_request_node)
 
             # append code node for response body parsing
-            code_node: dict[str, Any] = {
+            code_node: _NodeType = {
                 "id": f"code_{index}",
                 "position": None,
                 "data": {
@@ -328,7 +334,7 @@ class WorkflowConverter:
 
     def _convert_to_knowledge_retrieval_node(
         self, new_app_mode: AppMode, dataset_config: DatasetEntity, model_config: ModelConfigEntity
-    ) -> dict | None:
+    ) -> _NodeType | None:
         """
         Convert datasets to Knowledge Retrieval Node
         :param new_app_mode: new app mode
@@ -386,7 +392,7 @@ class WorkflowConverter:
         prompt_template: PromptTemplateEntity,
         file_upload: FileUploadConfig | None = None,
         external_data_variable_node_mapping: dict[str, str] | None = None,
-    ):
+    ) -> _NodeType:
         """
         Convert to LLM Node
         :param original_app_mode: original app mode
@@ -563,7 +569,7 @@ class WorkflowConverter:
 
         return template
 
-    def _convert_to_end_node(self):
+    def _convert_to_end_node(self) -> _NodeType:
         """
         Convert to End Node
         :return:
@@ -579,7 +585,7 @@ class WorkflowConverter:
             },
         }
 
-    def _convert_to_answer_node(self):
+    def _convert_to_answer_node(self) -> _NodeType:
         """
         Convert to Answer Node
         :return:
@@ -600,7 +606,7 @@ class WorkflowConverter:
         """
         return {"id": f"{source}-{target}", "source": source, "target": target}
 
-    def _append_node(self, graph: dict, node: dict):
+    def _append_node(self, graph: dict[str, Any], node: _NodeType):
         """
         Append Node to Graph
 

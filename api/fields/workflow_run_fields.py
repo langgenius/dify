@@ -8,6 +8,7 @@ workflow_run_for_log_fields = {
     "id": fields.String,
     "version": fields.String,
     "status": fields.String,
+    "triggered_from": fields.String,
     "error": fields.String,
     "elapsed_time": fields.Float,
     "total_tokens": fields.Integer,

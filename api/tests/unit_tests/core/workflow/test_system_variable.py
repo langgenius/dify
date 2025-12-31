@@ -248,4 +248,4 @@ def test_constructor_with_extra_key():
     # Test that SystemVariable should forbid extra keys
     with pytest.raises(ValidationError):
         # This should fail because there is an unexpected key.
-        SystemVariable(invalid_key=1)  # type: ignore
+        SystemVariable(invalid_key=1)

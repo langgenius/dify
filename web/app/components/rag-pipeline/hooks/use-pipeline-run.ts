@@ -1,21 +1,21 @@
+import type { IOtherOptions } from '@/service/base'
+import type { VersionHistory } from '@/types/workflow'
+import { produce } from 'immer'
 import { useCallback } from 'react'
 import {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
-import produce from 'immer'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { WorkflowRunningStatus } from '@/app/components/workflow/types'
+import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useWorkflowUpdate } from '@/app/components/workflow/hooks/use-workflow-interactions'
 import { useWorkflowRunEvent } from '@/app/components/workflow/hooks/use-workflow-run-event/use-workflow-run-event'
-import type { IOtherOptions } from '@/service/base'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { ssePost } from '@/service/base'
-import { stopWorkflowRun } from '@/service/workflow'
-import type { VersionHistory } from '@/types/workflow'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useSetWorkflowVarsWithValue } from '@/app/components/workflow/hooks/use-fetch-workflow-inspect-vars'
 import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { stopWorkflowRun } from '@/service/workflow'
 import { FlowType } from '@/types/common'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const usePipelineRun = () => {
   const store = useStoreApi()
@@ -145,6 +145,9 @@ export const usePipelineRun = () => {
     } = workflowStore.getState()
     setWorkflowRunningData({
       result: {
+        inputs_truncated: false,
+        process_data_truncated: false,
+        outputs_truncated: false,
         status: WorkflowRunningStatus.Running,
       },
       tracing: [],
@@ -283,8 +286,7 @@ export const usePipelineRun = () => {
     handleWorkflowTextChunk,
     handleWorkflowTextReplace,
     handleWorkflowAgentLog,
-  ],
-  )
+  ])
 
   const handleStopRun = useCallback((taskId: string) => {
     const { pipelineId } = workflowStore.getState()

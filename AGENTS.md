@@ -14,7 +14,7 @@ The codebase is split into:
 
 - Run backend CLI commands through `uv run --project api <command>`.
 
-- Backend QA gate requires passing `make lint`, `make type-check`, and `uv run --project api --dev dev/pytest/pytest_unit_tests.sh` before review.
+- Before submission, all backend modifications must pass local checks: `make lint`, `make type-check`, and `uv run --project api --dev dev/pytest/pytest_unit_tests.sh`.
 
 - Use Makefile targets for linting and formatting; `make lint` and `make type-check` cover the required checks.
 
@@ -24,8 +24,8 @@ The codebase is split into:
 
 ```bash
 cd web
-pnpm lint
 pnpm lint:fix
+pnpm type-check:tsgo
 pnpm test
 ```
 
@@ -39,7 +39,7 @@ pnpm test
 ## Language Style
 
 - **Python**: Keep type hints on functions and attributes, and implement relevant special methods (e.g., `__repr__`, `__str__`).
-- **TypeScript**: Use the strict config, lean on ESLint + Prettier workflows, and avoid `any` types.
+- **TypeScript**: Use the strict config, rely on ESLint (`pnpm lint:fix` preferred) plus `pnpm type-check:tsgo`, and avoid `any` types.
 
 ## General Practices
 

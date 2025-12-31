@@ -129,6 +129,7 @@ class ToolInvokeMessage(BaseModel):
 
     class JsonMessage(BaseModel):
         json_object: dict
+        suppress_output: bool = Field(default=False, description="Whether to suppress JSON output in result string")
 
     class BlobMessage(BaseModel):
         blob: bytes
@@ -152,11 +153,11 @@ class ToolInvokeMessage(BaseModel):
         @classmethod
         def transform_variable_value(cls, values):
             """
-            Only basic types and lists are allowed.
+            Only basic types, lists, and None are allowed.
             """
             value = values.get("variable_value")
-            if not isinstance(value, dict | list | str | int | float | bool):
-                raise ValueError("Only basic types and lists are allowed.")
+            if value is not None and not isinstance(value, dict | list | str | int | float | bool):
+                raise ValueError("Only basic types, lists, and None are allowed.")
 
             # if stream is true, the value must be a string
             if values.get("stream"):
@@ -267,6 +268,7 @@ class ToolParameter(PluginParameter):
         SECRET_INPUT = PluginParameterType.SECRET_INPUT
         FILE = PluginParameterType.FILE
         FILES = PluginParameterType.FILES
+        CHECKBOX = PluginParameterType.CHECKBOX
         APP_SELECTOR = PluginParameterType.APP_SELECTOR
         MODEL_SELECTOR = PluginParameterType.MODEL_SELECTOR
         ANY = PluginParameterType.ANY
@@ -488,36 +490,3 @@ class ToolSelector(BaseModel):
 
     def to_plugin_parameter(self) -> dict[str, Any]:
         return self.model_dump()
-
-
-class CredentialType(StrEnum):
-    API_KEY = "api-key"
-    OAUTH2 = auto()
-
-    def get_name(self):
-        if self == CredentialType.API_KEY:
-            return "API KEY"
-        elif self == CredentialType.OAUTH2:
-            return "AUTH"
-        else:
-            return self.value.replace("-", " ").upper()
-
-    def is_editable(self):
-        return self == CredentialType.API_KEY
-
-    def is_validate_allowed(self):
-        return self == CredentialType.API_KEY
-
-    @classmethod
-    def values(cls):
-        return [item.value for item in cls]
-
-    @classmethod
-    def of(cls, credential_type: str) -> "CredentialType":
-        type_name = credential_type.lower()
-        if type_name in {"api-key", "api_key"}:
-            return cls.API_KEY
-        elif type_name in {"oauth2", "oauth"}:
-            return cls.OAUTH2
-        else:
-            raise ValueError(f"Invalid credential type: {credential_type}")

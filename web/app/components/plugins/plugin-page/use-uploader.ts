@@ -1,8 +1,9 @@
+import type { RefObject } from 'react'
 import { useEffect, useRef, useState } from 'react'
 
 type UploaderHookProps = {
   onFileChange: (file: File | null) => void
-  containerRef: React.RefObject<HTMLDivElement>
+  containerRef: RefObject<HTMLDivElement | null>
   enabled?: boolean
 }
 
@@ -42,18 +43,18 @@ export const useUploader = ({ onFileChange, containerRef, enabled = true }: Uplo
 
   const fileChangeHandle = enabled
     ? (e: React.ChangeEvent<HTMLInputElement>) => {
-      const file = e.target.files?.[0] || null
-      onFileChange(file)
-    }
+        const file = e.target.files?.[0] || null
+        onFileChange(file)
+      }
     : null
 
   const removeFile = enabled
     ? () => {
-      if (fileUploader.current)
-        fileUploader.current.value = ''
+        if (fileUploader.current)
+          fileUploader.current.value = ''
 
-      onFileChange(null)
-    }
+        onFileChange(null)
+      }
     : null
 
   useEffect(() => {

@@ -1,8 +1,8 @@
-import cn from '@/utils/classnames'
-import { useFieldContext } from '../..'
 import type { Option, PureSelectProps } from '../../../select/pure'
-import PureSelect from '../../../select/pure'
 import type { LabelProps } from '../label'
+import { cn } from '@/utils/classnames'
+import { useFieldContext } from '../..'
+import PureSelect from '../../../select/pure'
 import Label from '../label'
 
 type SelectFieldProps = {
@@ -11,7 +11,9 @@ type SelectFieldProps = {
   options: Option[]
   onChange?: (value: string) => void
   className?: string
-} & Omit<PureSelectProps, 'options' | 'value' | 'onChange'>
+} & Omit<PureSelectProps, 'options' | 'value' | 'onChange' | 'multiple'> & {
+  multiple?: false
+}
 
 const SelectField = ({
   label,

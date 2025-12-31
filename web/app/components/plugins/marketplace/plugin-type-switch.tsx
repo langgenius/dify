@@ -7,88 +7,91 @@ import {
   RiPuzzle2Line,
   RiSpeakAiLine,
 } from '@remixicon/react'
-import { PluginType } from '../types'
-import { useMarketplaceContext } from './context'
-import {
-  useMixedTranslation,
-  useSearchBoxAutoAnimate,
-} from './hooks'
-import cn from '@/utils/classnames'
 import { useCallback, useEffect } from 'react'
+import { Trigger as TriggerIcon } from '@/app/components/base/icons/src/vender/plugin'
+import { cn } from '@/utils/classnames'
+import { PluginCategoryEnum } from '../types'
+import { useMarketplaceContext } from './context'
+import { useMixedTranslation } from './hooks'
 
 export const PLUGIN_TYPE_SEARCH_MAP = {
   all: 'all',
-  model: PluginType.model,
-  tool: PluginType.tool,
-  agent: PluginType.agent,
-  extension: PluginType.extension,
-  datasource: PluginType.datasource,
+  model: PluginCategoryEnum.model,
+  tool: PluginCategoryEnum.tool,
+  agent: PluginCategoryEnum.agent,
+  extension: PluginCategoryEnum.extension,
+  datasource: PluginCategoryEnum.datasource,
+  trigger: PluginCategoryEnum.trigger,
   bundle: 'bundle',
 }
 type PluginTypeSwitchProps = {
   locale?: string
   className?: string
-  searchBoxAutoAnimate?: boolean
   showSearchParams?: boolean
 }
 const PluginTypeSwitch = ({
   locale,
   className,
-  searchBoxAutoAnimate,
   showSearchParams,
 }: PluginTypeSwitchProps) => {
   const { t } = useMixedTranslation(locale)
   const activePluginType = useMarketplaceContext(s => s.activePluginType)
   const handleActivePluginTypeChange = useMarketplaceContext(s => s.handleActivePluginTypeChange)
-  const { searchBoxCanAnimate } = useSearchBoxAutoAnimate(searchBoxAutoAnimate)
 
   const options = [
     {
       value: PLUGIN_TYPE_SEARCH_MAP.all,
-      text: t('plugin.category.all'),
+      text: t('category.all', { ns: 'plugin' }),
       icon: null,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.model,
-      text: t('plugin.category.models'),
-      icon: <RiBrain2Line className='mr-1.5 h-4 w-4' />,
+      text: t('category.models', { ns: 'plugin' }),
+      icon: <RiBrain2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.tool,
-      text: t('plugin.category.tools'),
-      icon: <RiHammerLine className='mr-1.5 h-4 w-4' />,
+      text: t('category.tools', { ns: 'plugin' }),
+      icon: <RiHammerLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.datasource,
-      text: t('plugin.category.datasources'),
-      icon: <RiDatabase2Line className='mr-1.5 h-4 w-4' />,
+      text: t('category.datasources', { ns: 'plugin' }),
+      icon: <RiDatabase2Line className="mr-1.5 h-4 w-4" />,
+    },
+    {
+      value: PLUGIN_TYPE_SEARCH_MAP.trigger,
+      text: t('category.triggers', { ns: 'plugin' }),
+      icon: <TriggerIcon className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.agent,
-      text: t('plugin.category.agents'),
-      icon: <RiSpeakAiLine className='mr-1.5 h-4 w-4' />,
+      text: t('category.agents', { ns: 'plugin' }),
+      icon: <RiSpeakAiLine className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.extension,
-      text: t('plugin.category.extensions'),
-      icon: <RiPuzzle2Line className='mr-1.5 h-4 w-4' />,
+      text: t('category.extensions', { ns: 'plugin' }),
+      icon: <RiPuzzle2Line className="mr-1.5 h-4 w-4" />,
     },
     {
       value: PLUGIN_TYPE_SEARCH_MAP.bundle,
-      text: t('plugin.category.bundles'),
-      icon: <RiArchive2Line className='mr-1.5 h-4 w-4' />,
+      text: t('category.bundles', { ns: 'plugin' }),
+      icon: <RiArchive2Line className="mr-1.5 h-4 w-4" />,
     },
   ]
 
   const handlePopState = useCallback(() => {
     if (!showSearchParams)
       return
+    // nuqs handles popstate automatically
     const url = new URL(window.location.href)
     const category = url.searchParams.get('category') || PLUGIN_TYPE_SEARCH_MAP.all
     handleActivePluginTypeChange(category)
   }, [showSearchParams, handleActivePluginTypeChange])
 
   useEffect(() => {
+    // nuqs manages popstate internally, but we keep this for URL sync
     window.addEventListener('popstate', handlePopState)
     return () => {
       window.removeEventListener('popstate', handlePopState)
@@ -98,9 +101,9 @@ const PluginTypeSwitch = ({
   return (
     <div className={cn(
       'flex shrink-0 items-center justify-center space-x-2 bg-background-body py-3',
-      searchBoxCanAnimate && 'sticky top-[56px] z-10',
       className,
-    )}>
+    )}
+    >
       {
         options.map(option => (
           <div

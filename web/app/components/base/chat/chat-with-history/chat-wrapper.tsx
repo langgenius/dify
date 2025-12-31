@@ -1,30 +1,29 @@
-import { useCallback, useEffect, useMemo, useState } from 'react'
-import Chat from '../chat'
+import type { FileEntity } from '../../file-uploader/types'
 import type {
   ChatConfig,
   ChatItem,
-  ChatItemInTree,
   OnSend,
 } from '../types'
-import { useChat } from '../chat/hooks'
-import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
-import { useChatWithHistoryContext } from './context'
-import { InputVarType } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import AnswerIcon from '@/app/components/base/answer-icon'
+import AppIcon from '@/app/components/base/app-icon'
 import InputsForm from '@/app/components/base/chat/chat-with-history/inputs-form'
+import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
+import { Markdown } from '@/app/components/base/markdown'
+import { InputVarType } from '@/app/components/workflow/types'
 import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
 } from '@/service/share'
-import AppIcon from '@/app/components/base/app-icon'
-import AnswerIcon from '@/app/components/base/answer-icon'
-import SuggestedQuestions from '@/app/components/base/chat/chat/answer/suggested-questions'
-import { Markdown } from '@/app/components/base/markdown'
-import cn from '@/utils/classnames'
-import type { FileEntity } from '../../file-uploader/types'
+import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { formatBooleanInputs } from '@/utils/model-config'
 import Avatar from '../../avatar'
+import Chat from '../chat'
+import { useChat } from '../chat/hooks'
+import { getLastAnswer, isValidGeneratedAnswer } from '../utils'
+import { useChatWithHistoryContext } from './context'
 
 const ChatWrapper = () => {
   const {
@@ -149,14 +148,10 @@ const ChatWrapper = () => {
     )
   }, [chatList, handleNewConversationCompleted, handleSend, currentConversationId, currentConversationInputs, newConversationInputs, isInstalledApp, appId])
 
-  const doRegenerate = useCallback((chatItem: ChatItemInTree, editedQuestion?: { message: string, files?: FileEntity[] }) => {
+  const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
     const parentAnswer = chatList.find(item => item.id === question.parentMessageId)
-    doSend(editedQuestion ? editedQuestion.message : question.content,
-      editedQuestion ? editedQuestion.files : question.message_files,
-      true,
-      isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null,
-    )
+    doSend(editedQuestion ? editedQuestion.message : question.content, editedQuestion ? editedQuestion.files : question.message_files, true, isValidGeneratedAnswer(parentAnswer) ? parentAnswer : null)
   }, [chatList, doSend])
 
   const messageList = useMemo(() => {
@@ -179,12 +174,12 @@ const ChatWrapper = () => {
     else {
       return <InputsForm collapsed={collapsed} setCollapsed={setCollapsed} />
     }
-  },
-  [
+  }, [
     inputsForms.length,
     isMobile,
     currentConversationId,
-    collapsed, allInputsHidden,
+    collapsed,
+    allInputsHidden,
   ])
 
   const welcome = useMemo(() => {
@@ -199,17 +194,17 @@ const ChatWrapper = () => {
       return null
     if (welcomeMessage.suggestedQuestions && welcomeMessage.suggestedQuestions?.length > 0) {
       return (
-        <div className='flex min-h-[50vh] items-center justify-center px-4 py-12'>
-          <div className='flex max-w-[720px] grow gap-4'>
+        <div className="flex min-h-[50vh] items-center justify-center px-4 py-12">
+          <div className="flex max-w-[720px] grow gap-4">
             <AppIcon
-              size='xl'
+              size="xl"
               iconType={appData?.site.icon_type}
               icon={appData?.site.icon}
               background={appData?.site.icon_background}
               imageUrl={appData?.site.icon_url}
             />
-            <div className='w-0 grow'>
-              <div className='body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary'>
+            <div className="w-0 grow">
+              <div className="body-lg-regular grow rounded-2xl bg-chat-bubble-bg px-4 py-3 text-text-primary">
                 <Markdown content={welcomeMessage.content} />
                 <SuggestedQuestions item={welcomeMessage} />
               </div>
@@ -219,26 +214,26 @@ const ChatWrapper = () => {
       )
     }
     return (
-      <div className={cn('flex h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
+      <div className={cn('flex min-h-[50vh] flex-col items-center justify-center gap-3 py-12')}>
         <AppIcon
-          size='xl'
+          size="xl"
           iconType={appData?.site.icon_type}
           icon={appData?.site.icon}
           background={appData?.site.icon_background}
           imageUrl={appData?.site.icon_url}
         />
-        <div className='max-w-[768px] px-4'>
-          <Markdown className='!body-2xl-regular !text-text-tertiary' content={welcomeMessage.content} />
+        <div className="max-w-[768px] px-4">
+          <Markdown className="!body-2xl-regular !text-text-tertiary" content={welcomeMessage.content} />
         </div>
       </div>
     )
-  },
-  [
+  }, [
     appData?.site.icon,
     appData?.site.icon_background,
     appData?.site.icon_type,
     appData?.site.icon_url,
-    chatList, collapsed,
+    chatList,
+    collapsed,
     currentConversationId,
     inputsForms.length,
     respondingState,
@@ -246,17 +241,19 @@ const ChatWrapper = () => {
   ])
 
   const answerIcon = (appData?.site && appData.site.use_icon_as_answer_icon)
-    ? <AnswerIcon
-      iconType={appData.site.icon_type}
-      icon={appData.site.icon}
-      background={appData.site.icon_background}
-      imageUrl={appData.site.icon_url}
-    />
+    ? (
+        <AnswerIcon
+          iconType={appData.site.icon_type}
+          icon={appData.site.icon}
+          background={appData.site.icon_background}
+          imageUrl={appData.site.icon_url}
+        />
+      )
     : null
 
   return (
     <div
-      className='h-full overflow-hidden bg-chatbot-bg'
+      className="h-full overflow-hidden bg-chatbot-bg"
     >
       <Chat
         appData={appData ?? undefined}
@@ -264,19 +261,19 @@ const ChatWrapper = () => {
         chatList={messageList}
         isResponding={respondingState}
         chatContainerInnerClassName={`mx-auto pt-6 w-full max-w-[768px] ${isMobile && 'px-4'}`}
-        chatFooterClassName='pb-4'
+        chatFooterClassName="pb-4"
         chatFooterInnerClassName={`mx-auto w-full max-w-[768px] ${isMobile ? 'px-2' : 'px-4'}`}
         onSend={doSend}
         inputs={currentConversationId ? currentConversationInputs as any : newConversationInputs}
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
-        chatNode={
+        chatNode={(
           <>
             {chatNode}
             {welcome}
           </>
-        }
+        )}
         allToolIcons={appMeta?.tool_icons || {}}
         onFeedback={handleFeedback}
         suggestedQuestions={suggestedQuestions}
@@ -285,15 +282,17 @@ const ChatWrapper = () => {
         themeBuilder={themeBuilder}
         switchSibling={siblingMessageId => setTargetMessageId(siblingMessageId)}
         inputDisabled={inputDisabled}
-        isMobile={isMobile}
         sidebarCollapseState={sidebarCollapseState}
         questionIcon={
           initUserVariables?.avatar_url
-            ? <Avatar
-              avatar={initUserVariables.avatar_url}
-              name={initUserVariables.name || 'user'}
-              size={40}
-            /> : undefined
+            ? (
+                <Avatar
+                  avatar={initUserVariables.avatar_url}
+                  name={initUserVariables.name || 'user'}
+                  size={40}
+                />
+              )
+            : undefined
         }
       />
     </div>

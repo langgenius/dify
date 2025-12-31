@@ -12,6 +12,7 @@ from constants import HIDDEN_VALUE, UNKNOWN_VALUE
 from core.helper.name_generator import generate_incremental_name
 from core.helper.position_helper import is_filtered
 from core.helper.provider_cache import NoOpProviderCredentialCache, ToolProviderCredentialsCache
+from core.plugin.entities.plugin_daemon import CredentialType
 from core.tools.builtin_tool.provider import BuiltinToolProviderController
 from core.tools.builtin_tool.providers._positions import BuiltinToolProviderSort
 from core.tools.entities.api_entities import (
@@ -20,7 +21,6 @@ from core.tools.entities.api_entities import (
     ToolProviderCredentialApiEntity,
     ToolProviderCredentialInfoApiEntity,
 )
-from core.tools.entities.tool_entities import CredentialType
 from core.tools.errors import ToolProviderNotFoundError
 from core.tools.plugin_tool.provider import PluginToolProviderController
 from core.tools.tool_label_manager import ToolLabelManager
@@ -39,7 +39,6 @@ logger = logging.getLogger(__name__)
 
 class BuiltinToolManageService:
     __MAX_BUILTIN_TOOL_PROVIDER_COUNT__ = 100
-    __DEFAULT_EXPIRES_AT__ = 2147483647
 
     @staticmethod
     def delete_custom_oauth_client_params(tenant_id: str, provider: str):
@@ -275,9 +274,7 @@ class BuiltinToolManageService:
                         encrypted_credentials=json.dumps(encrypter.encrypt(credentials)),
                         credential_type=api_type.value,
                         name=name,
-                        expires_at=expires_at
-                        if expires_at is not None
-                        else BuiltinToolManageService.__DEFAULT_EXPIRES_AT__,
+                        expires_at=expires_at if expires_at is not None else -1,
                     )
 
                     session.add(db_provider)
@@ -285,6 +282,7 @@ class BuiltinToolManageService:
             except Exception as e:
                 session.rollback()
                 raise ValueError(str(e))
+
         return {"result": "success"}
 
     @staticmethod
@@ -350,10 +348,10 @@ class BuiltinToolManageService:
                 encrypter, _ = BuiltinToolManageService.create_tool_encrypter(
                     tenant_id, provider, provider.provider, provider_controller
                 )
-                decrypt_credential = encrypter.mask_tool_credentials(encrypter.decrypt(provider.credentials))
+                decrypt_credential = encrypter.mask_plugin_credentials(encrypter.decrypt(provider.credentials))
                 credential_entity = ToolTransformService.convert_builtin_provider_to_credential_entity(
                     provider=provider,
-                    credentials=decrypt_credential,
+                    credentials=dict(decrypt_credential),
                 )
                 credentials.append(credential_entity)
             return credentials
@@ -420,6 +418,7 @@ class BuiltinToolManageService:
             # set new default provider
             target_provider.is_default = True
             session.commit()
+
         return {"result": "success"}
 
     @staticmethod
@@ -538,8 +537,8 @@ class BuiltinToolManageService:
             try:
                 # handle include, exclude
                 if is_filtered(
-                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,  # type: ignore
-                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,  # type: ignore
+                    include_set=dify_config.POSITION_TOOL_INCLUDES_SET,
+                    exclude_set=dify_config.POSITION_TOOL_EXCLUDES_SET,
                     data=provider_controller,
                     name_func=lambda x: x.entity.identity.name,
                 ):
@@ -721,4 +720,4 @@ class BuiltinToolManageService:
                 cache=NoOpProviderCredentialCache(),
             )
 
-            return encrypter.mask_tool_credentials(encrypter.decrypt(custom_oauth_client_params.oauth_params))
+            return encrypter.mask_plugin_credentials(encrypter.decrypt(custom_oauth_client_params.oauth_params))

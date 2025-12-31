@@ -1,44 +1,33 @@
 import {
-  useCallback,
   useEffect,
   useMemo,
-  useState,
 } from 'react'
 import {
   useMarketplacePlugins,
+  useMarketplacePluginsByCollectionId,
 } from '@/app/components/plugins/marketplace/hooks'
-import type { Plugin } from '@/app/components/plugins/types'
-import { PluginType } from '@/app/components/plugins/types'
-import { getMarketplacePluginsByCollectionId } from '@/app/components/plugins/marketplace/utils'
+import { PluginCategoryEnum } from '@/app/components/plugins/types'
 
 export const useMarketplaceAllPlugins = (providers: any[], searchText: string) => {
   const exclude = useMemo(() => {
     return providers.map(provider => provider.plugin_id)
   }, [providers])
-  const [collectionPlugins, setCollectionPlugins] = useState<Plugin[]>([])
-
+  const {
+    plugins: collectionPlugins = [],
+    isLoading: isCollectionLoading,
+  } = useMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
   const {
     plugins,
     queryPlugins,
     queryPluginsWithDebounced,
-    isLoading,
+    isLoading: isPluginsLoading,
   } = useMarketplacePlugins()
-
-  const getCollectionPlugins = useCallback(async () => {
-    const collectionPlugins = await getMarketplacePluginsByCollectionId('__datasource-settings-pinned-datasources')
-
-    setCollectionPlugins(collectionPlugins)
-  }, [])
-
-  useEffect(() => {
-    getCollectionPlugins()
-  }, [getCollectionPlugins])
 
   useEffect(() => {
     if (searchText) {
       queryPluginsWithDebounced({
         query: searchText,
-        category: PluginType.datasource,
+        category: PluginCategoryEnum.datasource,
         exclude,
         type: 'plugin',
         sortBy: 'install_count',
@@ -48,7 +37,7 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
     else {
       queryPlugins({
         query: '',
-        category: PluginType.datasource,
+        category: PluginCategoryEnum.datasource,
         type: 'plugin',
         pageSize: 1000,
         exclude,
@@ -75,6 +64,6 @@ export const useMarketplaceAllPlugins = (providers: any[], searchText: string) =
 
   return {
     plugins: allPlugins,
-    isLoading,
+    isLoading: isCollectionLoading || isPluginsLoading,
   }
 }

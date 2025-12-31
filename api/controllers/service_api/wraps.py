@@ -1,3 +1,4 @@
+import logging
 import time
 from collections.abc import Callable
 from datetime import timedelta
@@ -13,18 +14,22 @@ from sqlalchemy import select, update
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import Forbidden, NotFound, Unauthorized
 
+from enums.cloud_plan import CloudPlan
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
 from libs.datetime_utils import naive_utc_now
 from libs.login import current_user
 from models import Account, Tenant, TenantAccountJoin, TenantStatus
 from models.dataset import Dataset, RateLimitLog
-from models.model import ApiToken, App, DefaultEndUserSessionID, EndUser
+from models.model import ApiToken, App
+from services.end_user_service import EndUserService
 from services.feature_service import FeatureService
 
 P = ParamSpec("P")
 R = TypeVar("R")
 T = TypeVar("T")
+
+logger = logging.getLogger(__name__)
 
 
 class WhereisUserArg(StrEnum):
@@ -66,6 +71,7 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
 
             kwargs["app_model"] = app_model
 
+            # If caller needs end-user context, attach EndUser to current_user
             if fetch_user_arg:
                 if fetch_user_arg.fetch_from == WhereisUserArg.QUERY:
                     user_id = request.args.get("user")
@@ -74,7 +80,6 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 elif fetch_user_arg.fetch_from == WhereisUserArg.FORM:
                     user_id = request.form.get("user")
                 else:
-                    # use default-user
                     user_id = None
 
                 if not user_id and fetch_user_arg.required:
@@ -83,12 +88,34 @@ def validate_app_token(view: Callable[P, R] | None = None, *, fetch_user_arg: Fe
                 if user_id:
                     user_id = str(user_id)
 
-                end_user = create_or_update_end_user_for_user_id(app_model, user_id)
+                end_user = EndUserService.get_or_create_end_user(app_model, user_id)
                 kwargs["end_user"] = end_user
 
                 # Set EndUser as current logged-in user for flask_login.current_user
                 current_app.login_manager._update_request_context_with_user(end_user)  # type: ignore
                 user_logged_in.send(current_app._get_current_object(), user=end_user)  # type: ignore
+            else:
+                # For service API without end-user context, ensure an Account is logged in
+                # so services relying on current_account_with_tenant() work correctly.
+                tenant_owner_info = (
+                    db.session.query(Tenant, Account)
+                    .join(TenantAccountJoin, Tenant.id == TenantAccountJoin.tenant_id)
+                    .join(Account, TenantAccountJoin.account_id == Account.id)
+                    .where(
+                        Tenant.id == app_model.tenant_id,
+                        TenantAccountJoin.role == "owner",
+                        Tenant.status == TenantStatus.NORMAL,
+                    )
+                    .one_or_none()
+                )
+
+                if tenant_owner_info:
+                    tenant_model, account = tenant_owner_info
+                    account.current_tenant = tenant_model
+                    current_app.login_manager._update_request_context_with_user(account)  # type: ignore
+                    user_logged_in.send(current_app._get_current_object(), user=current_user)  # type: ignore
+                else:
+                    raise Unauthorized("Tenant owner account not found or tenant is not active.")
 
             return view_func(*args, **kwargs)
 
@@ -138,7 +165,7 @@ def cloud_edition_billing_knowledge_limit_check(resource: str, api_token_type: s
             features = FeatureService.get_features(api_token.tenant_id)
             if features.billing.enabled:
                 if resource == "add_segment":
-                    if features.billing.subscription.plan == "sandbox":
+                    if features.billing.subscription.plan == CloudPlan.SANDBOX:
                         raise Forbidden(
                             "To unlock this feature and elevate your Dify experience, please upgrade to a paid plan."
                         )
@@ -214,8 +241,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                         # Basic check: UUIDs are 36 chars with hyphens
                         if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from class method args")
                 elif len(args) > 0:
                     # Not a class method, check if args[0] looks like a UUID
                     potential_id = args[0]
@@ -223,8 +250,8 @@ def validate_dataset_token(view: Callable[Concatenate[T, P], R] | None = None):
                         str_id = str(potential_id)
                         if len(str_id) == 36 and str_id.count("-") == 4:
                             dataset_id = str_id
-                    except:
-                        pass
+                    except Exception:
+                        logger.exception("Failed to parse dataset_id from positional args")
 
             # Validate dataset if dataset_id is provided
             if dataset_id:
@@ -292,53 +319,18 @@ def validate_and_get_api_token(scope: str | None = None):
                 ApiToken.type == scope,
             )
             .values(last_used_at=current_time)
-            .returning(ApiToken)
         )
+        stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
         result = session.execute(update_stmt)
-        api_token = result.scalar_one_or_none()
+        api_token = session.scalar(stmt)
+
+        if hasattr(result, "rowcount") and result.rowcount > 0:
+            session.commit()
 
         if not api_token:
-            stmt = select(ApiToken).where(ApiToken.token == auth_token, ApiToken.type == scope)
-            api_token = session.scalar(stmt)
-            if not api_token:
-                raise Unauthorized("Access token is invalid")
-        else:
-            session.commit()
+            raise Unauthorized("Access token is invalid")
 
     return api_token
-
-
-def create_or_update_end_user_for_user_id(app_model: App, user_id: str | None = None) -> EndUser:
-    """
-    Create or update session terminal based on user ID.
-    """
-    if not user_id:
-        user_id = DefaultEndUserSessionID.DEFAULT_SESSION_ID
-
-    with Session(db.engine, expire_on_commit=False) as session:
-        end_user = session.scalars(
-            select(EndUser)
-            .where(
-                EndUser.tenant_id == app_model.tenant_id,
-                EndUser.app_id == app_model.id,
-                EndUser.session_id == user_id,
-                EndUser.type == "service_api",
-            )
-            .limit(1)
-        ).first()
-
-        if end_user is None:
-            end_user = EndUser(
-                tenant_id=app_model.tenant_id,
-                app_id=app_model.id,
-                type="service_api",
-                is_anonymous=user_id == DefaultEndUserSessionID.DEFAULT_SESSION_ID,
-                session_id=user_id,
-            )
-            session.add(end_user)
-            session.commit()
-
-    return end_user
 
 
 class DatasetApiResource(Resource):

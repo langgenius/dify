@@ -6,6 +6,7 @@ from typing import Any
 
 from core.model_runtime.entities.llm_entities import LLMUsage
 from core.variables.segments import Segment
+from core.workflow.system_variable import SystemVariableReadOnlyView
 
 from .graph_runtime_state import GraphRuntimeState
 from .variable_pool import VariablePool
@@ -41,6 +42,10 @@ class ReadOnlyGraphRuntimeStateWrapper:
     def __init__(self, state: GraphRuntimeState) -> None:
         self._state = state
         self._variable_pool_wrapper = ReadOnlyVariablePoolWrapper(state.variable_pool)
+
+    @property
+    def system_variable(self) -> SystemVariableReadOnlyView:
+        return self._state.variable_pool.system_variables.as_view()
 
     @property
     def variable_pool(self) -> ReadOnlyVariablePoolWrapper:

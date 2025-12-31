@@ -1,4 +1,3 @@
-import { get, post } from './base'
 import type {
   Collection,
   CustomCollectionBackend,
@@ -8,9 +7,8 @@ import type {
   WorkflowToolProviderRequest,
   WorkflowToolProviderResponse,
 } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { Label } from '@/app/components/tools/labels/constant'
 import { buildProviderQuery } from './_tools_util'
+import { get, post } from './base'
 
 export const fetchCollectionList = () => {
   return get<Collection[]>('/workspaces/current/tool-providers')
@@ -60,7 +58,7 @@ export const removeBuiltInToolCredential = (collectionName: string) => {
 }
 
 export const parseParamsSchema = (schema: string) => {
-  return post<{ parameters_schema: CustomParamSchema[]; schema_type: string }>('/workspaces/current/tool-provider/api/schema', {
+  return post<{ parameters_schema: CustomParamSchema[], schema_type: string }>('/workspaces/current/tool-provider/api/schema', {
     body: {
       schema,
     },
@@ -110,26 +108,6 @@ export const testAPIAvailable = (payload: any) => {
       ...payload,
     },
   })
-}
-
-export const fetchAllBuiltInTools = () => {
-  return get<ToolWithProvider[]>('/workspaces/current/tools/builtin')
-}
-
-export const fetchAllCustomTools = () => {
-  return get<ToolWithProvider[]>('/workspaces/current/tools/api')
-}
-
-export const fetchAllWorkflowTools = () => {
-  return get<ToolWithProvider[]>('/workspaces/current/tools/workflow')
-}
-
-export const fetchAllMCPTools = () => {
-  return get<ToolWithProvider[]>('/workspaces/current/tools/mcp')
-}
-
-export const fetchLabelList = () => {
-  return get<Label[]>('/workspaces/current/tool-labels')
 }
 
 export const createWorkflowToolProvider = (payload: WorkflowToolProviderRequest & { workflow_app_id: string }) => {

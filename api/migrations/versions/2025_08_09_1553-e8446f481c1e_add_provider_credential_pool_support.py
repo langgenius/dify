@@ -11,6 +11,10 @@ import models as models
 import sqlalchemy as sa
 from sqlalchemy.sql import table, column
 
+
+def _is_pg(conn):
+    return conn.dialect.name == "postgresql"
+
 # revision identifiers, used by Alembic.
 revision = 'e8446f481c1e'
 down_revision = 'fa8b0fa6f407'
@@ -20,16 +24,30 @@ depends_on = None
 
 def upgrade():
     # Create provider_credentials table
-    op.create_table('provider_credentials',
-    sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuidv7()'), nullable=False),
-    sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
-    sa.Column('provider_name', sa.String(length=255), nullable=False),
-    sa.Column('credential_name', sa.String(length=255), nullable=False),
-    sa.Column('encrypted_config', sa.Text(), nullable=False),
-    sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-    sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
-    sa.PrimaryKeyConstraint('id', name='provider_credential_pkey')
-    )
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        op.create_table('provider_credentials',
+        sa.Column('id', models.types.StringUUID(), server_default=sa.text('uuidv7()'), nullable=False),
+        sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
+        sa.Column('provider_name', sa.String(length=255), nullable=False),
+        sa.Column('credential_name', sa.String(length=255), nullable=False),
+        sa.Column('encrypted_config', sa.Text(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.text('CURRENT_TIMESTAMP'), nullable=False),
+        sa.PrimaryKeyConstraint('id', name='provider_credential_pkey')
+        )
+    else:
+        op.create_table('provider_credentials',
+        sa.Column('id', models.types.StringUUID(), nullable=False),
+        sa.Column('tenant_id', models.types.StringUUID(), nullable=False),
+        sa.Column('provider_name', sa.String(length=255), nullable=False),
+        sa.Column('credential_name', sa.String(length=255), nullable=False),
+        sa.Column('encrypted_config', models.types.LongText(), nullable=False),
+        sa.Column('created_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.Column('updated_at', sa.DateTime(), server_default=sa.func.current_timestamp(), nullable=False),
+        sa.PrimaryKeyConstraint('id', name='provider_credential_pkey')
+        )
 
     # Create index for provider_credentials
     with op.batch_alter_table('provider_credentials', schema=None) as batch_op:
@@ -60,27 +78,49 @@ def upgrade():
 
 def migrate_existing_providers_data():
     """migrate providers table data to provider_credentials"""
-
+    conn = op.get_bind()
     # Define table structure for data manipulation
-    providers_table = table('providers',
-        column('id', models.types.StringUUID()),
-        column('tenant_id', models.types.StringUUID()),
-        column('provider_name', sa.String()),
-        column('encrypted_config', sa.Text()),
-        column('created_at', sa.DateTime()),
-        column('updated_at', sa.DateTime()),
-        column('credential_id', models.types.StringUUID()),
-    )
+    if _is_pg(conn):
+        providers_table = table('providers',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('encrypted_config', sa.Text()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime()),
+            column('credential_id', models.types.StringUUID()),
+        )
+    else:
+        providers_table = table('providers',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('encrypted_config', models.types.LongText()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime()),
+            column('credential_id', models.types.StringUUID()),
+        )
 
-    provider_credential_table = table('provider_credentials',
-        column('id', models.types.StringUUID()),
-        column('tenant_id', models.types.StringUUID()),
-        column('provider_name', sa.String()),
-        column('credential_name', sa.String()),
-        column('encrypted_config', sa.Text()),
-        column('created_at', sa.DateTime()),
-        column('updated_at', sa.DateTime())
-    )
+    if _is_pg(conn):
+        provider_credential_table = table('provider_credentials',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('credential_name', sa.String()),
+            column('encrypted_config', sa.Text()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime())
+        )
+    else:
+        provider_credential_table = table('provider_credentials',
+            column('id', models.types.StringUUID()),
+            column('tenant_id', models.types.StringUUID()),
+            column('provider_name', sa.String()),
+            column('credential_name', sa.String()),
+            column('encrypted_config', models.types.LongText()),
+            column('created_at', sa.DateTime()),
+            column('updated_at', sa.DateTime())
+        )
 
     # Get database connection
     conn = op.get_bind()
@@ -123,8 +163,14 @@ def migrate_existing_providers_data():
 
 def downgrade():
     # Re-add encrypted_config column to providers table
-    with op.batch_alter_table('providers', schema=None) as batch_op:
-        batch_op.add_column(sa.Column('encrypted_config', sa.Text(), nullable=True))
+    conn = op.get_bind()
+    
+    if _is_pg(conn):
+        with op.batch_alter_table('providers', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('encrypted_config', sa.Text(), nullable=True))
+    else:
+        with op.batch_alter_table('providers', schema=None) as batch_op:
+            batch_op.add_column(sa.Column('encrypted_config', models.types.LongText(), nullable=True))
 
     # Migrate data back from provider_credentials to providers
 

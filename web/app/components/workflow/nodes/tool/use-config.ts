@@ -1,29 +1,34 @@
+import type { ToolNodeType, ToolVarInputs } from './types'
+import type { InputVar } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import produce from 'immer'
-import { useBoolean } from 'ahooks'
-import { useStore, useWorkflowStore } from '../../store'
-import type { ToolNodeType, ToolVarInputs } from './types'
+import Toast from '@/app/components/base/toast'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
 import { CollectionType } from '@/app/components/tools/types'
-import { updateBuiltInToolCredential } from '@/service/tools'
 import {
   getConfiguredValue,
   toolParametersToFormSchemas,
 } from '@/app/components/tools/utils/to-form-schema'
-import Toast from '@/app/components/base/toast'
-import type { InputVar } from '@/app/components/workflow/types'
 import {
-  useFetchToolsData,
   useNodesReadOnly,
 } from '@/app/components/workflow/hooks'
+import useNodeCrud from '@/app/components/workflow/nodes/_base/hooks/use-node-crud'
+import { updateBuiltInToolCredential } from '@/service/tools'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+  useInvalidToolsByType,
+} from '@/service/use-tools'
 import { canFindTool } from '@/utils'
+import { useWorkflowStore } from '../../store'
 
 const useConfig = (id: string, payload: ToolNodeType) => {
   const workflowStore = useWorkflowStore()
   const { nodesReadOnly: readOnly } = useNodesReadOnly()
-  const { handleFetchAllTools } = useFetchToolsData()
   const { t } = useTranslation()
 
   const language = useLanguage()
@@ -43,21 +48,21 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     tool_parameters,
   } = inputs
   const isBuiltIn = provider_type === CollectionType.builtIn
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
 
   const currentTools = useMemo(() => {
     switch (provider_type) {
       case CollectionType.builtIn:
-        return buildInTools
+        return buildInTools || []
       case CollectionType.custom:
-        return customTools
+        return customTools || []
       case CollectionType.workflow:
-        return workflowTools
+        return workflowTools || []
       case CollectionType.mcp:
-        return mcpTools
+        return mcpTools || []
       default:
         return []
     }
@@ -75,22 +80,23 @@ const useConfig = (id: string, payload: ToolNodeType) => {
     { setTrue: showSetAuthModal, setFalse: hideSetAuthModal },
   ] = useBoolean(false)
 
+  const invalidToolsByType = useInvalidToolsByType(provider_type)
   const handleSaveAuth = useCallback(
     async (value: any) => {
       await updateBuiltInToolCredential(currCollection?.name as string, value)
 
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
-      handleFetchAllTools(provider_type)
+      invalidToolsByType()
       hideSetAuthModal()
     },
     [
       currCollection?.name,
       hideSetAuthModal,
       t,
-      handleFetchAllTools,
+      invalidToolsByType,
       provider_type,
     ],
   )
@@ -127,7 +133,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
             if (typeof value === 'string')
               newConfig[key] = value === 'true' || value === '1'
 
-            if (typeof value === 'number') newConfig[key] = value === 1
+            if (typeof value === 'number')
+              newConfig[key] = value === 1
           }
 
           if (schema?.type === 'number-input') {
@@ -143,7 +150,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   )
   const [notSetDefaultValue, setNotSetDefaultValue] = useState(false)
   const toolSettingValue = useMemo(() => {
-    if (notSetDefaultValue) return tool_configurations
+    if (notSetDefaultValue)
+      return tool_configurations
     return getConfiguredValue(tool_configurations, toolSettingSchema)
   }, [notSetDefaultValue, toolSettingSchema, tool_configurations])
   const setToolSettingValue = useCallback(
@@ -182,7 +190,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   }
 
   useEffect(() => {
-    if (!currTool) return
+    if (!currTool)
+      return
     const inputsWithDefaultValue = formattingParameters()
     const { setControlPromptEditorRerenderKey } = workflowStore.getState()
     setInputs(inputsWithDefaultValue)
@@ -225,7 +234,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
   const outputSchema = useMemo(() => {
     const res: any[] = []
     const output_schema = currTool?.output_schema
-    if (!output_schema || !output_schema.properties) return res
+    if (!output_schema || !output_schema.properties)
+      return res
 
     Object.keys(output_schema.properties).forEach((outputKey) => {
       const output = output_schema.properties[outputKey]
@@ -241,17 +251,15 @@ const useConfig = (id: string, payload: ToolNodeType) => {
           name: outputKey,
           type:
             output.type === 'array'
-              ? `Array[${
-                output.items?.type
-                  ? output.items.type.slice(0, 1).toLocaleUpperCase()
-                      + output.items.type.slice(1)
-                  : 'Unknown'
+              ? `Array[${output.items?.type
+                ? output.items.type.slice(0, 1).toLocaleUpperCase()
+                + output.items.type.slice(1)
+                : 'Unknown'
               }]`
-              : `${
-                output.type
-                  ? output.type.slice(0, 1).toLocaleUpperCase()
-                      + output.type.slice(1)
-                  : 'Unknown'
+              : `${output.type
+                ? output.type.slice(0, 1).toLocaleUpperCase()
+                + output.type.slice(1)
+                : 'Unknown'
               }`,
           description: output.description,
         })
@@ -262,7 +270,8 @@ const useConfig = (id: string, payload: ToolNodeType) => {
 
   const hasObjectOutput = useMemo(() => {
     const output_schema = currTool?.output_schema
-    if (!output_schema || !output_schema.properties) return false
+    if (!output_schema || !output_schema.properties)
+      return false
     const properties = output_schema.properties
     return Object.keys(properties).some(
       key => properties[key].type === 'object',

@@ -863,22 +863,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -922,22 +924,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1023,22 +1027,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1083,22 +1089,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1154,22 +1162,25 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
+
         db.session.add(annotation_setting)
         db.session.commit()
 
@@ -1216,22 +1227,24 @@ class TestAnnotationService:
         from models.model import AppAnnotationSetting
 
         # Create a collection binding first
-        collection_binding = DatasetCollectionBinding()
-        collection_binding.id = fake.uuid4()
-        collection_binding.provider_name = "openai"
-        collection_binding.model_name = "text-embedding-ada-002"
-        collection_binding.type = "annotation"
-        collection_binding.collection_name = f"annotation_collection_{fake.uuid4()}"
+        collection_binding = DatasetCollectionBinding(
+            provider_name="openai",
+            model_name="text-embedding-ada-002",
+            type="annotation",
+            collection_name=f"annotation_collection_{fake.uuid4()}",
+        )
+        collection_binding.id = str(fake.uuid4())
         db.session.add(collection_binding)
         db.session.flush()
 
         # Create annotation setting
-        annotation_setting = AppAnnotationSetting()
-        annotation_setting.app_id = app.id
-        annotation_setting.score_threshold = 0.8
-        annotation_setting.collection_binding_id = collection_binding.id
-        annotation_setting.created_user_id = account.id
-        annotation_setting.updated_user_id = account.id
+        annotation_setting = AppAnnotationSetting(
+            app_id=app.id,
+            score_threshold=0.8,
+            collection_binding_id=collection_binding.id,
+            created_user_id=account.id,
+            updated_user_id=account.id,
+        )
         db.session.add(annotation_setting)
         db.session.commit()
 

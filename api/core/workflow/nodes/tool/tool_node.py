@@ -6,6 +6,8 @@ from sqlalchemy.orm import Session
 
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.file import File, FileTransferMethod
+from core.model_runtime.entities.llm_entities import LLMUsage
+from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolParameter
 from core.tools.errors import ToolInvokeError
 from core.tools.tool_engine import ToolEngine
@@ -13,14 +15,12 @@ from core.tools.utils.message_transformer import ToolFileMessageTransformer
 from core.variables.segments import ArrayAnySegment, ArrayFileSegment
 from core.variables.variables import ArrayAnyVariable
 from core.workflow.enums import (
-    ErrorStrategy,
     NodeType,
     SystemVariableKey,
     WorkflowNodeExecutionMetadataKey,
     WorkflowNodeExecutionStatus,
 )
 from core.workflow.node_events import NodeEventBase, NodeRunResult, StreamChunkEvent, StreamCompletedEvent
-from core.workflow.nodes.base.entities import BaseNodeData, RetryConfig
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
 from extensions.ext_database import db
@@ -39,17 +39,12 @@ if TYPE_CHECKING:
     from core.workflow.runtime import VariablePool
 
 
-class ToolNode(Node):
+class ToolNode(Node[ToolNodeData]):
     """
     Tool Node
     """
 
     node_type = NodeType.TOOL
-
-    _node_data: ToolNodeData
-
-    def init_node_data(self, data: Mapping[str, Any]):
-        self._node_data = ToolNodeData.model_validate(data)
 
     @classmethod
     def version(cls) -> str:
@@ -61,13 +56,11 @@ class ToolNode(Node):
         """
         from core.plugin.impl.exc import PluginDaemonClientSideError, PluginInvokeError
 
-        node_data = self._node_data
-
         # fetch tool icon
         tool_info = {
-            "provider_type": node_data.provider_type.value,
-            "provider_id": node_data.provider_id,
-            "plugin_unique_identifier": node_data.plugin_unique_identifier,
+            "provider_type": self.node_data.provider_type.value,
+            "provider_id": self.node_data.provider_id,
+            "plugin_unique_identifier": self.node_data.plugin_unique_identifier,
         }
 
         # get tool runtime
@@ -79,10 +72,10 @@ class ToolNode(Node):
             # But for backward compatibility with historical data
             # this version field judgment is still preserved here.
             variable_pool: VariablePool | None = None
-            if node_data.version != "1" or node_data.tool_node_version is not None:
+            if self.node_data.version != "1" or self.node_data.tool_node_version is not None:
                 variable_pool = self.graph_runtime_state.variable_pool
             tool_runtime = ToolManager.get_workflow_tool_runtime(
-                self.tenant_id, self.app_id, self._node_id, self._node_data, self.invoke_from, variable_pool
+                self.tenant_id, self.app_id, self._node_id, self.node_data, self.invoke_from, variable_pool
             )
         except ToolNodeError as e:
             yield StreamCompletedEvent(
@@ -101,12 +94,12 @@ class ToolNode(Node):
         parameters = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
         )
         parameters_for_log = self._generate_parameters(
             tool_parameters=tool_parameters,
             variable_pool=self.graph_runtime_state.variable_pool,
-            node_data=self._node_data,
+            node_data=self.node_data,
             for_log=True,
         )
         # get conversation id
@@ -136,13 +129,14 @@ class ToolNode(Node):
 
         try:
             # convert tool messages
-            yield from self._transform_message(
+            _ = yield from self._transform_message(
                 messages=message_stream,
                 tool_info=tool_info,
                 parameters_for_log=parameters_for_log,
                 user_id=self.user_id,
                 tenant_id=self.tenant_id,
                 node_id=self._node_id,
+                tool_runtime=tool_runtime,
             )
         except ToolInvokeError as e:
             yield StreamCompletedEvent(
@@ -150,7 +144,7 @@ class ToolNode(Node):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error=f"Failed to invoke tool {node_data.provider_name}: {str(e)}",
+                    error=f"Failed to invoke tool {self.node_data.provider_name}: {str(e)}",
                     error_type=type(e).__name__,
                 )
             )
@@ -160,10 +154,7 @@ class ToolNode(Node):
                     status=WorkflowNodeExecutionStatus.FAILED,
                     inputs=parameters_for_log,
                     metadata={WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info},
-                    error="An error occurred in the plugin, "
-                    f"please contact the author of {node_data.provider_name} for help, "
-                    f"error type: {e.get_error_type()}, "
-                    f"error details: {e.get_error_message()}",
+                    error=e.to_user_friendly_error(plugin_name=self.node_data.provider_name),
                     error_type=type(e).__name__,
                 )
             )
@@ -236,7 +227,8 @@ class ToolNode(Node):
         user_id: str,
         tenant_id: str,
         node_id: str,
-    ) -> Generator:
+        tool_runtime: Tool,
+    ) -> Generator[NodeEventBase, None, LLMUsage]:
         """
         Convert ToolInvokeMessages into tuple[plain_text, files]
         """
@@ -327,7 +319,15 @@ class ToolNode(Node):
                     json.append(message.message.json_object)
             elif message.type == ToolInvokeMessage.MessageType.LINK:
                 assert isinstance(message.message, ToolInvokeMessage.TextMessage)
-                stream_text = f"Link: {message.message.text}\n"
+
+                # Check if this LINK message is a file link
+                file_obj = (message.meta or {}).get("file")
+                if isinstance(file_obj, File):
+                    files.append(file_obj)
+                    stream_text = f"File: {message.message.text}\n"
+                else:
+                    stream_text = f"Link: {message.message.text}\n"
+
                 text += stream_text
                 yield StreamChunkEvent(
                     selector=[node_id, "text"],
@@ -424,16 +424,42 @@ class ToolNode(Node):
                 is_final=True,
             )
 
+        usage = self._extract_tool_usage(tool_runtime)
+
+        metadata: dict[WorkflowNodeExecutionMetadataKey, Any] = {
+            WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
+        }
+        if isinstance(usage.total_tokens, int) and usage.total_tokens > 0:
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_TOKENS] = usage.total_tokens
+            metadata[WorkflowNodeExecutionMetadataKey.TOTAL_PRICE] = usage.total_price
+            metadata[WorkflowNodeExecutionMetadataKey.CURRENCY] = usage.currency
+
         yield StreamCompletedEvent(
             node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs={"text": text, "files": ArrayFileSegment(value=files), "json": json_output, **variables},
-                metadata={
-                    WorkflowNodeExecutionMetadataKey.TOOL_INFO: tool_info,
-                },
+                metadata=metadata,
                 inputs=parameters_for_log,
+                llm_usage=usage,
             )
         )
+
+        return usage
+
+    @staticmethod
+    def _extract_tool_usage(tool_runtime: Tool) -> LLMUsage:
+        # Avoid importing WorkflowTool at module import time; rely on duck typing
+        # Some runtimes expose `latest_usage`; mocks may synthesize arbitrary attributes.
+        latest = getattr(tool_runtime, "latest_usage", None)
+        # Normalize into a concrete LLMUsage. MagicMock returns truthy attribute objects
+        # for any name, so we must type-check here.
+        if isinstance(latest, LLMUsage):
+            return latest
+        if isinstance(latest, dict):
+            # Allow dict payloads from external runtimes
+            return LLMUsage.model_validate(latest)
+        # Fallback to empty usage when attribute is missing or not a valid payload
+        return LLMUsage.empty_usage()
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
@@ -471,24 +497,6 @@ class ToolNode(Node):
 
         return result
 
-    def _get_error_strategy(self) -> ErrorStrategy | None:
-        return self._node_data.error_strategy
-
-    def _get_retry_config(self) -> RetryConfig:
-        return self._node_data.retry_config
-
-    def _get_title(self) -> str:
-        return self._node_data.title
-
-    def _get_description(self) -> str | None:
-        return self._node_data.desc
-
-    def _get_default_value_dict(self) -> dict[str, Any]:
-        return self._node_data.default_value_dict
-
-    def get_base_node_data(self) -> BaseNodeData:
-        return self._node_data
-
     @property
     def retry(self) -> bool:
-        return self._node_data.retry_config.retry_enabled
+        return self.node_data.retry_config.retry_enabled

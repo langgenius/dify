@@ -1,3 +1,4 @@
+import type { Node } from '@/app/components/workflow/types'
 import {
   memo,
 } from 'react'
@@ -8,8 +9,7 @@ import {
 import {
   BlockEnum,
 } from '@/app/components/workflow/types'
-import type { Node } from '@/app/components/workflow/types'
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 type NodeHandleProps = {
   handleId: string
@@ -27,14 +27,17 @@ export const NodeTargetHandle = memo(({
     <>
       <Handle
         id={handleId}
-        type='target'
+        type="target"
         position={Position.Left}
         className={cn(
           'z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',
           'after:absolute after:left-1.5 after:top-1 after:h-2 after:w-0.5 after:bg-workflow-link-line-handle',
           'transition-all hover:scale-125',
           !connected && 'after:opacity-0',
-          data.type === BlockEnum.Start && 'opacity-0',
+          (data.type === BlockEnum.Start
+            || data.type === BlockEnum.TriggerWebhook
+            || data.type === BlockEnum.TriggerSchedule
+            || data.type === BlockEnum.TriggerPlugin) && 'opacity-0',
           handleClassName,
         )}
       >
@@ -54,7 +57,7 @@ export const NodeSourceHandle = memo(({
   return (
     <Handle
       id={handleId}
-      type='source'
+      type="source"
       position={Position.Right}
       className={cn(
         'group/handle z-[1] !h-4 !w-4 !rounded-none !border-none !bg-transparent !outline-none',

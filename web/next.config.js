@@ -1,5 +1,11 @@
-const { codeInspectorPlugin } = require('code-inspector-plugin')
-const withPWA = require('next-pwa')({
+import withBundleAnalyzerInit from '@next/bundle-analyzer'
+import createMDX from '@next/mdx'
+import { codeInspectorPlugin } from 'code-inspector-plugin'
+import withPWAInit from 'next-pwa'
+
+const isDev = process.env.NODE_ENV === 'development'
+
+const withPWA = withPWAInit({
   dest: 'public',
   register: true,
   skipWaiting: true,
@@ -15,9 +21,9 @@ const withPWA = require('next-pwa')({
         cacheName: 'google-fonts',
         expiration: {
           maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
-        }
-      }
+          maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+        },
+      },
     },
     {
       urlPattern: /^https:\/\/fonts\.gstatic\.com\/.*/i,
@@ -26,9 +32,9 @@ const withPWA = require('next-pwa')({
         cacheName: 'google-fonts-webfonts',
         expiration: {
           maxEntries: 4,
-          maxAgeSeconds: 365 * 24 * 60 * 60 // 1 year
-        }
-      }
+          maxAgeSeconds: 365 * 24 * 60 * 60, // 1 year
+        },
+      },
     },
     {
       urlPattern: /\.(?:png|jpg|jpeg|svg|gif|webp|avif)$/i,
@@ -37,9 +43,9 @@ const withPWA = require('next-pwa')({
         cacheName: 'images',
         expiration: {
           maxEntries: 64,
-          maxAgeSeconds: 30 * 24 * 60 * 60 // 30 days
-        }
-      }
+          maxAgeSeconds: 30 * 24 * 60 * 60, // 30 days
+        },
+      },
     },
     {
       urlPattern: /\.(?:js|css)$/i,
@@ -48,9 +54,9 @@ const withPWA = require('next-pwa')({
         cacheName: 'static-resources',
         expiration: {
           maxEntries: 32,
-          maxAgeSeconds: 24 * 60 * 60 // 1 day
-        }
-      }
+          maxAgeSeconds: 24 * 60 * 60, // 1 day
+        },
+      },
     },
     {
       urlPattern: /^\/api\/.*/i,
@@ -60,13 +66,13 @@ const withPWA = require('next-pwa')({
         networkTimeoutSeconds: 10,
         expiration: {
           maxEntries: 16,
-          maxAgeSeconds: 60 * 60 // 1 hour
-        }
-      }
-    }
-  ]
+          maxAgeSeconds: 60 * 60, // 1 hour
+        },
+      },
+    },
+  ],
 })
-const withMDX = require('@next/mdx')({
+const withMDX = createMDX({
   extension: /\.mdx?$/,
   options: {
     // If you use remark-gfm, you'll need to use next.config.mjs
@@ -78,7 +84,7 @@ const withMDX = require('@next/mdx')({
     // providerImportSource: "@mdx-js/react",
   },
 })
-const withBundleAnalyzer = require('@next/bundle-analyzer')({
+const withBundleAnalyzer = withBundleAnalyzerInit({
   enabled: process.env.ANALYZE === 'true',
 })
 
@@ -94,8 +100,8 @@ const nextConfig = {
   transpilePackages: ['echarts', 'zrender'],
   turbopack: {
     rules: codeInspectorPlugin({
-      bundler: 'turbopack'
-    })
+      bundler: 'turbopack',
+    }),
   },
   productionBrowserSourceMaps: false, // enable browser source map generation during the production build
   // Configure pageExtensions to include md and mdx
@@ -112,8 +118,7 @@ const nextConfig = {
   },
   experimental: {
     optimizePackageImports: [
-      '@remixicon/react',
-      '@heroicons/react'
+      '@heroicons/react',
     ],
   },
   // fix all before production. Now it slow the develop speed.
@@ -138,6 +143,9 @@ const nextConfig = {
     ]
   },
   output: 'standalone',
+  compiler: {
+    removeConsole: isDev ? false : { exclude: ['warn', 'error'] },
+  },
 }
 
-module.exports = withPWA(withBundleAnalyzer(withMDX(nextConfig)))
+export default withPWA(withBundleAnalyzer(withMDX(nextConfig)))

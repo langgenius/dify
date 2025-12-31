@@ -1,14 +1,15 @@
+import type { MetadataType, SortType } from '../datasets'
+import type { CommonResponse } from '@/models/common'
+import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
-import { del, get, patch } from '../base'
-import { useInvalid } from '../use-base'
-import type { MetadataType, SortType } from '../datasets'
-import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
-import type { DocumentDetailResponse, DocumentListResponse, UpdateDocumentBatchParams } from '@/models/datasets'
+import { normalizeStatusForQuery } from '@/app/components/datasets/documents/status-filter'
 import { DocumentActionType } from '@/models/datasets'
-import type { CommonResponse } from '@/models/common'
+import { del, get, patch, post } from '../base'
+import { pauseDocIndexing, resumeDocIndexing } from '../datasets'
+import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'knowledge/document'
 
@@ -20,15 +21,26 @@ export const useDocumentList = (payload: {
     page: number
     limit: number
     sort?: SortType
-  },
+    status?: string
+  }
   refetchInterval?: number | false
 }) => {
   const { query, datasetId, refetchInterval } = payload
-  const { keyword, page, limit, sort } = query
+  const { keyword, page, limit, sort, status } = query
+  const normalizedStatus = normalizeStatusForQuery(status)
+  const params: Record<string, number | string> = {
+    keyword,
+    page,
+    limit,
+  }
+  if (sort)
+    params.sort = sort
+  if (normalizedStatus && normalizedStatus !== 'all')
+    params.status = normalizedStatus
   return useQuery<DocumentListResponse>({
-    queryKey: [...useDocumentListKey, datasetId, keyword, page, limit, sort],
+    queryKey: [...useDocumentListKey, datasetId, keyword, page, limit, sort, normalizedStatus],
     queryFn: () => get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
-      params: query,
+      params,
     }),
     refetchInterval,
   })
@@ -148,6 +160,18 @@ export const useDocumentResume = () => {
       if (!datasetId || !documentId)
         throw new Error('datasetId and documentId are required')
       return resumeDocIndexing({ datasetId, documentId }) as Promise<CommonResponse>
+    },
+  })
+}
+
+export const useDocumentBatchRetryIndex = () => {
+  return useMutation({
+    mutationFn: ({ datasetId, documentIds }: { datasetId: string, documentIds: string[] }) => {
+      return post<CommonResponse>(`/datasets/${datasetId}/retry`, {
+        body: {
+          document_ids: documentIds,
+        },
+      })
     },
   })
 }

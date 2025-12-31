@@ -1,3 +1,27 @@
+import type { Dayjs } from 'dayjs'
+import type { Locale } from '@/i18n-config'
+import { localeMap } from '@/i18n-config/language'
+import 'dayjs/locale/de'
+import 'dayjs/locale/es'
+import 'dayjs/locale/fa'
+import 'dayjs/locale/fr'
+import 'dayjs/locale/hi'
+import 'dayjs/locale/id'
+import 'dayjs/locale/it'
+import 'dayjs/locale/ja'
+import 'dayjs/locale/ko'
+import 'dayjs/locale/pl'
+import 'dayjs/locale/pt-br'
+import 'dayjs/locale/ro'
+import 'dayjs/locale/ru'
+import 'dayjs/locale/sl'
+import 'dayjs/locale/th'
+import 'dayjs/locale/tr'
+import 'dayjs/locale/uk'
+import 'dayjs/locale/vi'
+import 'dayjs/locale/zh-cn'
+import 'dayjs/locale/zh-tw'
+
 /**
  * Formats a number with comma separators.
  * @example formatNumber(1234567) will return '1,234,567'
@@ -48,7 +72,7 @@ export const formatTime = (seconds: number) => {
   return `${seconds.toFixed(2)} ${units[index]}`
 }
 
-export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string }) => {
+export const downloadFile = ({ data, fileName }: { data: Blob, fileName: string }) => {
   const url = window.URL.createObjectURL(data)
   const a = document.createElement('a')
   a.href = url
@@ -72,7 +96,8 @@ export const downloadFile = ({ data, fileName }: { data: Blob; fileName: string 
  */
 export const formatNumberAbbreviated = (num: number) => {
   // If less than 1000, return as-is
-  if (num < 1000) return num.toString()
+  if (num < 1000)
+    return num.toString()
 
   // Define thresholds and suffixes
   const units = [
@@ -83,10 +108,24 @@ export const formatNumberAbbreviated = (num: number) => {
 
   for (let i = 0; i < units.length; i++) {
     if (num >= units[i].value) {
-      const formatted = (num / units[i].value).toFixed(1)
+      const value = num / units[i].value
+      let rounded = Math.round(value * 10) / 10
+      let unitIndex = i
+
+      // If rounded value >= 1000, promote to next unit
+      if (rounded >= 1000 && i > 0) {
+        rounded = rounded / 1000
+        unitIndex = i - 1
+      }
+
+      const formatted = rounded.toFixed(1)
       return formatted.endsWith('.0')
-        ? `${Number.parseInt(formatted)}${units[i].symbol}`
-        : `${formatted}${units[i].symbol}`
+        ? `${Number.parseInt(formatted)}${units[unitIndex].symbol}`
+        : `${formatted}${units[unitIndex].symbol}`
     }
   }
+}
+
+export const formatToLocalTime = (time: Dayjs, local: Locale, format: string) => {
+  return time.locale(localeMap[local] ?? 'en').format(format)
 }

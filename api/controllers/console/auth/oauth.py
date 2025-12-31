@@ -26,7 +26,7 @@ from services.errors.account import AccountNotFoundError, AccountRegisterError
 from services.errors.workspace import WorkSpaceNotAllowedCreateError, WorkSpaceNotFoundError
 from services.feature_service import FeatureService
 
-from .. import api, console_ns
+from .. import console_ns
 
 logger = logging.getLogger(__name__)
 
@@ -56,11 +56,13 @@ def get_oauth_providers():
 
 @console_ns.route("/oauth/login/<provider>")
 class OAuthLogin(Resource):
-    @api.doc("oauth_login")
-    @api.doc(description="Initiate OAuth login process")
-    @api.doc(params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"})
-    @api.response(302, "Redirect to OAuth authorization URL")
-    @api.response(400, "Invalid provider")
+    @console_ns.doc("oauth_login")
+    @console_ns.doc(description="Initiate OAuth login process")
+    @console_ns.doc(
+        params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"}
+    )
+    @console_ns.response(302, "Redirect to OAuth authorization URL")
+    @console_ns.response(400, "Invalid provider")
     def get(self, provider: str):
         invite_token = request.args.get("invite_token") or None
         OAUTH_PROVIDERS = get_oauth_providers()
@@ -75,17 +77,17 @@ class OAuthLogin(Resource):
 
 @console_ns.route("/oauth/authorize/<provider>")
 class OAuthCallback(Resource):
-    @api.doc("oauth_callback")
-    @api.doc(description="Handle OAuth callback and complete login process")
-    @api.doc(
+    @console_ns.doc("oauth_callback")
+    @console_ns.doc(description="Handle OAuth callback and complete login process")
+    @console_ns.doc(
         params={
             "provider": "OAuth provider name (github/google)",
             "code": "Authorization code from OAuth provider",
             "state": "Optional state parameter (used for invite token)",
         }
     )
-    @api.response(302, "Redirect to console with access token")
-    @api.response(400, "OAuth process failed")
+    @console_ns.response(302, "Redirect to console with access token")
+    @console_ns.response(400, "OAuth process failed")
     def get(self, provider: str):
         OAUTH_PROVIDERS = get_oauth_providers()
         with current_app.app_context():
@@ -122,7 +124,7 @@ class OAuthCallback(Resource):
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin/invite-settings?invite_token={invite_token}")
 
         try:
-            account = _generate_account(provider, user_info)
+            account, oauth_new_user = _generate_account(provider, user_info)
         except AccountNotFoundError:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Account not found.")
         except (WorkSpaceNotFoundError, WorkSpaceNotAllowedCreateError):
@@ -157,7 +159,10 @@ class OAuthCallback(Resource):
             ip_address=extract_remote_ip(request),
         )
 
-        response = redirect(f"{dify_config.CONSOLE_WEB_URL}")
+        base_url = dify_config.CONSOLE_WEB_URL
+        query_char = "&" if "?" in base_url else "?"
+        target_url = f"{base_url}{query_char}oauth_new_user={str(oauth_new_user).lower()}"
+        response = redirect(target_url)
 
         set_access_token_to_cookie(request, response, token_pair.access_token)
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
@@ -175,9 +180,10 @@ def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> 
     return account
 
 
-def _generate_account(provider: str, user_info: OAuthUserInfo):
+def _generate_account(provider: str, user_info: OAuthUserInfo) -> tuple[Account, bool]:
     # Get account by openid or email.
     account = _get_account_by_openid_or_email(provider, user_info)
+    oauth_new_user = False
 
     if account:
         tenants = TenantService.get_join_tenants(account)
@@ -191,6 +197,7 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
                 tenant_was_created.send(new_tenant)
 
     if not account:
+        oauth_new_user = True
         if not FeatureService.get_system_features().is_allow_register:
             if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(user_info.email):
                 raise AccountRegisterError(
@@ -218,4 +225,4 @@ def _generate_account(provider: str, user_info: OAuthUserInfo):
     # Link account
     AccountService.link_account_integrate(provider, user_info.id, account)
 
-    return account
+    return account, oauth_new_user

@@ -1,16 +1,21 @@
-import type { NodeWithVar, VarInInspect } from '@/types/workflow'
-import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
-import { useStoreApi } from 'reactflow'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { Node } from '@/app/components/workflow/types'
-import { fetchAllInspectVars } from '@/service/workflow'
-import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
-import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import type { Node, ToolWithProvider } from '@/app/components/workflow/types'
+import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
+import type { NodeWithVar, VarInInspect } from '@/types/workflow'
+import { useCallback } from 'react'
+import { useStoreApi } from 'reactflow'
+import { useNodesInteractionsWithoutSync } from '@/app/components/workflow/hooks/use-nodes-interactions-without-sync'
+import { useStore, useWorkflowStore } from '@/app/components/workflow/store'
+import {
+  useAllBuiltInTools,
+  useAllCustomTools,
+  useAllMCPTools,
+  useAllWorkflowTools,
+} from '@/service/use-tools'
+import { useInvalidateConversationVarValues, useInvalidateSysVarValues } from '@/service/use-workflow'
+import { fetchAllInspectVars } from '@/service/workflow'
 import useMatchSchemaType, { getMatchedSchemaType } from '../nodes/_base/components/variable/use-match-schema-type'
 import { toNodeOutputVars } from '../nodes/_base/components/variable/utils'
-import type { SchemaTypeDefinition } from '@/service/use-common'
-import { useCallback } from 'react'
 
 type Params = {
   flowType: FlowType
@@ -27,17 +32,17 @@ export const useSetWorkflowVarsWithValue = ({
   const invalidateSysVarValues = useInvalidateSysVarValues(flowType, flowId)
   const { handleCancelAllNodeSuccessStatus } = useNodesInteractionsWithoutSync()
   const { schemaTypeDefinitions } = useMatchSchemaType()
-  const buildInTools = useStore(s => s.buildInTools)
-  const customTools = useStore(s => s.customTools)
-  const workflowTools = useStore(s => s.workflowTools)
-  const mcpTools = useStore(s => s.mcpTools)
+  const { data: buildInTools } = useAllBuiltInTools()
+  const { data: customTools } = useAllCustomTools()
+  const { data: workflowTools } = useAllWorkflowTools()
+  const { data: mcpTools } = useAllMCPTools()
   const dataSourceList = useStore(s => s.dataSourceList)
   const allPluginInfoList = {
-    buildInTools,
-    customTools,
-    workflowTools,
-    mcpTools,
-    dataSourceList: dataSourceList ?? [],
+    buildInTools: buildInTools || [],
+    customTools: customTools || [],
+    workflowTools: workflowTools || [],
+    mcpTools: mcpTools || [],
+    dataSourceList: dataSourceList || [],
   }
 
   const setInspectVarsToStore = (inspectVars: VarInInspect[], passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>, passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]) => {
@@ -93,9 +98,9 @@ export const useSetWorkflowVarsWithValue = ({
   }
 
   const fetchInspectVars = useCallback(async (params: {
-    passInVars?: boolean,
-    vars?: VarInInspect[],
-    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>,
+    passInVars?: boolean
+    vars?: VarInInspect[]
+    passedInAllPluginInfoList?: Record<string, ToolWithProvider[]>
     passedInSchemaTypeDefinitions?: SchemaTypeDefinition[]
   }) => {
     const { passInVars, vars, passedInAllPluginInfoList, passedInSchemaTypeDefinitions } = params

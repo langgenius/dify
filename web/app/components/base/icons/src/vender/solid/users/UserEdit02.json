@@ -1,92 +1,92 @@
 {
-	"icon": {
-		"type": "element",
-		"isRootNode": true,
-		"name": "svg",
-		"attributes": {
-			"width": "14",
-			"height": "14",
-			"viewBox": "0 0 14 14",
-			"fill": "none",
-			"xmlns": "http://www.w3.org/2000/svg"
-		},
-		"children": [
-			{
-				"type": "element",
-				"name": "g",
-				"attributes": {
-					"id": "user-edit 2",
-					"clip-path": "url(#clip0_10419_49994)"
-				},
-				"children": [
-					{
-						"type": "element",
-						"name": "g",
-						"attributes": {
-							"id": "Group"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"id": "Vector",
-									"d": "M5.83333 6.41667C7.60525 6.41667 9.04167 4.98025 9.04167 3.20833C9.04167 1.43642 7.60525 0 5.83333 0C4.06142 0 2.625 1.43642 2.625 3.20833C2.625 4.98025 4.06142 6.41667 5.83333 6.41667Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"id": "Vector_2",
-									"d": "M5.90917 13.2465L6.78417 10.6221C6.85533 10.4086 6.97725 10.2114 7.1365 10.0522L8.79083 8.39783C7.92225 7.88391 6.91308 7.5835 5.83333 7.5835C2.61683 7.5835 0 10.2003 0 13.4168C0 13.7394 0.261333 14.0002 0.583333 14.0002H5.86717C5.817 13.7546 5.82575 13.4962 5.90917 13.2465Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							},
-							{
-								"type": "element",
-								"name": "path",
-								"attributes": {
-									"id": "Vector_3",
-									"d": "M13.5524 7.44766C12.9562 6.85208 11.9856 6.85208 11.39 7.44766L7.96057 10.8771C7.92849 10.9092 7.90457 10.9482 7.88999 10.9908L7.01499 13.6158C6.97999 13.7208 7.0074 13.8363 7.08557 13.9145C7.14099 13.9705 7.21565 13.9997 7.29207 13.9997C7.32299 13.9997 7.3539 13.9944 7.38424 13.9851L10.0092 13.1101C10.0524 13.0961 10.0915 13.0716 10.123 13.0395L13.5524 9.61008C14.148 9.0145 14.148 8.04383 13.5524 7.44766Z",
-									"fill": "currentColor"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			},
-			{
-				"type": "element",
-				"name": "defs",
-				"attributes": {},
-				"children": [
-					{
-						"type": "element",
-						"name": "clipPath",
-						"attributes": {
-							"id": "clip0_10419_49994"
-						},
-						"children": [
-							{
-								"type": "element",
-								"name": "rect",
-								"attributes": {
-									"width": "14",
-									"height": "14",
-									"fill": "white"
-								},
-								"children": []
-							}
-						]
-					}
-				]
-			}
-		]
-	},
-	"name": "UserEdit02"
+  "icon": {
+    "type": "element",
+    "isRootNode": true,
+    "name": "svg",
+    "attributes": {
+      "width": "14",
+      "height": "14",
+      "viewBox": "0 0 14 14",
+      "fill": "none",
+      "xmlns": "http://www.w3.org/2000/svg"
+    },
+    "children": [
+      {
+        "type": "element",
+        "name": "g",
+        "attributes": {
+          "id": "user-edit 2",
+          "clip-path": "url(#clip0_10419_49994)"
+        },
+        "children": [
+          {
+            "type": "element",
+            "name": "g",
+            "attributes": {
+              "id": "Group"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "id": "Vector",
+                  "d": "M5.83333 6.41667C7.60525 6.41667 9.04167 4.98025 9.04167 3.20833C9.04167 1.43642 7.60525 0 5.83333 0C4.06142 0 2.625 1.43642 2.625 3.20833C2.625 4.98025 4.06142 6.41667 5.83333 6.41667Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "id": "Vector_2",
+                  "d": "M5.90917 13.2465L6.78417 10.6221C6.85533 10.4086 6.97725 10.2114 7.1365 10.0522L8.79083 8.39783C7.92225 7.88391 6.91308 7.5835 5.83333 7.5835C2.61683 7.5835 0 10.2003 0 13.4168C0 13.7394 0.261333 14.0002 0.583333 14.0002H5.86717C5.817 13.7546 5.82575 13.4962 5.90917 13.2465Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              },
+              {
+                "type": "element",
+                "name": "path",
+                "attributes": {
+                  "id": "Vector_3",
+                  "d": "M13.5524 7.44766C12.9562 6.85208 11.9856 6.85208 11.39 7.44766L7.96057 10.8771C7.92849 10.9092 7.90457 10.9482 7.88999 10.9908L7.01499 13.6158C6.97999 13.7208 7.0074 13.8363 7.08557 13.9145C7.14099 13.9705 7.21565 13.9997 7.29207 13.9997C7.32299 13.9997 7.3539 13.9944 7.38424 13.9851L10.0092 13.1101C10.0524 13.0961 10.0915 13.0716 10.123 13.0395L13.5524 9.61008C14.148 9.0145 14.148 8.04383 13.5524 7.44766Z",
+                  "fill": "currentColor"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      },
+      {
+        "type": "element",
+        "name": "defs",
+        "attributes": {},
+        "children": [
+          {
+            "type": "element",
+            "name": "clipPath",
+            "attributes": {
+              "id": "clip0_10419_49994"
+            },
+            "children": [
+              {
+                "type": "element",
+                "name": "rect",
+                "attributes": {
+                  "width": "14",
+                  "height": "14",
+                  "fill": "white"
+                },
+                "children": []
+              }
+            ]
+          }
+        ]
+      }
+    ]
+  },
+  "name": "UserEdit02"
 }

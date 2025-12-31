@@ -1,21 +1,22 @@
 'use client'
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useRouter } from 'next/navigation'
+import type { Emoji, WorkflowToolProviderOutputParameter, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
+import type { InputVar, Variable } from '@/app/components/workflow/types'
+import type { PublishWorkflowParams } from '@/types/workflow'
 import { RiArrowRightUpLine, RiHammerLine } from '@remixicon/react'
-import Divider from '../../base/divider'
-import cn from '@/utils/classnames'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import Indicator from '@/app/components/header/indicator'
-import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import Loading from '@/app/components/base/loading'
 import Toast from '@/app/components/base/toast'
-import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflowToolProvider } from '@/service/tools'
-import type { Emoji, WorkflowToolProviderParameter, WorkflowToolProviderRequest, WorkflowToolProviderResponse } from '@/app/components/tools/types'
-import type { InputVar } from '@/app/components/workflow/types'
-import type { PublishWorkflowParams } from '@/types/workflow'
+import Indicator from '@/app/components/header/indicator'
+import WorkflowToolModal from '@/app/components/tools/workflow-tool'
 import { useAppContext } from '@/context/app-context'
+import { createWorkflowToolProvider, fetchWorkflowToolDetailByAppID, saveWorkflowToolProvider } from '@/service/tools'
 import { useInvalidateAllWorkflowTools } from '@/service/use-tools'
+import { cn } from '@/utils/classnames'
+import Divider from '../../base/divider'
 
 type Props = {
   disabled: boolean
@@ -26,8 +27,10 @@ type Props = {
   name: string
   description: string
   inputs?: InputVar[]
+  outputs?: Variable[]
   handlePublish: (params?: PublishWorkflowParams) => Promise<void>
   onRefreshData?: () => void
+  disabledReason?: string
 }
 
 const WorkflowToolConfigureButton = ({
@@ -39,8 +42,10 @@ const WorkflowToolConfigureButton = ({
   name,
   description,
   inputs,
+  outputs,
   handlePublish,
   onRefreshData,
+  disabledReason,
 }: Props) => {
   const { t } = useTranslation()
   const router = useRouter()
@@ -78,6 +83,8 @@ const WorkflowToolConfigureButton = ({
 
   const payload = useMemo(() => {
     let parameters: WorkflowToolProviderParameter[] = []
+    let outputParameters: WorkflowToolProviderOutputParameter[] = []
+
     if (!published) {
       parameters = (inputs || []).map((item) => {
         return {
@@ -86,6 +93,13 @@ const WorkflowToolConfigureButton = ({
           form: 'llm',
           required: item.required,
           type: item.type,
+        }
+      })
+      outputParameters = (outputs || []).map((item) => {
+        return {
+          name: item.variable,
+          description: '',
+          type: item.value_type,
         }
       })
     }
@@ -99,6 +113,14 @@ const WorkflowToolConfigureButton = ({
           form: detail.tool.parameters.find(param => param.name === item.variable)?.form || 'llm',
         }
       })
+      outputParameters = (outputs || []).map((item) => {
+        const found = detail.tool.output_schema?.properties?.[item.variable]
+        return {
+          name: item.variable,
+          description: found ? found.description : '',
+          type: item.value_type,
+        }
+      })
     }
     return {
       icon: detail?.icon || icon,
@@ -106,15 +128,16 @@ const WorkflowToolConfigureButton = ({
       name: detail?.name || '',
       description: detail?.description || description,
       parameters,
+      outputParameters,
       labels: detail?.tool?.labels || [],
       privacy_policy: detail?.privacy_policy || '',
       ...(published
         ? {
-          workflow_tool_id: detail?.workflow_tool_id,
-        }
+            workflow_tool_id: detail?.workflow_tool_id,
+          }
         : {
-          workflow_app_id: workflowAppId,
-        }),
+            workflow_app_id: workflowAppId,
+          }),
     }
   }, [detail, published, workflowAppId, icon, name, description, inputs])
 
@@ -143,7 +166,7 @@ const WorkflowToolConfigureButton = ({
       getDetail(workflowAppId)
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       setShowModal(false)
     }
@@ -164,7 +187,7 @@ const WorkflowToolConfigureButton = ({
       getDetail(workflowAppId)
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       setShowModal(false)
     }
@@ -175,74 +198,84 @@ const WorkflowToolConfigureButton = ({
 
   return (
     <>
-      <Divider type='horizontal' className='h-px bg-divider-subtle' />
+      <Divider type="horizontal" className="h-px bg-divider-subtle" />
       {(!published || !isLoading) && (
         <div className={cn(
           'group rounded-lg bg-background-section-burn transition-colors',
           disabled || !isCurrentWorkspaceManager ? 'cursor-not-allowed opacity-60 shadow-xs' : 'cursor-pointer',
           !disabled && !published && isCurrentWorkspaceManager && 'hover:bg-state-accent-hover',
-        )}>
+        )}
+        >
           {isCurrentWorkspaceManager
             ? (
-              <div
-                className='flex items-center justify-start gap-2 p-2 pl-2.5'
-                onClick={() => !disabled && !published && setShowModal(true)}
-              >
-                <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
                 <div
-                  title={t('workflow.common.workflowAsTool') || ''}
-                  className={cn('system-sm-medium shrink grow basis-0 truncate text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
+                  className="flex items-center justify-start gap-2 p-2 pl-2.5"
+                  onClick={() => !disabled && !published && setShowModal(true)}
                 >
-                  {t('workflow.common.workflowAsTool')}
+                  <RiHammerLine className={cn('relative h-4 w-4 text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')} />
+                  <div
+                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
+                    className={cn('system-sm-medium shrink grow basis-0 truncate text-text-secondary', !disabled && !published && 'group-hover:text-text-accent')}
+                  >
+                    {t('common.workflowAsTool', { ns: 'workflow' })}
+                  </div>
+                  {!published && (
+                    <span className="system-2xs-medium-uppercase shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary">
+                      {t('common.configureRequired', { ns: 'workflow' })}
+                    </span>
+                  )}
                 </div>
-                {!published && (
-                  <span className='system-2xs-medium-uppercase shrink-0 rounded-[5px] border border-divider-deep bg-components-badge-bg-dimm px-1 py-0.5 text-text-tertiary'>
-                    {t('workflow.common.configureRequired')}
-                  </span>
-                )}
-              </div>)
+              )
             : (
-              <div
-                className='flex items-center justify-start gap-2 p-2 pl-2.5'
-              >
-                <RiHammerLine className='h-4 w-4 text-text-tertiary' />
                 <div
-                  title={t('workflow.common.workflowAsTool') || ''}
-                  className='system-sm-medium shrink grow basis-0 truncate text-text-tertiary'
+                  className="flex items-center justify-start gap-2 p-2 pl-2.5"
                 >
-                  {t('workflow.common.workflowAsTool')}
+                  <RiHammerLine className="h-4 w-4 text-text-tertiary" />
+                  <div
+                    title={t('common.workflowAsTool', { ns: 'workflow' }) || ''}
+                    className="system-sm-medium shrink grow basis-0 truncate text-text-tertiary"
+                  >
+                    {t('common.workflowAsTool', { ns: 'workflow' })}
+                  </div>
                 </div>
-              </div>
-            )}
+              )}
+          {disabledReason && (
+            <div className="mt-1 px-2.5 pb-2 text-xs leading-[18px] text-text-tertiary">
+              {disabledReason}
+            </div>
+          )}
           {published && (
-            <div className='border-t-[0.5px] border-divider-regular px-2.5 py-2'>
-              <div className='flex justify-between gap-x-2'>
+            <div className="border-t-[0.5px] border-divider-regular px-2.5 py-2">
+              <div className="flex justify-between gap-x-2">
                 <Button
-                  size='small'
-                  className='w-[140px]'
+                  size="small"
+                  className="w-[140px]"
                   onClick={() => setShowModal(true)}
-                  disabled={!isCurrentWorkspaceManager}
+                  disabled={!isCurrentWorkspaceManager || disabled}
                 >
-                  {t('workflow.common.configure')}
-                  {outdated && <Indicator className='ml-1' color={'yellow'} />}
+                  {t('common.configure', { ns: 'workflow' })}
+                  {outdated && <Indicator className="ml-1" color="yellow" />}
                 </Button>
                 <Button
-                  size='small'
-                  className='w-[140px]'
+                  size="small"
+                  className="w-[140px]"
                   onClick={() => router.push('/tools?category=workflow')}
+                  disabled={disabled}
                 >
-                  {t('workflow.common.manageInTools')}
-                  <RiArrowRightUpLine className='ml-1 h-4 w-4' />
+                  {t('common.manageInTools', { ns: 'workflow' })}
+                  <RiArrowRightUpLine className="ml-1 h-4 w-4" />
                 </Button>
               </div>
-              {outdated && <div className='mt-1 text-xs leading-[18px] text-text-warning'>
-                {t('workflow.common.workflowAsToolTip')}
-              </div>}
+              {outdated && (
+                <div className="mt-1 text-xs leading-[18px] text-text-warning">
+                  {t('common.workflowAsToolTip', { ns: 'workflow' })}
+                </div>
+              )}
             </div>
           )}
         </div>
       )}
-      {published && isLoading && <div className='pt-2'><Loading type='app' /></div>}
+      {published && isLoading && <div className="pt-2"><Loading type="app" /></div>}
       {showModal && (
         <WorkflowToolModal
           isAdd={!published}

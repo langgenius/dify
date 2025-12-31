@@ -3,6 +3,7 @@ import logging
 from celery import shared_task
 from sqlalchemy import select
 
+from configs import dify_config
 from extensions.ext_database import db
 from models import Account
 from services.billing_service import BillingService
@@ -15,7 +16,8 @@ logger = logging.getLogger(__name__)
 def delete_account_task(account_id):
     account = db.session.scalars(select(Account).where(Account.id == account_id).limit(1)).first()
     try:
-        BillingService.delete_account(account_id)
+        if dify_config.BILLING_ENABLED:
+            BillingService.delete_account(account_id)
     except Exception:
         logger.exception("Failed to delete account %s from billing service.", account_id)
         raise

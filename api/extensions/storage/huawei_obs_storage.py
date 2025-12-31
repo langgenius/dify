@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from obs import ObsClient  # type: ignore
+from obs import ObsClient
 
 from configs import dify_config
 from extensions.storage.base_storage import BaseStorage
@@ -17,6 +17,7 @@ class HuaweiObsStorage(BaseStorage):
             access_key_id=dify_config.HUAWEI_OBS_ACCESS_KEY,
             secret_access_key=dify_config.HUAWEI_OBS_SECRET_KEY,
             server=dify_config.HUAWEI_OBS_SERVER,
+            path_style=dify_config.HUAWEI_OBS_PATH_STYLE,
         )
 
     def save(self, filename, data):

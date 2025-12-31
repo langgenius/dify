@@ -1,10 +1,30 @@
+import type { TFunction } from 'i18next'
 import { upload } from '@/service/base'
+
+/**
+ * Get appropriate error message for image upload errors
+ * @param error - The error object from upload failure
+ * @param defaultMessage - Default error message to use if no specific error is matched
+ * @param t - Translation function
+ * @returns Localized error message
+ */
+export const getImageUploadErrorMessage = (error: any, defaultMessage: string, t: TFunction): string => {
+  const errorCode = error?.response?.code
+
+  if (errorCode === 'forbidden')
+    return error?.response?.message
+
+  if (errorCode === 'file_extension_blocked')
+    return t('fileUploader.fileExtensionBlocked', { ns: 'common' })
+
+  return defaultMessage
+}
 
 type ImageUploadParams = {
   file: File
   onProgressCallback: (progress: number) => void
   onSuccessCallback: (res: { id: string }) => void
-  onErrorCallback: () => void
+  onErrorCallback: (error?: any) => void
 }
 type ImageUpload = (v: ImageUploadParams, isPublic?: boolean, url?: string) => void
 export const imageUpload: ImageUpload = ({
@@ -30,7 +50,7 @@ export const imageUpload: ImageUpload = ({
     .then((res: { id: string }) => {
       onSuccessCallback(res)
     })
-    .catch(() => {
-      onErrorCallback()
+    .catch((error) => {
+      onErrorCallback(error)
     })
 }
