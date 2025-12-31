@@ -18,7 +18,7 @@ const FilterSwitch: FC<FilterSwitchProps> = ({
     <div className="flex items-center p-1">
       <div className="flex w-full items-center gap-x-1 px-2 py-1.5">
         <div className="system-md-regular flex-1 px-1 text-text-secondary">
-          {t('workflow.versionHistory.filter.onlyShowNamedVersions')}
+          {t('versionHistory.filter.onlyShowNamedVersions', { ns: 'workflow' })}
         </div>
         <Switch
           defaultValue={enabled}

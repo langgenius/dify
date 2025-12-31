@@ -141,7 +141,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
 
   const handleMoreLikeThis = async () => {
     if (isQuerying || !messageId) {
-      Toast.notify({ type: 'warning', message: t('appDebug.errorMessage.waitForResponse') })
+      Toast.notify({ type: 'warning', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return
     }
     startQuerying()
@@ -236,7 +236,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                     {taskId && (
                       <div className={cn('system-2xs-medium-uppercase mb-2 flex items-center text-text-accent-secondary', isError && 'text-text-destructive')}>
                         <RiPlayList2Line className="mr-1 h-3 w-3" />
-                        <span>{t('share.generation.execution')}</span>
+                        <span>{t('generation.execution', { ns: 'share' })}</span>
                         <span className="px-1">·</span>
                         <span>{taskId}</span>
                       </div>
@@ -259,7 +259,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                           )}
                           onClick={() => switchTab('RESULT')}
                         >
-                          {t('runLog.result')}
+                          {t('result', { ns: 'runLog' })}
                         </div>
                         <div
                           className={cn(
@@ -268,7 +268,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                           )}
                           onClick={() => switchTab('DETAIL')}
                         >
-                          {t('runLog.detail')}
+                          {t('detail', { ns: 'runLog' })}
                         </div>
                       </div>
                     )}
@@ -281,13 +281,13 @@ const GenerationItem: FC<IGenerationItemProps> = ({
               {!workflowProcessData && taskId && (
                 <div className={cn('system-2xs-medium-uppercase sticky left-0 top-0 flex w-full items-center rounded-t-2xl bg-components-actionbar-bg p-4 pb-3 text-text-accent-secondary', isError && 'text-text-destructive')}>
                   <RiPlayList2Line className="mr-1 h-3 w-3" />
-                  <span>{t('share.generation.execution')}</span>
+                  <span>{t('generation.execution', { ns: 'share' })}</span>
                   <span className="px-1">·</span>
                   <span>{`${taskId}${depth > 1 ? `-${depth - 1}` : ''}`}</span>
                 </div>
               )}
               {isError && (
-                <div className="body-lg-regular p-4 pt-0 text-text-quaternary">{t('share.generation.batchFailed.outputPlaceholder')}</div>
+                <div className="body-lg-regular p-4 pt-0 text-text-quaternary">{t('generation.batchFailed.outputPlaceholder', { ns: 'share' })}</div>
               )}
               {!workflowProcessData && !isError && (typeof content === 'string') && (
                 <div className={cn('p-4', taskId && 'pt-0')}>
@@ -305,7 +305,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                 <span>
                   {content?.length}
                   {' '}
-                  {t('common.unit.char')}
+                  {t('unit.char', { ns: 'common' })}
                 </span>
               )}
               {/* action buttons */}
@@ -339,7 +339,7 @@ const GenerationItem: FC<IGenerationItemProps> = ({
                           copy(copyContent)
                         else
                           copy(JSON.stringify(copyContent))
-                        Toast.notify({ type: 'success', message: t('common.actionMsg.copySuccessfully') })
+                        Toast.notify({ type: 'success', message: t('actionMsg.copySuccessfully', { ns: 'common' }) })
                       }}
                     >
                       <RiClipboardLine className="h-4 w-4" />

@@ -20,7 +20,7 @@ import Loaded from './steps/loaded'
 import SelectPackage from './steps/selectPackage'
 import SetURL from './steps/setURL'
 
-const i18nPrefix = 'plugin.installFromGitHub'
+const i18nPrefix = 'installFromGitHub'
 
 type InstallFromGitHubProps = {
   updatePayload?: UpdateFromGitHubPayload
@@ -71,11 +71,11 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
 
   const getTitle = useCallback(() => {
     if (state.step === InstallStepFromGitHub.installed)
-      return t(`${i18nPrefix}.installedSuccessfully`)
+      return t(`${i18nPrefix}.installedSuccessfully`, { ns: 'plugin' })
     if (state.step === InstallStepFromGitHub.installFailed)
-      return t(`${i18nPrefix}.installFailed`)
+      return t(`${i18nPrefix}.installFailed`, { ns: 'plugin' })
 
-    return updatePayload ? t(`${i18nPrefix}.updatePlugin`) : t(`${i18nPrefix}.installPlugin`)
+    return updatePayload ? t(`${i18nPrefix}.updatePlugin`, { ns: 'plugin' }) : t(`${i18nPrefix}.installPlugin`, { ns: 'plugin' })
   }, [state.step, t, updatePayload])
 
   const handleUrlSubmit = async () => {
@@ -83,7 +83,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
     if (!isValid || !owner || !repo) {
       Toast.notify({
         type: 'error',
-        message: t('plugin.error.inValidGitHubUrl'),
+        message: t('error.inValidGitHubUrl', { ns: 'plugin' }),
       })
       return
     }
@@ -99,20 +99,20 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
       else {
         Toast.notify({
           type: 'error',
-          message: t('plugin.error.noReleasesFound'),
+          message: t('error.noReleasesFound', { ns: 'plugin' }),
         })
       }
     }
     catch {
       Toast.notify({
         type: 'error',
-        message: t('plugin.error.fetchReleasesError'),
+        message: t('error.fetchReleasesError', { ns: 'plugin' }),
       })
     }
   }
 
   const handleError = (e: any, isInstall: boolean) => {
-    const message = e?.response?.message || t('plugin.installModal.installFailedDesc')
+    const message = e?.response?.message || t('installModal.installFailedDesc', { ns: 'plugin' })
     setErrorMsg(message)
     setState(prevState => ({ ...prevState, step: isInstall ? InstallStepFromGitHub.installFailed : InstallStepFromGitHub.uploadFailed }))
   }
@@ -179,7 +179,7 @@ const InstallFromGitHub: React.FC<InstallFromGitHubProps> = ({ updatePayload, on
             {getTitle()}
           </div>
           <div className="system-xs-regular self-stretch text-text-tertiary">
-            {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('plugin.installFromGitHub.installNote')}
+            {!([InstallStepFromGitHub.uploadFailed, InstallStepFromGitHub.installed, InstallStepFromGitHub.installFailed].includes(state.step)) && t('installFromGitHub.installNote', { ns: 'plugin' })}
           </div>
         </div>
       </div>

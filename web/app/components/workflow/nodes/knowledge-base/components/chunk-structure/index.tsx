@@ -28,8 +28,8 @@ const ChunkStructure = ({
   return (
     <Field
       fieldTitleProps={{
-        title: t('workflow.nodes.knowledgeBase.chunkStructure'),
-        tooltip: t('workflow.nodes.knowledgeBase.chunkStructureTip.message'),
+        title: t('nodes.knowledgeBase.chunkStructure', { ns: 'workflow' }),
+        tooltip: t('nodes.knowledgeBase.chunkStructureTip.message', { ns: 'workflow' }),
         operation: chunkStructure && (
           <Selector
             options={options}
@@ -63,7 +63,7 @@ const ChunkStructure = ({
                   variant="secondary-accent"
                 >
                   <RiAddLine className="mr-1 h-4 w-4" />
-                  {t('workflow.nodes.knowledgeBase.chooseChunkStructure')}
+                  {t('nodes.knowledgeBase.chooseChunkStructure', { ns: 'workflow' })}
                 </Button>
               )}
             />

@@ -148,7 +148,7 @@ const AppOperations = ({
         >
           <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
           <span className="system-xs-medium text-components-button-secondary-text">
-            {t('common.operation.more')}
+            {t('operation.more', { ns: 'common' })}
           </span>
         </Button>
       </div>
@@ -183,7 +183,7 @@ const AppOperations = ({
               >
                 <RiMoreLine className="h-3.5 w-3.5 text-components-button-secondary-text" />
                 <span className="system-xs-medium text-components-button-secondary-text">
-                  {t('common.operation.more')}
+                  {t('operation.more', { ns: 'common' })}
                 </span>
               </Button>
             </PortalToFollowElemTrigger>

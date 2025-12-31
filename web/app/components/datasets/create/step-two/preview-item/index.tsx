@@ -55,7 +55,7 @@ const PreviewItem: FC<IPreviewItemProps> = ({
           <span>
             {charNums}
             {' '}
-            {t('datasetCreation.stepTwo.characters')}
+            {t('stepTwo.characters', { ns: 'datasetCreation' })}
           </span>
         </div>
       </div>

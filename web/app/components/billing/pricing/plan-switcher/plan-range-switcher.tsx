@@ -30,7 +30,7 @@ const PlanRangeSwitcher: FC<PlanRangeSwitcherProps> = ({
         }}
       />
       <span className="system-md-regular text-text-tertiary">
-        {t('billing.plansCommon.annualBilling', { percent: 17 })}
+        {t('plansCommon.annualBilling', { ns: 'billing', percent: 17 })}
       </span>
     </div>
   )

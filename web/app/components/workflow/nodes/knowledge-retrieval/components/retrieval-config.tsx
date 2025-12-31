@@ -136,7 +136,7 @@ const RetrievalConfig: FC<Props> = ({
           className={cn(rerankModalOpen && 'bg-components-button-ghost-bg-hover')}
         >
           <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
-          {t('dataset.retrievalSettings')}
+          {t('retrievalSettings', { ns: 'dataset' })}
         </Button>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{ zIndex: 1001 }}>

@@ -34,7 +34,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
-  __esModule: true,
   useModelListAndDefaultModelAndCurrentProviderAndModel: (...args: unknown[]) =>
     mockUseModelListAndDefaultModelAndCurrentProviderAndModel(...args),
   useModelListAndDefaultModel: (...args: unknown[]) => mockUseModelListAndDefaultModel(...args),
@@ -43,7 +42,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 }))
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => ({
-  __esModule: true,
   default: ({ defaultModel }: { defaultModel?: { provider: string, model: string } }) => (
     <div data-testid="model-selector">
       {defaultModel ? `${defaultModel.provider}/${defaultModel.model}` : 'no-model'}
@@ -52,7 +50,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
 }))
 
 vi.mock('@/app/components/datasets/create/step-two', () => ({
-  __esModule: true,
   IndexingType: {
     QUALIFIED: 'high_quality',
     ECONOMICAL: 'economy',
@@ -168,7 +165,10 @@ describe('RetrievalChangeTip', () => {
 })
 
 describe('RetrievalSection', () => {
-  const t = (key: string) => key
+  const t = (key: string, options?: { ns?: string }) => {
+    const prefix = options?.ns ? `${options.ns}.` : ''
+    return `${prefix}${key}`
+  }
   const rowClass = 'row'
   const labelClass = 'label'
 

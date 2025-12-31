@@ -21,7 +21,7 @@ const ManageInputField = ({
           className="system-xs-medium truncate text-text-tertiary"
           title="Create user input field"
         >
-          {t('pipeline.inputField.create')}
+          {t('inputField.create', { ns: 'pipeline' })}
         </div>
       </div>
       <div className="mx-1 h-3 w-[1px] shrink-0 bg-divider-regular"></div>
@@ -29,7 +29,7 @@ const ManageInputField = ({
         className="system-xs-medium flex h-8 shrink-0 cursor-pointer items-center justify-center px-3 text-text-tertiary"
         onClick={onManage}
       >
-        {t('pipeline.inputField.manage')}
+        {t('inputField.manage', { ns: 'pipeline' })}
       </div>
     </div>
   )
