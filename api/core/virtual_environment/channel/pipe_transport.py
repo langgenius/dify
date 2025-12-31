@@ -1,6 +1,6 @@
 import os
 
-from core.virtual_environment.channel.transport import Transport
+from core.virtual_environment.channel.transport import Transport, TransportReadCloser, TransportWriteCloser
 
 
 class PipeTransport(Transport):
@@ -25,4 +25,34 @@ class PipeTransport(Transport):
 
     def close(self) -> None:
         os.close(self.r_fd)
+        os.close(self.w_fd)
+
+
+class PipeReadCloser(TransportReadCloser):
+    """
+    A Transport implementation using OS pipe for reading.
+    """
+
+    def __init__(self, r_fd: int):
+        self.r_fd = r_fd
+
+    def read(self, n: int) -> bytes:
+        return os.read(self.r_fd, n)
+
+    def close(self) -> None:
+        os.close(self.r_fd)
+
+
+class PipeWriteCloser(TransportWriteCloser):
+    """
+    A Transport implementation using OS pipe for writing.
+    """
+
+    def __init__(self, w_fd: int):
+        self.w_fd = w_fd
+
+    def write(self, data: bytes) -> None:
+        os.write(self.w_fd, data)
+
+    def close(self) -> None:
         os.close(self.w_fd)

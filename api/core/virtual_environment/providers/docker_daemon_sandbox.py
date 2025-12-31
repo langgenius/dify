@@ -15,8 +15,8 @@ import docker
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.exec import VirtualEnvironmentLaunchFailedError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.channel.socket_transport import SocketTransport
-from core.virtual_environment.channel.transport import Transport
+from core.virtual_environment.channel.socket_transport import SocketReadCloser, SocketWriteCloser
+from core.virtual_environment.channel.transport import TransportReadCloser, TransportWriteCloser
 
 """
 EXAMPLE:
@@ -69,7 +69,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         DOCKER_IMAGE = "docker_image"
         DOCKER_COMMAND = "docker_command"
 
-    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, Any]) -> Metadata:
+    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct the Docker daemon virtual environment.
         """
@@ -253,7 +253,7 @@ class DockerDaemonEnvironment(VirtualEnvironment):
 
     def execute_command(
         self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
-    ) -> tuple[str, Transport, Transport, Transport]:
+    ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
         container = self._get_container()
         container_id = container.id
         if not isinstance(container_id, str) or not container_id:
@@ -279,8 +279,10 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         exec_id: str = str(exec_info.get("Id"))
         raw_sock: socket.SocketIO = cast(socket.SocketIO, api_client.exec_start(exec_id, socket=True, tty=False))  # pyright: ignore[reportUnknownMemberType] #
 
-        transport = SocketTransport(raw_sock)
-        return exec_id, transport, transport, transport
+        stdin_transport = SocketWriteCloser(raw_sock)
+        stdout_transport = SocketReadCloser(raw_sock)
+
+        return exec_id, stdin_transport, stdout_transport, stdout_transport
 
     def get_command_status(self, connection_handle: ConnectionHandle, pid: str) -> CommandStatus:
         api_client = self.get_docker_api_client(self.get_docker_sock())

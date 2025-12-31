@@ -686,6 +686,15 @@ wheels = [
 ]
 
 [[package]]
+name = "bracex"
+version = "2.6"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/63/9a/fec38644694abfaaeca2798b58e276a8e61de49e2e37494ace423395febc/bracex-2.6.tar.gz", hash = "sha256:98f1347cd77e22ee8d967a30ad4e310b233f7754dbf31ff3fceb76145ba47dc7", size = 26642 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/9d/2a/9186535ce58db529927f6cf5990a849aa9e052eea3e2cfefe20b9e1802da/bracex-2.6-py3-none-any.whl", hash = "sha256:0b0049264e7340b3ec782b5cb99beb325f36c3782a32e36e876452fd49a09952", size = 11508 },
+]
+
+[[package]]
 name = "brotli"
 version = "1.2.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1383,6 +1392,7 @@ dependencies = [
     { name = "charset-normalizer" },
     { name = "croniter" },
     { name = "docker" },
+    { name = "e2b-code-interpreter" },
     { name = "flask" },
     { name = "flask-compress" },
     { name = "flask-cors" },
@@ -1582,6 +1592,7 @@ requires-dist = [
     { name = "charset-normalizer", specifier = ">=3.4.4" },
     { name = "croniter", specifier = ">=6.0.0" },
     { name = "docker", specifier = ">=7.1.0" },
+    { name = "e2b-code-interpreter", specifier = ">=2.4.1" },
     { name = "flask", specifier = "~=3.1.2" },
     { name = "flask-compress", specifier = ">=1.17,<1.18" },
     { name = "flask-cors", specifier = "~=6.0.0" },
@@ -1629,7 +1640,7 @@ requires-dist = [
     { name = "opentelemetry-semantic-conventions", specifier = "==0.48b0" },
     { name = "opentelemetry-util-http", specifier = "==0.48b0" },
     { name = "opik", specifier = "~=1.8.72" },
-    { name = "packaging", specifier = "~=23.2" },
+    { name = "packaging", specifier = "==24.1" },
     { name = "pandas", extras = ["excel", "output-formatting", "performance"], specifier = "~=2.2.2" },
     { name = "psycogreen", specifier = "~=1.0.2" },
     { name = "psycopg2-binary", specifier = "~=2.9.6" },
@@ -1800,6 +1811,15 @@ wheels = [
 ]
 
 [[package]]
+name = "dockerfile-parse"
+version = "2.0.1"
+source = { registry = "https://pypi.org/simple" }
+sdist = { url = "https://files.pythonhosted.org/packages/92/df/929ee0b5d2c8bd8d713c45e71b94ab57c7e11e322130724d54f469b2cd48/dockerfile-parse-2.0.1.tar.gz", hash = "sha256:3184ccdc513221983e503ac00e1aa504a2aa8f84e5de673c46b0b6eee99ec7bc", size = 24556 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/7a/6c/79cd5bc1b880d8c1a9a5550aa8dacd57353fa3bb2457227e1fb47383eb49/dockerfile_parse-2.0.1-py2.py3-none-any.whl", hash = "sha256:bdffd126d2eb26acf1066acb54cb2e336682e1d72b974a40894fac76a4df17f6", size = 14845 },
+]
+
+[[package]]
 name = "docstring-parser"
 version = "0.17.0"
 source = { registry = "https://pypi.org/simple" }
@@ -1831,6 +1851,41 @@ source = { registry = "https://pypi.org/simple" }
 sdist = { url = "https://files.pythonhosted.org/packages/9d/a4/e44218c2b394e31a6dd0d6b095c4e1f32d0be54c2a4b250032d717647bab/durationpy-0.10.tar.gz", hash = "sha256:1fa6893409a6e739c9c72334fc65cca1f355dbdd93405d30f726deb5bde42fba", size = 3335 }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/b0/0d/9feae160378a3553fa9a339b0e9c1a048e147a4127210e286ef18b730f03/durationpy-0.10-py3-none-any.whl", hash = "sha256:3b41e1b601234296b4fb368338fdcd3e13e0b4fb5b67345948f4f2bf9868b286", size = 3922 },
+]
+
+[[package]]
+name = "e2b"
+version = "2.9.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "dockerfile-parse" },
+    { name = "httpcore" },
+    { name = "httpx" },
+    { name = "packaging" },
+    { name = "protobuf" },
+    { name = "python-dateutil" },
+    { name = "rich" },
+    { name = "typing-extensions" },
+    { name = "wcmatch" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/3d/d6/bf09e2a2f81a0296dc20b59a53b3cb8e019aaf6a734a3708b711cfd0ba48/e2b-2.9.0.tar.gz", hash = "sha256:b6b0d7dc816e9e0f6ca82ddd4add8e86d72068fb79d9430a07167ab773a822fa", size = 111618 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/86/a3/cd58df6423356e967b1b5b26d2b3adb2d001b47d04c4e5499778ef88c23f/e2b-2.9.0-py3-none-any.whl", hash = "sha256:216752c7be17630721ad60a023f488ad3a2a1c995eaf4c5c7d0d1ec6f9129742", size = 204021 },
+]
+
+[[package]]
+name = "e2b-code-interpreter"
+version = "2.4.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "attrs" },
+    { name = "e2b" },
+    { name = "httpx" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/1e/eb/db6e51edd9f3402fd68d026572579b9b1bd833b10d990376a1e4c05d5b8d/e2b_code_interpreter-2.4.1.tar.gz", hash = "sha256:4b15014ee0d0dfcdc3072e1f409cbb87ca48f48d53d75629b7257e5513b9e7dd", size = 10700 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/1b/e7/09b9106ead227f7be14bd97c3181391ee498bb38933b1a9c566b72c8567a/e2b_code_interpreter-2.4.1-py3-none-any.whl", hash = "sha256:15d35f025b4a15033e119f2e12e7ac65657ad2b5a013fa9149e74581fbee778a", size = 13719 },
 ]
 
 [[package]]
@@ -4319,11 +4374,11 @@ wheels = [
 
 [[package]]
 name = "packaging"
-version = "23.2"
+version = "24.1"
 source = { registry = "https://pypi.org/simple" }
-sdist = { url = "https://files.pythonhosted.org/packages/fb/2b/9b9c33ffed44ee921d0967086d653047286054117d584f1b1a7c22ceaf7b/packaging-23.2.tar.gz", hash = "sha256:048fb0e9405036518eaaf48a55953c750c11e1a1b68e0dd1a9d62ed0c092cfc5", size = 146714 }
+sdist = { url = "https://files.pythonhosted.org/packages/51/65/50db4dda066951078f0a96cf12f4b9ada6e4b811516bf0262c0f4f7064d4/packaging-24.1.tar.gz", hash = "sha256:026ed72c8ed3fcce5bf8950572258698927fd1dbda10a5e981cdf0ac37f4f002", size = 148788 }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ec/1a/610693ac4ee14fcdf2d9bf3c493370e4f2ef7ae2e19217d7a237ff42367d/packaging-23.2-py3-none-any.whl", hash = "sha256:8c491190033a9af7e1d931d0b5dacc2ef47509b34dd0de67ed209b5203fc88c7", size = 53011 },
+    { url = "https://files.pythonhosted.org/packages/08/aa/cc0199a5f0ad350994d660967a8efb233fe0416e4639146c089643407ce6/packaging-24.1-py3-none-any.whl", hash = "sha256:5b8f2217dbdbd2f7f384c41c628544e6d52f2d0f53c6d0c3ea61aa5d1d7ff124", size = 53985 },
 ]
 
 [[package]]
@@ -7016,6 +7071,18 @@ wheels = [
     { url = "https://files.pythonhosted.org/packages/bd/95/615e72cd27b85b61eec764a5ca51bd94d40b5adea5ff47567d9ebc4d275a/watchfiles-1.1.1-pp311-pypy311_pp73-macosx_11_0_arm64.whl", hash = "sha256:89eef07eee5e9d1fda06e38822ad167a044153457e6fd997f8a858ab7564a336", size = 396117 },
     { url = "https://files.pythonhosted.org/packages/c9/81/e7fe958ce8a7fb5c73cc9fb07f5aeaf755e6aa72498c57d760af760c91f8/watchfiles-1.1.1-pp311-pypy311_pp73-manylinux_2_17_aarch64.manylinux2014_aarch64.whl", hash = "sha256:ce19e06cbda693e9e7686358af9cd6f5d61312ab8b00488bc36f5aabbaf77e24", size = 450493 },
     { url = "https://files.pythonhosted.org/packages/6e/d4/ed38dd3b1767193de971e694aa544356e63353c33a85d948166b5ff58b9e/watchfiles-1.1.1-pp311-pypy311_pp73-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:3e6f39af2eab0118338902798b5aa6664f46ff66bc0280de76fca67a7f262a49", size = 457546 },
+]
+
+[[package]]
+name = "wcmatch"
+version = "10.1"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "bracex" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/79/3e/c0bdc27cf06f4e47680bd5803a07cb3dfd17de84cde92dd217dcb9e05253/wcmatch-10.1.tar.gz", hash = "sha256:f11f94208c8c8484a16f4f48638a85d771d9513f4ab3f37595978801cb9465af", size = 117421 }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/eb/d8/0d1d2e9d3fabcf5d6840362adcf05f8cf3cd06a73358140c3a97189238ae/wcmatch-10.1-py3-none-any.whl", hash = "sha256:5848ace7dbb0476e5e55ab63c6bbd529745089343427caa5537f230cc01beb8a", size = 39854 },
 ]
 
 [[package]]

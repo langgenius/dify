@@ -4,7 +4,7 @@ from io import BytesIO
 from typing import Any
 
 from core.virtual_environment.__base.entities import CommandStatus, ConnectionHandle, FileState, Metadata
-from core.virtual_environment.channel.transport import Transport
+from core.virtual_environment.channel.transport import TransportReadCloser, TransportWriteCloser
 
 
 class VirtualEnvironment(ABC):
@@ -12,7 +12,7 @@ class VirtualEnvironment(ABC):
     Base class for virtual environment implementations.
     """
 
-    def __init__(self, options: Mapping[str, Any], environments: Mapping[str, Any] | None = None) -> None:
+    def __init__(self, options: Mapping[str, Any], environments: Mapping[str, str] | None = None) -> None:
         """
         Initialize the virtual environment with metadata.
         """
@@ -21,7 +21,7 @@ class VirtualEnvironment(ABC):
         self.metadata = self.construct_environment(options, environments or {})
 
     @abstractmethod
-    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, Any]) -> Metadata:
+    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct the unique identifier for the virtual environment.
 
@@ -118,8 +118,8 @@ class VirtualEnvironment(ABC):
 
     @abstractmethod
     def execute_command(
-        self, connection_handle: ConnectionHandle, command: list[str]
-    ) -> tuple[str, Transport, Transport, Transport]:
+        self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
+    ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
         """
         Execute a command in the virtual environment.
 
@@ -128,8 +128,8 @@ class VirtualEnvironment(ABC):
             command (list[str]): The command to execute as a list of strings.
 
         Returns:
-            tuple[int, Transport, Transport, Transport]: A tuple containing pid and 3 handle
-            to os.pipe(): (stdin, stdout, stderr).
+            tuple[int, TransportWriteCloser, TransportReadCloser, TransportReadCloser]
+            a tuple containing pid and 3 handle to os.pipe(): (stdin, stdout, stderr).
             After exuection, the 3 handles will be closed by caller.
         """
 

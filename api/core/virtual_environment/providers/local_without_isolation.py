@@ -11,8 +11,8 @@ from uuid import uuid4
 from core.virtual_environment.__base.entities import Arch, CommandStatus, ConnectionHandle, FileState, Metadata
 from core.virtual_environment.__base.exec import ArchNotSupportedError
 from core.virtual_environment.__base.virtual_environment import VirtualEnvironment
-from core.virtual_environment.channel.pipe_transport import PipeTransport
-from core.virtual_environment.channel.transport import Transport
+from core.virtual_environment.channel.pipe_transport import PipeReadCloser, PipeWriteCloser
+from core.virtual_environment.channel.transport import TransportReadCloser, TransportWriteCloser
 
 
 class LocalVirtualEnvironment(VirtualEnvironment):
@@ -23,7 +23,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
     NEVER USE IT IN PRODUCTION ENVIRONMENTS.
     """
 
-    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, Any]) -> Metadata:
+    def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, str]) -> Metadata:
         """
         Construct the local virtual environment.
 
@@ -118,7 +118,7 @@ class LocalVirtualEnvironment(VirtualEnvironment):
 
     def execute_command(
         self, connection_handle: ConnectionHandle, command: list[str], environments: Mapping[str, str] | None = None
-    ) -> tuple[str, Transport, Transport, Transport]:
+    ) -> tuple[str, TransportWriteCloser, TransportReadCloser, TransportReadCloser]:
         """
         Execute a command in the local virtual environment.
 
@@ -162,9 +162,9 @@ class LocalVirtualEnvironment(VirtualEnvironment):
         os.close(stderr_write_fd)
 
         # Create PipeTransport instances for stdin, stdout, and stderr
-        stdin_transport = PipeTransport(r_fd=stdin_read_fd, w_fd=stdin_write_fd)
-        stdout_transport = PipeTransport(r_fd=stdout_read_fd, w_fd=stdout_write_fd)
-        stderr_transport = PipeTransport(r_fd=stderr_read_fd, w_fd=stderr_write_fd)
+        stdin_transport = PipeWriteCloser(w_fd=stdin_write_fd)
+        stdout_transport = PipeReadCloser(r_fd=stdout_read_fd)
+        stderr_transport = PipeReadCloser(r_fd=stderr_read_fd)
 
         # Return the process ID and file descriptors for stdin, stdout, and stderr
         return str(process.pid), stdin_transport, stdout_transport, stderr_transport
