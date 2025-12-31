@@ -10,11 +10,12 @@ from celery import shared_task
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
 from services.retention.export_workflow_run import WorkflowRunExportError, WorkflowRunExportService
-from services.retention.workflow_run_export_task_status import set_task_status
+from services.retention.workflow_run_export_task_status import (
+    EXPORT_SIGNED_URL_EXPIRE_SECONDS,
+    set_task_status,
+)
 
 logger = logging.getLogger(__name__)
-
-EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
 
 
 @shared_task(queue="export")

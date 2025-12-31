@@ -113,6 +113,7 @@ workflow_run_export_task_fields = console_ns.model(
         "checksum": fields.String(description="Object checksum", required=False),
         "size_bytes": fields.Integer(description="Size of exported zip in bytes", required=False),
         "presigned_url": fields.String(description="Pre-signed URL for download", required=False),
+        "presigned_url_expires_at": fields.String(description="Pre-signed URL expiration time", required=False),
         "error": fields.String(description="Error message", required=False),
     },
 )
