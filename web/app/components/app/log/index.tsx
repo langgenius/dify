@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import type { App } from '@/types/app'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
-import { omit } from 'es-toolkit/compat'
+import { omit } from 'es-toolkit/object'
 import {
   parseAsInteger,
   parseAsString,
