@@ -9,7 +9,7 @@ import type {
   ConversationItem,
 } from '@/models/share'
 import { useLocalStorageState } from 'ahooks'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import { parseAsString, useQueryState } from 'nuqs'
 import {

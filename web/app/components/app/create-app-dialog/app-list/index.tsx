@@ -8,7 +8,6 @@ import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import AppTypeSelector from '@/app/components/app/type-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Divider from '@/app/components/base/divider'
@@ -19,7 +18,6 @@ import CreateAppModal from '@/app/components/explore/create-app-modal'
 import { usePluginDependencies } from '@/app/components/workflow/plugin-dependency/hooks'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import ExploreContext from '@/context/explore-context'
 import { DSLImportMode } from '@/models/app'
 import { importDSL } from '@/service/apps'
 import { fetchAppDetail } from '@/service/explore'
@@ -47,7 +45,6 @@ const Apps = ({
   const { t } = useTranslation()
   const { isCurrentWorkspaceEditor } = useAppContext()
   const { push } = useRouter()
-  const { hasEditPermission } = useContext(ExploreContext)
   const allCategoriesEn = AppCategories.RECOMMENDED
 
   const [keywords, setKeywords] = useState('')
@@ -214,7 +211,7 @@ const Apps = ({
                   <AppCard
                     key={app.app_id}
                     app={app}
-                    canCreate={hasEditPermission}
+                    canCreate={isCurrentWorkspaceEditor}
                     onCreate={() => {
                       setCurrApp(app)
                       setIsShowCreateModal(true)

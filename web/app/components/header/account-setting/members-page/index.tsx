@@ -3,7 +3,6 @@ import type { InvitationResult } from '@/models/common'
 import { RiPencilLine, RiUserAddLine } from '@remixicon/react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Avatar from '@/app/components/base/avatar'
 import Button from '@/app/components/base/button'
 import Tooltip from '@/app/components/base/tooltip'
@@ -12,7 +11,7 @@ import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useProviderContext } from '@/context/provider-context'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
 import { LanguagesSupported } from '@/i18n-config/language'
@@ -34,7 +33,7 @@ const MembersPage = () => {
     dataset_operator: t('members.datasetOperator', { ns: 'common' }),
     normal: t('members.normal', { ns: 'common' }),
   }
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
 
   const { userProfile, currentWorkspace, isCurrentWorkspaceOwner, isCurrentWorkspaceManager } = useAppContext()
   const { data, refetch } = useMembers()

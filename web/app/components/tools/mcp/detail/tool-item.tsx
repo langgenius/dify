@@ -2,9 +2,8 @@
 import type { Tool } from '@/app/components/tools/types'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Tooltip from '@/app/components/base/tooltip'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { cn } from '@/utils/classnames'
 
@@ -15,7 +14,7 @@ type Props = {
 const MCPToolItem = ({
   tool,
 }: Props) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const language = getLanguage(locale)
   const { t } = useTranslation()
 
