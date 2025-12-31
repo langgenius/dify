@@ -29,7 +29,6 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 
 logger = logging.getLogger(__name__)
 
-
 class AppService:
     def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
         """
@@ -65,8 +64,44 @@ class AppService:
             else:
                 return None
 
+        # Determine sort order
+        sort_by = args.get("sort_by", "created_at")
+        sort_order = args.get("sort_order", "desc")
+
+        # Map sort_by field to the corresponding database column
+        sort_field_map = {
+            "created_at": App.created_at,
+            "updated_at": App.updated_at,
+            "name": App.name,
+            "owner_name": Account.name,
+        }
+
+        # Build the query
+        query = sa.select(App).where(*filters)
+
+        # Handle sorting
+        if sort_by == "owner_name":
+            # Join with Account table for owner name sorting
+            query = query.join(Account, App.created_by == Account.id)
+            sort_column = Account.name
+        else:
+            sort_column = sort_field_map.get(sort_by, App.created_at)
+
+        # Apply sort order
+        # For text fields (name, owner_name), always sort A-Z regardless of sort_order
+        if sort_by == "owner_name":
+            # Primary sort: Owner name A-Z
+            # Secondary sort: Modified date descending (newest first)
+            query = query.order_by(sort_column.asc(), App.updated_at.desc())
+        elif sort_by == "name":
+            query = query.order_by(sort_column.asc())
+        elif sort_order == "asc":
+            query = query.order_by(sort_column.asc())
+        else:
+            query = query.order_by(sort_column.desc())
+
         app_models = db.paginate(
-            sa.select(App).where(*filters).order_by(App.created_at.desc()),
+            query,
             page=args["page"],
             per_page=args["limit"],
             error_out=False,
