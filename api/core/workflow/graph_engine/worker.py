@@ -145,9 +145,12 @@ class Worker(threading.Thread):
                 try:
                     node_events = node.run()
                     for event in node_events:
-                        logger.debug("worker %s"
-                                    "node_id %s receive event  and stop event: %s",
-                                    self._worker_id, event.node_id, self._stop_event.is_set())
+                        logger.debug(
+                            "worker %snode_id %s receive event  and stop event: %s",
+                            self._worker_id,
+                            event.node_id,
+                            self._stop_event.is_set(),
+                        )
                         self._event_queue.put(event)
                 except Exception as exc:
                     error = exc
@@ -159,9 +162,12 @@ class Worker(threading.Thread):
             try:
                 node_events = node.run()
                 for event in node_events:
-                    logger.debug("worker %s"
-                                "node_id %s receive event  and stop event: %s",
-                                self._worker_id, event.node_id, self._stop_event.is_set())
+                    logger.debug(
+                        "worker %snode_id %s receive event  and stop event: %s",
+                        self._worker_id,
+                        event.node_id,
+                        self._stop_event.is_set(),
+                    )
                     self._event_queue.put(event)
             except Exception as exc:
                 error = exc
