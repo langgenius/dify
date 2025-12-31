@@ -1,5 +1,4 @@
 import type { Viewport } from 'next'
-import process from 'node:process'
 import { Provider as JotaiProvider } from 'jotai'
 import { ThemeProvider } from 'next-themes'
 import { Instrument_Serif } from 'next/font/google'
