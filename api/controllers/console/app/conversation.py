@@ -13,7 +13,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from fields.conversation_fields import MessageTextField
 from fields.raws import FilesContainedField
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import TimestampField
@@ -176,6 +175,12 @@ annotation_hit_history_model = console_ns.model(
         "created_at": TimestampField,
     },
 )
+
+
+class MessageTextField(fields.Raw):
+    def format(self, value):
+        return value[0]["text"] if value else ""
+
 
 # Simple message detail model
 simple_message_detail_model = console_ns.model(

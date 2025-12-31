@@ -1,5 +1,6 @@
 from flask_restx import reqparse
 from flask_restx.inputs import int_range
+from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound
 
@@ -12,8 +13,6 @@ from fields.conversation_fields import (
     ConversationInfiniteScrollPagination,
     ResultResponse,
     SimpleConversation,
-    format_files_contained,
-    to_timestamp,
 )
 from libs.helper import uuid_value
 from models.model import AppMode
@@ -97,18 +96,8 @@ class ConversationListApi(WebApiResource):
                     pinned=pinned,
                     sort_by=args["sort_by"],
                 )
-                conversations = [
-                    SimpleConversation(
-                        id=str(item.id),
-                        name=item.name,
-                        inputs=format_files_contained(item.inputs),
-                        status=item.status,
-                        introduction=getattr(item, "introduction", None),
-                        created_at=to_timestamp(item.created_at),
-                        updated_at=to_timestamp(item.updated_at),
-                    )
-                    for item in pagination.data
-                ]
+                adapter = TypeAdapter(SimpleConversation)
+                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
                 return ConversationInfiniteScrollPagination(
                     limit=pagination.limit,
                     has_more=pagination.has_more,
@@ -190,15 +179,11 @@ class ConversationRenameApi(WebApiResource):
             conversation = ConversationService.rename(
                 app_model, conversation_id, end_user, args["name"], args["auto_generate"]
             )
-            return SimpleConversation(
-                id=str(conversation.id),
-                name=conversation.name,
-                inputs=format_files_contained(conversation.inputs),
-                status=conversation.status,
-                introduction=getattr(conversation, "introduction", None),
-                created_at=to_timestamp(conversation.created_at),
-                updated_at=to_timestamp(conversation.updated_at),
-            ).model_dump(mode="json")
+            return (
+                TypeAdapter(SimpleConversation)
+                .validate_python(conversation, from_attributes=True)
+                .model_dump(mode="json")
+            )
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 

@@ -3,7 +3,7 @@ from __future__ import annotations
 from datetime import datetime
 from typing import TypeAlias
 
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from core.file import File
 from fields.conversation_fields import AgentThought, JSONValue, MessageFile
@@ -37,6 +37,13 @@ class RetrieverResource(ResponseModel):
     content: str | None = None
     created_at: int | None = None
 
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
 
 class MessageListItem(ResponseModel):
     id: str
@@ -44,8 +51,8 @@ class MessageListItem(ResponseModel):
     parent_message_id: str | None = None
     inputs: dict[str, JSONValueType]
     query: str
-    answer: str
-    feedback: SimpleFeedback | None = None
+    answer: str = Field(validation_alias="re_sign_file_url_answer")
+    feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
     retriever_resources: list[RetrieverResource]
     created_at: int | None = None
     agent_thoughts: list[AgentThought]
@@ -53,9 +60,21 @@ class MessageListItem(ResponseModel):
     status: str
     error: str | None = None
 
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValueType) -> JSONValueType:
+        return format_files_contained(value)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
 
 class WebMessageListItem(MessageListItem):
-    metadata: JSONValueType | None = None
+    metadata: JSONValueType | None = Field(default=None, validation_alias="message_metadata_dict")
 
 
 class MessageInfiniteScrollPagination(ResponseModel):
@@ -76,8 +95,20 @@ class SavedMessageItem(ResponseModel):
     query: str
     answer: str
     message_files: list[MessageFile]
-    feedback: SimpleFeedback | None = None
+    feedback: SimpleFeedback | None = Field(default=None, validation_alias="user_feedback")
     created_at: int | None = None
+
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValueType) -> JSONValueType:
+        return format_files_contained(value)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class SavedMessageInfiniteScrollPagination(ResponseModel):

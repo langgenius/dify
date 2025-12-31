@@ -4,7 +4,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
 
 import services
@@ -13,15 +13,8 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
-from fields.conversation_fields import AgentThought, MessageFile, ResultResponse
-from fields.message_fields import (
-    MessageInfiniteScrollPagination,
-    MessageListItem,
-    RetrieverResource,
-    SimpleFeedback,
-    format_files_contained,
-    to_timestamp,
-)
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem
 from models.model import App, AppMode, EndUser
 from services.errors.message import (
     FirstMessageNotExistsError,
@@ -82,97 +75,8 @@ class MessageListApi(Resource):
             pagination = MessageService.pagination_by_first_id(
                 app_model, end_user, conversation_id, first_id, query_args.limit
             )
-            items: list[MessageListItem] = []
-            for message in pagination.data:
-                feedback = None
-                user_feedback = getattr(message, "user_feedback", None)
-                if user_feedback is not None:
-                    feedback = SimpleFeedback(rating=getattr(user_feedback, "rating", None))
-
-                retriever_resources = []
-                for resource in getattr(message, "retriever_resources", []):
-                    if isinstance(resource, dict):
-                        retriever_resources.append(RetrieverResource.model_validate(resource))
-                    else:
-                        retriever_resources.append(
-                            RetrieverResource(
-                                id=str(resource.id),
-                                message_id=str(resource.message_id),
-                                position=resource.position,
-                                dataset_id=getattr(resource, "dataset_id", None),
-                                dataset_name=getattr(resource, "dataset_name", None),
-                                document_id=getattr(resource, "document_id", None),
-                                document_name=getattr(resource, "document_name", None),
-                                data_source_type=getattr(resource, "data_source_type", None),
-                                segment_id=getattr(resource, "segment_id", None),
-                                score=getattr(resource, "score", None),
-                                hit_count=getattr(resource, "hit_count", None),
-                                word_count=getattr(resource, "word_count", None),
-                                segment_position=getattr(resource, "segment_position", None),
-                                index_node_hash=getattr(resource, "index_node_hash", None),
-                                content=getattr(resource, "content", None),
-                                created_at=to_timestamp(getattr(resource, "created_at", None)),
-                            )
-                        )
-
-                agent_thoughts = []
-                for thought in getattr(message, "agent_thoughts", []):
-                    chain_id = getattr(thought, "chain_id", None)
-                    if chain_id is None:
-                        chain_id = getattr(thought, "message_chain_id", None)
-                    agent_thoughts.append(
-                        AgentThought(
-                            id=str(thought.id),
-                            chain_id=chain_id,
-                            message_id=str(thought.message_id),
-                            position=thought.position,
-                            thought=getattr(thought, "thought", None),
-                            tool=getattr(thought, "tool", None),
-                            tool_labels=getattr(thought, "tool_labels", {}),
-                            tool_input=getattr(thought, "tool_input", None),
-                            created_at=to_timestamp(getattr(thought, "created_at", None)),
-                            observation=getattr(thought, "observation", None),
-                            files=getattr(thought, "files", []),
-                        )
-                    )
-
-                message_files = []
-                for item in getattr(message, "message_files", []):
-                    if isinstance(item, dict):
-                        message_files.append(MessageFile.model_validate(item))
-                    else:
-                        message_files.append(
-                            MessageFile(
-                                id=str(item.id),
-                                filename=getattr(item, "filename", ""),
-                                type=item.type,
-                                url=getattr(item, "url", None),
-                                mime_type=getattr(item, "mime_type", None),
-                                size=getattr(item, "size", None),
-                                transfer_method=str(item.transfer_method),
-                                belongs_to=getattr(item, "belongs_to", None),
-                                upload_file_id=getattr(item, "upload_file_id", None),
-                            )
-                        )
-
-                items.append(
-                    MessageListItem(
-                        id=str(message.id),
-                        conversation_id=str(message.conversation_id),
-                        parent_message_id=getattr(message, "parent_message_id", None),
-                        inputs=format_files_contained(message.inputs),
-                        query=message.query,
-                        answer=message.re_sign_file_url_answer,
-                        feedback=feedback,
-                        retriever_resources=retriever_resources,
-                        created_at=to_timestamp(message.created_at),
-                        agent_thoughts=agent_thoughts,
-                        message_files=message_files,
-                        status=message.status,
-                        error=getattr(message, "error", None),
-                    )
-                )
-
+            adapter = TypeAdapter(MessageListItem)
+            items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
             return MessageInfiniteScrollPagination(
                 limit=pagination.limit,
                 has_more=pagination.has_more,

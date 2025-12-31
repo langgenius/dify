@@ -3,16 +3,9 @@ from __future__ import annotations
 from datetime import datetime
 from typing import Any, TypeAlias
 
-from flask_restx import fields
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 
 from core.file import File
-
-
-class MessageTextField(fields.Raw):
-    def format(self, value):
-        return value[0]["text"] if value else ""
-
 
 JSONValue: TypeAlias = Any
 
@@ -38,6 +31,13 @@ class MessageFile(ResponseModel):
     belongs_to: str | None = None
     upload_file_id: str | None = None
 
+    @field_validator("transfer_method", mode="before")
+    @classmethod
+    def _normalize_transfer_method(cls, value: object) -> str:
+        if isinstance(value, str):
+            return value
+        return str(value)
+
 
 class SimpleConversation(ResponseModel):
     id: str
@@ -47,6 +47,18 @@ class SimpleConversation(ResponseModel):
     introduction: str | None = None
     created_at: int | None = None
     updated_at: int | None = None
+
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+        return format_files_contained(value)
+
+    @field_validator("created_at", "updated_at", mode="before")
+    @classmethod
+    def _normalize_timestamp(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class ConversationInfiniteScrollPagination(ResponseModel):
@@ -84,16 +96,31 @@ class Annotation(ResponseModel):
     account: SimpleAccount | None = None
     created_at: int | None = None
 
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
 
 class AnnotationHitHistory(ResponseModel):
     annotation_id: str
     annotation_create_account: SimpleAccount | None = None
     created_at: int | None = None
 
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
 
 class AgentThought(ResponseModel):
     id: str
     chain_id: str | None = None
+    message_chain_id: str | None = Field(default=None, exclude=True, validation_alias="message_chain_id")
     message_id: str
     position: int
     thought: str | None = None
@@ -103,6 +130,19 @@ class AgentThought(ResponseModel):
     created_at: int | None = None
     observation: str | None = None
     files: list[str]
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
+
+    @model_validator(mode="after")
+    def _fallback_chain_id(self):
+        if self.chain_id is None and self.message_chain_id:
+            self.chain_id = self.message_chain_id
+        return self
 
 
 class MessageDetail(ResponseModel):
@@ -129,6 +169,18 @@ class MessageDetail(ResponseModel):
     status: str
     error: str | None = None
     parent_message_id: str | None = None
+
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+        return format_files_contained(value)
+
+    @field_validator("created_at", mode="before")
+    @classmethod
+    def _normalize_created_at(cls, value: datetime | int | None) -> int | None:
+        if isinstance(value, datetime):
+            return to_timestamp(value)
+        return value
 
 
 class FeedbackStat(ResponseModel):
@@ -161,6 +213,11 @@ class SimpleMessageDetail(ResponseModel):
     query: str
     message: str
     answer: str
+
+    @field_validator("inputs", mode="before")
+    @classmethod
+    def _normalize_inputs(cls, value: JSONValue) -> JSONValue:
+        return format_files_contained(value)
 
 
 class Conversation(ResponseModel):

@@ -1,19 +1,13 @@
 from flask import request
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.explore.error import NotCompletionAppError
 from controllers.console.explore.wraps import InstalledAppResource
-from fields.conversation_fields import MessageFile, ResultResponse
-from fields.message_fields import (
-    SavedMessageInfiniteScrollPagination,
-    SavedMessageItem,
-    SimpleFeedback,
-    format_files_contained,
-    to_timestamp,
-)
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
 from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
 from services.errors.message import MessageNotExistsError
@@ -49,44 +43,8 @@ class SavedMessageListApi(InstalledAppResource):
             str(args.last_id) if args.last_id else None,
             args.limit,
         )
-        items: list[SavedMessageItem] = []
-        for message in pagination.data:
-            message_files = []
-            for item in getattr(message, "message_files", []):
-                if isinstance(item, dict):
-                    message_files.append(MessageFile.model_validate(item))
-                else:
-                    message_files.append(
-                        MessageFile(
-                            id=str(item.id),
-                            filename=getattr(item, "filename", ""),
-                            type=item.type,
-                            url=getattr(item, "url", None),
-                            mime_type=getattr(item, "mime_type", None),
-                            size=getattr(item, "size", None),
-                            transfer_method=str(item.transfer_method),
-                            belongs_to=getattr(item, "belongs_to", None),
-                            upload_file_id=getattr(item, "upload_file_id", None),
-                        )
-                    )
-
-            feedback = None
-            user_feedback = getattr(message, "user_feedback", None)
-            if user_feedback is not None:
-                feedback = SimpleFeedback(rating=getattr(user_feedback, "rating", None))
-
-            items.append(
-                SavedMessageItem(
-                    id=str(message.id),
-                    inputs=format_files_contained(message.inputs),
-                    query=message.query,
-                    answer=message.answer,
-                    message_files=message_files,
-                    feedback=feedback,
-                    created_at=to_timestamp(message.created_at),
-                )
-            )
-
+        adapter = TypeAdapter(SavedMessageItem)
+        items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
         return SavedMessageInfiniteScrollPagination(
             limit=pagination.limit,
             has_more=pagination.has_more,
