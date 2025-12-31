@@ -141,6 +141,8 @@ class Worker(threading.Thread):
                     node_events = node.run()
                     for event in node_events:
                         self._event_queue.put(event)
+                        if self._stop_event.is_set():
+                            break
                 except Exception as exc:
                     error = exc
                     raise
@@ -152,6 +154,8 @@ class Worker(threading.Thread):
                 node_events = node.run()
                 for event in node_events:
                     self._event_queue.put(event)
+                    if self._stop_event.is_set():
+                        break
             except Exception as exc:
                 error = exc
                 raise
