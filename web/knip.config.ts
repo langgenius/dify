@@ -47,26 +47,9 @@ const config: KnipConfig = {
   // ============================================================================
   // Files that serve as entry points for the application.
   // The '!' suffix means these patterns take precedence and are always included.
+  // Note: Next.js plugin automatically handles page.tsx, layout.tsx, loading.tsx,
+  // middleware.ts, next.config.js, and other standard Next.js files.
   entry: [
-    // Next.js App Router patterns (high priority)
-    'app/**/page.tsx!',
-    'app/**/layout.tsx!',
-    'app/**/loading.tsx!',
-    'app/**/error.tsx!',
-    'app/**/not-found.tsx!',
-    'app/**/template.tsx!',
-    'app/**/default.tsx!',
-
-    // Core configuration files
-    'middleware.ts!',
-    'next.config.js!',
-    'tailwind.config.js!',
-    'tailwind-common-config.ts!',
-    'postcss.config.js!',
-
-    // Linting setup
-    'eslint.config.mjs!',
-
     // ========================================================================
     // 🔒 CRITICAL: Global Initializers and Providers
     // ========================================================================
@@ -92,29 +75,18 @@ const config: KnipConfig = {
     // Protecting all context files to prevent breaking the provider chain.
     'context/**/*.ts?(x)!',
 
-    // Component-level contexts (also used via React.useContext)
-    'app/components/**/*.context.ts?(x)!',
-
-    // ========================================================================
-    // 🔒 CRITICAL: State Management Stores
-    // ========================================================================
-    // Zustand stores might be imported dynamically or via hooks.
-    // These are often imported at module level, so they should be protected.
-    'app/components/**/*.store.ts?(x)!',
-    'context/**/*.store.ts?(x)!',
-
-    // ========================================================================
-    // 🔒 CRITICAL: Provider Components
-    // ========================================================================
-    // Provider components wrap the app and provide global state/functionality
-    'app/components/**/*.provider.ts?(x)!',
-    'context/**/*.provider.ts?(x)!',
-
     // ========================================================================
     // Development tools
     // ========================================================================
     // Storybook configuration
     '.storybook/**/*',
+
+    // ========================================================================
+    // Utility scripts (not part of application runtime)
+    // ========================================================================
+    'scripts/**/*.{js,ts,mjs}',
+    'bin/**/*.{js,ts,mjs}',
+    'i18n-config/**/*.{js,ts,mjs}',
   ],
 
   // ============================================================================
@@ -137,11 +109,6 @@ const config: KnipConfig = {
   // - Build outputs
   // - External libraries
   ignore: [
-    // Test files and directories
-    '**/__tests__/**',
-    '**/*.spec.{ts,tsx}',
-    '**/*.test.{ts,tsx}',
-
     // ========================================================================
     // 🔒 CRITICAL: i18n Files (Dynamically Loaded)
     // ========================================================================
@@ -156,54 +123,6 @@ const config: KnipConfig = {
     // Static assets are referenced by URL in the browser, not via imports.
     // Examples: /logo.png, /icons/*, /embed.js
     'public/**',
-
-    // Build outputs and caches
-    'node_modules/**',
-    '.next/**',
-    'coverage/**',
-
-    // Development tools
-    '**/*.stories.{ts,tsx}',
-
-    // ========================================================================
-    // 🔒 Utility scripts (not part of application runtime)
-    // ========================================================================
-    // These scripts are run manually (e.g., pnpm gen-icons, pnpm i18n:check)
-    // and are not imported by the application code.
-    'scripts/**',
-    'bin/**',
-    'i18n-config/**',
-
-    // Icon generation script (generates components, not used in runtime)
-    'app/components/base/icons/script.mjs',
-  ],
-
-  // ============================================================================
-  // Ignored Dependencies
-  // ============================================================================
-  // Dependencies that are used but not directly imported in code.
-  // These are typically:
-  // - Build tools
-  // - Plugins loaded by configuration files
-  // - CLI tools
-  ignoreDependencies: [
-    // ========================================================================
-    // Next.js plugins (loaded by next.config.js)
-    // ========================================================================
-    'next-pwa',
-    '@next/bundle-analyzer',
-    '@next/mdx',
-
-    // ========================================================================
-    // Build tools (used by webpack/next.js build process)
-    // ========================================================================
-    'code-inspector-plugin',
-
-    // ========================================================================
-    // Development and translation tools (used by scripts)
-    // ========================================================================
-    'bing-translate-api',
-    'uglify-js',
   ],
 
   // ============================================================================

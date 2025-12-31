@@ -481,9 +481,6 @@ importers:
       autoprefixer:
         specifier: ^10.4.21
         version: 10.4.22(postcss@8.5.6)
-      babel-loader:
-        specifier: ^10.0.0
-        version: 10.0.0(@babel/core@7.28.5)(webpack@5.103.0(esbuild@0.25.0)(uglify-js@3.19.3))
       bing-translate-api:
         specifier: ^4.1.0
         version: 4.2.0
@@ -514,9 +511,6 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
-      istanbul-lib-coverage:
-        specifier: ^3.2.2
-        version: 3.2.2
       jsdom:
         specifier: ^27.3.0
         version: 27.3.0(canvas@3.2.0)
@@ -529,9 +523,6 @@ importers:
       lint-staged:
         specifier: ^15.5.2
         version: 15.5.2
-      lodash:
-        specifier: ^4.17.21
-        version: 4.17.21
       nock:
         specifier: ^14.0.10
         version: 14.0.10
@@ -4270,13 +4261,6 @@ packages:
     hasBin: true
     peerDependencies:
       postcss: ^8.1.0
-
-  babel-loader@10.0.0:
-    resolution: {integrity: sha512-z8jt+EdS61AMw22nSfoNJAZ0vrtmhPRVi6ghL3rCeRZI8cdNYFiV5xeV3HbE7rlZZNmGH8BVccwWt8/ED0QOHA==}
-    engines: {node: ^18.20.0 || ^20.10.0 || >=22.0.0}
-    peerDependencies:
-      '@babel/core': ^7.12.0
-      webpack: '>=5.61.0'
 
   babel-loader@8.4.1:
     resolution: {integrity: sha512-nXzRChX+Z1GoE6yWavBQg6jDslyFF3SDjl2paADuoQtQW10JqShJt62R6eJQ5m/pjJFDT8xgKIWSP85OY8eXeA==}
@@ -13086,12 +13070,6 @@ snapshots:
       picocolors: 1.1.1
       postcss: 8.5.6
       postcss-value-parser: 4.2.0
-
-  babel-loader@10.0.0(@babel/core@7.28.5)(webpack@5.103.0(esbuild@0.25.0)(uglify-js@3.19.3)):
-    dependencies:
-      '@babel/core': 7.28.5
-      find-up: 5.0.0
-      webpack: 5.103.0(esbuild@0.25.0)(uglify-js@3.19.3)
 
   babel-loader@8.4.1(@babel/core@7.28.5)(webpack@5.103.0(esbuild@0.25.0)(uglify-js@3.19.3)):
     dependencies:
