@@ -1,7 +1,7 @@
+import withPWAInit from '@ducanh2912/next-pwa'
 import withBundleAnalyzerInit from '@next/bundle-analyzer'
 import createMDX from '@next/mdx'
 import { codeInspectorPlugin } from 'code-inspector-plugin'
-import withPWAInit from 'next-pwa'
 
 const isDev = process.env.NODE_ENV === 'development'
 
