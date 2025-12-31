@@ -119,3 +119,14 @@ class AgentVariableTypeError(AgentNodeError):
         self.expected_type = expected_type
         self.actual_type = actual_type
         super().__init__(message)
+
+
+class AgentMaxIterationError(AgentNodeError):
+    """Exception raised when the agent exceeds the maximum iteration limit."""
+
+    def __init__(self, max_iteration: int):
+        self.max_iteration = max_iteration
+        super().__init__(
+            f"Agent exceeded the maximum iteration limit of {max_iteration}. "
+            f"The agent was unable to complete the task within the allowed number of iterations."
+        )

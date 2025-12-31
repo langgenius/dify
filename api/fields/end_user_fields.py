@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 simple_end_user_fields = {
     "id": fields.String,
@@ -8,5 +8,5 @@ simple_end_user_fields = {
 }
 
 
-def build_simple_end_user_model(api_or_ns: Api | Namespace):
+def build_simple_end_user_model(api_or_ns: Namespace):
     return api_or_ns.model("SimpleEndUser", simple_end_user_fields)
