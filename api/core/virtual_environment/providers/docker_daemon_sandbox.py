@@ -1,6 +1,7 @@
 import socket
 import tarfile
 from collections.abc import Mapping, Sequence
+from enum import StrEnum
 from functools import lru_cache
 from io import BytesIO
 from pathlib import PurePosixPath
@@ -23,10 +24,20 @@ EXAMPLE:
 
 from collections.abc import Mapping
 from typing import Any
+from 
 
 from core.virtual_environment.providers.docker_daemon_sandbox import DockerDaemonEnvironment
 
-options: Mapping[str, Any] = {}
+options: Mapping[str, Any] = {
+    # OptionsKey values are optional
+    # DockerDaemonEnvironment.OptionsKey.DOCKER_SOCK: "unix:///var/run/docker.sock",
+    # DockerDaemonEnvironment.OptionsKey.DOCKER_AGENT_IMAGE: "ubuntu:latest",
+    # DockerDaemonEnvironment.OptionsKey.DOCKER_AGENT_COMMAND
+    #
+    "docker_sock": "unix:///var/run/docker.sock", # optional, default to unix socket
+    "docker_agent_image": "ubuntu:latest", # optional, default to ubuntu:latest
+    "docker_agent_command": "/bin/sh -c 'while true; do sleep 1; done'", # optional, default to None
+}
 
 
 environment = DockerDaemonEnvironment(options=options)
@@ -50,16 +61,24 @@ environment.release_environment()
 
 class DockerDaemonEnvironment(VirtualEnvironment):
     _WORKING_DIR = "/workspace"
+    _DEAFULT_DOCKER_IMAGE = "ubuntu:latest"
+    _DEFAULT_DOCKER_SOCK = "unix:///var/run/docker.sock"
+
+    class OptionsKey(StrEnum):
+        DOCKER_SOCK = "docker_sock"
+        DOCKER_IMAGE = "docker_image"
+        DOCKER_COMMAND = "docker_command"
 
     def construct_environment(self, options: Mapping[str, Any], environments: Mapping[str, Any]) -> Metadata:
         """
         Construct the Docker daemon virtual environment.
         """
-        docker_client = self.get_docker_daemon(options.get("docker_sock", "unix:///var/run/docker.sock"))
+        docker_client = self.get_docker_daemon(
+            docker_sock=options.get(self.OptionsKey.DOCKER_SOCK, self._DEFAULT_DOCKER_SOCK)
+        )
 
-        # TODO: use a better image in practice
-        default_docker_image = options.get("docker_agent_image", "ubuntu:latest")
-        container_command = options.get("docker_agent_command", ["sleep", "infinity"])
+        default_docker_image = options.get(self.OptionsKey.DOCKER_IMAGE, self._DEAFULT_DOCKER_IMAGE)
+        container_command = options.get(self.OptionsKey.DOCKER_COMMAND)
 
         container = docker_client.containers.run(
             image=default_docker_image,
@@ -101,13 +120,22 @@ class DockerDaemonEnvironment(VirtualEnvironment):
         return docker.APIClient(base_url=docker_sock)
 
     def get_docker_sock(self) -> str:
-        return self.options.get("docker_sock", "unix:///var/run/docker.sock")
+        """
+        Get the Docker socket path.
+        """
+        return self.options.get(self.OptionsKey.DOCKER_SOCK, self._DEFAULT_DOCKER_SOCK)
 
     @property
     def _working_dir(self) -> str:
+        """
+        Get the working directory inside the Docker container.
+        """
         return self._WORKING_DIR
 
     def _get_container(self) -> Container:
+        """
+        Get the Docker container instance.
+        """
         docker_client = self.get_docker_daemon(self.get_docker_sock())
         return docker_client.containers.get(self.metadata.id)
 
