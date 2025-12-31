@@ -134,7 +134,7 @@ class Worker(threading.Thread):
 
         error: Exception | None = None
 
-        logger.info("Worker %s executing node %s", self._worker_id, node.id)
+        logger.debug("Worker %s executing node %s", self._worker_id, node.id)
 
         if self._flask_app and self._context_vars:
             with preserve_flask_contexts(
@@ -145,7 +145,7 @@ class Worker(threading.Thread):
                 try:
                     node_events = node.run()
                     for event in node_events:
-                        logger.info("worker %s"
+                        logger.debug("worker %s"
                                     "node_id %s receive event  and stop event: %s",
                                     self._worker_id, event.node_id, self._stop_event.is_set())
                         self._event_queue.put(event)
@@ -159,7 +159,7 @@ class Worker(threading.Thread):
             try:
                 node_events = node.run()
                 for event in node_events:
-                    logger.info("worker %s"
+                    logger.debug("worker %s"
                                 "node_id %s receive event  and stop event: %s",
                                 self._worker_id, event.node_id, self._stop_event.is_set())
                     self._event_queue.put(event)
