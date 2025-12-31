@@ -1,7 +1,8 @@
 import type { CommonNodeType, InputVar, TriggerNodeType, ValueSelector, Var, Variable } from '@/app/components/workflow/types'
 import type { FlowType } from '@/types/common'
 import type { NodeRunResult, NodeTracing } from '@/types/workflow'
-import { noop, unionBy } from 'es-toolkit/compat'
+import { unionBy } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 
 import { produce } from 'immer'
 import { useCallback, useEffect, useRef, useState } from 'react'
