@@ -3,8 +3,6 @@ import * as React from 'react'
 import { CategoryEnum } from '.'
 import Footer from './footer'
 
-let mockTranslations: Record<string, string> = {}
-
 vi.mock('next/link', () => ({
   default: ({ children, href, className, target }: { children: React.ReactNode, href: string, className?: string, target?: string }) => (
     <a href={href} className={className} target={target} data-testid="pricing-link">
@@ -13,25 +11,9 @@ vi.mock('next/link', () => ({
   ),
 }))
 
-vi.mock('react-i18next', async (importOriginal) => {
-  const actual = await importOriginal<typeof import('react-i18next')>()
-  return {
-    ...actual,
-    useTranslation: () => ({
-      t: (key: string, options?: { ns?: string }) => {
-        if (mockTranslations[key])
-          return mockTranslations[key]
-        const prefix = options?.ns ? `${options.ns}.` : ''
-        return `${prefix}${key}`
-      },
-    }),
-  }
-})
-
 describe('Footer', () => {
   beforeEach(() => {
     vi.clearAllMocks()
-    mockTranslations = {}
   })
 
   // Rendering behavior

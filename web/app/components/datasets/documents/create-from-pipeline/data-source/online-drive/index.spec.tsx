@@ -57,7 +57,6 @@ const { mockToastNotify } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: {
     notify: mockToastNotify,
   },

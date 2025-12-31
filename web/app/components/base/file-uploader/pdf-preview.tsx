@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { RiCloseLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { t } from 'i18next'
 import * as React from 'react'
 import { useState } from 'react'
