@@ -26,7 +26,12 @@ from typing import Any
 
 from core.virtual_environment.providers.e2b_sandbox import E2BEnvironment
 
-options: Mapping[str, Any] = {E2BEnvironment.OptionsKey.API_KEY: "?????????"}
+options: Mapping[str, Any] = {
+    E2BEnvironment.OptionsKey.API_KEY: "?????????",
+    E2BEnvironment.OptionsKey.E2B_DEFAULT_TEMPLATE: "code-interpreter-v1",
+    E2BEnvironment.OptionsKey.E2B_LIST_FILE_DEPTH: 2,
+    E2BEnvironment.OptionsKey.E2B_API_URL: "https://api.e2b.app",
+}
 
 
 logger = logging.getLogger(__name__)
@@ -60,11 +65,13 @@ class E2BEnvironment(VirtualEnvironment):
     """
 
     _WORKDIR = "/home/user"
+    _E2B_API_URL = "https://api.e2b.app"
 
     class OptionsKey(StrEnum):
         API_KEY = "api_key"
         E2B_LIST_FILE_DEPTH = "e2b_list_file_depth"
-        E2B_DEFAULT_TEMPLATE = "code-interpreter-v1"
+        E2B_DEFAULT_TEMPLATE = "e2b_default_template"
+        E2B_API_URL = "e2b_api_url"
 
     class StoreKey(StrEnum):
         SANDBOX = "sandbox"
@@ -77,6 +84,7 @@ class E2BEnvironment(VirtualEnvironment):
         sandbox = Sandbox.create(
             template=options.get(self.OptionsKey.E2B_DEFAULT_TEMPLATE, "code-interpreter-v1"),
             api_key=options.get(self.OptionsKey.API_KEY, ""),
+            api_url=options.get(self.OptionsKey.E2B_API_URL, self._E2B_API_URL),
             envs=dict(environments),
         )
         info = sandbox.get_info(api_key=options.get(self.OptionsKey.API_KEY, ""))
