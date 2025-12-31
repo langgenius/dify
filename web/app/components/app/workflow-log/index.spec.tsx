@@ -17,12 +17,15 @@ import type { UseQueryResult } from '@tanstack/react-query'
 
 import type { MockedFunction } from 'vitest'
 import type { ILogsProps } from './index'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type { ProviderContextState } from '@/context/provider-context'
+import type { WorkflowAppLogDetail, WorkflowLogExportTaskStatus, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
 import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import { Plan } from '@/app/components/billing/type'
 import { APP_PAGE_LIMIT } from '@/config'
+import { baseProviderContextValue, useProviderContext } from '@/context/provider-context'
 import { WorkflowRunTriggeredFrom } from '@/models/log'
 import * as useLogModule from '@/service/use-log'
 import { TIME_PERIOD_MAPPING } from './filter'
@@ -84,8 +87,17 @@ vi.mock('@/hooks/use-theme', () => ({
 vi.mock('@/context/app-context', () => ({
   useAppContext: () => ({
     userProfile: { timezone: 'UTC' },
+    isCurrentWorkspaceManager: true,
   }),
 }))
+
+vi.mock('@/context/provider-context', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('@/context/provider-context')>()
+  return {
+    ...actual,
+    useProviderContext: vi.fn(),
+  }
+})
 
 // Mock WorkflowContextProvider
 vi.mock('@/app/components/workflow/context', () => ({
@@ -95,6 +107,9 @@ vi.mock('@/app/components/workflow/context', () => ({
 }))
 
 const mockedUseWorkflowLogs = useLogModule.useWorkflowLogs as MockedFunction<typeof useLogModule.useWorkflowLogs>
+const mockedUseCreateWorkflowRunExportTask = useLogModule.useCreateWorkflowRunExportTask as MockedFunction<typeof useLogModule.useCreateWorkflowRunExportTask>
+const mockedUseWorkflowRunExportTaskStatus = useLogModule.useWorkflowRunExportTaskStatus as MockedFunction<typeof useLogModule.useWorkflowRunExportTaskStatus>
+const mockedUseProviderContext = useProviderContext as MockedFunction<typeof useProviderContext>
 
 // ============================================================================
 // Test Utilities
@@ -116,6 +131,19 @@ const renderWithQueryClient = (ui: React.ReactElement) => {
     </QueryClientProvider>,
   )
 }
+
+// ============================================================================
+// Provider Context Utilities
+// ============================================================================
+
+const buildProviderContext = (overrides: Partial<ProviderContextState> = {}): ProviderContextState => ({
+  ...baseProviderContextValue,
+  plan: {
+    ...baseProviderContextValue.plan,
+    type: Plan.enterprise,
+  },
+  ...overrides,
+})
 
 // ============================================================================
 // Mock Return Value Factory
@@ -241,8 +269,14 @@ type WorkflowLogsParams = {
 }
 
 const getMockCallParams = (): WorkflowLogsParams | undefined => {
-  const lastCall = mockedUseWorkflowLogs.mock.calls.at(-1)
-  return lastCall?.[0]
+  const calls = mockedUseWorkflowLogs.mock.calls
+  for (let index = calls.length - 1; index >= 0; index -= 1) {
+    const call = calls[index]?.[0]
+    const params = call?.params ?? {}
+    if ('created_at__after' in params || !('created_at__before' in params))
+      return call
+  }
+  return calls.at(-1)?.[0]
 }
 
 // ============================================================================
@@ -256,6 +290,13 @@ describe('Logs Container', () => {
 
   beforeEach(() => {
     vi.clearAllMocks()
+    mockedUseProviderContext.mockReturnValue(buildProviderContext())
+    mockedUseCreateWorkflowRunExportTask.mockReturnValue({
+      mutateAsync: vi.fn(),
+    } as unknown as ReturnType<typeof useLogModule.useCreateWorkflowRunExportTask>)
+    mockedUseWorkflowRunExportTaskStatus.mockReturnValue(
+      createMockQueryResult<WorkflowLogExportTaskStatus>({ data: undefined }),
+    )
   })
 
   // --------------------------------------------------------------------------
