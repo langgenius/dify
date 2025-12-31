@@ -234,10 +234,12 @@ const ConfigModal: FC<IConfigModalProps> = ({
   const checkboxDefaultSelectValue = useMemo(() => getCheckboxDefaultSelectValue(tempPayload.default), [tempPayload.default])
 
   const isJsonSchemaEmpty = (value: InputVar['json_schema']) => {
-    if (value == null)
+    if (value === null || value === undefined) {
       return true
-    if (typeof value !== 'string')
+    }
+    if (typeof value !== 'string') {
       return false
+    }
     const trimmed = value.trim()
     return trimmed === ''
   }
@@ -246,7 +248,7 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const jsonSchemaValue = tempPayload.json_schema
     const isSchemaEmpty = isJsonSchemaEmpty(jsonSchemaValue)
     const normalizedJsonSchema = isSchemaEmpty ? undefined : jsonSchemaValue
-    const payloadToSave = isSchemaEmpty
+    const payloadToSave = tempPayload.type === InputVarType.jsonObject && isSchemaEmpty
       ? { ...tempPayload, json_schema: undefined }
       : tempPayload
 
