@@ -1,4 +1,3 @@
-
 from core.rag.cleaner.clean_processor import CleanProcessor
 
 
@@ -14,7 +13,7 @@ class TestCleanProcessor:
         assert CleanProcessor.clean("text|>with|>invalid", None) == "text>with>invalid"
 
         # Test removal of control characters
-        text_with_control = "normal\x00text\x1Fwith\x07control\x7Fchars"
+        text_with_control = "normal\x00text\x1fwith\x07control\x7fchars"
         expected = "normaltextwithcontrolchars"
         assert CleanProcessor.clean(text_with_control, None) == expected
 
@@ -43,13 +42,7 @@ class TestCleanProcessor:
 
     def test_clean_remove_extra_spaces_enabled(self):
         """Test remove_extra_spaces rule when enabled."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_extra_spaces", "enabled": True}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": True}]}}
 
         # Test multiple newlines reduced to two
         text = "Line1\n\n\n\n\nLine2"
@@ -68,13 +61,7 @@ class TestCleanProcessor:
 
     def test_clean_remove_extra_spaces_disabled(self):
         """Test remove_extra_spaces rule when disabled."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_extra_spaces", "enabled": False}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_extra_spaces", "enabled": False}]}}
 
         text = "Line1\n\n\n\n\nLine2  with  spaces"
         # Should only apply default cleaning (no invalid symbols here)
@@ -82,13 +69,7 @@ class TestCleanProcessor:
 
     def test_clean_remove_urls_emails_enabled(self):
         """Test remove_urls_emails rule when enabled."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_urls_emails", "enabled": True}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
         # Test email removal
         text = "Contact us at test@example.com for more info"
@@ -107,13 +88,7 @@ class TestCleanProcessor:
 
     def test_clean_preserve_markdown_links_and_images(self):
         """Test that markdown links and images are preserved when removing URLs."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_urls_emails", "enabled": True}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
         # Test markdown link preservation
         text = "Check [Google](https://google.com) for info"
@@ -142,13 +117,7 @@ class TestCleanProcessor:
 
     def test_clean_remove_urls_emails_disabled(self):
         """Test remove_urls_emails rule when disabled."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_urls_emails", "enabled": False}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": False}]}}
 
         text = "Email test@example.com visit https://example.com"
         # Should only apply default cleaning
@@ -160,7 +129,7 @@ class TestCleanProcessor:
             "rules": {
                 "pre_processing_rules": [
                     {"id": "remove_extra_spaces", "enabled": True},
-                    {"id": "remove_urls_emails", "enabled": True}
+                    {"id": "remove_urls_emails", "enabled": True},
                 ]
             }
         }
@@ -175,7 +144,7 @@ class TestCleanProcessor:
             "rules": {
                 "pre_processing_rules": [
                     {"id": "remove_extra_spaces", "enabled": True},
-                    {"id": "remove_urls_emails", "enabled": True}
+                    {"id": "remove_urls_emails", "enabled": True},
                 ]
             }
         }
@@ -186,13 +155,7 @@ class TestCleanProcessor:
 
     def test_clean_unknown_rule_id_ignored(self):
         """Test that unknown rule IDs are silently ignored."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "unknown_rule", "enabled": True}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "unknown_rule", "enabled": True}]}}
 
         text = "Hello<|World\x00"
         expected = "Hello<World"
@@ -213,13 +176,7 @@ class TestCleanProcessor:
 
     def test_clean_multiple_markdown_links_preserved(self):
         """Test multiple markdown links are all preserved."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_urls_emails", "enabled": True}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
         text = "[One](https://one.com) [Two](http://two.org) [Three](https://three.net)"
         expected = "[One](https://one.com) [Two](http://two.org) [Three](https://three.net)"
@@ -227,13 +184,7 @@ class TestCleanProcessor:
 
     def test_clean_markdown_link_text_as_url(self):
         """Test markdown link where the link text itself is a URL."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_urls_emails", "enabled": True}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
         # Link text that looks like URL should be preserved
         text = "[https://text-url.com](https://actual-url.com)"
@@ -247,13 +198,7 @@ class TestCleanProcessor:
 
     def test_clean_complex_markdown_link_content(self):
         """Test markdown links with complex content - known limitation with brackets in link text."""
-        process_rule = {
-            "rules": {
-                "pre_processing_rules": [
-                    {"id": "remove_urls_emails", "enabled": True}
-                ]
-            }
-        }
+        process_rule = {"rules": {"pre_processing_rules": [{"id": "remove_urls_emails", "enabled": True}]}}
 
         # Note: The regex pattern [^\]]* cannot handle ] within link text
         # This is a known limitation - the pattern stops at the first ]

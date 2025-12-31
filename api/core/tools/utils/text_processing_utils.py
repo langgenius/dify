@@ -13,7 +13,7 @@ def remove_leading_symbols(text: str) -> str:
         str: The text with leading punctuation or symbols removed.
     """
     # Check if text starts with a markdown link - preserve it
-    markdown_link_pattern = r'^\[([^\]]+)\]\((https?://[^)]+)\)'
+    markdown_link_pattern = r"^\[([^\]]+)\]\((https?://[^)]+)\)"
     if re.match(markdown_link_pattern, text):
         return text
 
