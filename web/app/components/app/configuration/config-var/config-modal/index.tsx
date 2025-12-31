@@ -248,6 +248,9 @@ const ConfigModal: FC<IConfigModalProps> = ({
     const jsonSchemaValue = tempPayload.json_schema
     const isSchemaEmpty = isJsonSchemaEmpty(jsonSchemaValue)
     const normalizedJsonSchema = isSchemaEmpty ? undefined : jsonSchemaValue
+
+    // if the input type is jsonObject and the schema is empty as determined by `isJsonSchemaEmpty`,
+    // remove the `json_schema` field from the payload by setting its value to `undefined`.
     const payloadToSave = tempPayload.type === InputVarType.jsonObject && isSchemaEmpty
       ? { ...tempPayload, json_schema: undefined }
       : tempPayload
