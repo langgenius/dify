@@ -1,10 +1,10 @@
 from __future__ import annotations
 
 from datetime import datetime
-from typing import TypeAlias
+from typing import Any, TypeAlias
 
 from flask_restx import fields
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 from core.file import File
 
@@ -14,11 +14,17 @@ class MessageTextField(fields.Raw):
         return value[0]["text"] if value else ""
 
 
-JSONValue: TypeAlias = str | int | float | bool | None | dict[str, "JSONValue"] | list["JSONValue"]
+JSONValue: TypeAlias = Any
 
 
 class ResponseModel(BaseModel):
-    model_config = ConfigDict(from_attributes=True, extra="ignore")
+    model_config = ConfigDict(
+        from_attributes=True,
+        extra="ignore",
+        populate_by_name=True,
+        serialize_by_alias=True,
+        protected_namespaces=(),
+    )
 
 
 class MessageFile(ResponseModel):
@@ -169,7 +175,7 @@ class Conversation(ResponseModel):
     created_at: int | None = None
     updated_at: int | None = None
     annotation: Annotation | None = None
-    model_config: SimpleModelConfig | None = None
+    model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
     message: SimpleMessageDetail | None = None
@@ -190,7 +196,7 @@ class ConversationMessageDetail(ResponseModel):
     from_end_user_id: str | None = None
     from_account_id: str | None = None
     created_at: int | None = None
-    model_config: ModelConfig | None = None
+    model_config_: ModelConfig | None = Field(default=None, alias="model_config")
     message: MessageDetail | None = None
 
 
@@ -208,7 +214,7 @@ class ConversationWithSummary(ResponseModel):
     created_at: int | None = None
     updated_at: int | None = None
     annotated: bool
-    model_config: SimpleModelConfig | None = None
+    model_config_: SimpleModelConfig | None = Field(default=None, alias="model_config")
     message_count: int
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
@@ -233,7 +239,7 @@ class ConversationDetail(ResponseModel):
     updated_at: int | None = None
     annotated: bool
     introduction: str | None = None
-    model_config: ModelConfig | None = None
+    model_config_: ModelConfig | None = Field(default=None, alias="model_config")
     message_count: int
     user_feedback_stats: FeedbackStat | None = None
     admin_feedback_stats: FeedbackStat | None = None
