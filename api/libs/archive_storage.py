@@ -37,10 +37,9 @@ class ArchiveStorageNotConfiguredError(ArchiveStorageError):
 
 class ArchiveStorage:
     """
-    S3-compatible storage client for archiving workflow logs.
+    S3-compatible storage client for archiving or exporting.
 
-    This client provides methods for storing and retrieving archived workflow
-    run data in JSONL+gzip format.
+    This client provides methods for storing and retrieving archived data in JSONL+gzip format.
     """
 
     def __init__(self, bucket: str):
