@@ -4,12 +4,19 @@ Helpers for workflow run export task status tracking.
 
 import json
 from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from extensions.ext_redis import redis_client
 from libs.archive_storage import get_archive_storage
 
 TASK_STATUS_TTL_SECONDS = 7 * 24 * 3600
 EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
+PUBLIC_TASK_STATUS_FIELDS = {
+    "task_id",
+    "status",
+    "presigned_url",
+    "presigned_url_expires_at",
+}
 
 
 def _task_key(task_id: str) -> str:
@@ -90,6 +97,13 @@ def get_task_status(task_id: str) -> dict | None:
     except Exception:
         return None
     return _refresh_presigned_url(task_id, status)
+
+
+def get_public_task_status(task_id: str) -> dict[str, Any] | None:
+    status = get_task_status(task_id)
+    if not status:
+        return None
+    return {key: status[key] for key in PUBLIC_TASK_STATUS_FIELDS if key in status}
 
 
 def reserve_task_for_run(tenant_id: str, app_id: str, run_id: str, task_id: str) -> str:

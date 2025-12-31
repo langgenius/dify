@@ -26,8 +26,8 @@ from libs.helper import RateLimiter, uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
 from services.retention.workflow_run_export_task_status import (
+    get_public_task_status,
     get_task_id_for_run,
-    get_task_status,
     reserve_task_for_run,
     set_task_status,
 )
@@ -109,12 +109,8 @@ workflow_run_export_task_fields = console_ns.model(
     {
         "task_id": fields.String(description="Export task id"),
         "status": fields.String(description="Task status: pending/running/success/failed"),
-        "storage_key": fields.String(description="Object storage key", required=False),
-        "checksum": fields.String(description="Object checksum", required=False),
-        "size_bytes": fields.Integer(description="Size of exported zip in bytes", required=False),
         "presigned_url": fields.String(description="Pre-signed URL for download", required=False),
         "presigned_url_expires_at": fields.String(description="Pre-signed URL expiration time", required=False),
-        "error": fields.String(description="Error message", required=False),
     },
 )
 
@@ -224,7 +220,7 @@ class WorkflowRunExportTaskApi(Resource):
         # If a task already exists for this run, return its status to keep export idempotent.
         existing_task_id = get_task_id_for_run(tenant_id, app_id, run_id_str)
         if existing_task_id:
-            status = get_task_status(existing_task_id)
+            status = get_public_task_status(existing_task_id)
             if status:
                 return status, 200
 
@@ -233,7 +229,7 @@ class WorkflowRunExportTaskApi(Resource):
 
         # If another request just reserved, return its status or pending stub.
         if task_id != new_task_id:
-            status = get_task_status(task_id)
+            status = get_public_task_status(task_id)
             if status:
                 return status, 200
 
@@ -263,7 +259,7 @@ class WorkflowRunExportTaskStatusApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, task_id: str):
-        status = get_task_status(task_id)
+        status = get_public_task_status(task_id)
         if not status:
             return {"code": "not_found", "message": "task not found"}, 404
         return status

@@ -290,9 +290,7 @@ export type WorkflowLogExportTaskStatus = {
   task_id: string
   status: 'pending' | 'running' | 'success' | 'failed'
   presigned_url?: string
-  storage_key?: string
-  checksum?: string
-  size_bytes?: number
+  presigned_url_expires_at?: string
 }
 
 export type WorkflowRunDetailResponse = {
