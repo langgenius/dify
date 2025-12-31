@@ -22,11 +22,11 @@ export const useTestRunSteps = () => {
 
   const steps = [
     {
-      label: t('datasetPipeline.testRun.steps.dataSource'),
+      label: t('testRun.steps.dataSource', { ns: 'datasetPipeline' }),
       value: TestRunStep.dataSource,
     },
     {
-      label: t('datasetPipeline.testRun.steps.documentProcessing'),
+      label: t('testRun.steps.documentProcessing', { ns: 'datasetPipeline' }),
       value: TestRunStep.documentProcessing,
     },
   ]

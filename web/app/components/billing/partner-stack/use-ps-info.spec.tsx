@@ -42,7 +42,6 @@ vi.mock('js-cookie', () => {
   globals.__partnerStackCookieMocks = { get, set, remove }
   const cookieApi = { get, set, remove }
   return {
-    __esModule: true,
     default: cookieApi,
     get,
     set,

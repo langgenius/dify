@@ -19,7 +19,6 @@ from controllers.console.wraps import (
 )
 from core.db.session_factory import session_factory
 from core.entities.mcp_provider import MCPAuthentication, MCPConfiguration
-from core.helper.tool_provider_cache import ToolProviderListCache
 from core.mcp.auth.auth_flow import auth, handle_callback
 from core.mcp.error import MCPAuthError, MCPError, MCPRefreshTokenError
 from core.mcp.mcp_client import MCPClient
@@ -1011,9 +1010,6 @@ class ToolProviderMCPApi(Resource):
             # Best-effort: if initial fetch fails (e.g., auth required), return created provider as-is
             logger.warning("Failed to fetch MCP tools after creation", exc_info=True)
 
-        # Final cache invalidation to ensure list views are up to date
-        ToolProviderListCache.invalidate_cache(tenant_id)
-
         return jsonable_encoder(result)
 
     @console_ns.expect(console_ns.models[MCPProviderUpdatePayload.__name__])
@@ -1060,9 +1056,6 @@ class ToolProviderMCPApi(Resource):
                 validation_result=validation_result,
             )
 
-        # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
-        ToolProviderListCache.invalidate_cache(current_tenant_id)
-
         return {"result": "success"}
 
     @console_ns.expect(console_ns.models[MCPProviderDeletePayload.__name__])
@@ -1076,9 +1069,6 @@ class ToolProviderMCPApi(Resource):
         with Session(db.engine) as session, session.begin():
             service = MCPToolManageService(session=session)
             service.delete_provider(tenant_id=current_tenant_id, provider_id=args.provider_id)
-
-        # Invalidate cache AFTER transaction commits to avoid holding locks during Redis operations
-        ToolProviderListCache.invalidate_cache(current_tenant_id)
 
         return {"result": "success"}
 
@@ -1123,8 +1113,6 @@ class ToolMCPAuthApi(Resource):
                         credentials=provider_entity.credentials,
                         authed=True,
                     )
-                # Invalidate cache after updating credentials
-                ToolProviderListCache.invalidate_cache(tenant_id)
                 return {"result": "success"}
         except MCPAuthError as e:
             try:
@@ -1138,22 +1126,16 @@ class ToolMCPAuthApi(Resource):
                 with Session(db.engine) as session, session.begin():
                     service = MCPToolManageService(session=session)
                     response = service.execute_auth_actions(auth_result)
-                    # Invalidate cache after auth actions may have updated provider state
-                    ToolProviderListCache.invalidate_cache(tenant_id)
                     return response
             except MCPRefreshTokenError as e:
                 with Session(db.engine) as session, session.begin():
                     service = MCPToolManageService(session=session)
                     service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
-                # Invalidate cache after clearing credentials
-                ToolProviderListCache.invalidate_cache(tenant_id)
                 raise ValueError(f"Failed to refresh token, please try to authorize again: {e}") from e
         except (MCPError, ValueError) as e:
             with Session(db.engine) as session, session.begin():
                 service = MCPToolManageService(session=session)
                 service.clear_provider_credentials(provider_id=provider_id, tenant_id=tenant_id)
-            # Invalidate cache after clearing credentials
-            ToolProviderListCache.invalidate_cache(tenant_id)
             raise ValueError(f"Failed to connect to MCP server: {e}") from e
 
 

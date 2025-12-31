@@ -47,7 +47,7 @@ const AgentResultPanel = ({
             </div>
             <RiAlertFill className="mr-1.5 h-4 w-4 text-text-warning-secondary" />
             <div className="system-xs-medium text-text-primary">
-              {t('runLog.circularInvocationTip')}
+              {t('circularInvocationTip', { ns: 'runLog' })}
             </div>
           </div>
         )

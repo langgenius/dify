@@ -29,7 +29,7 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center p-3">
         <div className="flex grow items-center gap-x-2">
           <RiLockLine className="h-4 w-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('app.accessControlDialog.accessItems.specific')}</p>
+          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
       </div>
     )
@@ -40,7 +40,7 @@ export default function SpecificGroupsOrMembers() {
       <div className="flex items-center gap-x-1 p-3">
         <div className="flex grow items-center gap-x-1">
           <RiLockLine className="h-4 w-4 text-text-primary" />
-          <p className="system-sm-medium text-text-primary">{t('app.accessControlDialog.accessItems.specific')}</p>
+          <p className="system-sm-medium text-text-primary">{t('accessControlDialog.accessItems.specific', { ns: 'app' })}</p>
         </div>
         <div className="flex items-center gap-x-1">
           <AddMemberOrGroupDialog />
@@ -60,14 +60,14 @@ function RenderGroupsAndMembers() {
   const specificGroups = useAccessControlStore(s => s.specificGroups)
   const specificMembers = useAccessControlStore(s => s.specificMembers)
   if (specificGroups.length <= 0 && specificMembers.length <= 0)
-    return <div className="px-2 pb-1.5 pt-5"><p className="system-xs-regular text-center text-text-tertiary">{t('app.accessControlDialog.noGroupsOrMembers')}</p></div>
+    return <div className="px-2 pb-1.5 pt-5"><p className="system-xs-regular text-center text-text-tertiary">{t('accessControlDialog.noGroupsOrMembers', { ns: 'app' })}</p></div>
   return (
     <>
-      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('app.accessControlDialog.groups', { count: specificGroups.length ?? 0 })}</p>
+      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('accessControlDialog.groups', { ns: 'app', count: specificGroups.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificGroups.map((group, index) => <GroupItem key={index} group={group} />)}
       </div>
-      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('app.accessControlDialog.members', { count: specificMembers.length ?? 0 })}</p>
+      <p className="system-2xs-medium-uppercase sticky top-0 text-text-tertiary">{t('accessControlDialog.members', { ns: 'app', count: specificMembers.length ?? 0 })}</p>
       <div className="flex flex-row flex-wrap gap-1">
         {specificMembers.map((member, index) => <MemberItem key={index} member={member} />)}
       </div>
@@ -138,7 +138,7 @@ function BaseItem({ icon, onRemove, children }: BaseItemProps) {
 export function WebAppSSONotEnabledTip() {
   const { t } = useTranslation()
   return (
-    <Tooltip asChild={false} popupContent={t('app.accessControlDialog.webAppSSONotEnabledTip')}>
+    <Tooltip asChild={false} popupContent={t('accessControlDialog.webAppSSONotEnabledTip', { ns: 'app' })}>
       <RiAlertFill className="h-4 w-4 shrink-0 text-text-warning-secondary" />
     </Tooltip>
   )

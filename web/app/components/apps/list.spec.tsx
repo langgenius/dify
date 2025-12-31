@@ -39,7 +39,6 @@ const mockQueryState = {
   isCreatedByMe: false,
 }
 vi.mock('./hooks/use-apps-query-state', () => ({
-  __esModule: true,
   default: () => ({
     query: mockQueryState,
     setQuery: mockSetQuery,
@@ -57,8 +56,13 @@ vi.mock('./hooks/use-dsl-drag-drop', () => ({
 }))
 
 const mockSetActiveTab = vi.fn()
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => ['all', mockSetActiveTab],
+vi.mock('nuqs', () => ({
+  useQueryState: () => ['all', mockSetActiveTab],
+  parseAsString: {
+    withDefault: () => ({
+      withOptions: () => ({}),
+    }),
+  },
 }))
 
 // Mock service hooks - use object for mutable state (vi.mock is hoisted)
@@ -139,7 +143,6 @@ vi.mock('@/service/tag', () => ({
 // Store TagFilter onChange callback for testing
 let mockTagFilterOnChange: ((value: string[]) => void) | null = null
 vi.mock('@/app/components/base/tag-management/filter', () => ({
-  __esModule: true,
   default: ({ onChange }: { onChange: (value: string[]) => void }) => {
     mockTagFilterOnChange = onChange
     return React.createElement('div', { 'data-testid': 'tag-filter' }, 'common.tag.placeholder')
@@ -195,7 +198,6 @@ vi.mock('next/dynamic', () => ({
  * Each child component (AppCard, NewAppCard, Empty, Footer) has its own dedicated tests.
  */
 vi.mock('./app-card', () => ({
-  __esModule: true,
   default: ({ app }: any) => {
     return React.createElement('div', { 'data-testid': `app-card-${app.id}`, 'role': 'article' }, app.name)
   },
@@ -208,14 +210,12 @@ vi.mock('./new-app-card', () => ({
 }))
 
 vi.mock('./empty', () => ({
-  __esModule: true,
   default: () => {
     return React.createElement('div', { 'data-testid': 'empty-state', 'role': 'status' }, 'No apps found')
   },
 }))
 
 vi.mock('./footer', () => ({
-  __esModule: true,
   default: () => {
     return React.createElement('footer', { 'data-testid': 'footer', 'role': 'contentinfo' }, 'Footer')
   },

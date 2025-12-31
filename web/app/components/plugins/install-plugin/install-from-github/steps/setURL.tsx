@@ -19,7 +19,7 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
         htmlFor="repoUrl"
         className="flex flex-col items-start justify-center self-stretch text-text-secondary"
       >
-        <span className="system-sm-semibold">{t('plugin.installFromGitHub.gitHubRepo')}</span>
+        <span className="system-sm-semibold">{t('installFromGitHub.gitHubRepo', { ns: 'plugin' })}</span>
       </label>
       <input
         type="url"
@@ -38,7 +38,7 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
           className="min-w-[72px]"
           onClick={onCancel}
         >
-          {t('plugin.installModal.cancel')}
+          {t('installModal.cancel', { ns: 'plugin' })}
         </Button>
         <Button
           variant="primary"
@@ -46,7 +46,7 @@ const SetURL: React.FC<SetURLProps> = ({ repoUrl, onChange, onNext, onCancel }) 
           onClick={onNext}
           disabled={!repoUrl.trim()}
         >
-          {t('plugin.installModal.next')}
+          {t('installModal.next', { ns: 'plugin' })}
         </Button>
       </div>
     </>
