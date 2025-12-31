@@ -1,6 +1,6 @@
 import type { FormValue } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { ChatPromptConfig, CompletionPromptConfig, ConversationHistoriesRole, PromptItem } from '@/models/debug'
-import { clone } from 'es-toolkit/compat'
+import { clone } from 'es-toolkit/object'
 import { produce } from 'immer'
 import { useState } from 'react'
 import { checkHasContextBlock, checkHasHistoryBlock, checkHasQueryBlock, PRE_PROMPT_PLACEHOLDER_TEXT } from '@/app/components/base/prompt-editor/constants'

@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Nama Tampilan",
   "variableConfig.editModalTitle": "Edit Bidang Input",
   "variableConfig.errorMsg.atLeastOneOption": "Setidaknya satu opsi diperlukan",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema bukan JSON yang valid",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Schema harus bertipe \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Nama label diperlukan",
   "variableConfig.errorMsg.optionRepeat": "Memiliki opsi pengulangan",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Nama variabel tidak dapat diulang",
