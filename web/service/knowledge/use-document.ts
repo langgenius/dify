@@ -38,7 +38,7 @@ export const useDocumentList = (payload: {
   if (normalizedStatus && normalizedStatus !== 'all')
     params.status = normalizedStatus
   return useQuery<DocumentListResponse>({
-    queryKey: [...useDocumentListKey, datasetId, keyword, page, limit, sort, normalizedStatus],
+    queryKey: [...useDocumentListKey, datasetId, { ...params }],
     queryFn: () => get<DocumentListResponse>(`/datasets/${datasetId}/documents`, {
       params,
     }),
@@ -123,7 +123,7 @@ export const useDocumentDetail = (payload: {
 }) => {
   const { datasetId, documentId, params } = payload
   return useQuery<DocumentDetailResponse>({
-    queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId],
+    queryKey: [...useDocumentDetailKey, 'withoutMetaData', datasetId, documentId, { ...params }],
     queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
   })
 }
@@ -135,7 +135,7 @@ export const useDocumentMetadata = (payload: {
 }) => {
   const { datasetId, documentId, params } = payload
   return useQuery<DocumentDetailResponse>({
-    queryKey: [...useDocumentDetailKey, 'onlyMetaData', datasetId, documentId],
+    queryKey: [...useDocumentDetailKey, 'onlyMetaData', datasetId, documentId, { ...params }],
     queryFn: () => get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params }),
   })
 }

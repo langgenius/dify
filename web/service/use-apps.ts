@@ -122,7 +122,7 @@ export const useInvalidateAppList = () => {
 
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
   return useQuery<T>({
-    queryKey: [NAME_SPACE, 'statistics', metric, appId, params],
+    queryKey: [NAME_SPACE, 'statistics', metric, appId, { ...params }],
     queryFn: () => get<T>(`/apps/${appId}/statistics/${metric}`, { params }),
     enabled: !!appId,
   })
@@ -130,7 +130,7 @@ const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRa
 
 const useWorkflowStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
   return useQuery<T>({
-    queryKey: [NAME_SPACE, 'workflow-statistics', metric, appId, params],
+    queryKey: [NAME_SPACE, 'workflow-statistics', metric, appId, { ...params }],
     queryFn: () => get<T>(`/apps/${appId}/workflow/statistics/${metric}`, { params }),
     enabled: !!appId,
   })

@@ -678,7 +678,7 @@ export const useMutationCheckDependencies = () => {
 
 export const useModelInList = (currentProvider?: ModelProvider, modelId?: string) => {
   return useQuery({
-    queryKey: ['modelInList', currentProvider?.provider, modelId],
+    queryKey: ['modelInList', currentProvider, modelId],
     queryFn: async () => {
       if (!modelId || !currentProvider)
         return false
@@ -742,7 +742,7 @@ export const usePluginReadme = ({ plugin_unique_identifier, language }: { plugin
 export const usePluginReadmeAsset = ({ file_name, plugin_unique_identifier }: { file_name?: string, plugin_unique_identifier?: string }) => {
   const normalizedFileName = file_name?.replace(/(^\.\/_assets\/|^_assets\/)/, '')
   return useQuery({
-    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, file_name],
+    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, normalizedFileName],
     queryFn: () => get<Blob>('/workspaces/current/plugin/asset', { params: { plugin_unique_identifier, file_name: normalizedFileName } }, { silent: true }),
     enabled: !!plugin_unique_identifier && !!file_name && /(^\.\/_assets|^_assets)/.test(file_name),
   })
