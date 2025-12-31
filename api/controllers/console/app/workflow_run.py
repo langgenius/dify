@@ -25,7 +25,7 @@ from libs.custom_inputs import time_duration
 from libs.helper import RateLimiter, uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
-from services.retention.export_workflow_run import WorkflowRunExportTaskService
+from services.retention.workflow_run.export_workflow_run import WorkflowRunExportTaskService
 from services.workflow_run_service import WorkflowRunService
 from tasks.workflow_run_export_task import export_workflow_run_task
 

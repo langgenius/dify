@@ -4,7 +4,7 @@ import click
 
 import app
 from configs import dify_config
-from services.retention.archive_paid_plan_workflow_run import WorkflowRunArchiver
+from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
 
 @app.celery.task(queue="retention")

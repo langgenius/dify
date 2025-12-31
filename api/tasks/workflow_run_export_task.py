@@ -9,7 +9,7 @@ from typing import cast
 from celery import shared_task
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_export_storage
-from services.retention.export_workflow_run import (
+from services.retention.workflow_run.export_workflow_run import (
     WorkflowRunExportError,
     WorkflowRunExportService,
     WorkflowRunExportTaskService,

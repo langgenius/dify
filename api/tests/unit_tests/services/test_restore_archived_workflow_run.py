@@ -11,7 +11,7 @@ class TestWorkflowRunRestore:
 
     def test_restore_initialization(self):
         """Restore service should respect dry_run flag."""
-        from services.retention.restore_archived_workflow_run import WorkflowRunRestore
+        from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
 
         restore = WorkflowRunRestore(dry_run=True)
 
@@ -20,7 +20,7 @@ class TestWorkflowRunRestore:
     def test_convert_datetime_fields(self):
         """ISO datetime strings should be converted to datetime objects."""
         from models.workflow import WorkflowRun
-        from services.retention.restore_archived_workflow_run import WorkflowRunRestore
+        from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
 
         record = {
             "id": "test-id",
@@ -39,7 +39,7 @@ class TestWorkflowRunRestore:
 
     def test_restore_table_records_returns_rowcount(self):
         """Restore should return inserted rowcount."""
-        from services.retention.restore_archived_workflow_run import WorkflowRunRestore
+        from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
 
         session = MagicMock()
         session.execute.return_value = MagicMock(rowcount=2)
@@ -54,7 +54,7 @@ class TestWorkflowRunRestore:
 
     def test_restore_table_records_unknown_table(self):
         """Unknown table names should be ignored gracefully."""
-        from services.retention.restore_archived_workflow_run import WorkflowRunRestore
+        from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
 
         session = MagicMock()
 
