@@ -13,6 +13,7 @@ def mock_dependencies(monkeypatch):
 
     def save(key, data):
         saves.append((key, data))
+
     monkeypatch.setattr(pe, "storage", SimpleNamespace(save=save))
 
     # Mock db
@@ -29,6 +30,7 @@ def mock_dependencies(monkeypatch):
 
         def commit(self):
             self.committed = True
+
     db_stub = SimpleNamespace(session=DummySession())
     monkeypatch.setattr(pe, "db", db_stub)
 
@@ -41,6 +43,7 @@ def mock_dependencies(monkeypatch):
             self.id = self.DEFAULT_ID
             for k, v in kwargs.items():
                 setattr(self, k, v)
+
     monkeypatch.setattr(pe, "UploadFile", FakeUploadFile)
 
     # Mock config
@@ -51,10 +54,13 @@ def mock_dependencies(monkeypatch):
     return SimpleNamespace(saves=saves, db=db_stub, UploadFile=FakeUploadFile)
 
 
-@pytest.mark.parametrize(("image_bytes", "expected_mime", "expected_ext", "file_id"), [
-    (b"\xff\xd8\xff some jpeg", "image/jpeg", "jpg", "test_file_id_jpeg"),
-    (b"\x89PNG\r\n\x1a\n some png", "image/png", "png", "test_file_id_png"),
-])
+@pytest.mark.parametrize(
+    ("image_bytes", "expected_mime", "expected_ext", "file_id"),
+    [
+        (b"\xff\xd8\xff some jpeg", "image/jpeg", "jpg", "test_file_id_jpeg"),
+        (b"\x89PNG\r\n\x1a\n some png", "image/png", "png", "test_file_id_png"),
+    ],
+)
 def test_extract_images_formats(mock_dependencies, monkeypatch, image_bytes, expected_mime, expected_ext, file_id):
     saves = mock_dependencies.saves
     db_stub = mock_dependencies.db
@@ -77,7 +83,7 @@ def test_extract_images_formats(mock_dependencies, monkeypatch, image_bytes, exp
     extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id="t1", user_id="u1")
 
     # We need to handle the import inside _extract_images
-    with patch('pypdfium2.raw') as mock_raw:
+    with patch("pypdfium2.raw") as mock_raw:
         mock_raw.FPDF_PAGEOBJ_IMAGE = 1
         result = extractor._extract_images(mock_page)
 
@@ -92,11 +98,14 @@ def test_extract_images_formats(mock_dependencies, monkeypatch, image_bytes, exp
     assert db_stub.session.committed is True
 
 
-@pytest.mark.parametrize(("get_objects_side_effect", "get_objects_return_value"), [
-    (None, []),    # Empty list
-    (None, None),  # None returned
-    (Exception("Failed to get objects"), None),  # Exception raised
-])
+@pytest.mark.parametrize(
+    ("get_objects_side_effect", "get_objects_return_value"),
+    [
+        (None, []),  # Empty list
+        (None, None),  # None returned
+        (Exception("Failed to get objects"), None),  # Exception raised
+    ],
+)
 def test_extract_images_get_objects_scenarios(mock_dependencies, get_objects_side_effect, get_objects_return_value):
     mock_page = MagicMock()
     if get_objects_side_effect:
@@ -106,7 +115,7 @@ def test_extract_images_get_objects_scenarios(mock_dependencies, get_objects_sid
 
     extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id="t1", user_id="u1")
 
-    with patch('pypdfium2.raw') as mock_raw:
+    with patch("pypdfium2.raw") as mock_raw:
         mock_raw.FPDF_PAGEOBJ_IMAGE = 1
         result = extractor._extract_images(mock_page)
 
@@ -124,11 +133,11 @@ def test_extract_calls_extract_images(mock_dependencies, monkeypatch):
     mock_text_page.get_text_range.return_value = "Page text content"
     mock_page.get_textpage.return_value = mock_text_page
 
-    with patch('pypdfium2.PdfDocument', return_value=mock_pdf_doc):
+    with patch("pypdfium2.PdfDocument", return_value=mock_pdf_doc):
         # Mock Blob
         mock_blob = MagicMock()
         mock_blob.source = "test.pdf"
-        with patch('core.rag.extractor.pdf_extractor.Blob.from_path', return_value=mock_blob):
+        with patch("core.rag.extractor.pdf_extractor.Blob.from_path", return_value=mock_blob):
             extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id="t1", user_id="u1")
 
             # Mock _extract_images to return a known string
@@ -150,22 +159,23 @@ def test_extract_images_failures(mock_dependencies):
     mock_page = MagicMock()
     mock_image_obj_fail = MagicMock()
     mock_image_obj_ok = MagicMock()
-    
+
     # First image raises exception
     mock_image_obj_fail.extract.side_effect = Exception("Extraction failure")
-    
+
     # Second image is OK (JPEG)
     jpeg_bytes = b"\xff\xd8\xff some image data"
 
     def mock_extract(buf, fb_format=None):
         buf.write(jpeg_bytes)
+
     mock_image_obj_ok.extract.side_effect = mock_extract
 
     mock_page.get_objects.return_value = [mock_image_obj_fail, mock_image_obj_ok]
 
     extractor = pe.PdfExtractor(file_path="test.pdf", tenant_id="t1", user_id="u1")
-    
-    with patch('pypdfium2.raw') as mock_raw:
+
+    with patch("pypdfium2.raw") as mock_raw:
         mock_raw.FPDF_PAGEOBJ_IMAGE = 1
         result = extractor._extract_images(mock_page)
 

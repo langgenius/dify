@@ -130,7 +130,7 @@ class PdfExtractor(BaseExtractor):
                     if not img_bytes:
                         continue
 
-                    header = img_bytes[:self.MAX_MAGIC_LEN]
+                    header = img_bytes[: self.MAX_MAGIC_LEN]
                     image_ext = None
                     mime_type = None
                     for magic, ext, mime in self.IMAGE_FORMATS:
