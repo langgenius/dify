@@ -105,6 +105,7 @@ export type NodeTracing = {
   parent_parallel_id?: string
   parent_parallel_start_node_id?: string
   agentLog?: AgentLogItemWithChildren[] // agent log
+  is_resumption?: boolean // for human input node
 }
 
 export type FetchWorkflowDraftResponse = {

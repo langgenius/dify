@@ -301,35 +301,38 @@ export const useChat = (
           })
         },
         async onCompleted(hasError?: boolean, errorMessage?: string) {
+          const { workflowRunningData } = workflowStore.getState()
           handleResponding(false)
-          fetchInspectVars({})
-          invalidAllLastRun()
+          if (workflowRunningData?.result.status !== WorkflowRunningStatus.Paused) {
+            fetchInspectVars({})
+            invalidAllLastRun()
 
-          if (hasError) {
-            if (errorMessage) {
-              responseItem.content = errorMessage
-              responseItem.isError = true
-              updateCurrentQAOnTree({
-                placeholderQuestionId,
-                questionItem,
-                responseItem,
-                parentId: params.parent_message_id,
-              })
+            if (hasError) {
+              if (errorMessage) {
+                responseItem.content = errorMessage
+                responseItem.isError = true
+                updateCurrentQAOnTree({
+                  placeholderQuestionId,
+                  questionItem,
+                  responseItem,
+                  parentId: params.parent_message_id,
+                })
+              }
+              return
             }
-            return
-          }
 
-          if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
-            try {
-              const { data }: any = await onGetSuggestedQuestions(
-                responseItem.id,
-                newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
-              )
-              setSuggestQuestions(data)
-            }
-            // eslint-disable-next-line unused-imports/no-unused-vars
-            catch (error) {
-              setSuggestQuestions([])
+            if (config?.suggested_questions_after_answer?.enabled && !hasStopResponded.current && onGetSuggestedQuestions) {
+              try {
+                const { data }: any = await onGetSuggestedQuestions(
+                  responseItem.id,
+                  newAbortController => suggestedQuestionsAbortControllerRef.current = newAbortController,
+                )
+                setSuggestQuestions(data)
+              }
+              // eslint-disable-next-line unused-imports/no-unused-vars
+              catch (error) {
+                setSuggestQuestions([])
+              }
             }
           }
         },
@@ -353,6 +356,7 @@ export const useChat = (
         },
         onWorkflowStarted: ({ workflow_run_id, task_id, data: { is_resumption } }) => {
           if (is_resumption) {
+            handleResponding(true)
             responseItem.workflowProcess!.status = WorkflowRunningStatus.Running
           }
           else {
@@ -434,10 +438,22 @@ export const useChat = (
           }
         },
         onNodeStarted: ({ data }) => {
-          responseItem.workflowProcess!.tracing!.push({
-            ...data,
-            status: NodeRunningStatus.Running,
-          } as any)
+          const { is_resumption } = data
+          if (is_resumption) {
+            const currentIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
+            if (currentIndex > -1) {
+              responseItem.workflowProcess!.tracing![currentIndex] = {
+                ...data,
+                status: NodeRunningStatus.Running,
+              }
+            }
+          }
+          else {
+            responseItem.workflowProcess!.tracing!.push({
+              ...data,
+              status: NodeRunningStatus.Running,
+            })
+          }
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,
@@ -538,7 +554,6 @@ export const useChat = (
 
   const handleSubmitHumanInputForm = async (formID: string, formData: any) => {
     await submitHumanInputForm(formID, formData)
-    // TODO deal with success
   }
 
   const getHumanInputNodeData = (nodeID: string) => {
