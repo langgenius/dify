@@ -31,7 +31,7 @@
     "type-check": "tsc --noEmit",
     "type-check:tsgo": "tsgo --noEmit",
     "prepare": "cd ../ && node -e \"if (process.env.NODE_ENV !== 'production'){process.exit(1)} \" || husky ./web/.husky",
-    "gen-icons": "node ./app/components/base/icons/script.mjs",
+    "gen-icons": "node ./scripts/gen-icons.mjs && eslint --fix app/components/base/icons/src/",
     "uglify-embed": "node ./bin/uglify-embed",
     "i18n:check": "tsx ./scripts/check-i18n.js",
     "i18n:gen": "tsx ./scripts/auto-gen-i18n.js",
