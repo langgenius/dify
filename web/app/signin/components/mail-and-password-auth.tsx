@@ -1,5 +1,5 @@
 import type { ResponseError } from '@/service/fetch'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'

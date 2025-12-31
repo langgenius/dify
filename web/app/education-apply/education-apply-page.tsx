@@ -1,7 +1,7 @@
 'use client'
 
 import { RiExternalLinkLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import {
   useRouter,
   useSearchParams,

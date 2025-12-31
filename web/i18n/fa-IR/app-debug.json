@@ -306,6 +306,8 @@
   "variableConfig.displayName": "نام نمایشی",
   "variableConfig.editModalTitle": "ویرایش فیلد ورودی",
   "variableConfig.errorMsg.atLeastOneOption": "حداقل یک گزینه مورد نیاز است",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema یک JSON معتبر نیست",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "نوع JSON Schema باید \"object\" باشد",
   "variableConfig.errorMsg.labelNameRequired": "نام برچسب الزامی است",
   "variableConfig.errorMsg.optionRepeat": "دارای گزینه های تکرار",
   "variableConfig.errorMsg.varNameCanBeRepeat": "نام متغیر را نمی توان تکرار کرد",
