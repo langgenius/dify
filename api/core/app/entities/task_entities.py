@@ -277,6 +277,7 @@ class HumanInputRequiredResponse(StreamResponse):
         inputs: Sequence[FormInput] = Field(default_factory=list)
         actions: Sequence[UserAction] = Field(default_factory=list)
         web_app_form_token: str | None = None
+        resolved_placeholder_values: Mapping[str, Any] = Field(default_factory=dict)
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_REQUIRED
     workflow_run_id: str

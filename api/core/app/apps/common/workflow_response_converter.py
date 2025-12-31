@@ -298,6 +298,7 @@ class WorkflowResponseConverter:
                             inputs=reason.inputs,
                             actions=reason.actions,
                             web_app_form_token=reason.web_app_form_token,
+                            resolved_placeholder_values=reason.resolved_placeholder_values,
                         ),
                     )
                 )
