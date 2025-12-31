@@ -515,13 +515,13 @@ export const useChat = (
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
           if (currentTracingIndex > -1) {
             responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
+            updateCurrentQAOnTree({
+              placeholderQuestionId,
+              questionItem,
+              responseItem,
+              parentId: params.parent_message_id,
+            })
           }
-          updateCurrentQAOnTree({
-            placeholderQuestionId,
-            questionItem,
-            responseItem,
-            parentId: params.parent_message_id,
-          })
         },
         onWorkflowPaused: ({ data: _data }) => {
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
