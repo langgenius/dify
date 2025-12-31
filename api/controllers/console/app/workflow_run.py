@@ -25,12 +25,7 @@ from libs.custom_inputs import time_duration
 from libs.helper import RateLimiter, uuid_value
 from libs.login import current_user, login_required
 from models import Account, App, AppMode, EndUser, WorkflowRunTriggeredFrom
-from services.retention.workflow_run_export_task_status import (
-    get_public_task_status,
-    get_task_id_for_run,
-    reserve_task_for_run,
-    set_task_status,
-)
+from services.retention.export_workflow_run import WorkflowRunExportTaskService
 from services.workflow_run_service import WorkflowRunService
 from tasks.workflow_run_export_task import export_workflow_run_task
 
@@ -216,20 +211,21 @@ class WorkflowRunExportTaskApi(Resource):
         tenant_id = str(app_model.tenant_id)
         app_id = str(app_model.id)
         run_id_str = str(run_id)
+        export_task_service = WorkflowRunExportTaskService()
 
         # If a task already exists for this run, return its status to keep export idempotent.
-        existing_task_id = get_task_id_for_run(tenant_id, app_id, run_id_str)
+        existing_task_id = export_task_service.get_task_id_for_run(tenant_id, app_id, run_id_str)
         if existing_task_id:
-            status = get_public_task_status(existing_task_id)
+            status = export_task_service.get_public_task_status(existing_task_id)
             if status:
                 return status, 200
 
         new_task_id = str(uuid4())
-        task_id = reserve_task_for_run(tenant_id, app_id, run_id_str, new_task_id)
+        task_id = export_task_service.reserve_task_for_run(tenant_id, app_id, run_id_str, new_task_id)
 
         # If another request just reserved, return its status or pending stub.
         if task_id != new_task_id:
-            status = get_public_task_status(task_id)
+            status = export_task_service.get_public_task_status(task_id)
             if status:
                 return status, 200
 
@@ -238,7 +234,7 @@ class WorkflowRunExportTaskApi(Resource):
         EXPORT_TASK_RATE_LIMITER.increment_rate_limit(tenant_id)
 
         # Mark pending and enqueue
-        set_task_status(
+        export_task_service.set_task_status(
             task_id,
             "pending",
             {"tenant_id": tenant_id, "app_id": app_id, "run_id": run_id_str},
@@ -259,7 +255,8 @@ class WorkflowRunExportTaskStatusApi(Resource):
     @login_required
     @account_initialization_required
     def get(self, task_id: str):
-        status = get_public_task_status(task_id)
+        export_task_service = WorkflowRunExportTaskService()
+        status = export_task_service.get_public_task_status(task_id)
         if not status:
             return {"code": "not_found", "message": "task not found"}, 404
         return status

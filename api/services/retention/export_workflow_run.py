@@ -9,13 +9,14 @@ import io
 import json
 import logging
 import zipfile
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
+from extensions.ext_redis import redis_client
 from libs.archive_storage import (
     ArchiveStorage,
     ArchiveStorageNotConfiguredError,
@@ -313,3 +314,131 @@ class WorkflowRunExportService:
             sessionmaker(bind=db.engine, expire_on_commit=False)
         )
         return self.workflow_run_repo
+
+
+class WorkflowRunExportTaskService:
+    """
+    Service for workflow run export task status tracking.
+    """
+
+    TASK_STATUS_TTL_SECONDS = 7 * 24 * 3600
+    EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
+    PUBLIC_TASK_STATUS_FIELDS = {
+        "task_id",
+        "status",
+        "presigned_url",
+        "presigned_url_expires_at",
+    }
+
+    def __init__(self, redis=redis_client, storage_provider=get_export_storage):
+        self._redis = redis
+        self._storage_provider = storage_provider
+
+    @staticmethod
+    def _task_key(task_id: str) -> str:
+        return f"workflow_run_export:task:{task_id}"
+
+    @staticmethod
+    def _run_key(tenant_id: str, app_id: str, run_id: str) -> str:
+        return f"workflow_run_export:run:{tenant_id}:{app_id}:{run_id}"
+
+    def _save_task_status(self, task_id: str, data: dict[str, Any]) -> None:
+        self._redis.set(
+            self._task_key(task_id),
+            json.dumps(data, default=str),
+            ex=self.TASK_STATUS_TTL_SECONDS,
+        )
+
+    def set_task_status(self, task_id: str, status: str, payload: dict | None = None) -> None:
+        data: dict[str, Any] = {
+            "task_id": task_id,
+            "status": status,
+            "updated_at": datetime.now(UTC).isoformat(),
+        }
+        if payload:
+            data.update(payload)
+        if data.get("presigned_url") and not data.get("presigned_url_expires_at"):
+            data["presigned_url_expires_at"] = (
+                datetime.now(UTC) + timedelta(seconds=self.EXPORT_SIGNED_URL_EXPIRE_SECONDS)
+            ).isoformat()
+        self._save_task_status(task_id, data)
+
+    @staticmethod
+    def _parse_iso_datetime(value: str | None) -> datetime | None:
+        if not value:
+            return None
+        try:
+            return datetime.fromisoformat(value)
+        except ValueError:
+            return None
+
+    def _is_presigned_url_expired(self, status: dict[str, Any]) -> bool:
+        expires_at = self._parse_iso_datetime(status.get("presigned_url_expires_at"))
+        if expires_at:
+            return expires_at <= datetime.now(UTC)
+        return True
+
+    def _refresh_presigned_url(self, task_id: str, status: dict[str, Any]) -> dict[str, Any]:
+        if status.get("status") != "success":
+            return status
+        storage_key = status.get("storage_key")
+        if not storage_key:
+            return status
+        if status.get("presigned_url") and not self._is_presigned_url_expired(status):
+            return status
+
+        try:
+            storage = self._storage_provider()
+            presigned_url = storage.generate_presigned_url(
+                storage_key,
+                expires_in=self.EXPORT_SIGNED_URL_EXPIRE_SECONDS,
+            )
+        except Exception:
+            return status
+
+        status["presigned_url"] = presigned_url
+        now = datetime.now(UTC)
+        expires_at = now + timedelta(seconds=self.EXPORT_SIGNED_URL_EXPIRE_SECONDS)
+        status["presigned_url_expires_at"] = expires_at.isoformat()
+        status["updated_at"] = now.isoformat()
+        self._save_task_status(task_id, status)
+        return status
+
+    def get_task_status(self, task_id: str) -> dict[str, Any] | None:
+        raw = self._redis.get(self._task_key(task_id))
+        if not raw:
+            return None
+        try:
+            status = json.loads(raw)
+        except Exception:
+            return None
+        return self._refresh_presigned_url(task_id, status)
+
+    def get_public_task_status(self, task_id: str) -> dict[str, Any] | None:
+        status = self.get_task_status(task_id)
+        if not status:
+            return None
+        return {key: status[key] for key in self.PUBLIC_TASK_STATUS_FIELDS if key in status}
+
+    def reserve_task_for_run(self, tenant_id: str, app_id: str, run_id: str, task_id: str) -> str:
+        """
+        Record the export task id for a workflow run if not already set.
+
+        Returns the existing task id if one was already recorded, otherwise the provided task_id.
+        """
+        key = self._run_key(tenant_id, app_id, run_id)
+        if self._redis.setnx(key, task_id):
+            self._redis.expire(key, self.TASK_STATUS_TTL_SECONDS)
+            return task_id
+
+        existing = self._redis.get(key)
+        if existing:
+            return existing.decode() if isinstance(existing, bytes) else str(existing)
+        return task_id
+
+    def get_task_id_for_run(self, tenant_id: str, app_id: str, run_id: str) -> str | None:
+        key = self._run_key(tenant_id, app_id, run_id)
+        existing = self._redis.get(key)
+        if not existing:
+            return None
+        return existing.decode() if isinstance(existing, bytes) else str(existing)

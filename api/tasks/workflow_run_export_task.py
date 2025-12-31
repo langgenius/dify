@@ -9,10 +9,10 @@ from typing import cast
 from celery import shared_task
 
 from libs.archive_storage import ArchiveStorageNotConfiguredError, get_export_storage
-from services.retention.export_workflow_run import WorkflowRunExportError, WorkflowRunExportService
-from services.retention.workflow_run_export_task_status import (
-    EXPORT_SIGNED_URL_EXPIRE_SECONDS,
-    set_task_status,
+from services.retention.export_workflow_run import (
+    WorkflowRunExportError,
+    WorkflowRunExportService,
+    WorkflowRunExportTaskService,
 )
 
 logger = logging.getLogger(__name__)
@@ -20,7 +20,8 @@ logger = logging.getLogger(__name__)
 
 @shared_task(queue="export")
 def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str) -> None:
-    set_task_status(
+    export_task_service = WorkflowRunExportTaskService()
+    export_task_service.set_task_status(
         task_id,
         "running",
         {
@@ -44,12 +45,12 @@ def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str) -> None:
             storage = get_export_storage()
             presigned_url = storage.generate_presigned_url(
                 storage_key,
-                expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
+                expires_in=export_task_service.EXPORT_SIGNED_URL_EXPIRE_SECONDS,
             )
         except ArchiveStorageNotConfiguredError:
             presigned_url = None
 
-        set_task_status(
+        export_task_service.set_task_status(
             task_id,
             "success",
             {
@@ -62,7 +63,7 @@ def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str) -> None:
         )
     except (WorkflowRunExportError, Exception) as e:
         logger.exception("Export task failed for run %s", run_id)
-        set_task_status(
+        export_task_service.set_task_status(
             task_id,
             "failed",
             {
