@@ -41,7 +41,7 @@ export const useModelFormSchemas = (
     const authorizationNameSchema = {
       type: FormTypeEnum.textInput,
       variable: '__authorization_name__',
-      label: t('plugin.auth.authorizationName'),
+      label: t('auth.authorizationName', { ns: 'plugin' }),
       required: false,
     }
 

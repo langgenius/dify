@@ -56,11 +56,11 @@ const ConfigAudio: FC = () => {
         </div>
       </div>
       <div className="flex grow items-center">
-        <div className="system-sm-semibold mr-1 text-text-secondary">{t('appDebug.feature.audioUpload.title')}</div>
+        <div className="system-sm-semibold mr-1 text-text-secondary">{t('feature.audioUpload.title', { ns: 'appDebug' })}</div>
         <Tooltip
           popupContent={(
             <div className="w-[180px]">
-              {t('appDebug.feature.audioUpload.description')}
+              {t('feature.audioUpload.description', { ns: 'appDebug' })}
             </div>
           )}
         />

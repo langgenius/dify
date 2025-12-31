@@ -12,7 +12,10 @@ import Processing from './index'
 // Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => key,
+    t: (key: string, options?: { ns?: string }) => {
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
+    },
   }),
 }))
 
@@ -41,7 +44,6 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock the EmbeddingProcess component to track props
 let embeddingProcessProps: Record<string, unknown> = {}
 vi.mock('./embedding-process', () => ({
-  __esModule: true,
   default: (props: Record<string, unknown>) => {
     embeddingProcessProps = props
     return (

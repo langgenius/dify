@@ -13,7 +13,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
     <div className="mb-1 space-y-0.5 px-3 py-1">
       <div className="flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1.5">
         <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">
-          {t('datasetCreation.stepTwo.indexMode')}
+          {t('stepTwo.indexMode', { ns: 'datasetCreation' })}
         </div>
         <div
           className="system-xs-medium grow truncate text-right text-text-secondary"
@@ -24,7 +24,7 @@ const Node: FC<NodeProps<KnowledgeBaseNodeType>> = ({ data }) => {
       </div>
       <div className="flex h-6 items-center rounded-md bg-workflow-block-parma-bg px-1.5">
         <div className="system-xs-medium-uppercase mr-2 shrink-0 text-text-tertiary">
-          {t('datasetSettings.form.retrievalSetting.title')}
+          {t('form.retrievalSetting.title', { ns: 'datasetSettings' })}
         </div>
         <div
           className="system-xs-medium grow truncate text-right text-text-secondary"

@@ -109,7 +109,7 @@ const PermissionSelector = ({
                     <Avatar avatar={userProfile.avatar_url} name={userProfile.name} size={20} />
                   </div>
                   <div className="system-sm-regular grow p-1 text-components-input-text-filled">
-                    {t('datasetSettings.form.permissionsOnlyMe')}
+                    {t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
                   </div>
                 </>
               )
@@ -121,7 +121,7 @@ const PermissionSelector = ({
                     <RiGroup2Line className="size-4 text-text-secondary" />
                   </div>
                   <div className="system-sm-regular grow p-1 text-components-input-text-filled">
-                    {t('datasetSettings.form.permissionsAllMember')}
+                    {t('form.permissionsAllMember', { ns: 'datasetSettings' })}
                   </div>
                 </>
               )
@@ -184,7 +184,7 @@ const PermissionSelector = ({
                 leftIcon={
                   <Avatar avatar={userProfile.avatar_url} name={userProfile.name} className="shrink-0" size={24} />
                 }
-                text={t('datasetSettings.form.permissionsOnlyMe')}
+                text={t('form.permissionsOnlyMe', { ns: 'datasetSettings' })}
                 onClick={onSelectOnlyMe}
                 isSelected={isOnlyMe}
               />
@@ -195,7 +195,7 @@ const PermissionSelector = ({
                     <RiGroup2Line className="size-4 text-text-secondary" />
                   </div>
                 )}
-                text={t('datasetSettings.form.permissionsAllMember')}
+                text={t('form.permissionsAllMember', { ns: 'datasetSettings' })}
                 onClick={onSelectAllMembers}
                 isSelected={isAllTeamMembers}
               />
@@ -206,7 +206,7 @@ const PermissionSelector = ({
                     <RiLock2Line className="size-4 text-text-secondary" />
                   </div>
                 )}
-                text={t('datasetSettings.form.permissionsInvitedMembers')}
+                text={t('form.permissionsInvitedMembers', { ns: 'datasetSettings' })}
                 onClick={onSelectPartialMembers}
                 isSelected={isPartialMembers}
               />
@@ -248,7 +248,7 @@ const PermissionSelector = ({
                   {
                     !showMe && filteredMemberList.length === 0 && (
                       <div className="system-xs-regular flex items-center justify-center whitespace-pre-wrap px-1 py-6 text-center text-text-tertiary">
-                        {t('datasetSettings.form.onSearchResults')}
+                        {t('form.onSearchResults', { ns: 'datasetSettings' })}
                       </div>
                     )
                   }
