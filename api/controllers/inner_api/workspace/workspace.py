@@ -1,8 +1,8 @@
 import json
 
 from flask_restx import Resource
-from sqlalchemy import select
 from pydantic import BaseModel
+from sqlalchemy import select
 
 from controllers.common.schema import register_schema_models
 from controllers.console.wraps import setup_required

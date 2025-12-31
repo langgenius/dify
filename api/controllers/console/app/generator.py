@@ -2,8 +2,8 @@ from collections.abc import Sequence
 from typing import Any
 
 from flask_restx import Resource
-from sqlalchemy import select
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from controllers.console import console_ns
 from controllers.console.app.error import (

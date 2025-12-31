@@ -5,8 +5,8 @@ from collections.abc import Sequence
 from typing import Literal
 
 import httpx
-from sqlalchemy import select
 from pydantic import TypeAdapter
+from sqlalchemy import select
 from tenacity import retry, retry_if_exception_type, stop_before_delay, wait_fixed
 from typing_extensions import TypedDict
 from werkzeug.exceptions import InternalServerError

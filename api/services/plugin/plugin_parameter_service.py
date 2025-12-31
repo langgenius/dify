@@ -1,7 +1,6 @@
 from collections.abc import Mapping, Sequence
 from typing import Any, Literal
 
-from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from core.plugin.entities.parameters import PluginParameterOption

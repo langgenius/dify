@@ -2,8 +2,8 @@ import json
 from enum import StrEnum
 
 from flask_restx import Resource, marshal_with
-from sqlalchemy import select
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from controllers.console import console_ns

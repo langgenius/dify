@@ -1,8 +1,8 @@
 from typing import Literal
 
 from flask_restx import Resource, marshal_with
-from sqlalchemy import select
 from pydantic import BaseModel, Field, field_validator
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from constants.languages import supported_language

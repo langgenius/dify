@@ -2,8 +2,8 @@ from typing import Any
 
 from flask import request
 from flask_restx import marshal
-from sqlalchemy import select
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 from werkzeug.exceptions import NotFound
 
 from configs import dify_config

@@ -244,9 +244,7 @@ class ChatMessageListApi(Resource):
 
         if args.first_id:
             first_message = db.session.scalars(
-                select(Message)
-                .where(Message.conversation_id == conversation.id, Message.id == args.first_id)
-                .limit(1)
+                select(Message).where(Message.conversation_id == conversation.id, Message.id == args.first_id).limit(1)
             ).first()
 
             if not first_message:

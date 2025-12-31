@@ -3,8 +3,8 @@ from urllib.parse import quote
 
 from flask import Response, request
 from flask_restx import Resource
-from sqlalchemy import select
 from pydantic import BaseModel, Field
+from sqlalchemy import select
 
 from controllers.common.file_response import enforce_download_for_html
 from controllers.common.schema import register_schema_model
