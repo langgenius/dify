@@ -15,6 +15,10 @@ const config: KnipConfig = {
   ignoreBinaries: [
     'only-allow',
   ],
+  ignoreDependencies: [
+    // required by next-pwa
+    'babel-loader',
+  ],
   rules: {
     files: 'warn',
     dependencies: 'warn',
