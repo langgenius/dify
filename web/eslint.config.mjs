@@ -1,5 +1,6 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
+import pluginQuery from '@tanstack/eslint-plugin-query'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
@@ -79,6 +80,7 @@ export default antfu(
     },
   },
   storybook.configs['flat/recommended'],
+  ...pluginQuery.configs['flat/recommended'],
   // sonar
   {
     rules: {
