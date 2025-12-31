@@ -84,6 +84,8 @@ class NodeRepair:
         repairs: list[str] = []
         warnings: list[str] = []
 
+        logger.info("[NODE REPAIR] Starting repair process for %s nodes", len(nodes))
+
         for node in nodes:
             node_type = node.get("type")
 
@@ -100,6 +102,13 @@ class NodeRepair:
                     handler(node, repairs)
 
             # Add other node type repairs here as needed
+
+        if repairs:
+            logger.info("[NODE REPAIR] Completed with %s repairs:", len(repairs))
+            for i, repair in enumerate(repairs, 1):
+                logger.info("[NODE REPAIR]   %s. %s", i, repair)
+        else:
+            logger.info("[NODE REPAIR] Completed - no repairs needed")
 
         return NodeRepairResult(
             nodes=nodes,

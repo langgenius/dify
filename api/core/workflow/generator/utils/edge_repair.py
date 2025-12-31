@@ -60,6 +60,10 @@ class EdgeRepair:
         repairs: list[str] = []
         warnings: list[str] = []
 
+        logger.info("[EDGE REPAIR] Starting repair process for %s nodes, %s edges", len(nodes), len(edges))
+
+        # Build node lookup
+
         # Build node lookup
         node_map = {n.get("id"): n for n in nodes if n.get("id")}
         node_ids = set(node_map.keys())
@@ -115,6 +119,13 @@ class EdgeRepair:
         new_edges, terminal_repairs = cls._connect_terminal_nodes(nodes, edges, outgoing_edges)
         edges.extend(new_edges)
         repairs.extend(terminal_repairs)
+
+        if repairs:
+            logger.info("[EDGE REPAIR] Completed with %s repairs:", len(repairs))
+            for i, repair in enumerate(repairs, 1):
+                logger.info("[EDGE REPAIR]   %s. %s", i, repair)
+        else:
+            logger.info("[EDGE REPAIR] Completed - no repairs needed")
 
         return RepairResult(
             nodes=nodes,
@@ -222,7 +233,10 @@ class EdgeRepair:
         valid_node_ids: set[str],
     ) -> tuple[list[WorkflowEdgeDict], list[str], list[str]]:
         """
-        Repair missing true/false branches for if-else nodes.
+        Repair missing branches for if-else nodes.
+
+        If-else in Dify uses case_id as sourceHandle for each condition,
+        plus 'false' for the else branch.
         """
         new_edges: list[WorkflowEdgeDict] = []
         repairs: list[str] = []
@@ -247,8 +261,19 @@ class EdgeRepair:
                     end_node_id = nid
                     break
 
+        # Get required branches from config
+        config = node.get("config", {})
+        cases = config.get("cases", [])
+
+        # Build required handles: each case_id + 'false' for else
+        required_branches = set()
+        for case in cases:
+            case_id = case.get("case_id")
+            if case_id:
+                required_branches.add(case_id)
+        required_branches.add("false")  # else branch
+
         # Add missing branches
-        required_branches = ["true", "false"]
         for branch in required_branches:
             if branch not in existing_handles:
                 new_edge = {
@@ -257,9 +282,9 @@ class EdgeRepair:
                     "target": end_node_id,
                 }
                 new_edges.append(new_edge)
-                repairs.append(f"Added missing if-else '{branch}' branch -> {end_node_id}")
+                repairs.append(f"Added missing if-else branch '{branch}' -> {end_node_id}")
                 warnings.append(
-                    f"Auto-connected if-else '{branch}' branch to '{end_node_id}'. "
+                    f"Auto-connected if-else branch '{branch}' to '{end_node_id}'. "
                     "You may want to redirect this to a specific handler node."
                 )
 

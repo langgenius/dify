@@ -73,6 +73,7 @@ class FlowchartGeneratePayload(BaseModel):
     model_config_data: dict[str, Any] = Field(..., alias="model_config", description="Model configuration")
     available_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Available node types")
     existing_nodes: list[dict[str, Any]] = Field(default_factory=list, description="Existing workflow nodes")
+    existing_edges: list[dict[str, Any]] = Field(default_factory=list, description="Existing workflow edges")
     available_tools: list[dict[str, Any]] = Field(default_factory=list, description="Available tools")
     selected_node_ids: list[str] = Field(default_factory=list, description="IDs of selected nodes for context")
     previous_workflow: PreviousWorkflow | None = Field(default=None, description="Previous workflow for regeneration")
@@ -309,6 +310,7 @@ class FlowchartGenerateApi(Resource):
                 model_config=args.model_config_data,
                 available_nodes=args.available_nodes,
                 existing_nodes=args.existing_nodes,
+                existing_edges=args.existing_edges,
                 available_tools=args.available_tools,
                 selected_node_ids=args.selected_node_ids,
                 previous_workflow=previous_workflow_dict,

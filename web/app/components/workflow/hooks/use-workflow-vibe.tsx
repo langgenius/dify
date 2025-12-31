@@ -1312,13 +1312,12 @@ export const useWorkflowVibe = () => {
       const nodes = getNodes()
       const {
         setIsVibeGenerating,
+        vibePanelBackendNodes,
+        vibePanelBackendEdges,
       } = workflowStore.getState()
 
-      const existingNodesPayload = nodes.map(node => ({
-        id: node.id,
-        type: node.data.type,
-        title: node.data.title || '',
-      }))
+      // Refinement mode removed - always start fresh
+      const existingNodesPayload: Array<{ id: string; type: string; title: string }> = []
 
       const toolsPayload = toolOptions.map(tool => ({
         provider_id: tool.provider_id,
@@ -1333,6 +1332,9 @@ export const useWorkflowVibe = () => {
         parameters: tool.paramSchemas,
         output_schema: tool.output_schema,
       }))
+
+      // Refinement mode removed - always use empty edges
+      const existingEdgesPayload: Array<{ source: string; target: string; sourceHandle: string }> = []
 
       const availableNodesPayload = availableNodesList.map(node => ({
         type: node.type,
@@ -1349,10 +1351,10 @@ export const useWorkflowVibe = () => {
         const { vibePanelBackendNodes, vibePanelBackendEdges, vibePanelLastWarnings } = workflowStore.getState()
         const previousWorkflow = regenerateMode && vibePanelBackendNodes && vibePanelBackendNodes.length > 0
           ? {
-              nodes: vibePanelBackendNodes,
-              edges: vibePanelBackendEdges || [],
-              warnings: vibePanelLastWarnings || [],
-            }
+            nodes: vibePanelBackendNodes,
+            edges: vibePanelBackendEdges || [],
+            warnings: vibePanelLastWarnings || [],
+          }
           : undefined
 
         // Map language code to human-readable language name for LLM
@@ -1391,6 +1393,7 @@ export const useWorkflowVibe = () => {
           model_config: latestModelConfig,
           available_nodes: availableNodesPayload,
           existing_nodes: existingNodesPayload,
+          existing_edges: existingEdgesPayload,
           available_tools: toolsPayload,
           selected_node_ids: [],
           previous_workflow: previousWorkflow,

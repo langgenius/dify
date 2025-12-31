@@ -327,6 +327,7 @@ const translation = {
   customWebhook: '自定义 Webhook',
   vibe: {
     regenerateReminder: '请检查输入并重新生成。',
+    refine: '调整',
   },
   blocksAbout: {
     'start': '定义一个 workflow 流程启动的初始参数',

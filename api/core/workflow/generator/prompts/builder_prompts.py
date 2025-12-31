@@ -31,6 +31,9 @@ Your goal is to implement the Architect's plan by generating a precise, runnable
   <existing_nodes>
 {existing_nodes_context}
   </existing_nodes>
+  <existing_edges>
+{existing_edges_context}
+  </existing_edges>
   <selected_nodes>
 {selected_nodes_context}
   </selected_nodes>
@@ -62,7 +65,41 @@ Your goal is to implement the Architect's plan by generating a precise, runnable
 5. **Node Specifics**:
    - For `if-else` comparison_operator, use literal symbols: `≥`, `≤`, `=`, `≠` (NOT `>=` or `==`).
 
-6. **Output**:
+6. **Modification Mode**:
+   - If `<existing_nodes>` contains nodes, you are MODIFYING an existing workflow.
+   - Keep nodes that are NOT mentioned in the user's instruction UNCHANGED.
+   - Only modify/add/remove nodes that the user explicitly requested.
+   - Preserve node IDs for unchanged nodes to maintain connections.
+   - If user says "add X", append new nodes to existing workflow.
+   - If user says "change Y to Z", only modify that specific node.
+   - If user says "remove X", exclude that node from output.
+   
+   **Edge Modification**:
+   - Use `<existing_edges>` to understand current node connections.
+   - If user mentions "fix edge", "connect", "link", or "add connection",
+     review existing_edges and correct missing/wrong connections.
+   - For multi-branch nodes (if-else, question-classifier),
+     ensure EACH branch has proper sourceHandle (e.g., "true"/"false") and target.
+   - Common edge issues to fix:
+     * Missing edge: Two nodes should connect but don't - add the edge
+     * Wrong target: Edge points to wrong node - update the target
+     * Missing sourceHandle: if-else/classifier branches lack sourceHandle - add "true"/"false"
+     * Disconnected nodes: Node has no incoming or outgoing edges - connect it properly
+   - When modifying edges, ensure logical flow makes sense (start → middle → end).
+   - ALWAYS output complete edges array, even if only modifying one edge.
+   
+   **Validation Feedback** (Automatic Retry):
+   - If `<validation_feedback>` is present, you are RETRYING after validation errors.
+   - Focus ONLY on fixing the specific validation issues mentioned.
+   - Keep everything else from the previous attempt UNCHANGED (preserve node IDs, edges, etc).
+   - Common validation issues and fixes:
+     * "Missing required connection" → Add the missing edge
+     * "Invalid node configuration" → Fix the specific node's config section
+     * "Type mismatch in variable reference" → Correct the variable selector path
+     * "Unknown variable" → Update variable reference to existing output
+   - When fixing, make MINIMAL changes to address each specific error.
+
+7. **Output**:
    - Return ONLY the JSON object with `nodes` and `edges`.
    - Do NOT generate Mermaid diagrams.
    - Do NOT generate explanations.
@@ -400,4 +437,21 @@ def format_selected_nodes(
             lines.append(f"- [{node_id}] {node.get('title', 'Untitled')} ({node.get('type', 'unknown')})")
         else:
             lines.append(f"- [{node_id}] (not found in current workflow)")
+    return "\n".join(lines)
+
+
+def format_existing_edges(edges: list[dict] | None) -> str:
+    """Format existing workflow edges to show connections."""
+    if not edges:
+        return "No existing edges (creating new workflow)."
+
+    lines = []
+    for edge in edges:
+        source = edge.get("source", "unknown")
+        target = edge.get("target", "unknown")
+        source_handle = edge.get("sourceHandle", "")
+        if source_handle:
+            lines.append(f"- {source} ({source_handle}) -> {target}")
+        else:
+            lines.append(f"- {source} -> {target}")
     return "\n".join(lines)

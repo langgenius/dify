@@ -1,12 +1,9 @@
-import logging
 from dataclasses import dataclass
 
 from core.workflow.generator.types import AvailableModelDict, AvailableToolDict, WorkflowDataDict
 from core.workflow.generator.validation.context import ValidationContext
 from core.workflow.generator.validation.engine import ValidationEngine
 from core.workflow.generator.validation.rules import Severity
-
-logger = logging.getLogger(__name__)
 
 
 @dataclass
@@ -75,9 +72,17 @@ class WorkflowValidator:
         # Convert engine errors to legacy hints
         hints: list[ValidationHint] = []
 
+        error_count = 0
+        warning_count = 0
+
         for error in result.all_errors:
             # Map severity
             severity = "error" if error.severity == Severity.ERROR else "warning"
+
+            if severity == "error":
+                error_count += 1
+            else:
+                warning_count += 1
 
             # Map field from message or details if possible (heuristic)
             field_name = error.details.get("field", "unknown")

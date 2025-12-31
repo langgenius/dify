@@ -522,162 +522,16 @@ def _check_variable_references(node: WorkflowNodeDict, ctx: "ValidationContext")
     return errors
 
 
-def _check_node_has_outgoing_edge(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
-    """Check that non-end nodes have at least one outgoing edge."""
-    errors: list[ValidationError] = []
-    node_id = node.get("id", "unknown")
-    node_type = node.get("type", "unknown")
-
-    # End nodes don't need outgoing edges
-    if node_type == "end":
-        return errors
-
-    # Check if this node has any outgoing edges
-    downstream = ctx.get_downstream_nodes(node_id)
-    if not downstream:
-        errors.append(
-            ValidationError(
-                rule_id="edge.no_outgoing",
-                node_id=node_id,
-                node_type=node_type,
-                category=RuleCategory.SEMANTIC,
-                severity=Severity.ERROR,
-                is_fixable=True,
-                message=f"Node '{node_id}' has no outgoing edge - workflow is disconnected",
-                fix_hint=f"Add an edge from '{node_id}' to the next node or to 'end'",
-                details={"field": "edges"},
-            )
-        )
-
-    return errors
+# NOTE: _check_node_has_outgoing_edge removed - handled by GraphValidator
 
 
-def _check_node_has_incoming_edge(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
-    """Check that non-start nodes have at least one incoming edge."""
-    errors: list[ValidationError] = []
-    node_id = node.get("id", "unknown")
-    node_type = node.get("type", "unknown")
-
-    # Start nodes don't need incoming edges
-    if node_type == "start":
-        return errors
-
-    # Check if this node has any incoming edges
-    upstream = ctx.get_upstream_nodes(node_id)
-    if not upstream:
-        errors.append(
-            ValidationError(
-                rule_id="edge.no_incoming",
-                node_id=node_id,
-                node_type=node_type,
-                category=RuleCategory.SEMANTIC,
-                severity=Severity.ERROR,
-                is_fixable=True,
-                message=f"Node '{node_id}' is orphaned - no incoming edges",
-                fix_hint=f"Add an edge from a previous node to '{node_id}'",
-                details={"field": "edges"},
-            )
-        )
-
-    return errors
+# NOTE: _check_node_has_incoming_edge removed - handled by GraphValidator
 
 
-def _check_question_classifier_branches(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
-    """Check that question-classifier has edges for all defined classes."""
-    errors: list[ValidationError] = []
-    node_id = node.get("id", "unknown")
-    node_type = node.get("type", "unknown")
-
-    if node_type != "question-classifier":
-        return errors
-
-    config = node.get("config", {})
-    classes = config.get("classes", [])
-
-    if not classes:
-        return errors  # Already caught by structure validation
-
-    # Get all class IDs
-    class_ids = set()
-    for cls in classes:
-        if isinstance(cls, dict) and cls.get("id"):
-            class_ids.add(cls["id"])
-
-    # Get all outgoing edges with their sourceHandles
-    outgoing_handles = set()
-    for edge in ctx.edges:
-        if edge.get("source") == node_id:
-            handle = edge.get("sourceHandle")
-            if handle:
-                outgoing_handles.add(handle)
-
-    # Check for missing branches
-    missing_branches = class_ids - outgoing_handles
-    if missing_branches:
-        for branch_id in missing_branches:
-            # Find the class name for better error message
-            class_name = branch_id
-            for cls in classes:
-                if isinstance(cls, dict) and cls.get("id") == branch_id:
-                    class_name = cls.get("name", branch_id)
-                    break
-
-            errors.append(
-                ValidationError(
-                    rule_id="edge.classifier_branch.missing",
-                    node_id=node_id,
-                    node_type=node_type,
-                    category=RuleCategory.SEMANTIC,
-                    severity=Severity.ERROR,
-                    is_fixable=True,
-                    message=f"Question classifier '{node_id}' missing edge for class '{class_name}'",
-                    fix_hint=f"Add edge: {{source: '{node_id}', sourceHandle: '{branch_id}', target: '<target_node>'}}",
-                    details={"missing_class_id": branch_id, "missing_class_name": class_name, "field": "edges"},
-                )
-            )
-
-    return errors
+# NOTE: _check_question_classifier_branches removed - handled by EdgeRepair
 
 
-def _check_if_else_branches(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
-    """Check that if-else has both true and false branch edges."""
-    errors: list[ValidationError] = []
-    node_id = node.get("id", "unknown")
-    node_type = node.get("type", "unknown")
-
-    if node_type != "if-else":
-        return errors
-
-    # Get all outgoing edges with their sourceHandles
-    outgoing_handles = set()
-    for edge in ctx.edges:
-        if edge.get("source") == node_id:
-            handle = edge.get("sourceHandle")
-            if handle:
-                outgoing_handles.add(handle)
-
-    # Check for required branches
-    required_branches = {"true", "false"}
-    missing_branches = required_branches - outgoing_handles
-
-    for branch in missing_branches:
-        errors.append(
-            ValidationError(
-                rule_id="edge.if_else_branch.missing",
-                node_id=node_id,
-                node_type=node_type,
-                category=RuleCategory.SEMANTIC,
-                severity=Severity.ERROR,
-                is_fixable=True,
-                message=f"If-else node '{node_id}' missing '{branch}' branch edge",
-                fix_hint=f"Add edge: {{source: '{node_id}', sourceHandle: '{branch}', target: '<target_node>'}}",
-                details={"missing_branch": branch, "field": "edges"},
-            )
-        )
-
-    return errors
-
-    return errors
+# NOTE: _check_if_else_branches removed - handled by EdgeRepair
 
 
 def _check_if_else_operators(node: WorkflowNodeDict, ctx: "ValidationContext") -> list[ValidationError]:
@@ -1035,57 +889,9 @@ register_rule(
 )
 
 # Edge Validation Rules
-register_rule(
-    ValidationRule(
-        id="edge.outgoing.required",
-        node_types=["*"],
-        category=RuleCategory.SEMANTIC,
-        severity=Severity.ERROR,
-        is_fixable=True,
-        check=_check_node_has_outgoing_edge,
-        description="Non-end nodes must have outgoing edges",
-        fix_hint="Add an edge from this node to the next node",
-    )
-)
-
-register_rule(
-    ValidationRule(
-        id="edge.incoming.required",
-        node_types=["*"],
-        category=RuleCategory.SEMANTIC,
-        severity=Severity.ERROR,
-        is_fixable=True,
-        check=_check_node_has_incoming_edge,
-        description="Non-start nodes must have incoming edges",
-        fix_hint="Add an edge from a previous node to this node",
-    )
-)
-
-register_rule(
-    ValidationRule(
-        id="edge.classifier_branches.complete",
-        node_types=["question-classifier"],
-        category=RuleCategory.SEMANTIC,
-        severity=Severity.ERROR,
-        is_fixable=True,
-        check=_check_question_classifier_branches,
-        description="Question classifier must have edges for all classes",
-        fix_hint="Add edges with sourceHandle for each class ID",
-    )
-)
-
-register_rule(
-    ValidationRule(
-        id="edge.if_else_branches.complete",
-        node_types=["if-else"],
-        category=RuleCategory.SEMANTIC,
-        severity=Severity.ERROR,
-        is_fixable=True,
-        check=_check_if_else_branches,
-        description="If-else must have true and false branch edges",
-        fix_hint="Add edges with sourceHandle 'true' and 'false'",
-    )
-)
+# NOTE: Edge connectivity and branch completeness are now handled by:
+# - GraphValidator (BFS-based reachability analysis)
+# - EdgeRepair (automatic branch edge repair)
 
 register_rule(
     ValidationRule(

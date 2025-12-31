@@ -22,6 +22,7 @@ import { ModelModeType } from '@/types/app'
 import { VIBE_APPLY_EVENT, VIBE_COMMAND_EVENT } from '../../constants'
 import { useStore, useWorkflowStore } from '../../store'
 import WorkflowPreview from '../../workflow-preview'
+import { useMemo } from 'react'
 
 const VibePanel: FC = () => {
   const { t } = useTranslation()
@@ -145,6 +146,11 @@ const VibePanel: FC = () => {
     setVibeFlowCurrentIndex(index)
   }, [workflowStore])
 
+  // Button label - always use "Generate" (refinement mode removed)
+  const generateButtonLabel = useMemo(() => {
+    return t('appDebug.generate.generate')
+  }, [t])
+
   if (!showVibePanel)
     return null
 
@@ -234,7 +240,7 @@ const VibePanel: FC = () => {
               disabled={isVibeGenerating}
             >
               <Generator className="h-4 w-4" />
-              <span className="system-xs-semibold">{t('appDebug.generate.generate')}</span>
+              <span className="system-xs-semibold">{generateButtonLabel}</span>
             </Button>
           </div>
         </div>
