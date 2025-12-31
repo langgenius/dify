@@ -58,13 +58,13 @@ const HeaderInRestoring = ({
       onSuccess: () => {
         Toast.notify({
           type: 'success',
-          message: t('workflow.versionHistory.action.restoreSuccess'),
+          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
         })
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('workflow.versionHistory.action.restoreFailure'),
+          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
@@ -90,7 +90,7 @@ const HeaderInRestoring = ({
             theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
           )}
         >
-          {t('workflow.common.restore')}
+          {t('common.restore', { ns: 'workflow' })}
         </Button>
         <Button
           onClick={handleCancelRestore}
@@ -101,7 +101,7 @@ const HeaderInRestoring = ({
         >
           <div className="flex items-center gap-x-0.5">
             <RiHistoryLine className="h-4 w-4" />
-            <span className="px-0.5">{t('workflow.common.exitVersions')}</span>
+            <span className="px-0.5">{t('common.exitVersions', { ns: 'workflow' })}</span>
           </div>
         </Button>
       </div>

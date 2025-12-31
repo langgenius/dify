@@ -2,13 +2,12 @@ import type { FormEvent } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { COUNT_DOWN_KEY, COUNT_DOWN_TIME_MS } from '@/app/components/signin/countdown'
 import { emailRegex } from '@/config'
-import I18NContext from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { sendEMailLoginCode } from '@/service/common'
 
 type MailAndCodeAuthProps = {
@@ -22,19 +21,19 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
   const emailFromLink = decodeURIComponent(searchParams.get('email') || '')
   const [email, setEmail] = useState(emailFromLink)
   const [loading, setIsLoading] = useState(false)
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
 
   const handleGetEMailVerificationCode = async () => {
     try {
       if (!email) {
-        Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+        Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
         return
       }
 
       if (!emailRegex.test(email)) {
         Toast.notify({
           type: 'error',
-          message: t('login.error.emailInValid'),
+          message: t('error.emailInValid', { ns: 'login' }),
         })
         return
       }
@@ -65,12 +64,12 @@ export default function MailAndCodeAuth({ isInvite }: MailAndCodeAuthProps) {
     <form onSubmit={handleSubmit}>
       <input type="text" className="hidden" />
       <div className="mb-2">
-        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('login.email')}</label>
+        <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">{t('email', { ns: 'login' })}</label>
         <div className="mt-1">
-          <Input id="email" type="email" disabled={isInvite} value={email} placeholder={t('login.emailPlaceholder') as string} onChange={e => setEmail(e.target.value)} />
+          <Input id="email" type="email" disabled={isInvite} value={email} placeholder={t('emailPlaceholder', { ns: 'login' }) as string} onChange={e => setEmail(e.target.value)} />
         </div>
         <div className="mt-3">
-          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('login.signup.verifyMail')}</Button>
+          <Button type="submit" loading={loading} disabled={loading || !email} variant="primary" className="w-full">{t('signup.verifyMail', { ns: 'login' })}</Button>
         </div>
       </div>
     </form>

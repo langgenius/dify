@@ -221,7 +221,7 @@ const Authorized = ({
                   className="system-xs-medium flex h-[40px] cursor-pointer items-center px-3 text-text-accent-light-mode-only"
                 >
                   <RiAddLine className="mr-1 h-4 w-4" />
-                  {t('common.modelProvider.auth.addModelCredential')}
+                  {t('modelProvider.auth.addModelCredential', { ns: 'common' })}
                 </div>
               )
             }
@@ -232,7 +232,7 @@ const Authorized = ({
                     onClick={() => handleEdit()}
                     className="w-full"
                   >
-                    {t('common.modelProvider.auth.addApiKey')}
+                    {t('modelProvider.auth.addApiKey', { ns: 'common' })}
                   </Button>
                 </div>
               )
@@ -244,7 +244,7 @@ const Authorized = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title={t('common.modelProvider.confirmDelete')}
+            title={t('modelProvider.confirmDelete', { ns: 'common' })}
             isDisabled={doingAction}
             onCancel={closeConfirmDelete}
             onConfirm={handleConfirmDelete}

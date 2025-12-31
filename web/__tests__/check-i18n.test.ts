@@ -3,7 +3,7 @@ import path from 'node:path'
 import vm from 'node:vm'
 import { transpile } from 'typescript'
 
-describe('check-i18n script functionality', () => {
+describe('i18n:check script functionality', () => {
   const testDir = path.join(__dirname, '../i18n-test')
   const testEnDir = path.join(testDir, 'en-US')
   const testZhDir = path.join(testDir, 'zh-Hans')

@@ -44,7 +44,6 @@ vi.mock('@/context/i18n', () => ({
   useDocLink: () => () => '/guides',
 }))
 vi.mock('@/hooks/use-theme', () => ({
-  __esModule: true,
   default: () => ({ theme: 'light' }),
 }))
 

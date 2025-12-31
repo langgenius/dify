@@ -15,6 +15,11 @@ from core.tools.utils.text_processing_utils import remove_leading_symbols
         ("", ""),
         ("   ", "   "),
         ("【测试】", "【测试】"),
+        # Markdown link preservation - should be preserved if text starts with a markdown link
+        ("[Google](https://google.com) is a search engine", "[Google](https://google.com) is a search engine"),
+        ("[Example](http://example.com) some text", "[Example](http://example.com) some text"),
+        # Leading symbols before markdown link are removed, including the opening bracket [
+        ("@[Test](https://example.com)", "Test](https://example.com)"),
     ],
 )
 def test_remove_leading_symbols(input_text, expected_output):

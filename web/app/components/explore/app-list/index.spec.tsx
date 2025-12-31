@@ -16,8 +16,8 @@ let mockIsError = false
 const mockHandleImportDSL = vi.fn()
 const mockHandleImportDSLConfirm = vi.fn()
 
-vi.mock('@/hooks/use-tab-searchparams', () => ({
-  useTabSearchParams: () => [mockTabValue, mockSetTab],
+vi.mock('nuqs', () => ({
+  useQueryState: () => [mockTabValue, mockSetTab],
 }))
 
 vi.mock('ahooks', async () => {
@@ -58,7 +58,6 @@ vi.mock('@/hooks/use-import-dsl', () => ({
 }))
 
 vi.mock('@/app/components/explore/create-app-modal', () => ({
-  __esModule: true,
   default: (props: CreateAppModalProps) => {
     if (!props.show)
       return null
@@ -83,7 +82,6 @@ vi.mock('@/app/components/explore/create-app-modal', () => ({
 }))
 
 vi.mock('@/app/components/app/create-from-dsl-modal/dsl-confirm-modal', () => ({
-  __esModule: true,
   default: ({ onConfirm, onCancel }: { onConfirm: () => void, onCancel: () => void }) => (
     <div data-testid="dsl-confirm-modal">
       <button data-testid="dsl-confirm" onClick={onConfirm}>confirm</button>

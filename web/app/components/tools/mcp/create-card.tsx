@@ -7,9 +7,8 @@ import {
 } from '@remixicon/react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { useAppContext } from '@/context/app-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getLanguage } from '@/i18n-config/language'
 import { useCreateMCP } from '@/service/use-tools'
 import MCPModal from './modal'
@@ -20,7 +19,7 @@ type Props = {
 
 const NewMCPCard = ({ handleCreate }: Props) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const language = getLanguage(locale)
   const { isCurrentWorkspaceManager } = useAppContext()
 
@@ -50,13 +49,13 @@ const NewMCPCard = ({ handleCreate }: Props) => {
               <div className="flex h-10 w-10 items-center justify-center rounded-lg border border-dashed border-divider-deep group-hover:border-solid group-hover:border-state-accent-hover-alt group-hover:bg-state-accent-hover">
                 <RiAddCircleFill className="h-4 w-4 text-text-quaternary group-hover:text-text-accent" />
               </div>
-              <div className="system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent">{t('tools.mcp.create.cardTitle')}</div>
+              <div className="system-md-semibold ml-3 text-text-secondary group-hover:text-text-accent">{t('mcp.create.cardTitle', { ns: 'tools' })}</div>
             </div>
           </div>
           <div className="rounded-b-xl border-t-[0.5px] border-divider-subtle px-4 py-3 text-text-tertiary hover:text-text-accent">
             <a href={linkUrl} target="_blank" rel="noopener noreferrer" className="flex items-center space-x-1">
               <RiBookOpenLine className="h-3 w-3 shrink-0" />
-              <div className="system-xs-regular grow truncate" title={t('tools.mcp.create.cardLink') || ''}>{t('tools.mcp.create.cardLink')}</div>
+              <div className="system-xs-regular grow truncate" title={t('mcp.create.cardLink', { ns: 'tools' }) || ''}>{t('mcp.create.cardLink', { ns: 'tools' })}</div>
               <RiArrowRightUpLine className="h-3 w-3 shrink-0" />
             </a>
           </div>
