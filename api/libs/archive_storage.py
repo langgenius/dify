@@ -8,12 +8,12 @@ to S3-compatible object storage.
 import datetime
 import gzip
 import hashlib
-import json
 import logging
 from collections.abc import Generator
 from typing import Any, cast
 
 import boto3
+import orjson
 from botocore.client import Config
 from botocore.exceptions import ClientError
 
@@ -254,13 +254,13 @@ class ArchiveStorage:
         for record in records:
             # Convert datetime objects to ISO format strings
             serialized = ArchiveStorage._serialize_record(record)
-            lines.append(json.dumps(serialized, ensure_ascii=False, default=str))
+            lines.append(orjson.dumps(serialized))
 
-        jsonl_content = "\n".join(lines)
+        jsonl_content = b"\n".join(lines)
         if jsonl_content:
-            jsonl_content += "\n"
+            jsonl_content += b"\n"
 
-        return gzip.compress(jsonl_content.encode("utf-8"))
+        return gzip.compress(jsonl_content)
 
     @staticmethod
     def deserialize_from_jsonl_gz(data: bytes) -> list[dict[str, Any]]:
@@ -273,12 +273,12 @@ class ArchiveStorage:
         Returns:
             List of dictionaries
         """
-        jsonl_content = gzip.decompress(data).decode("utf-8")
+        jsonl_content = gzip.decompress(data)
         records = []
 
-        for line in jsonl_content.strip().split("\n"):
+        for line in jsonl_content.splitlines():
             if line:
-                records.append(json.loads(line))
+                records.append(orjson.loads(line))
 
         return records
 
