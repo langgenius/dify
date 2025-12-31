@@ -21,6 +21,7 @@ from libs.archive_storage import (
     ArchiveStorageNotConfiguredError,
     build_workflow_run_prefix,
     get_archive_storage,
+    get_export_storage,
 )
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
@@ -111,7 +112,7 @@ class WorkflowRunExportService:
         task_id = task_id or str(uuid4())
         storage_key = f"exports/workflow_runs/tenant_id={tenant_id}/workflow_run_id={run_id}/task_id={task_id}.zip"
 
-        storage = get_archive_storage()
+        storage = get_export_storage()
         checksum = storage.put_object(storage_key, data)
 
         return {

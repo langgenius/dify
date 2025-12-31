@@ -17,8 +17,13 @@ class ArchiveStorageConfig(BaseSettings):
         default=None,
     )
 
-    ARCHIVE_STORAGE_BUCKET: str | None = Field(
+    ARCHIVE_STORAGE_ARCHIVE_BUCKET: str | None = Field(
         description="Name of the bucket to store archived workflow logs",
+        default=None,
+    )
+
+    ARCHIVE_STORAGE_EXPORT_BUCKET: str | None = Field(
+        description="Name of the bucket to store exported workflow runs",
         default=None,
     )
 

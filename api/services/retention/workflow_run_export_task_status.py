@@ -7,7 +7,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from extensions.ext_redis import redis_client
-from libs.archive_storage import get_archive_storage
+from libs.archive_storage import get_export_storage
 
 TASK_STATUS_TTL_SECONDS = 7 * 24 * 3600
 EXPORT_SIGNED_URL_EXPIRE_SECONDS = 3600
@@ -72,7 +72,7 @@ def _refresh_presigned_url(task_id: str, status: dict) -> dict:
         return status
 
     try:
-        storage = get_archive_storage()
+        storage = get_export_storage()
         presigned_url = storage.generate_presigned_url(
             storage_key,
             expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,

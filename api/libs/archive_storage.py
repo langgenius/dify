@@ -42,25 +42,27 @@ class ArchiveStorage:
     run data in JSONL+gzip format.
     """
 
-    def __init__(self):
+    def __init__(self, bucket: str):
         if not dify_config.ARCHIVE_STORAGE_ENABLED:
             raise ArchiveStorageNotConfiguredError("Archive storage is not enabled")
 
+        if not bucket:
+            raise ArchiveStorageNotConfiguredError("Archive storage bucket is not configured")
         if not all(
             [
                 dify_config.ARCHIVE_STORAGE_ENDPOINT,
-                dify_config.ARCHIVE_STORAGE_BUCKET,
+                bucket,
                 dify_config.ARCHIVE_STORAGE_ACCESS_KEY,
                 dify_config.ARCHIVE_STORAGE_SECRET_KEY,
             ]
         ):
             raise ArchiveStorageNotConfiguredError(
                 "Archive storage configuration is incomplete. "
-                "Required: ARCHIVE_STORAGE_ENDPOINT, ARCHIVE_STORAGE_BUCKET, "
-                "ARCHIVE_STORAGE_ACCESS_KEY, ARCHIVE_STORAGE_SECRET_KEY"
+                "Required: ARCHIVE_STORAGE_ENDPOINT, ARCHIVE_STORAGE_ACCESS_KEY, "
+                "ARCHIVE_STORAGE_SECRET_KEY, and a bucket name"
             )
 
-        self.bucket = dify_config.ARCHIVE_STORAGE_BUCKET
+        self.bucket = bucket
         self.client = boto3.client(
             "s3",
             endpoint_url=dify_config.ARCHIVE_STORAGE_ENDPOINT,
@@ -305,6 +307,7 @@ class ArchiveStorage:
 
 # Singleton instance (lazy initialization)
 _archive_storage: ArchiveStorage | None = None
+_export_storage: ArchiveStorage | None = None
 
 
 def get_archive_storage() -> ArchiveStorage:
@@ -319,8 +322,31 @@ def get_archive_storage() -> ArchiveStorage:
     """
     global _archive_storage
     if _archive_storage is None:
-        _archive_storage = ArchiveStorage()
+        archive_bucket = dify_config.ARCHIVE_STORAGE_ARCHIVE_BUCKET
+        if not archive_bucket:
+            raise ArchiveStorageNotConfiguredError(
+                "Archive storage bucket is not configured. Required: ARCHIVE_STORAGE_ARCHIVE_BUCKET"
+            )
+        _archive_storage = ArchiveStorage(bucket=archive_bucket)
     return _archive_storage
+
+
+def get_export_storage() -> ArchiveStorage:
+    """
+    Get the export storage singleton instance.
+
+    Returns:
+        ArchiveStorage instance
+    """
+    global _export_storage
+    if _export_storage is None:
+        export_bucket = dify_config.ARCHIVE_STORAGE_EXPORT_BUCKET
+        if not export_bucket:
+            raise ArchiveStorageNotConfiguredError(
+                "Archive export bucket is not configured. Required: ARCHIVE_STORAGE_EXPORT_BUCKET"
+            )
+        _export_storage = ArchiveStorage(bucket=export_bucket)
+    return _export_storage
 
 
 def build_workflow_run_prefix(

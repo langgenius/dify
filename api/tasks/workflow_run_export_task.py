@@ -8,7 +8,7 @@ from typing import cast
 
 from celery import shared_task
 
-from libs.archive_storage import ArchiveStorageNotConfiguredError, get_archive_storage
+from libs.archive_storage import ArchiveStorageNotConfiguredError, get_export_storage
 from services.retention.export_workflow_run import WorkflowRunExportError, WorkflowRunExportService
 from services.retention.workflow_run_export_task_status import (
     EXPORT_SIGNED_URL_EXPIRE_SECONDS,
@@ -41,7 +41,7 @@ def export_workflow_run_task(task_id: str, tenant_id: str, run_id: str) -> None:
         storage_key = cast(str, export_result["storage_key"])
 
         try:
-            storage = get_archive_storage()
+            storage = get_export_storage()
             presigned_url = storage.generate_presigned_url(
                 storage_key,
                 expires_in=EXPORT_SIGNED_URL_EXPIRE_SECONDS,
