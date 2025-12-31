@@ -1,5 +1,5 @@
 """
-Rollback Archived Workflow Run Service.
+Restore Archived Workflow Run Service.
 
 This service restores archived workflow run data from S3-compatible storage
 back to the database.
@@ -48,8 +48,8 @@ TABLE_MODELS = {
 
 
 @dataclass
-class RollbackResult:
-    """Result of rolling back a single workflow run."""
+class RestoreResult:
+    """Result of restoring a single workflow run."""
 
     run_id: str
     tenant_id: str
@@ -59,7 +59,7 @@ class RollbackResult:
     elapsed_time: float = 0.0
 
 
-class WorkflowRunRollback:
+class WorkflowRunRestore:
     """
     Restore archived workflow run data from storage to database.
 
@@ -70,7 +70,7 @@ class WorkflowRunRollback:
 
     def __init__(self, dry_run: bool = False):
         """
-        Initialize the rollback service.
+        Initialize the restore service.
 
         Args:
             dry_run: If True, only preview without making changes
@@ -78,11 +78,11 @@ class WorkflowRunRollback:
         self.dry_run = dry_run
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
 
-    def rollback(
+    def restore(
         self,
         tenant_id: str,
         workflow_run_id: str,
-    ) -> RollbackResult:
+    ) -> RestoreResult:
         """
         Restore a single workflow run's archived data.
 
@@ -91,10 +91,10 @@ class WorkflowRunRollback:
             workflow_run_id: Workflow run ID to restore
 
         Returns:
-            RollbackResult with statistics about the operation
+            RestoreResult with statistics about the operation
         """
         start_time = time.time()
-        result = RollbackResult(
+        result = RestoreResult(
             run_id=workflow_run_id,
             tenant_id=tenant_id,
             success=False,
@@ -103,7 +103,7 @@ class WorkflowRunRollback:
 
         click.echo(
             click.style(
-                f"{'[DRY RUN] ' if self.dry_run else ''}Starting rollback for "
+                f"{'[DRY RUN] ' if self.dry_run else ''}Starting restore for "
                 f"workflow run {workflow_run_id} (tenant={tenant_id})",
                 fg="white",
             )
@@ -200,7 +200,7 @@ class WorkflowRunRollback:
                 if not self.dry_run:
                     # Note: restored count might be less than manifest count if records already exist
                     logger.info(
-                        "Rollback verification: manifest_total=%d, restored_total=%d",
+                        "Restore verification: manifest_total=%d, restored_total=%d",
                         manifest_total,
                         restored_total,
                     )
@@ -212,17 +212,17 @@ class WorkflowRunRollback:
                 result.success = True
                 click.echo(
                     click.style(
-                        f"{'[DRY RUN] Would complete' if self.dry_run else 'Completed'} rollback for "
+                        f"{'[DRY RUN] Would complete' if self.dry_run else 'Completed'} restore for "
                         f"workflow run {workflow_run_id}: restored={result.restored_counts}",
                         fg="green",
                     )
                 )
 
             except Exception as e:
-                logger.exception("Failed to rollback workflow run %s", workflow_run_id)
+                logger.exception("Failed to restore workflow run %s", workflow_run_id)
                 result.error = str(e)
                 session.rollback()
-                click.echo(click.style(f"Rollback failed: {e}", fg="red"))
+                click.echo(click.style(f"Restore failed: {e}", fg="red"))
 
         result.elapsed_time = time.time() - start_time
         return result
@@ -297,31 +297,31 @@ class WorkflowRunRollback:
 
         return result
 
-    def rollback_batch(
+    def restore_batch(
         self,
         tenant_id: str,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         limit: int = 100,
-    ) -> list[RollbackResult]:
+    ) -> list[RestoreResult]:
         """
-        Rollback multiple workflow runs by time range.
+        Restore multiple workflow runs by time range.
 
         Args:
             tenant_id: Tenant ID
             start_date: Optional start date filter
             end_date: Optional end date filter
-            limit: Maximum number of runs to rollback
+            limit: Maximum number of runs to restore
 
         Returns:
-            List of RollbackResult objects
+            List of RestoreResult objects
         """
         results = []
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         repo = self._get_workflow_run_repo()
 
         if start_date is None or end_date is None:
-            raise ValueError("start_date and end_date are required for batch rollback.")
+            raise ValueError("start_date and end_date are required for batch restore.")
 
         with session_maker() as session:
             runs = repo.get_archived_runs_by_time_range(
@@ -334,13 +334,13 @@ class WorkflowRunRollback:
 
         click.echo(
             click.style(
-                f"Found {len(runs)} archived workflow runs to rollback",
+                f"Found {len(runs)} archived workflow runs to restore",
                 fg="white",
             )
         )
 
         for run in runs:
-            result = self.rollback(tenant_id=run.tenant_id, workflow_run_id=run.id)
+            result = self.restore(tenant_id=run.tenant_id, workflow_run_id=run.id)
             results.append(result)
 
         return results

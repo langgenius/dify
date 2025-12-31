@@ -920,13 +920,13 @@ def archive_workflow_runs(
 
 
 @click.command(
-    "rollback-workflow-runs",
+    "restore-workflow-runs",
     help="Restore archived workflow runs from S3-compatible storage.",
 )
 @click.option("--tenant-id", required=True, help="Tenant ID.")
 @click.option("--run-id", required=True, help="Workflow run ID to restore.")
 @click.option("--dry-run", is_flag=True, help="Preview without restoring.")
-def rollback_workflow_runs(
+def restore_workflow_runs(
     tenant_id: str,
     run_id: str,
     dry_run: bool,
@@ -941,18 +941,18 @@ def rollback_workflow_runs(
     - workflow_pause_reasons
     - workflow_trigger_logs
     """
-    from services.retention.rollback_archived_workflow_run import WorkflowRunRollback
+    from services.retention.restore_archived_workflow_run import WorkflowRunRestore
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(
         click.style(
-            f"Starting rollback of workflow run {run_id} at {start_time.isoformat()}.",
+            f"Starting restore of workflow run {run_id} at {start_time.isoformat()}.",
             fg="white",
         )
     )
 
-    rollback = WorkflowRunRollback(dry_run=dry_run)
-    result = rollback.rollback(tenant_id=tenant_id, workflow_run_id=run_id)
+    restorer = WorkflowRunRestore(dry_run=dry_run)
+    result = restorer.restore(tenant_id=tenant_id, workflow_run_id=run_id)
 
     end_time = datetime.datetime.now(datetime.UTC)
     elapsed = end_time - start_time
@@ -960,14 +960,14 @@ def rollback_workflow_runs(
     if result.success:
         click.echo(
             click.style(
-                f"Rollback completed successfully. duration={elapsed}",
+                f"Restore completed successfully. duration={elapsed}",
                 fg="green",
             )
         )
     else:
         click.echo(
             click.style(
-                f"Rollback failed: {result.error}. duration={elapsed}",
+                f"Restore failed: {result.error}. duration={elapsed}",
                 fg="red",
             )
         )
