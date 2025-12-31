@@ -11,7 +11,6 @@ import { PlanRange } from '../../plan-switcher/plan-range-switcher'
 import CloudPlanItem from './index'
 
 vi.mock('../../../../base/toast', () => ({
-  __esModule: true,
   default: {
     notify: vi.fn(),
   },

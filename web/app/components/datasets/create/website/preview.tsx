@@ -21,7 +21,7 @@ const WebsitePreview = ({
     <div className={cn(s.filePreview, 'h-full')}>
       <div className={cn(s.previewHeader)}>
         <div className={cn(s.title, 'title-md-semi-bold')}>
-          <span>{t('datasetCreation.stepOne.pagePreview')}</span>
+          <span>{t('stepOne.pagePreview', { ns: 'datasetCreation' })}</span>
           <div className="flex h-6 w-6 cursor-pointer items-center justify-center" onClick={hidePreview}>
             <XMarkIcon className="h-4 w-4"></XMarkIcon>
           </div>

@@ -15,7 +15,7 @@ const Node: FC<NodeProps<AnswerNodeType>> = ({
   return (
     <div className="mb-1 px-3 py-1">
       <InfoPanel
-        title={t('workflow.nodes.answer.answer')}
+        title={t('nodes.answer.answer', { ns: 'workflow' })}
         content={(
           <ReadonlyInputWithSelectVar
             value={data.answer}

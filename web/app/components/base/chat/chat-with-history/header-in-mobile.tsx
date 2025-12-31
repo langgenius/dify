@@ -121,7 +121,7 @@ const HeaderInMobile = () => {
           <div className="flex h-full w-[calc(100vw_-_40px)] flex-col rounded-xl bg-components-panel-bg shadow-lg backdrop-blur-sm" onClick={e => e.stopPropagation()}>
             <div className="flex items-center gap-3 rounded-t-2xl border-b border-divider-subtle px-4 py-3">
               <Message3Fill className="h-6 w-6 shrink-0" />
-              <div className="system-xl-semibold grow text-text-secondary">{t('share.chat.chatSettingsTitle')}</div>
+              <div className="system-xl-semibold grow text-text-secondary">{t('chat.chatSettingsTitle', { ns: 'share' })}</div>
             </div>
             <div className="p-4">
               <InputsFormContent />
@@ -131,8 +131,8 @@ const HeaderInMobile = () => {
       )}
       {!!showConfirm && (
         <Confirm
-          title={t('share.chat.deleteConversation.title')}
-          content={t('share.chat.deleteConversation.content') || ''}
+          title={t('chat.deleteConversation.title', { ns: 'share' })}
+          content={t('chat.deleteConversation.content', { ns: 'share' }) || ''}
           isShow
           onCancel={handleCancelConfirm}
           onConfirm={handleDelete}

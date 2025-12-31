@@ -35,7 +35,7 @@ const Authorize = ({
   const oAuthButtonProps: AddOAuthButtonProps = useMemo(() => {
     if (theme === 'secondary') {
       return {
-        buttonText: !canApiKey ? t('plugin.auth.useOAuthAuth') : t('plugin.auth.addOAuth'),
+        buttonText: !canApiKey ? t('auth.useOAuthAuth', { ns: 'plugin' }) : t('auth.addOAuth', { ns: 'plugin' }),
         buttonVariant: 'secondary',
         className: 'hover:bg-components-button-secondary-bg',
         buttonLeftClassName: 'hover:bg-components-button-secondary-bg-hover',
@@ -46,7 +46,7 @@ const Authorize = ({
     }
 
     return {
-      buttonText: !canApiKey ? t('plugin.auth.useOAuthAuth') : t('plugin.auth.addOAuth'),
+      buttonText: !canApiKey ? t('auth.useOAuthAuth', { ns: 'plugin' }) : t('auth.addOAuth', { ns: 'plugin' }),
       pluginPayload,
     }
   }, [canApiKey, theme, pluginPayload, t])
@@ -56,12 +56,12 @@ const Authorize = ({
       return {
         pluginPayload,
         buttonVariant: 'secondary',
-        buttonText: !canOAuth ? t('plugin.auth.useApiAuth') : t('plugin.auth.addApi'),
+        buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
       }
     }
     return {
       pluginPayload,
-      buttonText: !canOAuth ? t('plugin.auth.useApiAuth') : t('plugin.auth.addApi'),
+      buttonText: !canOAuth ? t('auth.useApiAuth', { ns: 'plugin' }) : t('auth.addApi', { ns: 'plugin' }),
       buttonVariant: !canOAuth ? 'primary' : 'secondary-accent',
     }
   }, [canOAuth, theme, pluginPayload, t])
@@ -79,7 +79,7 @@ const Authorize = ({
 
     if (notAllowCustomCredential) {
       return (
-        <Tooltip popupContent={t('plugin.auth.credentialUnavailable')}>
+        <Tooltip popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
           {Item}
         </Tooltip>
       )
@@ -100,7 +100,7 @@ const Authorize = ({
 
     if (notAllowCustomCredential) {
       return (
-        <Tooltip popupContent={t('plugin.auth.credentialUnavailable')}>
+        <Tooltip popupContent={t('auth.credentialUnavailable', { ns: 'plugin' })}>
           {Item}
         </Tooltip>
       )

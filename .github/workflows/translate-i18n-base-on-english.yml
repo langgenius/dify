@@ -4,7 +4,7 @@ on:
   push:
     branches: [main]
     paths:
-      - 'web/i18n/en-US/*.ts'
+      - 'web/i18n/en-US/*.json'
 
 permissions:
   contents: write
@@ -18,7 +18,7 @@ jobs:
       run:
         working-directory: web
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
         with:
           fetch-depth: 0
           token: ${{ secrets.GITHUB_TOKEN }}
@@ -28,13 +28,13 @@ jobs:
         run: |
           git fetch origin "${{ github.event.before }}" || true
           git fetch origin "${{ github.sha }}" || true
-          changed_files=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'i18n/en-US/*.ts')
+          changed_files=$(git diff --name-only "${{ github.event.before }}" "${{ github.sha }}" -- 'i18n/en-US/*.json')
           echo "Changed files: $changed_files"
           if [ -n "$changed_files" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
             file_args=""
             for file in $changed_files; do
-              filename=$(basename "$file" .ts)
+              filename=$(basename "$file" .json)
               file_args="$file_args --file $filename"
             done
             echo "FILE_ARGS=$file_args" >> $GITHUB_ENV
@@ -51,7 +51,7 @@ jobs:
 
       - name: Set up Node.js
         if: env.FILES_CHANGED == 'true'
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6
         with:
           node-version: 'lts/*'
           cache: pnpm
@@ -65,7 +65,7 @@ jobs:
       - name: Generate i18n translations
         if: env.FILES_CHANGED == 'true'
         working-directory: ./web
-        run: pnpm run auto-gen-i18n ${{ env.FILE_ARGS }}
+        run: pnpm run i18n:gen ${{ env.FILE_ARGS }}
 
       - name: Create Pull Request
         if: env.FILES_CHANGED == 'true'

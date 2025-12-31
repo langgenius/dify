@@ -51,7 +51,7 @@ const ListWithCollection = ({
                     className="system-xs-medium flex cursor-pointer items-center text-text-accent "
                     onClick={() => onMoreClick?.(collection.search_params)}
                   >
-                    {t('plugin.marketplace.viewMore')}
+                    {t('marketplace.viewMore', { ns: 'plugin' })}
                     <RiArrowRightSLine className="h-4 w-4" />
                   </div>
                 )
