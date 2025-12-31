@@ -1,4 +1,4 @@
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
