@@ -4,14 +4,13 @@ import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import Split from '@/app/signin/split'
 import { emailRegex } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useSendMail } from '@/service/use-common'
 
 type Props = {
@@ -22,7 +21,7 @@ export default function Form({
 }: Props) {
   const { t } = useTranslation()
   const [email, setEmail] = useState('')
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { systemFeatures } = useGlobalPublicStore()
 
   const { mutateAsync: submitMail, isPending } = useSendMail()

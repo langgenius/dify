@@ -74,6 +74,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
               <Trans
                 t={t}
                 i18nKey={`${i18nPrefix}.fullMessage`}
+                ns="plugin"
                 components={{
                   CustomLink: (
                     <Link

@@ -225,6 +225,7 @@ const AddOAuthButton = ({
             >
             </div>
             <div
+              data-testid="oauth-settings-button"
               className={cn(
                 'flex h-full w-8 shrink-0 items-center justify-center rounded-r-lg hover:bg-components-button-primary-bg-hover',
                 buttonRightClassName,

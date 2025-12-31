@@ -8,7 +8,6 @@ import { afterAll, afterEach, describe, expect, it, vi } from 'vitest'
 import Embedded from './index'
 
 vi.mock('./style.module.css', () => ({
-  __esModule: true,
   default: {
     option: 'option',
     active: 'active',
@@ -37,7 +36,6 @@ const mockUseAppContext = vi.fn(() => ({
 }))
 
 vi.mock('copy-to-clipboard', () => ({
-  __esModule: true,
   default: vi.fn(),
 }))
 vi.mock('@/app/components/base/chat/embedded-chatbot/theme/theme-context', () => ({
