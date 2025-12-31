@@ -1,10 +1,11 @@
 """
 Archive Storage Client for S3-compatible storage.
 
-This module provides a dedicated storage client for archiving workflow run logs
+This module provides a dedicated storage client for archiving or exporting logs
 to S3-compatible object storage.
 """
 
+import base64
 import datetime
 import gzip
 import hashlib
@@ -36,10 +37,9 @@ class ArchiveStorageNotConfiguredError(ArchiveStorageError):
 
 class ArchiveStorage:
     """
-    S3-compatible storage client for archiving workflow logs.
+    S3-compatible storage client for archiving or exporting.
 
-    This client provides methods for storing and retrieving archived workflow
-    run data in JSONL+gzip format.
+    This client provides methods for storing and retrieving archived data in JSONL+gzip format.
     """
 
     def __init__(self, bucket: str):
@@ -237,8 +237,6 @@ class ArchiveStorage:
     @staticmethod
     def _content_md5(data: bytes) -> str:
         """Calculate base64-encoded MD5 for Content-MD5 header."""
-        import base64
-
         return base64.b64encode(hashlib.md5(data).digest()).decode()
 
     @staticmethod

@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Görünen Ad",
   "variableConfig.editModalTitle": "Giriş Alanı Düzenle",
   "variableConfig.errorMsg.atLeastOneOption": "En az bir seçenek gereklidir",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Şeması geçerli bir JSON değil",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Şeması’nın türü \"object\" olmalı",
   "variableConfig.errorMsg.labelNameRequired": "Etiket adı gereklidir",
   "variableConfig.errorMsg.optionRepeat": "Yinelenen seçenekler var",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Değişken adı tekrar edemez",

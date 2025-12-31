@@ -1,16 +1,14 @@
 import type { OnFeaturesChange } from '@/app/components/base/features/types'
 import { RiEqualizer2Line } from '@remixicon/react'
 import { produce } from 'immer'
-import * as React from 'react'
 import { useCallback, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import { useFeatures, useFeaturesStore } from '@/app/components/base/features/hooks'
 import FeatureCard from '@/app/components/base/features/new-feature-panel/feature-card'
 import { FeatureEnum } from '@/app/components/base/features/types'
 import { ContentModeration } from '@/app/components/base/icons/src/vender/features'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useCodeBasedExtensions } from '@/service/use-common'
 
@@ -25,7 +23,7 @@ const Moderation = ({
 }: Props) => {
   const { t } = useTranslation()
   const { setShowModerationSettingModal } = useModalContext()
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const featuresStore = useFeaturesStore()
   const moderation = useFeatures(s => s.features.moderation)
   const { data: codeBasedExtensionList } = useCodeBasedExtensions('moderation')

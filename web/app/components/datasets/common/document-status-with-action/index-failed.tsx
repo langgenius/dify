@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
