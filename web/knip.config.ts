@@ -15,6 +15,9 @@ const config: KnipConfig = {
   ignoreBinaries: [
     'only-allow',
   ],
+  ignoreDependencies: [
+    'babel-loader',
+  ],
   rules: {
     files: 'warn',
     dependencies: 'warn',
