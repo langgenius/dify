@@ -9,9 +9,11 @@ from controllers.web.wraps import WebApiResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
+    ConversationInfiniteScrollPagination,
     ResultResponse,
-    build_conversation_infinite_scroll_pagination,
-    build_simple_conversation,
+    SimpleConversation,
+    format_files_contained,
+    to_timestamp,
 )
 from libs.helper import uuid_value
 from models.model import AppMode
@@ -95,7 +97,23 @@ class ConversationListApi(WebApiResource):
                     pinned=pinned,
                     sort_by=args["sort_by"],
                 )
-                return build_conversation_infinite_scroll_pagination(pagination).model_dump(mode="json")
+                conversations = [
+                    SimpleConversation(
+                        id=str(item.id),
+                        name=item.name,
+                        inputs=format_files_contained(item.inputs),
+                        status=item.status,
+                        introduction=getattr(item, "introduction", None),
+                        created_at=to_timestamp(item.created_at),
+                        updated_at=to_timestamp(item.updated_at),
+                    )
+                    for item in pagination.data
+                ]
+                return ConversationInfiniteScrollPagination(
+                    limit=pagination.limit,
+                    has_more=pagination.has_more,
+                    data=conversations,
+                ).model_dump(mode="json")
         except LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
@@ -172,7 +190,15 @@ class ConversationRenameApi(WebApiResource):
             conversation = ConversationService.rename(
                 app_model, conversation_id, end_user, args["name"], args["auto_generate"]
             )
-            return build_simple_conversation(conversation).model_dump(mode="json")
+            return SimpleConversation(
+                id=str(conversation.id),
+                name=conversation.name,
+                inputs=format_files_contained(conversation.inputs),
+                status=conversation.status,
+                introduction=getattr(conversation, "introduction", None),
+                created_at=to_timestamp(conversation.created_at),
+                updated_at=to_timestamp(conversation.updated_at),
+            ).model_dump(mode="json")
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
