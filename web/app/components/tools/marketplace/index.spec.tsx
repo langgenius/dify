@@ -14,7 +14,6 @@ import Marketplace from './index'
 
 const listRenderSpy = vi.fn()
 vi.mock('@/app/components/plugins/marketplace/list', () => ({
-  __esModule: true,
   default: (props: {
     marketplaceCollections: unknown[]
     marketplaceCollectionPluginsMap: Record<string, unknown[]>
@@ -40,7 +39,6 @@ vi.mock('@/service/use-tools', () => ({
 }))
 
 vi.mock('@/utils/var', () => ({
-  __esModule: true,
   getMarketplaceUrl: vi.fn(() => 'https://marketplace.test/market'),
 }))
 
