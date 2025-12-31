@@ -190,25 +190,29 @@ class EmailCodeLoginApi(Resource):
         )
         args = parser.parse_args()
 
-        user_email = args["email"]
+        user_email = args["email"].lower()
 
         token_data = WebAppAuthService.get_email_code_login_data(args["token"])
         if token_data is None:
             raise InvalidTokenError()
 
-        if token_data["email"] != args["email"]:
+        token_email = token_data.get("email")
+        if not isinstance(token_email, str):
+            raise InvalidEmailError()
+        normalized_token_email = token_email.lower()
+        if normalized_token_email != user_email:
             raise InvalidEmailError()
 
         if token_data["code"] != args["code"]:
             raise EmailCodeError()
 
         WebAppAuthService.revoke_email_code_login_token(args["token"])
-        account = WebAppAuthService.get_user_through_email(user_email)
+        account = WebAppAuthService.get_user_through_email(token_email)
         if not account:
             raise AuthenticationFailedError()
 
         token = WebAppAuthService.login(account=account)
-        AccountService.reset_login_error_rate_limit(args["email"])
+        AccountService.reset_login_error_rate_limit(user_email)
         response = make_response({"result": "success", "data": {"access_token": token}})
         # set_access_token_to_cookie(request, response, token, samesite="None", httponly=False)
         return response
