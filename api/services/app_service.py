@@ -29,6 +29,7 @@ from tasks.remove_app_and_related_data_task import remove_app_and_related_data_t
 
 logger = logging.getLogger(__name__)
 
+
 class AppService:
     def get_paginate_apps(self, user_id: str, tenant_id: str, args: dict) -> Pagination | None:
         """
@@ -93,9 +94,7 @@ class AppService:
             # Primary sort: Owner name A-Z
             # Secondary sort: Modified date descending (newest first)
             query = query.order_by(sort_column.asc(), App.updated_at.desc())
-        elif sort_by == "name":
-            query = query.order_by(sort_column.asc())
-        elif sort_order == "asc":
+        elif sort_by == "name" or sort_order == "asc":
             query = query.order_by(sort_column.asc())
         else:
             query = query.order_by(sort_column.desc())
