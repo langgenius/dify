@@ -34,7 +34,7 @@ export const useSegmentList = (
   const { datasetId, documentId, params } = payload
 
   return useQuery<SegmentsResponse>({
-    queryKey: [...useSegmentListKey, { datasetId, documentId, ...params }],
+    queryKey: [...useSegmentListKey, datasetId, documentId, params],
     queryFn: () => {
       return get<SegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments`, { params })
     },
@@ -113,7 +113,7 @@ export const useChildSegmentList = (
   const { datasetId, documentId, segmentId, params } = payload
 
   return useQuery({
-    queryKey: [...useChildSegmentListKey, { datasetId, documentId, segmentId, ...params }],
+    queryKey: [...useChildSegmentListKey, datasetId, documentId, segmentId, params],
     queryFn: () => {
       return get<ChildSegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { params })
     },
