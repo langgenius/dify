@@ -7,7 +7,6 @@ import RunBatch from './index'
 vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
   return {
-    __esModule: true,
     default: vi.fn(),
     MediaType: actual.MediaType,
   }
