@@ -51,7 +51,6 @@ vi.mock('react-i18next', async (importOriginal) => {
 // Mock useGetLanguage context
 vi.mock('@/context/i18n', () => ({
   useGetLanguage: () => 'en-US',
-  useI18N: () => ({ locale: 'en-US' }),
 }))
 
 // Mock app context for useGetIcon
