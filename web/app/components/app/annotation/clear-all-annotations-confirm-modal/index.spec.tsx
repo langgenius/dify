@@ -4,13 +4,16 @@ import ClearAllAnnotationsConfirmModal from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
       const translations: Record<string, string> = {
-        'appAnnotation.table.header.clearAllConfirm': 'Clear all annotations?',
-        'common.operation.confirm': 'Confirm',
-        'common.operation.cancel': 'Cancel',
+        'table.header.clearAllConfirm': 'Clear all annotations?',
+        'operation.confirm': 'Confirm',
+        'operation.cancel': 'Cancel',
       }
-      return translations[key] || key
+      if (translations[key])
+        return translations[key]
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

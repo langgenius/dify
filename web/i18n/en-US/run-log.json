@@ -1,0 +1,23 @@
+{
+  "actionLogs": "Action Logs",
+  "circularInvocationTip": "There is circular invocation of tools/nodes in the current workflow.",
+  "detail": "DETAIL",
+  "input": "INPUT",
+  "meta.executor": "Executor",
+  "meta.startTime": "Start Time",
+  "meta.status": "Status",
+  "meta.steps": "Run Steps",
+  "meta.time": "Elapsed Time",
+  "meta.title": "METADATA",
+  "meta.tokens": "Total Tokens",
+  "meta.version": "Version",
+  "result": "RESULT",
+  "resultEmpty.link": "detail panel",
+  "resultEmpty.tipLeft": "please go to the ",
+  "resultEmpty.tipRight": " view it.",
+  "resultEmpty.title": "This run only output JSON format,",
+  "resultPanel.status": "STATUS",
+  "resultPanel.time": "ELAPSED TIME",
+  "resultPanel.tokens": "TOTAL TOKENS",
+  "tracing": "TRACING"
+}

@@ -30,7 +30,7 @@ const UserInput = () => {
         <RiArrowDownSLine
           className={`mr-1 h-3 w-3 ${!expanded ? '-rotate-90 text-text-accent' : 'text-text-tertiary'}`}
         />
-        {t('workflow.panel.userInputField').toLocaleUpperCase()}
+        {t('panel.userInputField', { ns: 'workflow' }).toLocaleUpperCase()}
       </div>
       <div className="px-2 pb-3 pt-1">
         {

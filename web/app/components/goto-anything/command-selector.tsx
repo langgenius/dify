@@ -84,10 +84,10 @@ const CommandSelector: FC<Props> = ({ scopes, onCommandSelect, searchFilter, com
         <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
           <div>
             <div className="text-sm font-medium text-text-tertiary">
-              {t('app.gotoAnything.noMatchingCommands')}
+              {t('gotoAnything.noMatchingCommands', { ns: 'app' })}
             </div>
             <div className="mt-1 text-xs text-text-quaternary">
-              {t('app.gotoAnything.tryDifferentSearch')}
+              {t('gotoAnything.tryDifferentSearch', { ns: 'app' })}
             </div>
           </div>
         </div>
@@ -98,7 +98,7 @@ const CommandSelector: FC<Props> = ({ scopes, onCommandSelect, searchFilter, com
   return (
     <div className="px-4 py-3">
       <div className="mb-2 text-left text-sm font-medium text-text-secondary">
-        {isSlashMode ? t('app.gotoAnything.groups.commands') : t('app.gotoAnything.selectSearchType')}
+        {isSlashMode ? t('gotoAnything.groups.commands', { ns: 'app' }) : t('gotoAnything.selectSearchType', { ns: 'app' })}
       </div>
       <Command.Group className="space-y-1">
         {allItems.map(item => (
@@ -116,8 +116,32 @@ const CommandSelector: FC<Props> = ({ scopes, onCommandSelect, searchFilter, com
             </span>
             <span className="ml-3 text-sm text-text-secondary">
               {isSlashMode
-                ? t((SLASH_COMMAND_I18N_MAP[item.key] || item.description) as any)
-                : t((SCOPE_ACTION_I18N_MAP[item.key] || item.description) as any)}
+                ? (
+                  (() => {
+                    const slashKeyMap = {
+                      '/theme': 'gotoAnything.actions.themeCategoryDesc',
+                      '/language': 'gotoAnything.actions.languageChangeDesc',
+                      '/account': 'gotoAnything.actions.accountDesc',
+                      '/feedback': 'gotoAnything.actions.feedbackDesc',
+                      '/docs': 'gotoAnything.actions.docDesc',
+                      '/community': 'gotoAnything.actions.communityDesc',
+                      '/zen': 'gotoAnything.actions.zenDesc',
+                      '/banana': 'gotoAnything.actions.vibeDesc',
+                    } as const
+                    return t(slashKeyMap[item.key as keyof typeof slashKeyMap] || item.description, { ns: 'app' })
+                  })()
+                )
+                : (
+                  (() => {
+                    const keyMap = {
+                      '@app': 'gotoAnything.actions.searchApplicationsDesc',
+                      '@plugin': 'gotoAnything.actions.searchPluginsDesc',
+                      '@knowledge': 'gotoAnything.actions.searchKnowledgeBasesDesc',
+                      '@node': 'gotoAnything.actions.searchWorkflowNodesDesc',
+                    } as const
+                    return t(keyMap[item.key as keyof typeof keyMap], { ns: 'app' })
+                  })()
+                )}
             </span>
           </Command.Item>
         ))}

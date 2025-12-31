@@ -54,7 +54,7 @@ const Empty = ({
           <Line className="absolute left-1/2 top-full -translate-x-1/2 -translate-y-1/2 rotate-90" />
         </div>
         <div className="system-md-regular text-center text-text-tertiary">
-          {text || t('plugin.marketplace.noPluginFound')}
+          {text || t('marketplace.noPluginFound', { ns: 'plugin' })}
         </div>
       </div>
     </div>

@@ -34,7 +34,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('../plan', () => ({
-  __esModule: true,
   default: ({ loc }: { loc: string }) => <div data-testid="plan-component" data-loc={loc} />,
 }))
 

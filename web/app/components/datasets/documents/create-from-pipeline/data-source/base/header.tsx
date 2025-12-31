@@ -31,7 +31,7 @@ const Header = ({
         />
         <Divider type="vertical" className="mx-1 h-3.5 shrink-0" />
         <Tooltip
-          popupContent={t('datasetPipeline.configurationTip', { pluginName })}
+          popupContent={t('configurationTip', { ns: 'datasetPipeline', pluginName })}
           position="top"
         >
           <Button

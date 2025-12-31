@@ -26,7 +26,7 @@ import PluginVersionPicker from '@/app/components/plugins/update-plugin/plugin-v
 import { API_PREFIX } from '@/config'
 import { useAppContext } from '@/context/app-context'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import { useGetLanguage, useI18N } from '@/context/i18n'
+import { useGetLanguage, useLocale } from '@/context/i18n'
 import { useModalContext } from '@/context/modal-context'
 import { useProviderContext } from '@/context/provider-context'
 import useTheme from '@/hooks/use-theme'
@@ -47,7 +47,7 @@ import { AUTO_UPDATE_MODE } from '../reference-setting-modal/auto-update-setting
 import { convertUTCDaySecondsToLocalSeconds, timeOfDayToDayjs } from '../reference-setting-modal/auto-update-setting/utils'
 import { PluginCategoryEnum, PluginSource } from '../types'
 
-const i18nPrefix = 'plugin.action'
+const i18nPrefix = 'action'
 
 type Props = {
   detail: PluginDetail
@@ -67,7 +67,7 @@ const DetailHeader = ({
 
   const { theme } = useTheme()
   const locale = useGetLanguage()
-  const { locale: currentLocale } = useI18N()
+  const currentLocale = useLocale()
   const { checkForUpdates, fetchReleases } = useGitHubReleases()
   const { setShowUpdatePluginModal } = useModalContext()
   const { refreshModelProviders } = useProviderContext()
@@ -228,7 +228,7 @@ const DetailHeader = ({
         <div className="ml-3 w-0 grow">
           <div className="flex h-5 items-center">
             <Title title={label[locale]} />
-            {verified && !isReadmeView && <Verified className="ml-0.5 h-4 w-4" text={t('plugin.marketplace.verifiedTip')} />}
+            {verified && !isReadmeView && <Verified className="ml-0.5 h-4 w-4" text={t('marketplace.verifiedTip', { ns: 'plugin' })} />}
             {version && (
               <PluginVersionPicker
                 disabled={!isFromMarketplace || isReadmeView}
@@ -261,7 +261,7 @@ const DetailHeader = ({
             )}
             {/* Auto update info */}
             {isAutoUpgradeEnabled && !isReadmeView && (
-              <Tooltip popupContent={t('plugin.autoUpdate.nextUpdateTime', { time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}>
+              <Tooltip popupContent={t('autoUpdate.nextUpdateTime', { ns: 'plugin', time: timeOfDayToDayjs(convertUTCDaySecondsToLocalSeconds(autoUpgradeInfo?.upgrade_time_of_day || 0, timezone!)).format('hh:mm A') })}>
                 {/* add a a div to fix tooltip hover not show problem */}
                 <div>
                   <Badge className="mr-1 cursor-pointer px-1">
@@ -286,7 +286,7 @@ const DetailHeader = ({
                   handleUpdate()
                 }}
               >
-                {t('plugin.detailPanel.operation.update')}
+                {t('detailPanel.operation.update', { ns: 'plugin' })}
               </Button>
             )}
           </div>
@@ -301,22 +301,22 @@ const DetailHeader = ({
                 <>
                   <div className="system-xs-regular ml-1 mr-0.5 text-text-quaternary">·</div>
                   {source === PluginSource.marketplace && (
-                    <Tooltip popupContent={t('plugin.detailPanel.categoryTip.marketplace')}>
+                    <Tooltip popupContent={t('detailPanel.categoryTip.marketplace', { ns: 'plugin' })}>
                       <div><BoxSparkleFill className="h-3.5 w-3.5 text-text-tertiary hover:text-text-accent" /></div>
                     </Tooltip>
                   )}
                   {source === PluginSource.github && (
-                    <Tooltip popupContent={t('plugin.detailPanel.categoryTip.github')}>
+                    <Tooltip popupContent={t('detailPanel.categoryTip.github', { ns: 'plugin' })}>
                       <div><Github className="h-3.5 w-3.5 text-text-secondary hover:text-text-primary" /></div>
                     </Tooltip>
                   )}
                   {source === PluginSource.local && (
-                    <Tooltip popupContent={t('plugin.detailPanel.categoryTip.local')}>
+                    <Tooltip popupContent={t('detailPanel.categoryTip.local', { ns: 'plugin' })}>
                       <div><RiHardDrive3Line className="h-3.5 w-3.5 text-text-tertiary" /></div>
                     </Tooltip>
                   )}
                   {source === PluginSource.debugging && (
-                    <Tooltip popupContent={t('plugin.detailPanel.categoryTip.debugging')}>
+                    <Tooltip popupContent={t('detailPanel.categoryTip.debugging', { ns: 'plugin' })}>
                       <div><RiBugLine className="h-3.5 w-3.5 text-text-tertiary hover:text-text-warning" /></div>
                     </Tooltip>
                   )}
@@ -373,12 +373,12 @@ const DetailHeader = ({
       {isShowDeleteConfirm && (
         <Confirm
           isShow
-          title={t(`${i18nPrefix}.delete`)}
+          title={t(`${i18nPrefix}.delete`, { ns: 'plugin' })}
           content={(
             <div>
-              {t(`${i18nPrefix}.deleteContentLeft`)}
+              {t(`${i18nPrefix}.deleteContentLeft`, { ns: 'plugin' })}
               <span className="system-md-semibold">{label[locale]}</span>
-              {t(`${i18nPrefix}.deleteContentRight`)}
+              {t(`${i18nPrefix}.deleteContentRight`, { ns: 'plugin' })}
               <br />
             </div>
           )}

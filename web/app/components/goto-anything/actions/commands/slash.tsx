@@ -16,16 +16,23 @@ import { slashCommandRegistry } from './registry'
 import { themeCommand } from './theme'
 import { zenCommand } from './zen'
 
-export const slashScope: ScopeDescriptor = {
+export const slashAction: ScopeDescriptor = {
   id: 'slash',
   shortcut: ACTION_KEYS.SLASH,
-  title: i18n.t('app.gotoAnything.actions.slashTitle'),
-  description: i18n.t('app.gotoAnything.actions.slashDesc'),
+  title: i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' }),
+  description: i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' }),
+  action: (result: any) => {
+    if (result.type !== 'command')
+      return
+    const { command, args } = result.data
+    executeCommand(command, args)
+  },
   search: async (query, _searchTerm = '') => {
     // Delegate all search logic to the command registry system
     return slashCommandRegistry.search(query, i18n.language)
   },
 }
+
 
 // Register/unregister default handlers for slash commands with external dependencies.
 export const registerSlashCommands = (deps: SlashCommandDependencies) => {
