@@ -21,9 +21,9 @@ from extensions.ext_database import db
 from libs.archive_storage import (
     ArchiveStorage,
     ArchiveStorageNotConfiguredError,
-    build_workflow_run_prefix,
     get_archive_storage,
 )
+from libs.retention_utils import build_workflow_run_prefix
 from models.trigger import WorkflowTriggerLog
 from models.workflow import (
     WorkflowNodeExecutionModel,
