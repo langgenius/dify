@@ -49,14 +49,14 @@ export default function AddMemberOrGroupDialog() {
       <PortalToFollowElemTrigger asChild>
         <Button variant="ghost-accent" size="small" className="flex shrink-0 items-center gap-x-0.5" onClick={() => setOpen(!open)}>
           <RiAddCircleFill className="h-4 w-4" />
-          <span>{t('common.operation.add')}</span>
+          <span>{t('operation.add', { ns: 'common' })}</span>
         </Button>
       </PortalToFollowElemTrigger>
       {open && <FloatingOverlay />}
       <PortalToFollowElemContent className="z-[100]">
         <div className="relative flex max-h-[400px] w-[400px] flex-col overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg backdrop-blur-[5px]">
           <div className="sticky top-0 z-10 bg-components-panel-bg-blur p-2 pb-0.5 backdrop-blur-[5px]">
-            <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('app.accessControlDialog.operateGroupAndMember.searchPlaceholder') as string} />
+            <Input value={keyword} onChange={handleKeywordChange} showLeftIcon placeholder={t('accessControlDialog.operateGroupAndMember.searchPlaceholder', { ns: 'app' }) as string} />
           </div>
           {
             isLoading
@@ -76,7 +76,7 @@ export default function AddMemberOrGroupDialog() {
                     )
                   : (
                       <div className="flex h-7 items-center justify-center px-2 py-0.5">
-                        <span className="system-xs-regular text-text-tertiary">{t('app.accessControlDialog.operateGroupAndMember.noResult')}</span>
+                        <span className="system-xs-regular text-text-tertiary">{t('accessControlDialog.operateGroupAndMember.noResult', { ns: 'app' })}</span>
                       </div>
                     )
           }
@@ -115,7 +115,7 @@ function SelectedGroupsBreadCrumb() {
   }, [setSelectedGroupsForBreadcrumb])
   return (
     <div className="flex h-7 items-center gap-x-0.5 px-2 py-0.5">
-      <span className={cn('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('app.accessControlDialog.operateGroupAndMember.allMembers')}</span>
+      <span className={cn('system-xs-regular text-text-tertiary', selectedGroupsForBreadcrumb.length > 0 && 'cursor-pointer text-text-accent')} onClick={handleReset}>{t('accessControlDialog.operateGroupAndMember.allMembers', { ns: 'app' })}</span>
       {selectedGroupsForBreadcrumb.map((group, index) => {
         return (
           <div key={index} className="system-xs-regular flex items-center gap-x-0.5 text-text-tertiary">
@@ -171,7 +171,7 @@ function GroupItem({ group }: GroupItemProps) {
         className="flex shrink-0 items-center justify-between px-1.5 py-1"
         onClick={handleExpandClick}
       >
-        <span className="px-[3px]">{t('app.accessControlDialog.operateGroupAndMember.expand')}</span>
+        <span className="px-[3px]">{t('accessControlDialog.operateGroupAndMember.expand', { ns: 'app' })}</span>
         <RiArrowRightSLine className="h-4 w-4" />
       </Button>
     </BaseItem>
@@ -210,7 +210,7 @@ function MemberItem({ member }: MemberItemProps) {
         {currentUser.email === member.email && (
           <p className="system-xs-regular text-text-tertiary">
             (
-            {t('common.you')}
+            {t('you', { ns: 'common' })}
             )
           </p>
         )}

@@ -49,7 +49,7 @@ const SubVariablePicker: FC<Props> = ({
         defaultValue={value}
         onSelect={handleChange}
         className="!text-[13px]"
-        placeholder={t('workflow.nodes.listFilter.selectVariableKeyPlaceholder')!}
+        placeholder={t('nodes.listFilter.selectVariableKeyPlaceholder', { ns: 'workflow' })!}
         optionClassName="pl-1 pr-5 py-0"
         renderOption={renderOption}
         renderTrigger={item => (
@@ -66,7 +66,7 @@ const SubVariablePicker: FC<Props> = ({
               : (
                   <div className="system-sm-regular flex pl-1 text-components-input-text-placeholder  group-hover/sub-variable-picker:text-text-tertiary">
                     <Variable02 className="mr-1 h-4 w-4 shrink-0" />
-                    <span>{t('common.placeholder.select')}</span>
+                    <span>{t('placeholder.select', { ns: 'common' })}</span>
                   </div>
                 )}
           </div>

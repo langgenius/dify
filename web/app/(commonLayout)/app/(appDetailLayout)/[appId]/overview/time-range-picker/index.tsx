@@ -2,19 +2,22 @@
 import type { Dayjs } from 'dayjs'
 import type { FC } from 'react'
 import type { PeriodParams, PeriodParamsWithTimeRange } from '@/app/components/app/overview/app-chart'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { HourglassShape } from '@/app/components/base/icons/src/vender/other'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { formatToLocalTime } from '@/utils/format'
 import DatePicker from './date-picker'
 import RangeSelector from './range-selector'
 
 const today = dayjs()
 
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
 type Props = {
-  ranges: { value: number, name: string }[]
+  ranges: { value: number, name: TimePeriodName }[]
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
 }
@@ -24,7 +27,7 @@ const TimeRangePicker: FC<Props> = ({
   onSelect,
   queryDateFormat,
 }) => {
-  const { locale } = useI18N()
+  const locale = useLocale()
 
   const [isCustomRange, setIsCustomRange] = useState(false)
   const [start, setStart] = useState<Dayjs>(today)

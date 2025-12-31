@@ -245,7 +245,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
     let errorMessage = ''
 
     if (!payload.subscription_id)
-      errorMessage = t('workflow.nodes.triggerPlugin.subscriptionRequired')
+      errorMessage = t('nodes.triggerPlugin.subscriptionRequired', { ns: 'workflow' })
 
     const {
       triggerInputsSchema = [],
@@ -260,7 +260,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
         const rawParam = payload.event_parameters?.[field.variable]
           ?? (payload.config as Record<string, any> | undefined)?.[field.variable]
         if (!rawParam) {
-          errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+          errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
           return
         }
 
@@ -271,7 +271,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
         const { type, value } = targetParam
         if (type === VarKindType.variable) {
           if (!value || (Array.isArray(value) && value.length === 0))
-            errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+            errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
         }
         else {
           if (
@@ -280,7 +280,7 @@ const nodeDefault: NodeDefault<PluginTriggerNodeType> = {
             || value === ''
             || (Array.isArray(value) && value.length === 0)
           ) {
-            errorMessage = t('workflow.errorMsg.fieldRequired', { field: field.label })
+            errorMessage = t('errorMsg.fieldRequired', { ns: 'workflow', field: field.label })
           }
         }
       })

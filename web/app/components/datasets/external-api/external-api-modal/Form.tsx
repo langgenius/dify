@@ -63,7 +63,7 @@ const Form: FC<FormProps> = React.memo(({
               className="body-xs-regular flex items-center text-text-accent"
             >
               <RiBookOpenLine className="mr-1 h-3 w-3 text-text-accent" />
-              {t('dataset.externalAPIPanelDocumentation')}
+              {t('externalAPIPanelDocumentation', { ns: 'dataset' })}
             </a>
           )}
         </div>

@@ -16,16 +16,16 @@ const featuresTranslations: Record<string, string[]> = {
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
+      const prefix = options?.ns ? `${options.ns}.` : ''
       if (options?.returnObjects)
-        return featuresTranslations[key] || []
-      return key
+        return featuresTranslations[`${prefix}${key}`] || []
+      return `${prefix}${key}`
     },
   }),
-  Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
+  Trans: ({ i18nKey, ns }: { i18nKey: string, ns?: string }) => <span>{ns ? `${ns}.${i18nKey}` : i18nKey}</span>,
 }))
 
 vi.mock('../../../../base/toast', () => ({
-  __esModule: true,
   default: {
     notify: vi.fn(),
   },

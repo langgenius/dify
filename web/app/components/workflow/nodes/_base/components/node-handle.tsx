@@ -204,12 +204,12 @@ export const NodeSourceHandle = memo(({
       <div className="absolute -top-1 left-1/2 hidden -translate-x-1/2 -translate-y-full rounded-lg border-[0.5px] border-components-panel-border bg-components-tooltip-bg p-1.5 shadow-lg group-hover/handle:block">
         <div className="system-xs-regular text-text-tertiary">
           <div className=" whitespace-nowrap">
-            <span className="system-xs-medium text-text-secondary">{t('workflow.common.parallelTip.click.title')}</span>
-            {t('workflow.common.parallelTip.click.desc')}
+            <span className="system-xs-medium text-text-secondary">{t('common.parallelTip.click.title', { ns: 'workflow' })}</span>
+            {t('common.parallelTip.click.desc', { ns: 'workflow' })}
           </div>
           <div>
-            <span className="system-xs-medium text-text-secondary">{t('workflow.common.parallelTip.drag.title')}</span>
-            {t('workflow.common.parallelTip.drag.desc')}
+            <span className="system-xs-medium text-text-secondary">{t('common.parallelTip.drag.title', { ns: 'workflow' })}</span>
+            {t('common.parallelTip.drag.desc', { ns: 'workflow' })}
           </div>
         </div>
       </div>

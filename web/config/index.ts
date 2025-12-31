@@ -131,8 +131,9 @@ export const TONE_LIST = [
   {
     id: 4,
     name: 'Custom',
+    config: undefined,
   },
-]
+] as const
 
 export const DEFAULT_CHAT_PROMPT_CONFIG = {
   prompt: [
