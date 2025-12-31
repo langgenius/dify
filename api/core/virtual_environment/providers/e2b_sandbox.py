@@ -77,6 +77,7 @@ class E2BEnvironment(VirtualEnvironment):
         sandbox = Sandbox.create(
             template=options.get(self.OptionsKey.E2B_DEFAULT_TEMPLATE, "code-interpreter-v1"),
             api_key=options.get(self.OptionsKey.API_KEY, ""),
+            envs=dict(environments),
         )
         info = sandbox.get_info(api_key=options.get(self.OptionsKey.API_KEY, ""))
         output = sandbox.commands.run("uname -m").stdout.strip()
