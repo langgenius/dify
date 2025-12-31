@@ -239,7 +239,7 @@ const Flowchart = (props: FlowchartProps) => {
             .split('\n')
             .map((line) => {
               // Gantt charts have specific syntax needs.
-              const taskMatch = line.match(/^\s*([^:]+?)\s*:\s*(.*)/)
+              const taskMatch = /^\s*([^:]+?)\s*:\s*(.*)/.exec(line)
               if (!taskMatch)
                 return line // Not a task line, return as is.
 

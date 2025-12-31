@@ -31,7 +31,7 @@ export const parsePluginErrorMessage = async (error: any): Promise<string> => {
   // Try to extract nested JSON from PluginInvokeError
   // Use greedy match .+ to capture the complete JSON object with nested braces
   const pluginErrorPattern = /PluginInvokeError:\s*(\{.+\})/
-  const match = rawMessage.match(pluginErrorPattern)
+  const match = pluginErrorPattern.exec(rawMessage)
 
   if (match) {
     try {

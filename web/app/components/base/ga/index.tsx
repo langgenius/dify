@@ -19,10 +19,11 @@ export type IGAProps = {
   gaType: GaType
 }
 
+const NONCE_PATTERN = /'nonce-([^']+)'/
 const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
   if (!cspHeader)
     return undefined
-  const nonceMatch = cspHeader.match(/'nonce-([^']+)'/)
+  const nonceMatch = NONCE_PATTERN.exec(cspHeader)
   return nonceMatch ? nonceMatch[1] : undefined
 }
 
