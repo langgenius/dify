@@ -27,26 +27,44 @@ class CleanProcessor:
                     pattern = r"([a-zA-Z0-9_.+-]+@[a-zA-Z0-9-]+\.[a-zA-Z0-9-.]+)"
                     text = re.sub(pattern, "", text)
 
-                    # Remove URL but keep Markdown image URLs
-                    # First, temporarily replace Markdown image URLs with a placeholder
-                    markdown_image_pattern = r"!\[.*?\]\((https?://[^\s)]+)\)"
-                    placeholders: list[str] = []
+                    # Remove URL but keep Markdown image URLs and link URLs
+                    # Replace the ENTIRE markdown link/image with a single placeholder to protect
+                    # the link text (which might also be a URL) from being removed
+                    markdown_link_pattern = r"\[([^\]]*)\]\((https?://[^)]+)\)"
+                    markdown_image_pattern = r"!\[.*?\]\((https?://[^)]+)\)"
+                    placeholders: list[tuple[str, str, str]] = []  # (type, text, url)
 
-                    def replace_with_placeholder(match, placeholders=placeholders):
+                    def replace_markdown_with_placeholder(match, placeholders=placeholders):
+                        link_type = "link"
+                        link_text = match.group(1)
+                        url = match.group(2)
+                        placeholder = f"__MARKDOWN_PLACEHOLDER_{len(placeholders)}__"
+                        placeholders.append((link_type, link_text, url))
+                        return placeholder
+
+                    def replace_image_with_placeholder(match, placeholders=placeholders):
+                        link_type = "image"
                         url = match.group(1)
-                        placeholder = f"__MARKDOWN_IMAGE_URL_{len(placeholders)}__"
-                        placeholders.append(url)
-                        return f"![image]({placeholder})"
+                        placeholder = f"__MARKDOWN_PLACEHOLDER_{len(placeholders)}__"
+                        placeholders.append((link_type, "image", url))
+                        return placeholder
 
-                    text = re.sub(markdown_image_pattern, replace_with_placeholder, text)
+                    # Protect markdown links first
+                    text = re.sub(markdown_link_pattern, replace_markdown_with_placeholder, text)
+                    # Then protect markdown images
+                    text = re.sub(markdown_image_pattern, replace_image_with_placeholder, text)
 
                     # Now remove all remaining URLs
-                    url_pattern = r"https?://[^\s)]+"
+                    url_pattern = r"https?://\S+"
                     text = re.sub(url_pattern, "", text)
 
-                    # Finally, restore the Markdown image URLs
-                    for i, url in enumerate(placeholders):
-                        text = text.replace(f"__MARKDOWN_IMAGE_URL_{i}__", url)
+                    # Restore the Markdown links and images
+                    for i, (link_type, text_or_alt, url) in enumerate(placeholders):
+                        placeholder = f"__MARKDOWN_PLACEHOLDER_{i}__"
+                        if link_type == "link":
+                            text = text.replace(placeholder, f"[{text_or_alt}]({url})")
+                        else:  # image
+                            text = text.replace(placeholder, f"![{text_or_alt}]({url})")
         return text
 
     def filter_string(self, text):

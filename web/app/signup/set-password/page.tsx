@@ -1,5 +1,6 @@
 'use client'
 import type { MailRegisterResponse } from '@/service/use-common'
+import Cookies from 'js-cookie'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -10,6 +11,20 @@ import Toast from '@/app/components/base/toast'
 import { validPassword } from '@/config'
 import { useMailRegister } from '@/service/use-common'
 import { cn } from '@/utils/classnames'
+import { sendGAEvent } from '@/utils/gtag'
+
+const parseUtmInfo = () => {
+  const utmInfoStr = Cookies.get('utm_info')
+  if (!utmInfoStr)
+    return null
+  try {
+    return JSON.parse(utmInfoStr)
+  }
+  catch (e) {
+    console.error('Failed to parse utm_info cookie:', e)
+    return null
+  }
+}
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -55,10 +70,17 @@ const ChangePasswordForm = () => {
       })
       const { result } = res as MailRegisterResponse
       if (result === 'success') {
-        // Track registration success event
-        trackEvent('user_registration_success', {
+        const utmInfo = parseUtmInfo()
+        trackEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
           method: 'email',
+          ...utmInfo,
         })
+
+        sendGAEvent(utmInfo ? 'user_registration_success_with_utm' : 'user_registration_success', {
+          method: 'email',
+          ...utmInfo,
+        })
+        Cookies.remove('utm_info') // Clean up: remove utm_info cookie
 
         Toast.notify({
           type: 'success',

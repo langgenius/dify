@@ -1,6 +1,6 @@
 'use client'
 import type { MailSendResponse } from '@/service/use-common'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'

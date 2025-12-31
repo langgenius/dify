@@ -160,6 +160,51 @@ describe('useShareChatList', () => {
     })
     expect(mockFetchChatList).not.toHaveBeenCalled()
   })
+
+  it('should always consider data stale to ensure fresh data on conversation switch (GitHub #30378)', async () => {
+    // This test verifies that chat list data is always considered stale (staleTime: 0)
+    // which ensures fresh data is fetched when switching back to a conversation.
+    // Without this, users would see outdated messages until double-switching.
+    const queryClient = createQueryClient()
+    const wrapper = createWrapper(queryClient)
+    const params = {
+      conversationId: 'conversation-1',
+      isInstalledApp: false,
+      appId: undefined,
+    }
+    const initialResponse = { data: [{ id: '1', content: 'initial' }] }
+    const updatedResponse = { data: [{ id: '1', content: 'initial' }, { id: '2', content: 'new message' }] }
+
+    // First fetch
+    mockFetchChatList.mockResolvedValueOnce(initialResponse)
+    const { result, unmount } = renderHook(() => useShareChatList(params), { wrapper })
+
+    await waitFor(() => {
+      expect(result.current.data).toEqual(initialResponse)
+    })
+    expect(mockFetchChatList).toHaveBeenCalledTimes(1)
+
+    // Unmount (simulates switching away from conversation)
+    unmount()
+
+    // Remount with same params (simulates switching back)
+    // With staleTime: 0, this should trigger a background refetch
+    mockFetchChatList.mockResolvedValueOnce(updatedResponse)
+    const { result: result2 } = renderHook(() => useShareChatList(params), { wrapper })
+
+    // Should immediately return cached data
+    expect(result2.current.data).toEqual(initialResponse)
+
+    // Should trigger background refetch due to staleTime: 0
+    await waitFor(() => {
+      expect(mockFetchChatList).toHaveBeenCalledTimes(2)
+    })
+
+    // Should update with fresh data
+    await waitFor(() => {
+      expect(result2.current.data).toEqual(updatedResponse)
+    })
+  })
 })
 
 // Scenario: conversation name queries follow enabled flags and installation constraints.

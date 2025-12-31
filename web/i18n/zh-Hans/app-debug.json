@@ -306,6 +306,8 @@
   "variableConfig.displayName": "显示名称",
   "variableConfig.editModalTitle": "编辑变量",
   "variableConfig.errorMsg.atLeastOneOption": "至少需要一个选项",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema 不是合法的 JSON",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Schema 的 type 必须为 \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "显示名称必填",
   "variableConfig.errorMsg.optionRepeat": "选项不能重复",
   "variableConfig.errorMsg.varNameCanBeRepeat": "变量名称不能重复",

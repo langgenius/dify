@@ -306,6 +306,8 @@
   "variableConfig.displayName": "表示名",
   "variableConfig.editModalTitle": "入力フィールドを編集",
   "variableConfig.errorMsg.atLeastOneOption": "少なくとも 1 つのオプションが必要です",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSONスキーマが有効なJSONではありません",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSONスキーマのtypeは\"object\"である必要があります",
   "variableConfig.errorMsg.labelNameRequired": "ラベル名は必須です",
   "variableConfig.errorMsg.optionRepeat": "繰り返しオプションがあります",
   "variableConfig.errorMsg.varNameCanBeRepeat": "変数名は繰り返すことができません",

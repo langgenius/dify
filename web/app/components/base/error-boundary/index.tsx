@@ -4,6 +4,7 @@ import { RiAlertLine, RiBugLine } from '@remixicon/react'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import Button from '@/app/components/base/button'
+import { IS_DEV } from '@/config'
 import { cn } from '@/utils/classnames'
 
 type ErrorBoundaryState = {
@@ -54,7 +55,7 @@ class ErrorBoundaryInner extends React.Component<
   }
 
   componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-    if (process.env.NODE_ENV === 'development') {
+    if (IS_DEV) {
       console.error('ErrorBoundary caught an error:', error)
       console.error('Error Info:', errorInfo)
     }
@@ -262,13 +263,13 @@ export function withErrorBoundary<P extends object>(
 // Simple error fallback component
 export const ErrorFallback: React.FC<{
   error: Error
-  resetErrorBoundary: () => void
-}> = ({ error, resetErrorBoundary }) => {
+  resetErrorBoundaryAction: () => void
+}> = ({ error, resetErrorBoundaryAction }) => {
   return (
     <div className="flex min-h-[200px] flex-col items-center justify-center rounded-lg border border-red-200 bg-red-50 p-8">
       <h2 className="mb-2 text-lg font-semibold text-red-800">Oops! Something went wrong</h2>
       <p className="mb-4 text-center text-red-600">{error.message}</p>
-      <Button onClick={resetErrorBoundary} size="small">
+      <Button onClick={resetErrorBoundaryAction} size="small">
         Try again
       </Button>
     </div>

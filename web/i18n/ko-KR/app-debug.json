@@ -306,6 +306,8 @@
   "variableConfig.displayName": "표시 이름",
   "variableConfig.editModalTitle": "입력 필드 편집",
   "variableConfig.errorMsg.atLeastOneOption": "적어도 하나의 옵션이 필요합니다",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON 스키마가 올바른 JSON이 아닙니다",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON 스키마의 type은 \"object\"이어야 합니다",
   "variableConfig.errorMsg.labelNameRequired": "레이블명은 필수입니다",
   "variableConfig.errorMsg.optionRepeat": "옵션이 중복되어 있습니다",
   "variableConfig.errorMsg.varNameCanBeRepeat": "변수명은 중복될 수 없습니다",

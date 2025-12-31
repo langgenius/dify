@@ -3,10 +3,12 @@ import uuid
 from flask import request
 from flask_restx import Resource, marshal
 from pydantic import BaseModel, Field
-from sqlalchemy import select
+from sqlalchemy import String, cast, func, or_, select
+from sqlalchemy.dialects.postgresql import JSONB
 from werkzeug.exceptions import Forbidden, NotFound
 
 import services
+from configs import dify_config
 from controllers.common.schema import register_schema_models
 from controllers.console import console_ns
 from controllers.console.app.error import ProviderNotInitializeError
@@ -143,7 +145,29 @@ class DatasetDocumentSegmentListApi(Resource):
             query = query.where(DocumentSegment.hit_count >= hit_count_gte)
 
         if keyword:
-            query = query.where(DocumentSegment.content.ilike(f"%{keyword}%"))
+            # Search in both content and keywords fields
+            # Use database-specific methods for JSON array search
+            if dify_config.SQLALCHEMY_DATABASE_URI_SCHEME == "postgresql":
+                # PostgreSQL: Use jsonb_array_elements_text to properly handle Unicode/Chinese text
+                keywords_condition = func.array_to_string(
+                    func.array(
+                        select(func.jsonb_array_elements_text(cast(DocumentSegment.keywords, JSONB)))
+                        .correlate(DocumentSegment)
+                        .scalar_subquery()
+                    ),
+                    ",",
+                ).ilike(f"%{keyword}%")
+            else:
+                # MySQL: Cast JSON to string for pattern matching
+                # MySQL stores Chinese text directly in JSON without Unicode escaping
+                keywords_condition = cast(DocumentSegment.keywords, String).ilike(f"%{keyword}%")
+
+            query = query.where(
+                or_(
+                    DocumentSegment.content.ilike(f"%{keyword}%"),
+                    keywords_condition,
+                )
+            )
 
         if args.enabled.lower() != "all":
             if args.enabled.lower() == "true":

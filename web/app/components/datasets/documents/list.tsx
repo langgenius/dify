@@ -9,7 +9,8 @@ import {
   RiGlobalLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { pick, uniq } from 'es-toolkit/compat'
+import { uniq } from 'es-toolkit/array'
+import { pick } from 'es-toolkit/object'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'

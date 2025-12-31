@@ -13,7 +13,7 @@ import type { VarInInspect } from '@/types/workflow'
 import {
   useEventListener,
 } from 'ahooks'
-import { isEqual } from 'es-toolkit/compat'
+import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
 import dynamic from 'next/dynamic'
 import {

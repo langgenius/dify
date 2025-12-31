@@ -2,7 +2,7 @@
 import type { RefObject } from 'react'
 import type { Plugin, PluginCategoryEnum } from '@/app/components/plugins/types'
 import { RiArrowRightUpLine, RiSearchLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useEffect, useImperativeHandle, useMemo, useRef } from 'react'
 import { useTranslation } from 'react-i18next'

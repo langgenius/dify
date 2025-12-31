@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Nume afișat",
   "variableConfig.editModalTitle": "Editați câmpul de intrare",
   "variableConfig.errorMsg.atLeastOneOption": "Este necesară cel puțin o opțiune",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "Schema JSON nu este un JSON valid",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "Schema JSON trebuie să aibă tipul \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Numele etichetei este obligatoriu",
   "variableConfig.errorMsg.optionRepeat": "Există opțiuni repetate",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Numele variabilei nu poate fi repetat",

@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Tên hiển thị",
   "variableConfig.editModalTitle": "Chỉnh sửa trường nhập",
   "variableConfig.errorMsg.atLeastOneOption": "Cần ít nhất một tùy chọn",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema không phải là JSON hợp lệ",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Schema phải có kiểu \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Tên nhãn là bắt buộc",
   "variableConfig.errorMsg.optionRepeat": "Có các tùy chọn trùng lặp",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Tên biến không được trùng lặp",

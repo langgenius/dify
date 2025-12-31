@@ -306,6 +306,8 @@
   "variableConfig.displayName": "ชื่อที่แสดง",
   "variableConfig.editModalTitle": "แก้ไขฟิลด์อินพุต",
   "variableConfig.errorMsg.atLeastOneOption": "จําเป็นต้องมีอย่างน้อยหนึ่งตัวเลือก",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema ไม่ใช่ JSON ที่ถูกต้อง",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Schema ต้องมีชนิดเป็น \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "ต้องมีชื่อฉลาก",
   "variableConfig.errorMsg.optionRepeat": "มีตัวเลือกการทําซ้ํา",
   "variableConfig.errorMsg.varNameCanBeRepeat": "ไม่สามารถทําซ้ําชื่อตัวแปรได้",

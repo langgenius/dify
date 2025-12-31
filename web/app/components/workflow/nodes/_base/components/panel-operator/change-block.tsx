@@ -2,7 +2,7 @@ import type {
   Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
-import { intersection } from 'es-toolkit/compat'
+import { intersection } from 'es-toolkit/array'
 import {
   memo,
   useCallback,

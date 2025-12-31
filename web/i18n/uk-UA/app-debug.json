@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Відображуване ім'я",
   "variableConfig.editModalTitle": "Редагувати Поле Введення",
   "variableConfig.errorMsg.atLeastOneOption": "Потрібно щонайменше одну опцію",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema не є коректним JSON",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Schema має мати тип \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Потрібно вказати назву мітки",
   "variableConfig.errorMsg.optionRepeat": "Є повторні опції",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Назва змінної не може повторюватися",

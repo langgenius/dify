@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Nazwa wyświetlana",
   "variableConfig.editModalTitle": "Edytuj Pole Wejściowe",
   "variableConfig.errorMsg.atLeastOneOption": "Wymagana jest co najmniej jedna opcja",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "Schemat JSON nie jest prawidłowym JSON-em",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "Schemat JSON musi mieć typ \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Wymagana nazwa etykiety",
   "variableConfig.errorMsg.optionRepeat": "Powtarzają się opcje",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Nazwa zmiennej nie może się powtarzać",

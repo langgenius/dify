@@ -33,7 +33,8 @@ import type {
 import type { PromptItem } from '@/models/debug'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
-import { isArray, uniq } from 'es-toolkit/compat'
+import { uniq } from 'es-toolkit/array'
+import { isArray } from 'es-toolkit/compat'
 import { produce } from 'immer'
 import {
   AGENT_OUTPUT_STRUCT,

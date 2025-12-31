@@ -7,7 +7,7 @@ import {
   RiDeleteBinLine,
   RiDraggable,
 } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'

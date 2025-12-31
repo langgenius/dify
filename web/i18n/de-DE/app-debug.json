@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Anzeigename",
   "variableConfig.editModalTitle": "Eingabefeld bearbeiten",
   "variableConfig.errorMsg.atLeastOneOption": "Mindestens eine Option ist erforderlich",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON-Schema ist kein gültiges JSON",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON-Schema muss den Typ \"object\" haben",
   "variableConfig.errorMsg.labelNameRequired": "Labelname ist erforderlich",
   "variableConfig.errorMsg.optionRepeat": "Hat Wiederholungsoptionen",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Variablenname kann nicht wiederholt werden",
