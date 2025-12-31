@@ -135,7 +135,7 @@ class WorkerPool:
             # Wait for workers to finish
             for worker in self._workers:
                 if worker.is_alive():
-                    worker.join(timeout=10.0)
+                    worker.join(timeout=2.0)
 
             self._workers.clear()
 

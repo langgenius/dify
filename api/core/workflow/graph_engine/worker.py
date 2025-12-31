@@ -6,6 +6,7 @@ to the event_queue for the dispatcher to process.
 """
 
 import contextvars
+import logging
 import queue
 import threading
 import time
@@ -24,6 +25,8 @@ from core.workflow.nodes.base.node import Node
 from libs.flask_utils import preserve_flask_contexts
 
 from .ready_queue import ReadyQueue
+
+logger = logging.getLogger(__name__)
 
 
 @final
@@ -131,6 +134,8 @@ class Worker(threading.Thread):
 
         error: Exception | None = None
 
+        logger.info("Worker %s executing node %s", self._worker_id, node.id)
+
         if self._flask_app and self._context_vars:
             with preserve_flask_contexts(
                 flask_app=self._flask_app,
@@ -140,9 +145,10 @@ class Worker(threading.Thread):
                 try:
                     node_events = node.run()
                     for event in node_events:
+                        logger.info("worker %s"
+                                    "node_id %s receive event  and stop event: %s",
+                                    self._worker_id, event.node_id, self._stop_event.is_set())
                         self._event_queue.put(event)
-                        if self._stop_event.is_set():
-                            break
                 except Exception as exc:
                     error = exc
                     raise
@@ -153,9 +159,10 @@ class Worker(threading.Thread):
             try:
                 node_events = node.run()
                 for event in node_events:
+                    logger.info("worker %s"
+                                "node_id %s receive event  and stop event: %s",
+                                self._worker_id, event.node_id, self._stop_event.is_set())
                     self._event_queue.put(event)
-                    if self._stop_event.is_set():
-                        break
             except Exception as exc:
                 error = exc
                 raise
