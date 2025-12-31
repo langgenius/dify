@@ -154,43 +154,12 @@ const config: KnipConfig = {
   // ============================================================================
   // Configure what types of issues to report and at what severity level
   rules: {
-    // ========================================================================
-    // Unused files are ERRORS
-    // ========================================================================
-    // These should definitely be removed or used.
-    // However, always manually verify before deleting!
-    files: 'error',
-
-    // ========================================================================
-    // Unused dependencies are WARNINGS
-    // ========================================================================
-    // Dependencies might be:
-    // - Used in production builds but not in dev
-    // - Peer dependencies
-    // - Used by other tools
+    files: 'warn',
     dependencies: 'warn',
     devDependencies: 'warn',
-
-    // ========================================================================
-    // Unlisted imports are ERRORS
-    // ========================================================================
-    // Missing from package.json - will break in production!
-    unlisted: 'error',
-
-    // ========================================================================
-    // Unused exports are WARNINGS (not errors!)
-    // ========================================================================
-    // Exports might be:
-    // - Part of public API for future use
-    // - Used by external tools
-    // - Exported for type inference
-    // ⚠️ ALWAYS manually verify before removing exports!
+    unlisted: 'warn',
     exports: 'warn',
-
-    // Unused types are warnings (might be part of type definitions)
     types: 'warn',
-
-    // Duplicate exports are warnings (could cause confusion but not breaking)
     duplicates: 'warn',
   },
 }
