@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Display Name",
   "variableConfig.editModalTitle": "Edit Input Field",
   "variableConfig.errorMsg.atLeastOneOption": "At least one option is required",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema is not valid JSON",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Schema must have type \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Label name is required",
   "variableConfig.errorMsg.optionRepeat": "Has repeat options",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Variable name can not be repeated",

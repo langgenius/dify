@@ -306,6 +306,8 @@
   "variableConfig.displayName": "प्रदर्शन नाम",
   "variableConfig.editModalTitle": "इनपुट फ़ील्ड संपादित करें",
   "variableConfig.errorMsg.atLeastOneOption": "कम से कम एक विकल्प आवश्यक है",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON स्कीमा मान्य JSON नहीं है",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON स्कीमा का प्रकार \"object\" होना चाहिए",
   "variableConfig.errorMsg.labelNameRequired": "लेबल नाम आवश्यक है",
   "variableConfig.errorMsg.optionRepeat": "विकल्प दोहराए गए हैं",
   "variableConfig.errorMsg.varNameCanBeRepeat": "वेरिएबल नाम दोहराया नहीं जा सकता",
