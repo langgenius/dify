@@ -330,7 +330,7 @@ class AccountService:
         delete_account_task.delay(account.id)
 
     @staticmethod
-    def link_account_integrate(provider: str, open_id: str, account: Account):
+    def link_account_integrate(provider: str, open_id: str, account: Account, *, encrypted_token: str | None = None):
         """Link account integrate"""
         try:
             # Query whether there is an existing binding record for the same provider
@@ -341,17 +341,24 @@ class AccountService:
             if account_integrate:
                 # If it exists, update the record
                 account_integrate.open_id = open_id
-                account_integrate.encrypted_token = ""  # todo
+                if encrypted_token is not None:
+                    account_integrate.encrypted_token = encrypted_token
                 account_integrate.updated_at = naive_utc_now()
             else:
                 # If it does not exist, create a new record
                 account_integrate = AccountIntegrate(
-                    account_id=account.id, provider=provider, open_id=open_id, encrypted_token=""
+                    account_id=account.id,
+                    provider=provider,
+                    open_id=open_id,
+                    encrypted_token=encrypted_token or "",
                 )
                 db.session.add(account_integrate)
 
             db.session.commit()
+
             logger.info("Account %s linked %s account %s.", account.id, provider, open_id)
+        except LinkAccountIntegrateError:
+            raise
         except Exception as e:
             logger.exception("Failed to link %s account %s to Account %s", provider, open_id, account.id)
             raise LinkAccountIntegrateError("Failed to link account.") from e
@@ -1312,12 +1319,17 @@ class RegisterService:
         db.session.begin_nested()
         """Register account"""
         try:
+            effective_is_setup = is_setup
+            if provider == "acedatacloud" and dify_config.ACEDATACLOUD_AUTH_AUTO_REGISTER:
+                # Allow AceDataCloud OAuth to auto-provision Dify accounts even when registration is disabled.
+                effective_is_setup = True
+
             account = AccountService.create_account(
                 email=email,
                 name=name,
                 interface_language=get_valid_language(language),
                 password=password,
-                is_setup=is_setup,
+                is_setup=effective_is_setup,
             )
             account.status = status or AccountStatus.ACTIVE
             account.initialized_at = naive_utc_now()

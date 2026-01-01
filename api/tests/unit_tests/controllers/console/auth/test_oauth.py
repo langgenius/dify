@@ -2,6 +2,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask import session as flask_session
 
 from controllers.console.auth.oauth import (
     OAuthCallback,
@@ -20,6 +21,7 @@ class TestGetOAuthProviders:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.secret_key = "test"
         return app
 
     @pytest.mark.parametrize(
@@ -49,6 +51,9 @@ class TestGetOAuthProviders:
         mock_config.GOOGLE_CLIENT_ID = google_config["id"]
         mock_config.GOOGLE_CLIENT_SECRET = google_config["secret"]
         mock_config.CONSOLE_API_URL = "http://localhost"
+        mock_config.ACEDATACLOUD_AUTH_BASE_URL = None
+        mock_config.ACEDATACLOUD_AUTH_LOGIN_PATH = "/auth/login"
+        mock_config.OAUTH_REDIRECT_PATH = "/console/api/oauth/authorize"
 
         with app.app_context():
             providers = get_oauth_providers()
@@ -66,6 +71,7 @@ class TestOAuthLogin:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.secret_key = "test"
         return app
 
     @pytest.fixture
@@ -84,8 +90,10 @@ class TestOAuthLogin:
     )
     @patch("controllers.console.auth.oauth.get_oauth_providers")
     @patch("controllers.console.auth.oauth.redirect")
+    @patch("controllers.console.auth.oauth.secrets.token_urlsafe", return_value="test_nonce")
     def test_should_handle_oauth_login_with_various_tokens(
         self,
+        mock_token,
         mock_redirect,
         mock_get_providers,
         resource,
@@ -99,8 +107,13 @@ class TestOAuthLogin:
         query_string = f"invite_token={invite_token}" if invite_token else ""
         with app.test_request_context(f"/auth/oauth/github?{query_string}"):
             resource.get("github")
+            state_payload = flask_session.get("oauth_state_github")
 
-        mock_oauth_provider.get_authorization_url.assert_called_once_with(invite_token=expected_token)
+        assert state_payload is not None
+        assert state_payload["nonce"] == "test_nonce"
+        assert state_payload["invite_token"] == expected_token
+
+        mock_oauth_provider.get_authorization_url.assert_called_once_with(state="test_nonce", redirect_override=None)
         mock_redirect.assert_called_once_with("https://github.com/login/oauth/authorize?...")
 
     @pytest.mark.parametrize(
@@ -133,6 +146,7 @@ class TestOAuthCallback:
     def app(self):
         app = Flask(__name__)
         app.config["TESTING"] = True
+        app.secret_key = "test"
         return app
 
     @pytest.fixture
@@ -174,7 +188,8 @@ class TestOAuthCallback:
         mock_generate_account.return_value = (oauth_setup["account"], True)
         mock_account_service.login.return_value = oauth_setup["token_pair"]
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=test_nonce"):
+            flask_session["oauth_state_github"] = {"nonce": "test_nonce", "invite_token": None}
             resource.get("github")
 
         oauth_setup["provider"].get_access_token.assert_called_once_with("test_code")
@@ -209,7 +224,8 @@ class TestOAuthCallback:
         mock_oauth_provider.get_access_token.side_effect = request_exception
         mock_get_providers.return_value = {"github": mock_oauth_provider}
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=test_nonce"):
+            flask_session["oauth_state_github"] = {"nonce": "test_nonce", "invite_token": None}
             response, status_code = resource.get("github")
 
         assert status_code == 400
@@ -269,7 +285,8 @@ class TestOAuthCallback:
         mock_token_pair.csrf_token = "csrf_token"
         mock_account_service.login.return_value = mock_token_pair
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=test_nonce"):
+            flask_session["oauth_state_github"] = {"nonce": "test_nonce", "invite_token": None}
             resource.get("github")
 
         mock_redirect.assert_called_once_with(expected_redirect)
@@ -304,7 +321,8 @@ class TestOAuthCallback:
         mock_token_pair.csrf_token = "csrf_token"
         mock_account_service.login.return_value = mock_token_pair
 
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=test_nonce"):
+            flask_session["oauth_state_github"] = {"nonce": "test_nonce", "invite_token": None}
             resource.get("github")
 
         assert mock_account.status == AccountStatus.ACTIVE
@@ -370,7 +388,8 @@ class TestOAuthCallback:
         mock_account_service.login.return_value = mock_token_pair
 
         # Execute OAuth callback
-        with app.test_request_context("/auth/oauth/github/callback?code=test_code"):
+        with app.test_request_context("/auth/oauth/github/callback?code=test_code&state=test_nonce"):
+            flask_session["oauth_state_github"] = {"nonce": "test_nonce", "invite_token": None}
             resource.get("github")
 
         # Verify current behavior: login succeeds (this is NOT ideal)
@@ -421,11 +440,12 @@ class TestAccountGeneration:
         assert result == mock_account
 
     @pytest.mark.parametrize(
-        ("allow_register", "existing_account", "should_create"),
+        ("allow_register", "existing_account", "should_create", "provider"),
         [
-            (True, None, True),  # New account creation allowed
-            (True, "existing", False),  # Existing account
-            (False, None, False),  # Registration not allowed
+            (True, None, True, "github"),  # New account creation allowed
+            (True, "existing", False, "github"),  # Existing account
+            (False, None, False, "github"),  # Registration not allowed
+            (False, None, True, "acedatacloud"),  # AceDataCloud OAuth auto-register
         ],
     )
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
@@ -434,8 +454,10 @@ class TestAccountGeneration:
     @patch("controllers.console.auth.oauth.AccountService")
     @patch("controllers.console.auth.oauth.TenantService")
     @patch("controllers.console.auth.oauth.db")
+    @patch("controllers.console.auth.oauth.dify_config")
     def test_should_handle_account_generation_scenarios(
         self,
+        mock_config,
         mock_db,
         mock_tenant_service,
         mock_account_service,
@@ -448,24 +470,32 @@ class TestAccountGeneration:
         allow_register,
         existing_account,
         should_create,
+        provider,
     ):
+        mock_config.ACEDATACLOUD_AUTH_AUTO_REGISTER = True
+        mock_config.BILLING_ENABLED = False
         mock_get_account.return_value = mock_account if existing_account else None
         mock_feature_service.get_system_features.return_value.is_allow_register = allow_register
         mock_register_service.register.return_value = mock_account
 
         with app.test_request_context(headers={"Accept-Language": "en-US,en;q=0.9"}):
             if not allow_register and not existing_account:
-                with pytest.raises(AccountRegisterError):
-                    _generate_account("github", user_info)
+                if provider != "acedatacloud":
+                    with pytest.raises(AccountRegisterError):
+                        _generate_account(provider, user_info)
+                else:
+                    result, oauth_new_user = _generate_account(provider, user_info)
+                    assert result == mock_account
+                    assert oauth_new_user is True
             else:
-                result, oauth_new_user = _generate_account("github", user_info)
+                result, oauth_new_user = _generate_account(provider, user_info)
                 assert result == mock_account
                 assert oauth_new_user == should_create
 
-                if should_create:
-                    mock_register_service.register.assert_called_once_with(
-                        email="test@example.com", name="Test User", password=None, open_id="123", provider="github"
-                    )
+        if should_create:
+            mock_register_service.register.assert_called_once_with(
+                email="test@example.com", name="Test User", password=None, open_id="123", provider=provider
+            )
 
     @patch("controllers.console.auth.oauth._get_account_by_openid_or_email")
     @patch("controllers.console.auth.oauth.TenantService")

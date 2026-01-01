@@ -1,7 +1,8 @@
 import logging
+import secrets
 
 import httpx
-from flask import current_app, redirect, request
+from flask import current_app, redirect, request, session
 from flask_restx import Resource
 from sqlalchemy import select
 from sqlalchemy.orm import Session
@@ -13,7 +14,7 @@ from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
-from libs.oauth import GitHubOAuth, GoogleOAuth, OAuthUserInfo
+from libs.oauth import AceDataCloudOAuth, GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from libs.token import (
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
@@ -29,6 +30,8 @@ from services.feature_service import FeatureService
 from .. import console_ns
 
 logger = logging.getLogger(__name__)
+
+ACEDATACLOUD_PROVIDER = "acedatacloud"
 
 
 def get_oauth_providers():
@@ -49,8 +52,20 @@ def get_oauth_providers():
                 client_secret=dify_config.GOOGLE_CLIENT_SECRET,
                 redirect_uri=dify_config.CONSOLE_API_URL + "/console/api/oauth/authorize/google",
             )
+        if dify_config.ACEDATACLOUD_AUTH_BASE_URL:
+            acedatacloud_oauth = AceDataCloudOAuth(
+                base_url=dify_config.ACEDATACLOUD_AUTH_BASE_URL,
+                login_path=dify_config.ACEDATACLOUD_AUTH_LOGIN_PATH,
+                redirect_uri=dify_config.CONSOLE_API_URL + f"{dify_config.OAUTH_REDIRECT_PATH}/{ACEDATACLOUD_PROVIDER}",
+            )
+        else:
+            acedatacloud_oauth = None
 
-        OAUTH_PROVIDERS = {"github": github_oauth, "google": google_oauth}
+        OAUTH_PROVIDERS = {
+            "github": github_oauth,
+            "google": google_oauth,
+            ACEDATACLOUD_PROVIDER: acedatacloud_oauth,
+        }
         return OAUTH_PROVIDERS
 
 
@@ -59,7 +74,10 @@ class OAuthLogin(Resource):
     @console_ns.doc("oauth_login")
     @console_ns.doc(description="Initiate OAuth login process")
     @console_ns.doc(
-        params={"provider": "OAuth provider name (github/google)", "invite_token": "Optional invitation token"}
+        params={
+            "provider": "OAuth provider name (github/google/acedatacloud)",
+            "invite_token": "Optional invitation token",
+        }
     )
     @console_ns.response(302, "Redirect to OAuth authorization URL")
     @console_ns.response(400, "Invalid provider")
@@ -71,7 +89,17 @@ class OAuthLogin(Resource):
         if not oauth_provider:
             return {"error": "Invalid provider"}, 400
 
-        auth_url = oauth_provider.get_authorization_url(invite_token=invite_token)
+        nonce = secrets.token_urlsafe(32)
+        session[f"oauth_state_{provider}"] = {
+            "nonce": nonce,
+            "invite_token": invite_token,
+        }
+
+        redirect_override = None
+        if provider == ACEDATACLOUD_PROVIDER:
+            redirect_override = f"{request.host_url.rstrip('/')}{dify_config.OAUTH_REDIRECT_PATH}/{provider}"
+
+        auth_url = oauth_provider.get_authorization_url(state=nonce, redirect_override=redirect_override)
         return redirect(auth_url)
 
 
@@ -81,7 +109,7 @@ class OAuthCallback(Resource):
     @console_ns.doc(description="Handle OAuth callback and complete login process")
     @console_ns.doc(
         params={
-            "provider": "OAuth provider name (github/google)",
+            "provider": "OAuth provider name (github/google/acedatacloud)",
             "code": "Authorization code from OAuth provider",
             "state": "Optional state parameter (used for invite token)",
         }
@@ -97,21 +125,36 @@ class OAuthCallback(Resource):
 
         code = request.args.get("code")
         state = request.args.get("state")
-        invite_token = None
-        if state:
-            invite_token = state
+        session_key = f"oauth_state_{provider}"
+        state_payload = session.pop(session_key, None)
 
         if not code:
             return {"error": "Authorization code is required"}, 400
+        invite_token = None
+        if state_payload and state and state_payload.get("nonce") == state:
+            invite_token = state_payload.get("invite_token")
+        elif state_payload:
+            return {"error": "Invalid or expired OAuth state"}, 400
 
+        token_response: dict | None = None
         try:
-            token = oauth_provider.get_access_token(code)
-            user_info = oauth_provider.get_user_info(token)
-        except httpx.RequestError as e:
+            if provider == ACEDATACLOUD_PROVIDER and isinstance(oauth_provider, AceDataCloudOAuth):
+                token_response = oauth_provider.exchange_code_for_token(code)
+                access_token = token_response.get("access_token")
+                if not access_token:
+                    raise ValueError(f"Error in AceDataCloud OAuth: {token_response}")
+                user_info = oauth_provider.get_user_info(access_token)
+            else:
+                token = oauth_provider.get_access_token(code)
+                user_info = oauth_provider.get_user_info(token)
+        except httpx.HTTPError as e:
             error_text = str(e)
             if isinstance(e, httpx.HTTPStatusError):
                 error_text = e.response.text
             logger.exception("An error occurred during the OAuth process with %s: %s", provider, error_text)
+            return {"error": "OAuth process failed"}, 400
+        except Exception:
+            logger.exception("An error occurred during the OAuth process with %s", provider)
             return {"error": "OAuth process failed"}, 400
 
         if invite_token and RegisterService.is_valid_invite_token(invite_token):
@@ -145,7 +188,10 @@ class OAuthCallback(Resource):
             db.session.commit()
 
         try:
-            TenantService.create_owner_tenant_if_not_exist(account)
+            if provider == ACEDATACLOUD_PROVIDER and dify_config.ACEDATACLOUD_AUTH_AUTO_REGISTER:
+                TenantService.create_owner_tenant_if_not_exist(account, is_setup=True)
+            else:
+                TenantService.create_owner_tenant_if_not_exist(account)
         except Unauthorized:
             return redirect(f"{dify_config.CONSOLE_WEB_URL}/signin?message=Workspace not found.")
         except WorkSpaceNotAllowedCreateError:
@@ -153,6 +199,9 @@ class OAuthCallback(Resource):
                 f"{dify_config.CONSOLE_WEB_URL}/signin"
                 "?message=Workspace not found, please contact system admin to invite you to join in a workspace."
             )
+
+        if provider == ACEDATACLOUD_PROVIDER and token_response:
+            _persist_acedatacloud_token(account=account, open_id=user_info.id, token_response=token_response)
 
         token_pair = AccountService.login(
             account=account,
@@ -168,6 +217,50 @@ class OAuthCallback(Resource):
         set_refresh_token_to_cookie(request, response, token_pair.refresh_token)
         set_csrf_token_to_cookie(request, response, token_pair.csrf_token)
         return response
+
+
+def _persist_acedatacloud_token(*, account: Account, open_id: str, token_response: dict) -> None:
+    """
+    Persist AceDataCloud access/refresh tokens for later use.
+    We store an encrypted payload in object storage and keep a short reference path in DB.
+    """
+    try:
+        import json
+
+        from core.helper.encrypter import encrypt_token
+        from extensions.ext_storage import storage
+
+        tenants = TenantService.get_join_tenants(account)
+        tenant_id = account.current_tenant_id or (tenants[0].id if tenants else None)
+        if not tenant_id:
+            logger.warning("Skip persisting AceDataCloud token: missing tenant for account %s", account.id)
+            return
+
+        payload = {
+            "access_token": token_response.get("access_token"),
+            "refresh_token": token_response.get("refresh_token"),
+            "expires_in": token_response.get("expires_in"),
+            "obtained_at": naive_utc_now().isoformat(),
+        }
+        encrypted_payload = encrypt_token(tenant_id, json.dumps(payload))
+
+        token_file = f"account_integrates/{account.id}/{ACEDATACLOUD_PROVIDER}.json"
+        storage.save(
+            token_file,
+            json.dumps(
+                {
+                    "version": 1,
+                    "tenant_id": tenant_id,
+                    "encrypted_payload": encrypted_payload,
+                }
+            ).encode("utf-8"),
+        )
+
+        AccountService.link_account_integrate(
+            provider=ACEDATACLOUD_PROVIDER, open_id=open_id, account=account, encrypted_token=token_file
+        )
+    except Exception:
+        logger.exception("Failed to persist AceDataCloud token for account %s", account.id)
 
 
 def _get_account_by_openid_or_email(provider: str, user_info: OAuthUserInfo) -> Account | None:
@@ -188,17 +281,28 @@ def _generate_account(provider: str, user_info: OAuthUserInfo) -> tuple[Account,
     if account:
         tenants = TenantService.get_join_tenants(account)
         if not tenants:
-            if not FeatureService.get_system_features().is_allow_create_workspace:
+            allow_create_workspace = FeatureService.get_system_features().is_allow_create_workspace
+            if provider == ACEDATACLOUD_PROVIDER and dify_config.ACEDATACLOUD_AUTH_AUTO_REGISTER:
+                allow_create_workspace = True
+
+            if not allow_create_workspace:
                 raise WorkSpaceNotAllowedCreateError()
             else:
-                new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
+                if provider == ACEDATACLOUD_PROVIDER and dify_config.ACEDATACLOUD_AUTH_AUTO_REGISTER:
+                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace", is_setup=True)
+                else:
+                    new_tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(new_tenant, account, role="owner")
                 account.current_tenant = new_tenant
                 tenant_was_created.send(new_tenant)
 
     if not account:
         oauth_new_user = True
-        if not FeatureService.get_system_features().is_allow_register:
+        allow_register = FeatureService.get_system_features().is_allow_register
+        if provider == ACEDATACLOUD_PROVIDER and dify_config.ACEDATACLOUD_AUTH_AUTO_REGISTER:
+            allow_register = True
+
+        if not allow_register:
             if dify_config.BILLING_ENABLED and BillingService.is_email_in_freeze(user_info.email):
                 raise AccountRegisterError(
                     description=(

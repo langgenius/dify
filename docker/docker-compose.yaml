@@ -702,6 +702,7 @@ services:
   # API service
   api:
     image: langgenius/dify-api:1.11.2
+    build: '../api/.'
     restart: always
     environment:
       # Use the shared environment variables.
@@ -813,6 +814,7 @@ services:
   # Frontend web application.
   web:
     image: langgenius/dify-web:1.11.2
+    build: '../web/.'
     restart: always
     environment:
       CONSOLE_API_URL: ${CONSOLE_API_URL:-}

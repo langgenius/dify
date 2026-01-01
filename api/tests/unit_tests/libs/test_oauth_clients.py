@@ -247,3 +247,4 @@ class TestOAuthUserInfo:
         assert user_info.id == user_data["id"]
         assert user_info.name == user_data["name"]
         assert user_info.email == user_data["email"]
+

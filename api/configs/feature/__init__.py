@@ -787,6 +787,22 @@ class AuthConfig(BaseSettings):
         default="/console/api/oauth/authorize",
     )
 
+    ACEDATACLOUD_AUTH_BASE_URL: str | None = Field(
+        description="AceDataCloud auth base url, e.g. https://auth.acedata.cloud. "
+        "When set, console login/signup can delegate to this provider.",
+        default="https://auth.acedata.cloud",
+    )
+
+    ACEDATACLOUD_AUTH_LOGIN_PATH: str = Field(
+        description="AceDataCloud auth login path",
+        default="/auth/login",
+    )
+
+    ACEDATACLOUD_AUTH_AUTO_REGISTER: bool = Field(
+        description="Whether to auto-create Dify account on successful AceDataCloud OAuth login.",
+        default=True,
+    )
+
     GITHUB_CLIENT_ID: str | None = Field(
         description="GitHub OAuth client ID",
         default=None,
