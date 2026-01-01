@@ -1,0 +1,153 @@
+# Example CronJobs for parallel time-sliced archiving.
+# Replace the timestamps with your desired window(s) or render via Helm/Kustomize.
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dify-archive-workflow-runs-slice-0
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: archive-workflow-runs
+              image: dify-api:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: MODE
+                  value: job
+                - name: LOG_LEVEL
+                  value: INFO
+              envFrom:
+                - configMapRef:
+                    name: dify-api-env
+                - secretRef:
+                    name: dify-api-secrets
+              args:
+                - archive-workflow-runs
+                - --start-from
+                - "2024-01-01T00:00:00"
+                - --end-before
+                - "2024-01-01T06:00:00"
+                - --batch-size
+                - "100"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dify-archive-workflow-runs-slice-1
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: archive-workflow-runs
+              image: dify-api:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: MODE
+                  value: job
+                - name: LOG_LEVEL
+                  value: INFO
+              envFrom:
+                - configMapRef:
+                    name: dify-api-env
+                - secretRef:
+                    name: dify-api-secrets
+              args:
+                - archive-workflow-runs
+                - --start-from
+                - "2024-01-01T06:00:00"
+                - --end-before
+                - "2024-01-01T12:00:00"
+                - --batch-size
+                - "100"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dify-archive-workflow-runs-slice-2
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: archive-workflow-runs
+              image: dify-api:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: MODE
+                  value: job
+                - name: LOG_LEVEL
+                  value: INFO
+              envFrom:
+                - configMapRef:
+                    name: dify-api-env
+                - secretRef:
+                    name: dify-api-secrets
+              args:
+                - archive-workflow-runs
+                - --start-from
+                - "2024-01-01T12:00:00"
+                - --end-before
+                - "2024-01-01T18:00:00"
+                - --batch-size
+                - "100"
+---
+apiVersion: batch/v1
+kind: CronJob
+metadata:
+  name: dify-archive-workflow-runs-slice-3
+spec:
+  schedule: "0 3 * * *"
+  concurrencyPolicy: Forbid
+  successfulJobsHistoryLimit: 2
+  failedJobsHistoryLimit: 2
+  jobTemplate:
+    spec:
+      backoffLimit: 2
+      template:
+        spec:
+          restartPolicy: OnFailure
+          containers:
+            - name: archive-workflow-runs
+              image: dify-api:latest
+              imagePullPolicy: IfNotPresent
+              env:
+                - name: MODE
+                  value: job
+                - name: LOG_LEVEL
+                  value: INFO
+              envFrom:
+                - configMapRef:
+                    name: dify-api-env
+                - secretRef:
+                    name: dify-api-secrets
+              args:
+                - archive-workflow-runs
+                - --start-from
+                - "2024-01-01T18:00:00"
+                - --end-before
+                - "2024-01-02T00:00:00"
+                - --batch-size
+                - "100"
