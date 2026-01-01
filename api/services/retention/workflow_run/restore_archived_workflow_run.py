@@ -421,7 +421,7 @@ class WorkflowRunRestore:
 
     def restore_batch(
         self,
-        tenant_id: str,
+        tenant_ids: list[str] | None,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
         limit: int = 100,
@@ -430,7 +430,7 @@ class WorkflowRunRestore:
         Restore multiple workflow runs by time range.
 
         Args:
-            tenant_id: Tenant ID
+            tenant_ids: Optional tenant IDs
             start_date: Optional start date filter
             end_date: Optional end date filter
             limit: Maximum number of runs to restore
@@ -439,16 +439,15 @@ class WorkflowRunRestore:
             List of RestoreResult objects
         """
         results = []
+        if tenant_ids is not None and not tenant_ids:
+            return results
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         repo = self._get_workflow_run_repo()
-
-        if start_date is None or end_date is None:
-            raise ValueError("start_date and end_date are required for batch restore.")
 
         with session_maker() as session:
             runs = repo.get_archived_runs_by_time_range(
                 session=session,
-                tenant_ids=[tenant_id],
+                tenant_ids=tenant_ids,
                 start_date=start_date,
                 end_date=end_date,
                 limit=limit,
@@ -466,3 +465,25 @@ class WorkflowRunRestore:
             results.append(result)
 
         return results
+
+    def restore_by_run_id(
+        self,
+        run_id: str,
+    ) -> RestoreResult:
+        """
+        Restore a single workflow run by run ID.
+        """
+        repo = self._get_workflow_run_repo()
+        run = repo.get_workflow_run_by_id_without_tenant(run_id)
+
+        if not run:
+            click.echo(click.style(f"Workflow run {run_id} not found", fg="red"))
+            return RestoreResult(
+                run_id=run_id,
+                tenant_id="",
+                success=False,
+                restored_counts={},
+                error=f"Workflow run {run_id} not found",
+            )
+
+        return self.restore(tenant_id=run.tenant_id, workflow_run_id=run_id)

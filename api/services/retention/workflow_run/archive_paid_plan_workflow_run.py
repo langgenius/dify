@@ -112,6 +112,8 @@ class WorkflowRunArchiver:
         self,
         days: int = 90,
         batch_size: int = 100,
+        start_time: datetime.datetime | None = None,
+        end_time: datetime.datetime | None = None,
         tenant_ids: Sequence[str] | None = None,
         limit: int | None = None,
         dry_run: bool = False,
@@ -123,16 +125,31 @@ class WorkflowRunArchiver:
         Args:
             days: Archive runs older than this many days
             batch_size: Number of runs to process per batch
+            start_time: Optional start time (inclusive) for archiving
+            end_time: Optional end time (exclusive) for archiving
             tenant_ids: Optional tenant IDs for grayscale rollout
             limit: Maximum number of runs to archive (None for unlimited)
             dry_run: If True, only preview without making changes
         """
         self.days = days
         self.batch_size = batch_size
+        if start_time or end_time:
+            if start_time is None or end_time is None:
+                raise ValueError("start_time and end_time must be provided together")
+            if start_time.tzinfo is None:
+                start_time = start_time.replace(tzinfo=datetime.UTC)
+            if end_time.tzinfo is None:
+                end_time = end_time.replace(tzinfo=datetime.UTC)
+            if start_time >= end_time:
+                raise ValueError("start_time must be earlier than end_time")
+            self.start_time = start_time
+            self.end_time = end_time
+        else:
+            self.start_time = None
+            self.end_time = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
         self.tenant_ids = set(tenant_ids) if tenant_ids else set()
         self.limit = limit
         self.dry_run = dry_run
-        self.cutoff_date = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
         self.workflow_run_repo = workflow_run_repo
 
     def run(self) -> ArchiveSummary:
@@ -147,9 +164,7 @@ class WorkflowRunArchiver:
 
         click.echo(
             click.style(
-                f"{'[DRY RUN] ' if self.dry_run else ''}Starting workflow run archiving "
-                f"for runs before {self.cutoff_date.isoformat()} "
-                f"(batch_size={self.batch_size}, tenant_ids={','.join(sorted(self.tenant_ids)) or 'all'})",
+                self._build_start_message(),
                 fg="white",
             )
         )
@@ -248,10 +263,20 @@ class WorkflowRunArchiver:
         repo = self._get_workflow_run_repo()
         return repo.get_runs_batch_by_time_range(
             start_after=None,
-            end_before=self.cutoff_date,
+            end_before=self.end_time,
             last_seen=last_seen,
             batch_size=self.batch_size,
             tenant_ids=list(self.tenant_ids) if self.tenant_ids else None,
+        )
+
+    def _build_start_message(self) -> str:
+        range_desc = f"before {self.end_time.isoformat()}"
+        if self.start_time:
+            range_desc = f"between {self.start_time.isoformat()} and {self.end_time.isoformat()}"
+        return (
+            f"{'[DRY RUN] ' if self.dry_run else ''}Starting workflow run archiving "
+            f"for runs {range_desc} "
+            f"(batch_size={self.batch_size}, tenant_ids={','.join(sorted(self.tenant_ids)) or 'all'})"
         )
 
     def _filter_paid_tenants(self, tenant_ids: set[str]) -> set[str]:

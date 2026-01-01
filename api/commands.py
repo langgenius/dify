@@ -859,12 +859,26 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 )
 @click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs for grayscale rollout.")
 @click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
+@click.option(
+    "--start-time",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Archive runs created at or after this timestamp (UTC if no timezone).",
+)
+@click.option(
+    "--end-time",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Archive runs created before this timestamp (UTC if no timezone).",
+)
 @click.option("--batch-size", default=100, show_default=True, help="Batch size for processing.")
 @click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
 @click.option("--dry-run", is_flag=True, help="Preview without archiving.")
 def archive_workflow_runs(
     tenant_ids: str | None,
     before_days: int,
+    start_time: datetime.datetime | None,
+    end_time: datetime.datetime | None,
     batch_size: int,
     limit: int | None,
     dry_run: bool,
@@ -891,9 +905,19 @@ def archive_workflow_runs(
         )
     )
 
+    if start_time or end_time:
+        if not start_time or not end_time:
+            click.echo(click.style("start-time and end-time must be provided together.", fg="red"))
+            return
+        if start_time >= end_time:
+            click.echo(click.style("start-time must be earlier than end-time.", fg="red"))
+            return
+
     archiver = WorkflowRunArchiver(
         days=before_days,
         batch_size=batch_size,
+        start_time=start_time,
+        end_time=end_time,
         tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
         limit=limit,
         dry_run=dry_run,
@@ -923,12 +947,32 @@ def archive_workflow_runs(
     "restore-workflow-runs",
     help="Restore archived workflow runs from S3-compatible storage.",
 )
-@click.option("--tenant-id", required=True, help="Tenant ID.")
-@click.option("--run-id", required=True, help="Workflow run ID to restore.")
+@click.option(
+    "--tenant-ids",
+    required=False,
+    help="Tenant IDs (comma-separated).",
+)
+@click.option("--run-id", required=False, help="Workflow run ID to restore.")
+@click.option(
+    "--start-after",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
+)
+@click.option(
+    "--end-before",
+    type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
+    default=None,
+    help="Optional upper bound (exclusive) for created_at; must be paired with --start-after.",
+)
+@click.option("--limit", required=False, type=int, help="Maximum number of runs to rollback.")
 @click.option("--dry-run", is_flag=True, help="Preview without restoring.")
 def restore_workflow_runs(
-    tenant_id: str,
-    run_id: str,
+    tenant_ids: str | None,
+    run_id: str | None,
+    start_after: datetime.datetime | None,
+    end_before: datetime.datetime | None,
+    limit: int | None,
     dry_run: bool,
 ):
     """
@@ -942,6 +986,16 @@ def restore_workflow_runs(
     - workflow_trigger_logs
     """
     from services.retention.workflow_run.restore_archived_workflow_run import WorkflowRunRestore
+    parsed_tenant_ids = None
+    if tenant_ids:
+        parsed_tenant_ids = [tid.strip() for tid in tenant_ids.split(",") if tid.strip()]
+        if not parsed_tenant_ids:
+            raise click.BadParameter("tenant-ids must not be empty")
+
+    if (start_after is None) ^ (end_before is None):
+        raise click.UsageError("--start-after and --end-before must be provided together.")
+    if run_id is None and (start_after is None or end_before is None):
+        raise click.UsageError("--start-after and --end-before are required for batch rollback.")
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(
@@ -952,22 +1006,33 @@ def restore_workflow_runs(
     )
 
     restorer = WorkflowRunRestore(dry_run=dry_run)
-    result = restorer.restore(tenant_id=tenant_id, workflow_run_id=run_id)
+    if run_id:
+        results = [restorer.restore_by_run_id(run_id)]
+    else:
+        results = restorer.restore_batch(
+            parsed_tenant_ids,
+            start_date=start_after,
+            end_date=end_before,
+            limit=limit,
+        )
 
     end_time = datetime.datetime.now(datetime.UTC)
     elapsed = end_time - start_time
 
-    if result.success:
+    successes = sum(1 for result in results if result.success)
+    failures = len(results) - successes
+
+    if failures == 0:
         click.echo(
             click.style(
-                f"Restore completed successfully. duration={elapsed}",
+                f"Restore completed successfully. success={successes} duration={elapsed}",
                 fg="green",
             )
         )
     else:
         click.echo(
             click.style(
-                f"Restore failed: {result.error}. duration={elapsed}",
+                f"Restore completed with failures. success={successes} failed={failures} duration={elapsed}",
                 fg="red",
             )
         )
