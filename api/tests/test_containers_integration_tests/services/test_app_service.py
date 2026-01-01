@@ -7,7 +7,8 @@ from constants.model_template import default_app_templates
 from models import Account
 from models.model import App, Site
 from services.account_service import AccountService, TenantService
-from services.app_service import AppService
+# Delay import of AppService to avoid circular dependency
+# from services.app_service import AppService
 
 
 class TestAppService:
@@ -71,6 +72,9 @@ class TestAppService:
         }
 
         # Create app
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -108,6 +112,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -159,6 +166,9 @@ class TestAppService:
             "icon_background": "#45B7D1",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         created_app = app_service.create_app(tenant.id, app_args, account)
 
@@ -193,6 +203,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -244,6 +257,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -314,6 +330,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -392,6 +411,9 @@ class TestAppService:
             "icon_background": "#45B7D1",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -458,6 +480,9 @@ class TestAppService:
             "icon_background": "#45B7D1",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -507,6 +532,9 @@ class TestAppService:
             "icon": "🎯",
             "icon_background": "#45B7D1",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -561,6 +589,9 @@ class TestAppService:
             "icon": "🌐",
             "icon_background": "#74B9FF",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -617,6 +648,9 @@ class TestAppService:
             "icon_background": "#A29BFE",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -672,6 +706,9 @@ class TestAppService:
             "icon_background": "#FD79A8",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -720,6 +757,9 @@ class TestAppService:
             "icon_background": "#E17055",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -767,6 +807,9 @@ class TestAppService:
             "icon": "🧹",
             "icon_background": "#00B894",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -826,6 +869,9 @@ class TestAppService:
             "icon_background": "#6C5CE7",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
 
@@ -861,6 +907,9 @@ class TestAppService:
             "icon": "🔗",
             "icon_background": "#FDCB6E",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -898,6 +947,9 @@ class TestAppService:
             "icon": "🆔",
             "icon_background": "#E84393",
         }
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
         app = app_service.create_app(tenant.id, app_args, account)
@@ -947,6 +999,9 @@ class TestAppService:
             "icon_background": "#D63031",
         }
 
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
+
         app_service = AppService()
 
         # Attempt to create app with invalid mode
@@ -975,6 +1030,9 @@ class TestAppService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+
+        # Import here to avoid circular dependency
+        from services.app_service import AppService
 
         app_service = AppService()
 
@@ -1041,24 +1099,32 @@ class TestAppService:
         )
 
         # Test 1: Search with % character
-        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "50%"})
-        assert total == 1
-        assert len(apps) == 1
-        assert apps[0].name == "App with 50% discount"
+        args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert len(paginated_apps.items) == 1
+        assert paginated_apps.items[0].name == "App with 50% discount"
 
         # Test 2: Search with _ character
-        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "test_data"})
-        assert total == 1
-        assert len(apps) == 1
-        assert apps[0].name == "test_data_app"
+        args = {"name": "test_data", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert len(paginated_apps.items) == 1
+        assert paginated_apps.items[0].name == "test_data_app"
 
         # Test 3: Search with \ character
-        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "path\\to\\app"})
-        assert total == 1
-        assert len(apps) == 1
-        assert apps[0].name == "path\\to\\app"
+        args = {"name": "path\\to\\app", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert len(paginated_apps.items) == 1
+        assert paginated_apps.items[0].name == "path\\to\\app"
 
         # Test 4: Search with % should NOT match 100% (verifies escaping works)
-        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "50%"})
-        assert total == 1
-        assert all("50%" in app.name for app in apps)
+        args = {"name": "50%", "mode": "chat", "page": 1, "limit": 10}
+        paginated_apps = app_service.get_paginate_apps(account.id, tenant.id, args)
+        assert paginated_apps is not None
+        assert paginated_apps.total == 1
+        assert all("50%" in app.name for app in paginated_apps.items)
