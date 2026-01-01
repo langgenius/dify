@@ -308,6 +308,71 @@ class TestWorkflowAppService:
         assert result_no_match["total"] == 0
         assert len(result_no_match["data"]) == 0
 
+    def test_get_paginate_workflow_app_logs_with_special_characters_in_keyword(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        r"""
+        Test workflow app logs pagination with special characters in keyword to verify SQL injection prevention.
+
+        This test verifies:
+        - Special characters (%, _, \) in keyword are properly escaped
+        - Search treats special characters as literal characters, not wildcards
+        - SQL injection via LIKE wildcards is prevented
+        """
+        # Arrange: Create test data
+        fake = Faker()
+        app, account = self._create_test_app_and_account(db_session_with_containers, mock_external_service_dependencies)
+        workflow, workflow_run, workflow_app_log = self._create_test_workflow_data(
+            db_session_with_containers, app, account
+        )
+
+        from extensions.ext_database import db
+
+        # Test 1: Search with % character
+        workflow_run.inputs = json.dumps({"search_term": "50% discount", "input2": "other_value"})
+        workflow_run.outputs = json.dumps({"result": "50% discount applied", "status": "success"})
+        db.session.commit()
+
+        service = WorkflowAppService()
+        result = service.get_paginate_workflow_app_logs(
+            session=db_session_with_containers, app_model=app, keyword="50%", page=1, limit=20
+        )
+        assert result["total"] == 1
+        assert len(result["data"]) == 1
+
+        # Test 2: Search with _ character
+        workflow_run.inputs = json.dumps({"search_term": "test_data_value", "input2": "other_value"})
+        workflow_run.outputs = json.dumps({"result": "test_data_value found", "status": "success"})
+        db.session.commit()
+
+        result = service.get_paginate_workflow_app_logs(
+            session=db_session_with_containers, app_model=app, keyword="test_data", page=1, limit=20
+        )
+        assert result["total"] == 1
+        assert len(result["data"]) == 1
+
+        # Test 3: Search with \ character
+        workflow_run.inputs = json.dumps({"search_term": "path\\to\\file", "input2": "other_value"})
+        workflow_run.outputs = json.dumps({"result": "path\\to\\file processed", "status": "success"})
+        db.session.commit()
+
+        result = service.get_paginate_workflow_app_logs(
+            session=db_session_with_containers, app_model=app, keyword="path\\to\\file", page=1, limit=20
+        )
+        assert result["total"] == 1
+        assert len(result["data"]) == 1
+
+        # Test 4: Search with % should NOT match 100% (verifies escaping works)
+        workflow_run.inputs = json.dumps({"search_term": "100% different", "input2": "other_value"})
+        workflow_run.outputs = json.dumps({"result": "100% different result", "status": "success"})
+        db.session.commit()
+
+        result = service.get_paginate_workflow_app_logs(
+            session=db_session_with_containers, app_model=app, keyword="50%", page=1, limit=20
+        )
+        # Should not find the 100% entry when searching for 50%
+        assert result["total"] == 0
+
     def test_get_paginate_workflow_app_logs_with_status_filter(
         self, db_session_with_containers, mock_external_service_dependencies
     ):

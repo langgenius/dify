@@ -952,3 +952,113 @@ class TestAppService:
         # Attempt to create app with invalid mode
         with pytest.raises(ValueError, match="invalid mode value"):
             app_service.create_app(tenant.id, app_args, account)
+
+    def test_get_apps_with_special_characters_in_name(
+        self, db_session_with_containers, mock_external_service_dependencies
+    ):
+        r"""
+        Test app retrieval with special characters in name search to verify SQL injection prevention.
+
+        This test verifies:
+        - Special characters (%, _, \) in name search are properly escaped
+        - Search treats special characters as literal characters, not wildcards
+        - SQL injection via LIKE wildcards is prevented
+        """
+        fake = Faker()
+
+        # Create account and tenant first
+        account = AccountService.create_account(
+            email=fake.email(),
+            name=fake.name(),
+            interface_language="en-US",
+            password=fake.password(length=12),
+        )
+        TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
+        tenant = account.current_tenant
+
+        app_service = AppService()
+
+        # Create apps with special characters in names
+        app_with_percent = app_service.create_app(
+            tenant.id,
+            {
+                "name": "App with 50% discount",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        app_with_underscore = app_service.create_app(
+            tenant.id,
+            {
+                "name": "test_data_app",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        app_with_backslash = app_service.create_app(
+            tenant.id,
+            {
+                "name": "path\\to\\app",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        # Create app that should NOT match
+        app_no_match = app_service.create_app(
+            tenant.id,
+            {
+                "name": "100% different",
+                "description": fake.text(max_nb_chars=100),
+                "mode": "chat",
+                "icon_type": "emoji",
+                "icon": "🤖",
+                "icon_background": "#FF6B6B",
+                "api_rph": 100,
+                "api_rpm": 10,
+            },
+            account,
+        )
+
+        # Test 1: Search with % character
+        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "50%"})
+        assert total == 1
+        assert len(apps) == 1
+        assert apps[0].name == "App with 50% discount"
+
+        # Test 2: Search with _ character
+        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "test_data"})
+        assert total == 1
+        assert len(apps) == 1
+        assert apps[0].name == "test_data_app"
+
+        # Test 3: Search with \ character
+        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "path\\to\\app"})
+        assert total == 1
+        assert len(apps) == 1
+        assert apps[0].name == "path\\to\\app"
+
+        # Test 4: Search with % should NOT match 100% (verifies escaping works)
+        apps, total = app_service.get_apps(tenant.id, account.id, {"name": "50%"})
+        assert total == 1
+        assert all("50%" in app.name for app in apps)

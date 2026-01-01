@@ -218,7 +218,9 @@ class ConversationService:
         # Apply variable_name filter if provided
         if variable_name:
             # Filter using JSON extraction to match variable names case-insensitively
-            escaped_variable_name = variable_name.replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_")
+            from libs.helper import escape_like_pattern
+
+            escaped_variable_name = escape_like_pattern(variable_name)
             # Filter using JSON extraction to match variable names case-insensitively
             if dify_config.DB_TYPE in ["mysql", "oceanbase", "seekdb"]:
                 stmt = stmt.where(
