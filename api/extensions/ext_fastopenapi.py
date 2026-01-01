@@ -32,10 +32,10 @@ def init_app(app: DifyApp) -> None:
     router.include_router(console_router, prefix="/console/api")
     CORS(
         app,
-        resources={r"/console/api/ping": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
+        resources={r"/console/api/*": {"origins": dify_config.CONSOLE_CORS_ALLOW_ORIGINS}},
         supports_credentials=True,
         allow_headers=list(AUTHENTICATED_HEADERS),
-        methods=["GET", "OPTIONS"],
+        methods=["GET", "PUT", "POST", "DELETE", "OPTIONS", "PATCH"],
         expose_headers=list(EXPOSED_HEADERS),
     )
     app.extensions["fastopenapi"] = router
