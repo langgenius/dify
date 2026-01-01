@@ -27,7 +27,8 @@ def init_app(app: DifyApp) -> None:
     )
 
     # Ensure route decorators are evaluated.
-    from controllers.console import ping as _ping  # noqa: F401
+    import controllers.console.ping as ping_module
+    _ = ping_module
 
     router.include_router(console_router, prefix="/console/api")
     CORS(
