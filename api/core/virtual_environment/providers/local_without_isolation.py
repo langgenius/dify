@@ -14,6 +14,48 @@ from core.virtual_environment.__base.virtual_environment import VirtualEnvironme
 from core.virtual_environment.channel.pipe_transport import PipeReadCloser, PipeWriteCloser
 from core.virtual_environment.channel.transport import TransportReadCloser, TransportWriteCloser
 
+"""
+USAGE:
+
+import logging
+from collections.abc import Mapping
+from typing import Any
+
+from core.virtual_environment.channel.exec import TransportEOFError
+from core.virtual_environment.providers.local_without_isolation import LocalVirtualEnvironment
+
+options: Mapping[str, Any] = {}
+
+logger = logging.getLogger(__name__)
+logging.basicConfig(level=logging.DEBUG)
+
+environment = LocalVirtualEnvironment(options=options)
+
+connection_handle = environment.establish_connection()
+
+pid, transport_stdin, transport_stdout, transport_stderr = environment.execute_command(
+    connection_handle,
+    ["sh", "-lc", "for i in 1 2 3 4 5; do date '+%F %T'; sleep 1; done"],
+)
+
+logger.info("Executed command with PID: %s", pid)
+
+# consume stdout
+while True:
+    try:
+        output = transport_stdout.read(1024)
+    except TransportEOFError:
+        logger.info("End of stdout reached")
+        break
+
+    logger.info("Command output: %s", output.decode().strip())
+
+
+environment.release_connection(connection_handle)
+environment.release_environment()
+
+"""
+
 
 class LocalVirtualEnvironment(VirtualEnvironment):
     """

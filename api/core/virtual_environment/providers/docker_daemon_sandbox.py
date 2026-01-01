@@ -50,8 +50,16 @@ pid, transport_stdout, transport_stderr, transport_stdin = environment.execute_c
 print(f"Executed command with PID: {pid}")
 
 # consume stdout
-output = transport_stdout.read(1024)
-print(f"Command output: {output.decode().strip()}")
+# consume stdout
+while True:
+    try:
+        output = transport_stdout.read(1024)
+    except TransportEOFError:
+        logger.info("End of stdout reached")
+        break
+
+    logger.info("Command output: %s", output.decode().strip())
+
 
 environment.release_connection(connection_handle)
 environment.release_environment()

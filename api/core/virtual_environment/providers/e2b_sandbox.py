@@ -1,4 +1,5 @@
 import os
+import shlex
 import threading
 from collections.abc import Mapping, Sequence
 from enum import StrEnum
@@ -50,8 +51,16 @@ pid, transport_stdin, transport_stdout, transport_stderr = environment.execute_c
 logger.info("Executed command with PID: %s", pid)
 
 # consume stdout
-output = transport_stdout.read(1024)
-logger.info("Command output: %s", output.decode().strip())
+# consume stdout
+while True:
+    try:
+        output = transport_stdout.read(1024)
+    except TransportEOFError:
+        logger.info("End of stdout reached")
+        break
+
+    logger.info("Command output: %s", output.decode().strip())
+
 
 environment.release_connection(connection_handle)
 environment.release_environment()
@@ -204,17 +213,19 @@ class E2BEnvironment(VirtualEnvironment):
         """ """
         stdout_stream_write_handler = stdout_stream.get_write_handler()
         stderr_stream_write_handler = stderr_stream.get_write_handler()
-        sandbox.commands.run(
-            cmd=" ".join(command),
-            envs=dict(environments or {}),
-            # stdin=True,
-            on_stdout=lambda data: stdout_stream_write_handler.write(data.encode()),
-            on_stderr=lambda data: stderr_stream_write_handler.write(data.encode()),
-        )
 
-        # Close the write handlers to signal EOF
-        stdout_stream.close()
-        stderr_stream.close()
+        try:
+            sandbox.commands.run(
+                cmd=shlex.join(command),
+                envs=dict(environments or {}),
+                # stdin=True,
+                on_stdout=lambda data: stdout_stream_write_handler.write(data.encode()),
+                on_stderr=lambda data: stderr_stream_write_handler.write(data.encode()),
+            )
+        finally:
+            # Close the write handlers to signal EOF
+            stdout_stream.close()
+            stderr_stream.close()
 
     @cached_property
     def api_key(self) -> str:

@@ -1,5 +1,6 @@
 import socket
 
+from core.virtual_environment.channel.exec import TransportEOFError
 from core.virtual_environment.channel.transport import Transport, TransportReadCloser, TransportWriteCloser
 
 
@@ -12,10 +13,19 @@ class SocketTransport(Transport):
         self.sock = sock
 
     def write(self, data: bytes) -> None:
-        self.sock.write(data)
+        try:
+            self.sock.write(data)
+        except (ConnectionResetError, BrokenPipeError):
+            raise TransportEOFError("Socket write error, maybe the read end is closed")
 
     def read(self, n: int) -> bytes:
-        return self.sock.read(n)
+        try:
+            data = self.sock.read(n)
+            if data == b"":
+                raise TransportEOFError("End of Socket reached")
+        except (ConnectionResetError, BrokenPipeError):
+            raise TransportEOFError("Socket connection reset")
+        return data
 
     def close(self) -> None:
         self.sock.close()
@@ -30,7 +40,13 @@ class SocketReadCloser(TransportReadCloser):
         self.sock = sock
 
     def read(self, n: int) -> bytes:
-        return self.sock.read(n)
+        try:
+            data = self.sock.read(n)
+            if data == b"":
+                raise TransportEOFError("End of Socket reached")
+            return data
+        except (ConnectionResetError, BrokenPipeError):
+            raise TransportEOFError("Socket connection reset")
 
     def close(self) -> None:
         self.sock.close()
@@ -45,7 +61,10 @@ class SocketWriteCloser(TransportWriteCloser):
         self.sock = sock
 
     def write(self, data: bytes) -> None:
-        self.sock.write(data)
+        try:
+            self.sock.write(data)
+        except (ConnectionResetError, BrokenPipeError):
+            raise TransportEOFError("Socket write error, maybe the read end is closed")
 
     def close(self) -> None:
         self.sock.close()

@@ -23,6 +23,8 @@ class TransportWriter(Protocol):
     def write(self, data: bytes) -> None:
         """
         Write data to the transport.
+
+        Raises TransportEOFError if the transport is closed.
         """
 
 
@@ -35,6 +37,8 @@ class TransportReader(Protocol):
     def read(self, n: int) -> bytes:
         """
         Read up to n bytes from the transport.
+
+        Raises TransportEOFError if the end of the transport is reached.
         """
 
 

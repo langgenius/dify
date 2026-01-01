@@ -1,5 +1,6 @@
 import os
 
+from core.virtual_environment.channel.exec import TransportEOFError
 from core.virtual_environment.channel.transport import Transport, TransportReadCloser, TransportWriteCloser
 
 
@@ -18,10 +19,16 @@ class PipeTransport(Transport):
         self.w_fd = w_fd
 
     def write(self, data: bytes) -> None:
-        os.write(self.w_fd, data)
+        try:
+            os.write(self.w_fd, data)
+        except OSError:
+            raise TransportEOFError("Pipe write error, maybe the read end is closed")
 
     def read(self, n: int) -> bytes:
-        return os.read(self.r_fd, n)
+        data = os.read(self.r_fd, n)
+        if data == b"":
+            raise TransportEOFError("End of Pipe reached")
+        return data
 
     def close(self) -> None:
         os.close(self.r_fd)
@@ -37,7 +44,11 @@ class PipeReadCloser(TransportReadCloser):
         self.r_fd = r_fd
 
     def read(self, n: int) -> bytes:
-        return os.read(self.r_fd, n)
+        data = os.read(self.r_fd, n)
+        if data == b"":
+            raise TransportEOFError("End of Pipe reached")
+
+        return data
 
     def close(self) -> None:
         os.close(self.r_fd)
@@ -52,7 +63,10 @@ class PipeWriteCloser(TransportWriteCloser):
         self.w_fd = w_fd
 
     def write(self, data: bytes) -> None:
-        os.write(self.w_fd, data)
+        try:
+            os.write(self.w_fd, data)
+        except OSError:
+            raise TransportEOFError("Pipe write error, maybe the read end is closed")
 
     def close(self) -> None:
         os.close(self.w_fd)
