@@ -100,12 +100,20 @@ class ArchiveStorage:
         """
         checksum = hashlib.md5(data).hexdigest()
         try:
-            self.client.put_object(
+            response = self.client.put_object(
                 Bucket=self.bucket,
                 Key=key,
                 Body=data,
                 ContentMD5=self._content_md5(data),
             )
+            etag = response.get("ETag")
+            if not etag:
+                raise ArchiveStorageError(f"Missing ETag for '{key}'")
+            normalized_etag = etag.strip('"')
+            if normalized_etag != checksum:
+                raise ArchiveStorageError(
+                    f"ETag mismatch for '{key}': expected={checksum}, actual={normalized_etag}"
+                )
             logger.debug("Uploaded object: %s (size=%d, checksum=%s)", key, len(data), checksum)
             return checksum
         except ClientError as e:
