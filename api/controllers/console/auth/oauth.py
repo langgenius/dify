@@ -1,3 +1,4 @@
+import json
 import logging
 import secrets
 
@@ -10,17 +11,19 @@ from werkzeug.exceptions import Unauthorized
 
 from configs import dify_config
 from constants.languages import languages
+from controllers.console.wraps import account_initialization_required, setup_required
 from events.tenant_event import tenant_was_created
 from extensions.ext_database import db
 from libs.datetime_utils import naive_utc_now
 from libs.helper import extract_remote_ip
+from libs.login import current_account_with_tenant, login_required
 from libs.oauth import AceDataCloudOAuth, GitHubOAuth, GoogleOAuth, OAuthUserInfo
 from libs.token import (
     set_access_token_to_cookie,
     set_csrf_token_to_cookie,
     set_refresh_token_to_cookie,
 )
-from models import Account, AccountStatus
+from models import Account, AccountIntegrate, AccountStatus
 from services.account_service import AccountService, RegisterService, TenantService
 from services.billing_service import BillingService
 from services.errors.account import AccountNotFoundError, AccountRegisterError
@@ -219,14 +222,73 @@ class OAuthCallback(Resource):
         return response
 
 
+@console_ns.route("/oauth/acedatacloud/session")
+class AceDataCloudOAuthSession(Resource):
+    @setup_required
+    @login_required
+    @account_initialization_required
+    def get(self):
+        """
+        Return the latest persisted AceDataCloud OAuth tokens and user info for the current account.
+
+        This endpoint is designed for the console frontend to persist these values client-side when needed.
+        """
+        account, current_tenant_id = current_account_with_tenant()
+
+        account_integrate: AccountIntegrate | None = (
+            db.session.query(AccountIntegrate)
+            .filter_by(account_id=account.id, provider=ACEDATACLOUD_PROVIDER)
+            .first()
+        )
+        token_file = (account_integrate.encrypted_token if account_integrate else "") or ""
+        if not token_file:
+            return {"result": "success", "data": None}
+
+        try:
+            from core.helper.encrypter import decrypt_token
+            from extensions.ext_storage import storage
+
+            raw = storage.load(token_file)
+            token_doc = json.loads(raw.decode("utf-8"))
+            encrypted_payload = token_doc.get("encrypted_payload")
+            tenant_id = token_doc.get("tenant_id") or current_tenant_id
+
+            if not encrypted_payload or not tenant_id:
+                return {"result": "success", "data": None}
+
+            decrypted_payload = decrypt_token(tenant_id, encrypted_payload)
+            token_payload = json.loads(decrypted_payload) if decrypted_payload else {}
+        except Exception:
+            logger.exception("Failed to load AceDataCloud token for account %s", account.id)
+            return {"result": "success", "data": None}
+
+        access_token = token_payload.get("access_token")
+        user_info: OAuthUserInfo | None = None
+
+        try:
+            if access_token:
+                oauth_provider = get_oauth_providers().get(ACEDATACLOUD_PROVIDER)
+                if isinstance(oauth_provider, AceDataCloudOAuth):
+                    user_info = oauth_provider.get_user_info(access_token)
+        except Exception:
+            logger.exception("Failed to fetch AceDataCloud user info for account %s", account.id)
+
+        return {
+            "result": "success",
+            "data": {
+                **token_payload,
+                "provider": ACEDATACLOUD_PROVIDER,
+                "user_info": user_info.__dict__ if user_info else None,
+            },
+        }
+
+
 def _persist_acedatacloud_token(*, account: Account, open_id: str, token_response: dict) -> None:
     """
     Persist AceDataCloud access/refresh tokens for later use.
     We store an encrypted payload in object storage and keep a short reference path in DB.
     """
     try:
-        import json
-
         from core.helper.encrypter import encrypt_token
         from extensions.ext_storage import storage
 
