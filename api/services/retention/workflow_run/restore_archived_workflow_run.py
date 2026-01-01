@@ -292,14 +292,11 @@ class WorkflowRunRestore:
             for key in non_nullable_with_default:
                 if key in filtered and filtered[key] is None:
                     filtered.pop(key)
-            missing_required = [
-                key for key in required_columns if key not in filtered or filtered.get(key) is None
-            ]
+            missing_required = [key for key in required_columns if key not in filtered or filtered.get(key) is None]
             if missing_required:
                 missing_cols = ", ".join(sorted(missing_required))
                 raise ValueError(
-                    f"Missing required columns for {table_name} "
-                    f"(schema_version={schema_version}): {missing_cols}"
+                    f"Missing required columns for {table_name} (schema_version={schema_version}): {missing_cols}"
                 )
             converted = self._convert_datetime_fields(filtered, model)
             converted_records.append(converted)
@@ -348,9 +345,7 @@ class WorkflowRunRestore:
 
     def _validate_schema_version(self, schema_version: str) -> None:
         if schema_version not in SCHEMA_MAPPERS:
-            raise ValueError(
-                f"Unsupported schema_version {schema_version}. Add a mapping before restoring."
-            )
+            raise ValueError(f"Unsupported schema_version {schema_version}. Add a mapping before restoring.")
 
     def _apply_schema_mapping(
         self,
