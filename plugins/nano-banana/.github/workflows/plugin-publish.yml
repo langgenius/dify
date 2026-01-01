@@ -1,0 +1,109 @@
+name: Plugin Publish Workflow
+
+on:
+  release:
+    types: [published]
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Download CLI tool
+        run: |
+          mkdir -p $RUNNER_TEMP/bin
+          cd $RUNNER_TEMP/bin
+
+          wget https://github.com/langgenius/dify-plugin-daemon/releases/download/0.0.6/dify-plugin-linux-amd64
+          chmod +x dify-plugin-linux-amd64
+
+          echo "CLI tool location:"
+          pwd
+          ls -la dify-plugin-linux-amd64
+
+      - name: Get basic info from manifest
+        id: get_basic_info
+        run: |
+          PLUGIN_NAME=$(grep "^name:" manifest.yaml | cut -d' ' -f2)
+          echo "Plugin name: $PLUGIN_NAME"
+          echo "plugin_name=$PLUGIN_NAME" >> $GITHUB_OUTPUT
+
+          VERSION=$(grep "^version:" manifest.yaml | cut -d' ' -f2)
+          echo "Plugin version: $VERSION"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
+
+          # If the author's name is not your github username, you can change the author here
+          AUTHOR=$(grep "^author:" manifest.yaml | cut -d' ' -f2)
+          echo "Plugin author: $AUTHOR"
+          echo "author=$AUTHOR" >> $GITHUB_OUTPUT
+
+      - name: Package Plugin
+        id: package
+        run: |
+          cd $GITHUB_WORKSPACE
+          PACKAGE_NAME="${{ steps.get_basic_info.outputs.plugin_name }}-${{ steps.get_basic_info.outputs.version }}.difypkg"
+          $RUNNER_TEMP/bin/dify-plugin-linux-amd64 plugin package . -o "$PACKAGE_NAME"
+
+          echo "Package result:"
+          ls -la "$PACKAGE_NAME"
+          echo "package_name=$PACKAGE_NAME" >> $GITHUB_OUTPUT
+
+          echo "\nFull file path:"
+          pwd
+          echo "\nDirectory structure:"
+          tree || ls -R
+
+      - name: Checkout target repo
+        uses: actions/checkout@v3
+        with:
+          repository: ${{steps.get_basic_info.outputs.author}}/dify-plugins
+          path: dify-plugins
+          token: ${{ secrets.PLUGIN_ACTION }}
+          fetch-depth: 1
+          persist-credentials: true
+
+      - name: Prepare and create PR
+        run: |
+          PACKAGE_NAME="${{ steps.get_basic_info.outputs.plugin_name }}-${{ steps.get_basic_info.outputs.version }}.difypkg"
+          mkdir -p dify-plugins/${{ steps.get_basic_info.outputs.author }}/${{ steps.get_basic_info.outputs.plugin_name }}
+          mv "$PACKAGE_NAME" dify-plugins/${{ steps.get_basic_info.outputs.author }}/${{ steps.get_basic_info.outputs.plugin_name }}/
+
+          cd dify-plugins
+
+          git config user.name "GitHub Actions"
+          git config user.email "actions@github.com"
+
+          git fetch origin main
+          git checkout main
+          git pull origin main
+
+          BRANCH_NAME="bump-${{ steps.get_basic_info.outputs.plugin_name }}-plugin-${{ steps.get_basic_info.outputs.version }}"
+          git checkout -b "$BRANCH_NAME"
+
+          git add .
+          git commit -m "bump ${{ steps.get_basic_info.outputs.plugin_name }} plugin to version ${{ steps.get_basic_info.outputs.version }}"
+
+          git push -u origin "$BRANCH_NAME" --force
+
+          git branch -a
+          echo "Waiting for branch to sync..."
+          sleep 10  # Wait 10 seconds for branch sync
+
+      - name: Create PR via GitHub API
+        env:
+          # How to config the token:
+          # 1. Profile -> Settings -> Developer settings -> Personal access tokens -> Generate new token (with repo scope) -> Copy the token
+          # 2. Go to the target repository -> Settings -> Secrets and variables -> Actions -> New repository secret -> Add the token as PLUGIN_ACTION
+          GH_TOKEN: ${{ secrets.PLUGIN_ACTION }}
+        run: |
+          gh pr create \
+            --repo langgenius/dify-plugins \
+            --head "${{ steps.get_basic_info.outputs.author }}:${{ steps.get_basic_info.outputs.plugin_name }}-${{ steps.get_basic_info.outputs.version }}" \
+            --base main \
+            --title "bump ${{ steps.get_basic_info.outputs.plugin_name }} plugin to version ${{ steps.get_basic_info.outputs.version }}" \
+            --body "bump ${{ steps.get_basic_info.outputs.plugin_name }} plugin package to version ${{ steps.get_basic_info.outputs.version }}
+
+            Changes:
+            - Updated plugin package file" || echo "PR already exists or creation skipped." # Handle cases where PR already exists

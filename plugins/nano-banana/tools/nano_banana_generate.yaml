@@ -1,0 +1,102 @@
+identity:
+  name: nano_banana_generate_image
+  author: acedatacloud
+  label:
+    en_US: Nano Banana Generate Image
+    zh_Hans: Nano Banana 生成图片
+description:
+  human:
+    en_US: Generate an image with Ace Data Cloud Nano Banana Images API.
+    zh_Hans: 通过 Ace Data Cloud Nano Banana Images API 生成图片。
+  llm: Generate an image from prompt via Ace Data Cloud Nano Banana Images API.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text prompt used to generate the image.
+      zh_Hans: 用于生成图片的提示词。
+    llm_description: Describe the image you want to generate in detail.
+    form: llm
+  - name: model
+    type: select
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name. Default is nano-banana.
+      zh_Hans: 可选模型名称，不填则默认为 nano-banana。
+    llm_description: Optional. Use nano-banana or nano-banana-pro when you need higher quality.
+    form: form
+    options:
+      - value: nano-banana
+        label:
+          en_US: nano-banana (default)
+          zh_Hans: nano-banana（默认）
+      - value: nano-banana-pro
+        label:
+          en_US: nano-banana-pro
+          zh_Hans: nano-banana-pro
+  - name: aspect_ratio
+    type: select
+    required: false
+    label:
+      en_US: Aspect ratio
+      zh_Hans: 画面比例
+    human_description:
+      en_US: Aspect ratio for generation. Default is 1:1.
+      zh_Hans: 生成图片的比例，默认 1:1。
+    llm_description: Optional. Choose a supported aspect ratio like 1:1 or 16:9.
+    form: form
+    options:
+      - value: 1:1
+        label: { en_US: 1:1, zh_Hans: 1:1 }
+      - value: 3:2
+        label: { en_US: 3:2, zh_Hans: 3:2 }
+      - value: 2:3
+        label: { en_US: 2:3, zh_Hans: 2:3 }
+      - value: 16:9
+        label: { en_US: 16:9, zh_Hans: 16:9 }
+      - value: 9:16
+        label: { en_US: 9:16, zh_Hans: 9:16 }
+      - value: 4:3
+        label: { en_US: 4:3, zh_Hans: 4:3 }
+      - value: 3:4
+        label: { en_US: 3:4, zh_Hans: 3:4 }
+  - name: resolution
+    type: select
+    required: false
+    label:
+      en_US: Resolution
+      zh_Hans: 分辨率
+    human_description:
+      en_US: Optional. Only works when model is nano-banana-pro.
+      zh_Hans: 可选，仅在模型为 nano-banana-pro 时生效。
+    llm_description: Optional. Use 1K/2K/4K when model is nano-banana-pro.
+    form: form
+    options:
+      - value: 1K
+        label: { en_US: 1K, zh_Hans: 1K }
+      - value: 2K
+        label: { en_US: 2K, zh_Hans: 2K }
+      - value: 4K
+        label: { en_US: 4K, zh_Hans: 4K }
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional webhook callback URL (publicly accessible).
+      zh_Hans: 可选回调地址（需要公网可访问）。
+    llm_description: Optional webhook callback URL for async result callback.
+    form: form
+extra:
+  python:
+    source: tools/nano_banana_generate.py
+

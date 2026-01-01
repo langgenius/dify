@@ -1,0 +1,73 @@
+identity:
+  name: nano_banana_edit_image
+  author: acedatacloud
+  label:
+    en_US: Nano Banana Edit Image
+    zh_Hans: Nano Banana 编辑图片
+description:
+  human:
+    en_US: Edit image(s) with Ace Data Cloud Nano Banana Images API.
+    zh_Hans: 通过 Ace Data Cloud Nano Banana Images API 编辑图片。
+  llm: Edit image(s) with a prompt and image_urls via Ace Data Cloud Nano Banana Images API.
+parameters:
+  - name: prompt
+    type: string
+    required: true
+    label:
+      en_US: Prompt
+      zh_Hans: 提示词
+    human_description:
+      en_US: Text prompt describing the edit.
+      zh_Hans: 描述编辑目标的提示词。
+    llm_description: Describe how to edit the image(s).
+    form: llm
+  - name: image_urls
+    type: array
+    required: true
+    label:
+      en_US: Image URLs
+      zh_Hans: 图片链接
+    human_description:
+      en_US: A list of image URLs or data URLs. Each item must be publicly accessible or a base64 data URL.
+      zh_Hans: 图片链接数组（公网可访问的 URL 或 base64 data URL）。
+    llm_description: Provide one or more image URLs (or base64 data URLs) to be edited.
+    form: form
+    input_schema:
+      type: array
+      items:
+        type: string
+  - name: model
+    type: select
+    required: false
+    label:
+      en_US: Model
+      zh_Hans: 模型
+    human_description:
+      en_US: Optional model name. Default is nano-banana.
+      zh_Hans: 可选模型名称，不填则默认为 nano-banana。
+    llm_description: Optional. Use nano-banana or nano-banana-pro.
+    form: form
+    options:
+      - value: nano-banana
+        label:
+          en_US: nano-banana (default)
+          zh_Hans: nano-banana（默认）
+      - value: nano-banana-pro
+        label:
+          en_US: nano-banana-pro
+          zh_Hans: nano-banana-pro
+  - name: callback_url
+    type: string
+    required: false
+    label:
+      en_US: Callback URL
+      zh_Hans: 回调地址
+    human_description:
+      en_US: Optional webhook callback URL (publicly accessible).
+      zh_Hans: 可选回调地址（需要公网可访问）。
+    llm_description: Optional webhook callback URL for async result callback.
+    form: form
+extra:
+  python:
+    source: tools/nano_banana_edit.py
+

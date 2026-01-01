@@ -1,0 +1,37 @@
+version: 0.0.1
+type: plugin
+author: acedatacloud
+name: nano-banana
+label:
+  en_US: nano-banana
+  ja_JP: nano-banana
+  zh_Hans: nano-banana
+  pt_BR: nano-banana
+description:
+  en_US: Nano Banana
+  ja_JP: Nano Banana
+  zh_Hans: Nano Banana
+  pt_BR: Nano Banana
+icon: icon.svg
+icon_dark: icon-dark.svg
+resource:
+  memory: 268435456
+  permission:
+    tool:
+      enabled: true
+plugins:
+  tools:
+    - provider/nano-banana.yaml
+meta:
+  version: 0.0.1
+  arch:
+    - amd64
+    - arm64
+  runner:
+    language: python
+    version: "3.12"
+    entrypoint: main
+  minimum_dify_version: null
+created_at: 2026-01-01T21:20:15.589343+08:00
+privacy: PRIVACY.md
+verified: false
