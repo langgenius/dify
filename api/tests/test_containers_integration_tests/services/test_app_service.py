@@ -7,6 +7,7 @@ from constants.model_template import default_app_templates
 from models import Account
 from models.model import App, Site
 from services.account_service import AccountService, TenantService
+
 # Delay import of AppService to avoid circular dependency
 # from services.app_service import AppService
 
