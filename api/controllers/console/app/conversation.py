@@ -528,6 +528,58 @@ class ChatConversationApi(Resource):
         return conversations
 
 
+@console_ns.route("/apps/<uuid:app_id>/chat-conversations/export")
+class ChatConversationExportApi(Resource):
+    @console_ns.doc(
+        "export_chat_conversations",
+        description="Export chat conversations in streaming format with filters",
+        params={"app_id": "Application ID"},
+    )
+    @console_ns.response(200, "Success - streaming response")
+    @console_ns.response(403, "Insufficient permissions")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.CHAT, AppMode.AGENT_CHAT, AppMode.ADVANCED_CHAT])
+    @edit_permission_required
+    def get(self, app_model):
+        """
+        Export chat conversations in streaming format.
+        Query params: keyword, start, end, annotation_status, sort_by, format
+        """
+        current_user, _ = current_account_with_tenant()
+        format_type = request.args.get("format", "jsonl").lower()
+        keyword = request.args.get("keyword")
+        start = request.args.get("start")
+        end = request.args.get("end")
+        annotation_status = request.args.get("annotation_status", "all")
+        sort_by = request.args.get("sort_by", "-created_at")
+
+        if format_type not in {"jsonl", "csv"}:
+            abort(400, description="Format must be 'jsonl' or 'csv'")
+
+        # Parse time range
+        account = current_user
+        if account.timezone is None:
+            abort(400, description="User timezone is not set.")
+        try:
+            start_datetime_utc, end_datetime_utc = parse_time_range(start, end, account.timezone)
+        except ValueError as e:
+            abort(400, description=str(e))
+
+        # Get streaming response from service
+        return ConversationService.export_conversations_streaming(
+            app_id=str(app_model.id),
+            format_type=format_type,
+            keyword=keyword,
+            start_datetime_utc=start_datetime_utc,
+            end_datetime_utc=end_datetime_utc,
+            annotation_status=annotation_status,
+            sort_by=sort_by,
+            exclude_debugger=(app_model.mode == AppMode.ADVANCED_CHAT),
+        )
+
+
 @console_ns.route("/apps/<uuid:app_id>/chat-conversations/<uuid:conversation_id>")
 class ChatConversationDetailApi(Resource):
     @console_ns.doc("get_chat_conversation")
