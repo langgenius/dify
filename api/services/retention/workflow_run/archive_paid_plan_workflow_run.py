@@ -15,8 +15,10 @@ The workflow_runs and workflow_app_logs tables are preserved for UI listing.
 """
 
 import datetime
+import io
 import json
 import logging
+import tarfile
 import time
 from collections.abc import Sequence
 from dataclasses import dataclass, field
@@ -86,13 +88,17 @@ class WorkflowRunArchiver:
 
     Storage Layout:
     {tenant_id}/app_id={app_id}/year={YYYY}/month={MM}/workflow_run_id={run_id}/
-        ├── manifest.json
-        ├── table=workflow_node_executions/data.jsonl.gz
-        ├── table=workflow_node_execution_offload/data.jsonl.gz
-        ├── table=workflow_pauses/data.jsonl.gz
-        ├── table=workflow_pause_reasons/data.jsonl.gz
-        └── table=workflow_trigger_logs/data.jsonl.gz
+        └── archive.v1.0.tar
+            ├── manifest.json
+            ├── workflow_node_executions.jsonl.gz
+            ├── workflow_node_execution_offload.jsonl.gz
+            ├── workflow_pauses.jsonl.gz
+            ├── workflow_pause_reasons.jsonl.gz
+            └── workflow_trigger_logs.jsonl.gz
     """
+
+    ARCHIVE_SCHEMA_VERSION = "1.0"
+    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.tar"
 
     ARCHIVED_TABLES = [
         "workflow_node_executions",
@@ -283,21 +289,6 @@ class WorkflowRunArchiver:
         result = ArchiveResult(run_id=run.id, tenant_id=run.tenant_id, success=False)
 
         try:
-            # Check if already archived (idempotency)
-            manifest_key = self._get_manifest_key(run)
-            if storage and storage.object_exists(manifest_key):
-                # Manifest exists, check if data was properly archived
-                existing_manifest = self._load_manifest(storage, manifest_key)
-                if existing_manifest and self._verify_manifest(storage, run, existing_manifest):
-                    # Already archived, just mark and delete
-                    if not self.dry_run:
-                        self._mark_archived(session, run.id)
-                        self._delete_archived_data(session, run)
-                        session.commit()
-                    result.success = True
-                    result.elapsed_time = time.time() - start_time
-                    return result
-
             # Extract data from all tables
             table_data = self._extract_data(session, run)
 
@@ -317,28 +308,16 @@ class WorkflowRunArchiver:
             else:
                 if storage is None:
                     raise ArchiveStorageNotConfiguredError("Archive storage not configured")
+                archive_key = self._get_archive_key(run)
 
-                # Serialize and upload each table
+                # Serialize tables for the archive bundle
                 table_stats: list[TableStats] = []
+                table_payloads: dict[str, bytes] = {}
                 for table_name in self.ARCHIVED_TABLES:
                     records = table_data.get(table_name, [])
-                    key = self._get_table_key(run, table_name)
-                    if storage.object_exists(key):
-                        # Reuse existing archived data to keep archiving idempotent.
-                        existing_data = storage.get_object(key)
-                        checksum = ArchiveStorage.compute_checksum(existing_data)
-                        table_stats.append(
-                            TableStats(
-                                table_name=table_name,
-                                row_count=len(ArchiveStorage.deserialize_from_jsonl_gz(existing_data)),
-                                checksum=checksum,
-                                size_bytes=len(existing_data),
-                            )
-                        )
-                        continue
-
                     data = ArchiveStorage.serialize_to_jsonl_gz(records)
-                    checksum = storage.put_object(key, data)
+                    table_payloads[table_name] = data
+                    checksum = ArchiveStorage.compute_checksum(data)
 
                     table_stats.append(
                         TableStats(
@@ -349,14 +328,11 @@ class WorkflowRunArchiver:
                         )
                     )
 
-                # Generate and upload manifest
+                # Generate and upload archive bundle
                 manifest = self._generate_manifest(run, table_stats)
                 manifest_data = json.dumps(manifest, indent=2, default=str).encode("utf-8")
-                storage.put_object(manifest_key, manifest_data)
-
-                # Verify upload
-                if not self._verify_manifest(storage, run, manifest):
-                    raise Exception("Manifest verification failed")
+                archive_data = self._build_archive_bundle(manifest_data, table_payloads)
+                storage.put_object(archive_key, archive_data)
 
                 # Mark as archived and delete source data
                 self._mark_archived(session, run.id)
@@ -412,25 +388,21 @@ class WorkflowRunArchiver:
         table_data["workflow_trigger_logs"] = [row.to_dict() for row in trigger_records]
         return table_data
 
-    def _get_manifest_key(self, run: WorkflowRun) -> str:
-        """Get the storage key for the manifest file."""
+    def _get_archive_key(self, run: WorkflowRun, *, bundle_name: str | None = None) -> str:
+        """Get the storage key for the archive bundle."""
         prefix = build_workflow_run_prefix(
             tenant_id=run.tenant_id,
             app_id=run.app_id,
             created_at=run.created_at,
             run_id=run.id,
         )
-        return f"{prefix}/manifest.json"
+        bundle = bundle_name or self.ARCHIVE_BUNDLE_NAME
+        return f"{prefix}/{bundle}"
 
-    def _get_table_key(self, run: WorkflowRun, table_name: str) -> str:
-        """Get the storage key for a table data file."""
-        prefix = build_workflow_run_prefix(
-            tenant_id=run.tenant_id,
-            app_id=run.app_id,
-            created_at=run.created_at,
-            run_id=run.id,
-        )
-        return f"{prefix}/table={table_name}/data.jsonl.gz"
+    @staticmethod
+    def _get_table_member_path(table_name: str) -> str:
+        """Get the archive bundle path for a table data file."""
+        return f"{table_name}.jsonl.gz"
 
     def _generate_manifest(
         self,
@@ -439,7 +411,7 @@ class WorkflowRunArchiver:
     ) -> dict[str, Any]:
         """Generate a manifest for the archived workflow run."""
         return {
-            "schema_version": "1.0",
+            "schema_version": self.ARCHIVE_SCHEMA_VERSION,
             "archived_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "tables": {
                 stat.table_name: {
@@ -451,57 +423,23 @@ class WorkflowRunArchiver:
             },
         }
 
-    def _load_manifest(self, storage: ArchiveStorage, key: str) -> dict[str, Any] | None:
-        """Load a manifest from storage."""
-        try:
-            data = storage.get_object(key)
-            return json.loads(data.decode("utf-8"))
-        except Exception:
-            return None
+    @staticmethod
+    def _add_tar_member(tar: tarfile.TarFile, name: str, data: bytes) -> None:
+        info = tarfile.TarInfo(name)
+        info.size = len(data)
+        tar.addfile(info, io.BytesIO(data))
 
-    def _verify_manifest(
-        self,
-        storage: ArchiveStorage,
-        run: WorkflowRun,
-        manifest: dict[str, Any],
-    ) -> bool:
-        """Verify that all objects in the manifest exist and have correct checksums."""
-        tables = manifest.get("tables", {})
-
-        for table_name, info in tables.items():
-            key = self._get_table_key(run, table_name)
-            if not storage.object_exists(key):
-                logger.warning("Missing archived table object: %s", key)
-                return False
-
-            # Optionally verify checksum
-            try:
-                data = storage.get_object(key)
-                actual_checksum = ArchiveStorage.compute_checksum(data)
-                if actual_checksum != info.get("checksum"):
-                    logger.warning(
-                        "Checksum mismatch for %s: expected=%s, actual=%s",
-                        key,
-                        info.get("checksum"),
-                        actual_checksum,
-                    )
-                    return False
-
-                records = ArchiveStorage.deserialize_from_jsonl_gz(data)
-                expected_count = info.get("row_count", 0)
-                if len(records) != expected_count:
-                    logger.warning(
-                        "Row count mismatch for %s: expected=%s, actual=%s",
-                        key,
-                        expected_count,
-                        len(records),
-                    )
-                    return False
-            except Exception as e:
-                logger.warning("Failed to verify manifest for %s: %s", key, e)
-                return False
-
-        return True
+    def _build_archive_bundle(self, manifest_data: bytes, table_payloads: dict[str, bytes]) -> bytes:
+        buffer = io.BytesIO()
+        with tarfile.open(fileobj=buffer, mode="w") as tar:
+            self._add_tar_member(tar, "manifest.json", manifest_data)
+            for table_name in self.ARCHIVED_TABLES:
+                data = table_payloads.get(table_name)
+                if data is None:
+                    raise ValueError(f"Missing archive payload for {table_name}")
+                member_path = self._get_table_member_path(table_name)
+                self._add_tar_member(tar, member_path, data)
+        return buffer.getvalue()
 
     def _mark_archived(self, session: Session, run_id: str) -> None:
         """Mark a workflow run as archived."""

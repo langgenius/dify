@@ -5,8 +5,10 @@ This service restores archived workflow run data from S3-compatible storage
 back to the database.
 """
 
+import io
 import json
 import logging
+import tarfile
 import time
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -74,6 +76,9 @@ class WorkflowRunRestore:
     database tables. It handles idempotency by skipping records that already
     exist in the database.
     """
+
+    ARCHIVE_SCHEMA_VERSION = "1.0"
+    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.tar"
 
     def __init__(self, dry_run: bool = False):
         """
@@ -150,40 +155,64 @@ class WorkflowRunRestore:
                     created_at=run.created_at,
                     run_id=run.id,
                 )
-                # Load manifest
-                manifest_key = f"{prefix}/manifest.json"
+                archive_key = self._get_archive_key(prefix)
                 try:
-                    manifest_data = storage.get_object(manifest_key)
-                    manifest = json.loads(manifest_data.decode("utf-8"))
+                    archive_data = storage.get_object(archive_key)
                 except FileNotFoundError:
-                    result.error = f"Manifest not found: {manifest_key}"
+                    result.error = f"Archive bundle not found: {archive_key}"
                     click.echo(click.style(result.error, fg="red"))
                     return result
 
-                # Restore each table
-                tables = manifest.get("tables", {})
-                schema_version = self._resolve_schema_version(manifest)
-                self._validate_schema_version(schema_version)
-                for table_name, info in tables.items():
-                    row_count = info.get("row_count", 0)
-                    if row_count == 0:
-                        result.restored_counts[table_name] = 0
-                        continue
-
-                    table_key = f"{prefix}/table={table_name}/data.jsonl.gz"
-
-                    if self.dry_run:
-                        click.echo(
-                            click.style(
-                                f"  [DRY RUN] Would restore {row_count} records to {table_name}",
-                                fg="yellow",
-                            )
-                        )
-                        result.restored_counts[table_name] = row_count
-                        continue
-
+                with tarfile.open(fileobj=io.BytesIO(archive_data), mode="r") as tar:
                     try:
-                        data = storage.get_object(table_key)
+                        manifest = self._load_manifest_from_tar(tar)
+                    except ValueError as e:
+                        result.error = f"Archive bundle invalid: {e}"
+                        click.echo(click.style(result.error, fg="red"))
+                        return result
+
+                    tables = manifest.get("tables", {})
+                    schema_version = self._resolve_schema_version(manifest)
+                    self._validate_schema_version(schema_version)
+                    for table_name, info in tables.items():
+                        row_count = info.get("row_count", 0)
+                        if row_count == 0:
+                            result.restored_counts[table_name] = 0
+                            continue
+
+                        if self.dry_run:
+                            click.echo(
+                                click.style(
+                                    f"  [DRY RUN] Would restore {row_count} records to {table_name}",
+                                    fg="yellow",
+                                )
+                            )
+                            result.restored_counts[table_name] = row_count
+                            continue
+
+                        member_path = self._get_table_member_path(table_name)
+                        try:
+                            fileobj = tar.extractfile(member_path)
+                        except KeyError:
+                            click.echo(
+                                click.style(
+                                    f"  Warning: Table data not found in archive: {member_path}",
+                                    fg="yellow",
+                                )
+                            )
+                            result.restored_counts[table_name] = 0
+                            continue
+                        if fileobj is None:
+                            click.echo(
+                                click.style(
+                                    f"  Warning: Table data not found in archive: {member_path}",
+                                    fg="yellow",
+                                )
+                            )
+                            result.restored_counts[table_name] = 0
+                            continue
+
+                        data = fileobj.read()
                         records = ArchiveStorage.deserialize_from_jsonl_gz(data)
                         restored = self._restore_table_records(
                             session,
@@ -198,14 +227,6 @@ class WorkflowRunRestore:
                                 fg="green",
                             )
                         )
-                    except FileNotFoundError:
-                        click.echo(
-                            click.style(
-                                f"  Warning: Table data not found: {table_key}",
-                                fg="yellow",
-                            )
-                        )
-                        result.restored_counts[table_name] = 0
 
                 # Verify row counts match manifest
                 manifest_total = sum(info.get("row_count", 0) for info in tables.values())
@@ -249,6 +270,24 @@ class WorkflowRunRestore:
             sessionmaker(bind=db.engine, expire_on_commit=False)
         )
         return self.workflow_run_repo
+
+    def _get_archive_key(self, prefix: str, *, bundle_name: str | None = None) -> str:
+        bundle = bundle_name or self.ARCHIVE_BUNDLE_NAME
+        return f"{prefix}/{bundle}"
+
+    @staticmethod
+    def _get_table_member_path(table_name: str) -> str:
+        return f"{table_name}.jsonl.gz"
+
+    @staticmethod
+    def _load_manifest_from_tar(tar: tarfile.TarFile) -> dict[str, Any]:
+        try:
+            fileobj = tar.extractfile("manifest.json")
+        except KeyError as e:
+            raise ValueError("manifest.json missing from archive bundle") from e
+        if fileobj is None:
+            raise ValueError("manifest.json missing from archive bundle")
+        return json.loads(fileobj.read().decode("utf-8"))
 
     def _restore_table_records(
         self,
