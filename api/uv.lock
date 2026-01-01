@@ -1382,6 +1382,7 @@ dependencies = [
     { name = "celery" },
     { name = "charset-normalizer" },
     { name = "croniter" },
+    { name = "fastopenapi", extra = ["flask"] },
     { name = "flask" },
     { name = "flask-compress" },
     { name = "flask-cors" },
@@ -1580,6 +1581,7 @@ requires-dist = [
     { name = "celery", specifier = "~=5.5.2" },
     { name = "charset-normalizer", specifier = ">=3.4.4" },
     { name = "croniter", specifier = ">=6.0.0" },
+    { name = "fastopenapi", extras = ["flask"], specifier = ">=0.7.0" },
     { name = "flask", specifier = "~=3.1.2" },
     { name = "flask-compress", specifier = ">=1.17,<1.18" },
     { name = "flask-cors", specifier = "~=6.0.0" },
@@ -1919,6 +1921,23 @@ dependencies = [
 sdist = { url = "https://files.pythonhosted.org/packages/b2/de/3ee97a4f6ffef1fb70bf20561e4f88531633bb5045dc6cebc0f8471f764d/fastapi-0.122.0.tar.gz", hash = "sha256:cd9b5352031f93773228af8b4c443eedc2ac2aa74b27780387b853c3726fb94b", size = 346436, upload-time = "2025-11-24T19:17:47.95Z" }
 wheels = [
     { url = "https://files.pythonhosted.org/packages/7a/93/aa8072af4ff37b795f6bbf43dcaf61115f40f49935c7dbb180c9afc3f421/fastapi-0.122.0-py3-none-any.whl", hash = "sha256:a456e8915dfc6c8914a50d9651133bd47ec96d331c5b44600baa635538a30d67", size = 110671, upload-time = "2025-11-24T19:17:45.96Z" },
+]
+
+[[package]]
+name = "fastopenapi"
+version = "0.7.0"
+source = { registry = "https://pypi.org/simple" }
+dependencies = [
+    { name = "pydantic" },
+]
+sdist = { url = "https://files.pythonhosted.org/packages/0e/02/6ee3ecc1e176bbb8c02cbeee30b11f526167c77ef2f7e741ab7999787ad0/fastopenapi-0.7.0.tar.gz", hash = "sha256:5a671fa663e3d89608e9b39a213595f7ac0bf0caf71f2b6016adf4d8c3e1a50e", size = 17191, upload-time = "2025-04-27T13:38:48.368Z" }
+wheels = [
+    { url = "https://files.pythonhosted.org/packages/d5/ad/1881ed46a0a7d3ce14472425db0ddc7aa45c858b4b14727647805487f10d/fastopenapi-0.7.0-py3-none-any.whl", hash = "sha256:482914301f348270cb231617863cacfadf1841012c5ff7d4255a27077704c7b2", size = 21272, upload-time = "2025-04-27T13:38:46.877Z" },
+]
+
+[package.optional-dependencies]
+flask = [
+    { name = "flask" },
 ]
 
 [[package]]
