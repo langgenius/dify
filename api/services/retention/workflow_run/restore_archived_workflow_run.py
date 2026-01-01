@@ -8,6 +8,7 @@ back to the database.
 import json
 import logging
 import time
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 from typing import Any, cast
@@ -44,6 +45,12 @@ TABLE_MODELS = {
     "workflow_pauses": WorkflowPause,
     "workflow_pause_reasons": WorkflowPauseReason,
     "workflow_trigger_logs": WorkflowTriggerLog,
+}
+
+SchemaMapper = Callable[[dict[str, Any]], dict[str, Any]]
+
+SCHEMA_MAPPERS: dict[str, dict[str, SchemaMapper]] = {
+    "1.0": {},
 }
 
 
@@ -155,6 +162,8 @@ class WorkflowRunRestore:
 
                 # Restore each table
                 tables = manifest.get("tables", {})
+                schema_version = self._resolve_schema_version(manifest)
+                self._validate_schema_version(schema_version)
                 for table_name, info in tables.items():
                     row_count = info.get("row_count", 0)
                     if row_count == 0:
@@ -176,7 +185,12 @@ class WorkflowRunRestore:
                     try:
                         data = storage.get_object(table_key)
                         records = ArchiveStorage.deserialize_from_jsonl_gz(data)
-                        restored = self._restore_table_records(session, table_name, records)
+                        restored = self._restore_table_records(
+                            session,
+                            table_name,
+                            records,
+                            schema_version=schema_version,
+                        )
                         result.restored_counts[table_name] = restored
                         click.echo(
                             click.style(
@@ -241,6 +255,8 @@ class WorkflowRunRestore:
         session: Session,
         table_name: str,
         records: list[dict[str, Any]],
+        *,
+        schema_version: str,
     ) -> int:
         """
         Restore records to a table.
@@ -251,6 +267,7 @@ class WorkflowRunRestore:
             session: Database session
             table_name: Name of the table
             records: List of record dictionaries
+            schema_version: Archived schema version from manifest
 
         Returns:
             Number of records actually inserted
@@ -263,11 +280,36 @@ class WorkflowRunRestore:
             logger.warning("Unknown table: %s", table_name)
             return 0
 
-        # Convert datetime strings back to datetime objects
+        column_names, required_columns, non_nullable_with_default = self._get_model_column_info(model)
+        unknown_fields: set[str] = set()
+
+        # Apply schema mapping, filter to current columns, then convert datetimes
         converted_records = []
         for record in records:
-            converted = self._convert_datetime_fields(record, model)
+            mapped = self._apply_schema_mapping(table_name, schema_version, record)
+            unknown_fields.update(set(mapped.keys()) - column_names)
+            filtered = {key: value for key, value in mapped.items() if key in column_names}
+            for key in non_nullable_with_default:
+                if key in filtered and filtered[key] is None:
+                    filtered.pop(key)
+            missing_required = [
+                key for key in required_columns if key not in filtered or filtered.get(key) is None
+            ]
+            if missing_required:
+                missing_cols = ", ".join(sorted(missing_required))
+                raise ValueError(
+                    f"Missing required columns for {table_name} "
+                    f"(schema_version={schema_version}): {missing_cols}"
+                )
+            converted = self._convert_datetime_fields(filtered, model)
             converted_records.append(converted)
+        if unknown_fields:
+            logger.warning(
+                "Dropped unknown columns for %s (schema_version=%s): %s",
+                table_name,
+                schema_version,
+                ", ".join(sorted(unknown_fields)),
+            )
 
         # Use INSERT ... ON CONFLICT DO NOTHING for idempotency
         stmt = pg_insert(model).values(converted_records)
@@ -296,6 +338,52 @@ class WorkflowRunRestore:
                         pass
 
         return result
+
+    def _resolve_schema_version(self, manifest: dict[str, Any]) -> str:
+        schema_version = manifest.get("schema_version")
+        if not schema_version:
+            logger.warning("Manifest missing schema_version; defaulting to 1.0")
+            return "1.0"
+        return str(schema_version)
+
+    def _validate_schema_version(self, schema_version: str) -> None:
+        if schema_version not in SCHEMA_MAPPERS:
+            raise ValueError(
+                f"Unsupported schema_version {schema_version}. Add a mapping before restoring."
+            )
+
+    def _apply_schema_mapping(
+        self,
+        table_name: str,
+        schema_version: str,
+        record: dict[str, Any],
+    ) -> dict[str, Any]:
+        mapper = SCHEMA_MAPPERS.get(schema_version, {}).get(table_name)
+        if mapper is None:
+            return dict(record)
+        return mapper(record)
+
+    def _get_model_column_info(
+        self,
+        model: type[DeclarativeBase] | Any,
+    ) -> tuple[set[str], set[str], set[str]]:
+        columns = list(model.__table__.columns)
+        column_names = {column.key for column in columns}
+        required_columns = {
+            column.key
+            for column in columns
+            if not column.nullable
+            and column.default is None
+            and column.server_default is None
+            and not column.autoincrement
+        }
+        non_nullable_with_default = {
+            column.key
+            for column in columns
+            if not column.nullable
+            and (column.default is not None or column.server_default is not None or column.autoincrement)
+        }
+        return column_names, required_columns, non_nullable_with_default
 
     def restore_batch(
         self,
