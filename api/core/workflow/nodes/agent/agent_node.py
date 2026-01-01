@@ -229,9 +229,7 @@ class AgentNode(Node[AgentNodeData]):
                 if parameter_name in ("query", "instruction") and not for_log:
                     contents: list[dict[str, Any]] = []
                     has_file = False
-                    vision_detail = (
-                        node_data.vision.configs.detail if node_data.vision.enabled else None
-                    )
+                    vision_detail = node_data.vision.configs.detail if node_data.vision.enabled else None
 
                     for segment in segment_group.value:
                         if isinstance(segment, (ArrayFileSegment, FileSegment)):
