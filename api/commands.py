@@ -860,13 +860,13 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 @click.option("--tenant-ids", default=None, help="Optional comma-separated tenant IDs for grayscale rollout.")
 @click.option("--before-days", default=90, show_default=True, help="Archive runs older than N days.")
 @click.option(
-    "--start-time",
+    "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
     help="Archive runs created at or after this timestamp (UTC if no timezone).",
 )
 @click.option(
-    "--end-time",
+    "--end-before",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
     help="Archive runs created before this timestamp (UTC if no timezone).",
@@ -877,8 +877,8 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
 def archive_workflow_runs(
     tenant_ids: str | None,
     before_days: int,
-    start_time: datetime.datetime | None,
-    end_time: datetime.datetime | None,
+    start_from: datetime.datetime | None,
+    end_before: datetime.datetime | None,
     batch_size: int,
     limit: int | None,
     dry_run: bool,
@@ -897,27 +897,27 @@ def archive_workflow_runs(
     """
     from services.retention.workflow_run.archive_paid_plan_workflow_run import WorkflowRunArchiver
 
-    start_time = datetime.datetime.now(datetime.UTC)
+    run_started_at = datetime.datetime.now(datetime.UTC)
     click.echo(
         click.style(
-            f"Starting workflow run archiving at {start_time.isoformat()}.",
+            f"Starting workflow run archiving at {run_started_at.isoformat()}.",
             fg="white",
         )
     )
 
-    if start_time or end_time:
-        if not start_time or not end_time:
-            click.echo(click.style("start-time and end-time must be provided together.", fg="red"))
+    if start_from or end_before:
+        if not start_from or not end_before:
+            click.echo(click.style("start-from and end-before must be provided together.", fg="red"))
             return
-        if start_time >= end_time:
-            click.echo(click.style("start-time must be earlier than end-time.", fg="red"))
+        if start_from >= end_before:
+            click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
             return
 
     archiver = WorkflowRunArchiver(
         days=before_days,
         batch_size=batch_size,
-        start_time=start_time,
-        end_time=end_time,
+        start_from=start_from,
+        end_before=end_before,
         tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
         limit=limit,
         dry_run=dry_run,
@@ -932,12 +932,12 @@ def archive_workflow_runs(
         )
     )
 
-    end_time = datetime.datetime.now(datetime.UTC)
-    elapsed = end_time - start_time
+    run_finished_at = datetime.datetime.now(datetime.UTC)
+    elapsed = run_finished_at - run_started_at
     click.echo(
         click.style(
-            f"Workflow run archiving completed. start={start_time.isoformat()} "
-            f"end={end_time.isoformat()} duration={elapsed}",
+            f"Workflow run archiving completed. start={run_started_at.isoformat()} "
+            f"end={run_finished_at.isoformat()} duration={elapsed}",
             fg="green",
         )
     )
@@ -954,7 +954,7 @@ def archive_workflow_runs(
 )
 @click.option("--run-id", required=False, help="Workflow run ID to restore.")
 @click.option(
-    "--start-after",
+    "--start-from",
     type=click.DateTime(formats=["%Y-%m-%d", "%Y-%m-%dT%H:%M:%S"]),
     default=None,
     help="Optional lower bound (inclusive) for created_at; must be paired with --end-before.",
@@ -970,7 +970,7 @@ def archive_workflow_runs(
 def restore_workflow_runs(
     tenant_ids: str | None,
     run_id: str | None,
-    start_after: datetime.datetime | None,
+    start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     limit: int | None,
     dry_run: bool,
@@ -992,10 +992,10 @@ def restore_workflow_runs(
         if not parsed_tenant_ids:
             raise click.BadParameter("tenant-ids must not be empty")
 
-    if (start_after is None) ^ (end_before is None):
-        raise click.UsageError("--start-after and --end-before must be provided together.")
-    if run_id is None and (start_after is None or end_before is None):
-        raise click.UsageError("--start-after and --end-before are required for batch rollback.")
+    if (start_from is None) ^ (end_before is None):
+        raise click.UsageError("--start-from and --end-before must be provided together.")
+    if run_id is None and (start_from is None or end_before is None):
+        raise click.UsageError("--start-from and --end-before are required for batch rollback.")
 
     start_time = datetime.datetime.now(datetime.UTC)
     click.echo(
@@ -1011,7 +1011,7 @@ def restore_workflow_runs(
     else:
         results = restorer.restore_batch(
             parsed_tenant_ids,
-            start_date=start_after,
+            start_date=start_from,
             end_date=end_before,
             limit=limit,
         )
