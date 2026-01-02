@@ -424,7 +424,7 @@ class WorkflowRunRestore:
         tenant_ids: list[str] | None,
         start_date: datetime | None = None,
         end_date: datetime | None = None,
-        limit: int = 100,
+        limit: int | None = None,
     ) -> list[RestoreResult]:
         """
         Restore multiple workflow runs by time range.
@@ -433,7 +433,7 @@ class WorkflowRunRestore:
             tenant_ids: Optional tenant IDs
             start_date: Optional start date filter
             end_date: Optional end date filter
-            limit: Maximum number of runs to restore
+            limit: Maximum number of runs to restore (default: 100)
 
         Returns:
             List of RestoreResult objects
@@ -444,13 +444,15 @@ class WorkflowRunRestore:
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
         repo = self._get_workflow_run_repo()
 
+        effective_limit = limit if limit is not None else 100
+
         with session_maker() as session:
             runs = repo.get_archived_runs_by_time_range(
                 session=session,
                 tenant_ids=tenant_ids,
                 start_date=start_date,
                 end_date=end_date,
-                limit=limit,
+                limit=effective_limit,
             )
 
         click.echo(
