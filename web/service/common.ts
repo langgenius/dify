@@ -1,3 +1,4 @@
+import type { FileTypesRes } from './datasets'
 import type {
   DefaultModelResponse,
   Model,
@@ -31,6 +32,8 @@ import type {
   ProviderAnthropicToken,
   ProviderAzureToken,
   SetupStatusResponse,
+  StructuredOutputRulesRequestBody,
+  StructuredOutputRulesResponse,
   UserProfileOriginResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
@@ -256,18 +259,6 @@ export const updateDefaultModel = ({ url, body }: { url: string, body: any }): P
   return post<CommonResponse>(url, { body })
 }
 
-export const fetchModelParameterRules = (url: string): Promise<{ data: ModelParameterRule[] }> => {
-  return get<{ data: ModelParameterRule[] }>(url)
-}
-
-export const fetchFileUploadConfig = ({ url }: { url: string }): Promise<FileUploadConfigResponse> => {
-  return get<FileUploadConfigResponse>(url)
-}
-
-export const fetchNotionConnection = (url: string): Promise<{ data: string }> => {
-  return get<{ data: string }>(url)
-}
-
 export const fetchDataSourceNotionBinding = (url: string): Promise<{ result: string }> => {
   return get<{ result: string }>(url)
 }
@@ -298,13 +289,6 @@ export const fetchCodeBasedExtensionList = (url: string): Promise<CodeBasedExten
 
 export const moderate = (url: string, body: { app_id: string, text: string }): Promise<ModerateResponse> => {
   return post<ModerateResponse>(url, { body })
-}
-
-type RetrievalMethodsRes = {
-  retrieval_method: RETRIEVE_METHOD[]
-}
-export const fetchSupportRetrievalMethods = (url: string): Promise<RetrievalMethodsRes> => {
-  return get<RetrievalMethodsRes>(url)
 }
 
 export const getSystemFeatures = (): Promise<SystemFeatures> => {
@@ -388,3 +372,111 @@ export const resetEmail = (body: { new_email: string, token: string }): Promise<
 
 export const checkEmailExisted = (body: { email: string }): Promise<CommonResponse> =>
   post<CommonResponse>('/account/change-email/check-email-unique', { body }, { silent: true })
+
+export const fetchFileUploadConfig = (): Promise<FileUploadConfigResponse> => {
+  return get<FileUploadConfigResponse>('/files/upload')
+}
+
+export const fetchUserProfileResponse = (): Promise<Response> => {
+  return get<Response>('/account/profile', {}, { needAllResponseContent: true })
+}
+
+export const fetchAccountProfile = (): Promise<void> => {
+  return get('/account/profile', {}, { silent: true }) as Promise<void>
+}
+
+export const fetchLangGeniusVersionInfo = (currentVersion?: string | null): Promise<LangGeniusVersionResponse> => {
+  return get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } })
+}
+
+export const fetchWorkspacesList = (): Promise<{ workspaces: IWorkspace[] }> => {
+  return get<{ workspaces: IWorkspace[] }>('/workspaces')
+}
+
+export const fetchCurrentWorkspaceInfo = (): Promise<ICurrentWorkspace> => {
+  return post<ICurrentWorkspace>('/workspaces/current', { body: {} })
+}
+
+export const generateStructuredOutputRules = (body: StructuredOutputRulesRequestBody): Promise<StructuredOutputRulesResponse> => {
+  return post<StructuredOutputRulesResponse>('/rule-structured-output-generate', { body })
+}
+
+export const sendRegisterEmail = (body: { email: string, language: string }): Promise<{ data: string, result: string }> => {
+  return post<{ data: string, result: string }>('/email-register/send-email', { body })
+}
+
+export const validateRegisterEmail = (body: { email: string, code: string, token: string }): Promise<{ is_valid: boolean, token: string }> => {
+  return post<{ is_valid: boolean, token: string }>('/email-register/validity', { body })
+}
+
+export const registerEmail = (body: { token: string, new_password: string, password_confirm: string }): Promise<{ result: string, data: {} }> => {
+  return post<{ result: string, data: {} }>('/email-register', { body })
+}
+
+export const fetchFileSupportTypes = (): Promise<FileTypesRes> => {
+  return get<FileTypesRes>('/files/support-type')
+}
+
+export const fetchWorkspaceMembers = (): Promise<{ accounts: Member[] | null }> => {
+  return get<{ accounts: Member[] | null }>('/workspaces/current/members', { params: {} })
+}
+
+export const fetchSchemaDefinitions = (): Promise<{ name: string, schema: { properties: Record<string, any> } }[]> => {
+  return get<{ name: string, schema: { properties: Record<string, any> } }[]>('/spec/schema-definitions')
+}
+
+export const logoutAccount = (): Promise<CommonResponse> => {
+  return post<CommonResponse>('/logout')
+}
+
+export const initAccount = (body: { invitation_code: string, interface_language: string, timezone: string }): Promise<CommonResponse> => {
+  return post<CommonResponse>('/account/init', { body })
+}
+
+export const fetchModelListByType = (type: ModelTypeEnum): Promise<{ data: Model[] }> => {
+  return get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`)
+}
+
+export const fetchDefaultModelByType = (type: ModelTypeEnum): Promise<DefaultModelResponse> => {
+  return get<DefaultModelResponse>(`/workspaces/current/default-model?model_type=${type}`)
+}
+
+export const fetchSupportRetrievalMethods = (): Promise<{ retrieval_method: RETRIEVE_METHOD[] }> => {
+  return get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting')
+}
+
+export const fetchAccountIntegratesList = (): Promise<{ data: AccountIntegrate[] | null }> => {
+  return get<{ data: AccountIntegrate[] | null }>('/account/integrates')
+}
+
+export const fetchDataSourceIntegrates = (): Promise<{ data: DataSourceNotion[] }> => {
+  return get<{ data: DataSourceNotion[] }>('/data-source/integrates')
+}
+
+export const fetchPluginProvidersList = (): Promise<PluginProvider[] | null> => {
+  return get<PluginProvider[] | null>('/workspaces/current/tool-providers')
+}
+
+export const fetchCodeBasedExtension = (module: string): Promise<CodeBasedExtension> => {
+  return get<CodeBasedExtension>(`/code-based-extension?module=${module}`)
+}
+
+export const fetchNotionConnection = (): Promise<{ data: string }> => {
+  return get<{ data: string }>('/oauth/data-source/notion')
+}
+
+export const fetchApiBasedExtensions = (): Promise<ApiBasedExtension[]> => {
+  return get<ApiBasedExtension[]>('/api-based-extension')
+}
+
+export const fetchInvitationCheck = (params?: { workspace_id?: string, email?: string, token?: string }) => {
+  return get<CommonResponse & { is_valid: boolean, data: { workspace_name: string, email: string, workspace_id: string } }>('/activate/check', { params })
+}
+
+export const fetchNotionBinding = (code?: string | null): Promise<{ result: string }> => {
+  return get<{ result: string }>('/oauth/data-source/binding/notion', { params: { code } })
+}
+
+export const fetchModelParameterRules = (provider?: string, model?: string): Promise<{ data: ModelParameterRule[] }> => {
+  return get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model } })
+}

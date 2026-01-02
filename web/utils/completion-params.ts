@@ -83,7 +83,6 @@ export const fetchAndMergeValidCompletionParams = async (
   isAdvancedMode: boolean = false,
 ): Promise<{ params: FormValue, removedDetails: Record<string, string> }> => {
   const { fetchModelParameterRules } = await import('@/service/common')
-  const url = `/workspaces/current/model-providers/${provider}/models/parameter-rules?model=${modelId}`
-  const { data: parameterRules } = await fetchModelParameterRules(url)
+  const { data: parameterRules } = await fetchModelParameterRules(provider, modelId)
   return mergeValidCompletionParams(oldParams, parameterRules ?? [], isAdvancedMode)
 }

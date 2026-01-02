@@ -1,12 +1,13 @@
-import type {
-  DataSourceAuth,
-  DataSourceCredential,
-} from '@/app/components/header/account-setting/data-source-page-new/types'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
-import { get } from './base'
+import {
+  fetchDataSourceAuth,
+  fetchDataSourceListAuth,
+  fetchDataSourceOAuthUrl,
+  fetchDefaultDataSourceListAuth,
+} from './datasource'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'data-source-auth'
@@ -14,7 +15,7 @@ const NAME_SPACE = 'data-source-auth'
 export const useGetDataSourceListAuth = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'list'],
-    queryFn: () => get<{ result: DataSourceAuth[] }>('/auth/plugin/datasource/list'),
+    queryFn: () => fetchDataSourceListAuth(),
     retry: 0,
   })
 }
@@ -28,7 +29,7 @@ export const useInvalidDataSourceListAuth = (
 export const useGetDefaultDataSourceListAuth = () => {
   return useQuery({
     queryKey: [NAME_SPACE, 'default-list'],
-    queryFn: () => get<{ result: DataSourceAuth[] }>('/auth/plugin/datasource/default-list'),
+    queryFn: () => fetchDefaultDataSourceListAuth(),
     retry: 0,
   })
 }
@@ -44,13 +45,7 @@ export const useGetDataSourceOAuthUrl = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'oauth-url', provider],
     mutationFn: (credentialId?: string) => {
-      return get<
-        {
-          authorization_url: string
-          state: string
-          context_id: string
-        }
-      >(`/oauth/plugin/${provider}/datasource/get-authorization-url?credential_id=${credentialId}`)
+      return fetchDataSourceOAuthUrl(provider, credentialId)
     },
   })
 }
@@ -64,7 +59,7 @@ export const useGetDataSourceAuth = ({
 }) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'specific-data-source', pluginId, provider],
-    queryFn: () => get<{ result: DataSourceCredential[] }>(`/auth/plugin/datasource/${pluginId}/${provider}`),
+    queryFn: () => fetchDataSourceAuth(pluginId, provider),
     retry: 0,
   })
 }

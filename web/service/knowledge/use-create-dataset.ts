@@ -5,7 +5,6 @@ import type {
   ChunkingMode,
   CrawlOptions,
   CrawlResultItem,
-  CreateDatasetReq,
   CreateDatasetResponse,
   CreateDocumentReq,
   createDocumentResponse,
@@ -19,10 +18,12 @@ import type {
 } from '@/models/datasets'
 import { useMutation } from '@tanstack/react-query'
 import { groupBy } from 'es-toolkit/compat'
-import { post } from '../base'
 import { createDocument, createFirstDocument, fetchDefaultProcessRule, fetchFileIndexingEstimate } from '../datasets'
+import { createDatasetForPipeline, createEmptyDatasetForPipeline } from '../pipeline'
 
 const NAME_SPACE = 'knowledge/create-dataset'
+
+type CreatePipelineDatasetRequest = Parameters<typeof createDatasetForPipeline>[0]
 
 export const getNotionInfo = (
   notionPages: NotionPage[],
@@ -250,19 +251,19 @@ export const useCreatePipelineDataset = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'create-pipeline-empty-dataset'],
     mutationFn: () => {
-      return post<CreateDatasetResponse>('/rag/pipeline/empty-dataset')
+      return createEmptyDatasetForPipeline()
     },
     ...mutationOptions,
   })
 }
 
 export const useCreatePipelineDatasetFromCustomized = (
-  mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreateDatasetReq> = {},
+  mutationOptions: MutationOptions<CreateDatasetResponse, Error, CreatePipelineDatasetRequest> = {},
 ) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'create-pipeline-dataset'],
-    mutationFn: (req: CreateDatasetReq) => {
-      return post<CreateDatasetResponse>('/rag/pipeline/dataset', { body: req })
+    mutationFn: (req: CreatePipelineDatasetRequest) => {
+      return createDatasetForPipeline(req)
     },
     ...mutationOptions,
   })

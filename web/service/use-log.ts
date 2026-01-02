@@ -9,7 +9,14 @@ import type {
   WorkflowLogsResponse,
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
-import { get } from './base'
+import {
+  fetchAnnotationsCount,
+  fetchChatConversationDetail,
+  fetchChatConversations,
+  fetchCompletionConversationDetail,
+  fetchCompletionConversations,
+  fetchWorkflowLogs,
+} from './log'
 
 const NAME_SPACE = 'log'
 
@@ -18,7 +25,7 @@ const NAME_SPACE = 'log'
 export const useAnnotationsCount = (appId: string) => {
   return useQuery<AnnotationsCountResponse>({
     queryKey: [NAME_SPACE, 'annotations-count', appId],
-    queryFn: () => get<AnnotationsCountResponse>(`/apps/${appId}/annotations/count`),
+    queryFn: () => fetchAnnotationsCount(appId),
     enabled: !!appId,
   })
 }
@@ -33,7 +40,7 @@ type ChatConversationsParams = {
 export const useChatConversations = ({ appId, params }: ChatConversationsParams) => {
   return useQuery<ChatConversationsResponse>({
     queryKey: [NAME_SPACE, 'chat-conversations', appId, params],
-    queryFn: () => get<ChatConversationsResponse>(`/apps/${appId}/chat-conversations`, { params }),
+    queryFn: () => fetchChatConversations(appId, params),
     enabled: !!appId,
   })
 }
@@ -48,7 +55,7 @@ type CompletionConversationsParams = {
 export const useCompletionConversations = ({ appId, params }: CompletionConversationsParams) => {
   return useQuery<CompletionConversationsResponse>({
     queryKey: [NAME_SPACE, 'completion-conversations', appId, params],
-    queryFn: () => get<CompletionConversationsResponse>(`/apps/${appId}/completion-conversations`, { params }),
+    queryFn: () => fetchCompletionConversations(appId, params),
     enabled: !!appId,
   })
 }
@@ -58,7 +65,7 @@ export const useCompletionConversations = ({ appId, params }: CompletionConversa
 export const useChatConversationDetail = (appId?: string, conversationId?: string) => {
   return useQuery<ChatConversationFullDetailResponse>({
     queryKey: [NAME_SPACE, 'chat-conversation-detail', appId, conversationId],
-    queryFn: () => get<ChatConversationFullDetailResponse>(`/apps/${appId}/chat-conversations/${conversationId}`),
+    queryFn: () => fetchChatConversationDetail(appId || '', conversationId || ''),
     enabled: !!appId && !!conversationId,
   })
 }
@@ -68,7 +75,7 @@ export const useChatConversationDetail = (appId?: string, conversationId?: strin
 export const useCompletionConversationDetail = (appId?: string, conversationId?: string) => {
   return useQuery<CompletionConversationFullDetailResponse>({
     queryKey: [NAME_SPACE, 'completion-conversation-detail', appId, conversationId],
-    queryFn: () => get<CompletionConversationFullDetailResponse>(`/apps/${appId}/completion-conversations/${conversationId}`),
+    queryFn: () => fetchCompletionConversationDetail(appId || '', conversationId || ''),
     enabled: !!appId && !!conversationId,
   })
 }
@@ -83,7 +90,7 @@ type WorkflowLogsParams = {
 export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
   return useQuery<WorkflowLogsResponse>({
     queryKey: [NAME_SPACE, 'workflow-logs', appId, params],
-    queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-app-logs`, { params }),
+    queryFn: () => fetchWorkflowLogs(appId, params),
     enabled: !!appId,
   })
 }

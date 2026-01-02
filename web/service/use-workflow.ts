@@ -1,20 +1,32 @@
-import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
-  FetchWorkflowDraftPageResponse,
   FetchWorkflowDraftResponse,
   NodeTracing,
   PublishWorkflowParams,
   UpdateWorkflowParams,
-  VarInInspect,
   WorkflowConfigResponse,
   WorkflowRunHistoryResponse,
 } from '@/types/workflow'
 import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, patch, post, put } from './base'
 import { useInvalid, useReset } from './use-base'
-import { getFlowPrefix } from './utils'
+import {
+  deleteAllInspectorVars,
+  deleteInspectorVar,
+  deleteNodeInspectorVars,
+  deleteWorkflow,
+  editInspectorVar,
+  fetchAppWorkflow,
+  fetchConversationVarValues,
+  fetchLastRun,
+  fetchSysVarValues,
+  fetchWorkflowConfig,
+  fetchWorkflowRunHistory,
+  fetchWorkflowVersionHistory,
+  publishWorkflow,
+  resetConversationVar,
+  updateWorkflow,
+} from './workflow'
 
 const NAME_SPACE = 'workflow'
 
@@ -22,14 +34,14 @@ export const useAppWorkflow = (appID: string) => {
   return useQuery<FetchWorkflowDraftResponse>({
     enabled: !!appID,
     queryKey: [NAME_SPACE, 'publish', appID],
-    queryFn: () => get<FetchWorkflowDraftResponse>(`/apps/${appID}/workflows/publish`),
+    queryFn: () => fetchAppWorkflow(appID),
   })
 }
 
 export const useWorkflowRunHistory = (url?: string, enabled = true) => {
   return useQuery<WorkflowRunHistoryResponse>({
     queryKey: [NAME_SPACE, 'runHistory', url],
-    queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
+    queryFn: () => fetchWorkflowRunHistory(url as string),
     enabled: !!url && enabled,
   })
 }
@@ -51,7 +63,7 @@ export const useWorkflowConfig = <T = WorkflowConfigResponse>(url: string, onSuc
     queryKey: [NAME_SPACE, 'config', url],
     staleTime: 0,
     queryFn: async () => {
-      const data = await get<T>(url)
+      const data = await fetchWorkflowConfig<T>(url)
       onSuccess(data)
       return data
     },
@@ -65,13 +77,11 @@ export const useWorkflowVersionHistory = (params: FetchWorkflowDraftPageParams) 
   return useInfiniteQuery({
     enabled: !!url,
     queryKey: [...WorkflowVersionHistoryKey, url, initialPage, limit, userId, namedOnly],
-    queryFn: ({ pageParam = 1 }) => get<FetchWorkflowDraftPageResponse>(url, {
-      params: {
-        page: pageParam,
-        limit,
-        user_id: userId || '',
-        named_only: !!namedOnly,
-      },
+    queryFn: ({ pageParam = 1 }) => fetchWorkflowVersionHistory(url, {
+      page: pageParam,
+      limit,
+      user_id: userId || '',
+      named_only: !!namedOnly,
     }),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : null,
     initialPageParam: initialPage,
@@ -85,31 +95,21 @@ export const useResetWorkflowVersionHistory = () => {
 export const useUpdateWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'update'],
-    mutationFn: (params: UpdateWorkflowParams) => patch(params.url, {
-      body: {
-        marked_name: params.title,
-        marked_comment: params.releaseNotes,
-      },
-    }),
+    mutationFn: (params: UpdateWorkflowParams) => updateWorkflow(params),
   })
 }
 
 export const useDeleteWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'delete'],
-    mutationFn: (url: string) => del(url),
+    mutationFn: (url: string) => deleteWorkflow(url),
   })
 }
 
 export const usePublishWorkflow = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'publish'],
-    mutationFn: (params: PublishWorkflowParams) => post<CommonResponse & { created_at: number }>(params.url, {
-      body: {
-        marked_name: params.title,
-        marked_comment: params.releaseNotes,
-      },
-    }),
+    mutationFn: (params: PublishWorkflowParams) => publishWorkflow(params),
   })
 }
 
@@ -119,9 +119,7 @@ export const useLastRun = (flowType: FlowType, flowId: string, nodeId: string, e
     enabled,
     queryKey: [...useLastRunKey, flowType, flowId, nodeId],
     queryFn: async () => {
-      return get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`, {}, {
-        silent: true,
-      })
+      return fetchLastRun(flowType, flowId, nodeId)
     },
     retry: 0,
   })
@@ -141,8 +139,7 @@ export const useConversationVarValues = (flowType?: FlowType, flowId?: string) =
     enabled: !!flowId,
     queryKey: [NAME_SPACE, flowType, 'conversation var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`)) as { items: VarInInspect[] }
-      return items
+      return fetchConversationVarValues(flowType as FlowType, flowId as string)
     },
   })
 }
@@ -155,7 +152,7 @@ export const useResetConversationVar = (flowType: FlowType, flowId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, flowType, 'reset conversation var', flowId],
     mutationFn: async (varId: string) => {
-      return put(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}/reset`)
+      return resetConversationVar(flowType, flowId, varId)
     },
   })
 }
@@ -164,7 +161,7 @@ export const useResetToLastRunValue = (flowType: FlowType, flowId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, flowType, 'reset to last run value', flowId],
     mutationFn: async (varId: string): Promise<{ value: any }> => {
-      return put(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}/reset`)
+      return resetConversationVar(flowType, flowId, varId) as Promise<{ value: any }>
     },
   })
 }
@@ -175,8 +172,7 @@ export const useSysVarValues = (flowType?: FlowType, flowId?: string) => {
     enabled: !!flowId,
     queryKey: [NAME_SPACE, flowType, 'sys var values', flowId],
     queryFn: async () => {
-      const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`)) as { items: VarInInspect[] }
-      return items
+      return fetchSysVarValues(flowType as FlowType, flowId as string)
     },
   })
 }
@@ -189,7 +185,7 @@ export const useDeleteAllInspectorVars = (flowType: FlowType, flowId: string) =>
   return useMutation({
     mutationKey: [NAME_SPACE, flowType, 'delete all inspector vars', flowId],
     mutationFn: async () => {
-      return del(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`)
+      return deleteAllInspectorVars(flowType, flowId)
     },
   })
 }
@@ -198,7 +194,7 @@ export const useDeleteNodeInspectorVars = (flowType: FlowType, flowId: string) =
   return useMutation({
     mutationKey: [NAME_SPACE, flowType, 'delete node inspector vars', flowId],
     mutationFn: async (nodeId: string) => {
-      return del(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`)
+      return deleteNodeInspectorVars(flowType, flowId, nodeId)
     },
   })
 }
@@ -207,7 +203,7 @@ export const useDeleteInspectVar = (flowType: FlowType, flowId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, flowType, 'delete inspector var', flowId],
     mutationFn: async (varId: string) => {
-      return del(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`)
+      return deleteInspectorVar(flowType, flowId, varId)
     },
   })
 }
@@ -221,9 +217,7 @@ export const useEditInspectorVar = (flowType: FlowType, flowId: string) => {
       name?: string
       value?: any
     }) => {
-      return patch(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`, {
-        body: rest,
-      })
+      return editInspectorVar(flowType, flowId, { varId, ...rest })
     },
   })
 }

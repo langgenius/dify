@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import type { CredentialFormSchema, CredentialFormSchemaSelect, FormOption } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { FormOption } from '@/app/components/base/form/types'
+import type { CredentialFormSchema, CredentialFormSchemaSelect } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { Tool } from '@/app/components/tools/types'
 import type { TriggerWithProvider } from '@/app/components/workflow/block-selector/types'
 import type { CommonNodeType, Node, NodeOutPutVar, ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'

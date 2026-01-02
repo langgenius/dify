@@ -1,13 +1,10 @@
 import type {
   ExternalKnowledgeBaseHitTestingRequest,
-  ExternalKnowledgeBaseHitTestingResponse,
   HitTestingRecordsRequest,
-  HitTestingRecordsResponse,
   HitTestingRequest,
-  HitTestingResponse,
 } from '@/models/datasets'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { get, post } from '../base'
+import { externalKnowledgeBaseHitTesting, fetchTestingRecords, hitTesting } from '../datasets'
 import { useInvalid } from '../use-base'
 
 const NAME_SPACE = 'hit-testing'
@@ -18,7 +15,7 @@ export const useHitTestingRecords = (params: HitTestingRecordsRequest) => {
   const { datasetId, page, limit } = params
   return useQuery({
     queryKey: [...HitTestingRecordsKey, datasetId, page, limit],
-    queryFn: () => get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params: { page, limit } }),
+    queryFn: () => fetchTestingRecords({ datasetId, params: { page, limit } }),
   })
 }
 
@@ -29,17 +26,13 @@ export const useInvalidateHitTestingRecords = (datasetId: string) => {
 export const useHitTesting = (datasetId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'hit-testing', datasetId],
-    mutationFn: (params: HitTestingRequest) => post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, {
-      body: params,
-    }),
+    mutationFn: (params: HitTestingRequest) => hitTesting({ datasetId, queryText: params.query, retrieval_model: params.retrieval_model }),
   })
 }
 
 export const useExternalKnowledgeBaseHitTesting = (datasetId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'external-knowledge-base-hit-testing', datasetId],
-    mutationFn: (params: ExternalKnowledgeBaseHitTestingRequest) => post<ExternalKnowledgeBaseHitTestingResponse>(`/datasets/${datasetId}/external-hit-testing`, {
-      body: params,
-    }),
+    mutationFn: (params: ExternalKnowledgeBaseHitTestingRequest) => externalKnowledgeBaseHitTesting({ datasetId, query: params.query, external_retrieval_model: params.external_retrieval_model }),
   })
 }

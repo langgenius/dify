@@ -1,7 +1,16 @@
 import type { BuiltInMetadataItem, MetadataBatchEditToServer, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type { DocumentDetailResponse } from '@/models/datasets'
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
-import { del, get, patch, post } from '../base'
+import {
+  batchUpdateDocumentMetadata,
+  createDatasetMetadata,
+  deleteDatasetMetadata,
+  fetchBuiltInMetadataFields,
+  fetchDatasetMetadata,
+  fetchDocumentMetadata,
+  updateBuiltInMetadataStatus,
+  updateDatasetMetadataName,
+} from '../datasets'
 import { useInvalid } from '../use-base'
 import { useDocumentListKey, useInvalidDocumentList } from './use-document'
 
@@ -11,7 +20,7 @@ export const useDatasetMetaData = (datasetId: string) => {
   return useQuery<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>({
     queryKey: [NAME_SPACE, 'dataset', datasetId],
     queryFn: () => {
-      return get<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>(`/datasets/${datasetId}/metadata`)
+      return fetchDatasetMetadata(datasetId)
     },
   })
 }
@@ -24,9 +33,7 @@ export const useCreateMetaData = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({
     mutationFn: async (payload: BuiltInMetadataItem) => {
-      await post(`/datasets/${datasetId}/metadata`, {
-        body: payload,
-      })
+      await createDatasetMetadata(datasetId, payload)
       await invalidDatasetMetaData()
       return Promise.resolve(true)
     },
@@ -61,11 +68,7 @@ export const useRenameMeta = (datasetId: string) => {
   const invalidateAllMetaData = useInvalidAllMetaData(datasetId)
   return useMutation({
     mutationFn: async (payload: MetadataItemWithValueLength) => {
-      await patch(`/datasets/${datasetId}/metadata/${payload.id}`, {
-        body: {
-          name: payload.name,
-        },
-      })
+      await updateDatasetMetadataName(datasetId, payload.id, payload.name)
       await invalidateAllMetaData()
     },
   })
@@ -76,7 +79,7 @@ export const useDeleteMetaData = (datasetId: string) => {
   return useMutation({
     mutationFn: async (metaDataId: string) => {
       // datasetMetaData = datasetMetaData.filter(item => item.id !== metaDataId)
-      await del(`/datasets/${datasetId}/metadata/${metaDataId}`)
+      await deleteDatasetMetadata(datasetId, metaDataId)
       await invalidateAllMetaData()
     },
   })
@@ -86,7 +89,7 @@ export const useBuiltInMetaDataFields = () => {
   return useQuery<{ fields: BuiltInMetadataItem[] }>({
     queryKey: [NAME_SPACE, 'built-in'],
     queryFn: () => {
-      return get('/datasets/metadata/built-in')
+      return fetchBuiltInMetadataFields()
     },
   })
 }
@@ -95,7 +98,7 @@ export const useDocumentMetaData = ({ datasetId, documentId }: { datasetId: stri
   return useQuery<DocumentDetailResponse>({
     queryKey: [NAME_SPACE, 'document', datasetId, documentId],
     queryFn: () => {
-      return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params: { metadata: 'only' } })
+      return fetchDocumentMetadata(datasetId, documentId)
     },
   })
 }
@@ -108,11 +111,7 @@ export const useBatchUpdateDocMetadata = () => {
       metadata_list: MetadataBatchEditToServer
     }) => {
       const documentIds = payload.metadata_list.map(item => item.document_id)
-      await post(`/datasets/${payload.dataset_id}/documents/metadata`, {
-        body: {
-          operation_data: payload.metadata_list,
-        },
-      })
+      await batchUpdateDocumentMetadata(payload.dataset_id, payload.metadata_list)
       // meta data in dataset
       await queryClient.invalidateQueries({
         queryKey: [NAME_SPACE, 'dataset', payload.dataset_id],
@@ -139,7 +138,7 @@ export const useUpdateBuiltInStatus = (datasetId: string) => {
   const invalidDatasetMetaData = useInvalidDatasetMetaData(datasetId)
   return useMutation({
     mutationFn: async (enabled: boolean) => {
-      await post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'enable' : 'disable'}`)
+      await updateBuiltInMetadataStatus(datasetId, enabled)
       invalidDatasetMetaData()
     },
   })

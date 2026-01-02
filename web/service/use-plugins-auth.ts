@@ -1,13 +1,23 @@
-import type { FormSchema } from '@/app/components/base/form/types'
 import type {
-  Credential,
   CredentialTypeEnum,
 } from '@/app/components/plugins/plugin-auth/types'
 import {
   useMutation,
   useQuery,
 } from '@tanstack/react-query'
-import { del, get, post } from './base'
+import {
+  addPluginCredential,
+  deletePluginCredential,
+  deletePluginOAuthCustomClient,
+  fetchPluginCredentialInfo,
+  fetchPluginCredentialList,
+  fetchPluginCredentialSchema,
+  fetchPluginOAuthClientSchema,
+  fetchPluginOAuthUrl,
+  setPluginDefaultCredential,
+  setPluginOAuthCustomClient,
+  updatePluginCredential,
+} from './plugins-auth'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'plugins-auth'
@@ -18,12 +28,7 @@ export const useGetPluginCredentialInfo = (
   return useQuery({
     enabled: !!url,
     queryKey: [NAME_SPACE, 'credential-info', url],
-    queryFn: () => get<{
-      allow_custom_token?: boolean
-      supported_credential_types: string[]
-      credentials: Credential[]
-      is_oauth_custom_client_enabled: boolean
-    }>(url),
+    queryFn: () => fetchPluginCredentialInfo(url),
     staleTime: 0,
   })
 }
@@ -39,7 +44,7 @@ export const useSetPluginDefaultCredential = (
 ) => {
   return useMutation({
     mutationFn: (id: string) => {
-      return post(url, { body: { id } })
+      return setPluginDefaultCredential(url, id)
     },
   })
 }
@@ -49,7 +54,7 @@ export const useGetPluginCredentialList = (
 ) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'credential-list', url],
-    queryFn: () => get(url),
+    queryFn: () => fetchPluginCredentialList(url),
   })
 }
 
@@ -62,7 +67,7 @@ export const useAddPluginCredential = (
       type: CredentialTypeEnum
       name?: string
     }) => {
-      return post(url, { body: params })
+      return addPluginCredential(url, params)
     },
   })
 }
@@ -76,7 +81,7 @@ export const useUpdatePluginCredential = (
       credentials?: Record<string, any>
       name?: string
     }) => {
-      return post(url, { body: params })
+      return updatePluginCredential(url, params)
     },
   })
 }
@@ -86,7 +91,7 @@ export const useDeletePluginCredential = (
 ) => {
   return useMutation({
     mutationFn: (params: { credential_id: string }) => {
-      return post(url, { body: params })
+      return deletePluginCredential(url, params)
     },
   })
 }
@@ -97,7 +102,7 @@ export const useGetPluginCredentialSchema = (
   return useQuery({
     enabled: !!url,
     queryKey: [NAME_SPACE, 'credential-schema', url],
-    queryFn: () => get<FormSchema[]>(url),
+    queryFn: () => fetchPluginCredentialSchema(url),
   })
 }
 
@@ -107,13 +112,7 @@ export const useGetPluginOAuthUrl = (
   return useMutation({
     mutationKey: [NAME_SPACE, 'oauth-url', url],
     mutationFn: () => {
-      return get<
-        {
-          authorization_url: string
-          state: string
-          context_id: string
-        }
-      >(url)
+      return fetchPluginOAuthUrl(url)
     },
   })
 }
@@ -124,13 +123,7 @@ export const useGetPluginOAuthClientSchema = (
   return useQuery({
     enabled: !!url,
     queryKey: [NAME_SPACE, 'oauth-client-schema', url],
-    queryFn: () => get<{
-      schema: FormSchema[]
-      is_oauth_custom_client_enabled: boolean
-      is_system_oauth_params_exists?: boolean
-      client_params?: Record<string, any>
-      redirect_uri?: string
-    }>(url),
+    queryFn: () => fetchPluginOAuthClientSchema(url),
     staleTime: 0,
   })
 }
@@ -149,7 +142,7 @@ export const useSetPluginOAuthCustomClient = (
       client_params: Record<string, any>
       enable_oauth_custom_client: boolean
     }) => {
-      return post<{ result: string }>(url, { body: params })
+      return setPluginOAuthCustomClient(url, params)
     },
   })
 }
@@ -159,7 +152,7 @@ export const useDeletePluginOAuthCustomClient = (
 ) => {
   return useMutation({
     mutationFn: () => {
-      return del<{ result: string }>(url)
+      return deletePluginOAuthCustomClient(url)
     },
   })
 }

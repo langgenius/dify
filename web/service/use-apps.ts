@@ -16,7 +16,15 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { get, post } from './base'
+import {
+  fetchAppApiKeys,
+  fetchAppDetailById,
+  fetchAppList,
+  fetchAppStatistics,
+  fetchAppVoices,
+  fetchWorkflowStatistics,
+  generateRuleTemplate,
+} from './apps'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'apps'
@@ -62,11 +70,7 @@ const useAppFullListKey = [NAME_SPACE, 'full-list']
 export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean) => {
   return useQuery({
     queryKey: [NAME_SPACE, 'generate-rule-template', type],
-    queryFn: () => post<{ data: string }>('instruction-generate/template', {
-      body: {
-        type,
-      },
-    }),
+    queryFn: () => generateRuleTemplate(type),
     enabled: !disabled,
     retry: 0,
   })
@@ -75,7 +79,7 @@ export const useGenerateRuleTemplate = (type: GeneratorType, disabled?: boolean)
 export const useAppDetail = (appID: string) => {
   return useQuery<App>({
     queryKey: [NAME_SPACE, 'detail', appID],
-    queryFn: () => get<App>(`/apps/${appID}`),
+    queryFn: () => fetchAppDetailById(appID),
     enabled: !!appID,
   })
 }
@@ -84,7 +88,7 @@ export const useAppList = (params: AppListParams, options?: { enabled?: boolean 
   const normalizedParams = normalizeAppListParams(params)
   return useQuery<AppListResponse>({
     queryKey: appListKey(normalizedParams),
-    queryFn: () => get<AppListResponse>('/apps', { params: normalizedParams }),
+    queryFn: () => fetchAppList({ url: '/apps', params: normalizedParams }),
     ...options,
   })
 }
@@ -92,7 +96,7 @@ export const useAppList = (params: AppListParams, options?: { enabled?: boolean 
 export const useAppFullList = () => {
   return useQuery<AppListResponse>({
     queryKey: useAppFullListKey,
-    queryFn: () => get<AppListResponse>('/apps', { params: { page: 1, limit: 100, name: '' } }),
+    queryFn: () => fetchAppList({ url: '/apps', params: { page: 1, limit: 100, name: '' } }),
   })
 }
 
@@ -104,7 +108,7 @@ export const useInfiniteAppList = (params: AppListParams, options?: { enabled?: 
   const normalizedParams = normalizeAppListParams(params)
   return useInfiniteQuery<AppListResponse>({
     queryKey: appListKey(normalizedParams),
-    queryFn: ({ pageParam = normalizedParams.page }) => get<AppListResponse>('/apps', { params: { ...normalizedParams, page: pageParam } }),
+    queryFn: ({ pageParam = normalizedParams.page }) => fetchAppList({ url: '/apps', params: { ...normalizedParams, page: pageParam } }),
     getNextPageParam: lastPage => lastPage.has_more ? lastPage.page + 1 : undefined,
     initialPageParam: normalizedParams.page,
     ...options,
@@ -123,7 +127,7 @@ export const useInvalidateAppList = () => {
 const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
   return useQuery<T>({
     queryKey: [NAME_SPACE, 'statistics', metric, appId, params],
-    queryFn: () => get<T>(`/apps/${appId}/statistics/${metric}`, { params }),
+    queryFn: () => fetchAppStatistics<T>(appId, metric, params),
     enabled: !!appId,
   })
 }
@@ -131,7 +135,7 @@ const useAppStatisticsQuery = <T>(metric: string, appId: string, params?: DateRa
 const useWorkflowStatisticsQuery = <T>(metric: string, appId: string, params?: DateRangeParams) => {
   return useQuery<T>({
     queryKey: [NAME_SPACE, 'workflow-statistics', metric, appId, params],
-    queryFn: () => get<T>(`/apps/${appId}/workflow/statistics/${metric}`, { params }),
+    queryFn: () => fetchWorkflowStatistics<T>(appId, metric, params),
     enabled: !!appId,
   })
 }
@@ -187,7 +191,7 @@ export const useWorkflowAverageInteractions = (appId: string, params?: DateRange
 export const useAppVoices = (appId?: string, language?: string) => {
   return useQuery<AppVoicesListResponse>({
     queryKey: [NAME_SPACE, 'voices', appId, language || 'en-US'],
-    queryFn: () => get<AppVoicesListResponse>(`/apps/${appId}/text-to-audio/voices`, { params: { language: language || 'en-US' } }),
+    queryFn: () => fetchAppVoices({ appId: appId || '', language }),
     enabled: !!appId,
   })
 }
@@ -195,7 +199,7 @@ export const useAppVoices = (appId?: string, language?: string) => {
 export const useAppApiKeys = (appId?: string, options?: { enabled?: boolean }) => {
   return useQuery<ApiKeysListResponse>({
     queryKey: [NAME_SPACE, 'api-keys', appId],
-    queryFn: () => get<ApiKeysListResponse>(`/apps/${appId}/api-keys`),
+    queryFn: () => fetchAppApiKeys(appId || ''),
     enabled: !!appId && (options?.enabled ?? true),
   })
 }

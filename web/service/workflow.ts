@@ -3,15 +3,97 @@ import type { CommonResponse } from '@/models/common'
 import type { FlowType } from '@/types/common'
 import type {
   ConversationVariableResponse,
+  FetchWorkflowDraftPageResponse,
   FetchWorkflowDraftResponse,
   NodesDefaultConfigsResponse,
+  NodeTracing,
+  PublishWorkflowParams,
+  UpdateWorkflowParams,
   VarInInspect,
+  WorkflowRunHistoryResponse,
 } from '@/types/workflow'
-import { get, post } from './base'
+import { del, get, patch, post, put } from './base'
 import { getFlowPrefix } from './utils'
 
 export const fetchWorkflowDraft = (url: string) => {
   return get(url, {}, { silent: true }) as Promise<FetchWorkflowDraftResponse>
+}
+
+export const fetchAppWorkflow = (appID: string) => {
+  return get<FetchWorkflowDraftResponse>(`/apps/${appID}/workflows/publish`)
+}
+
+export const fetchWorkflowRunHistory = (url: string) => {
+  return get<WorkflowRunHistoryResponse>(url)
+}
+
+export const fetchWorkflowConfig = <T>(url: string) => {
+  return get<T>(url)
+}
+
+export const fetchWorkflowVersionHistory = (url: string, params: { page: number, limit: number, user_id?: string, named_only?: boolean }) => {
+  return get<FetchWorkflowDraftPageResponse>(url, { params })
+}
+
+export const updateWorkflow = (params: UpdateWorkflowParams) => {
+  return patch(params.url, {
+    body: {
+      marked_name: params.title,
+      marked_comment: params.releaseNotes,
+    },
+  })
+}
+
+export const deleteWorkflow = (url: string) => {
+  return del(url)
+}
+
+export const publishWorkflow = (params: PublishWorkflowParams) => {
+  return post<CommonResponse & { created_at: number }>(params.url, {
+    body: {
+      marked_name: params.title,
+      marked_comment: params.releaseNotes,
+    },
+  })
+}
+
+export const fetchLastRun = (flowType: FlowType, flowId: string, nodeId: string) => {
+  return get<NodeTracing>(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/last-run`, {}, {
+    silent: true,
+  })
+}
+
+export const fetchConversationVarValues = async (flowType: FlowType, flowId: string) => {
+  const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/conversation-variables`)) as { items: VarInInspect[] }
+  return items
+}
+
+export const resetConversationVar = (flowType: FlowType, flowId: string, varId: string) => {
+  return put(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}/reset`)
+}
+
+export const fetchSysVarValues = async (flowType: FlowType, flowId: string) => {
+  const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/system-variables`)) as { items: VarInInspect[] }
+  return items
+}
+
+export const deleteAllInspectorVars = (flowType: FlowType, flowId: string) => {
+  return del(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables`)
+}
+
+export const deleteNodeInspectorVars = (flowType: FlowType, flowId: string, nodeId: string) => {
+  return del(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`)
+}
+
+export const deleteInspectorVar = (flowType: FlowType, flowId: string, varId: string) => {
+  return del(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`)
+}
+
+export const editInspectorVar = (flowType: FlowType, flowId: string, payload: { varId: string, name?: string, value?: any }) => {
+  const { varId, ...rest } = payload
+  return patch(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/variables/${varId}`, {
+    body: rest,
+  })
 }
 
 export const syncWorkflowDraft = ({ url, params }: {

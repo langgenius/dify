@@ -18,13 +18,43 @@ import type {
   Member,
   PluginProvider,
   StructuredOutputRulesRequestBody,
-  StructuredOutputRulesResponse,
   UserProfileResponse,
 } from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
-import { get, post } from './base'
+import {
+  fetchAccountIntegratesList,
+  fetchAccountProfile,
+  fetchApiBasedExtensions,
+  fetchCodeBasedExtension,
+  fetchCurrentWorkspaceInfo,
+  fetchDataSourceIntegrates,
+  fetchDefaultModelByType,
+  fetchFilePreview,
+  fetchFileSupportTypes,
+  fetchFileUploadConfig,
+  fetchInvitationCheck,
+  fetchLangGeniusVersionInfo,
+  fetchModelListByType,
+  fetchModelParameterRules,
+  fetchModelProviders,
+  fetchNotionBinding,
+  fetchNotionConnection,
+  fetchPluginProvidersList,
+  fetchSchemaDefinitions,
+  fetchSupportRetrievalMethods,
+  fetchUserProfileResponse,
+  fetchWorkspaceMembers,
+  fetchWorkspacesList,
+  generateStructuredOutputRules,
+  initAccount,
+  logoutAccount,
+  registerEmail,
+  sendRegisterEmail,
+  validateRegisterEmail,
+  verifyForgotPasswordToken,
+} from './common'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
@@ -64,7 +94,7 @@ export const commonQueryKeys = {
 export const useFileUploadConfig = () => {
   return useQuery<FileUploadConfigResponse>({
     queryKey: commonQueryKeys.fileUploadConfig,
-    queryFn: () => get<FileUploadConfigResponse>('/files/upload'),
+    queryFn: () => fetchFileUploadConfig(),
   })
 }
 
@@ -80,7 +110,7 @@ export const useUserProfile = () => {
   return useQuery<UserProfileWithMeta>({
     queryKey: commonQueryKeys.userProfile,
     queryFn: async () => {
-      const response = await get<Response>('/account/profile', {}, { needAllResponseContent: true }) as Response
+      const response = await fetchUserProfileResponse()
       const profile = await response.clone().json() as UserProfileResponse
       return {
         profile,
@@ -100,7 +130,7 @@ export const useUserProfile = () => {
 export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: boolean) => {
   return useQuery<LangGeniusVersionResponse>({
     queryKey: commonQueryKeys.langGeniusVersion(currentVersion || undefined),
-    queryFn: () => get<LangGeniusVersionResponse>('/version', { params: { current_version: currentVersion } }),
+    queryFn: () => fetchLangGeniusVersionInfo(currentVersion),
     enabled: !!currentVersion && (enabled ?? true),
   })
 }
@@ -108,14 +138,14 @@ export const useLangGeniusVersion = (currentVersion?: string | null, enabled?: b
 export const useCurrentWorkspace = () => {
   return useQuery<ICurrentWorkspace>({
     queryKey: commonQueryKeys.currentWorkspace,
-    queryFn: () => post<ICurrentWorkspace>('/workspaces/current', { body: {} }),
+    queryFn: () => fetchCurrentWorkspaceInfo(),
   })
 }
 
 export const useWorkspaces = () => {
   return useQuery<{ workspaces: IWorkspace[] }>({
     queryKey: commonQueryKeys.workspaces,
-    queryFn: () => get<{ workspaces: IWorkspace[] }>('/workspaces'),
+    queryFn: () => fetchWorkspacesList(),
   })
 }
 
@@ -123,10 +153,7 @@ export const useGenerateStructuredOutputRules = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'generate-structured-output-rules'],
     mutationFn: (body: StructuredOutputRulesRequestBody) => {
-      return post<StructuredOutputRulesResponse>(
-        '/rule-structured-output-generate',
-        { body },
-      )
+      return generateStructuredOutputRules(body)
     },
   })
 }
@@ -136,7 +163,7 @@ export const useSendMail = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-send'],
     mutationFn: (body: { email: string, language: string }) => {
-      return post<MailSendResponse>('/email-register/send-email', { body })
+      return sendRegisterEmail(body)
     },
   })
 }
@@ -147,7 +174,7 @@ export const useMailValidity = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-validity'],
     mutationFn: (body: { email: string, code: string, token: string }) => {
-      return post<MailValidityResponse>('/email-register/validity', { body })
+      return validateRegisterEmail(body)
     },
   })
 }
@@ -158,7 +185,7 @@ export const useMailRegister = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'mail-register'],
     mutationFn: (body: { token: string, new_password: string, password_confirm: string }) => {
-      return post<MailRegisterResponse>('/email-register', { body })
+      return registerEmail(body)
     },
   })
 }
@@ -166,7 +193,7 @@ export const useMailRegister = () => {
 export const useFileSupportTypes = () => {
   return useQuery<FileTypesRes>({
     queryKey: [NAME_SPACE, 'file-types'],
-    queryFn: () => get<FileTypesRes>('/files/support-type'),
+    queryFn: () => fetchFileSupportTypes(),
   })
 }
 
@@ -177,7 +204,7 @@ type MemberResponse = {
 export const useMembers = () => {
   return useQuery<MemberResponse>({
     queryKey: commonQueryKeys.members,
-    queryFn: () => get<MemberResponse>('/workspaces/current/members', { params: {} }),
+    queryFn: () => fetchWorkspaceMembers(),
   })
 }
 
@@ -188,7 +215,7 @@ type FilePreviewResponse = {
 export const useFilePreview = (fileID: string) => {
   return useQuery<FilePreviewResponse>({
     queryKey: commonQueryKeys.filePreview(fileID),
-    queryFn: () => get<FilePreviewResponse>(`/files/${fileID}/preview`),
+    queryFn: () => fetchFilePreview({ fileID }),
     enabled: !!fileID,
   })
 }
@@ -203,7 +230,7 @@ export type SchemaTypeDefinition = {
 export const useSchemaTypeDefinitions = () => {
   return useQuery<SchemaTypeDefinition[]>({
     queryKey: commonQueryKeys.schemaDefinitions,
-    queryFn: () => get<SchemaTypeDefinition[]>('/spec/schema-definitions'),
+    queryFn: () => fetchSchemaDefinitions(),
   })
 }
 
@@ -218,9 +245,7 @@ export const useIsLogin = () => {
     gcTime: 0,
     queryFn: async (): Promise<isLogin> => {
       try {
-        await get('/account/profile', {}, {
-          silent: true,
-        })
+        await fetchAccountProfile()
       }
       catch (e: any) {
         if (e.status === 401)
@@ -235,7 +260,7 @@ export const useIsLogin = () => {
 export const useLogout = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
-    mutationFn: () => post('/logout'),
+    mutationFn: () => logoutAccount(),
   })
 }
 
@@ -243,7 +268,7 @@ type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: strin
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
-    queryFn: () => post<ForgotPasswordValidity>('/forgot-password/validity', { body: { token } }),
+    queryFn: () => verifyForgotPasswordToken({ url: '/forgot-password/validity', body: { token: token || '' } }) as Promise<ForgotPasswordValidity>,
     enabled: !!token,
     staleTime: 0,
     gcTime: 0,
@@ -259,21 +284,21 @@ type OneMoreStepPayload = {
 export const useOneMoreStep = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'one-more-step'],
-    mutationFn: (body: OneMoreStepPayload) => post<CommonResponse>('/account/init', { body }),
+    mutationFn: (body: OneMoreStepPayload) => initAccount(body),
   })
 }
 
 export const useModelProviders = () => {
   return useQuery<{ data: ModelProvider[] }>({
     queryKey: commonQueryKeys.modelProviders,
-    queryFn: () => get<{ data: ModelProvider[] }>('/workspaces/current/model-providers'),
+    queryFn: () => fetchModelProviders('/workspaces/current/model-providers'),
   })
 }
 
 export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
   return useQuery<{ data: Model[] }>({
     queryKey: commonQueryKeys.modelList(type),
-    queryFn: () => get<{ data: Model[] }>(`/workspaces/current/models/model-types/${type}`),
+    queryFn: () => fetchModelListByType(type),
     enabled,
   })
 }
@@ -281,7 +306,7 @@ export const useModelListByType = (type: ModelTypeEnum, enabled = true) => {
 export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
   return useQuery({
     queryKey: commonQueryKeys.defaultModel(type),
-    queryFn: () => get(`/workspaces/current/default-model?model_type=${type}`),
+    queryFn: () => fetchDefaultModelByType(type),
     enabled,
   })
 }
@@ -289,14 +314,14 @@ export const useDefaultModelByType = (type: ModelTypeEnum, enabled = true) => {
 export const useSupportRetrievalMethods = () => {
   return useQuery<{ retrieval_method: RETRIEVE_METHOD[] }>({
     queryKey: commonQueryKeys.retrievalMethods,
-    queryFn: () => get<{ retrieval_method: RETRIEVE_METHOD[] }>('/datasets/retrieval-setting'),
+    queryFn: () => fetchSupportRetrievalMethods(),
   })
 }
 
 export const useAccountIntegrates = () => {
   return useQuery<{ data: AccountIntegrate[] | null }>({
     queryKey: commonQueryKeys.accountIntegrates,
-    queryFn: () => get<{ data: AccountIntegrate[] | null }>('/account/integrates'),
+    queryFn: () => fetchAccountIntegratesList(),
   })
 }
 
@@ -309,7 +334,7 @@ export const useDataSourceIntegrates = (options: DataSourceIntegratesOptions = {
   const { enabled = true, initialData } = options
   return useQuery<{ data: DataSourceNotion[] }>({
     queryKey: commonQueryKeys.dataSourceIntegrates,
-    queryFn: () => get<{ data: DataSourceNotion[] }>('/data-source/integrates'),
+    queryFn: () => fetchDataSourceIntegrates(),
     enabled,
     initialData,
   })
@@ -322,21 +347,21 @@ export const useInvalidDataSourceIntegrates = () => {
 export const usePluginProviders = () => {
   return useQuery<PluginProvider[] | null>({
     queryKey: commonQueryKeys.pluginProviders,
-    queryFn: () => get<PluginProvider[] | null>('/workspaces/current/tool-providers'),
+    queryFn: () => fetchPluginProvidersList(),
   })
 }
 
 export const useCodeBasedExtensions = (module: string) => {
   return useQuery<CodeBasedExtension>({
     queryKey: commonQueryKeys.codeBasedExtensions(module),
-    queryFn: () => get<CodeBasedExtension>(`/code-based-extension?module=${module}`),
+    queryFn: () => fetchCodeBasedExtension(module),
   })
 }
 
 export const useNotionConnection = (enabled: boolean) => {
   return useQuery<{ data: string }>({
     queryKey: commonQueryKeys.notionConnection,
-    queryFn: () => get<{ data: string }>('/oauth/data-source/notion'),
+    queryFn: () => fetchNotionConnection(),
     enabled,
   })
 }
@@ -344,18 +369,14 @@ export const useNotionConnection = (enabled: boolean) => {
 export const useApiBasedExtensions = () => {
   return useQuery<ApiBasedExtension[]>({
     queryKey: commonQueryKeys.apiBasedExtensions,
-    queryFn: () => get<ApiBasedExtension[]>('/api-based-extension'),
+    queryFn: () => fetchApiBasedExtensions(),
   })
 }
 
 export const useInvitationCheck = (params?: { workspace_id?: string, email?: string, token?: string }, enabled?: boolean) => {
   return useQuery({
     queryKey: commonQueryKeys.invitationCheck(params),
-    queryFn: () => get<{
-      is_valid: boolean
-      data: { workspace_name: string, email: string, workspace_id: string }
-      result: string
-    }>('/activate/check', { params }),
+    queryFn: () => fetchInvitationCheck(params),
     enabled: enabled ?? !!params?.token,
     retry: false,
   })
@@ -364,7 +385,7 @@ export const useInvitationCheck = (params?: { workspace_id?: string, email?: str
 export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
   return useQuery({
     queryKey: commonQueryKeys.notionBinding(code),
-    queryFn: () => get<{ result: string }>('/oauth/data-source/binding/notion', { params: { code } }),
+    queryFn: () => fetchNotionBinding(code),
     enabled: !!code && (enabled ?? true),
   })
 }
@@ -372,7 +393,7 @@ export const useNotionBinding = (code?: string | null, enabled?: boolean) => {
 export const useModelParameterRules = (provider?: string, model?: string, enabled?: boolean) => {
   return useQuery<{ data: ModelParameterRule[] }>({
     queryKey: commonQueryKeys.modelParameterRules(provider, model),
-    queryFn: () => get<{ data: ModelParameterRule[] }>(`/workspaces/current/model-providers/${provider}/models/parameter-rules`, { params: { model } }),
+    queryFn: () => fetchModelParameterRules(provider, model),
     enabled: !!provider && !!model && (enabled ?? true),
   })
 }

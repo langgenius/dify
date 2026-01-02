@@ -1,15 +1,23 @@
 import type { CreateExternalAPIReq } from '@/app/components/datasets/external-api/declarations'
 import type { CreateKnowledgeBaseReq } from '@/app/components/datasets/external-knowledge-base/create/declarations'
+import type { BuiltInMetadataItem, MetadataBatchEditToServer, MetadataItemWithValueLength } from '@/app/components/datasets/metadata/types'
 import type {
   ApiKeysListResponse,
   CreateApiKeyResponse,
 } from '@/models/app'
 import type { CommonResponse, DataSourceNotionWorkspace } from '@/models/common'
 import type {
+  BatchImportResponse,
+  ChildChunkDetail,
+  ChildSegmentsResponse,
+  ChunkingMode,
   CreateDocumentReq,
   createDocumentResponse,
   DataSet,
   DataSetListResponse,
+  DocumentActionType,
+  DocumentDetailResponse,
+  DocumentListResponse,
   ErrorDocsResponse,
   ExternalAPIDeleteResponse,
   ExternalAPIItem,
@@ -27,6 +35,9 @@ import type {
   IndexingStatusResponse,
   ProcessRuleResponse,
   RelatedAppResponse,
+  SegmentDetailModel,
+  SegmentsResponse,
+  SegmentUpdater,
 } from '@/models/datasets'
 import type { RetrievalConfig } from '@/types/app'
 import qs from 'qs'
@@ -162,6 +173,15 @@ export const preImportNotionPages = ({ url, datasetId }: { url: string, datasetI
   return get<{ notion_info: DataSourceNotionWorkspace[] }>(url, { params: { dataset_id: datasetId } })
 }
 
+export const fetchPreImportNotionPages = ({ datasetId, credentialId }: { datasetId: string, credentialId?: string }): Promise<{ notion_info: DataSourceNotionWorkspace[] }> => {
+  return get<{ notion_info: DataSourceNotionWorkspace[] }>('/notion/pre-import/pages', {
+    params: {
+      dataset_id: datasetId,
+      credential_id: credentialId,
+    },
+  })
+}
+
 export const modifyDocMetadata = ({ datasetId, documentId, body }: CommonDocReq & { body: { doc_type: string, doc_metadata: Record<string, any> } }): Promise<CommonResponse> => {
   return put<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/metadata`, { body })
 }
@@ -286,4 +306,166 @@ export const getErrorDocs = ({ datasetId }: { datasetId: string }): Promise<Erro
 
 export const retryErrorDocs = ({ datasetId, document_ids }: { datasetId: string, document_ids: string[] }): Promise<CommonResponse> => {
   return post<CommonResponse>(`/datasets/${datasetId}/retry`, { body: { document_ids } })
+}
+
+export const fetchDatasetApiBaseInfo = (): Promise<{ api_base_url: string }> => {
+  return get<{ api_base_url: string }>('/datasets/api-base-info')
+}
+
+export const enableDatasetServiceApi = (datasetId: string): Promise<CommonResponse> => {
+  return post<CommonResponse>(`/datasets/${datasetId}/api-keys/enable`)
+}
+
+export const disableDatasetServiceApi = (datasetId: string): Promise<CommonResponse> => {
+  return post<CommonResponse>(`/datasets/${datasetId}/api-keys/disable`)
+}
+
+export const fetchDatasetApiKeys = (): Promise<ApiKeysListResponse> => {
+  return get<ApiKeysListResponse>('/datasets/api-keys')
+}
+
+export const fetchExternalKnowledgeApiList = (): Promise<ExternalAPIListResponse> => {
+  return get<ExternalAPIListResponse>('/datasets/external-knowledge-api')
+}
+
+export const fetchDatasetTestingRecords = (datasetId: string, params?: { page: number, limit: number }): Promise<HitTestingRecordsResponse> => {
+  return get<HitTestingRecordsResponse>(`/datasets/${datasetId}/queries`, { params })
+}
+
+export const fetchDatasetErrorDocs = (datasetId: string): Promise<ErrorDocsResponse> => {
+  return get<ErrorDocsResponse>(`/datasets/${datasetId}/error-docs`)
+}
+
+export const fetchDocumentList = (datasetId: string, params: { keyword: string, page: number, limit: number, sort?: string, status?: string }): Promise<DocumentListResponse> => {
+  return get<DocumentListResponse>(`/datasets/${datasetId}/documents`, { params })
+}
+
+export const fetchAutoDisabledDocuments = (datasetId: string): Promise<{ document_ids: string[] }> => {
+  return get<{ document_ids: string[] }>(`/datasets/${datasetId}/auto-disable-logs`)
+}
+
+const buildDocumentIdsQuery = (documentIds: string[] | string) => {
+  const ids = Array.isArray(documentIds) ? documentIds : [documentIds]
+  return ids.map(id => `document_id=${id}`).join('&')
+}
+
+export const updateDocumentStatusBatch = (datasetId: string, action: DocumentActionType, documentIds: string[] | string): Promise<CommonResponse> => {
+  return patch<CommonResponse>(`/datasets/${datasetId}/documents/status/${action}/batch?${buildDocumentIdsQuery(documentIds)}`)
+}
+
+export const deleteDocumentBatch = (datasetId: string, documentIds: string[] | string): Promise<CommonResponse> => {
+  return del<CommonResponse>(`/datasets/${datasetId}/documents?${buildDocumentIdsQuery(documentIds)}`)
+}
+
+export const syncNotionDocument = (datasetId: string, documentId: string): Promise<CommonResponse> => {
+  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/notion/sync`)
+}
+
+export const syncWebsiteDocument = (datasetId: string, documentId: string): Promise<CommonResponse> => {
+  return get<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/website-sync`)
+}
+
+export const fetchDocumentDetail = (datasetId: string, documentId: string, params?: { metadata?: string }): Promise<DocumentDetailResponse> => {
+  return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params })
+}
+
+export const retryDocumentBatch = (datasetId: string, documentIds: string[]): Promise<CommonResponse> => {
+  return post<CommonResponse>(`/datasets/${datasetId}/retry`, {
+    body: {
+      document_ids: documentIds,
+    },
+  })
+}
+
+export const fetchDatasetMetadata = (datasetId: string): Promise<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }> => {
+  return get<{ doc_metadata: MetadataItemWithValueLength[], built_in_field_enabled: boolean }>(`/datasets/${datasetId}/metadata`)
+}
+
+export const createDatasetMetadata = (datasetId: string, payload: BuiltInMetadataItem): Promise<void> => {
+  return post(`/datasets/${datasetId}/metadata`, {
+    body: payload,
+  }) as Promise<void>
+}
+
+export const updateDatasetMetadataName = (datasetId: string, metaDataId: string, name: string): Promise<void> => {
+  return patch(`/datasets/${datasetId}/metadata/${metaDataId}`, {
+    body: {
+      name,
+    },
+  }) as Promise<void>
+}
+
+export const deleteDatasetMetadata = (datasetId: string, metaDataId: string): Promise<void> => {
+  return del(`/datasets/${datasetId}/metadata/${metaDataId}`) as Promise<void>
+}
+
+export const fetchBuiltInMetadataFields = (): Promise<{ fields: BuiltInMetadataItem[] }> => {
+  return get<{ fields: BuiltInMetadataItem[] }>('/datasets/metadata/built-in')
+}
+
+export const fetchDocumentMetadata = (datasetId: string, documentId: string): Promise<DocumentDetailResponse> => {
+  return get<DocumentDetailResponse>(`/datasets/${datasetId}/documents/${documentId}`, { params: { metadata: 'only' } })
+}
+
+export const batchUpdateDocumentMetadata = (datasetId: string, metadataList: MetadataBatchEditToServer): Promise<void> => {
+  return post(`/datasets/${datasetId}/documents/metadata`, {
+    body: {
+      operation_data: metadataList,
+    },
+  }) as Promise<void>
+}
+
+export const updateBuiltInMetadataStatus = (datasetId: string, enabled: boolean): Promise<void> => {
+  return post(`/datasets/${datasetId}/metadata/built-in/${enabled ? 'enable' : 'disable'}`) as Promise<void>
+}
+
+export const fetchSegmentList = (datasetId: string, documentId: string, params: { page: number, limit: number, keyword: string, enabled: boolean | 'all' | '' }): Promise<SegmentsResponse> => {
+  return get<SegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments`, { params })
+}
+
+export const updateSegment = (datasetId: string, documentId: string, segmentId: string, body: SegmentUpdater): Promise<{ data: SegmentDetailModel, doc_form: ChunkingMode }> => {
+  return patch<{ data: SegmentDetailModel, doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
+}
+
+export const addSegment = (datasetId: string, documentId: string, body: SegmentUpdater): Promise<{ data: SegmentDetailModel, doc_form: ChunkingMode }> => {
+  return post<{ data: SegmentDetailModel, doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
+}
+
+export const enableSegments = (datasetId: string, documentId: string, segmentIds: string[]): Promise<CommonResponse> => {
+  const query = segmentIds.map(id => `segment_id=${id}`).join('&')
+  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/enable?${query}`)
+}
+
+export const disableSegments = (datasetId: string, documentId: string, segmentIds: string[]): Promise<CommonResponse> => {
+  const query = segmentIds.map(id => `segment_id=${id}`).join('&')
+  return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/disable?${query}`)
+}
+
+export const deleteSegments = (datasetId: string, documentId: string, segmentIds: string[]): Promise<CommonResponse> => {
+  const query = segmentIds.map(id => `segment_id=${id}`).join('&')
+  return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments?${query}`)
+}
+
+export const fetchChildSegments = (datasetId: string, documentId: string, segmentId: string, params: { page: number, limit: number, keyword: string }): Promise<ChildSegmentsResponse> => {
+  return get<ChildSegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { params })
+}
+
+export const deleteChildSegment = (datasetId: string, documentId: string, segmentId: string, childChunkId: string): Promise<CommonResponse> => {
+  return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks/${childChunkId}`)
+}
+
+export const addChildSegment = (datasetId: string, documentId: string, segmentId: string, body: { content: string }): Promise<{ data: ChildChunkDetail }> => {
+  return post<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { body })
+}
+
+export const updateChildSegment = (datasetId: string, documentId: string, segmentId: string, childChunkId: string, body: { content: string }): Promise<{ data: ChildChunkDetail }> => {
+  return patch<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks/${childChunkId}`, { body })
+}
+
+export const batchImportSegments = (url: string, body: { upload_file_id: string }): Promise<BatchImportResponse> => {
+  return post<BatchImportResponse>(url, { body })
+}
+
+export const checkSegmentBatchImportStatus = (jobID: string): Promise<BatchImportResponse> => {
+  return get<BatchImportResponse>(`/datasets/batch_import_status/${jobID}`)
 }

@@ -1,15 +1,22 @@
-import type { CommonResponse } from '@/models/common'
 import type {
-  BatchImportResponse,
-  ChildChunkDetail,
-  ChildSegmentsResponse,
-  ChunkingMode,
-  SegmentDetailModel,
   SegmentsResponse,
   SegmentUpdater,
 } from '@/models/datasets'
 import { useMutation, useQuery } from '@tanstack/react-query'
-import { del, get, patch, post } from '../base'
+import {
+  addChildSegment,
+  addSegment,
+  batchImportSegments,
+  checkSegmentBatchImportStatus,
+  deleteChildSegment,
+  deleteSegments,
+  disableSegments,
+  enableSegments,
+  fetchChildSegments,
+  fetchSegmentList,
+  updateChildSegment,
+  updateSegment,
+} from '../datasets'
 
 const NAME_SPACE = 'segment'
 
@@ -36,7 +43,7 @@ export const useSegmentList = (
   return useQuery<SegmentsResponse>({
     queryKey: [...useSegmentListKey, { datasetId, documentId, page, limit, keyword, enabled }],
     queryFn: () => {
-      return get<SegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments`, { params })
+      return fetchSegmentList(datasetId, documentId, params)
     },
     enabled: !disable,
   })
@@ -47,7 +54,7 @@ export const useUpdateSegment = () => {
     mutationKey: [NAME_SPACE, 'update'],
     mutationFn: (payload: { datasetId: string, documentId: string, segmentId: string, body: SegmentUpdater }) => {
       const { datasetId, documentId, segmentId, body } = payload
-      return patch<{ data: SegmentDetailModel, doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}`, { body })
+      return updateSegment(datasetId, documentId, segmentId, body)
     },
   })
 }
@@ -57,7 +64,7 @@ export const useAddSegment = () => {
     mutationKey: [NAME_SPACE, 'add'],
     mutationFn: (payload: { datasetId: string, documentId: string, body: SegmentUpdater }) => {
       const { datasetId, documentId, body } = payload
-      return post<{ data: SegmentDetailModel, doc_form: ChunkingMode }>(`/datasets/${datasetId}/documents/${documentId}/segment`, { body })
+      return addSegment(datasetId, documentId, body)
     },
   })
 }
@@ -67,8 +74,7 @@ export const useEnableSegment = () => {
     mutationKey: [NAME_SPACE, 'enable'],
     mutationFn: (payload: { datasetId: string, documentId: string, segmentIds: string[] }) => {
       const { datasetId, documentId, segmentIds } = payload
-      const query = segmentIds.map(id => `segment_id=${id}`).join('&')
-      return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/enable?${query}`)
+      return enableSegments(datasetId, documentId, segmentIds)
     },
   })
 }
@@ -78,8 +84,7 @@ export const useDisableSegment = () => {
     mutationKey: [NAME_SPACE, 'disable'],
     mutationFn: (payload: { datasetId: string, documentId: string, segmentIds: string[] }) => {
       const { datasetId, documentId, segmentIds } = payload
-      const query = segmentIds.map(id => `segment_id=${id}`).join('&')
-      return patch<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segment/disable?${query}`)
+      return disableSegments(datasetId, documentId, segmentIds)
     },
   })
 }
@@ -89,8 +94,7 @@ export const useDeleteSegment = () => {
     mutationKey: [NAME_SPACE, 'delete'],
     mutationFn: (payload: { datasetId: string, documentId: string, segmentIds: string[] }) => {
       const { datasetId, documentId, segmentIds } = payload
-      const query = segmentIds.map(id => `segment_id=${id}`).join('&')
-      return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments?${query}`)
+      return deleteSegments(datasetId, documentId, segmentIds)
     },
   })
 }
@@ -115,7 +119,7 @@ export const useChildSegmentList = (
   return useQuery({
     queryKey: [...useChildSegmentListKey, { datasetId, documentId, segmentId, page, limit, keyword }],
     queryFn: () => {
-      return get<ChildSegmentsResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { params })
+      return fetchChildSegments(datasetId, documentId, segmentId, params)
     },
     enabled: !disable,
   })
@@ -126,7 +130,7 @@ export const useDeleteChildSegment = () => {
     mutationKey: [NAME_SPACE, 'childChunk', 'delete'],
     mutationFn: (payload: { datasetId: string, documentId: string, segmentId: string, childChunkId: string }) => {
       const { datasetId, documentId, segmentId, childChunkId } = payload
-      return del<CommonResponse>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks/${childChunkId}`)
+      return deleteChildSegment(datasetId, documentId, segmentId, childChunkId)
     },
   })
 }
@@ -136,7 +140,7 @@ export const useAddChildSegment = () => {
     mutationKey: [NAME_SPACE, 'childChunk', 'add'],
     mutationFn: (payload: { datasetId: string, documentId: string, segmentId: string, body: { content: string } }) => {
       const { datasetId, documentId, segmentId, body } = payload
-      return post<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks`, { body })
+      return addChildSegment(datasetId, documentId, segmentId, body)
     },
   })
 }
@@ -146,7 +150,7 @@ export const useUpdateChildSegment = () => {
     mutationKey: [NAME_SPACE, 'childChunk', 'update'],
     mutationFn: (payload: { datasetId: string, documentId: string, segmentId: string, childChunkId: string, body: { content: string } }) => {
       const { datasetId, documentId, segmentId, childChunkId, body } = payload
-      return patch<{ data: ChildChunkDetail }>(`/datasets/${datasetId}/documents/${documentId}/segments/${segmentId}/child_chunks/${childChunkId}`, { body })
+      return updateChildSegment(datasetId, documentId, segmentId, childChunkId, body)
     },
   })
 }
@@ -156,7 +160,7 @@ export const useSegmentBatchImport = () => {
     mutationKey: [NAME_SPACE, 'batchImport'],
     mutationFn: (payload: { url: string, body: { upload_file_id: string } }) => {
       const { url, body } = payload
-      return post<BatchImportResponse>(url, { body })
+      return batchImportSegments(url, body)
     },
   })
 }
@@ -166,7 +170,7 @@ export const useCheckSegmentBatchImportProgress = () => {
     mutationKey: [NAME_SPACE, 'batchImport', 'checkProgress'],
     mutationFn: (payload: { jobID: string }) => {
       const { jobID } = payload
-      return get<BatchImportResponse>(`/datasets/batch_import_status/${jobID}`)
+      return checkSegmentBatchImportStatus(jobID)
     },
   })
 }

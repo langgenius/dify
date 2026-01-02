@@ -1,7 +1,7 @@
 import type { TracingProvider } from '@/app/(commonLayout)/app/(appDetailLayout)/[appId]/overview/tracing/type'
 import type { ApiKeysListResponse, AppDailyConversationsResponse, AppDailyEndUsersResponse, AppDailyMessagesResponse, AppDetailResponse, AppListResponse, AppStatisticsResponse, AppTemplatesResponse, AppTokenCostsResponse, AppVoicesListResponse, CreateApiKeyResponse, DSLImportMode, DSLImportResponse, GenerationIntroductionResponse, TracingConfig, TracingStatus, UpdateAppModelConfigResponse, UpdateAppSiteCodeResponse, UpdateOpenAIKeyResponse, ValidateOpenAIKeyResponse, WebhookTriggerResponse, WorkflowDailyConversationsResponse } from '@/models/app'
 import type { CommonResponse } from '@/models/common'
-import type { AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
+import type { App, AppIconType, AppModeEnum, ModelConfig } from '@/types/app'
 import { del, get, patch, post, put } from './base'
 
 export const fetchAppList = ({ url, params }: { url: string, params?: Record<string, any> }): Promise<AppListResponse> => {
@@ -10,6 +10,22 @@ export const fetchAppList = ({ url, params }: { url: string, params?: Record<str
 
 export const fetchAppDetail = ({ url, id }: { url: string, id: string }): Promise<AppDetailResponse> => {
   return get<AppDetailResponse>(`${url}/${id}`)
+}
+
+export const fetchAppDetailById = (appID: string): Promise<App> => {
+  return get<App>(`/apps/${appID}`)
+}
+
+export const generateRuleTemplate = (type: string): Promise<{ data: string }> => {
+  return post<{ data: string }>('instruction-generate/template', { body: { type } })
+}
+
+export const fetchAppStatistics = <T>(appId: string, metric: string, params?: Record<string, any>): Promise<T> => {
+  return get<T>(`/apps/${appId}/statistics/${metric}`, { params })
+}
+
+export const fetchWorkflowStatistics = <T>(appId: string, metric: string, params?: Record<string, any>): Promise<T> => {
+  return get<T>(`/apps/${appId}/workflow/statistics/${metric}`, { params })
 }
 
 export const fetchAppDetailDirect = async ({ url, id }: { url: string, id: string }): Promise<AppDetailResponse> => {
@@ -189,6 +205,10 @@ export const generationIntroduction = ({ url, body }: { url: string, body: { pro
 export const fetchAppVoices = ({ appId, language }: { appId: string, language?: string }): Promise<AppVoicesListResponse> => {
   language = language || 'en-US'
   return get<AppVoicesListResponse>(`apps/${appId}/text-to-audio/voices?language=${language}`)
+}
+
+export const fetchAppApiKeys = (appId: string): Promise<ApiKeysListResponse> => {
+  return get<ApiKeysListResponse>(`/apps/${appId}/api-keys`)
 }
 
 // Tracing
