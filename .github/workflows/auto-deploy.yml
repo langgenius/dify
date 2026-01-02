@@ -53,6 +53,21 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
+      - name: Free disk space
+        run: |
+          set -eux
+          df -h
+          for path in /usr/share/dotnet /usr/local/lib/android /opt/ghc; do
+            if [ -d "$path" ]; then
+              sudo du -sh "$path" || true
+              sudo rm -rf "$path"
+            fi
+          done
+          sudo apt-get clean
+          docker system prune -af || true
+          docker builder prune -af || true
+          df -h
+
       - name: Test IP Address
         run: |
           wget -qO- https://ipecho.net/plain ; echo
@@ -71,13 +86,7 @@ jobs:
         env:
           CERTBOT_EMAIL: ""
           CERTBOT_DOMAIN: ""
-        run: docker compose build
-
-      - name: Push Docker images
-        env:
-          CERTBOT_EMAIL: ""
-          CERTBOT_DOMAIN: ""
-        run: docker compose push
+        run: docker compose build --push
 
       - name: Deploy
         run: bash ../deploy/run.sh
