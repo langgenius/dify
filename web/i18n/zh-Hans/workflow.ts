@@ -323,6 +323,7 @@ const translation = {
     'trigger-webhook': 'Webhook 触发器',
     'trigger-schedule': '定时触发器',
     'trigger-plugin': '插件触发器',
+    'human-input': '人工输入',
   },
   customWebhook: '自定义 Webhook',
   blocksAbout: {
@@ -351,6 +352,7 @@ const translation = {
     'trigger-webhook': 'Webhook 触发器接收来自第三方系统的 HTTP 推送以自动触发工作流。',
     'trigger-schedule': '基于时间的工作流触发器，按计划启动工作流',
     'trigger-plugin': '从外部平台事件启动工作流的第三方集成触发器',
+    'human-input': '暂停工作流并等待外部恢复，用于人工审核或输入',
   },
   difyTeam: 'Dify 团队',
   operator: {
@@ -931,6 +933,26 @@ const translation = {
         result: '过滤结果',
         first_record: '第一条记录',
         last_record: '最后一条记录',
+      },
+    },
+    humanInput: {
+      title: '人工暂停',
+      description: '暂停工作流等待外部恢复',
+      pauseReason: '暂停原因',
+      pauseReasonPlaceholder: '说明工作流在此处暂停的原因',
+      pauseReasonRequired: '暂停原因为必填项',
+      approve: '同意',
+      reject: '拒绝',
+      resumeReason: '恢复原因',
+      resumeReasonPlaceholder: '说明为什么恢复执行工作流',
+      resumeReasonRequired: '恢复原因为必填项',
+      status: {
+        paused: '工作流已暂停',
+        waitingResume: '等待恢复',
+      },
+      action: {
+        resume: '恢复执行',
+        resumeRequested: '恢复请求已发送，请等待执行结果',
       },
     },
     agent: {

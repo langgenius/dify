@@ -11,6 +11,7 @@ import {
   useWorkflowNodeLoopStarted,
   useWorkflowNodeRetry,
   useWorkflowNodeStarted,
+  useWorkflowPaused,
   useWorkflowStarted,
   useWorkflowTextChunk,
   useWorkflowTextReplace,
@@ -32,11 +33,13 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowTextChunk } = useWorkflowTextChunk()
   const { handleWorkflowTextReplace } = useWorkflowTextReplace()
   const { handleWorkflowAgentLog } = useWorkflowAgentLog()
+  const { handleWorkflowPaused } = useWorkflowPaused()
 
   return {
     handleWorkflowStarted,
     handleWorkflowFinished,
     handleWorkflowFailed,
+    handleWorkflowPaused,
     handleWorkflowNodeStarted,
     handleWorkflowNodeFinished,
     handleWorkflowNodeIterationStarted,

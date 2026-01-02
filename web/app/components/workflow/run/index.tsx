@@ -23,6 +23,8 @@ export type RunProps = {
   getResultCallback?: (result: WorkflowRunDetailResponse) => void
   runDetailUrl: string
   tracingListUrl: string
+  // Human input resume props for tracing panel
+  appId?: string
 }
 
 const RunPanel: FC<RunProps> = ({
@@ -31,6 +33,7 @@ const RunPanel: FC<RunProps> = ({
   getResultCallback,
   runDetailUrl,
   tracingListUrl,
+  appId,
 }) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
@@ -194,6 +197,13 @@ const RunPanel: FC<RunProps> = ({
           <TracingPanel
             className="bg-background-section-burn"
             list={list}
+            appId={appId}
+            workflowRunId={runDetail?.id}
+            onResumed={() => {
+              // Refresh run detail and tracing list after resume
+              getResult()
+              getTracingList()
+            }}
           />
         )}
       </div>

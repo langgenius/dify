@@ -255,6 +255,13 @@ export const initialNodes = (originNodes: Node[], originEdges: Edge[]) => {
       })
     }
 
+    if (node.data.type === BlockEnum.HumanInput) {
+      node.data._targetBranches = [
+        { id: 'approve', name: 'Approve' },
+        { id: 'reject', name: 'Reject' },
+      ]
+    }
+
     if (node.data.type === BlockEnum.Iteration) {
       const iterationNodeData = node.data as IterationNodeType
       iterationNodeData._children = iterationOrLoopNodeMap[node.id] || []

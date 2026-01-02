@@ -21,6 +21,7 @@ import type {
   TextChunkResponse,
   TextReplaceResponse,
   WorkflowFinishedResponse,
+  WorkflowPausedResponse,
   WorkflowStartedResponse,
 } from '@/types/workflow'
 import Cookies from 'js-cookie'
@@ -69,6 +70,7 @@ export type IOnLoopStarted = (workflowStarted: LoopStartedResponse) => void
 export type IOnLoopNext = (workflowStarted: LoopNextResponse) => void
 export type IOnLoopFinished = (workflowFinished: LoopFinishedResponse) => void
 export type IOnAgentLog = (agentLog: AgentLogResponse) => void
+export type IOnWorkflowPaused = (workflowPaused: WorkflowPausedResponse) => void
 
 export type IOnDataSourceNodeProcessing = (dataSourceNodeProcessing: DataSourceNodeProcessingResponse) => void
 export type IOnDataSourceNodeCompleted = (dataSourceNodeCompleted: DataSourceNodeCompletedResponse) => void
@@ -92,6 +94,7 @@ export type IOtherOptions = {
 
   onWorkflowStarted?: IOnWorkflowStarted
   onWorkflowFinished?: IOnWorkflowFinished
+  onWorkflowPaused?: IOnWorkflowPaused
   onNodeStarted?: IOnNodeStarted
   onNodeFinished?: IOnNodeFinished
   onIterationStart?: IOnIterationStarted
@@ -185,6 +188,7 @@ export const handleStream = (
   onDataSourceNodeProcessing?: IOnDataSourceNodeProcessing,
   onDataSourceNodeCompleted?: IOnDataSourceNodeCompleted,
   onDataSourceNodeError?: IOnDataSourceNodeError,
+  onWorkflowPaused?: IOnWorkflowPaused,
 ) => {
   if (!response.ok)
     throw new Error('Network response was not ok')
@@ -254,6 +258,9 @@ export const handleStream = (
             }
             else if (bufferObj.event === 'workflow_finished') {
               onWorkflowFinished?.(bufferObj as WorkflowFinishedResponse)
+            }
+            else if (bufferObj.event === 'workflow_paused') {
+              onWorkflowPaused?.(bufferObj as WorkflowPausedResponse)
             }
             else if (bufferObj.event === 'node_started') {
               onNodeStarted?.(bufferObj as NodeStartedResponse)
@@ -407,6 +414,7 @@ export const ssePost = async (
     onMessageReplace,
     onWorkflowStarted,
     onWorkflowFinished,
+    onWorkflowPaused,
     onNodeStarted,
     onNodeFinished,
     onIterationStart,
@@ -532,6 +540,7 @@ export const ssePost = async (
         onDataSourceNodeProcessing,
         onDataSourceNodeCompleted,
         onDataSourceNodeError,
+        onWorkflowPaused,
       )
     })
     .catch((e) => {

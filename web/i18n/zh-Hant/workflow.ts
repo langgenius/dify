@@ -310,6 +310,7 @@ const translation = {
     'trigger-schedule': '排程觸發',
     'trigger-webhook': 'Webhook 觸發',
     'trigger-plugin': '插件觸發器',
+    'human-input': '人工輸入',
   },
   blocksAbout: {
     'start': '定義一個 workflow 流程啟動的參數',
@@ -337,6 +338,7 @@ const translation = {
     'trigger-schedule': '基於時間的工作流程觸發器，可按計劃啟動工作流程',
     'trigger-webhook': 'Webhook 觸發器接收來自第三方系統的 HTTP 推送，以自動觸發工作流程。',
     'trigger-plugin': '第三方整合觸發器，從外部平台事件啟動工作流程',
+    'human-input': '暫停工作流程並等待外部恢復，用於人工審核或輸入',
   },
   operator: {
     zoomIn: '放大',
@@ -878,6 +880,26 @@ const translation = {
       filterConditionComparisonOperator: 'Filter Condition Comparison 運算符',
       filterConditionKey: '篩選條件鍵',
       extractsCondition: '提取第 N 項',
+    },
+    humanInput: {
+      title: '人工暫停',
+      description: '暫停工作流程並等待外部恢復',
+      pauseReason: '暫停原因',
+      pauseReasonPlaceholder: '說明工作流程在此處暫停的原因',
+      pauseReasonRequired: '暫停原因為必填項',
+      approve: '同意',
+      reject: '拒絕',
+      resumeReason: '恢復原因',
+      resumeReasonPlaceholder: '說明為什麼恢復執行工作流程',
+      resumeReasonRequired: '恢復原因為必填項',
+      status: {
+        paused: '工作流程已暫停',
+        waitingResume: '等待恢復',
+      },
+      action: {
+        resume: '恢復執行',
+        resumeRequested: '恢復請求已發送，請等待執行結果',
+      },
     },
     agent: {
       strategy: {

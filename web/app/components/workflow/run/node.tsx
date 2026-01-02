@@ -25,9 +25,10 @@ import { hasRetryNode } from '@/app/components/workflow/utils'
 import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 import BlockIcon from '../block-icon'
-import { BlockEnum } from '../types'
+import { BlockEnum, NodeRunningStatus } from '../types'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import { AgentLogTrigger } from './agent-log'
+import HumanInputResumePanel from './human-input-resume-panel'
 import { IterationLogTrigger } from './iteration-log'
 import { LoopLogTrigger } from './loop-log'
 import { RetryLogTrigger } from './retry-log'
@@ -45,6 +46,10 @@ type Props = {
   onShowAgentOrToolLog?: (detail?: AgentLogItemWithChildren) => void
   notShowIterationNav?: boolean
   notShowLoopNav?: boolean
+  // Human input resume props
+  appId?: string
+  workflowRunId?: string
+  onResumed?: () => void
 }
 
 const NodePanel: FC<Props> = ({
@@ -60,6 +65,9 @@ const NodePanel: FC<Props> = ({
   onShowAgentOrToolLog,
   notShowIterationNav,
   notShowLoopNav,
+  appId,
+  workflowRunId,
+  onResumed,
 }) => {
   const [collapseState, doSetCollapseState] = useState<boolean>(true)
   const setCollapseState = useCallback((state: boolean) => {
@@ -96,6 +104,8 @@ const NodePanel: FC<Props> = ({
   const isRetryNode = hasRetryNode(nodeInfo.node_type) && !!nodeInfo.retryDetail?.length
   const isAgentNode = nodeInfo.node_type === BlockEnum.Agent && !!nodeInfo.agentLog?.length
   const isToolNode = nodeInfo.node_type === BlockEnum.Tool && !!nodeInfo.agentLog?.length
+  // Check if this is a human-input node that is paused (waiting for input)
+  const isHumanInputNode = nodeInfo.node_type === BlockEnum.HumanInput && nodeInfo.status === NodeRunningStatus.Paused
 
   const inputsTitle = useMemo(() => {
     let text = t('workflow.common.input')
@@ -263,6 +273,17 @@ const NodePanel: FC<Props> = ({
                   isJSONStringifyBeauty
                   tip={<ErrorHandleTip type={nodeInfo.execution_metadata?.error_strategy} />}
                   footer={nodeInfo.outputs_truncated && <LargeDataAlert textHasNoExport downloadUrl={nodeInfo.outputs_full_content?.download_url} className="mx-1 mb-1 mt-2 h-7" />}
+                />
+              </div>
+            )}
+            {/* Human Input Resume Panel - shown when human-input node is running */}
+            {isHumanInputNode && appId && workflowRunId && (
+              <div className="mt-2">
+                <HumanInputResumePanel
+                  appId={appId}
+                  workflowRunId={workflowRunId}
+                  pauseReason={nodeInfo.process_data?.pause_reason}
+                  onResumed={onResumed}
                 />
               </div>
             )}

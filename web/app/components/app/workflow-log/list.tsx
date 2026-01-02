@@ -97,6 +97,14 @@ const WorkflowAppLogList: FC<ILogs> = ({ logs, appDetail, onRefresh }) => {
         </div>
       )
     }
+    if (status === 'paused') {
+      return (
+        <div className="system-xs-semibold-uppercase inline-flex items-center gap-1">
+          <Indicator color="orange" />
+          <span className="text-util-colors-warning-warning-500">Paused</span>
+        </div>
+      )
+    }
   }
 
   const onCloseDrawer = () => {

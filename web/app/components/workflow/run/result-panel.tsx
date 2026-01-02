@@ -9,10 +9,11 @@ import CodeEditor from '@/app/components/workflow/nodes/_base/components/editor/
 import ErrorHandleTip from '@/app/components/workflow/nodes/_base/components/error-handle/error-handle-tip'
 import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import { AgentLogTrigger } from '@/app/components/workflow/run/agent-log'
+import HumanInputResumePanel from '@/app/components/workflow/run/human-input-resume-panel'
 import { IterationLogTrigger } from '@/app/components/workflow/run/iteration-log'
 import { LoopLogTrigger } from '@/app/components/workflow/run/loop-log'
 import { RetryLogTrigger } from '@/app/components/workflow/run/retry-log'
-import { BlockEnum } from '@/app/components/workflow/types'
+import { BlockEnum, WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { hasRetryNode } from '@/app/components/workflow/utils'
 import LargeDataAlert from '../variable-inspect/large-data-alert'
 import MetaData from './meta'
@@ -41,6 +42,11 @@ export type ResultPanelProps = {
   exceptionCounts?: number
   execution_metadata?: any
   isListening?: boolean
+  // Human input resume props
+  appId?: string
+  workflowRunId?: string
+  pauseReason?: string
+  onResumed?: () => void
   handleShowIterationResultList?: (detail: NodeTracing[][], iterDurationMap: any) => void
   handleShowLoopResultList?: (detail: NodeTracing[][], loopDurationMap: any) => void
   onShowRetryDetail?: (detail: NodeTracing[]) => void
@@ -67,6 +73,10 @@ const ResultPanel: FC<ResultPanelProps> = ({
   exceptionCounts,
   execution_metadata,
   isListening = false,
+  appId,
+  workflowRunId,
+  pauseReason,
+  onResumed,
   handleShowIterationResultList,
   handleShowLoopResultList,
   onShowRetryDetail,
@@ -125,6 +135,17 @@ const ResultPanel: FC<ResultPanelProps> = ({
           )
         }
       </div>
+      {/* Human Input Resume Panel - shown when workflow is paused */}
+      {status === WorkflowRunningStatus.Paused && appId && workflowRunId && (
+        <div className="px-4 py-2">
+          <HumanInputResumePanel
+            appId={appId}
+            workflowRunId={workflowRunId}
+            pauseReason={pauseReason}
+            onResumed={onResumed}
+          />
+        </div>
+      )}
       <div className="flex flex-col gap-2 px-4 py-2">
         <CodeEditor
           readOnly

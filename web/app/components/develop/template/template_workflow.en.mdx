@@ -667,6 +667,142 @@ Workflow applications offers non-session support and is ideal for translation, a
 ---
 
 <Heading
+  url='/workflows/run/:workflow_run_id/resume'
+  method='POST'
+  title='Resume Paused Workflow'
+  name='#resume-workflow'
+/>
+<Row>
+  <Col>
+    Resume a workflow that was paused due to a Human Input Node.
+    When a workflow encounters a Human Input Node, it pauses and waits for human intervention. This API allows you to provide the required input and resume the workflow execution.
+
+    ### Path
+    - `workflow_run_id` (string) Required
+      The workflow run ID of the paused workflow. Can be obtained from the streaming chunk return or the workflow execution result.
+
+    ### Request Body
+    - `user` (string) Required
+      User identifier, used to define the identity of the end-user. Must be consistent with the user passed in the workflow execution interface.
+    - `reason` (string) Required
+      The reason or input content for resuming the workflow. This will be passed to the Human Input Node as the human response. Length must be between 1 and 500 characters.
+    - `action` (string) Required
+      The action to take when resuming. Must be one of:
+      - `approve` - Approve and continue the workflow
+      - `reject` - Reject and potentially stop or branch the workflow
+
+    ### Response
+    - `result` (string) Always returns "success"
+    - `workflow_run_id` (string) The workflow run ID
+    - `status` (string) The new status of the workflow, typically `running`
+    - `resumed_at` (timestamp) The timestamp when the workflow was resumed
+    - `resume_reason` (string) The reason provided for resuming
+
+    ### Errors
+    - 400, `bad_request`, Workflow is not in paused state or invalid parameters
+    - 401, `unauthorized`, Invalid API token
+    - 404, `not_found`, Workflow run not found
+    - 409, `conflict`, Workflow has already been resumed
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/run/:workflow_run_id/resume"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run/{workflow_run_id}/resume' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{
+    "user": "abc-123",
+    "reason": "Approved by manager after review",
+    "action": "approve"
+}'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success",
+      "workflow_run_id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+      "status": "running",
+      "resumed_at": 1705407629,
+      "resume_reason": "Approved by manager after review"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/run/:workflow_run_id/pause-info'
+  method='GET'
+  title='Get Workflow Pause Information'
+  name='#get-pause-info'
+/>
+<Row>
+  <Col>
+    Get detailed information about a paused workflow run.
+    Use this API to retrieve the pause context, including what node caused the pause and any relevant metadata.
+
+    ### Path
+    - `workflow_run_id` (string) Required
+      The workflow run ID to get pause information for.
+
+    ### Response
+    - `workflow_run_id` (string) The workflow run ID
+    - `status` (string) Current status of the workflow, should be `paused`
+    - `paused_at` (timestamp) The timestamp when the workflow was paused
+    - `paused_by_node` (object) Information about the node that caused the pause
+      - `node_id` (string) The ID of the node
+      - `node_type` (string) The type of the node (e.g., `human-input`)
+      - `title` (string) The title/name of the node
+    - `pause_context` (object) Additional context about the pause
+
+    ### Errors
+    - 401, `unauthorized`, Invalid API token
+    - 404, `not_found`, Workflow run not found or not paused
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/run/:workflow_run_id/pause-info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/{workflow_run_id}/pause-info' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "workflow_run_id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+      "status": "paused",
+      "paused_at": 1705407629,
+      "paused_by_node": {
+        "node_id": "human-input-1",
+        "node_type": "human-input",
+        "title": "Manager Approval"
+      },
+      "pause_context": {
+        "message": "Please review and approve the generated content"
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/files/upload'
   method='POST'
   title='File Upload'

@@ -77,7 +77,13 @@ const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
 }
 
 const formatToTracingNodeList = (list: NodeTracing[], t: any) => {
-  const allItems = cloneDeep([...list]).sort((a, b) => a.index - b.index)
+  const allItems = cloneDeep([...list]).sort((a, b) => {
+    // Sort by finished_at first, then by created_at for items with same finished_at
+    if (a.finished_at !== b.finished_at) {
+      return a.finished_at - b.finished_at
+    }
+    return a.created_at - b.created_at
+  })
   /*
   * First handle not change list structure node
   * Because Handle struct node will put the node in different

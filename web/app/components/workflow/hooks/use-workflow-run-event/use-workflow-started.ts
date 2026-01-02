@@ -10,7 +10,7 @@ export const useWorkflowStarted = () => {
   const workflowStore = useWorkflowStore()
 
   const handleWorkflowStarted = useCallback((params: WorkflowStartedResponse) => {
-    const { task_id, data } = params
+    const { task_id, workflow_run_id, data } = params
     const {
       workflowRunningData,
       setWorkflowRunningData,
@@ -25,6 +25,7 @@ export const useWorkflowStarted = () => {
     setIterParallelLogMap(new Map())
     setWorkflowRunningData(produce(workflowRunningData!, (draft) => {
       draft.task_id = task_id
+      draft.workflow_run_id = workflow_run_id
       draft.result = {
         ...draft?.result,
         ...data,

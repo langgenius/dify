@@ -323,6 +323,7 @@ const translation = {
     'trigger-schedule': 'Schedule Trigger',
     'trigger-webhook': 'Webhook Trigger',
     'trigger-plugin': 'Plugin Trigger',
+    'human-input': 'Human Input',
   },
   customWebhook: 'Custom Webhook',
   blocksAbout: {
@@ -351,6 +352,7 @@ const translation = {
     'trigger-schedule': 'Time-based workflow trigger that starts workflows on a schedule',
     'trigger-webhook': 'Webhook Trigger receives HTTP pushes from third-party systems to automatically trigger workflows.',
     'trigger-plugin': 'Third-party integration trigger that starts workflows from external platform events',
+    'human-input': 'Pause workflow and wait for external resume with human input',
   },
   difyTeam: 'Dify Team',
   operator: {
@@ -975,6 +977,26 @@ const translation = {
         result: 'Filter result',
         first_record: 'First record',
         last_record: 'Last record',
+      },
+    },
+    humanInput: {
+      title: 'Manual Pause',
+      description: 'Pause workflow and wait for external resume',
+      pauseReason: 'Pause Reason',
+      pauseReasonPlaceholder: 'Explain why the workflow should pause here',
+      pauseReasonRequired: 'Pause reason is required',
+      approve: 'Approve',
+      reject: 'Reject',
+      resumeReason: 'Resume Reason',
+      resumeReasonPlaceholder: 'Explain why you are resuming the workflow',
+      resumeReasonRequired: 'Resume reason is required',
+      status: {
+        paused: 'Workflow Paused',
+        waitingResume: 'Waiting for Resume',
+      },
+      action: {
+        resume: 'Resume Execution',
+        resumeRequested: 'Resume request sent, please wait for execution result',
       },
     },
     agent: {

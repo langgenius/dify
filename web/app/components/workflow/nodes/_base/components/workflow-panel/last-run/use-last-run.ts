@@ -68,6 +68,7 @@ const singleRunFormParamsHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerWebhook]: undefined,
   [BlockEnum.TriggerSchedule]: undefined,
   [BlockEnum.TriggerPlugin]: undefined,
+  [BlockEnum.HumanInput]: undefined,
 }
 
 const useSingleRunFormParamsHooks = (nodeType: BlockEnum) => {
@@ -106,6 +107,7 @@ const getDataForCheckMoreHooks: Record<BlockEnum, any> = {
   [BlockEnum.TriggerWebhook]: undefined,
   [BlockEnum.TriggerSchedule]: undefined,
   [BlockEnum.TriggerPlugin]: useTriggerPluginGetDataForCheckMore,
+  [BlockEnum.HumanInput]: undefined,
 }
 
 const useGetDataForCheckMoreHooks = <T>(nodeType: BlockEnum) => {

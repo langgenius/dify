@@ -655,6 +655,142 @@ Workflow 应用无会话支持，适合用于翻译/文章写作/总结 AI 等�
 ---
 
 <Heading
+  url='/workflows/run/:workflow_run_id/resume'
+  method='POST'
+  title='恢复暂停的 Workflow'
+  name='#resume-workflow'
+/>
+<Row>
+  <Col>
+    恢复因人工输入节点而暂停的工作流。
+    当工作流遇到人工输入节点时，会暂停并等待人工干预。此 API 允许您提供所需的输入并恢复工作流执行。
+
+    ### Path
+    - `workflow_run_id` (string) Required
+      暂停的 workflow 执行 ID，可在流式返回 Chunk 中获取或从 workflow 执行结果中获取。
+
+    ### Request Body
+    - `user` (string) Required
+      用户标识，用于定义终端用户的身份。必须与 workflow 执行接口中传入的 user 保持一致。
+    - `reason` (string) Required
+      恢复工作流的原因或输入内容。这将作为人工响应传递给人工输入节点。长度必须在 1 到 500 个字符之间。
+    - `action` (string) Required
+      恢复时采取的操作。必须是以下之一：
+      - `approve` - 批准并继续工作流
+      - `reject` - 拒绝并可能停止或分支工作流
+
+    ### Response
+    - `result` (string) 固定返回 "success"
+    - `workflow_run_id` (string) workflow 执行 ID
+    - `status` (string) workflow 的新状态，通常为 `running`
+    - `resumed_at` (timestamp) workflow 恢复的时间戳
+    - `resume_reason` (string) 提供的恢复原因
+
+    ### Errors
+    - 400，`bad_request`，workflow 未处于暂停状态或参数无效
+    - 401，`unauthorized`，API token 无效
+    - 404，`not_found`，workflow 执行记录未找到
+    - 409，`conflict`，workflow 已经被恢复
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="POST"
+      label="/workflows/run/:workflow_run_id/resume"
+      targetCode={`curl -X POST '${props.appDetail.api_base_url}/workflows/run/{workflow_run_id}/resume' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json' \\
+--data-raw '{
+    "user": "abc-123",
+    "reason": "经理审核后批准",
+    "action": "approve"
+}'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "result": "success",
+      "workflow_run_id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+      "status": "running",
+      "resumed_at": 1705407629,
+      "resume_reason": "经理审核后批准"
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
+  url='/workflows/run/:workflow_run_id/pause-info'
+  method='GET'
+  title='获取 Workflow 暂停信息'
+  name='#get-pause-info'
+/>
+<Row>
+  <Col>
+    获取暂停的 workflow 执行详细信息。
+    使用此 API 获取暂停上下文，包括导致暂停的节点以及任何相关元数据。
+
+    ### Path
+    - `workflow_run_id` (string) Required
+      要获取暂停信息的 workflow 执行 ID。
+
+    ### Response
+    - `workflow_run_id` (string) workflow 执行 ID
+    - `status` (string) workflow 的当前状态，应为 `paused`
+    - `paused_at` (timestamp) workflow 暂停的时间戳
+    - `paused_by_node` (object) 导致暂停的节点信息
+      - `node_id` (string) 节点 ID
+      - `node_type` (string) 节点类型（例如 `human-input`）
+      - `title` (string) 节点名称
+    - `pause_context` (object) 有关暂停的额外上下文
+
+    ### Errors
+    - 401，`unauthorized`，API token 无效
+    - 404，`not_found`，workflow 执行记录未找到或未暂停
+
+  </Col>
+  <Col sticky>
+    ### Request Example
+    <CodeGroup
+      title="Request"
+      tag="GET"
+      label="/workflows/run/:workflow_run_id/pause-info"
+      targetCode={`curl -X GET '${props.appDetail.api_base_url}/workflows/run/{workflow_run_id}/pause-info' \\
+-H 'Authorization: Bearer {api_key}' \\
+-H 'Content-Type: application/json'`}
+    />
+
+    ### Response Example
+    <CodeGroup title="Response">
+    ```json {{ title: 'Response' }}
+    {
+      "workflow_run_id": "b1ad3277-089e-42c6-9dff-6820d94fbc76",
+      "status": "paused",
+      "paused_at": 1705407629,
+      "paused_by_node": {
+        "node_id": "human-input-1",
+        "node_type": "human-input",
+        "title": "经理审批"
+      },
+      "pause_context": {
+        "message": "请审核并批准生成的内容"
+      }
+    }
+    ```
+    </CodeGroup>
+  </Col>
+</Row>
+
+---
+
+<Heading
   url='/files/upload'
   method='POST'
   title='上传文件'

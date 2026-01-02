@@ -22,6 +22,10 @@ type TracingPanelProps = {
   className?: string
   hideNodeInfo?: boolean
   hideNodeProcessDetail?: boolean
+  // Human input resume props
+  appId?: string
+  workflowRunId?: string
+  onResumed?: () => void
 }
 
 const TracingPanel: FC<TracingPanelProps> = ({
@@ -29,6 +33,9 @@ const TracingPanel: FC<TracingPanelProps> = ({
   className,
   hideNodeInfo = false,
   hideNodeProcessDetail = false,
+  appId,
+  workflowRunId,
+  onResumed,
 }) => {
   const { t } = useTranslation()
   const treeNodes = formatNodeList(list, t)
@@ -155,6 +162,9 @@ const TracingPanel: FC<TracingPanelProps> = ({
             onShowAgentOrToolLog={handleShowAgentOrToolLog}
             hideInfo={hideNodeInfo}
             hideProcessDetail={hideNodeProcessDetail}
+            appId={appId}
+            workflowRunId={workflowRunId}
+            onResumed={onResumed}
           />
         </div>
       )

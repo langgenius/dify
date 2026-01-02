@@ -77,6 +77,7 @@ export const useWorkflowRun = () => {
     handleWorkflowStarted,
     handleWorkflowFinished,
     handleWorkflowFailed,
+    handleWorkflowPaused,
     handleWorkflowNodeStarted,
     handleWorkflowNodeFinished,
     handleWorkflowNodeIterationStarted,
@@ -394,6 +395,9 @@ export const useWorkflowRun = () => {
           invalidAllLastRun()
         }
       },
+      onWorkflowPaused: (params) => {
+        handleWorkflowPaused(params)
+      },
       onNodeStarted: (params) => {
         handleWorkflowNodeStarted(
           params,
@@ -667,7 +671,7 @@ export const useWorkflowRun = () => {
         },
       },
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowFailed, handleWorkflowPaused, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

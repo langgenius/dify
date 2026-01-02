@@ -128,6 +128,22 @@ export const SUPPORT_OUTPUT_VARS_NODE = [
   BlockEnum.ListFilter,
   BlockEnum.Agent,
   BlockEnum.DataSource,
+  BlockEnum.HumanInput,
+]
+
+export const HUMAN_INPUT_OUTPUT_STRUCT: Var[] = [
+  {
+    variable: 'action',
+    type: VarType.string,
+  },
+  {
+    variable: 'approved',
+    type: VarType.boolean,
+  },
+  {
+    variable: 'reason',
+    type: VarType.string,
+  },
 ]
 
 export const AGENT_OUTPUT_STRUCT: Var[] = [

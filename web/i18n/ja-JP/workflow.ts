@@ -323,6 +323,7 @@ const translation = {
     'trigger-plugin': 'プラグイントリガー',
     'trigger-webhook': 'Webhook トリガー',
     'trigger-schedule': 'スケジュールトリガー',
+    'human-input': '人工入力',
   },
   customWebhook: 'カスタムWebhook',
   blocksAbout: {
@@ -351,6 +352,7 @@ const translation = {
     'trigger-schedule': 'スケジュールに基づいてワークフローを開始する時間ベースのトリガー',
     'trigger-webhook': 'Webhook トリガーは第三者システムからの HTTP プッシュを受信してワークフローを自動的に開始します。',
     'trigger-plugin': 'サードパーティ統合トリガー、外部プラットフォームのイベントによってワークフローを開始します',
+    'human-input': 'ワークフローを一時停止し、人間の確認または入力を待ちます',
   },
   difyTeam: 'Dify チーム',
   operator: {
@@ -932,6 +934,26 @@ const translation = {
       inputVar: '入力変数',
       desc: 'DESC',
       extractsCondition: 'N 個のアイテムを抽出します',
+    },
+    humanInput: {
+      title: '手動一時停止',
+      description: 'ワークフローを一時停止し、外部からの再開を待ちます',
+      pauseReason: '一時停止の理由',
+      pauseReasonPlaceholder: 'ワークフローがここで一時停止する理由を説明してください',
+      pauseReasonRequired: '一時停止の理由は必須です',
+      approve: '承認',
+      reject: '拒否',
+      resumeReason: '再開理由',
+      resumeReasonPlaceholder: 'ワークフローを再開する理由を説明してください',
+      resumeReasonRequired: '再開理由は必須です',
+      status: {
+        paused: 'ワークフローが一時停止されました',
+        waitingResume: '再開待ち',
+      },
+      action: {
+        resume: '実行を再開',
+        resumeRequested: '再開リクエストが送信されました。実行結果をお待ちください。',
+      },
     },
     agent: {
       strategy: {

@@ -108,6 +108,11 @@ export const BLOCKS: Block[] = [
     title: 'Loop',
   },
   {
+    classification: BlockClassificationEnum.Logic,
+    type: BlockEnum.HumanInput,
+    title: 'Manual Pause',
+  },
+  {
     classification: BlockClassificationEnum.Transform,
     type: BlockEnum.Code,
     title: 'Code',

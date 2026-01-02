@@ -16,6 +16,8 @@ import EndNode from './end/node'
 import EndPanel from './end/panel'
 import HttpNode from './http/node'
 import HttpPanel from './http/panel'
+import HumanInputNode from './human-input/node'
+import HumanInputPanel from './human-input/panel'
 import IfElseNode from './if-else/node'
 import IfElsePanel from './if-else/panel'
 import IterationNode from './iteration/node'
@@ -75,6 +77,7 @@ export const NodeComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerSchedule]: TriggerScheduleNode,
   [BlockEnum.TriggerWebhook]: TriggerWebhookNode,
   [BlockEnum.TriggerPlugin]: TriggerPluginNode,
+  [BlockEnum.HumanInput]: HumanInputNode,
 }
 
 export const PanelComponentMap: Record<string, ComponentType<any>> = {
@@ -103,4 +106,5 @@ export const PanelComponentMap: Record<string, ComponentType<any>> = {
   [BlockEnum.TriggerSchedule]: TriggerSchedulePanel,
   [BlockEnum.TriggerWebhook]: TriggerWebhookPanel,
   [BlockEnum.TriggerPlugin]: TriggerPluginPanel,
+  [BlockEnum.HumanInput]: HumanInputPanel,
 }

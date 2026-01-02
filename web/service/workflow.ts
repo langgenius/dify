@@ -94,3 +94,59 @@ export const fetchNodeInspectVars = async (flowType: FlowType, flowId: string, n
   const { items } = (await get(`${getFlowPrefix(flowType)}/${flowId}/workflows/draft/nodes/${nodeId}/variables`)) as { items: VarInInspect[] }
   return items
 }
+
+// Workflow pause/resume API types
+export enum WorkflowPauseStatus {
+  PAUSED = 'paused',
+  RESUMED = 'resumed',
+}
+
+export enum ResumeAction {
+  APPROVE = 'approve',
+  REJECT = 'reject',
+}
+
+export enum ResumeResult {
+  SUCCESS = 'success',
+  ERROR = 'error',
+}
+
+export type PauseReason = {
+  type: string
+  node_id: string
+  pause_reason_text: string
+}
+
+export type WorkflowPauseInfo = {
+  status: WorkflowPauseStatus
+  pause_reason: PauseReason
+  paused_at: string
+  resumed_at: string | null
+  resume_reason: string | null
+}
+
+export type WorkflowResumeRequest = {
+  reason: string
+  action: ResumeAction
+}
+
+export type WorkflowResumeResponse = {
+  result: ResumeResult
+  workflow_run_id: string
+  status: string
+  resumed_at: string
+  resume_reason: string
+}
+
+// Get pause information for a workflow run
+export const fetchWorkflowRunPauseInfo = (appId: string, runId: string) => {
+  return get<WorkflowPauseInfo>(`apps/${appId}/workflow-runs/${runId}/pause-info`)
+}
+
+// Resume a paused workflow run
+export const resumeWorkflowRun = (appId: string, runId: string, params: WorkflowResumeRequest) => {
+  if (params.reason.length < 1 || params.reason.length > 500) {
+    throw new Error('Reason must be between 1 and 500 characters')
+  }
+  return post<WorkflowResumeResponse>(`apps/${appId}/workflow-runs/${runId}/resume`, { body: params })
+}

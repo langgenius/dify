@@ -30,7 +30,9 @@ import InputsPanel from './inputs-panel'
 const WorkflowPreview = () => {
   const { t } = useTranslation()
   const { handleCancelDebugAndPreviewPanel } = useWorkflowInteractions()
+  const appId = useStore(s => s.appId)
   const workflowRunningData = useStore(s => s.workflowRunningData)
+  const setWorkflowRunningData = useStore(s => s.setWorkflowRunningData)
   const isListening = useStore(s => s.isListening)
   const showInputsPanel = useStore(s => s.showInputsPanel)
   const workflowCanvasWidth = useStore(s => s.workflowCanvasWidth)
@@ -59,6 +61,9 @@ const WorkflowPreview = () => {
       return
 
     if ((status === WorkflowRunningStatus.Succeeded || status === WorkflowRunningStatus.Failed) && !workflowRunningData.resultText && !workflowRunningData.result.files?.length)
+      switchTab('DETAIL')
+    // Switch to DETAIL tab when workflow is paused to show the resume panel
+    if (status === WorkflowRunningStatus.Paused)
       switchTab('DETAIL')
   }, [workflowRunningData])
 
@@ -217,6 +222,20 @@ const WorkflowPreview = () => {
               created_by={(workflowRunningData?.result?.created_by as any)?.name}
               steps={workflowRunningData?.result?.total_steps}
               exceptionCounts={workflowRunningData?.result?.exceptions_count}
+              appId={appId}
+              workflowRunId={workflowRunningData?.workflow_run_id}
+              onResumed={() => {
+                // Update status to running after resume
+                if (workflowRunningData) {
+                  setWorkflowRunningData({
+                    ...workflowRunningData,
+                    result: {
+                      ...workflowRunningData.result,
+                      status: WorkflowRunningStatus.Running,
+                    },
+                  })
+                }
+              }}
             />
           )}
           {currentTab === 'DETAIL' && !workflowRunningData?.result && (

@@ -191,6 +191,45 @@ export type WorkflowFinishedResponse = {
   }
 }
 
+export enum WorkflowEventType {
+  WORKFLOW_PAUSED = 'workflow_paused',
+  WORKFLOW_RESUMED = 'workflow_resumed',
+  WORKFLOW_STARTED = 'workflow_started',
+  WORKFLOW_FINISHED = 'workflow_finished',
+  WORKFLOW_FAILED = 'workflow_failed',
+}
+
+export enum WorkflowStatus {
+  PAUSED = 'paused',
+  RESUMED = 'resumed',
+  RUNNING = 'running',
+  SUCCEEDED = 'succeeded',
+  FAILED = 'failed',
+}
+
+export enum PauseReasonType {
+  HUMAN_INPUT_REQUIRED = 'human_input_required',
+}
+
+export type PauseReason = {
+  type: PauseReasonType
+  node_id: string
+  pause_reason_text: string
+}
+
+export type WorkflowPausedResponse = {
+  task_id: string
+  workflow_run_id: string
+  event: WorkflowEventType.WORKFLOW_PAUSED
+  data: {
+    id: string
+    workflow_id: string
+    status: WorkflowStatus.PAUSED
+    pause_reason: PauseReason
+    paused_at: number
+  }
+}
+
 export type NodeStartedResponse = {
   task_id: string
   workflow_run_id: string

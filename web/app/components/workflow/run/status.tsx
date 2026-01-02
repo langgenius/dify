@@ -3,6 +3,7 @@ import type { FC } from 'react'
 import { useTranslation } from 'react-i18next'
 import Indicator from '@/app/components/header/indicator'
 import StatusContainer from '@/app/components/workflow/run/status-container'
+import { WorkflowRunningStatus } from '@/app/components/workflow/types'
 import { useDocLink } from '@/context/i18n'
 import { cn } from '@/utils/classnames'
 
@@ -42,6 +43,7 @@ const StatusPanel: FC<ResultProps> = ({
               status === 'partial-succeeded' && 'text-util-colors-green-green-600',
               status === 'failed' && 'text-util-colors-red-red-600',
               status === 'stopped' && 'text-util-colors-warning-warning-600',
+              status === WorkflowRunningStatus.Paused && 'text-util-colors-warning-warning-500',
               status === 'running' && 'text-util-colors-blue-light-blue-light-600',
             )}
           >
@@ -79,6 +81,12 @@ const StatusPanel: FC<ResultProps> = ({
               <>
                 <Indicator color="yellow" />
                 <span>STOP</span>
+              </>
+            )}
+            {status === WorkflowRunningStatus.Paused && (
+              <>
+                <Indicator color="orange" />
+                <span>PAUSED</span>
               </>
             )}
           </div>

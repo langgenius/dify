@@ -946,6 +946,26 @@ const translation = {
       clickToViewParameterSchema: 'Cliquez pour voir le schéma des paramètres',
       parameterSchema: 'Schéma de Paramètres',
     },
+    humanInput: {
+      title: 'Pause Manuelle',
+      description: 'Mettre le workflow en pause et attendre une reprise externe',
+      pauseReason: 'Raison de la pause',
+      pauseReasonPlaceholder: 'Expliquez pourquoi le workflow doit être mis en pause ici',
+      pauseReasonRequired: 'La raison de la pause est requise',
+      approve: 'Approuver',
+      reject: 'Rejeter',
+      resumeReason: 'Raison de la reprise',
+      resumeReasonPlaceholder: 'Expliquez pourquoi vous reprenez le workflow',
+      resumeReasonRequired: 'La raison de la reprise est requise',
+      status: {
+        paused: 'Workflow en pause',
+        waitingResume: 'En attente de reprise',
+      },
+      action: {
+        resume: 'Reprendre l’execution',
+        resumeRequested: 'Demande de reprise envoyée, veuillez attendre le résultat',
+      },
+    },
     loop: {
       ErrorMethod: {
         operationTerminated: 'Terminé',

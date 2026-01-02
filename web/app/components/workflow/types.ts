@@ -17,7 +17,7 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
+import type { FileResponse, NodeTracing, PanelProps, PauseReason } from '@/types/workflow'
 
 export enum BlockEnum {
   Start = 'start',
@@ -49,6 +49,7 @@ export enum BlockEnum {
   TriggerSchedule = 'trigger-schedule',
   TriggerWebhook = 'trigger-webhook',
   TriggerPlugin = 'trigger-plugin',
+  HumanInput = 'human-input',
 }
 
 export enum ControlMode {
@@ -350,6 +351,7 @@ export enum WorkflowRunningStatus {
   Succeeded = 'succeeded',
   Failed = 'failed',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export enum WorkflowVersion {
@@ -367,6 +369,7 @@ export enum NodeRunningStatus {
   Exception = 'exception',
   Retry = 'retry',
   Stopped = 'stopped',
+  Paused = 'paused',
 }
 
 export type OnNodeAdd = (
@@ -399,6 +402,7 @@ export type RunFile = {
 
 export type WorkflowRunningData = {
   task_id?: string
+  workflow_run_id?: string
   message_id?: string
   conversation_id?: string
   result: {
@@ -424,6 +428,8 @@ export type WorkflowRunningData = {
     total_steps?: number
     files?: FileResponse[]
     exceptions_count?: number
+    pauseReason?: PauseReason
+    pausedAt?: string
   }
   tracing?: NodeTracing[]
 }
