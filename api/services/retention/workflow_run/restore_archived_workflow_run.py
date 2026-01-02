@@ -438,7 +438,7 @@ class WorkflowRunRestore:
         Returns:
             List of RestoreResult objects
         """
-        results = []
+        results: list[RestoreResult] = []
         if tenant_ids is not None and not tenant_ids:
             return results
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
