@@ -84,9 +84,12 @@ jobs:
 
       - name: Build Docker images
         env:
+          BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
           CERTBOT_EMAIL: ""
           CERTBOT_DOMAIN: ""
         run: docker compose build --push
 
       - name: Deploy
+        env:
+          BUILD_NUMBER: ${{ env.BUILD_NUMBER }}
         run: bash ../deploy/run.sh
