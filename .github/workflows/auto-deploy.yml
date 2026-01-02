@@ -36,10 +36,15 @@ jobs:
       - name: Set up Docker Buildx
         uses: docker/setup-buildx-action@v1
 
-      - name: Install Docker Compose
+      - name: Ensure Docker Compose v2
         run: |
-          sudo apt-get update
-          sudo apt-get install docker-compose
+          if docker compose version; then
+            echo "Docker Compose v2 is available."
+          else
+            sudo apt-get update
+            sudo apt-get install -y docker-compose-plugin
+            docker compose version
+          fi
 
       - name: Docker Login
         uses: docker/login-action@v2
@@ -63,10 +68,16 @@ jobs:
           kubectl get svc -n acedatacloud
 
       - name: Build Docker images
-        run: docker-compose build
+        env:
+          CERTBOT_EMAIL: ""
+          CERTBOT_DOMAIN: ""
+        run: docker compose build
 
       - name: Push Docker images
-        run: docker-compose push
+        env:
+          CERTBOT_EMAIL: ""
+          CERTBOT_DOMAIN: ""
+        run: docker compose push
 
       - name: Deploy
         run: bash ../deploy/run.sh
