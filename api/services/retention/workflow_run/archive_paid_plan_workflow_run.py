@@ -21,6 +21,7 @@ import logging
 import tarfile
 import time
 from collections.abc import Sequence
+from concurrent.futures import ThreadPoolExecutor
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -114,6 +115,7 @@ class WorkflowRunArchiver:
         batch_size: int = 100,
         start_from: datetime.datetime | None = None,
         end_before: datetime.datetime | None = None,
+        workers: int = 1,
         tenant_ids: Sequence[str] | None = None,
         limit: int | None = None,
         dry_run: bool = False,
@@ -127,6 +129,7 @@ class WorkflowRunArchiver:
             batch_size: Number of runs to process per batch
             start_from: Optional start time (inclusive) for archiving
             end_before: Optional end time (exclusive) for archiving
+            workers: Number of concurrent workflow runs to archive
             tenant_ids: Optional tenant IDs for grayscale rollout
             limit: Maximum number of runs to archive (None for unlimited)
             dry_run: If True, only preview without making changes
@@ -147,6 +150,9 @@ class WorkflowRunArchiver:
         else:
             self.start_from = None
             self.end_before = datetime.datetime.now(datetime.UTC) - datetime.timedelta(days=days)
+        if workers < 1:
+            raise ValueError("workers must be at least 1")
+        self.workers = workers
         self.tenant_ids = set(tenant_ids) if tenant_ids else set()
         self.limit = limit
         self.dry_run = dry_run
@@ -180,6 +186,10 @@ class WorkflowRunArchiver:
             return summary
 
         session_maker = sessionmaker(bind=db.engine, expire_on_commit=False)
+
+        def _archive_with_session(run: WorkflowRun) -> ArchiveResult:
+            with session_maker() as session:
+                return self._archive_run(session, storage, run)
         last_seen: tuple[datetime.datetime, str] | None = None
         archived_count = 0
 
@@ -201,46 +211,55 @@ class WorkflowRunArchiver:
             tenant_ids = {run.tenant_id for run in runs}
             paid_tenants = self._filter_paid_tenants(tenant_ids)
 
-            with session_maker() as session:
-                for run in runs:
-                    summary.total_runs_processed += 1
+            runs_to_process: list[WorkflowRun] = []
+            for run in runs:
+                summary.total_runs_processed += 1
 
-                    # Skip non-paid tenants
-                    if run.tenant_id not in paid_tenants:
-                        summary.runs_skipped += 1
-                        continue
+                # Skip non-paid tenants
+                if run.tenant_id not in paid_tenants:
+                    summary.runs_skipped += 1
+                    continue
 
-                    # Skip already archived runs
-                    if run.is_archived:
-                        summary.runs_skipped += 1
-                        continue
+                # Skip already archived runs
+                if run.is_archived:
+                    summary.runs_skipped += 1
+                    continue
 
-                    # Check limit
-                    if self.limit and archived_count >= self.limit:
-                        break
+                # Check limit
+                if self.limit and archived_count + len(runs_to_process) >= self.limit:
+                    break
 
-                    # Archive this run
-                    result = self._archive_run(session, storage, run)
+                runs_to_process.append(run)
 
-                    if result.success:
-                        summary.runs_archived += 1
-                        archived_count += 1
-                        click.echo(
-                            click.style(
-                                f"{'[DRY RUN] Would archive' if self.dry_run else 'Archived'} "
-                                f"run {run.id} (tenant={run.tenant_id}, "
-                                f"tables={len(result.tables)}, time={result.elapsed_time:.2f}s)",
-                                fg="green",
-                            )
+            if not runs_to_process:
+                continue
+
+            if self.workers > 1:
+                with ThreadPoolExecutor(max_workers=self.workers) as executor:
+                    results = list(executor.map(_archive_with_session, runs_to_process))
+            else:
+                results = [_archive_with_session(run) for run in runs_to_process]
+
+            for run, result in zip(runs_to_process, results):
+                if result.success:
+                    summary.runs_archived += 1
+                    archived_count += 1
+                    click.echo(
+                        click.style(
+                            f"{'[DRY RUN] Would archive' if self.dry_run else 'Archived'} "
+                            f"run {run.id} (tenant={run.tenant_id}, "
+                            f"tables={len(result.tables)}, time={result.elapsed_time:.2f}s)",
+                            fg="green",
                         )
-                    else:
-                        summary.runs_failed += 1
-                        click.echo(
-                            click.style(
-                                f"Failed to archive run {run.id}: {result.error}",
-                                fg="red",
-                            )
+                    )
+                else:
+                    summary.runs_failed += 1
+                    click.echo(
+                        click.style(
+                            f"Failed to archive run {run.id}: {result.error}",
+                            fg="red",
                         )
+                    )
 
         summary.total_elapsed_time = time.time() - start_time
         click.echo(
@@ -262,7 +281,7 @@ class WorkflowRunArchiver:
         """Fetch a batch of workflow runs to archive."""
         repo = self._get_workflow_run_repo()
         return repo.get_runs_batch_by_time_range(
-            start_after=None,
+            start_after=self.start_from,
             end_before=self.end_before,
             last_seen=last_seen,
             batch_size=self.batch_size,

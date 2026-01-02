@@ -69,7 +69,7 @@ class ArchiveStorage:
             aws_access_key_id=dify_config.ARCHIVE_STORAGE_ACCESS_KEY,
             aws_secret_access_key=dify_config.ARCHIVE_STORAGE_SECRET_KEY,
             region_name=dify_config.ARCHIVE_STORAGE_REGION,
-            config=Config(s3={"addressing_style": "path"}),
+            config=Config(s3={"addressing_style": "path"}, max_pool_connections=64,)
         )
 
         # Verify bucket accessibility

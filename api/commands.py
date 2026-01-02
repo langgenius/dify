@@ -872,6 +872,7 @@ def clear_free_plan_tenant_expired_logs(days: int, batch: int, tenant_ids: list[
     help="Archive runs created before this timestamp (UTC if no timezone).",
 )
 @click.option("--batch-size", default=100, show_default=True, help="Batch size for processing.")
+@click.option("--workers", default=1, show_default=True, type=int, help="Concurrent workflow runs to archive.")
 @click.option("--limit", default=None, type=int, help="Maximum number of runs to archive.")
 @click.option("--dry-run", is_flag=True, help="Preview without archiving.")
 def archive_workflow_runs(
@@ -880,6 +881,7 @@ def archive_workflow_runs(
     start_from: datetime.datetime | None,
     end_before: datetime.datetime | None,
     batch_size: int,
+    workers: int,
     limit: int | None,
     dry_run: bool,
 ):
@@ -912,12 +914,16 @@ def archive_workflow_runs(
         if start_from >= end_before:
             click.echo(click.style("start-from must be earlier than end-before.", fg="red"))
             return
+    if workers < 1:
+        click.echo(click.style("workers must be at least 1.", fg="red"))
+        return
 
     archiver = WorkflowRunArchiver(
         days=before_days,
         batch_size=batch_size,
         start_from=start_from,
         end_before=end_before,
+        workers=workers,
         tenant_ids=[tid.strip() for tid in tenant_ids.split(",")] if tenant_ids else None,
         limit=limit,
         dry_run=dry_run,
