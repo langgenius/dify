@@ -1,4 +1,5 @@
 import type { Viewport } from 'next'
+import { Provider as JotaiProvider } from 'jotai'
 import { ThemeProvider } from 'next-themes'
 import { Instrument_Serif } from 'next/font/google'
 import { NuqsAdapter } from 'nuqs/adapters/next/app'
@@ -91,27 +92,29 @@ const LocaleLayout = async ({
         {...datasetMap}
       >
         <ReactScanLoader />
-        <ThemeProvider
-          attribute="data-theme"
-          defaultTheme="system"
-          enableSystem
-          disableTransitionOnChange
-          enableColorScheme={false}
-        >
-          <NuqsAdapter>
-            <BrowserInitializer>
-              <SentryInitializer>
-                <TanstackQueryInitializer>
-                  <I18nServer>
-                    <GlobalPublicStoreProvider>
-                      {children}
-                    </GlobalPublicStoreProvider>
-                  </I18nServer>
-                </TanstackQueryInitializer>
-              </SentryInitializer>
-            </BrowserInitializer>
-          </NuqsAdapter>
-        </ThemeProvider>
+        <JotaiProvider>
+          <ThemeProvider
+            attribute="data-theme"
+            defaultTheme="system"
+            enableSystem
+            disableTransitionOnChange
+            enableColorScheme={false}
+          >
+            <NuqsAdapter>
+              <BrowserInitializer>
+                <SentryInitializer>
+                  <TanstackQueryInitializer>
+                    <I18nServer>
+                      <GlobalPublicStoreProvider>
+                        {children}
+                      </GlobalPublicStoreProvider>
+                    </I18nServer>
+                  </TanstackQueryInitializer>
+                </SentryInitializer>
+              </BrowserInitializer>
+            </NuqsAdapter>
+          </ThemeProvider>
+        </JotaiProvider>
         <RoutePrefixHandle />
       </body>
     </html>
