@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Metode autentikasi tidak dikonfigurasi untuk aplikasi web",
   "webapp.noLoginMethodTip": "Silakan hubungi admin sistem untuk menambahkan metode autentikasi.",
   "welcome": "👋 Selamat datang di Dify, silakan login untuk melanjutkan.",
+  "withAceDataCloud": "Lanjutkan dengan Ace Data Cloud",
   "withGitHub": "Lanjutkan dengan GitHub",
   "withGoogle": "Lanjutkan dengan Google",
   "withSSO": "Lanjutkan dengan SSO"

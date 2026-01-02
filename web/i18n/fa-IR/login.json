@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "روش احراز هویت برای برنامه وب پیکربندی نشده است",
   "webapp.noLoginMethodTip": "لطفاً با مدیر سیستم تماس بگیرید تا یک روش احراز هویت اضافه کند.",
   "welcome": "به Dify خوش آمدید، لطفا برای ادامه وارد شوید.",
+  "withAceDataCloud": "ادامه با Ace Data Cloud",
   "withGitHub": "ادامه با GitHub",
   "withGoogle": "ادامه با Google",
   "withSSO": "با SSO ادامه دهید"

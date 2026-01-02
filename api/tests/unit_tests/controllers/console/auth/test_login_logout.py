@@ -419,6 +419,8 @@ class TestLogoutApi:
         mock_service_logout.assert_called_once_with(account=mock_account)
         mock_logout_user.assert_called_once()
         assert response.json["result"] == "success"
+        set_cookie_headers = response.headers.getlist("Set-Cookie")
+        assert any(h.startswith("no_acedatacloud_oauth=1;") for h in set_cookie_headers)
 
     @patch("controllers.console.wraps.db")
     @patch("controllers.console.auth.login.current_account_with_tenant")
@@ -447,3 +449,5 @@ class TestLogoutApi:
 
         # Assert
         assert response.json["result"] == "success"
+        set_cookie_headers = response.headers.getlist("Set-Cookie")
+        assert any(h.startswith("no_acedatacloud_oauth=1;") for h in set_cookie_headers)

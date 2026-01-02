@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Méthode d'authentification non configurée pour l'application web",
   "webapp.noLoginMethodTip": "Veuillez contacter l'administrateur système pour ajouter une méthode d'authentification.",
   "welcome": "Bienvenue sur Dify, veuillez vous connecter pour continuer.",
+  "withAceDataCloud": "Continuer avec Ace Data Cloud",
   "withGitHub": "Continuer avec GitHub",
   "withGoogle": "Continuer avec Google",
   "withSSO": "Poursuivre avec l’authentification unique"

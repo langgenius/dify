@@ -24,6 +24,7 @@ import type {
 import type { RETRIEVE_METHOD } from '@/types/app'
 import { useMutation, useQuery } from '@tanstack/react-query'
 import { IS_DEV } from '@/config'
+import { clearAceDataCloudOAuthSession } from './acedatacloud-oauth'
 import { get, post } from './base'
 import { useInvalid } from './use-base'
 
@@ -236,6 +237,9 @@ export const useLogout = () => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
     mutationFn: () => post('/logout'),
+    onSettled: () => {
+      clearAceDataCloudOAuthSession()
+    },
   })
 }
 

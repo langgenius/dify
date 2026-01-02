@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Web 应用未配置身份认证方式",
   "webapp.noLoginMethodTip": "请联系系统管理员添加身份认证方式",
   "welcome": "👋 欢迎！请登录以开始使用。",
+  "withAceDataCloud": "使用 Ace Data Cloud 登录",
   "withGitHub": "使用 GitHub 登录",
   "withGoogle": "使用 Google 登录",
   "withSSO": "使用 SSO 登录"

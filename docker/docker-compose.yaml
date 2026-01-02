@@ -30,6 +30,9 @@ x-shared-env: &shared-api-worker-env
   DEPLOY_ENV: ${DEPLOY_ENV:-PRODUCTION}
   CHECK_UPDATE_URL: ${CHECK_UPDATE_URL:-https://updates.dify.ai}
   OPENAI_API_BASE: ${OPENAI_API_BASE:-https://api.openai.com/v1}
+  ENABLE_ACEDATACLOUD_OAUTH_LOGIN: ${ENABLE_ACEDATACLOUD_OAUTH_LOGIN:-true}
+  ACEDATACLOUD_AUTH_BASE_URL: ${ACEDATACLOUD_AUTH_BASE_URL:-https://auth.acedata.cloud}
+  ACEDATACLOUD_AUTH_LOGIN_PATH: ${ACEDATACLOUD_AUTH_LOGIN_PATH:-/auth/login}
   MIGRATION_ENABLED: ${MIGRATION_ENABLED:-true}
   FILES_ACCESS_TIMEOUT: ${FILES_ACCESS_TIMEOUT:-300}
   ACCESS_TOKEN_EXPIRE_MINUTES: ${ACCESS_TOKEN_EXPIRE_MINUTES:-60}
@@ -959,6 +962,7 @@ services:
   # plugin daemon
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.5.2-local
+    platform: linux/amd64
     restart: always
     environment:
       # Use the shared environment variables.

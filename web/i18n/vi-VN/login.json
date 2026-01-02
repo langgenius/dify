@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Phương thức xác thực chưa được cấu hình cho ứng dụng web",
   "webapp.noLoginMethodTip": "Vui lòng liên hệ với quản trị viên hệ thống để thêm phương thức xác thực.",
   "welcome": "Chào mừng bạn đến với Dify, vui lòng đăng nhập để tiếp tục.",
+  "withAceDataCloud": "Tiếp tục với Ace Data Cloud",
   "withGitHub": "Tiếp tục với GitHub",
   "withGoogle": "Tiếp tục với Google",
   "withSSO": "Tiếp tục với SSO"

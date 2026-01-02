@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "वेब ऐप के लिए प्रमाणीकरण विधि कॉन्फ़िगर नहीं की गई है",
   "webapp.noLoginMethodTip": "कृपया एक प्रमाणीकरण विधि जोड़ने के लिए सिस्टम प्रशासक से संपर्क करें।",
   "welcome": "Dify में आपका स्वागत है, कृपया जारी रखने के लिए लॉग इन करें।",
+  "withAceDataCloud": "Ace Data Cloud के साथ जारी रखें",
   "withGitHub": "GitHub के साथ जारी रखें",
   "withGoogle": "Google के साथ जारी रखें",
   "withSSO": "एसएसओ के साथ जारी रखें"

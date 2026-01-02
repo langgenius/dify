@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Metoda overjanja ni nastavljena za spletno aplikacijo",
   "webapp.noLoginMethodTip": "Prosimo, da se obrnete na sistemskega skrbnika, da dodate metodo za avtentikacijo.",
   "welcome": "Dobrodošli v Dify, prosimo, prijavite se za nadaljevanje.",
+  "withAceDataCloud": "Nadaljujte z Ace Data Cloud",
   "withGitHub": "Nadaljujte z GitHub",
   "withGoogle": "Nadaljujte z Google",
   "withSSO": "Nadaljujte z enotno prijavo"

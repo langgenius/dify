@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Metoda uwierzytelniania nie jest skonfigurowana dla aplikacji internetowej",
   "webapp.noLoginMethodTip": "Proszę skontaktować się z administratorem systemu, aby dodać metodę uwierzytelniania.",
   "welcome": "Witaj w Dify, zaloguj się, aby kontynuować.",
+  "withAceDataCloud": "Kontynuuj za pomocą Ace Data Cloud",
   "withGitHub": "Kontynuuj za pomocą GitHub",
   "withGoogle": "Kontynuuj za pomocą Google",
   "withSSO": "Kontynuuj logowanie jednokrotne"

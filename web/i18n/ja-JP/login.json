@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Web アプリに対して認証方法が構成されていません",
   "webapp.noLoginMethodTip": "システム管理者に連絡して、認証方法を追加してください。",
   "welcome": "👋 ようこそ！まずはログインしてご利用ください。",
+  "withAceDataCloud": "Ace Data Cloud で続行",
   "withGitHub": "GitHub で続行",
   "withGoogle": "Google で続行",
   "withSSO": "SSO を続行する"

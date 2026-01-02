@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "未為網絡應用程序配置身份驗證方法",
   "webapp.noLoginMethodTip": "請聯絡系統管理員以新增身份驗證方法。",
   "welcome": "👋 歡迎來到 Dify, 登入以繼續",
+  "withAceDataCloud": "使用 Ace Data Cloud 登入",
   "withGitHub": "使用 GitHub 登入",
   "withGoogle": "使用 Google 登入",
   "withSSO": "繼續使用 SSO"

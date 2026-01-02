@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Web uygulaması için kimlik doğrulama yöntemi yapılandırılmamış",
   "webapp.noLoginMethodTip": "Lütfen bir kimlik doğrulama yöntemi eklemek için sistem yöneticisi ile iletişime geçin.",
   "welcome": "Dify'ye hoş geldiniz, devam etmek için lütfen giriş yapın.",
+  "withAceDataCloud": "Ace Data Cloud ile devam et",
   "withGitHub": "GitHub ile devam et",
   "withGoogle": "Google ile devam et",
   "withSSO": "TOA ile devam etme"

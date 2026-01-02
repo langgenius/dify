@@ -86,8 +86,7 @@ class GitHubOAuth(OAuth):
 
         email_response = httpx.get(self._EMAIL_INFO_URL, headers=headers)
         email_info = email_response.json()
-        primary_email: dict = next(
-            (email for email in email_info if email["primary"] == True), {})
+        primary_email: dict = next((email for email in email_info if email["primary"] == True), {})
 
         return {**user_info, "email": primary_email.get("email", "")}
 
@@ -198,6 +197,6 @@ class AceDataCloudOAuth(OAuth):
         user_id = raw_info.get("id") or raw_info.get("username")
         if not user_id:
             raise ValueError("Invalid user info: missing id")
-        name = raw_info.get("username") or "AceDataCloud User"
+        name = raw_info.get("username") or "Ace Data Cloud User"
         email = raw_info.get("email") or f"{user_id}@acedata.cloud"
         return OAuthUserInfo(id=str(user_id), name=name, email=email)

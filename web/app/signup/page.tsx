@@ -12,6 +12,8 @@ const hasConsoleAccessTokenCookie = (cookieStore: CookieStore) =>
 const shouldAutoRedirectToAceDataCloudOAuth = (cookieStore: CookieStore, searchParams: SearchParams) => {
   if (hasConsoleAccessTokenCookie(cookieStore))
     return false
+  if (cookieStore.get('no_acedatacloud_oauth')?.value === '1')
+    return false
   if (firstSearchParam(searchParams.no_acedatacloud_oauth) === '1')
     return false
   return true

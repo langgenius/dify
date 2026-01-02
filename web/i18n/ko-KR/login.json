@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "웹 애플리케이션에 대한 인증 방법이 구성되어 있지 않습니다.",
   "webapp.noLoginMethodTip": "인증 방법을 추가하려면 시스템 관리자에게 연락하십시오.",
   "welcome": "Dify 에 오신 것을 환영합니다. 계속하려면 로그인하세요.",
+  "withAceDataCloud": "Ace Data Cloud로 계속",
   "withGitHub": "GitHub 로 계속",
   "withGoogle": "Google 로 계속",
   "withSSO": "SSO 로 계속하기"

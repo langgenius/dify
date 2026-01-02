@@ -160,6 +160,7 @@ class SystemFeatureModel(BaseModel):
     enable_email_code_login: bool = False
     enable_email_password_login: bool = True
     enable_social_oauth_login: bool = False
+    enable_acedatacloud_oauth_login: bool = False
     is_allow_register: bool = False
     is_allow_create_workspace: bool = False
     is_email_setup: bool = False
@@ -214,13 +215,29 @@ class FeatureService:
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
 
+        cls._enforce_login_method_constraints(system_features)
         return system_features
+
+    @classmethod
+    def _enforce_login_method_constraints(cls, system_features: SystemFeatureModel) -> None:
+        if not dify_config.ENABLE_ACEDATACLOUD_OAUTH_LOGIN:
+            return
+
+        system_features.enable_email_code_login = False
+        system_features.enable_email_password_login = False
+        system_features.enable_social_oauth_login = False
+        system_features.sso_enforced_for_signin = False
+        system_features.sso_enforced_for_signin_protocol = ""
+        system_features.is_allow_register = False
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
         system_features.enable_email_code_login = dify_config.ENABLE_EMAIL_CODE_LOGIN
         system_features.enable_email_password_login = dify_config.ENABLE_EMAIL_PASSWORD_LOGIN
         system_features.enable_social_oauth_login = dify_config.ENABLE_SOCIAL_OAUTH_LOGIN
+        system_features.enable_acedatacloud_oauth_login = bool(dify_config.ACEDATACLOUD_AUTH_BASE_URL) and bool(
+            dify_config.ENABLE_ACEDATACLOUD_OAUTH_LOGIN
+        )
         system_features.is_allow_register = dify_config.ALLOW_REGISTER
         system_features.is_allow_create_workspace = dify_config.ALLOW_CREATE_WORKSPACE
         system_features.is_email_setup = dify_config.MAIL_TYPE is not None and dify_config.MAIL_TYPE != ""

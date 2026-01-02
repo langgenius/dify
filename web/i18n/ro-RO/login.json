@@ -109,6 +109,7 @@
   "webapp.noLoginMethod": "Metoda de autentificare nu este configurată pentru aplicația web",
   "webapp.noLoginMethodTip": "Vă rugăm să contactați administratorul sistemului pentru a adăuga o metodă de autentificare.",
   "welcome": "Bine ai venit la Dify, te rugăm să te autentifici pentru a continua.",
+  "withAceDataCloud": "Continuă cu Ace Data Cloud",
   "withGitHub": "Continuă cu GitHub",
   "withGoogle": "Continuă cu Google",
   "withSSO": "Continuați cu SSO"
