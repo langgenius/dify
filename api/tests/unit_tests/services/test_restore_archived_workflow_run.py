@@ -47,7 +47,7 @@ class TestWorkflowRunRestore:
         restore = WorkflowRunRestore()
         records = [{"id": "p1", "workflow_run_id": "r1", "created_at": "2024-01-01T00:00:00"}]
 
-        restored = restore._restore_table_records(session, "workflow_pauses", records)
+        restored = restore._restore_table_records(session, "workflow_pauses", records, schema_version="1.0")
 
         assert restored == 2
         session.execute.assert_called_once()
@@ -59,7 +59,7 @@ class TestWorkflowRunRestore:
         session = MagicMock()
 
         restore = WorkflowRunRestore()
-        restored = restore._restore_table_records(session, "unknown_table", [{"id": "x1"}])
+        restored = restore._restore_table_records(session, "unknown_table", [{"id": "x1"}], schema_version="1.0")
 
         assert restored == 0
         session.execute.assert_not_called()
