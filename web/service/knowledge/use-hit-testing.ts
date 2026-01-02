@@ -26,7 +26,7 @@ export const useInvalidateHitTestingRecords = (datasetId: string) => {
 export const useHitTesting = (datasetId: string) => {
   return useMutation({
     mutationKey: [NAME_SPACE, 'hit-testing', datasetId],
-    mutationFn: (params: HitTestingRequest) => hitTesting({ datasetId, queryText: params.query, retrieval_model: params.retrieval_model }),
+    mutationFn: (params: HitTestingRequest) => hitTesting({ datasetId, ...params }),
   })
 }
 

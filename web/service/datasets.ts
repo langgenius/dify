@@ -28,6 +28,7 @@ import type {
   FetchDatasetsParams,
   FileIndexingEstimateResponse,
   HitTestingRecordsResponse,
+  HitTestingRequest,
   HitTestingResponse,
   IndexingEstimateParams,
   IndexingEstimateResponse,
@@ -187,8 +188,8 @@ export const modifyDocMetadata = ({ datasetId, documentId, body }: CommonDocReq 
 }
 
 // hit testing
-export const hitTesting = ({ datasetId, queryText, retrieval_model }: { datasetId: string, queryText: string, retrieval_model: RetrievalConfig }): Promise<HitTestingResponse> => {
-  return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query: queryText, retrieval_model } })
+export const hitTesting = ({ datasetId, query, retrieval_model, attachment_ids }: { datasetId: string } & HitTestingRequest): Promise<HitTestingResponse> => {
+  return post<HitTestingResponse>(`/datasets/${datasetId}/hit-testing`, { body: { query, retrieval_model, attachment_ids } })
 }
 
 export const externalKnowledgeBaseHitTesting = ({ datasetId, query, external_retrieval_model }: { datasetId: string, query: string, external_retrieval_model: { top_k: number, score_threshold: number, score_threshold_enabled: boolean } }): Promise<ExternalKnowledgeBaseHitTestingResponse> => {
