@@ -64,26 +64,20 @@ vi.mock('@/context/app-context', () => ({
   }),
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string } & Record<string, unknown>) => {
-      // Build full key with namespace prefix if provided
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      // Handle interpolation params (excluding ns)
-      const { ns: _ns, ...params } = options || {}
-      if (Object.keys(params).length > 0) {
-        return `${fullKey}:${JSON.stringify(params)}`
-      }
-      return fullKey
-    },
-  }),
-  Trans: ({ i18nKey, components }: { i18nKey: string, components?: Record<string, React.ReactNode> }) => (
-    <span data-testid="trans">
-      {i18nKey}
-      {components?.trustSource}
-    </span>
-  ),
-}))
+vi.mock('react-i18next', async (importOriginal) => {
+  const actual = await importOriginal<typeof import('react-i18next')>()
+  const { createReactI18nextMock } = await import('@/test/i18n-mock')
+  return {
+    ...actual,
+    ...createReactI18nextMock(),
+    Trans: ({ i18nKey, components }: { i18nKey: string, components?: Record<string, React.ReactNode> }) => (
+      <span data-testid="trans">
+        {i18nKey}
+        {components?.trustSource}
+      </span>
+    ),
+  }
+})
 
 vi.mock('../../../card', () => ({
   default: ({ payload, titleLeft }: {

@@ -68,17 +68,6 @@ function createMockSubscriptionBuilder(overrides: Partial<TriggerSubscriptionBui
 // Mock Setup
 // ============================================================================
 
-const mockTranslate = vi.fn((key: string, options?: { ns?: string }) => {
-  // Build full key with namespace prefix if provided
-  const fullKey = options?.ns ? `${options.ns}.${key}` : key
-  return fullKey
-})
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: mockTranslate,
-  }),
-}))
-
 // Mock plugin store
 const mockPluginDetail = createMockPluginDetail()
 const mockUsePluginStore = vi.fn(() => mockPluginDetail)

@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from fields.end_user_fields import simple_end_user_fields
 from fields.member_fields import simple_account_fields
@@ -19,7 +19,7 @@ workflow_run_for_log_fields = {
 }
 
 
-def build_workflow_run_for_log_model(api_or_ns: Api | Namespace):
+def build_workflow_run_for_log_model(api_or_ns: Namespace):
     return api_or_ns.model("WorkflowRunForLog", workflow_run_for_log_fields)
 
 

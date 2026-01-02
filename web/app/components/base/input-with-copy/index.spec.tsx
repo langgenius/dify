@@ -1,5 +1,6 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import * as React from 'react'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import InputWithCopy from './index'
 
 // Create a mock function that we can track using vi.hoisted
@@ -10,22 +11,12 @@ vi.mock('copy-to-clipboard', () => ({
   default: mockCopyToClipboard,
 }))
 
-// Mock the i18n hook
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const translations: Record<string, string> = {
-        'operation.copy': 'Copy',
-        'operation.copied': 'Copied',
-        'overview.appInfo.embedded.copy': 'Copy',
-        'overview.appInfo.embedded.copied': 'Copied',
-      }
-      if (translations[key])
-        return translations[key]
-      const prefix = options?.ns ? `${options.ns}.` : ''
-      return `${prefix}${key}`
-    },
-  }),
+// Mock the i18n hook with custom translations for test assertions
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'operation.copy': 'Copy',
+  'operation.copied': 'Copied',
+  'overview.appInfo.embedded.copy': 'Copy',
+  'overview.appInfo.embedded.copied': 'Copied',
 }))
 
 // Mock es-toolkit/compat debounce

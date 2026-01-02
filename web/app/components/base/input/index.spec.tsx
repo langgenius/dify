@@ -1,21 +1,12 @@
 import { fireEvent, render, screen } from '@testing-library/react'
 import * as React from 'react'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import Input, { inputVariants } from './index'
 
-// Mock the i18n hook
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const translations: Record<string, string> = {
-        'operation.search': 'Search',
-        'placeholder.input': 'Please input',
-      }
-      if (translations[key])
-        return translations[key]
-      const prefix = options?.ns ? `${options.ns}.` : ''
-      return `${prefix}${key}`
-    },
-  }),
+// Mock the i18n hook with custom translations for test assertions
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'operation.search': 'Search',
+  'placeholder.input': 'Please input',
 }))
 
 describe('Input component', () => {

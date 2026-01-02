@@ -18,16 +18,6 @@ const IndexingTypeValues = {
 // Mock External Dependencies
 // ==========================================
 
-// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const prefix = options?.ns ? `${options.ns}.` : ''
-      return `${prefix}${key}`
-    },
-  }),
-}))
-
 // Mock next/link
 vi.mock('next/link', () => {
   return function MockLink({ children, href }: { children: React.ReactNode, href: string }) {

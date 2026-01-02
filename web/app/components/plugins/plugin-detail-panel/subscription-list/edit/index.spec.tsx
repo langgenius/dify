@@ -12,16 +12,6 @@ import { OAuthEditModal } from './oauth-edit-modal'
 
 // ==================== Mock Setup ====================
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      // Build full key with namespace prefix if provided
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      return fullKey
-    },
-  }),
-}))
-
 const mockToastNotify = vi.fn()
 vi.mock('@/app/components/base/toast', () => ({
   default: { notify: (params: unknown) => mockToastNotify(params) },

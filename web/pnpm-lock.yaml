@@ -514,9 +514,6 @@ importers:
       husky:
         specifier: ^9.1.7
         version: 9.1.7
-      istanbul-lib-coverage:
-        specifier: ^3.2.2
-        version: 3.2.2
       jsdom:
         specifier: ^27.3.0
         version: 27.3.0(canvas@3.2.0)
@@ -524,8 +521,8 @@ importers:
         specifier: ^1.16.0
         version: 1.16.0
       knip:
-        specifier: ^5.66.1
-        version: 5.72.0(@types/node@18.15.0)(typescript@5.9.3)
+        specifier: ^5.78.0
+        version: 5.78.0(@types/node@18.15.0)(typescript@5.9.3)
       lint-staged:
         specifier: ^15.5.2
         version: 15.5.2
@@ -6336,8 +6333,8 @@ packages:
     resolution: {integrity: sha512-o+NO+8WrRiQEE4/7nwRJhN1HWpVmJm511pBHUxPLtp0BUISzlBplORYSmTclCnJvQq2tKu/sgl3xVpkc7ZWuQQ==}
     engines: {node: '>=6'}
 
-  knip@5.72.0:
-    resolution: {integrity: sha512-rlyoXI8FcggNtM/QXd/GW0sbsYvNuA/zPXt7bsuVi6kVQogY2PDCr81bPpzNnl0CP8AkFm2Z2plVeL5QQSis2w==}
+  knip@5.78.0:
+    resolution: {integrity: sha512-nB7i/fgiJl7WVxdv5lX4ZPfDt9/zrw/lOgZtyioy988xtFhKuFJCRdHWT1Zg9Avc0yaojvnmEuAXU8SeMblKww==}
     engines: {node: '>=18.18.0'}
     hasBin: true
     peerDependencies:
@@ -15468,7 +15465,7 @@ snapshots:
 
   kleur@4.1.5: {}
 
-  knip@5.72.0(@types/node@18.15.0)(typescript@5.9.3):
+  knip@5.78.0(@types/node@18.15.0)(typescript@5.9.3):
     dependencies:
       '@nodelib/fs.walk': 1.2.8
       '@types/node': 18.15.0

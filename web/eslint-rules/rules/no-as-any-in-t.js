@@ -29,11 +29,6 @@ export default {
     const options = context.options[0] || {}
     const mode = options.mode || 'any'
 
-    /**
-     * Check if this is a t() function call
-     * @param {import('estree').CallExpression} node
-     * @returns {boolean}
-     */
     function isTCall(node) {
       // Direct t() call
       if (node.callee.type === 'Identifier' && node.callee.name === 't')

@@ -28,17 +28,14 @@ import userEvent from '@testing-library/user-event'
 
 // i18n (automatically mocked)
 // WHY: Global mock in web/vitest.setup.ts is auto-loaded by Vitest setup
-// No explicit mock needed - it returns translation keys as-is
+// The global mock provides: useTranslation, Trans, useMixedTranslation, useGetLanguage
+// No explicit mock needed for most tests
+//
 // Override only if custom translations are required:
-// vi.mock('react-i18next', () => ({
-//   useTranslation: () => ({
-//     t: (key: string) => {
-//       const customTranslations: Record<string, string> = {
-//         'my.custom.key': 'Custom Translation',
-//       }
-//       return customTranslations[key] || key
-//     },
-//   }),
+// import { createReactI18nextMock } from '@/test/i18n-mock'
+// vi.mock('react-i18next', () => createReactI18nextMock({
+//   'my.custom.key': 'Custom Translation',
+//   'button.save': 'Save',
 // }))
 
 // Router (if component uses useRouter, usePathname, useSearchParams)

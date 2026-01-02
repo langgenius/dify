@@ -59,7 +59,11 @@ const useThinkTimer = (children: any) => {
   }, [startTime, isComplete])
 
   useEffect(() => {
-    if (hasEndThink(children) || !isResponding)
+    // Stop timer when:
+    // 1. Content has [ENDTHINKFLAG] marker (normal completion)
+    // 2. isResponding is explicitly false (user clicked stop button)
+    // Note: Don't stop when isResponding is undefined (component used outside ChatContextProvider)
+    if (hasEndThink(children) || isResponding === false)
       setIsComplete(true)
   }, [children, isResponding])
 

@@ -110,6 +110,16 @@ jobs:
         working-directory: ./web
         run: pnpm run type-check:tsgo
 
+      - name: Web dead code check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run knip
+
+      - name: Web build check
+        if: steps.changed-files.outputs.any_changed == 'true'
+        working-directory: ./web
+        run: pnpm run build
+
   superlinter:
     name: SuperLinter
     runs-on: ubuntu-latest

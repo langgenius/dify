@@ -48,21 +48,6 @@ vi.mock('@/service/plugins', () => ({
   uploadFile: (...args: unknown[]) => mockUploadFile(...args),
 }))
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string } & Record<string, unknown>) => {
-      // Build full key with namespace prefix if provided
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      // Handle interpolation params (excluding ns)
-      const { ns: _ns, ...params } = options || {}
-      if (Object.keys(params).length > 0) {
-        return `${fullKey}:${JSON.stringify(params)}`
-      }
-      return fullKey
-    },
-  }),
-}))
-
 vi.mock('../../../card', () => ({
   default: ({ payload, isLoading, loadingFileName }: {
     payload: { name: string }

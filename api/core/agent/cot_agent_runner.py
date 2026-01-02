@@ -22,6 +22,7 @@ from core.prompt.agent_history_prompt_transform import AgentHistoryPromptTransfo
 from core.tools.__base.tool import Tool
 from core.tools.entities.tool_entities import ToolInvokeMeta
 from core.tools.tool_engine import ToolEngine
+from core.workflow.nodes.agent.exc import AgentMaxIterationError
 from models.model import Message
 
 logger = logging.getLogger(__name__)
@@ -164,6 +165,11 @@ class CotAgentRunner(BaseAgentRunner, ABC):
             assert scratchpad.thought is not None
             scratchpad.thought = scratchpad.thought.strip() or "I am thinking about how to help you"
             self._agent_scratchpad.append(scratchpad)
+
+            # Check if max iteration is reached and model still wants to call tools
+            if iteration_step == max_iteration_steps and scratchpad.action:
+                if scratchpad.action.action_name.lower() != "final answer":
+                    raise AgentMaxIterationError(app_config.agent.max_iteration)
 
             # get llm usage
             if "usage" in usage_dict:

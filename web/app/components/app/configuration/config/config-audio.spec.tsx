@@ -15,15 +15,6 @@ vi.mock('use-context-selector', async (importOriginal) => {
   }
 })
 
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const prefix = options?.ns ? `${options.ns}.` : ''
-      return `${prefix}${key}`
-    },
-  }),
-}))
-
 const mockUseFeatures = vi.fn()
 const mockUseFeaturesStore = vi.fn()
 vi.mock('@/app/components/base/features/hooks', () => ({
