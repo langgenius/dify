@@ -190,6 +190,7 @@ class WorkflowRunArchiver:
         def _archive_with_session(run: WorkflowRun) -> ArchiveResult:
             with session_maker() as session:
                 return self._archive_run(session, storage, run)
+
         last_seen: tuple[datetime.datetime, str] | None = None
         archived_count = 0
 
