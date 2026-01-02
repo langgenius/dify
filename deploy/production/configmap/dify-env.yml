@@ -29,3 +29,10 @@ data:
   PLUGIN_PACKAGE_CACHE_PATH: "plugin_packages"
   PLUGIN_MEDIA_CACHE_PATH: "assets"
   FORCE_VERIFYING_SIGNATURE: "true"
+
+  # Ace Data Cloud Login (Console).
+  # When true, console sign-in will only allow Ace Data Cloud OAuth login and disable other login methods.
+  ENABLE_ACEDATACLOUD_OAUTH_LOGIN: "true"
+  ACEDATACLOUD_AUTH_BASE_URL: "https://auth.acedata.cloud"
+  ACEDATACLOUD_AUTH_LOGIN_PATH: "/auth/login"
+  ACEDATACLOUD_AUTH_AUTO_REGISTER: "true"

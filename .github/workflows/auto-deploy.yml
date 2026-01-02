@@ -14,6 +14,9 @@ jobs:
       run:
         working-directory: docker
     steps:
+      - name: Checkout
+        uses: actions/checkout@master
+
       - name: Generate Build Number
         uses: einaregilsson/build-number@v2
         with:
@@ -24,9 +27,6 @@ jobs:
       - name: Get Build Number
         run: |
           echo $BUILD_NUMBER
-
-      - name: Checkout
-        uses: actions/checkout@master
 
       - name: Set up Python
         uses: actions/setup-python@v4

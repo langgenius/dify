@@ -832,6 +832,7 @@ services:
       NEXT_PUBLIC_COOKIE_DOMAIN: ${NEXT_PUBLIC_COOKIE_DOMAIN:-}
       SENTRY_DSN: ${WEB_SENTRY_DSN:-}
       NEXT_TELEMETRY_DISABLED: ${NEXT_TELEMETRY_DISABLED:-0}
+      ENABLE_ACEDATACLOUD_OAUTH_LOGIN: ${ENABLE_ACEDATACLOUD_OAUTH_LOGIN:-true}
       TEXT_GENERATION_TIMEOUT_MS: ${TEXT_GENERATION_TIMEOUT_MS:-60000}
       CSP_WHITELIST: ${CSP_WHITELIST:-}
       ALLOW_EMBED: ${ALLOW_EMBED:-false}
@@ -962,7 +963,6 @@ services:
   # plugin daemon
   plugin_daemon:
     image: langgenius/dify-plugin-daemon:0.5.2-local
-    platform: linux/amd64
     restart: always
     environment:
       # Use the shared environment variables.

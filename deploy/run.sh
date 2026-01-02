@@ -47,14 +47,13 @@ fi
 
 kubectl apply -f "${SCRIPT_DIR}/production/configmap"
 kubectl apply -f "${SCRIPT_DIR}/production/service"
-kubectl apply -f "${SCRIPT_DIR}/production/statefulset"
 kubectl apply -f "${SCRIPT_DIR}/production/deployment"
 
 if [ -n "${BUILD_NUMBER:-}" ]; then
-  kubectl -n "${NAMESPACE}" set image statefulset/dify-api \
+  kubectl -n "${NAMESPACE}" set image deployment/dify-api \
     dify-api="ghcr.io/acedatacloud/dify-api:${BUILD_NUMBER}"
 
-  kubectl -n "${NAMESPACE}" set image statefulset/dify-worker \
+  kubectl -n "${NAMESPACE}" set image deployment/dify-worker \
     dify-worker="ghcr.io/acedatacloud/dify-api:${BUILD_NUMBER}"
 
   kubectl -n "${NAMESPACE}" set image deployment/dify-worker-beat \
