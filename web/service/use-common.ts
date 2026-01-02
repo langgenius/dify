@@ -234,8 +234,18 @@ export const useIsLogin = () => {
 
 export const useLogout = () => {
   const queryClient = useQueryClient()
+  const resetAuthQueries = () => {
+    queryClient.setQueryData(commonQueryKeys.isLogin, { logged_in: false })
+    queryClient.removeQueries({ queryKey: commonQueryKeys.userProfile })
+    queryClient.removeQueries({ queryKey: commonQueryKeys.currentWorkspace })
+    queryClient.removeQueries({ queryKey: commonQueryKeys.workspaces })
+  }
   return useMutation({
     mutationKey: [NAME_SPACE, 'logout'],
+    onMutate: () => {
+      // Ensure the UI doesn't rely on stale "logged_in: true" cache while navigating to `/signin`.
+      resetAuthQueries()
+    },
     mutationFn: async () => {
       try {
         await post('/logout')
@@ -245,10 +255,7 @@ export const useLogout = () => {
       }
     },
     onSettled: () => {
-      queryClient.setQueryData(commonQueryKeys.isLogin, { logged_in: false })
-      queryClient.removeQueries({ queryKey: commonQueryKeys.userProfile })
-      queryClient.removeQueries({ queryKey: commonQueryKeys.currentWorkspace })
-      queryClient.removeQueries({ queryKey: commonQueryKeys.workspaces })
+      resetAuthQueries()
     },
   })
 }
