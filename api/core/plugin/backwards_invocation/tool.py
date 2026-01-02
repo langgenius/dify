@@ -4,6 +4,7 @@ from typing import Any
 from core.callback_handler.workflow_tool_callback_handler import DifyWorkflowCallbackHandler
 from core.plugin.backwards_invocation.base import BaseBackwardsInvocation
 from core.tools.entities.tool_entities import ToolInvokeMessage, ToolProviderType
+from core.tools.signature import sign_tool_file
 from core.tools.tool_engine import ToolEngine
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.message_transformer import ToolFileMessageTransformer
@@ -41,6 +42,43 @@ class PluginToolBackwardsInvocation(BaseBackwardsInvocation):
                 response, user_id=user_id, tenant_id=tenant_id
             )
 
-            return response
+            return cls._sign_tool_file_urls(response)
         except Exception as e:
             raise e
+
+    # FIXME: this method should be gracefully deprecated
+    @classmethod
+    def _sign_tool_file_urls(
+        cls, messages: Generator[ToolInvokeMessage, None, None]
+    ) -> Generator[ToolInvokeMessage, None, None]:
+        """
+        Sign file URLs in tool invoke messages for external access.
+        """
+        for message in messages:
+            if message.type in {
+                ToolInvokeMessage.MessageType.IMAGE_LINK,
+                ToolInvokeMessage.MessageType.BINARY_LINK,
+                ToolInvokeMessage.MessageType.FILE,
+            }:
+                if isinstance(message.message, ToolInvokeMessage.TextMessage):
+                    url = message.message.text
+                    # Check if it's an unsigned internal path
+                    if url.startswith("/files/tools/"):
+                        parts = url.split("/")[-1]
+                        if "." in parts:
+                            file_id, ext = parts.rsplit(".", 1)
+                            extension = f".{ext}"
+                        else:
+                            file_id = parts
+                            extension = ".bin"
+
+                        signed_url = sign_tool_file(tool_file_id=file_id, extension=extension)
+
+                        yield ToolInvokeMessage(
+                            type=message.type,
+                            message=ToolInvokeMessage.TextMessage(text=signed_url),
+                            meta=message.meta,
+                        )
+                        continue
+
+            yield message
