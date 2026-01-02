@@ -1,50 +1,31 @@
 apiVersion: apps/v1
-kind: StatefulSet
+kind: Deployment
 metadata:
-  annotations:
   labels:
-    app: dify-worker
-    app.kubernetes.io/instance: dify-worker
-  name: dify-worker
+    app: dify-api
+    app.kubernetes.io/instance: dify-api
+  name: dify-api
   namespace: acedatacloud
 spec:
-  podManagementPolicy: OrderedReady
+  minReadySeconds: 10
+  progressDeadlineSeconds: 600
   replicas: 2
-  revisionHistoryLimit: 10
+  revisionHistoryLimit: 1
   selector:
     matchLabels:
-      app: dify-worker
-  serviceName: dify-worker-headless
+      app: dify-api
+  strategy:
+    rollingUpdate:
+      maxSurge: 0
+      maxUnavailable: 1
+    type: RollingUpdate
   template:
     metadata:
       labels:
-        app: dify-worker
+        app: dify-api
     spec:
       automountServiceAccountToken: false
-      affinity:
-        podAffinity:
-          preferredDuringSchedulingIgnoredDuringExecution:
-            - weight: 100
-              podAffinityTerm:
-                labelSelector:
-                  matchLabels:
-                    app: dify-api
-                topologyKey: kubernetes.io/hostname
       initContainers:
-      - name: wait-for-api
-        image: busybox:latest
-        command:
-          - sh
-          - -c
-          - |
-            for i in $(seq 1 120); do
-              if wget -qO- --timeout=2 http://dify-api:5001/health >/dev/null 2>&1; then
-                exit 0
-              fi
-              sleep 5
-            done
-            echo "dify-api /health not ready after 10 minutes"
-            exit 1
       - name: init-permissions
         image: busybox:latest
         command:
@@ -69,14 +50,16 @@ spec:
             name: dify-env
         env:
         - name: MODE
-          value: worker
+          value: api
         - name: LOG_LEVEL
-          value: INFO
+          value: DEBUG
         - name: SECRET_KEY
           valueFrom:
             secretKeyRef:
               name: dify
               key: SECRET_KEY
+        - name: MIGRATION_ENABLED
+          value: "true"
         - name: PLUGIN_DAEMON_URL
           value: http://dify-plugin-daemon:5002
         - name: PLUGIN_DAEMON_KEY
@@ -183,9 +166,72 @@ spec:
           value: "2"
         - name: TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH
           value: "false"
+        - name: CODE_EXECUTION_ENDPOINT
+          value: http://dify-sandbox:8194
+        - name: CODE_EXECUTION_API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dify
+              key: SECRET_KEY
+        - name: CODE_EXECUTION_SSL_VERIFY
+          value: "True"
+        - name: CODE_EXECUTION_POOL_MAX_CONNECTIONS
+          value: "100"
+        - name: CODE_EXECUTION_POOL_MAX_KEEPALIVE_CONNECTIONS
+          value: "20"
+        - name: CODE_EXECUTION_POOL_KEEPALIVE_EXPIRY
+          value: "5.0"
+        - name: CODE_EXECUTION_CONNECT_TIMEOUT
+          value: "10"
+        - name: CODE_EXECUTION_READ_TIMEOUT
+          value: "60"
+        - name: CODE_EXECUTION_WRITE_TIMEOUT
+          value: "10"
+        - name: CODE_MAX_NUMBER
+          value: "9223372036854775807"
+        - name: CODE_MIN_NUMBER
+          value: "-9223372036854775808"
+        - name: CODE_MAX_STRING_LENGTH
+          value: "80000"
+        - name: TEMPLATE_TRANSFORM_MAX_LENGTH
+          value: "80000"
+        - name: CODE_MAX_STRING_ARRAY_LENGTH
+          value: "30"
+        - name: CODE_MAX_OBJECT_ARRAY_LENGTH
+          value: "30"
+        - name: CODE_MAX_NUMBER_ARRAY_LENGTH
+          value: "1000"
+        - name: INDEXING_MAX_SEGMENTATION_TOKENS_LENGTH
+          value: "1000"
         image: ghcr.io/acedatacloud/dify-api:latest
         imagePullPolicy: IfNotPresent
-        name: dify-worker
+        name: dify-api
+        ports:
+        - containerPort: 5001
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          failureThreshold: 10
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 10
+        startupProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          failureThreshold: 30
+          periodSeconds: 20
+          timeoutSeconds: 10
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 5001
+          failureThreshold: 20
+          initialDelaySeconds: 60
+          periodSeconds: 20
+          timeoutSeconds: 10
         resources:
           limits:
             cpu: 500m
@@ -195,8 +241,6 @@ spec:
             memory: 512Mi
         securityContext:
           privileged: false
-        terminationMessagePath: /dev/termination-log
-        terminationMessagePolicy: File
         volumeMounts:
         - mountPath: /app/api/storage
           name: dify-storage
@@ -204,6 +248,8 @@ spec:
       dnsPolicy: ClusterFirst
       imagePullSecrets:
       - name: docker-registry
+      nodeSelector:
+        kubernetes.io/os: linux
       restartPolicy: Always
       schedulerName: default-scheduler
       securityContext: {}
@@ -212,7 +258,3 @@ spec:
       - name: dify-storage
         persistentVolumeClaim:
           claimName: dify
-  updateStrategy:
-    rollingUpdate:
-      partition: 0
-    type: RollingUpdate
