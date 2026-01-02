@@ -28,3 +28,15 @@ class WorkflowExecutionRepository(Protocol):
             execution: The WorkflowExecution instance to save or update
         """
         ...
+
+    def get(self, execution_id: str) -> WorkflowExecution | None:
+        """
+        Retrieve a WorkflowExecution by its ID.
+
+        Args:
+            execution_id: The ID of the workflow execution to retrieve
+
+        Returns:
+            The WorkflowExecution instance if found, None otherwise
+        """
+        ...

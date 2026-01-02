@@ -201,3 +201,39 @@ class SQLAlchemyWorkflowExecutionRepository(WorkflowExecutionRepository):
 
             # Update the in-memory cache for faster subsequent lookups
             self._execution_cache[db_model.id] = db_model
+
+    def get(self, execution_id: str) -> WorkflowExecution | None:
+        """
+        Retrieve a WorkflowExecution by its ID.
+
+        This method first checks the in-memory cache before querying the database,
+        providing faster access for frequently accessed executions.
+
+        Args:
+            execution_id: The ID of the workflow execution to retrieve
+
+        Returns:
+            The WorkflowExecution domain entity if found, None otherwise
+        """
+        from sqlalchemy import select
+
+        # Check cache first
+        if execution_id in self._execution_cache:
+            cached_db_model = self._execution_cache[execution_id]
+            return self._to_domain_model(cached_db_model)
+
+        # Query database if not in cache
+        with self._session_factory() as session:
+            db_model = session.execute(
+                select(WorkflowRun).where(
+                    WorkflowRun.id == execution_id,
+                    WorkflowRun.tenant_id == self._tenant_id,
+                )
+            ).scalar_one_or_none()
+
+            if db_model is None:
+                return None
+
+            # Cache the result for future lookups
+            self._execution_cache[execution_id] = db_model
+            return self._to_domain_model(db_model)

@@ -407,3 +407,133 @@ class WorkflowPersistenceLayer(GraphEngineLayer):
         if runtime_state is None:
             return {}
         return runtime_state.variable_pool.get_by_prefix(SYSTEM_VARIABLE_NODE_ID)
+
+
+class WorkflowResumePersistenceLayer(WorkflowPersistenceLayer):
+    """Persistence layer specifically for resuming paused workflows.
+
+    This layer differs from WorkflowPersistenceLayer in that it loads
+    the existing WorkflowExecution record instead of creating a new one
+    when handling GraphRunStartedEvent.
+
+    It also handles the resumption of paused nodes by updating the existing
+    node execution record instead of creating a new one.
+    """
+
+    def __init__(
+        self,
+        *,
+        application_generate_entity: Union[AdvancedChatAppGenerateEntity, WorkflowAppGenerateEntity],
+        workflow_info: PersistenceWorkflowInfo,
+        workflow_execution_repository: WorkflowExecutionRepository,
+        workflow_node_execution_repository: WorkflowNodeExecutionRepository,
+        existing_execution_id: str,
+        existing_started_at: datetime,
+        existing_inputs: Mapping[str, Any],
+        paused_node_id: str | None = None,
+        paused_node_execution: WorkflowNodeExecution | None = None,
+        trace_manager: TraceQueueManager | None = None,
+    ) -> None:
+        super().__init__(
+            application_generate_entity=application_generate_entity,
+            workflow_info=workflow_info,
+            workflow_execution_repository=workflow_execution_repository,
+            workflow_node_execution_repository=workflow_node_execution_repository,
+            trace_manager=trace_manager,
+        )
+        self._existing_execution_id = existing_execution_id
+        self._existing_started_at = existing_started_at
+        self._existing_inputs = existing_inputs
+        self._paused_node_id = paused_node_id
+        self._paused_node_execution = paused_node_execution
+        self._paused_node_matched = False  # Track if paused node has been matched
+
+    def _handle_graph_run_started(self) -> None:
+        """Load existing workflow execution instead of creating a new one."""
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # Load the existing execution to validate state and preserve important fields
+        existing_execution = self._workflow_execution_repository.get(self._existing_execution_id)
+        if existing_execution is None:
+            raise ValueError(f"Workflow execution {self._existing_execution_id} not found")
+
+        # Validate that the execution is in a resumable state
+        if existing_execution.status != WorkflowExecutionStatus.PAUSED:
+            logger.warning(
+                "WorkflowResumePersistenceLayer: Attempting to resume execution %s from non-PAUSED state %s",
+                self._existing_execution_id,
+                existing_execution.status,
+            )
+            # Continue anyway for robustness, but log a warning
+
+        # For resume, we update the existing execution to RUNNING status
+        # while preserving other fields that should not be overwritten
+        workflow_execution = WorkflowExecution(
+            id_=self._existing_execution_id,
+            workflow_id=self._workflow_info.workflow_id,
+            workflow_type=self._workflow_info.workflow_type,
+            workflow_version=self._workflow_info.version,
+            graph=self._workflow_info.graph_data,
+            inputs=existing_execution.inputs,  # Preserve original inputs
+            outputs=None,  # Clear outputs on resume
+            status=WorkflowExecutionStatus.RUNNING,
+            error_message="",  # Clear previous errors
+            total_tokens=existing_execution.total_tokens,  # Preserve token count
+            total_steps=existing_execution.total_steps,  # Preserve step count
+            exceptions_count=existing_execution.exceptions_count,  # Preserve exception count
+            started_at=self._existing_started_at,  # Preserve original start time
+            finished_at=None,  # Clear finished time
+        )
+
+        # Update the existing record to RUNNING status
+        self._workflow_execution_repository.save(workflow_execution)
+        self._workflow_execution = workflow_execution
+
+    def _handle_node_started(self, event: NodeRunStartedEvent) -> None:
+        """Handle node start event, updating existing record for resumed paused nodes.
+
+        When resuming a paused workflow, the paused node will trigger a NodeRunStartedEvent.
+        Instead of creating a new execution record (which would result in duplicate records),
+        we update the existing paused node execution record to RUNNING status.
+        """
+        import logging
+
+        logger = logging.getLogger(__name__)
+
+        # Check if this is the resumed paused node (only match once)
+        if (
+            not self._paused_node_matched
+            and self._paused_node_id
+            and self._paused_node_execution
+            and event.node_id == self._paused_node_id
+        ):
+            logger.info(
+                "WorkflowResumePersistenceLayer: Updating existing paused node execution %s to RUNNING",
+                self._paused_node_execution.id,
+            )
+            # Mark as matched to prevent repeated matching
+            self._paused_node_matched = True
+            # Update the existing paused node execution to RUNNING
+            domain_execution = self._paused_node_execution
+            domain_execution.status = WorkflowNodeExecutionStatus.RUNNING
+
+            # Cache the execution for later updates
+            self._node_execution_cache[event.id] = domain_execution
+            self._workflow_node_execution_repository.save(domain_execution)
+
+            # Create snapshot for timing calculations
+            snapshot = _NodeRuntimeSnapshot(
+                node_id=event.node_id,
+                title=event.node_title,
+                predecessor_node_id=event.predecessor_node_id,
+                iteration_id=event.in_iteration_id,
+                loop_id=event.in_loop_id,
+                created_at=domain_execution.created_at,  # Use original creation time
+            )
+            self._node_snapshots[event.id] = snapshot
+            return
+
+        # For other nodes, use the default behavior
+        super()._handle_node_started(event)

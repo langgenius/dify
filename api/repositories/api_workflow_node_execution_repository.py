@@ -80,7 +80,7 @@ class DifyAPIWorkflowNodeExecutionRepository(WorkflowNodeExecutionRepository, Pr
             workflow_run_id: The workflow run identifier
 
         Returns:
-            A sequence of WorkflowNodeExecutionModel instances ordered by index (desc)
+            A sequence of WorkflowNodeExecutionModel instances ordered by finished_at (asc)
         """
         ...
 

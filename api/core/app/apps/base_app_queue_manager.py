@@ -79,7 +79,8 @@ class AppQueueManager:
                         QueueStopEvent(stopped_by=QueueStopEvent.StopBy.USER_MANUAL), PublishFrom.TASK_PIPELINE
                     )
 
-                if elapsed_time // 10 > last_ping_time:
+                # Only send ping if not stopped
+                if not self._is_stopped() and elapsed_time // 10 > last_ping_time:
                     self.publish(QueuePingEvent(), PublishFrom.TASK_PIPELINE)
                     last_ping_time = elapsed_time // 10
 
@@ -88,6 +89,14 @@ class AppQueueManager:
         Stop listen to queue
         :return:
         """
+        # Set stop flag before clearing cache to prevent race conditions
+        stopped_cache_key = self._generate_stopped_cache_key(self._task_id)
+        redis_client.setex(stopped_cache_key, 600, 1)
+
+        # Clear the stopped cache to ensure _is_stopped() returns True immediately
+        with self._cache_lock:
+            self._stopped_cache.clear()
+
         self._clear_task_belong_cache()
         self._q.put(None)
 

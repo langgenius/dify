@@ -70,6 +70,8 @@ class StreamEvent(StrEnum):
     AGENT_MESSAGE = "agent_message"
     WORKFLOW_STARTED = "workflow_started"
     WORKFLOW_FINISHED = "workflow_finished"
+    WORKFLOW_PAUSED = "workflow_paused"
+    WORKFLOW_RESUMED = "workflow_resumed"
     NODE_STARTED = "node_started"
     NODE_FINISHED = "node_finished"
     NODE_RETRY = "node_retry"
@@ -236,6 +238,53 @@ class WorkflowFinishStreamResponse(StreamResponse):
         files: Sequence[Mapping[str, Any]] | None = []
 
     event: StreamEvent = StreamEvent.WORKFLOW_FINISHED
+    workflow_run_id: str
+    data: Data
+
+
+class WorkflowPausedStreamResponse(StreamResponse):
+    """
+    WorkflowPausedStreamResponse entity
+    Sent when workflow is paused due to human input node or other pause reasons.
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        workflow_id: str
+        status: str = "paused"
+        outputs: Mapping[str, Any] | None = None
+        elapsed_time: float
+        total_tokens: int
+        total_steps: int
+        created_by: Mapping[str, object] = Field(default_factory=dict)
+        created_at: int
+        paused_at: int
+
+    event: StreamEvent = StreamEvent.WORKFLOW_PAUSED
+    workflow_run_id: str
+    data: Data
+
+
+class WorkflowResumedStreamResponse(StreamResponse):
+    """
+    WorkflowResumedStreamResponse entity
+    Sent when workflow is resumed after human input.
+    """
+
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        id: str
+        workflow_id: str
+        action: str  # "approve" or "reject"
+
+    event: StreamEvent = StreamEvent.WORKFLOW_RESUMED
     workflow_run_id: str
     data: Data
 

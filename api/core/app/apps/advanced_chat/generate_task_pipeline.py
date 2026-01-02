@@ -879,7 +879,8 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         return message
 
     def _save_output_for_event(self, event: QueueNodeSucceededEvent | QueueNodeExceptionEvent, node_execution_id: str):
-        with Session(db.engine) as session, session.begin():
+        # Use expire_on_commit=False for consistency with other session usage
+        with Session(db.engine, expire_on_commit=False) as session, session.begin():
             saver = self._draft_var_saver_factory(
                 session=session,
                 app_id=self._application_generate_entity.app_config.app_id,

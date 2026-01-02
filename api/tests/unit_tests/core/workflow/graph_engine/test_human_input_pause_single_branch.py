@@ -229,7 +229,7 @@ def test_human_input_llm_streaming_order_across_pause() -> None:
         assert graph_runtime_state is not None
         assert graph is not None
         graph_runtime_state.variable_pool.add(("human", "input_ready"), True)
-        graph_runtime_state.graph_execution.pause_reason = None
+        graph_runtime_state.graph_execution.pause_reasons.clear()
         return graph, graph_runtime_state
 
     resume_case = WorkflowTestCase(

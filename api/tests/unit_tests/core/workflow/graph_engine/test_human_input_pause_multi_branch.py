@@ -249,7 +249,8 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
 
         graph_runtime_state.variable_pool.add(("human", "input_ready"), True)
         graph_runtime_state.variable_pool.add(("human", "edge_source_handle"), scenario["handle"])
-        graph_runtime_state.graph_execution.pause_reason = None
+        graph_runtime_state.variable_pool.add(("human", "reason"), f"Resumed via {scenario['handle']} branch")
+        graph_runtime_state.graph_execution.pause_reasons.clear()
 
         pre_chunk_count = sum(len(chunks) for _, chunks in scenario["expected_pre_chunks"])
         post_chunk_count = sum(len(chunks) for _, chunks in scenario["expected_post_chunks"])
@@ -322,6 +323,16 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
             if isinstance(event, NodeRunStreamChunkEvent) and index < human_success_index
         ]
         assert pre_indices == list(range(2, 2 + pre_chunk_count))
+
+        # Verify that human node outputs include reason field
+        human_success_event = next(
+            event for event in resume_events if isinstance(event, NodeRunSucceededEvent) and event.node_id == "human"
+        )
+        assert human_success_event.node_run_result.outputs is not None
+        assert "reason" in human_success_event.node_run_result.outputs
+        assert human_success_event.node_run_result.outputs["reason"] == f"Resumed via {scenario['handle']} branch"
+        assert human_success_event.node_run_result.outputs["action"] == scenario["handle"]
+        assert "approved" in human_success_event.node_run_result.outputs
 
         resume_chunk_indices = [
             index

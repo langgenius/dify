@@ -7,4 +7,8 @@ class HumanInputNodeData(BaseNodeData):
     """Configuration schema for the HumanInput node."""
 
     required_variables: list[str] = Field(default_factory=list)
-    pause_reason: str | None = Field(default=None)
+    pause_reason: str = Field(
+        default="",
+        description="Reason why the workflow should pause at this node",
+        max_length=255,
+    )

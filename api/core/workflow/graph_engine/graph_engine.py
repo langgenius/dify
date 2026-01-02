@@ -300,10 +300,14 @@ class GraphEngine:
 
     def _initialize_layers(self) -> None:
         """Initialize layers with context."""
+        if logger.isEnabledFor(logging.DEBUG):
+            logger.debug("GraphEngine._initialize_layers: Initializing %d layers", len(self._layers))
         self._event_manager.set_layers(self._layers)
         # Create a read-only wrapper for the runtime state
         read_only_state = ReadOnlyGraphRuntimeStateWrapper(self._graph_runtime_state)
         for layer in self._layers:
+            if logger.isEnabledFor(logging.DEBUG):
+                logger.debug("GraphEngine._initialize_layers: Initializing layer %s", layer.__class__.__name__)
             try:
                 layer.initialize(read_only_state, self._command_channel)
             except Exception as e:

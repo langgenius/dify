@@ -6,7 +6,7 @@ from flask import request
 from flask_restx import Api, Namespace, Resource, fields
 from pydantic import BaseModel, Field
 from sqlalchemy.orm import Session, sessionmaker
-from werkzeug.exceptions import BadRequest, InternalServerError, NotFound
+from werkzeug.exceptions import BadRequest, Conflict, Forbidden, InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
 from controllers.service_api import service_api_ns
@@ -40,6 +40,7 @@ from services.app_generate_service import AppGenerateService
 from services.errors.app import IsDraftWorkflowError, WorkflowIdFormatError, WorkflowNotFoundError
 from services.errors.llm import InvokeRateLimitError
 from services.workflow_app_service import WorkflowAppService
+from services.workflow_run_service import WorkflowRunService
 
 logger = logging.getLogger(__name__)
 
@@ -310,3 +311,95 @@ class WorkflowAppLogApi(Resource):
             )
 
             return workflow_app_log_pagination
+
+
+class WorkflowResumePayload(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500, description="Reason for resuming the workflow")
+    action: Literal["approve", "reject"] = Field(..., description="Action to take: approve or reject")
+
+
+register_schema_models(service_api_ns, WorkflowResumePayload)
+
+
+@service_api_ns.route("/workflows/run/<string:workflow_run_id>/resume")
+class WorkflowRunResumeApi(Resource):
+    @service_api_ns.expect(service_api_ns.models[WorkflowResumePayload.__name__])
+    @service_api_ns.doc("resume_workflow_run")
+    @service_api_ns.doc(description="Resume a paused workflow run")
+    @service_api_ns.doc(params={"workflow_run_id": "Workflow run ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Workflow resumed successfully",
+            400: "Bad request - workflow not in paused state or invalid reason",
+            401: "Unauthorized - invalid API token",
+            404: "Workflow run not found",
+            409: "Workflow already resumed",
+        }
+    )
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON, required=True))
+    def post(self, app_model: App, end_user: EndUser, workflow_run_id: str):
+        """Resume a paused workflow run.
+
+        This endpoint allows resuming a workflow that was paused due to a HumanInputNode.
+        A reason and action (approve/reject) must be provided.
+        """
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
+            raise NotWorkflowAppError()
+
+        payload = WorkflowResumePayload.model_validate(service_api_ns.payload or {})
+
+        workflow_run_service = WorkflowRunService()
+        try:
+            result = workflow_run_service.resume_workflow(
+                app_model=app_model,
+                run_id=workflow_run_id,
+                user_id=end_user.id,
+                resume_reason=payload.reason,
+                action=payload.action,
+                check_permission=False,  # Service API uses app-level auth via API token
+            )
+            return result, 200
+        except ValueError as e:
+            error_msg = str(e)
+            if "not found" in error_msg:
+                raise NotFound(error_msg)
+            elif "not in paused state" in error_msg:
+                raise BadRequest(error_msg)
+            elif "already been resumed" in error_msg or "No active pause" in error_msg:
+                raise Conflict("Workflow has already been resumed")
+            elif "Permission denied" in error_msg:
+                raise Forbidden(error_msg)
+            else:
+                raise BadRequest(error_msg)
+
+
+@service_api_ns.route("/workflows/run/<string:workflow_run_id>/pause-info")
+class WorkflowRunPauseInfoApi(Resource):
+    @service_api_ns.doc("get_workflow_run_pause_info")
+    @service_api_ns.doc(description="Get pause information for a workflow run")
+    @service_api_ns.doc(params={"workflow_run_id": "Workflow run ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Pause information retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Workflow run not found or not paused",
+        }
+    )
+    @validate_app_token
+    def get(self, app_model: App, workflow_run_id: str):
+        """Get pause information for a workflow run.
+
+        Returns detailed information about a paused workflow.
+        """
+        app_mode = AppMode.value_of(app_model.mode)
+        if app_mode not in [AppMode.WORKFLOW, AppMode.ADVANCED_CHAT]:
+            raise NotWorkflowAppError()
+
+        workflow_run_service = WorkflowRunService()
+        pause_info = workflow_run_service.get_pause_info(app_model=app_model, run_id=workflow_run_id)
+
+        if not pause_info:
+            raise NotFound("Workflow run not found or not paused")
+
+        return pause_info, 200

@@ -1697,6 +1697,7 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         # on a potentially large table—we reference `WorkflowRun` from `WorkflowPause` and enforce a unique
         # constraint on `workflow_run_id` to guarantee a one-to-one relationship.
         UniqueConstraint("workflow_run_id"),
+        Index("ix_workflow_pauses_resumed_by_user_id", "resumed_by_user_id"),
     )
 
     # `workflow_id` represents the unique identifier of the workflow associated with this pause.
@@ -1724,6 +1725,20 @@ class WorkflowPause(DefaultFieldsMixin, Base):
     # It only set `resumed_at` to a non-null value.
     resumed_at: Mapped[datetime | None] = mapped_column(
         sa.DateTime,
+        nullable=True,
+    )
+
+    # `resume_reason` records the reason provided when resuming the workflow.
+    # It is set to `NULL` if the workflow has not been resumed.
+    resume_reason: Mapped[str | None] = mapped_column(
+        String(length=500),
+        nullable=True,
+    )
+
+    # `resumed_by_user_id` records the user ID who resumed the workflow.
+    # It is set to `NULL` if the workflow has not been resumed.
+    resumed_by_user_id: Mapped[str | None] = mapped_column(
+        StringUUID,
         nullable=True,
     )
 

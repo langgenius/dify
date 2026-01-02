@@ -349,10 +349,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             if workflow_run is None:
                 raise ValueError(f"WorkflowRun not found: {workflow_run_id}")
 
-            # Check if workflow is in RUNNING status
-            if workflow_run.status != WorkflowExecutionStatus.RUNNING:
+            # Check if workflow is in RUNNING or PAUSED status
+            # (PAUSED is allowed because WorkflowPersistenceLayer may have already set the status)
+            if workflow_run.status not in (WorkflowExecutionStatus.RUNNING, WorkflowExecutionStatus.PAUSED):
                 raise _WorkflowRunError(
-                    f"Only WorkflowRun with RUNNING status can be paused, "
+                    f"Only WorkflowRun with RUNNING or PAUSED status can be paused, "
                     f"workflow_run_id={workflow_run_id}, current_status={workflow_run.status}"
                 )
             #
@@ -376,11 +377,11 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             pause_reason_models = []
             for reason in pause_reasons:
                 if isinstance(reason, HumanInputRequired):
-                    # TODO(QuantumGhost): record node_id for `WorkflowPauseReason`
                     pause_reason_model = WorkflowPauseReason(
                         pause_id=pause_model.id,
                         type_=reason.TYPE,
                         form_id=reason.form_id,
+                        node_id=reason.node_id,
                     )
                 elif isinstance(reason, SchedulingPause):
                     pause_reason_model = WorkflowPauseReason(

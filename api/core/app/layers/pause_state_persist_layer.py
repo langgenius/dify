@@ -1,4 +1,6 @@
-from typing import Annotated, Literal, Self, TypeAlias
+import json
+import logging
+from typing import Annotated, Any, Literal, Self, TypeAlias
 
 from pydantic import BaseModel, Field
 from sqlalchemy import Engine
@@ -11,6 +13,8 @@ from core.workflow.graph_events.graph import GraphRunPausedEvent
 from models.model import AppMode
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
+
+logger = logging.getLogger(__name__)
 
 
 # Wrapper types for `WorkflowAppGenerateEntity` and
@@ -42,7 +46,77 @@ class WorkflowResumptionContext(BaseModel):
     serialized_graph_runtime_state: str
 
     def dumps(self) -> str:
-        return self.model_dump_json()
+        """
+        Serialize the context to JSON, automatically removing non-serializable fields.
+
+        This method uses a recursive approach to detect and remove non-serializable
+        fields instead of relying on hardcoded exclusion paths, making it more
+        robust to structural changes.
+        """
+        data = self.model_dump()
+        self._remove_non_serializable(data)
+        return json.dumps(data)
+
+    @classmethod
+    def _remove_non_serializable(cls, data: Any) -> None:
+        """
+        Recursively remove non-serializable fields from a data structure.
+
+        This modifies the data structure in-place, removing any values that
+        cannot be JSON serialized (e.g., objects with __dict__ that aren't
+        BaseModel, dict, list, str, int, float, or bool).
+
+        Args:
+            data: The data structure to clean (dict, list, or primitive)
+        """
+        if isinstance(data, dict):
+            keys_to_remove = []
+            for key, value in data.items():
+                if cls._is_non_serializable(value):
+                    keys_to_remove.append(key)
+                    logger.debug("Removing non-serializable field: %s", key)
+                elif isinstance(value, (dict, list)):
+                    cls._remove_non_serializable(value)
+
+            # Remove non-serializable keys
+            for key in keys_to_remove:
+                del data[key]
+
+        elif isinstance(data, list):
+            for item in data:
+                if isinstance(item, (dict, list)):
+                    cls._remove_non_serializable(item)
+
+    @staticmethod
+    def _is_non_serializable(value: Any) -> bool:
+        """
+        Check if a value is non-serializable for JSON.
+
+        Args:
+            value: The value to check
+
+        Returns:
+            True if the value cannot be JSON serialized
+        """
+        # Handle None
+        if value is None:
+            return False
+
+        # Handle JSON-serializable primitives
+        if isinstance(value, (str, int, float, bool)):
+            return False
+
+        # Handle collections (needs recursive checking)
+        if isinstance(value, (dict, list)):
+            return False
+
+        # Handle Pydantic models (have their own serialization)
+        if isinstance(value, BaseModel):
+            return False
+
+        # Everything else with __dict__ is likely non-serializable
+        # (e.g., TraceQueueManager, custom objects, etc.)
+        return hasattr(value, "__dict__")
 
     @classmethod
     def loads(cls, value: str) -> Self:
@@ -95,8 +169,12 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         Args:
             event: The event emitted by the engine
         """
+        logger.debug("PauseStatePersistenceLayer.on_event called with event type: %s", type(event).__name__)
+
         if not isinstance(event, GraphRunPausedEvent):
             return
+
+        logger.debug("Processing GraphRunPausedEvent with reasons: %s", event.reasons)
 
         assert self.graph_runtime_state is not None
 
@@ -112,14 +190,20 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         )
 
         workflow_run_id: str | None = self.graph_runtime_state.system_variable.workflow_execution_id
+        logger.debug("Creating workflow pause for workflow_run_id: %s", workflow_run_id)
         assert workflow_run_id is not None
         repo = self._get_repo()
-        repo.create_workflow_pause(
-            workflow_run_id=workflow_run_id,
-            state_owner_user_id=self._state_owner_user_id,
-            state=state.dumps(),
-            pause_reasons=event.reasons,
-        )
+        try:
+            repo.create_workflow_pause(
+                workflow_run_id=workflow_run_id,
+                state_owner_user_id=self._state_owner_user_id,
+                state=state.dumps(),
+                pause_reasons=event.reasons,
+            )
+            logger.debug("Successfully created workflow pause for workflow_run_id: %s", workflow_run_id)
+        except Exception as e:
+            logger.error("Failed to create workflow pause: %s", e, exc_info=True)
+            raise
 
     def on_graph_end(self, error: Exception | None) -> None:
         """

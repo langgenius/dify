@@ -3,6 +3,7 @@ from typing import Literal, cast
 from flask import request
 from flask_restx import Resource, fields, marshal_with
 from pydantic import BaseModel, Field, field_validator
+from werkzeug.exceptions import BadRequest, Conflict, NotFound
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
@@ -375,3 +376,117 @@ class WorkflowRunNodeExecutionListApi(Resource):
         )
 
         return {"data": node_executions}
+
+
+class WorkflowResumeRequest(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=500, description="Reason for resuming the workflow")
+    action: Literal["approve", "reject"] = Field(..., description="Action to take: approve or reject")
+    use_signal: bool = Field(default=True, description="Use Redis signal for debugger mode SSE")
+
+
+console_ns.schema_model(
+    WorkflowResumeRequest.__name__,
+    WorkflowResumeRequest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
+)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/resume")
+class WorkflowRunResumeApi(Resource):
+    @console_ns.doc("resume_workflow_run")
+    @console_ns.doc(description="Resume a paused workflow run with a reason")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.doc(body=console_ns.models[WorkflowResumeRequest.__name__])
+    @console_ns.expect(console_ns.models[WorkflowResumeRequest.__name__])
+    @console_ns.response(200, "Workflow resumed successfully")
+    @console_ns.response(400, "Bad request - workflow not in paused state or invalid reason")
+    @console_ns.response(404, "Workflow run not found")
+    @console_ns.response(409, "Workflow already resumed")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def post(self, app_model: App, run_id):
+        """
+        Resume a paused workflow run.
+
+        This endpoint allows resuming a workflow that was paused due to a HumanInputNode.
+        A reason must be provided explaining why the workflow is being resumed.
+        The workflow will continue execution from where it was paused.
+
+        Request body:
+        - reason (string, required): Reason for resuming (1-500 characters)
+
+        Returns:
+        - result: "success" if resumption was triggered
+        - workflow_run_id: The ID of the resumed workflow run
+        - status: "running" (workflow is now resuming execution)
+        - resumed_at: ISO 8601 timestamp when workflow was resumed
+        - resume_reason: The provided reason for resuming
+        """
+        run_id = str(run_id)
+        user = cast(Account, current_user)
+
+        # Validate request body
+        try:
+            resume_request = WorkflowResumeRequest.model_validate(request.get_json())
+        except Exception as e:
+            raise BadRequest(str(e))
+
+        # Call service to resume workflow
+        workflow_run_service = WorkflowRunService()
+        try:
+            result = workflow_run_service.resume_workflow(
+                app_model=app_model,
+                run_id=run_id,
+                user_id=user.id,
+                resume_reason=resume_request.reason,
+                action=resume_request.action,
+                use_signal=resume_request.use_signal,
+            )
+            return result, 200
+        except ValueError as e:
+            error_msg = str(e)
+            if "not found" in error_msg:
+                raise NotFound(error_msg)
+            elif "not in paused state" in error_msg:
+                raise BadRequest(error_msg)
+            elif "already been resumed" in error_msg or "No active pause" in error_msg:
+                raise Conflict("Workflow has already been resumed")
+            else:
+                raise BadRequest(error_msg)
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-runs/<uuid:run_id>/pause-info")
+class WorkflowRunPauseInfoApi(Resource):
+    @console_ns.doc("get_workflow_run_pause_info")
+    @console_ns.doc(description="Get pause information for a workflow run")
+    @console_ns.doc(params={"app_id": "Application ID", "run_id": "Workflow run ID"})
+    @console_ns.response(200, "Pause information retrieved successfully")
+    @console_ns.response(404, "Workflow run not found or not paused")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @get_app_model(mode=[AppMode.ADVANCED_CHAT, AppMode.WORKFLOW])
+    def get(self, app_model: App, run_id):
+        """
+        Get pause information for a workflow run.
+
+        Returns detailed information about a paused workflow, including:
+        - status: Current pause status ("paused" or "resumed")
+        - pause_reason: Details about why the workflow was paused
+          - type: Pause reason type (e.g., "human_input_required")
+          - node_id: ID of the node that triggered the pause
+          - pause_reason_text: Human-readable reason message
+        - paused_at: ISO 8601 timestamp when workflow was paused
+        - resumed_at: ISO 8601 timestamp when workflow was resumed (null if not resumed)
+        - resume_reason: Reason provided when workflow was resumed (null if not resumed)
+        """
+        run_id = str(run_id)
+
+        workflow_run_service = WorkflowRunService()
+        pause_info = workflow_run_service.get_pause_info(app_model=app_model, run_id=run_id)
+
+        if not pause_info:
+            raise NotFound("Workflow run not found or not paused")
+
+        return pause_info, 200

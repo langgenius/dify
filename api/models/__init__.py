@@ -103,6 +103,7 @@ from .workflow import (
     WorkflowNodeExecutionOffload,
     WorkflowNodeExecutionTriggeredFrom,
     WorkflowPause,
+    WorkflowPauseReason,
     WorkflowRun,
     WorkflowType,
 )
@@ -199,6 +200,7 @@ __all__ = [
     "WorkflowNodeExecutionOffload",
     "WorkflowNodeExecutionTriggeredFrom",
     "WorkflowPause",
+    "WorkflowPauseReason",
     "WorkflowRun",
     "WorkflowRunTriggeredFrom",
     "WorkflowSchedulePlan",

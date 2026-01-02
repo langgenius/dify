@@ -27,6 +27,7 @@ class QueueEvent(StrEnum):
     WORKFLOW_SUCCEEDED = "workflow_succeeded"
     WORKFLOW_FAILED = "workflow_failed"
     WORKFLOW_PARTIAL_SUCCEEDED = "workflow_partial_succeeded"
+    WORKFLOW_PAUSED = "workflow_paused"
     ITERATION_START = "iteration_start"
     ITERATION_NEXT = "iteration_next"
     ITERATION_COMPLETED = "iteration_completed"
@@ -289,6 +290,16 @@ class QueueWorkflowPartialSuccessEvent(AppQueueEvent):
 
     event: QueueEvent = QueueEvent.WORKFLOW_PARTIAL_SUCCEEDED
     exceptions_count: int
+    outputs: Mapping[str, object] = Field(default_factory=dict)
+
+
+class QueueWorkflowPausedEvent(AppQueueEvent):
+    """
+    QueueWorkflowPausedEvent entity
+    Emitted when workflow is paused due to human input node or other pause reasons.
+    """
+
+    event: QueueEvent = QueueEvent.WORKFLOW_PAUSED
     outputs: Mapping[str, object] = Field(default_factory=dict)
 
 

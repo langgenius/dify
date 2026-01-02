@@ -19,6 +19,7 @@ from core.app.entities.queue_entities import (
     QueueNodeRetryEvent,
     QueueNodeStartedEvent,
     QueueNodeSucceededEvent,
+    QueueWorkflowPausedEvent,
 )
 from core.app.entities.task_entities import (
     AgentLogStreamResponse,
@@ -32,6 +33,7 @@ from core.app.entities.task_entities import (
     NodeRetryStreamResponse,
     NodeStartStreamResponse,
     WorkflowFinishStreamResponse,
+    WorkflowPausedStreamResponse,
     WorkflowStartStreamResponse,
 )
 from core.file import FILE_MODEL_IDENTITY, File
@@ -261,6 +263,63 @@ class WorkflowResponseConverter:
                 finished_at=int(finished_at.timestamp()),
                 files=self.fetch_files_from_node_outputs(outputs_mapping),
                 exceptions_count=exceptions_count,
+            ),
+        )
+
+    def workflow_paused_to_stream_response(
+        self,
+        *,
+        task_id: str,
+        workflow_id: str,
+        event: QueueWorkflowPausedEvent,
+        graph_runtime_state: GraphRuntimeState,
+    ) -> WorkflowPausedStreamResponse:
+        """Convert workflow paused event to stream response.
+
+        This is sent when the workflow is paused due to human input node or other pause reasons.
+        The SSE connection should be closed after this event is sent.
+        """
+        run_id = self._ensure_workflow_run_id()
+        started_at = self._workflow_started_at
+        if started_at is None:
+            raise ValueError(
+                "workflow_paused_to_stream_response called before workflow_start_to_stream_response",
+            )
+
+        paused_at = naive_utc_now()
+        elapsed_time = (paused_at - started_at).total_seconds()
+
+        outputs_mapping = event.outputs or {}
+        encoded_outputs = WorkflowRuntimeTypeConverter().to_json_encodable(dict(outputs_mapping))
+
+        created_by: Mapping[str, object] | None
+        user = self._user
+        if isinstance(user, Account):
+            created_by = {
+                "id": user.id,
+                "name": user.name,
+                "email": user.email,
+            }
+        else:
+            created_by = {
+                "id": user.id,
+                "user": user.session_id,
+            }
+
+        return WorkflowPausedStreamResponse(
+            task_id=task_id,
+            workflow_run_id=run_id,
+            data=WorkflowPausedStreamResponse.Data(
+                id=run_id,
+                workflow_id=workflow_id,
+                status="paused",
+                outputs=encoded_outputs,
+                elapsed_time=elapsed_time,
+                total_tokens=graph_runtime_state.total_tokens,
+                total_steps=graph_runtime_state.node_run_steps,
+                created_by=created_by,
+                created_at=int(started_at.timestamp()),
+                paused_at=int(paused_at.timestamp()),
             ),
         )
 

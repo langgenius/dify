@@ -146,8 +146,11 @@ class WorkflowAppRunner(WorkflowBasedAppRunner):
         )
 
         workflow_entry.graph_engine.layer(persistence_layer)
+        logger.info("WorkflowAppRunner: Adding %d graph_engine_layers", len(self._graph_engine_layers))
         for layer in self._graph_engine_layers:
+            logger.info("WorkflowAppRunner: Adding layer %s", type(layer).__name__)
             workflow_entry.graph_engine.layer(layer)
+        logger.info("WorkflowAppRunner: Total layers in graph_engine: %d", len(workflow_entry.graph_engine._layers))
 
         generator = workflow_entry.run()
 

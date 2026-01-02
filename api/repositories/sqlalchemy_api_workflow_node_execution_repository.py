@@ -102,14 +102,14 @@ class DifyAPISQLAlchemyWorkflowNodeExecutionRepository(DifyAPIWorkflowNodeExecut
             workflow_run_id: The workflow run identifier
 
         Returns:
-            A sequence of WorkflowNodeExecutionModel instances ordered by index (desc)
+            A sequence of WorkflowNodeExecutionModel instances ordered by finished_at (asc)
         """
         stmt = WorkflowNodeExecutionModel.preload_offload_data(select(WorkflowNodeExecutionModel))
         stmt = stmt.where(
             WorkflowNodeExecutionModel.tenant_id == tenant_id,
             WorkflowNodeExecutionModel.app_id == app_id,
             WorkflowNodeExecutionModel.workflow_run_id == workflow_run_id,
-        ).order_by(asc(WorkflowNodeExecutionModel.created_at))
+        ).order_by(asc(WorkflowNodeExecutionModel.finished_at), asc(WorkflowNodeExecutionModel.created_at))
 
         with self._session_maker() as session:
             return session.execute(stmt).scalars().all()

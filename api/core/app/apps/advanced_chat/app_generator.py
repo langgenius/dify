@@ -24,6 +24,7 @@ from core.app.apps.message_based_app_generator import MessageBasedAppGenerator
 from core.app.apps.message_based_app_queue_manager import MessageBasedAppQueueManager
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom
 from core.app.entities.task_entities import ChatbotAppBlockingResponse, ChatbotAppStreamResponse
+from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -530,6 +531,16 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 if app is None:
                     raise ValueError("App not found")
 
+            # Create PauseStatePersistenceLayer for handling workflow pause/resume
+            logger.info(
+                "Creating PauseStatePersistenceLayer for AdvancedChat with state_owner_user_id: %s", system_user_id
+            )
+            pause_layer = PauseStatePersistenceLayer(
+                session_factory=db.engine,
+                generate_entity=application_generate_entity,
+                state_owner_user_id=system_user_id,
+            )
+
             runner = AdvancedChatAppRunner(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
@@ -542,6 +553,7 @@ class AdvancedChatAppGenerator(MessageBasedAppGenerator):
                 app=app,
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
+                graph_engine_layers=(pause_layer,),
             )
 
             try:

@@ -23,6 +23,7 @@ from core.app.apps.workflow.generate_response_converter import WorkflowAppGenera
 from core.app.apps.workflow.generate_task_pipeline import WorkflowAppGenerateTaskPipeline
 from core.app.entities.app_invoke_entities import InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.task_entities import WorkflowAppBlockingResponse, WorkflowAppStreamResponse
+from core.app.layers.pause_state_persist_layer import PauseStatePersistenceLayer
 from core.helper.trace_id_helper import extract_external_trace_id_from_args
 from core.model_runtime.errors.invoke import InvokeAuthorizationError
 from core.ops.ops_trace_manager import TraceQueueManager
@@ -501,6 +502,21 @@ class WorkflowAppGenerator(BaseAppGenerator):
                     # For internal calls, use the original user ID
                     system_user_id = application_generate_entity.user_id
 
+            # Create PauseStatePersistenceLayer for handling workflow pause/resume
+            logger.info("Creating PauseStatePersistenceLayer with state_owner_user_id: %s", system_user_id)
+            pause_layer = PauseStatePersistenceLayer(
+                session_factory=db.engine,
+                generate_entity=application_generate_entity,
+                state_owner_user_id=system_user_id,
+            )
+            # Combine the pause layer with any other provided layers
+            all_layers = (pause_layer, *graph_engine_layers)
+            logger.info(
+                "Total graph_engine_layers to pass: %d, types: %s",
+                len(all_layers),
+                [type(layer).__name__ for layer in all_layers],
+            )
+
             runner = WorkflowAppRunner(
                 application_generate_entity=application_generate_entity,
                 queue_manager=queue_manager,
@@ -510,7 +526,7 @@ class WorkflowAppGenerator(BaseAppGenerator):
                 workflow_execution_repository=workflow_execution_repository,
                 workflow_node_execution_repository=workflow_node_execution_repository,
                 root_node_id=root_node_id,
-                graph_engine_layers=graph_engine_layers,
+                graph_engine_layers=all_layers,
             )
 
             try:
