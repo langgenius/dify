@@ -1,5 +1,6 @@
 'use client'
 import type { PeriodParams } from '@/app/components/app/overview/app-chart'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
 import quarterOfYear from 'dayjs/plugin/quarterOfYear'
 import * as React from 'react'
@@ -16,7 +17,9 @@ dayjs.extend(quarterOfYear)
 
 const today = dayjs()
 
-const TIME_PERIOD_MAPPING = [
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
+const TIME_PERIOD_MAPPING: { value: number, name: TimePeriodName }[] = [
   { value: 0, name: 'today' },
   { value: 7, name: 'last7days' },
   { value: 30, name: 'last30days' },
@@ -35,8 +38,8 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   const isChatApp = appDetail?.mode !== 'completion' && appDetail?.mode !== 'workflow'
   const isWorkflow = appDetail?.mode === 'workflow'
   const [period, setPeriod] = useState<PeriodParams>(IS_CLOUD_EDITION
-    ? { name: t('appLog.filter.period.today'), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
-    : { name: t('appLog.filter.period.last7days'), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
+    ? { name: t('filter.period.today', { ns: 'appLog' }), query: { start: today.startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } }
+    : { name: t('filter.period.last7days', { ns: 'appLog' }), query: { start: today.subtract(7, 'day').startOf('day').format(queryDateFormat), end: today.endOf('day').format(queryDateFormat) } },
   )
 
   if (!appDetail)
@@ -45,7 +48,7 @@ export default function ChartView({ appId, headerRight }: IChartViewProps) {
   return (
     <div>
       <div className="mb-4">
-        <div className="system-xl-semibold mb-2 text-text-primary">{t('common.appMenus.overview')}</div>
+        <div className="system-xl-semibold mb-2 text-text-primary">{t('appMenus.overview', { ns: 'common' })}</div>
         <div className="flex items-center justify-between">
           {IS_CLOUD_EDITION
             ? (

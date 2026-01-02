@@ -11,9 +11,9 @@ import {
   RiSparklingFill,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import { cloneDeep } from 'es-toolkit/object'
 import { produce, setAutoFreeze } from 'immer'
-import { noop } from 'lodash-es'
-import cloneDeep from 'lodash-es/cloneDeep'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -148,11 +148,11 @@ const Debug: FC<IDebug> = ({
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
           return false
         }
       }
@@ -173,12 +173,12 @@ const Debug: FC<IDebug> = ({
     })
 
     if (hasEmptyInput) {
-      logError(t('appDebug.errorMessage.valueOfVarRequired', { key: hasEmptyInput }))
+      logError(t('errorMessage.valueOfVarRequired', { ns: 'appDebug', key: hasEmptyInput }))
       return false
     }
 
     if (completionFiles.find(item => item.transfer_method === TransferMethod.local_file && !item.upload_file_id)) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForFileUpload') })
+      notify({ type: 'info', message: t('errorMessage.waitForFileUpload', { ns: 'appDebug' }) })
       return false
     }
     return !hasEmptyInput
@@ -203,7 +203,7 @@ const Debug: FC<IDebug> = ({
 
   const sendTextCompletion = async () => {
     if (isResponding) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 
@@ -392,7 +392,7 @@ const Debug: FC<IDebug> = ({
     <>
       <div className="shrink-0">
         <div className="flex items-center justify-between px-4 pb-2 pt-3">
-          <div className="system-xl-semibold text-text-primary">{t('appDebug.inputs.title')}</div>
+          <div className="system-xl-semibold text-text-primary">{t('inputs.title', { ns: 'appDebug' })}</div>
           <div className="flex items-center">
             {
               debugWithMultipleModel
@@ -404,7 +404,7 @@ const Debug: FC<IDebug> = ({
                         disabled={multipleModelConfigs.length >= 4}
                       >
                         <RiAddLine className="mr-1 h-3.5 w-3.5" />
-                        {t('common.modelProvider.addModel')}
+                        {t('modelProvider.addModel', { ns: 'common' })}
                         (
                         {multipleModelConfigs.length}
                         /4)
@@ -417,7 +417,7 @@ const Debug: FC<IDebug> = ({
             {mode !== AppModeEnum.COMPLETION && (
               <>
                 <TooltipPlus
-                  popupContent={t('common.operation.refresh')}
+                  popupContent={t('operation.refresh', { ns: 'common' })}
                 >
                   <ActionButton onClick={clearConversation}>
                     <RefreshCcw01 className="h-4 w-4" />
@@ -426,7 +426,7 @@ const Debug: FC<IDebug> = ({
                 {varList.length > 0 && (
                   <div className="relative ml-1 mr-2">
                     <TooltipPlus
-                      popupContent={t('workflow.panel.userInputField')}
+                      popupContent={t('panel.userInputField', { ns: 'workflow' })}
                     >
                       <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
                         <RiEqualizer2Line className="h-4 w-4" />
@@ -507,7 +507,7 @@ const Debug: FC<IDebug> = ({
               <>
                 {(completionRes || isResponding) && (
                   <>
-                    <div className="mx-4 mt-3"><GroupName name={t('appDebug.result')} /></div>
+                    <div className="mx-4 mt-3"><GroupName name={t('result', { ns: 'appDebug' })} /></div>
                     <div className="mx-3 mb-8">
                       <TextGeneration
                         className="mt-2"
@@ -527,7 +527,7 @@ const Debug: FC<IDebug> = ({
                 {!completionRes && !isResponding && (
                   <div className="flex grow flex-col items-center justify-center gap-2">
                     <RiSparklingFill className="h-12 w-12 text-text-empty-state-icon" />
-                    <div className="system-sm-regular text-text-quaternary">{t('appDebug.noResult')}</div>
+                    <div className="system-sm-regular text-text-quaternary">{t('noResult', { ns: 'appDebug' })}</div>
                   </div>
                 )}
               </>

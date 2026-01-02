@@ -2,7 +2,7 @@ import type { InvitationResult } from '@/models/common'
 import { XMarkIcon } from '@heroicons/react/24/outline'
 import { CheckCircleIcon } from '@heroicons/react/24/solid'
 import { RiQuestionLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -42,19 +42,19 @@ const InvitedModal = ({
           </div>
           <XMarkIcon className="h-4 w-4 cursor-pointer" onClick={onCancel} />
         </div>
-        <div className="mb-1 text-xl font-semibold text-text-primary">{t('common.members.invitationSent')}</div>
+        <div className="mb-1 text-xl font-semibold text-text-primary">{t('members.invitationSent', { ns: 'common' })}</div>
         {!IS_CE_EDITION && (
-          <div className="mb-10 text-sm text-text-tertiary">{t('common.members.invitationSentTip')}</div>
+          <div className="mb-10 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
         )}
         {IS_CE_EDITION && (
           <>
-            <div className="mb-5 text-sm text-text-tertiary">{t('common.members.invitationSentTip')}</div>
+            <div className="mb-5 text-sm text-text-tertiary">{t('members.invitationSentTip', { ns: 'common' })}</div>
             <div className="mb-9 flex flex-col gap-2">
               {
                 !!successInvitationResults.length
                 && (
                   <>
-                    <div className="font-Medium py-2 text-sm text-text-primary">{t('common.members.invitationLink')}</div>
+                    <div className="font-Medium py-2 text-sm text-text-primary">{t('members.invitationLink', { ns: 'common' })}</div>
                     {successInvitationResults.map(item =>
                       <InvitationLink key={item.email} value={item} />)}
                   </>
@@ -64,7 +64,7 @@ const InvitedModal = ({
                 !!failedInvitationResults.length
                 && (
                   <>
-                    <div className="font-Medium py-2 text-sm text-text-primary">{t('common.members.failedInvitationEmails')}</div>
+                    <div className="font-Medium py-2 text-sm text-text-primary">{t('members.failedInvitationEmails', { ns: 'common' })}</div>
                     <div className="flex flex-wrap justify-between gap-y-1">
                       {
                         failedInvitationResults.map(item => (
@@ -94,7 +94,7 @@ const InvitedModal = ({
             onClick={onCancel}
             variant="primary"
           >
-            {t('common.members.ok')}
+            {t('members.ok', { ns: 'common' })}
           </Button>
         </div>
       </Modal>

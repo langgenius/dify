@@ -1,6 +1,6 @@
 import { Dialog, DialogPanel, DialogTitle, Transition, TransitionChild } from '@headlessui/react'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { Fragment } from 'react'
 import { cn } from '@/utils/classnames'
 // https://headlessui.com/react/dialog

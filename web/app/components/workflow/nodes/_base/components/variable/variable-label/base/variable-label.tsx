@@ -3,7 +3,7 @@ import {
   RiErrorWarningFill,
   RiMoreLine,
 } from '@remixicon/react'
-import { capitalize } from 'lodash-es'
+import { capitalize } from 'es-toolkit/string'
 import { memo } from 'react'
 import Tooltip from '@/app/components/base/tooltip'
 import { cn } from '@/utils/classnames'

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { RiAlertFill } from '@remixicon/react'
-import { camelCase } from 'lodash-es'
+import { camelCase } from 'es-toolkit/string'
 import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -20,7 +20,14 @@ type DeprecationNoticeProps = {
   textClassName?: string
 }
 
-const i18nPrefix = 'plugin.detailPanel.deprecation'
+const i18nPrefix = 'detailPanel.deprecation'
+
+type DeprecatedReasonKey = 'businessAdjustments' | 'ownershipTransferred' | 'noMaintainer'
+const validReasonKeys: DeprecatedReasonKey[] = ['businessAdjustments', 'ownershipTransferred', 'noMaintainer']
+
+function isValidReasonKey(key: string): key is DeprecatedReasonKey {
+  return (validReasonKeys as string[]).includes(key)
+}
 
 const DeprecationNotice: FC<DeprecationNoticeProps> = ({
   status,
@@ -37,19 +44,15 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
 
   const deprecatedReasonKey = useMemo(() => {
     if (!deprecatedReason)
-      return ''
-    return camelCase(deprecatedReason)
+      return null
+    const key = camelCase(deprecatedReason)
+    if (isValidReasonKey(key))
+      return key
+    return null
   }, [deprecatedReason])
 
   // Check if the deprecatedReasonKey exists in i18n
-  const hasValidDeprecatedReason = useMemo(() => {
-    if (!deprecatedReason || !deprecatedReasonKey)
-      return false
-
-    // Define valid reason keys that exist in i18n
-    const validReasonKeys = ['businessAdjustments', 'ownershipTransferred', 'noMaintainer']
-    return validReasonKeys.includes(deprecatedReasonKey)
-  }, [deprecatedReason, deprecatedReasonKey])
+  const hasValidDeprecatedReason = deprecatedReasonKey !== null
 
   if (status !== 'deleted')
     return null
@@ -71,6 +74,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
               <Trans
                 t={t}
                 i18nKey={`${i18nPrefix}.fullMessage`}
+                ns="plugin"
                 components={{
                   CustomLink: (
                     <Link
@@ -82,7 +86,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
                   ),
                 }}
                 values={{
-                  deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`),
+                  deprecatedReason: deprecatedReasonKey ? t(`${i18nPrefix}.reason.${deprecatedReasonKey}`, { ns: 'plugin' }) : '',
                   alternativePluginId,
                 }}
               />
@@ -91,13 +95,13 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
           {
             hasValidDeprecatedReason && !alternativePluginId && (
               <span>
-                {t(`${i18nPrefix}.onlyReason`, { deprecatedReason: t(`${i18nPrefix}.reason.${deprecatedReasonKey}`) })}
+                {t(`${i18nPrefix}.onlyReason`, { ns: 'plugin', deprecatedReason: deprecatedReasonKey ? t(`${i18nPrefix}.reason.${deprecatedReasonKey}`, { ns: 'plugin' }) : '' })}
               </span>
             )
           }
           {
             !hasValidDeprecatedReason && (
-              <span>{t(`${i18nPrefix}.noReason`)}</span>
+              <span>{t(`${i18nPrefix}.noReason`, { ns: 'plugin' })}</span>
             )
           }
         </div>

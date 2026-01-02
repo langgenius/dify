@@ -1,7 +1,7 @@
 import type { NotionPage } from '@/models/common'
 import type { CrawlResultItem, CustomFile, FileIndexingEstimateResponse } from '@/models/datasets'
 import type { OnlineDriveFile, PublishedPipelineRunPreviewResponse } from '@/models/pipeline'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import { useCallback, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -161,7 +161,7 @@ const PipelineSettings = ({
   }
 
   if (isError)
-    return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
+    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
     <div
@@ -169,7 +169,7 @@ const PipelineSettings = ({
     >
       <div className="h-full min-w-0 flex-1">
         <div className="flex h-full flex-col px-14">
-          <LeftHeader title={t('datasetPipeline.documentSettings.title')} />
+          <LeftHeader title={t('documentSettings.title', { ns: 'datasetPipeline' })} />
           <div className="grow overflow-y-auto">
             <ProcessDocuments
               ref={formRef}

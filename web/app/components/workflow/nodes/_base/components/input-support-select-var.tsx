@@ -5,7 +5,7 @@ import type {
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
 import { useBoolean } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -101,7 +101,7 @@ const Editor: FC<Props> = ({
               }
               if (node.data.type === BlockEnum.Start) {
                 acc.sys = {
-                  title: t('workflow.blocks.start'),
+                  title: t('blocks.start', { ns: 'workflow' }),
                   type: BlockEnum.Start,
                 }
               }
@@ -120,7 +120,7 @@ const Editor: FC<Props> = ({
         {isFocus && (
           <div className={cn('absolute z-10', insertVarTipToLeft ? 'left-[-12px] top-1.5' : ' right-1 top-[-9px]')}>
             <Tooltip
-              popupContent={`${t('workflow.common.insertVarTip')}`}
+              popupContent={`${t('common.insertVarTip', { ns: 'workflow' })}`}
             >
               <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
                 <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />

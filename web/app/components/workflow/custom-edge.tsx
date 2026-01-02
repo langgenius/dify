@@ -3,7 +3,7 @@ import type {
   Edge,
   OnSelectBlock,
 } from './types'
-import { intersection } from 'lodash-es'
+import { intersection } from 'es-toolkit/array'
 import {
   memo,
   useCallback,

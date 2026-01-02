@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import type { Topic } from '@/app/components/workflow/nodes/question-classifier/types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { RiDraggable } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -15,7 +15,7 @@ import { useEdgesInteractions } from '../../../hooks'
 import AddButton from '../../_base/components/add-button'
 import Item from './class-item'
 
-const i18nPrefix = 'workflow.nodes.questionClassifiers'
+const i18nPrefix = 'nodes.questionClassifiers'
 
 // Layout constants
 const HANDLE_SIDE_WIDTH = 3 // Width offset for drag handle spacing
@@ -90,7 +90,7 @@ const ClassList: FC<Props> = ({
     <>
       <div className="mb-2 flex items-center justify-between" onClick={handleCollapse}>
         <div className="flex cursor-pointer items-center text-xs font-semibold uppercase text-text-secondary">
-          {t(`${i18nPrefix}.class`)}
+          {t(`${i18nPrefix}.class`, { ns: 'workflow' })}
           {' '}
           <span className="text-text-destructive">*</span>
           {list.length > 0 && (
@@ -170,7 +170,7 @@ const ClassList: FC<Props> = ({
         <div className="mt-2">
           <AddButton
             onClick={handleAddClass}
-            text={t(`${i18nPrefix}.addClass`)}
+            text={t(`${i18nPrefix}.addClass`, { ns: 'workflow' })}
           />
         </div>
       )}

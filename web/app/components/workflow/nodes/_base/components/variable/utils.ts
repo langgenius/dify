@@ -33,8 +33,9 @@ import type {
 import type { PromptItem } from '@/models/debug'
 import type { RAGPipelineVariable } from '@/models/pipeline'
 import type { SchemaTypeDefinition } from '@/service/use-common'
+import { uniq } from 'es-toolkit/array'
+import { isArray } from 'es-toolkit/compat'
 import { produce } from 'immer'
-import { isArray, uniq } from 'lodash-es'
 import {
   AGENT_OUTPUT_STRUCT,
   FILE_STRUCT,
@@ -1233,7 +1234,7 @@ export const toNodeAvailableVars = ({
         : {}
     const iterationVar = {
       nodeId: iterationNode?.id,
-      title: t('workflow.nodes.iteration.currentIteration'),
+      title: t('nodes.iteration.currentIteration', { ns: 'workflow' }),
       vars: [
         {
           variable: 'item',

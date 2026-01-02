@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -49,14 +49,14 @@ const FileTypeItem: FC<Props> = ({
             <div>
               <div className="flex items-center border-b border-divider-subtle p-3 pb-2">
                 <FileTypeIcon className="shrink-0" type={type} size="lg" />
-                <div className="system-sm-medium mx-2 grow text-text-primary">{t(`appDebug.variableConfig.file.${type}.name`)}</div>
+                <div className="system-sm-medium mx-2 grow text-text-primary">{t(`variableConfig.file.${type}.name`, { ns: 'appDebug' })}</div>
                 <Checkbox className="shrink-0" checked={selected} />
               </div>
               <div className="p-3" onClick={e => e.stopPropagation()}>
                 <TagInput
                   items={customFileTypes}
                   onChange={onCustomFileTypesChange}
-                  placeholder={t('appDebug.variableConfig.file.custom.createPlaceholder')!}
+                  placeholder={t('variableConfig.file.custom.createPlaceholder', { ns: 'appDebug' })!}
                 />
               </div>
             </div>
@@ -65,8 +65,8 @@ const FileTypeItem: FC<Props> = ({
             <div className="flex items-center">
               <FileTypeIcon className="shrink-0" type={type} size="lg" />
               <div className="mx-2 grow">
-                <div className="system-sm-medium text-text-primary">{t(`appDebug.variableConfig.file.${type}.name`)}</div>
-                <div className="system-2xs-regular-uppercase mt-1 text-text-tertiary">{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type].join(', ') : t('appDebug.variableConfig.file.custom.description')}</div>
+                <div className="system-sm-medium text-text-primary">{t(`variableConfig.file.${type}.name`, { ns: 'appDebug' })}</div>
+                <div className="system-2xs-regular-uppercase mt-1 text-text-tertiary">{type !== SupportUploadFileTypes.custom ? FILE_EXTS[type].join(', ') : t('variableConfig.file.custom.description', { ns: 'appDebug' })}</div>
               </div>
               <Checkbox className="shrink-0" checked={selected} />
             </div>

@@ -1,7 +1,7 @@
 'use client'
 
 import { RiExternalLinkLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import {
   useRouter,
   useSearchParams,
@@ -61,15 +61,15 @@ const EducationApplyAge = () => {
     }).then((res) => {
       if (res.message === 'success') {
         setShowModal({
-          title: t('education.successTitle'),
-          desc: t('education.successContent'),
+          title: t('successTitle', { ns: 'education' }),
+          desc: t('successContent', { ns: 'education' }),
           onConfirm: handleModalConfirm,
         })
       }
       else {
         notify({
           type: 'error',
-          message: t('education.submitError'),
+          message: t('submitError', { ns: 'education' }),
         })
       }
     })
@@ -90,13 +90,13 @@ const EducationApplyAge = () => {
         </div>
         <div className="mx-auto max-w-[720px] px-8 pb-[180px]">
           <div className="mb-2 flex h-[192px] flex-col justify-end pb-4 pt-3 text-text-primary-on-surface">
-            <div className="title-5xl-bold mb-2 shadow-xs">{t('education.toVerified')}</div>
+            <div className="title-5xl-bold mb-2 shadow-xs">{t('toVerified', { ns: 'education' })}</div>
             <div className="system-md-medium shadow-xs">
-              {t('education.toVerifiedTip.front')}
+              {t('toVerifiedTip.front', { ns: 'education' })}
 &nbsp;
-              <span className="system-md-semibold underline">{t('education.toVerifiedTip.coupon')}</span>
+              <span className="system-md-semibold underline">{t('toVerifiedTip.coupon', { ns: 'education' })}</span>
 &nbsp;
-              {t('education.toVerifiedTip.end')}
+              {t('toVerifiedTip.end', { ns: 'education' })}
             </div>
           </div>
           <div className="mb-7">
@@ -104,7 +104,7 @@ const EducationApplyAge = () => {
           </div>
           <div className="mb-7">
             <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
-              {t('education.form.schoolName.title')}
+              {t('form.schoolName.title', { ns: 'education' })}
             </div>
             <SearchInput
               value={schoolName}
@@ -113,7 +113,7 @@ const EducationApplyAge = () => {
           </div>
           <div className="mb-7">
             <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
-              {t('education.form.schoolRole.title')}
+              {t('form.schoolRole.title', { ns: 'education' })}
             </div>
             <RoleSelector
               value={role}
@@ -122,17 +122,17 @@ const EducationApplyAge = () => {
           </div>
           <div className="mb-7">
             <div className="system-md-semibold mb-1 flex h-6 items-center text-text-secondary">
-              {t('education.form.terms.title')}
+              {t('form.terms.title', { ns: 'education' })}
             </div>
             <div className="system-md-regular mb-1 text-text-tertiary">
-              {t('education.form.terms.desc.front')}
+              {t('form.terms.desc.front', { ns: 'education' })}
 &nbsp;
-              <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('education.form.terms.desc.termsOfService')}</a>
+              <a href="https://dify.ai/terms" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.termsOfService', { ns: 'education' })}</a>
 &nbsp;
-              {t('education.form.terms.desc.and')}
+              {t('form.terms.desc.and', { ns: 'education' })}
 &nbsp;
-              <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('education.form.terms.desc.privacyPolicy')}</a>
-              {t('education.form.terms.desc.end')}
+              <a href="https://dify.ai/privacy" target="_blank" className="text-text-secondary hover:underline">{t('form.terms.desc.privacyPolicy', { ns: 'education' })}</a>
+              {t('form.terms.desc.end', { ns: 'education' })}
             </div>
             <div className="system-md-regular py-2 text-text-primary">
               <div className="mb-2 flex">
@@ -141,7 +141,7 @@ const EducationApplyAge = () => {
                   checked={ageChecked}
                   onCheck={() => setAgeChecked(!ageChecked)}
                 />
-                {t('education.form.terms.option.age')}
+                {t('form.terms.option.age', { ns: 'education' })}
               </div>
               <div className="flex">
                 <Checkbox
@@ -149,7 +149,7 @@ const EducationApplyAge = () => {
                   checked={inSchoolChecked}
                   onCheck={() => setInSchoolChecked(!inSchoolChecked)}
                 />
-                {t('education.form.terms.option.inSchool')}
+                {t('form.terms.option.inSchool', { ns: 'education' })}
               </div>
             </div>
           </div>
@@ -158,7 +158,7 @@ const EducationApplyAge = () => {
             disabled={!ageChecked || !inSchoolChecked || !schoolName || !role || isPending}
             onClick={handleSubmit}
           >
-            {t('education.submit')}
+            {t('submit', { ns: 'education' })}
           </Button>
           <div className="mb-4 mt-5 h-px bg-gradient-to-r from-[rgba(16,24,40,0.08)]"></div>
           <a
@@ -166,7 +166,7 @@ const EducationApplyAge = () => {
             href={docLink('/getting-started/dify-for-education')}
             target="_blank"
           >
-            {t('education.learn')}
+            {t('learn', { ns: 'education' })}
             <RiExternalLinkLine className="ml-1 h-3 w-3" />
           </a>
         </div>

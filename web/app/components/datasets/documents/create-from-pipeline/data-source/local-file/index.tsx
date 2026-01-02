@@ -11,7 +11,7 @@ import { getFileUploadErrorMessage } from '@/app/components/base/file-uploader/u
 import { ToastContext } from '@/app/components/base/toast'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
 import { IS_CE_EDITION } from '@/config'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { upload } from '@/service/base'
@@ -33,7 +33,7 @@ const LocalFile = ({
 }: LocalFileProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const localFileList = useDataSourceStoreWithSelector(state => state.localFileList)
   const dataSourceStore = useDataSourceStore()
   const [dragging, setDragging] = useState(false)
@@ -113,11 +113,11 @@ const LocalFile = ({
     const ext = `.${getFileType(file)}`
     const isValidType = ACCEPTS.includes(ext.toLowerCase())
     if (!isValidType)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
 
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
   }, [notify, t, ACCEPTS, fileUploadConfig.file_size_limit])
@@ -155,7 +155,7 @@ const LocalFile = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
         notify({ type: 'error', message: errorMessage })
         updateFile(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
@@ -191,7 +191,7 @@ const LocalFile = ({
       return false
 
     if (files.length + localFileList.length > filesCountLimit && !IS_CE_EDITION) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: filesCountLimit }) })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.filesNumber', { ns: 'datasetCreation', filesNumber: filesCountLimit }) })
       return false
     }
 
@@ -298,14 +298,15 @@ const LocalFile = ({
             <RiUploadCloud2Line className="mr-2 size-5" />
 
             <span>
-              {supportBatchUpload ? t('datasetCreation.stepOne.uploader.button') : t('datasetCreation.stepOne.uploader.buttonSingleFile')}
+              {supportBatchUpload ? t('stepOne.uploader.button', { ns: 'datasetCreation' }) : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
               {allowedExtensions.length > 0 && (
-                <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+                <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('stepOne.uploader.browse', { ns: 'datasetCreation' })}</label>
               )}
             </span>
           </div>
           <div>
-            {t('datasetCreation.stepOne.uploader.tip', {
+            {t('stepOne.uploader.tip', {
+              ns: 'datasetCreation',
               size: fileUploadConfig.file_size_limit,
               supportTypes: supportTypesShowNames,
               batchCount: fileUploadConfig.batch_count_limit,

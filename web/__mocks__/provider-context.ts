@@ -1,6 +1,7 @@
 import type { Plan, UsagePlanInfo } from '@/app/components/billing/type'
 import type { ProviderContextState } from '@/context/provider-context'
-import { merge, noop } from 'lodash-es'
+import { merge } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
 
 // Avoid being mocked in tests

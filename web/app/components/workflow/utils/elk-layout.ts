@@ -5,7 +5,7 @@ import type {
   Node,
 } from '@/app/components/workflow/types'
 import ELK from 'elkjs/lib/elk.bundled.js'
-import { cloneDeep } from 'lodash-es'
+import { cloneDeep } from 'es-toolkit/object'
 import {
   CUSTOM_NODE,
   NODE_LAYOUT_HORIZONTAL_PADDING,

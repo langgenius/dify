@@ -3,16 +3,15 @@ import type { FC } from 'react'
 import type { App } from '@/types/app'
 import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
-import { omit } from 'lodash-es'
+import { omit } from 'es-toolkit/object'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
-import { fetchChatConversations, fetchCompletionConversations } from '@/service/log'
+import { useChatConversations, useCompletionConversations } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import EmptyElement from './empty-element'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
@@ -88,19 +87,15 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
   }
 
   // When the details are obtained, proceed to the next request
-  const { data: chatConversations, mutate: mutateChatList } = useSWR(() => isChatMode
-    ? {
-        url: `/apps/${appDetail.id}/chat-conversations`,
-        params: query,
-      }
-    : null, fetchChatConversations)
+  const { data: chatConversations, refetch: mutateChatList } = useChatConversations({
+    appId: isChatMode ? appDetail.id : '',
+    params: query,
+  })
 
-  const { data: completionConversations, mutate: mutateCompletionList } = useSWR(() => !isChatMode
-    ? {
-        url: `/apps/${appDetail.id}/completion-conversations`,
-        params: query,
-      }
-    : null, fetchCompletionConversations)
+  const { data: completionConversations, refetch: mutateCompletionList } = useCompletionConversations({
+    appId: !isChatMode ? appDetail.id : '',
+    params: query,
+  })
 
   const total = isChatMode ? chatConversations?.total : completionConversations?.total
 
@@ -123,7 +118,7 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
 
   return (
     <div className="flex h-full grow flex-col">
-      <p className="system-sm-regular shrink-0 text-text-tertiary">{t('appLog.description')}</p>
+      <p className="system-sm-regular shrink-0 text-text-tertiary">{t('description', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 grow flex-col py-4">
         <Filter isChatMode={isChatMode} appId={appDetail.id} queryParams={queryParams} setQueryParams={handleQueryParamsChange} />
         {total === undefined

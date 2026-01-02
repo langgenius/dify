@@ -8,8 +8,9 @@ import type { InputForm } from './type'
 import type AudioPlayer from '@/app/components/base/audio-btn/audio'
 import type { FileEntity } from '@/app/components/base/file-uploader/types'
 import type { Annotation } from '@/models/log'
+import { uniqBy } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { produce, setAutoFreeze } from 'immer'
-import { noop, uniqBy } from 'lodash-es'
 import { useParams, usePathname } from 'next/navigation'
 import {
   useCallback,
@@ -226,7 +227,7 @@ export const useChat = (
     setSuggestQuestions([])
 
     if (isRespondingRef.current) {
-      notify({ type: 'info', message: t('appDebug.errorMessage.waitForResponse') })
+      notify({ type: 'info', message: t('errorMessage.waitForResponse', { ns: 'appDebug' }) })
       return false
     }
 

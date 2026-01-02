@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { IndexingStatusResponse } from '@/models/datasets'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useReducer } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -64,8 +64,8 @@ const RetryButton: FC<Props> = ({ datasetId }) => {
   return (
     <StatusWithAction
       type="warning"
-      description={`${errorDocs?.total} ${t('dataset.docsFailedNotice')}`}
-      actionText={t('dataset.retry')}
+      description={`${errorDocs?.total} ${t('docsFailedNotice', { ns: 'dataset' })}`}
+      actionText={t('retry', { ns: 'dataset' })}
       disabled={indexState.value === 'retry'}
       onAction={indexState.value === 'error' ? onRetryErrorDocs : noop}
     />

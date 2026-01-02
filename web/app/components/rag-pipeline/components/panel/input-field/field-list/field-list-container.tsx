@@ -1,6 +1,6 @@
 import type { SortableItem } from './types'
 import type { InputVar } from '@/models/pipeline'
-import { isEqual } from 'lodash-es'
+import { isEqual } from 'es-toolkit/predicate'
 import {
   memo,
   useCallback,

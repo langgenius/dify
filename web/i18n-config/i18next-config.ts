@@ -1,134 +1,122 @@
 'use client'
+import type { Locale } from '.'
+import { camelCase, kebabCase } from 'es-toolkit/string'
 import i18n from 'i18next'
-import { camelCase } from 'lodash-es'
 import { initReactI18next } from 'react-i18next'
+import appAnnotation from '../i18n/en-US/app-annotation.json'
+import appApi from '../i18n/en-US/app-api.json'
+import appDebug from '../i18n/en-US/app-debug.json'
+import appLog from '../i18n/en-US/app-log.json'
+import appOverview from '../i18n/en-US/app-overview.json'
+import app from '../i18n/en-US/app.json'
+import billing from '../i18n/en-US/billing.json'
+import common from '../i18n/en-US/common.json'
+import custom from '../i18n/en-US/custom.json'
+import datasetCreation from '../i18n/en-US/dataset-creation.json'
+import datasetDocuments from '../i18n/en-US/dataset-documents.json'
+import datasetHitTesting from '../i18n/en-US/dataset-hit-testing.json'
+import datasetPipeline from '../i18n/en-US/dataset-pipeline.json'
+import datasetSettings from '../i18n/en-US/dataset-settings.json'
+import dataset from '../i18n/en-US/dataset.json'
+import education from '../i18n/en-US/education.json'
+import explore from '../i18n/en-US/explore.json'
+import layout from '../i18n/en-US/layout.json'
+import login from '../i18n/en-US/login.json'
+import oauth from '../i18n/en-US/oauth.json'
+import pipeline from '../i18n/en-US/pipeline.json'
+import pluginTags from '../i18n/en-US/plugin-tags.json'
+import pluginTrigger from '../i18n/en-US/plugin-trigger.json'
+import plugin from '../i18n/en-US/plugin.json'
+import register from '../i18n/en-US/register.json'
+import runLog from '../i18n/en-US/run-log.json'
+import share from '../i18n/en-US/share.json'
+import time from '../i18n/en-US/time.json'
+import tools from '../i18n/en-US/tools.json'
+import workflow from '../i18n/en-US/workflow.json'
 
-import app from '../i18n/en-US/app'
-// Static imports for en-US (fallback language)
-import appAnnotation from '../i18n/en-US/app-annotation'
-import appApi from '../i18n/en-US/app-api'
-import appDebug from '../i18n/en-US/app-debug'
-import appLog from '../i18n/en-US/app-log'
-import appOverview from '../i18n/en-US/app-overview'
-import billing from '../i18n/en-US/billing'
-import common from '../i18n/en-US/common'
-import custom from '../i18n/en-US/custom'
-import dataset from '../i18n/en-US/dataset'
-import datasetCreation from '../i18n/en-US/dataset-creation'
-import datasetDocuments from '../i18n/en-US/dataset-documents'
-import datasetHitTesting from '../i18n/en-US/dataset-hit-testing'
-import datasetPipeline from '../i18n/en-US/dataset-pipeline'
-import datasetSettings from '../i18n/en-US/dataset-settings'
-import education from '../i18n/en-US/education'
-import explore from '../i18n/en-US/explore'
-import layout from '../i18n/en-US/layout'
-import login from '../i18n/en-US/login'
-import oauth from '../i18n/en-US/oauth'
-import pipeline from '../i18n/en-US/pipeline'
-import plugin from '../i18n/en-US/plugin'
-import pluginTags from '../i18n/en-US/plugin-tags'
-import pluginTrigger from '../i18n/en-US/plugin-trigger'
-import register from '../i18n/en-US/register'
-import runLog from '../i18n/en-US/run-log'
-import share from '../i18n/en-US/share'
-import time from '../i18n/en-US/time'
-import tools from '../i18n/en-US/tools'
-import workflow from '../i18n/en-US/workflow'
+// @keep-sorted
+export const resources = {
+  app,
+  appAnnotation,
+  appApi,
+  appDebug,
+  appLog,
+  appOverview,
+  billing,
+  common,
+  custom,
+  dataset,
+  datasetCreation,
+  datasetDocuments,
+  datasetHitTesting,
+  datasetPipeline,
+  datasetSettings,
+  education,
+  explore,
+  layout,
+  login,
+  oauth,
+  pipeline,
+  plugin,
+  pluginTags,
+  pluginTrigger,
+  register,
+  runLog,
+  share,
+  time,
+  tools,
+  workflow,
+}
 
-const requireSilent = async (lang: string, namespace: string) => {
+export type KebabCase<S extends string> = S extends `${infer T}${infer U}`
+  ? T extends Lowercase<T>
+    ? `${T}${KebabCase<U>}`
+    : `-${Lowercase<T>}${KebabCase<U>}`
+  : S
+
+export type CamelCase<S extends string> = S extends `${infer T}-${infer U}`
+  ? `${T}${Capitalize<CamelCase<U>>}`
+  : S
+
+export type Resources = typeof resources
+export type NamespaceCamelCase = keyof Resources
+export type NamespaceKebabCase = KebabCase<NamespaceCamelCase>
+
+const requireSilent = async (lang: Locale, namespace: NamespaceKebabCase) => {
   let res
   try {
-    res = (await import(`../i18n/${lang}/${namespace}`)).default
+    res = (await import(`../i18n/${lang}/${namespace}.json`)).default
   }
   catch {
-    res = (await import(`../i18n/en-US/${namespace}`)).default
+    res = (await import(`../i18n/en-US/${namespace}.json`)).default
   }
 
   return res
 }
 
-const NAMESPACES = [
-  'app-annotation',
-  'app-api',
-  'app-debug',
-  'app-log',
-  'app-overview',
-  'app',
-  'billing',
-  'common',
-  'custom',
-  'dataset-creation',
-  'dataset-documents',
-  'dataset-hit-testing',
-  'dataset-pipeline',
-  'dataset-settings',
-  'dataset',
-  'education',
-  'explore',
-  'layout',
-  'login',
-  'oauth',
-  'pipeline',
-  'plugin-tags',
-  'plugin-trigger',
-  'plugin',
-  'register',
-  'run-log',
-  'share',
-  'time',
-  'tools',
-  'workflow',
-]
+const NAMESPACES = Object.keys(resources).map(kebabCase) as NamespaceKebabCase[]
 
-export const loadLangResources = async (lang: string) => {
-  const modules = await Promise.all(
-    NAMESPACES.map(ns => requireSilent(lang, ns)),
-  )
-  const resources = modules.reduce((acc, mod, index) => {
-    acc[camelCase(NAMESPACES[index])] = mod
-    return acc
-  }, {} as Record<string, any>)
-  return resources
+// Load a single namespace for a language
+export const loadNamespace = async (lang: Locale, ns: NamespaceKebabCase) => {
+  const camelNs = camelCase(ns) as NamespaceCamelCase
+  if (i18n.hasResourceBundle(lang, camelNs))
+    return
+
+  const resource = await requireSilent(lang, ns)
+  i18n.addResourceBundle(lang, camelNs, resource, true, true)
 }
 
-// Load en-US resources first to make sure fallback works
+// Load all namespaces for a language (used when switching language)
+export const loadLangResources = async (lang: Locale) => {
+  await Promise.all(
+    NAMESPACES.map(ns => loadNamespace(lang, ns)),
+  )
+}
+
+// Initial resources: load en-US namespaces for fallback/default locale
 const getInitialTranslations = () => {
-  const en_USResources: Record<string, any> = {
-    appAnnotation,
-    appApi,
-    appDebug,
-    appLog,
-    appOverview,
-    app,
-    billing,
-    common,
-    custom,
-    datasetCreation,
-    datasetDocuments,
-    datasetHitTesting,
-    datasetPipeline,
-    datasetSettings,
-    dataset,
-    education,
-    explore,
-    layout,
-    login,
-    oauth,
-    pipeline,
-    pluginTags,
-    pluginTrigger,
-    plugin,
-    register,
-    runLog,
-    share,
-    time,
-    tools,
-    workflow,
-  }
   return {
-    'en-US': {
-      translation: en_USResources,
-    },
+    'en-US': resources,
   }
 }
 
@@ -137,16 +125,16 @@ if (!i18n.isInitialized) {
     lng: undefined,
     fallbackLng: 'en-US',
     resources: getInitialTranslations(),
+    defaultNS: 'common',
+    ns: Object.keys(resources),
+    keySeparator: false,
   })
 }
 
-export const changeLanguage = async (lng?: string) => {
+export const changeLanguage = async (lng?: Locale) => {
   if (!lng)
     return
-  if (!i18n.hasResourceBundle(lng, 'translation')) {
-    const resource = await loadLangResources(lng)
-    i18n.addResourceBundle(lng, 'translation', resource, true, true)
-  }
+  await loadLangResources(lng)
   await i18n.changeLanguage(lng)
 }
 

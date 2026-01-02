@@ -7,9 +7,7 @@ import type {
   Edge,
   Node,
 } from '../types'
-import {
-  cloneDeep,
-} from 'lodash-es'
+import { cloneDeep } from 'es-toolkit/object'
 import {
   getConnectedEdges,
 } from 'reactflow'

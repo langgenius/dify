@@ -10,9 +10,7 @@ import type { IOtherOptions } from '@/service/base'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { FlowType } from '@/types/common'
 import type { VarInInspect } from '@/types/workflow'
-import {
-  noop,
-} from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useContext } from 'react'
 import {
   useStore as useZustandStore,

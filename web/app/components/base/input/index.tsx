@@ -2,7 +2,7 @@ import type { VariantProps } from 'class-variance-authority'
 import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
 import { cva } from 'class-variance-authority'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -101,8 +101,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           className,
         )}
         placeholder={placeholder ?? (showLeftIcon
-          ? (t('common.operation.search') || '')
-          : (t('common.placeholder.input') || ''))}
+          ? (t('operation.search', { ns: 'common' }) || '')
+          : (t('placeholder.input', { ns: 'common' }) || ''))}
         value={value}
         onChange={props.type === 'number' ? handleNumberChange : onChange}
         onBlur={props.type === 'number' ? handleNumberBlur : onBlur}
@@ -110,7 +110,11 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         {...props}
       />
       {showClearIcon && value && !disabled && !destructive && (
-        <div className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')} onClick={onClear}>
+        <div
+          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
+          onClick={onClear}
+          data-testid="input-clear"
+        >
           <RiCloseCircleFill className="h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
         </div>
       )}

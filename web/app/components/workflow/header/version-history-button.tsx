@@ -21,7 +21,7 @@ const PopupContent = React.memo(() => {
   return (
     <div className="flex items-center gap-x-1">
       <div className="system-xs-medium px-0.5 text-text-secondary">
-        {t('workflow.common.versionHistory')}
+        {t('common.versionHistory', { ns: 'workflow' })}
       </div>
       <div className="flex items-center gap-x-0.5">
         {VERSION_HISTORY_SHORTCUT.map(key => (
@@ -61,8 +61,8 @@ const VersionHistoryButton: FC<VersionHistoryButtonProps> = ({
     >
       <Button
         className={cn(
-          'p-2',
-          theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+          'rounded-lg border border-transparent p-2',
+          theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
         )}
         onClick={handleViewVersionHistory}
       >

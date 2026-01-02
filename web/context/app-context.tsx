@@ -3,7 +3,7 @@
 import type { FC, ReactNode } from 'react'
 import type { ICurrentWorkspace, LangGeniusVersionResponse, UserProfileResponse } from '@/models/common'
 import { useQueryClient } from '@tanstack/react-query'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useEffect, useMemo } from 'react'
 import { createContext, useContext, useContextSelector } from 'use-context-selector'
 import { setUserId, setUserProperties } from '@/app/components/base/amplitude'

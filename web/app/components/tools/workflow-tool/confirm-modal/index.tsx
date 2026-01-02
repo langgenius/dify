@@ -1,7 +1,7 @@
 'use client'
 
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
@@ -29,14 +29,14 @@ const ConfirmModal = ({ show, onConfirm, onClose }: ConfirmModalProps) => {
       <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-section p-3 shadow-xl">
         <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
       </div>
-      <div className="relative mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('tools.createTool.confirmTitle')}</div>
+      <div className="relative mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('createTool.confirmTitle', { ns: 'tools' })}</div>
       <div className="my-1 text-sm leading-5 text-text-tertiary">
-        {t('tools.createTool.confirmTip')}
+        {t('createTool.confirmTip', { ns: 'tools' })}
       </div>
       <div className="flex items-center justify-end pt-6">
         <div className="flex items-center">
-          <Button className="mr-2" onClick={onClose}>{t('common.operation.cancel')}</Button>
-          <Button variant="warning" onClick={onConfirm}>{t('common.operation.confirm')}</Button>
+          <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="warning" onClick={onConfirm}>{t('operation.confirm', { ns: 'common' })}</Button>
         </div>
       </div>
     </Modal>

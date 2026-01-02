@@ -1,4 +1,4 @@
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import format from '.'
 import graphToLogStruct from '../graph-to-log-struct'
 

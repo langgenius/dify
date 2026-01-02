@@ -1,6 +1,6 @@
 import type { DataSourceNodeType } from '../../workflow/nodes/data-source/types'
 import type { Node, ValueSelector } from '../../workflow/types'
-import { uniqBy } from 'lodash-es'
+import { uniqBy } from 'es-toolkit/compat'
 import { useCallback } from 'react'
 import { getOutgoers, useStoreApi } from 'reactflow'
 import { findUsedVarNodes, updateNodeVars } from '../../workflow/nodes/_base/components/variable/utils'

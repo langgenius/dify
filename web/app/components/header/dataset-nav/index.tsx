@@ -6,7 +6,7 @@ import {
   RiBook2Fill,
   RiBook2Line,
 } from '@remixicon/react'
-import { flatten } from 'lodash-es'
+import { flatten } from 'es-toolkit/compat'
 import { useParams, useRouter } from 'next/navigation'
 import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -85,12 +85,12 @@ const DatasetNav = () => {
       isApp={false}
       icon={<RiBook2Line className="h-4 w-4" />}
       activeIcon={<RiBook2Fill className="h-4 w-4" />}
-      text={t('common.menus.datasets')}
+      text={t('menus.datasets', { ns: 'common' })}
       activeSegment="datasets"
       link="/datasets"
       curNav={curNav}
       navigationItems={navigationItems}
-      createText={t('common.menus.newDataset')}
+      createText={t('menus.newDataset', { ns: 'common' })}
       onCreate={() => router.push(createRoute)}
       onLoadMore={handleLoadMore}
     />

@@ -4,7 +4,7 @@ import type {
 } from '../types'
 import {
   uniqBy,
-} from 'lodash-es'
+} from 'es-toolkit/compat'
 import {
   getOutgoers,
 } from 'reactflow'

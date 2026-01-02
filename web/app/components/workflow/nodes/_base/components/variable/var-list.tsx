@@ -53,18 +53,18 @@ const VarList: FC<Props> = ({
   }), [list])
 
   const { run: validateVarInput } = useDebounceFn((list: Variable[], newKey: string) => {
-    const { isValid, errorKey, errorMessageKey } = checkKeys([newKey], true)
-    if (!isValid) {
+    const result = checkKeys([newKey], true)
+    if (!result.isValid) {
       setToastHandle(Toast.notify({
         type: 'error',
-        message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+        message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
       }))
       return
     }
     if (list.some(item => item.variable?.trim() === newKey.trim())) {
       setToastHandle(Toast.notify({
         type: 'error',
-        message: t('appDebug.varKeyError.keyAlreadyExists', { key: newKey }),
+        message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: newKey }),
       }))
     }
     else {
@@ -152,7 +152,7 @@ const VarList: FC<Props> = ({
               disabled={readonly}
               value={variable.variable}
               onChange={handleVarNameChange(index)}
-              placeholder={t('workflow.common.variableNamePlaceholder')!}
+              placeholder={t('common.variableNamePlaceholder', { ns: 'workflow' })!}
             />
             <VarReferencePicker
               nodeId={nodeId}

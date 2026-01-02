@@ -13,7 +13,7 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
 
 export type EmbeddedChatbotContextValue = {

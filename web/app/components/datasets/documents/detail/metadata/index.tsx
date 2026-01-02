@@ -4,7 +4,7 @@ import type { inputType, metadataType } from '@/hooks/use-metadata'
 import type { CommonResponse } from '@/models/common'
 import type { DocType, FullDocumentDetail } from '@/models/datasets'
 import { PencilIcon } from '@heroicons/react/24/outline'
-import { get } from 'lodash-es'
+import { get } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -70,7 +70,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
           defaultValue={value}
           className={s.select}
           wrapperClassName={s.selectWrapper}
-          placeholder={`${t('datasetDocuments.metadata.placeholder.select')}${label}`}
+          placeholder={`${t('metadata.placeholder.select', { ns: 'datasetDocuments' })}${label}`}
         />
       )
     }
@@ -81,7 +81,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
           onChange={e => onUpdate?.(e.target.value)}
           value={value}
           className={s.textArea}
-          placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
+          placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
         />
       )
     }
@@ -91,7 +91,7 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
         onChange={e => onUpdate?.(e.target.value)}
         value={value}
         defaultValue={defaultValue}
-        placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
+        placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
       />
     )
   }
@@ -212,19 +212,19 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
       <>
         {!doc_type && !documentType && (
           <>
-            <div className={s.desc}>{t('datasetDocuments.metadata.desc')}</div>
+            <div className={s.desc}>{t('metadata.desc', { ns: 'datasetDocuments' })}</div>
           </>
         )}
         <div className={s.operationWrapper}>
           {!doc_type && !documentType && (
             <>
-              <span className={s.title}>{t('datasetDocuments.metadata.docTypeSelectTitle')}</span>
+              <span className={s.title}>{t('metadata.docTypeSelectTitle', { ns: 'datasetDocuments' })}</span>
             </>
           )}
           {documentType && (
             <>
-              <span className={s.title}>{t('datasetDocuments.metadata.docTypeChangeTitle')}</span>
-              <span className={s.changeTip}>{t('datasetDocuments.metadata.docTypeSelectWarning')}</span>
+              <span className={s.title}>{t('metadata.docTypeChangeTitle', { ns: 'datasetDocuments' })}</span>
+              <span className={s.changeTip}>{t('metadata.docTypeSelectWarning', { ns: 'datasetDocuments' })}</span>
             </>
           )}
           <Radio.Group value={tempDocType ?? documentType ?? ''} onChange={setTempDocType} className={s.radioGroup}>
@@ -246,13 +246,13 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
               onClick={confirmDocType}
               disabled={!tempDocType}
             >
-              {t('datasetDocuments.metadata.firstMetaAction')}
+              {t('metadata.firstMetaAction', { ns: 'datasetDocuments' })}
             </Button>
           )}
           {documentType && (
             <div className={s.opBtnWrapper}>
-              <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary">{t('common.operation.save')}</Button>
-              <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
+              <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary">{t('operation.save', { ns: 'common' })}</Button>
+              <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('operation.cancel', { ns: 'common' })}</Button>
             </div>
           )}
         </div>
@@ -337,9 +337,9 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
       },
     }) as Promise<CommonResponse>)
     if (!e)
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     else
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     onUpdate?.()
     setEditStatus(false)
     setSaveLoading(false)
@@ -352,26 +352,26 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
         : (
             <>
               <div className={s.titleWrapper}>
-                <span className={s.title}>{t('datasetDocuments.metadata.title')}</span>
+                <span className={s.title}>{t('metadata.title', { ns: 'datasetDocuments' })}</span>
                 {!editStatus
                   ? (
                       <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
                         <PencilIcon className={s.opIcon} />
-                        {t('common.operation.edit')}
+                        {t('operation.edit', { ns: 'common' })}
                       </Button>
                     )
                   : showDocTypes
                     ? null
                     : (
                         <div className={s.opBtnWrapper}>
-                          <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
+                          <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('operation.cancel', { ns: 'common' })}</Button>
                           <Button
                             onClick={onSave}
                             className={`${s.opBtn} ${s.opSaveBtn}`}
                             variant="primary"
                             loading={saveLoading}
                           >
-                            {t('common.operation.save')}
+                            {t('operation.save', { ns: 'common' })}
                           </Button>
                         </div>
                       )}
@@ -399,7 +399,7 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
                                   onClick={() => { setShowDocTypes(true) }}
                                   className="cursor-pointer hover:text-text-accent"
                                 >
-                                  {t('common.operation.change')}
+                                  {t('operation.change', { ns: 'common' })}
                                 </div>
                               </div>
                             )}

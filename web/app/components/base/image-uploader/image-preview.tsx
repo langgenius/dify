@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiAddBoxLine, RiCloseLine, RiDownloadCloud2Line, RiFileCopyLine, RiZoomInLine, RiZoomOutLine } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
 import { t } from 'i18next'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { createPortal } from 'react-dom'
@@ -129,7 +129,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
         Toast.notify({
           type: 'success',
-          message: t('common.operation.imageCopied'),
+          message: t('operation.imageCopied', { ns: 'common' }),
         })
       }
       catch (err) {
@@ -144,7 +144,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
 
         Toast.notify({
           type: 'info',
-          message: t('common.operation.imageDownloaded'),
+          message: t('operation.imageDownloaded', { ns: 'common' }),
         })
       }
     }
@@ -225,7 +225,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           transition: isDragging ? 'none' : 'transform 0.2s ease-in-out',
         }}
       />
-      <Tooltip popupContent={t('common.operation.copyImage')}>
+      <Tooltip popupContent={t('operation.copyImage', { ns: 'common' })}>
         <div
           className="absolute right-48 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={imageCopy}
@@ -235,7 +235,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
             : <RiFileCopyLine className="h-4 w-4 text-gray-500" />}
         </div>
       </Tooltip>
-      <Tooltip popupContent={t('common.operation.zoomOut')}>
+      <Tooltip popupContent={t('operation.zoomOut', { ns: 'common' })}>
         <div
           className="absolute right-40 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomOut}
@@ -243,7 +243,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           <RiZoomOutLine className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
-      <Tooltip popupContent={t('common.operation.zoomIn')}>
+      <Tooltip popupContent={t('operation.zoomIn', { ns: 'common' })}>
         <div
           className="absolute right-32 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={zoomIn}
@@ -251,7 +251,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           <RiZoomInLine className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
-      <Tooltip popupContent={t('common.operation.download')}>
+      <Tooltip popupContent={t('operation.download', { ns: 'common' })}>
         <div
           className="absolute right-24 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={downloadImage}
@@ -259,7 +259,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           <RiDownloadCloud2Line className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
-      <Tooltip popupContent={t('common.operation.openInNewTab')}>
+      <Tooltip popupContent={t('operation.openInNewTab', { ns: 'common' })}>
         <div
           className="absolute right-16 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg"
           onClick={openInNewTab}
@@ -267,7 +267,7 @@ const ImagePreview: FC<ImagePreviewProps> = ({
           <RiAddBoxLine className="h-4 w-4 text-gray-500" />
         </div>
       </Tooltip>
-      <Tooltip popupContent={t('common.operation.cancel')}>
+      <Tooltip popupContent={t('operation.cancel', { ns: 'common' })}>
         <div
           className="absolute right-6 top-6 flex h-8 w-8 cursor-pointer items-center justify-center rounded-lg bg-white/8 backdrop-blur-[2px]"
           onClick={onCancel}

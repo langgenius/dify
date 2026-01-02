@@ -3,7 +3,7 @@ import type { FC } from 'react'
 import {
   RiDeleteBinLine,
 } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -56,8 +56,8 @@ const ConfigItem: FC<Props> = ({
       <div className={`system-xs-semibold-uppercase mr-3 shrink-0 ${payload.isActive ? 'text-util-colors-green-green-600' : 'text-util-colors-warning-warning-600'}`}>
         {
           payload.isActive
-            ? t(isNotion ? 'common.dataSource.notion.connected' : 'common.dataSource.website.active')
-            : t(isNotion ? 'common.dataSource.notion.disconnected' : 'common.dataSource.website.inactive')
+            ? t(isNotion ? 'dataSource.notion.connected' : 'dataSource.website.active', { ns: 'common' })
+            : t(isNotion ? 'dataSource.notion.disconnected' : 'dataSource.website.inactive', { ns: 'common' })
         }
       </div>
       <div className="mr-2 h-3 w-[1px] bg-divider-regular" />

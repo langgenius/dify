@@ -2,7 +2,8 @@
 import type { FC } from 'react'
 import type { IChatItem } from '@/app/components/base/chat/chat/type'
 import type { AgentIteration, AgentLogDetailResponse } from '@/models/log'
-import { flatten, uniq } from 'lodash-es'
+import { uniq } from 'es-toolkit/array'
+import { flatten } from 'es-toolkit/compat'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -90,7 +91,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
           )}
           onClick={() => switchTab('DETAIL')}
         >
-          {t('runLog.detail')}
+          {t('detail', { ns: 'runLog' })}
         </div>
         <div
           className={cn(
@@ -99,7 +100,7 @@ const AgentLogDetail: FC<AgentLogDetailProps> = ({
           )}
           onClick={() => switchTab('TRACING')}
         >
-          {t('runLog.tracing')}
+          {t('tracing', { ns: 'runLog' })}
         </div>
       </div>
       {/* panel detail */}

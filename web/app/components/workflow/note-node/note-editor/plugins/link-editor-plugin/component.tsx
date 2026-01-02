@@ -11,7 +11,7 @@ import {
   RiLinkUnlinkM,
 } from '@remixicon/react'
 import { useClickAway } from 'ahooks'
-import { escape } from 'lodash-es'
+import { escape } from 'es-toolkit/string'
 import {
   memo,
   useEffect,
@@ -83,7 +83,7 @@ const LinkEditorComponent = ({
                       className="mr-0.5 h-6 w-[196px] appearance-none rounded-sm bg-transparent p-1 text-[13px] text-components-input-text-filled outline-none"
                       value={url}
                       onChange={e => setUrl(e.target.value)}
-                      placeholder={t('workflow.nodes.note.editor.enterUrl') || ''}
+                      placeholder={t('nodes.note.editor.enterUrl', { ns: 'workflow' }) || ''}
                       autoFocus
                     />
                     <Button
@@ -92,7 +92,7 @@ const LinkEditorComponent = ({
                       disabled={!url}
                       onClick={() => handleSaveLink(url)}
                     >
-                      {t('common.operation.ok')}
+                      {t('operation.ok', { ns: 'common' })}
                     </Button>
                   </>
                 )
@@ -108,7 +108,7 @@ const LinkEditorComponent = ({
                     >
                       <RiExternalLinkLine className="mr-1 h-3 w-3" />
                       <div className="mr-1">
-                        {t('workflow.nodes.note.editor.openLink')}
+                        {t('nodes.note.editor.openLink', { ns: 'workflow' })}
                       </div>
                       <div
                         title={escape(url)}
@@ -126,14 +126,14 @@ const LinkEditorComponent = ({
                       }}
                     >
                       <RiEditLine className="mr-1 h-3 w-3" />
-                      {t('common.operation.edit')}
+                      {t('operation.edit', { ns: 'common' })}
                     </div>
                     <div
                       className="flex h-6 cursor-pointer items-center rounded-md px-2 hover:bg-state-base-hover"
                       onClick={handleUnlink}
                     >
                       <RiLinkUnlinkM className="mr-1 h-3 w-3" />
-                      {t('workflow.nodes.note.editor.unlink')}
+                      {t('nodes.note.editor.unlink', { ns: 'workflow' })}
                     </div>
                   </>
                 )

@@ -5,7 +5,7 @@ import type { ToolWithProvider } from '@/app/components/workflow/types'
 import type { AppIconType } from '@/types/app'
 import { RiCloseLine, RiEditLine } from '@remixicon/react'
 import { useHover } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -81,15 +81,15 @@ const MCPModal = ({
 
   const authMethods = [
     {
-      text: t('tools.mcp.modal.authentication'),
+      text: t('mcp.modal.authentication', { ns: 'tools' }),
       value: MCPAuthMethod.authentication,
     },
     {
-      text: t('tools.mcp.modal.headers'),
+      text: t('mcp.modal.headers', { ns: 'tools' }),
       value: MCPAuthMethod.headers,
     },
     {
-      text: t('tools.mcp.modal.configurations'),
+      text: t('mcp.modal.configurations', { ns: 'tools' }),
       value: MCPAuthMethod.configurations,
     },
   ]
@@ -231,33 +231,33 @@ const MCPModal = ({
         <div className="absolute right-5 top-5 z-10 cursor-pointer p-1.5" onClick={onHide}>
           <RiCloseLine className="h-5 w-5 text-text-tertiary" />
         </div>
-        <div className="title-2xl-semi-bold relative pb-3 text-xl text-text-primary">{!isCreate ? t('tools.mcp.modal.editTitle') : t('tools.mcp.modal.title')}</div>
+        <div className="title-2xl-semi-bold relative pb-3 text-xl text-text-primary">{!isCreate ? t('mcp.modal.editTitle', { ns: 'tools' }) : t('mcp.modal.title', { ns: 'tools' })}</div>
         <div className="space-y-5 py-3">
           <div>
             <div className="mb-1 flex h-6 items-center">
-              <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.serverUrl')}</span>
+              <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverUrl', { ns: 'tools' })}</span>
             </div>
             <Input
               value={url}
               onChange={e => setUrl(e.target.value)}
               onBlur={e => handleBlur(e.target.value.trim())}
-              placeholder={t('tools.mcp.modal.serverUrlPlaceholder')}
+              placeholder={t('mcp.modal.serverUrlPlaceholder', { ns: 'tools' })}
             />
             {originalServerUrl && originalServerUrl !== url && (
               <div className="mt-1 flex h-5 items-center">
-                <span className="body-xs-regular text-text-warning">{t('tools.mcp.modal.serverUrlWarning')}</span>
+                <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverUrlWarning', { ns: 'tools' })}</span>
               </div>
             )}
           </div>
           <div className="flex space-x-3">
             <div className="grow pb-1">
               <div className="mb-1 flex h-6 items-center">
-                <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.name')}</span>
+                <span className="system-sm-medium text-text-secondary">{t('mcp.modal.name', { ns: 'tools' })}</span>
               </div>
               <Input
                 value={name}
                 onChange={e => setName(e.target.value)}
-                placeholder={t('tools.mcp.modal.namePlaceholder')}
+                placeholder={t('mcp.modal.namePlaceholder', { ns: 'tools' })}
               />
             </div>
             <div className="pt-2" ref={appIconRef}>
@@ -284,17 +284,17 @@ const MCPModal = ({
           </div>
           <div>
             <div className="flex h-6 items-center">
-              <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.serverIdentifier')}</span>
+              <span className="system-sm-medium text-text-secondary">{t('mcp.modal.serverIdentifier', { ns: 'tools' })}</span>
             </div>
-            <div className="body-xs-regular mb-1 text-text-tertiary">{t('tools.mcp.modal.serverIdentifierTip')}</div>
+            <div className="body-xs-regular mb-1 text-text-tertiary">{t('mcp.modal.serverIdentifierTip', { ns: 'tools' })}</div>
             <Input
               value={serverIdentifier}
               onChange={e => setServerIdentifier(e.target.value)}
-              placeholder={t('tools.mcp.modal.serverIdentifierPlaceholder')}
+              placeholder={t('mcp.modal.serverIdentifierPlaceholder', { ns: 'tools' })}
             />
             {originalServerID && originalServerID !== serverIdentifier && (
               <div className="mt-1 flex h-5 items-center">
-                <span className="body-xs-regular text-text-warning">{t('tools.mcp.modal.serverIdentifierWarning')}</span>
+                <span className="body-xs-regular text-text-warning">{t('mcp.modal.serverIdentifierWarning', { ns: 'tools' })}</span>
               </div>
             )}
           </div>
@@ -317,13 +317,13 @@ const MCPModal = ({
                       defaultValue={isDynamicRegistration}
                       onChange={setIsDynamicRegistration}
                     />
-                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.useDynamicClientRegistration')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.useDynamicClientRegistration', { ns: 'tools' })}</span>
                   </div>
                   {!isDynamicRegistration && (
                     <div className="mt-2 flex gap-2 rounded-lg bg-state-warning-hover p-3">
                       <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-text-warning" />
                       <div className="system-xs-regular text-text-secondary">
-                        <div className="mb-1">{t('tools.mcp.modal.redirectUrlWarning')}</div>
+                        <div className="mb-1">{t('mcp.modal.redirectUrlWarning', { ns: 'tools' })}</div>
                         <code className="system-xs-medium block break-all rounded bg-state-warning-active px-2 py-1 text-text-secondary">
                           {`${API_PREFIX}/mcp/oauth/callback`}
                         </code>
@@ -333,25 +333,25 @@ const MCPModal = ({
                 </div>
                 <div>
                   <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.clientID')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientID', { ns: 'tools' })}</span>
                   </div>
                   <Input
                     value={clientID}
                     onChange={e => setClientID(e.target.value)}
                     onBlur={e => handleBlur(e.target.value.trim())}
-                    placeholder={t('tools.mcp.modal.clientID')}
+                    placeholder={t('mcp.modal.clientID', { ns: 'tools' })}
                     disabled={isDynamicRegistration}
                   />
                 </div>
                 <div>
                   <div className={cn('mb-1 flex h-6 items-center', isDynamicRegistration && 'opacity-50')}>
-                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.clientSecret')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.clientSecret', { ns: 'tools' })}</span>
                   </div>
                   <Input
                     value={credentials}
                     onChange={e => setCredentials(e.target.value)}
                     onBlur={e => handleBlur(e.target.value.trim())}
-                    placeholder={t('tools.mcp.modal.clientSecretPlaceholder')}
+                    placeholder={t('mcp.modal.clientSecretPlaceholder', { ns: 'tools' })}
                     disabled={isDynamicRegistration}
                   />
                 </div>
@@ -362,9 +362,9 @@ const MCPModal = ({
             authMethod === MCPAuthMethod.headers && (
               <div>
                 <div className="mb-1 flex h-6 items-center">
-                  <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.headers')}</span>
+                  <span className="system-sm-medium text-text-secondary">{t('mcp.modal.headers', { ns: 'tools' })}</span>
                 </div>
-                <div className="body-xs-regular mb-2 text-text-tertiary">{t('tools.mcp.modal.headersTip')}</div>
+                <div className="body-xs-regular mb-2 text-text-tertiary">{t('mcp.modal.headersTip', { ns: 'tools' })}</div>
                 <HeadersInput
                   headersItems={headers}
                   onChange={setHeaders}
@@ -379,26 +379,26 @@ const MCPModal = ({
               <>
                 <div>
                   <div className="mb-1 flex h-6 items-center">
-                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.timeout')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.timeout', { ns: 'tools' })}</span>
                   </div>
                   <Input
                     type="number"
                     value={timeout}
                     onChange={e => setMcpTimeout(Number(e.target.value))}
                     onBlur={e => handleBlur(e.target.value.trim())}
-                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                    placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
                   />
                 </div>
                 <div>
                   <div className="mb-1 flex h-6 items-center">
-                    <span className="system-sm-medium text-text-secondary">{t('tools.mcp.modal.sseReadTimeout')}</span>
+                    <span className="system-sm-medium text-text-secondary">{t('mcp.modal.sseReadTimeout', { ns: 'tools' })}</span>
                   </div>
                   <Input
                     type="number"
                     value={sseReadTimeout}
                     onChange={e => setSseReadTimeout(Number(e.target.value))}
                     onBlur={e => handleBlur(e.target.value.trim())}
-                    placeholder={t('tools.mcp.modal.timeoutPlaceholder')}
+                    placeholder={t('mcp.modal.timeoutPlaceholder', { ns: 'tools' })}
                   />
                 </div>
               </>
@@ -406,8 +406,8 @@ const MCPModal = ({
           }
         </div>
         <div className="flex flex-row-reverse pt-5">
-          <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className="ml-2" variant="primary" onClick={submit}>{data ? t('tools.mcp.modal.save') : t('tools.mcp.modal.confirm')}</Button>
-          <Button onClick={onHide}>{t('tools.mcp.modal.cancel')}</Button>
+          <Button disabled={!name || !url || !serverIdentifier || isFetchingIcon} className="ml-2" variant="primary" onClick={submit}>{data ? t('mcp.modal.save', { ns: 'tools' }) : t('mcp.modal.confirm', { ns: 'tools' })}</Button>
+          <Button onClick={onHide}>{t('mcp.modal.cancel', { ns: 'tools' })}</Button>
         </div>
       </Modal>
       {showAppIconPicker && (

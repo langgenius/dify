@@ -7,7 +7,7 @@ import {
   RiDeleteBinLine,
   RiDraggable,
 } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -177,7 +177,7 @@ const ConditionWrap: FC<Props> = ({
                               disabled={readOnly}
                             >
                               <RiAddLine className="mr-1 h-3.5 w-3.5" />
-                              {t('workflow.nodes.ifElse.addSubVariable')}
+                              {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
                             </Button>
                           )}
                           hideChecked
@@ -204,7 +204,7 @@ const ConditionWrap: FC<Props> = ({
                         onMouseLeave={() => setWillDeleteCaseId('')}
                       >
                         <RiDeleteBinLine className="mr-1 h-3.5 w-3.5" />
-                        {t('common.operation.remove')}
+                        {t('operation.remove', { ns: 'common' })}
                       </Button>
                     )
                   }
@@ -224,7 +224,7 @@ const ConditionWrap: FC<Props> = ({
           onClick={() => handleAddSubVariableCondition?.(caseId!, conditionId!)}
         >
           <RiAddLine className="mr-1 h-3.5 w-3.5" />
-          {t('workflow.nodes.ifElse.addSubVariable')}
+          {t('nodes.ifElse.addSubVariable', { ns: 'workflow' })}
         </Button>
       )}
     </>

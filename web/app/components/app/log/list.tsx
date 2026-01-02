@@ -12,12 +12,12 @@ import { RiCloseLine, RiEditFill } from '@remixicon/react'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { get, noop } from 'lodash-es'
+import { get } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { usePathname, useRouter, useSearchParams } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { createContext, useContext } from 'use-context-selector'
 import { useShallow } from 'zustand/react/shallow'
 import ModelInfo from '@/app/components/app/log/model-info'
@@ -38,7 +38,8 @@ import { WorkflowContextProvider } from '@/app/components/workflow/context'
 import { useAppContext } from '@/context/app-context'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
 import useTimestamp from '@/hooks/use-timestamp'
-import { fetchChatConversationDetail, fetchChatMessages, fetchCompletionConversationDetail, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { fetchChatMessages, updateLogMessageAnnotations, updateLogMessageFeedbacks } from '@/service/log'
+import { useChatConversationDetail, useCompletionConversationDetail } from '@/service/use-log'
 import { AppModeEnum } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import PromptLogModal from '../../base/prompt-log-modal'
@@ -139,14 +140,14 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         id: item.id,
         content: item.answer,
         agent_thoughts: addFileInfos(item.agent_thoughts ? sortAgentSorts(item.agent_thoughts) : item.agent_thoughts, item.message_files),
-        feedback: item.feedbacks.find(item => item.from_source === 'user'), // user feedback
-        adminFeedback: item.feedbacks.find(item => item.from_source === 'admin'), // admin feedback
+        feedback: item.feedbacks?.find(item => item.from_source === 'user'), // user feedback
+        adminFeedback: item.feedbacks?.find(item => item.from_source === 'admin'), // admin feedback
         feedbackDisabled: false,
         isAnswer: true,
         message_files: getProcessedFilesFromResponse(answerFiles.map((item: any) => ({ ...item, related_id: item.id }))),
         log: [
-          ...item.message,
-          ...(item.message[item.message.length - 1]?.role !== 'assistant'
+          ...(item.message ?? []),
+          ...(item.message?.[item.message.length - 1]?.role !== 'assistant'
             ? [
                 {
                   role: 'assistant',
@@ -165,7 +166,7 @@ const getFormattedChatList = (messages: ChatMessage[], conversationId: string, t
         more: {
           time: dayjs.unix(item.created_at).tz(timezone).format(format),
           tokens: item.answer_tokens + item.message_tokens,
-          latency: item.provider_response_latency.toFixed(2),
+          latency: (item.provider_response_latency ?? 0).toFixed(2),
         },
         citation: item.metadata?.retriever_resources,
         annotation: (() => {
@@ -262,7 +263,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       setHasMore(messageRes.has_more)
 
       const newAllChatItems = [
-        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('appLog.dateTimeFormat') as string),
+        ...getFormattedChatList(messageRes.data, detail.id, timezone!, t('dateTimeFormat', { ns: 'appLog' }) as string),
         ...allChatItems,
       ]
       setAllChatItems(newAllChatItems)
@@ -369,11 +370,11 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         return item
       }))
 
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }, [allChatItems, appDetail?.id, t])
@@ -436,7 +437,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
         messageRes.data,
         detail.id,
         timezone!,
-        t('appLog.dateTimeFormat') as string,
+        t('dateTimeFormat', { ns: 'appLog' }) as string,
       )
 
       // Check for duplicate messages
@@ -462,7 +463,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
               retryRes.data,
               detail.id,
               timezone!,
-              t('appLog.dateTimeFormat') as string,
+              t('dateTimeFormat', { ns: 'appLog' }) as string,
             )
 
             const retryUniqueItems = retryItems.filter(item => !existingIds.has(item.id))
@@ -653,7 +654,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
       {/* Panel Header */}
       <div className="flex shrink-0 items-center gap-2 rounded-t-xl bg-components-panel-bg pb-2 pl-4 pr-3 pt-3">
         <div className="shrink-0">
-          <div className="system-xs-semibold-uppercase mb-0.5 text-text-primary">{isChatMode ? t('appLog.detail.conversationId') : t('appLog.detail.time')}</div>
+          <div className="system-xs-semibold-uppercase mb-0.5 text-text-primary">{isChatMode ? t('detail.conversationId', { ns: 'appLog' }) : t('detail.time', { ns: 'appLog' })}</div>
           {isChatMode && (
             <div className="system-2xs-regular-uppercase flex items-center text-text-secondary">
               <Tooltip
@@ -665,7 +666,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
             </div>
           )}
           {!isChatMode && (
-            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('appLog.dateTimeFormat') as string)}</div>
+            <div className="system-2xs-regular-uppercase text-text-secondary">{formatTime(detail.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</div>
           )}
         </div>
         <div className="flex grow flex-wrap items-center justify-end gap-y-1">
@@ -691,7 +692,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
           ? (
               <div className="px-6 py-4">
                 <div className="flex h-[18px] items-center space-x-3">
-                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('appLog.table.header.output')}</div>
+                  <div className="system-xs-semibold-uppercase text-text-tertiary">{t('table.header.output', { ns: 'appLog' })}</div>
                   <div
                     className="h-px grow"
                     style={{
@@ -759,7 +760,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
                 {hasMore && isLoading && (
                   <div className="sticky left-0 right-0 top-0 z-10 bg-primary-50/40 py-3 text-center">
                     <div className="system-xs-regular text-text-tertiary">
-                      {t('appLog.detail.loading')}
+                      {t('detail.loading', { ns: 'appLog' })}
                       ...
                     </div>
                   </div>
@@ -825,8 +826,7 @@ function DetailPanel({ detail, onFeedback }: IDetailPanel) {
  */
 const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
   // Text Generator App Session Details Including Message List
-  const detailParams = ({ url: `/apps/${appId}/completion-conversations/${conversationId}` })
-  const { data: conversationDetail, mutate: conversationDetailMutate } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchCompletionConversationDetail)
+  const { data: conversationDetail, refetch: conversationDetailMutate } = useCompletionConversationDetail(appId, conversationId)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
@@ -837,11 +837,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
         body: { message_id: mid, rating, content: content ?? undefined },
       })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -850,11 +850,11 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
       conversationDetailMutate()
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -875,8 +875,7 @@ const CompletionConversationDetailComp: FC<{ appId?: string, conversationId?: st
  * Chat App Conversation Detail Component
  */
 const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }> = ({ appId, conversationId }) => {
-  const detailParams = { url: `/apps/${appId}/chat-conversations/${conversationId}` }
-  const { data: conversationDetail } = useSWR(() => (appId && conversationId) ? detailParams : null, fetchChatConversationDetail)
+  const { data: conversationDetail } = useChatConversationDetail(appId, conversationId)
   const { notify } = useContext(ToastContext)
   const { t } = useTranslation()
 
@@ -886,11 +885,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
         url: `/apps/${appId}/feedbacks`,
         body: { message_id: mid, rating, content: content ?? undefined },
       })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -898,11 +897,11 @@ const ChatConversationDetailComp: FC<{ appId?: string, conversationId?: string }
   const handleAnnotation = async (mid: string, value: string): Promise<boolean> => {
     try {
       await updateLogMessageAnnotations({ url: `/apps/${appId}/annotations`, body: { message_id: mid, content: value } })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       return true
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
       return false
     }
   }
@@ -1039,7 +1038,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         popupContent={(
           <span className="inline-flex items-center text-xs text-text-tertiary">
             <RiEditFill className="mr-1 h-3 w-3" />
-            {`${t('appLog.detail.annotationTip', { user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
+            {`${t('detail.annotationTip', { ns: 'appLog', user: annotation?.account?.name })} ${formatTime(annotation?.created_at || dayjs().unix(), 'MM-DD hh:mm A')}`}
           </span>
         )}
         popupClassName={(isHighlight && !isChatMode) ? '' : '!hidden'}
@@ -1060,14 +1059,14 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
         <thead className="system-xs-medium-uppercase text-text-tertiary">
           <tr>
             <td className="w-5 whitespace-nowrap rounded-l-lg bg-background-section-burn pl-2 pr-1"></td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('appLog.table.header.summary') : t('appLog.table.header.input')}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.endUser')}</td>
-            {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.status')}</td>}
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('appLog.table.header.messageCount') : t('appLog.table.header.output')}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.userRate')}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.adminRate')}</td>
-            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.updatedTime')}</td>
-            <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('appLog.table.header.time')}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.summary', { ns: 'appLog' }) : t('table.header.input', { ns: 'appLog' })}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.endUser', { ns: 'appLog' })}</td>
+            {isChatflow && <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.status', { ns: 'appLog' })}</td>}
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{isChatMode ? t('table.header.messageCount', { ns: 'appLog' }) : t('table.header.output', { ns: 'appLog' })}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.userRate', { ns: 'appLog' })}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.adminRate', { ns: 'appLog' })}</td>
+            <td className="whitespace-nowrap bg-background-section-burn py-1.5 pl-3">{t('table.header.updatedTime', { ns: 'appLog' })}</td>
+            <td className="whitespace-nowrap rounded-r-lg bg-background-section-burn py-1.5 pl-3">{t('table.header.time', { ns: 'appLog' })}</td>
           </tr>
         </thead>
         <tbody className="system-sm-regular text-text-secondary">
@@ -1089,7 +1088,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   )}
                 </td>
                 <td className="w-[160px] p-3 pr-2" style={{ maxWidth: isChatMode ? 300 : 200 }}>
-                  {renderTdValue(leftValue || t('appLog.table.empty.noChat'), !leftValue, isChatMode && log.annotated)}
+                  {renderTdValue(leftValue || t('table.empty.noChat', { ns: 'appLog' }), !leftValue, isChatMode && log.annotated)}
                 </td>
                 <td className="p-3 pr-2">{renderTdValue(endUser || defaultValue, !endUser)}</td>
                 {isChatflow && (
@@ -1098,7 +1097,7 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                   </td>
                 )}
                 <td className="p-3 pr-2" style={{ maxWidth: isChatMode ? 100 : 200 }}>
-                  {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('appLog.table.empty.noOutput')), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
+                  {renderTdValue(rightValue === 0 ? 0 : (rightValue || t('table.empty.noOutput', { ns: 'appLog' })), !rightValue, !isChatMode && !!log.annotation?.content, log.annotation)}
                 </td>
                 <td className="p-3 pr-2">
                   {(!log.user_feedback_stats.like && !log.user_feedback_stats.dislike)
@@ -1120,8 +1119,8 @@ const ConversationList: FC<IConversationList> = ({ logs, appDetail, onRefresh })
                         </>
                       )}
                 </td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t('appLog.dateTimeFormat') as string)}</td>
-                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t('appLog.dateTimeFormat') as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.updated_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
+                <td className="w-[160px] p-3 pr-2">{formatTime(log.created_at, t('dateTimeFormat', { ns: 'appLog' }) as string)}</td>
               </tr>
             )
           })}

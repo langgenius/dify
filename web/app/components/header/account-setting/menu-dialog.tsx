@@ -1,6 +1,6 @@
 import type { ReactNode } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { Fragment, useCallback, useEffect } from 'react'
 import { cn } from '@/utils/classnames'
 

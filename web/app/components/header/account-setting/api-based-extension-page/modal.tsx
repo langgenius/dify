@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import type { ApiBasedExtension } from '@/models/common'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -41,7 +41,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
     setLoading(true)
 
     if (localeData && localeData.api_key && localeData.api_key?.length < 5) {
-      notify({ type: 'error', message: t('common.apiBasedExtension.modal.apiKey.lengthError') })
+      notify({ type: 'error', message: t('apiBasedExtension.modal.apiKey.lengthError', { ns: 'common' }) })
       setLoading(false)
       return
     }
@@ -63,7 +63,7 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           },
         })
 
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       }
 
       if (onSave)
@@ -83,24 +83,24 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
       <div className="mb-2 text-xl font-semibold text-text-primary">
         {
           data.name
-            ? t('common.apiBasedExtension.modal.editTitle')
-            : t('common.apiBasedExtension.modal.title')
+            ? t('apiBasedExtension.modal.editTitle', { ns: 'common' })
+            : t('apiBasedExtension.modal.title', { ns: 'common' })
         }
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">
-          {t('common.apiBasedExtension.modal.name.title')}
+          {t('apiBasedExtension.modal.name.title', { ns: 'common' })}
         </div>
         <input
           value={localeData.name || ''}
           onChange={e => handleDataChange('name', e.target.value)}
           className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
-          placeholder={t('common.apiBasedExtension.modal.name.placeholder') || ''}
+          placeholder={t('apiBasedExtension.modal.name.placeholder', { ns: 'common' }) || ''}
         />
       </div>
       <div className="py-2">
         <div className="flex h-9 items-center justify-between text-sm font-medium text-text-primary">
-          {t('common.apiBasedExtension.modal.apiEndpoint.title')}
+          {t('apiBasedExtension.modal.apiEndpoint.title', { ns: 'common' })}
           <a
             href={docLink('/guides/extension/api-based-extension/README')}
             target="_blank"
@@ -108,26 +108,26 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
             className="group flex items-center text-xs font-normal text-text-accent"
           >
             <BookOpen01 className="mr-1 h-3 w-3" />
-            {t('common.apiBasedExtension.link')}
+            {t('apiBasedExtension.link', { ns: 'common' })}
           </a>
         </div>
         <input
           value={localeData.api_endpoint || ''}
           onChange={e => handleDataChange('api_endpoint', e.target.value)}
           className="block h-9 w-full appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
-          placeholder={t('common.apiBasedExtension.modal.apiEndpoint.placeholder') || ''}
+          placeholder={t('apiBasedExtension.modal.apiEndpoint.placeholder', { ns: 'common' }) || ''}
         />
       </div>
       <div className="py-2">
         <div className="text-sm font-medium leading-9 text-text-primary">
-          {t('common.apiBasedExtension.modal.apiKey.title')}
+          {t('apiBasedExtension.modal.apiKey.title', { ns: 'common' })}
         </div>
         <div className="flex items-center">
           <input
             value={localeData.api_key || ''}
             onChange={e => handleDataChange('api_key', e.target.value)}
             className="mr-2 block h-9 grow appearance-none rounded-lg bg-components-input-bg-normal px-3 text-sm text-text-primary outline-none"
-            placeholder={t('common.apiBasedExtension.modal.apiKey.placeholder') || ''}
+            placeholder={t('apiBasedExtension.modal.apiKey.placeholder', { ns: 'common' }) || ''}
           />
         </div>
       </div>
@@ -136,14 +136,14 @@ const ApiBasedExtensionModal: FC<ApiBasedExtensionModalProps> = ({
           onClick={onCancel}
           className="mr-2"
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           disabled={!localeData.name || !localeData.api_endpoint || !localeData.api_key || loading}
           onClick={handleSave}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
     </Modal>

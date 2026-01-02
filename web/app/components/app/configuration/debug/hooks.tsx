@@ -6,7 +6,7 @@ import type {
   ChatConfig,
   ChatItem,
 } from '@/app/components/base/chat/types'
-import cloneDeep from 'lodash-es/cloneDeep'
+import { cloneDeep } from 'es-toolkit/object'
 import {
   useCallback,
   useRef,

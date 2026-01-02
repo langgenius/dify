@@ -2,7 +2,7 @@
 import type { FC } from 'react'
 import type { ChunkingMode, FileItem } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -42,7 +42,7 @@ const BatchModal: FC<IBatchModalProps> = ({
 
   return (
     <Modal isShow={isShow} onClose={noop} className="!max-w-[520px] !rounded-xl px-8 py-6">
-      <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('datasetDocuments.list.batchModal.title')}</div>
+      <div className="relative pb-1 text-xl font-medium leading-[30px] text-text-primary">{t('list.batchModal.title', { ns: 'datasetDocuments' })}</div>
       <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onCancel}>
         <RiCloseLine className="h-4 w-4 text-text-secondary" />
       </div>
@@ -55,10 +55,10 @@ const BatchModal: FC<IBatchModalProps> = ({
       />
       <div className="mt-[28px] flex justify-end pt-6">
         <Button className="mr-2" onClick={onCancel}>
-          {t('datasetDocuments.list.batchModal.cancel')}
+          {t('list.batchModal.cancel', { ns: 'datasetDocuments' })}
         </Button>
         <Button variant="primary" onClick={handleSend} disabled={!currentCSV || !currentCSV.file || !currentCSV.file.id}>
-          {t('datasetDocuments.list.batchModal.run')}
+          {t('list.batchModal.run', { ns: 'datasetDocuments' })}
         </Button>
       </div>
     </Modal>

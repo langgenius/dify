@@ -1,7 +1,7 @@
 import type { FC } from 'react'
 import { RiLoader2Line } from '@remixicon/react'
 import { useCountDown } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -23,15 +23,15 @@ const DefaultContent: FC<IDefaultContentProps> = React.memo(({
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('datasetDocuments.segment.regenerationConfirmTitle')}</span>
-        <p className="system-md-regular text-text-secondary">{t('datasetDocuments.segment.regenerationConfirmMessage')}</p>
+        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationConfirmTitle', { ns: 'datasetDocuments' })}</span>
+        <p className="system-md-regular text-text-secondary">{t('segment.regenerationConfirmMessage', { ns: 'datasetDocuments' })}</p>
       </div>
       <div className="flex justify-end gap-x-2 pt-6">
         <Button onClick={onCancel}>
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button variant="warning" destructive onClick={onConfirm}>
-          {t('common.operation.regenerate')}
+          {t('operation.regenerate', { ns: 'common' })}
         </Button>
       </div>
     </>
@@ -46,13 +46,13 @@ const RegeneratingContent: FC = React.memo(() => {
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('datasetDocuments.segment.regeneratingTitle')}</span>
-        <p className="system-md-regular text-text-secondary">{t('datasetDocuments.segment.regeneratingMessage')}</p>
+        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regeneratingTitle', { ns: 'datasetDocuments' })}</span>
+        <p className="system-md-regular text-text-secondary">{t('segment.regeneratingMessage', { ns: 'datasetDocuments' })}</p>
       </div>
       <div className="flex justify-end pt-6">
         <Button variant="warning" destructive disabled className="inline-flex items-center gap-x-0.5">
           <RiLoader2Line className="h-4 w-4 animate-spin text-components-button-destructive-primary-text-disabled" />
-          <span>{t('common.operation.regenerate')}</span>
+          <span>{t('operation.regenerate', { ns: 'common' })}</span>
         </Button>
       </div>
     </>
@@ -80,12 +80,12 @@ const RegenerationCompletedContent: FC<IRegenerationCompletedContentProps> = Rea
   return (
     <>
       <div className="pb-4">
-        <span className="title-2xl-semi-bold text-text-primary">{t('datasetDocuments.segment.regenerationSuccessTitle')}</span>
-        <p className="system-md-regular text-text-secondary">{t('datasetDocuments.segment.regenerationSuccessMessage')}</p>
+        <span className="title-2xl-semi-bold text-text-primary">{t('segment.regenerationSuccessTitle', { ns: 'datasetDocuments' })}</span>
+        <p className="system-md-regular text-text-secondary">{t('segment.regenerationSuccessMessage', { ns: 'datasetDocuments' })}</p>
       </div>
       <div className="flex justify-end pt-6">
         <Button variant="primary" onClick={onClose}>
-          {`${t('common.operation.close')}${countdown === 0 ? '' : `(${Math.round(countdown / 1000)})`}`}
+          {`${t('operation.close', { ns: 'common' })}${countdown === 0 ? '' : `(${Math.round(countdown / 1000)})`}`}
         </Button>
       </div>
     </>

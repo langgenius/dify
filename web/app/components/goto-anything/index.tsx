@@ -222,9 +222,9 @@ const GotoAnything: FC<Props> = ({
       return (
         <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
           <div>
-            <div className="text-sm font-medium text-red-500">{t('app.gotoAnything.searchTemporarilyUnavailable')}</div>
+            <div className="text-sm font-medium text-red-500">{t('gotoAnything.searchTemporarilyUnavailable', { ns: 'app' })}</div>
             <div className="mt-1 text-xs text-text-quaternary">
-              {t('app.gotoAnything.servicesUnavailableMessage')}
+              {t('gotoAnything.servicesUnavailableMessage', { ns: 'app' })}
             </div>
           </div>
         </div>
@@ -237,20 +237,20 @@ const GotoAnything: FC<Props> = ({
           <div className="text-sm font-medium">
             {isCommandSearch
               ? (() => {
-                  const keyMap: Record<string, string> = {
-                    app: 'app.gotoAnything.emptyState.noAppsFound',
-                    plugin: 'app.gotoAnything.emptyState.noPluginsFound',
-                    knowledge: 'app.gotoAnything.emptyState.noKnowledgeBasesFound',
-                    node: 'app.gotoAnything.emptyState.noWorkflowNodesFound',
-                  }
-                  return t(keyMap[commandType] || 'app.gotoAnything.noResults')
+                  const keyMap = {
+                    app: 'gotoAnything.emptyState.noAppsFound',
+                    plugin: 'gotoAnything.emptyState.noPluginsFound',
+                    knowledge: 'gotoAnything.emptyState.noKnowledgeBasesFound',
+                    node: 'gotoAnything.emptyState.noWorkflowNodesFound',
+                  } as const
+                  return t(keyMap[commandType as keyof typeof keyMap] || 'gotoAnything.noResults', { ns: 'app' })
                 })()
-              : t('app.gotoAnything.noResults')}
+              : t('gotoAnything.noResults', { ns: 'app' })}
           </div>
           <div className="mt-1 text-xs text-text-quaternary">
             {isCommandSearch
-              ? t('app.gotoAnything.emptyState.tryDifferentTerm')
-              : t('app.gotoAnything.emptyState.trySpecificSearch', { shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })}
+              ? t('gotoAnything.emptyState.tryDifferentTerm', { ns: 'app' })
+              : t('gotoAnything.emptyState.trySpecificSearch', { ns: 'app', shortcuts: Object.values(Actions).map(action => action.shortcut).join(', ') })}
           </div>
         </div>
       </div>
@@ -264,11 +264,11 @@ const GotoAnything: FC<Props> = ({
     return (
       <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
         <div>
-          <div className="text-sm font-medium">{t('app.gotoAnything.searchTitle')}</div>
+          <div className="text-sm font-medium">{t('gotoAnything.searchTitle', { ns: 'app' })}</div>
           <div className="mt-3 space-y-1 text-xs text-text-quaternary">
-            <div>{t('app.gotoAnything.searchHint')}</div>
-            <div>{t('app.gotoAnything.commandHint')}</div>
-            <div>{t('app.gotoAnything.slashHint')}</div>
+            <div>{t('gotoAnything.searchHint', { ns: 'app' })}</div>
+            <div>{t('gotoAnything.commandHint', { ns: 'app' })}</div>
+            <div>{t('gotoAnything.slashHint', { ns: 'app' })}</div>
           </div>
         </div>
       </div>
@@ -312,7 +312,7 @@ const GotoAnything: FC<Props> = ({
                 <Input
                   ref={inputRef}
                   value={searchQuery}
-                  placeholder={t('app.gotoAnything.searchPlaceholder')}
+                  placeholder={t('gotoAnything.searchPlaceholder', { ns: 'app' })}
                   onChange={(e) => {
                     setSearchQuery(e.target.value)
                     if (!e.target.value.startsWith('@') && !e.target.value.startsWith('/'))
@@ -371,14 +371,14 @@ const GotoAnything: FC<Props> = ({
                 <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div className="flex items-center gap-2">
                     <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600"></div>
-                    <span className="text-sm">{t('app.gotoAnything.searching')}</span>
+                    <span className="text-sm">{t('gotoAnything.searching', { ns: 'app' })}</span>
                   </div>
                 </div>
               )}
               {isError && (
                 <div className="flex items-center justify-center py-8 text-center text-text-tertiary">
                   <div>
-                    <div className="text-sm font-medium text-red-500">{t('app.gotoAnything.searchFailed')}</div>
+                    <div className="text-sm font-medium text-red-500">{t('gotoAnything.searchFailed', { ns: 'app' })}</div>
                     <div className="mt-1 text-xs text-text-quaternary">
                       {error.message}
                     </div>
@@ -403,14 +403,14 @@ const GotoAnything: FC<Props> = ({
                           <Command.Group
                             key={groupIndex}
                             heading={(() => {
-                              const typeMap: Record<string, string> = {
-                                'app': 'app.gotoAnything.groups.apps',
-                                'plugin': 'app.gotoAnything.groups.plugins',
-                                'knowledge': 'app.gotoAnything.groups.knowledgeBases',
-                                'workflow-node': 'app.gotoAnything.groups.workflowNodes',
-                                'command': 'app.gotoAnything.groups.commands',
-                              }
-                              return t(typeMap[type] || `${type}s`)
+                              const typeMap = {
+                                'app': 'gotoAnything.groups.apps',
+                                'plugin': 'gotoAnything.groups.plugins',
+                                'knowledge': 'gotoAnything.groups.knowledgeBases',
+                                'workflow-node': 'gotoAnything.groups.workflowNodes',
+                                'command': 'gotoAnything.groups.commands',
+                              } as const
+                              return t(typeMap[type as keyof typeof typeMap] || `${type}s`, { ns: 'app' })
                             })()}
                             className="p-2 capitalize text-text-secondary"
                           >
@@ -455,14 +455,14 @@ const GotoAnything: FC<Props> = ({
                         <span>
                           {isError
                             ? (
-                                <span className="text-red-500">{t('app.gotoAnything.someServicesUnavailable')}</span>
+                                <span className="text-red-500">{t('gotoAnything.someServicesUnavailable', { ns: 'app' })}</span>
                               )
                             : (
                                 <>
-                                  {t('app.gotoAnything.resultCount', { count: dedupedResults.length })}
+                                  {t('gotoAnything.resultCount', { ns: 'app', count: dedupedResults.length })}
                                   {searchMode !== 'general' && (
                                     <span className="ml-2 opacity-60">
-                                      {t('app.gotoAnything.inScope', { scope: searchMode.replace('@', '') })}
+                                      {t('gotoAnything.inScope', { ns: 'app', scope: searchMode.replace('@', '') })}
                                     </span>
                                   )}
                                 </>
@@ -470,8 +470,8 @@ const GotoAnything: FC<Props> = ({
                         </span>
                         <span className="opacity-60">
                           {searchMode !== 'general'
-                            ? t('app.gotoAnything.clearToSearchAll')
-                            : t('app.gotoAnything.useAtForSpecific')}
+                            ? t('gotoAnything.clearToSearchAll', { ns: 'app' })
+                            : t('gotoAnything.useAtForSpecific', { ns: 'app' })}
                         </span>
                       </>
                     )
@@ -480,18 +480,18 @@ const GotoAnything: FC<Props> = ({
                         <span className="opacity-60">
                           {(() => {
                             if (isCommandsMode)
-                              return t('app.gotoAnything.selectToNavigate')
+                              return t('gotoAnything.selectToNavigate', { ns: 'app' })
 
                             if (searchQuery.trim())
-                              return t('app.gotoAnything.searching')
+                              return t('gotoAnything.searching', { ns: 'app' })
 
-                            return t('app.gotoAnything.startTyping')
+                            return t('gotoAnything.startTyping', { ns: 'app' })
                           })()}
                         </span>
                         <span className="opacity-60">
                           {searchQuery.trim() || isCommandsMode
-                            ? t('app.gotoAnything.tips')
-                            : t('app.gotoAnything.pressEscToClose')}
+                            ? t('gotoAnything.tips', { ns: 'app' })
+                            : t('gotoAnything.pressEscToClose', { ns: 'app' })}
                         </span>
                       </>
                     )}

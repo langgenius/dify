@@ -6,7 +6,7 @@ import {
   RiArrowDownSLine,
   RiArrowRightSLine,
 } from '@remixicon/react'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import { useRouter } from 'next/navigation'
 import { Fragment, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -155,17 +155,17 @@ const NavSelector = ({ curNav, navigationItems, createText, isApp, onCreate, onL
                         <div className="p-1">
                           <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('blank')}>
                             <FilePlus01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('app.newApp.startFromBlank')}
+                            {t('newApp.startFromBlank', { ns: 'app' })}
                           </div>
                           <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('template')}>
                             <FilePlus02 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('app.newApp.startFromTemplate')}
+                            {t('newApp.startFromTemplate', { ns: 'app' })}
                           </div>
                         </div>
                         <div className="border-t border-divider-regular p-1">
                           <div className={cn('flex cursor-pointer items-center rounded-lg px-3 py-[6px] font-normal text-text-secondary hover:bg-state-base-hover')} onClick={() => onCreate('dsl')}>
                             <FileArrow01 className="mr-2 h-4 w-4 shrink-0 text-text-secondary" />
-                            {t('app.importDSL')}
+                            {t('importDSL', { ns: 'app' })}
                           </div>
                         </div>
                       </MenuItems>

@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -65,7 +65,7 @@ const DataSourceNotion: FC<Props> = ({
       else if (data.data === 'internal') {
         Toast.notify({
           type: 'info',
-          message: t('common.dataSource.notion.integratedAlert'),
+          message: t('dataSource.notion.integratedAlert', { ns: 'common' }),
         })
       }
     }

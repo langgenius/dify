@@ -7,7 +7,7 @@ import {
   RiErrorWarningFill,
   RiInformation2Fill,
 } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useState } from 'react'
 import { createRoot } from 'react-dom/client'

@@ -1,5 +1,5 @@
 import { render, screen } from '@testing-library/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { z } from 'zod'
 import withValidation from '.'
 

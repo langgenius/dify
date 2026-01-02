@@ -13,8 +13,8 @@ import type { VarInInspect } from '@/types/workflow'
 import {
   useEventListener,
 } from 'ahooks'
+import { isEqual } from 'es-toolkit/predicate'
 import { setAutoFreeze } from 'immer'
-import { isEqual } from 'lodash-es'
 import dynamic from 'next/dynamic'
 import {
   memo,
@@ -35,6 +35,7 @@ import ReactFlow, {
   useReactFlow,
   useStoreApi,
 } from 'reactflow'
+import { IS_DEV } from '@/config'
 import { useEventEmitterContextContext } from '@/context/event-emitter'
 import {
   useAllBuiltInTools,
@@ -195,9 +196,11 @@ export const Workflow: FC<WorkflowProps> = memo(({
   const { nodesReadOnly } = useNodesReadOnly()
   const { eventEmitter } = useEventEmitterContextContext()
 
+  const store = useStoreApi()
   eventEmitter?.useSubscription((v: any) => {
     if (v.type === WORKFLOW_DATA_UPDATE) {
       setNodes(v.payload.nodes)
+      store.getState().setNodes(v.payload.nodes)
       setEdges(v.payload.edges)
 
       if (v.payload.viewport)
@@ -359,8 +362,7 @@ export const Workflow: FC<WorkflowProps> = memo(({
     }
   }, [schemaTypeDefinitions, fetchInspectVars, isLoadedVars, vars, customTools, buildInTools, workflowTools, mcpTools, dataSourceList])
 
-  const store = useStoreApi()
-  if (process.env.NODE_ENV === 'development') {
+  if (IS_DEV) {
     store.getState().onError = (code, message) => {
       if (code === '002')
         return

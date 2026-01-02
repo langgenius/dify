@@ -6,21 +6,6 @@ import type {
 } from '@/app/components/workflow/types'
 import type { VisionFile } from '@/types/app'
 
-// Log type contains key:string conversation_id:string created_at:string question:string answer:string
-export type Conversation = {
-  id: string
-  key: string
-  conversationId: string
-  question: string
-  answer: string
-  userRate: number
-  adminRate: number
-}
-
-export type ConversationListResponse = {
-  logs: Conversation[]
-}
-
 export const CompletionParams = ['temperature', 'top_p', 'presence_penalty', 'max_token', 'stop', 'frequency_penalty'] as const
 
 export type CompletionParamType = typeof CompletionParams[number]

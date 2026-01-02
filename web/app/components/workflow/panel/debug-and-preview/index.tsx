@@ -1,7 +1,8 @@
 import type { StartNodeType } from '../../nodes/start/types'
 
 import { RiCloseLine, RiEqualizer2Line } from '@remixicon/react'
-import { debounce, noop } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import {
   memo,
   useCallback,
@@ -96,10 +97,10 @@ const DebugAndPreview = () => {
         style={{ width: `${panelWidth}px` }}
       >
         <div className="system-xl-semibold flex shrink-0 items-center justify-between px-4 pb-2 pt-3 text-text-primary">
-          <div className="h-8">{t('workflow.common.debugAndPreview').toLocaleUpperCase()}</div>
+          <div className="h-8">{t('common.debugAndPreview', { ns: 'workflow' }).toLocaleUpperCase()}</div>
           <div className="flex items-center gap-1">
             <Tooltip
-              popupContent={t('common.operation.refresh')}
+              popupContent={t('operation.refresh', { ns: 'common' })}
             >
               <ActionButton onClick={() => handleRestartChat()}>
                 <RefreshCcw01 className="h-4 w-4" />
@@ -108,7 +109,7 @@ const DebugAndPreview = () => {
             {visibleVariables.length > 0 && (
               <div className="relative">
                 <Tooltip
-                  popupContent={t('workflow.panel.userInputField')}
+                  popupContent={t('panel.userInputField', { ns: 'workflow' })}
                 >
                   <ActionButton state={expanded ? ActionButtonState.Active : undefined} onClick={() => setExpanded(!expanded)}>
                     <RiEqualizer2Line className="h-4 w-4" />

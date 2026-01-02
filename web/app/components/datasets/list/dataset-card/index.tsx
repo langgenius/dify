@@ -80,14 +80,14 @@ const DatasetCard = ({
   const documentCountTooltip = useMemo(() => {
     const availableDocCount = dataset.total_available_documents ?? 0
     if (availableDocCount === dataset.document_count)
-      return t('dataset.docAllEnabled', { count: availableDocCount })
+      return t('docAllEnabled', { ns: 'dataset', count: availableDocCount })
     if (availableDocCount < dataset.document_count)
-      return t('dataset.partialEnabled', { count: dataset.document_count, num: availableDocCount })
+      return t('partialEnabled', { ns: 'dataset', count: dataset.document_count, num: availableDocCount })
   }, [t, dataset.document_count, dataset.total_available_documents])
 
   const { formatTimeFromNow } = useFormatTimeFromNow()
   const editTimeText = useMemo(() => {
-    return `${t('datasetDocuments.segment.editedAt')} ${formatTimeFromNow(dataset.updated_at * 1000)}`
+    return `${t('segment.editedAt', { ns: 'datasetDocuments' })} ${formatTimeFromNow(dataset.updated_at * 1000)}`
   }, [t, dataset.updated_at, formatTimeFromNow])
 
   const openRenameModal = useCallback(() => {
@@ -119,7 +119,7 @@ const DatasetCard = ({
       URL.revokeObjectURL(url)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('app.exportFailed') })
+      Toast.notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
     finally {
       setExporting(false)
@@ -129,7 +129,7 @@ const DatasetCard = ({
   const detectIsUsedByApp = useCallback(async () => {
     try {
       const { is_using: isUsedByApp } = await checkIsUsedInApp(dataset.id)
-      setConfirmMessage(isUsedByApp ? t('dataset.datasetUsedByApp')! : t('dataset.deleteDatasetConfirmContent')!)
+      setConfirmMessage(isUsedByApp ? t('datasetUsedByApp', { ns: 'dataset' })! : t('deleteDatasetConfirmContent', { ns: 'dataset' })!)
       setShowConfirmDelete(true)
     }
     catch (e: any) {
@@ -141,7 +141,7 @@ const DatasetCard = ({
   const onConfirmDelete = useCallback(async () => {
     try {
       await deleteDataset(dataset.id)
-      Toast.notify({ type: 'success', message: t('dataset.datasetDeleted') })
+      Toast.notify({ type: 'success', message: t('datasetDeleted', { ns: 'dataset' }) })
       if (onSuccess)
         onSuccess()
     }
@@ -171,14 +171,14 @@ const DatasetCard = ({
       >
         {!dataset.embedding_available && (
           <CornerLabel
-            label={t('dataset.cornerLabel.unavailable')}
+            label={t('cornerLabel.unavailable', { ns: 'dataset' })}
             className="absolute right-0 top-0 z-10"
             labelClassName="rounded-tr-xl"
           />
         )}
         {dataset.embedding_available && dataset.runtime_mode === 'rag_pipeline' && (
           <CornerLabel
-            label={t('dataset.cornerLabel.pipeline')}
+            label={t('cornerLabel.pipeline', { ns: 'dataset' })}
             className="absolute right-0 top-0 z-10"
             labelClassName="rounded-tr-xl"
           />
@@ -211,31 +211,31 @@ const DatasetCard = ({
               <div className="truncate" title={editTimeText}>{editTimeText}</div>
             </div>
             <div className="system-2xs-medium-uppercase flex items-center gap-x-3 text-text-tertiary">
-              {isExternalProvider && <span>{t('dataset.externalKnowledgeBase')}</span>}
+              {isExternalProvider && <span>{t('externalKnowledgeBase', { ns: 'dataset' })}</span>}
               {!isExternalProvider && isShowDocModeInfo && (
                 <>
                   {dataset.doc_form && (
                     <span
                       className="min-w-0 max-w-full truncate"
-                      title={t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                      title={t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
                     >
-                      {t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}
+                      {t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}
                     </span>
                   )}
                   {dataset.indexing_technique && (
                     <span
                       className="min-w-0 max-w-full truncate"
-                      title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                      title={formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method) as any}
                     >
-                      {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}
+                      {formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method) as any}
                     </span>
                   )}
                   {dataset.is_multimodal && (
                     <span
                       className="min-w-0 max-w-full truncate"
-                      title={t('dataset.multimodal')}
+                      title={t('multimodal', { ns: 'dataset' })}
                     >
-                      {t('dataset.multimodal')}
+                      {t('multimodal', { ns: 'dataset' })}
                     </span>
                   )}
                 </>
@@ -294,7 +294,7 @@ const DatasetCard = ({
             </div>
           </Tooltip>
           {!isExternalProvider && (
-            <Tooltip popupContent={`${dataset.app_count} ${t('dataset.appCount')}`}>
+            <Tooltip popupContent={`${dataset.app_count} ${t('appCount', { ns: 'dataset' })}`}>
               <div className="flex items-center gap-x-1">
                 <RiRobot2Fill className="size-3 text-text-quaternary" />
                 <span className="system-xs-medium">{dataset.app_count}</span>
@@ -302,7 +302,7 @@ const DatasetCard = ({
             </Tooltip>
           )}
           <span className="system-xs-regular text-divider-deep">/</span>
-          <span className="system-xs-regular">{`${t('dataset.updated')} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
+          <span className="system-xs-regular">{`${t('updated', { ns: 'dataset' })} ${formatTimeFromNow(dataset.updated_at * 1000)}`}</span>
         </div>
         <div className="absolute right-2 top-2 z-[15] hidden group-hover:block">
           <CustomPopover
@@ -342,7 +342,7 @@ const DatasetCard = ({
       )}
       {showConfirmDelete && (
         <Confirm
-          title={t('dataset.deleteDatasetConfirmTitle')}
+          title={t('deleteDatasetConfirmTitle', { ns: 'dataset' })}
           content={confirmMessage}
           isShow={showConfirmDelete}
           onConfirm={onConfirmDelete}

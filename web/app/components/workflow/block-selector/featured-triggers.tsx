@@ -1,6 +1,7 @@
 'use client'
 import type { TriggerDefaultValue, TriggerWithProvider } from './types'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { Locale } from '@/i18n-config'
 import { RiMoreLine } from '@remixicon/react'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
@@ -125,7 +126,7 @@ const FeaturedTriggers = ({
         className="flex w-full items-center rounded-md px-0 py-1 text-left text-text-primary"
         onClick={() => setIsCollapsed(prev => !prev)}
       >
-        <span className="system-xs-medium text-text-primary">{t('workflow.tabs.featuredTools')}</span>
+        <span className="system-xs-medium text-text-primary">{t('tabs.featuredTools', { ns: 'workflow' })}</span>
         <ArrowDownRoundFill className={`ml-0.5 h-4 w-4 text-text-tertiary transition-transform ${isCollapsed ? '-rotate-90' : 'rotate-0'}`} />
       </button>
 
@@ -140,7 +141,7 @@ const FeaturedTriggers = ({
           {showEmptyState && (
             <p className="system-xs-regular py-2 text-text-tertiary">
               <Link className="text-text-accent" href={getMarketplaceUrl('', { category: 'trigger' })} target="_blank" rel="noopener noreferrer">
-                {t('workflow.tabs.noFeaturedTriggers')}
+                {t('tabs.noFeaturedTriggers', { ns: 'workflow' })}
               </Link>
             </p>
           )}
@@ -170,7 +171,7 @@ const FeaturedTriggers = ({
                       onInstallSuccess={async () => {
                         await onInstallSuccess?.()
                       }}
-                      t={t}
+                      t={t as any}
                     />
                   ))}
                 </div>
@@ -201,7 +202,7 @@ const FeaturedTriggers = ({
                     )}
               </div>
               <div className="system-xs-regular">
-                {t(isExpanded ? 'workflow.tabs.showLessFeatured' : 'workflow.tabs.showMoreFeatured')}
+                {t(isExpanded ? 'tabs.showLessFeatured' : 'tabs.showMoreFeatured', { ns: 'workflow' })}
               </div>
             </div>
           )}
@@ -213,7 +214,7 @@ const FeaturedTriggers = ({
 
 type FeaturedTriggerUninstalledItemProps = {
   plugin: Plugin
-  language: string
+  language: Locale
   onInstallSuccess?: () => Promise<void> | void
   t: (key: string, options?: Record<string, any>) => string
 }
@@ -226,7 +227,7 @@ function FeaturedTriggerUninstalledItem({
 }: FeaturedTriggerUninstalledItemProps) {
   const label = plugin.label?.[language] || plugin.name
   const description = typeof plugin.brief === 'object' ? plugin.brief[language] : plugin.brief
-  const installCountLabel = t('plugin.install', { num: formatNumber(plugin.install_count || 0) })
+  const installCountLabel = t('install', { ns: 'plugin', num: formatNumber(plugin.install_count || 0) })
   const [actionOpen, setActionOpen] = useState(false)
   const [isActionHovered, setIsActionHovered] = useState(false)
   const [isInstallModalOpen, setIsInstallModalOpen] = useState(false)
@@ -290,7 +291,7 @@ function FeaturedTriggerUninstalledItem({
                   setIsActionHovered(true)
                 }}
               >
-                {t('plugin.installAction')}
+                {t('installAction', { ns: 'plugin' })}
               </button>
               <Action
                 open={actionOpen}

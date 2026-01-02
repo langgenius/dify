@@ -1,5 +1,6 @@
 'use client'
 import type { Plugin } from '@/app/components/plugins/types'
+import type { Locale } from '@/i18n-config'
 import { RiArrowRightUpLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
 import { useTheme } from 'next-themes'
@@ -11,13 +12,13 @@ import CardMoreInfo from '@/app/components/plugins/card/card-more-info'
 import { useTags } from '@/app/components/plugins/hooks'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { useMixedTranslation } from '@/app/components/plugins/marketplace/hooks'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { getPluginDetailLinkInMarketplace, getPluginLinkInMarketplace } from '../utils'
 
 type CardWrapperProps = {
   plugin: Plugin
   showInstallButton?: boolean
-  locale?: string
+  locale?: Locale
 }
 const CardWrapperComponent = ({
   plugin,
@@ -30,7 +31,7 @@ const CardWrapperComponent = ({
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
-  const { locale: localeFromLocale } = useI18N()
+  const localeFromLocale = useLocale()
   const { getTagLabel } = useTags(t)
 
   // Memoize marketplace link params to prevent unnecessary re-renders
@@ -65,13 +66,13 @@ const CardWrapperComponent = ({
             className="w-[calc(50%-4px)]"
             onClick={showInstallFromMarketplace}
           >
-            {t('plugin.detailPanel.operation.install')}
+            {t('detailPanel.operation.install', { ns: 'plugin' })}
           </Button>
           <a href={getPluginLinkInMarketplace(plugin, marketplaceLinkParams)} target="_blank" className="block w-[calc(50%-4px)] flex-1 shrink-0">
             <Button
               className="w-full gap-0.5"
             >
-              {t('plugin.detailPanel.operation.detail')}
+              {t('detailPanel.operation.detail', { ns: 'plugin' })}
               <RiArrowRightUpLine className="ml-1 h-4 w-4" />
             </Button>
           </a>

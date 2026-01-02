@@ -12,11 +12,11 @@ export type TopBarProps = Pick<StepperProps, 'activeIndex'> & {
   datasetId?: string
 }
 
-const STEP_T_MAP: Record<number, string> = {
-  1: 'datasetCreation.steps.one',
-  2: 'datasetCreation.steps.two',
-  3: 'datasetCreation.steps.three',
-}
+const STEP_T_MAP = {
+  1: 'steps.one',
+  2: 'steps.two',
+  3: 'steps.three',
+} as const
 
 export const TopBar: FC<TopBarProps> = (props) => {
   const { className, datasetId, ...rest } = props
@@ -33,13 +33,13 @@ export const TopBar: FC<TopBarProps> = (props) => {
           <RiArrowLeftLine className="size-4 text-text-primary" />
         </div>
         <p className="system-sm-semibold-uppercase text-text-primary">
-          {t('datasetCreation.steps.header.fallbackRoute')}
+          {t('steps.header.fallbackRoute', { ns: 'datasetCreation' })}
         </p>
       </Link>
       <div className="absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2">
         <Stepper
           steps={Array.from({ length: 3 }, (_, i) => ({
-            name: t(STEP_T_MAP[i + 1]),
+            name: t(STEP_T_MAP[(i + 1) as keyof typeof STEP_T_MAP], { ns: 'datasetCreation' }),
           }))}
           {...rest}
         />

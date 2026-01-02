@@ -4,7 +4,7 @@ import type { MouseEventHandler } from 'react'
 import type { AppIconSelection } from '../../base/app-icon-picker'
 import type { DataSet } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
@@ -60,7 +60,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
 
   const onConfirm: MouseEventHandler = useCallback(async () => {
     if (!name.trim()) {
-      Toast.notify({ type: 'error', message: t('datasetSettings.form.nameError') })
+      Toast.notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
       return
     }
     try {
@@ -83,13 +83,13 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
         datasetId: dataset.id,
         body,
       })
-      Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       if (onSuccess)
         onSuccess()
       onClose()
     }
     catch {
-      Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
     finally {
       setLoading(false)
@@ -103,7 +103,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
       onClose={noop}
     >
       <div className="flex items-center justify-between pb-2">
-        <div className="text-xl font-medium leading-[30px] text-text-primary">{t('datasetSettings.title')}</div>
+        <div className="text-xl font-medium leading-[30px] text-text-primary">{t('title', { ns: 'datasetSettings' })}</div>
         <div className="cursor-pointer p-2" onClick={onClose}>
           <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
@@ -111,7 +111,7 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
       <div>
         <div className={cn('flex flex-col py-4')}>
           <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
-            {t('datasetSettings.form.name')}
+            {t('form.name', { ns: 'datasetSettings' })}
           </div>
           <div className="flex items-center gap-x-2">
             <AppIcon
@@ -128,27 +128,27 @@ const RenameDatasetModal = ({ show, dataset, onSuccess, onClose }: RenameDataset
               value={name}
               onChange={e => setName(e.target.value)}
               className="h-9 grow"
-              placeholder={t('datasetSettings.form.namePlaceholder') || ''}
+              placeholder={t('form.namePlaceholder', { ns: 'datasetSettings' }) || ''}
             />
           </div>
         </div>
         <div className={cn('flex flex-col py-4')}>
           <div className="shrink-0 py-2 text-sm font-medium leading-[20px] text-text-primary">
-            {t('datasetSettings.form.desc')}
+            {t('form.desc', { ns: 'datasetSettings' })}
           </div>
           <div className="w-full">
             <Textarea
               value={description}
               onChange={e => setDescription(e.target.value)}
               className="resize-none"
-              placeholder={t('datasetSettings.form.descPlaceholder') || ''}
+              placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             />
           </div>
         </div>
       </div>
       <div className="flex justify-end pt-6">
-        <Button className="mr-2" onClick={onClose}>{t('common.operation.cancel')}</Button>
-        <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('common.operation.save')}</Button>
+        <Button className="mr-2" onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+        <Button disabled={loading} variant="primary" onClick={onConfirm}>{t('operation.save', { ns: 'common' })}</Button>
       </div>
       {showAppIconPicker && (
         <AppIconPicker

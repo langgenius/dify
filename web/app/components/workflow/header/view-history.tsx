@@ -1,17 +1,13 @@
-import type { Fetcher } from 'swr'
-import type { WorkflowRunHistoryResponse } from '@/types/workflow'
 import {
   RiCheckboxCircleLine,
   RiCloseLine,
   RiErrorWarningLine,
 } from '@remixicon/react'
-import { noop } from 'lodash-es'
 import {
   memo,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import { AlertTriangle } from '@/app/components/base/icons/src/vender/line/alertsAndFeedback'
 import {
   ClockPlay,
@@ -30,6 +26,7 @@ import {
   useWorkflowStore,
 } from '@/app/components/workflow/store'
 import { useFormatTimeFromNow } from '@/hooks/use-format-time-from-now'
+import { useWorkflowRunHistory } from '@/service/use-workflow'
 import { cn } from '@/utils/classnames'
 import {
   useIsChatMode,
@@ -44,13 +41,11 @@ export type ViewHistoryProps = {
   withText?: boolean
   onClearLogAndMessageModal?: () => void
   historyUrl?: string
-  historyFetcher?: Fetcher<WorkflowRunHistoryResponse, string>
 }
 const ViewHistory = ({
   withText,
   onClearLogAndMessageModal,
   historyUrl,
-  historyFetcher,
 }: ViewHistoryProps) => {
   const { t } = useTranslation()
   const isChatMode = useIsChatMode()
@@ -68,11 +63,11 @@ const ViewHistory = ({
   const { handleBackupDraft } = useWorkflowRun()
   const { closeAllInputFieldPanels } = useInputFieldPanel()
 
-  const fetcher = historyFetcher ?? (noop as Fetcher<WorkflowRunHistoryResponse, string>)
+  const shouldFetchHistory = open && !!historyUrl
   const {
     data,
     isLoading,
-  } = useSWR((open && historyUrl && historyFetcher) ? historyUrl : null, fetcher)
+  } = useWorkflowRunHistory(historyUrl, shouldFetchHistory)
 
   return (
     (
@@ -97,14 +92,14 @@ const ViewHistory = ({
                 <ClockPlay
                   className="mr-1 h-4 w-4"
                 />
-                {t('workflow.common.showRunHistory')}
+                {t('common.showRunHistory', { ns: 'workflow' })}
               </div>
             )
           }
           {
             !withText && (
               <Tooltip
-                popupContent={t('workflow.common.viewRunHistory')}
+                popupContent={t('common.viewRunHistory', { ns: 'workflow' })}
               >
                 <div
                   className={cn('group flex h-7 w-7 cursor-pointer items-center justify-center rounded-md hover:bg-state-accent-hover', open && 'bg-state-accent-hover')}
@@ -126,7 +121,7 @@ const ViewHistory = ({
             }}
           >
             <div className="sticky top-0 flex items-center justify-between bg-components-panel-bg px-4 pt-3 text-base font-semibold text-text-primary">
-              <div className="grow">{t('workflow.common.runHistory')}</div>
+              <div className="grow">{t('common.runHistory', { ns: 'workflow' })}</div>
               <div
                 className="flex h-6 w-6 shrink-0 cursor-pointer items-center justify-center"
                 onClick={() => {
@@ -152,7 +147,7 @@ const ViewHistory = ({
                       <div className="py-12">
                         <ClockPlaySlim className="mx-auto mb-2 h-8 w-8 text-text-quaternary" />
                         <div className="text-center text-[13px] text-text-quaternary">
-                          {t('workflow.common.notRunning')}
+                          {t('common.notRunning', { ns: 'workflow' })}
                         </div>
                       </div>
                     )

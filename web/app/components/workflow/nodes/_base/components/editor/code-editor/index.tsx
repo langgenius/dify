@@ -1,7 +1,7 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import {

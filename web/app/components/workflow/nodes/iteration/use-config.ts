@@ -2,8 +2,8 @@ import type { ErrorHandleMode, ValueSelector, Var } from '../../types'
 import type { IterationNodeType } from './types'
 import type { Item } from '@/app/components/base/select'
 import type { VarType as VarKindType } from '@/app/components/workflow/nodes/tool/types'
+import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
-import { isEqual } from 'lodash-es'
 import { useCallback } from 'react'
 import {
   useAllBuiltInTools,

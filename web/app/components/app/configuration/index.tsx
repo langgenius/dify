@@ -20,8 +20,9 @@ import type {
 import type { ModelConfig as BackendModelConfig, UserInputFormItem, VisionSettings } from '@/types/app'
 import { CodeBracketIcon } from '@heroicons/react/20/solid'
 import { useBoolean, useGetState } from 'ahooks'
+import { clone } from 'es-toolkit/object'
+import { isEqual } from 'es-toolkit/predicate'
 import { produce } from 'immer'
-import { clone, isEqual } from 'lodash-es'
 import { usePathname } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -490,11 +491,11 @@ const Configuration: FC = () => {
         isAdvancedMode,
       )
       if (Object.keys(removedDetails).length)
-        Toast.notify({ type: 'warning', message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
+        Toast.notify({ type: 'warning', message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${Object.entries(removedDetails).map(([k, reason]) => `${k} (${reason})`).join(', ')}` })
       setCompletionParams(filtered)
     }
     catch {
-      Toast.notify({ type: 'error', message: t('common.error') })
+      Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
       setCompletionParams({})
     }
   }
@@ -679,7 +680,7 @@ const Configuration: FC = () => {
               const toolInCollectionList = collectionList.find(c => tool.provider_id === c.id)
               return {
                 ...tool,
-                isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.id === tool.id && deletedTool.tool_name === tool.tool_name) ?? false,
+                isDeleted: res.deleted_tools?.some((deletedTool: any) => deletedTool.provider_id === tool.provider_id && deletedTool.tool_name === tool.tool_name) ?? false,
                 notAuthor: toolInCollectionList?.is_team_authorization === false,
                 ...(tool.provider_type === 'builtin'
                   ? {
@@ -765,23 +766,23 @@ const Configuration: FC = () => {
     const promptVariables = modelConfig.configs.prompt_variables
 
     if (promptEmpty) {
-      notify({ type: 'error', message: t('appDebug.otherError.promptNoBeEmpty') })
+      notify({ type: 'error', message: t('otherError.promptNoBeEmpty', { ns: 'appDebug' }) })
       return
     }
     if (isAdvancedMode && mode !== AppModeEnum.COMPLETION) {
       if (modelModeType === ModelModeType.completion) {
         if (!hasSetBlockStatus.history) {
-          notify({ type: 'error', message: t('appDebug.otherError.historyNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.historyNoBeEmpty', { ns: 'appDebug' }) })
           return
         }
         if (!hasSetBlockStatus.query) {
-          notify({ type: 'error', message: t('appDebug.otherError.queryNoBeEmpty') })
+          notify({ type: 'error', message: t('otherError.queryNoBeEmpty', { ns: 'appDebug' }) })
           return
         }
       }
     }
     if (contextVarEmpty) {
-      notify({ type: 'error', message: t('appDebug.feature.dataSet.queryVariable.contextVarNotEmpty') })
+      notify({ type: 'error', message: t('feature.dataSet.queryVariable.contextVarNotEmpty', { ns: 'appDebug' }) })
       return
     }
     const postDatasets = dataSets.map(({ id }) => ({
@@ -847,7 +848,7 @@ const Configuration: FC = () => {
       modelConfig: newModelConfig,
       completionParams,
     })
-    notify({ type: 'success', message: t('common.api.success') })
+    notify({ type: 'success', message: t('api.success', { ns: 'common' }) })
 
     setCanReturnToSimpleMode(false)
     return true
@@ -964,10 +965,10 @@ const Configuration: FC = () => {
               <div className="bg-default-subtle absolute left-0 top-0 h-14 w-full">
                 <div className="flex h-14 items-center justify-between px-6">
                   <div className="flex items-center">
-                    <div className="system-xl-semibold text-text-primary">{t('appDebug.orchestrate')}</div>
+                    <div className="system-xl-semibold text-text-primary">{t('orchestrate', { ns: 'appDebug' })}</div>
                     <div className="flex h-[14px] items-center space-x-1 text-xs">
                       {isAdvancedMode && (
-                        <div className="system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary">{t('appDebug.promptMode.advanced')}</div>
+                        <div className="system-xs-medium-uppercase ml-1 flex h-5 items-center rounded-md border border-components-button-secondary-border px-1.5 uppercase text-text-tertiary">{t('promptMode.advanced', { ns: 'appDebug' })}</div>
                       )}
                     </div>
                   </div>
@@ -1007,7 +1008,7 @@ const Configuration: FC = () => {
                     )}
                     {isMobile && (
                       <Button className="mr-2 !h-8 !text-[13px] font-medium" onClick={showDebugPanel}>
-                        <span className="mr-1">{t('appDebug.operation.debugConfig')}</span>
+                        <span className="mr-1">{t('operation.debugConfig', { ns: 'appDebug' })}</span>
                         <CodeBracketIcon className="h-4 w-4 text-text-tertiary" />
                       </Button>
                     )}
@@ -1049,8 +1050,8 @@ const Configuration: FC = () => {
           </div>
           {showUseGPT4Confirm && (
             <Confirm
-              title={t('appDebug.trailUseGPT4Info.title')}
-              content={t('appDebug.trailUseGPT4Info.description')}
+              title={t('trailUseGPT4Info.title', { ns: 'appDebug' })}
+              content={t('trailUseGPT4Info.description', { ns: 'appDebug' })}
               isShow={showUseGPT4Confirm}
               onConfirm={() => {
                 setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })

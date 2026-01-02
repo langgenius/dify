@@ -3,8 +3,8 @@ import type { InputVar } from '@/app/components/workflow/types'
 import type { PromptVariable } from '@/models/debug'
 import { RiAddLine, RiAsterisk, RiCloseLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -106,7 +106,7 @@ const OpeningSettingModal = ({
       <div>
         <div className="flex items-center py-2">
           <div className="flex shrink-0 space-x-0.5 text-xs font-medium leading-[18px] text-text-tertiary">
-            <div className="uppercase">{t('appDebug.openingStatement.openingQuestion')}</div>
+            <div className="uppercase">{t('openingStatement.openingQuestion', { ns: 'appDebug' })}</div>
             <div>·</div>
             <div>
               {tempSuggestedQuestions.length}
@@ -143,7 +143,7 @@ const OpeningSettingModal = ({
                 <input
                   type="input"
                   value={question || ''}
-                  placeholder={t('appDebug.openingStatement.openingQuestionPlaceholder') as string}
+                  placeholder={t('openingStatement.openingQuestionPlaceholder', { ns: 'appDebug' }) as string}
                   onChange={(e) => {
                     const value = e.target.value
                     setTempSuggestedQuestions(tempSuggestedQuestions.map((item, i) => {
@@ -178,7 +178,7 @@ const OpeningSettingModal = ({
             className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3  text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
           >
             <RiAddLine className="h-4 w-4" />
-            <div className="system-sm-medium text-[13px]">{t('appDebug.variableConfig.addOption')}</div>
+            <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
           </div>
         )}
       </div>
@@ -192,7 +192,7 @@ const OpeningSettingModal = ({
       className="!mt-14 !w-[640px] !max-w-none !bg-components-panel-bg-blur !p-6"
     >
       <div className="mb-6 flex items-center justify-between">
-        <div className="title-2xl-semi-bold text-text-primary">{t('appDebug.feature.conversationOpener.title')}</div>
+        <div className="title-2xl-semi-bold text-text-primary">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>
         <div className="cursor-pointer p-1" onClick={onCancel}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
       <div className="mb-8 flex gap-2">
@@ -203,7 +203,7 @@ const OpeningSettingModal = ({
           <PromptEditor
             value={tempValue}
             onChange={setTempValue}
-            placeholder={t('appDebug.openingStatement.placeholder') as string}
+            placeholder={t('openingStatement.placeholder', { ns: 'appDebug' }) as string}
             variableBlock={{
               show: true,
               variables: [
@@ -228,14 +228,14 @@ const OpeningSettingModal = ({
           onClick={onCancel}
           className="mr-2"
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
           variant="primary"
           onClick={() => handleSave()}
           disabled={isSaveDisabled}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
       {isShowConfirmAddVar && (

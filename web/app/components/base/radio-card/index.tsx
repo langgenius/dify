@@ -1,6 +1,6 @@
 'use client'
 import type { FC } from 'react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 

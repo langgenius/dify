@@ -1,12 +1,12 @@
 import type { HistoryBlockType } from '../../types'
 import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
 import { mergeRegister } from '@lexical/utils'
+import { noop } from 'es-toolkit/function'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { noop } from 'lodash-es'
 import {
   memo,
   useEffect,

@@ -9,7 +9,8 @@ import {
   RiGlobalLine,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { pick, uniq } from 'lodash-es'
+import { uniq } from 'es-toolkit/array'
+import { pick } from 'es-toolkit/object'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useState } from 'react'
@@ -26,7 +27,7 @@ import { useDatasetDetailContextWithSelector as useDatasetDetailContext } from '
 import useTimestamp from '@/hooks/use-timestamp'
 import { ChunkingMode, DataSourceType, DocumentActionType } from '@/models/datasets'
 import { DatasourceType } from '@/models/pipeline'
-import { useDocumentArchive, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
+import { useDocumentArchive, useDocumentBatchRetryIndex, useDocumentDelete, useDocumentDisable, useDocumentEnable } from '@/service/knowledge/use-document'
 import { asyncRunSafe } from '@/utils'
 import { cn } from '@/utils/classnames'
 import { formatNumber } from '@/utils/format'
@@ -220,6 +221,7 @@ const DocumentList: FC<IDocumentListProps> = ({
   const { mutateAsync: enableDocument } = useDocumentEnable()
   const { mutateAsync: disableDocument } = useDocumentDisable()
   const { mutateAsync: deleteDocument } = useDocumentDelete()
+  const { mutateAsync: retryIndexDocument } = useDocumentBatchRetryIndex()
 
   const handleAction = (actionName: DocumentActionType) => {
     return async () => {
@@ -243,12 +245,28 @@ const DocumentList: FC<IDocumentListProps> = ({
       if (!e) {
         if (actionName === DocumentActionType.delete)
           onSelectedIdChange([])
-        Toast.notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         onUpdate()
       }
-      else { Toast.notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
+      else { Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
     }
   }
+
+  const handleBatchReIndex = async () => {
+    const [e] = await asyncRunSafe<CommonResponse>(retryIndexDocument({ datasetId, documentIds: selectedIds }))
+    if (!e) {
+      onSelectedIdChange([])
+      Toast.notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
+      onUpdate()
+    }
+    else {
+      Toast.notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
+    }
+  }
+
+  const hasErrorDocumentsSelected = useMemo(() => {
+    return localDocs.some(doc => selectedIds.includes(doc.id) && doc.display_status === 'error')
+  }, [localDocs, selectedIds])
 
   const getFileExtension = useCallback((fileName: string): string => {
     if (!fileName)
@@ -302,20 +320,20 @@ const DocumentList: FC<IDocumentListProps> = ({
                 </div>
               </td>
               <td>
-                {renderSortHeader('name', t('datasetDocuments.list.table.header.fileName'))}
+                {renderSortHeader('name', t('list.table.header.fileName', { ns: 'datasetDocuments' }))}
               </td>
-              <td className="w-[130px]">{t('datasetDocuments.list.table.header.chunkingMode')}</td>
+              <td className="w-[130px]">{t('list.table.header.chunkingMode', { ns: 'datasetDocuments' })}</td>
               <td className="w-24">
-                {renderSortHeader('word_count', t('datasetDocuments.list.table.header.words'))}
+                {renderSortHeader('word_count', t('list.table.header.words', { ns: 'datasetDocuments' }))}
               </td>
               <td className="w-44">
-                {renderSortHeader('hit_count', t('datasetDocuments.list.table.header.hitCount'))}
+                {renderSortHeader('hit_count', t('list.table.header.hitCount', { ns: 'datasetDocuments' }))}
               </td>
               <td className="w-44">
-                {renderSortHeader('created_at', t('datasetDocuments.list.table.header.uploadTime'))}
+                {renderSortHeader('created_at', t('list.table.header.uploadTime', { ns: 'datasetDocuments' }))}
               </td>
-              <td className="w-40">{t('datasetDocuments.list.table.header.status')}</td>
-              <td className="w-20">{t('datasetDocuments.list.table.header.action')}</td>
+              <td className="w-40">{t('list.table.header.status', { ns: 'datasetDocuments' })}</td>
+              <td className="w-20">{t('list.table.header.action', { ns: 'datasetDocuments' })}</td>
             </tr>
           </thead>
           <tbody className="text-text-secondary">
@@ -393,7 +411,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                       </Tooltip>
                       <div className="hidden shrink-0 group-hover:ml-auto group-hover:flex">
                         <Tooltip
-                          popupContent={t('datasetDocuments.list.table.rename')}
+                          popupContent={t('list.table.rename', { ns: 'datasetDocuments' })}
                         >
                           <div
                             className="cursor-pointer rounded-md p-1 hover:bg-state-base-hover"
@@ -417,7 +435,7 @@ const DocumentList: FC<IDocumentListProps> = ({
                   <td>{renderCount(doc.word_count)}</td>
                   <td>{renderCount(doc.hit_count)}</td>
                   <td className="text-[13px] text-text-secondary">
-                    {formatTime(doc.created_at, t('datasetHitTesting.dateTimeFormat') as string)}
+                    {formatTime(doc.created_at, t('dateTimeFormat', { ns: 'datasetHitTesting' }) as string)}
                   </td>
                   <td>
                     <StatusItem status={doc.display_status} />
@@ -447,6 +465,7 @@ const DocumentList: FC<IDocumentListProps> = ({
           onBatchDisable={handleAction(DocumentActionType.disable)}
           onBatchDelete={handleAction(DocumentActionType.delete)}
           onEditMetadata={showEditModal}
+          onBatchReIndex={hasErrorDocumentsSelected ? handleBatchReIndex : undefined}
           onCancel={() => {
             onSelectedIdChange([])
           }}

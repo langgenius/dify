@@ -4,7 +4,7 @@ import type { NodeOutPutVar } from '../../../types'
 import type { ToolVarInputs } from '../../tool/types'
 import type { CredentialFormSchema, CredentialFormSchemaNumberInput, CredentialFormSchemaTextInput } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import type { PluginMeta } from '@/app/components/plugins/types'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { memo } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -248,10 +248,10 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
           : (
               <ListEmpty
                 icon={<Agent className="h-5 w-5 shrink-0 text-text-accent" />}
-                title={t('workflow.nodes.agent.strategy.configureTip')}
+                title={t('nodes.agent.strategy.configureTip', { ns: 'workflow' })}
                 description={(
                   <div className="text-xs text-text-tertiary">
-                    {t('workflow.nodes.agent.strategy.configureTipDesc')}
+                    {t('nodes.agent.strategy.configureTipDesc', { ns: 'workflow' })}
                     {' '}
                     <br />
                     <Link
@@ -262,7 +262,7 @@ export const AgentStrategy = memo((props: AgentStrategyProps) => {
                       className="text-text-accent-secondary"
                       target="_blank"
                     >
-                      {t('workflow.nodes.agent.learnMore')}
+                      {t('nodes.agent.learnMore', { ns: 'workflow' })}
                     </Link>
                   </div>
                 )}

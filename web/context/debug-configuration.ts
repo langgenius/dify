@@ -22,7 +22,7 @@ import type {
   TextToSpeechConfig,
 } from '@/models/debug'
 import type { VisionSettings } from '@/types/app'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { createContext, useContext } from 'use-context-selector'
 import { ANNOTATION_DEFAULT, DEFAULT_AGENT_SETTING, DEFAULT_CHAT_PROMPT_CONFIG, DEFAULT_COMPLETION_PROMPT_CONFIG } from '@/config'
 import { PromptMode } from '@/models/debug'

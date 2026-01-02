@@ -38,7 +38,7 @@ import ConditionInput from './condition-input'
 import ConditionOperator from './condition-operator'
 import ConditionVarSelector from './condition-var-selector'
 
-const optionNameI18NPrefix = 'workflow.nodes.ifElse.optionName'
+const optionNameI18NPrefix = 'nodes.ifElse.optionName'
 
 type ConditionItemProps = {
   className?: string
@@ -145,13 +145,13 @@ const ConditionItem = ({
     if (isSelect) {
       if (fileAttr?.key === 'type' || condition.comparison_operator === ComparisonOperator.allOf) {
         return FILE_TYPE_OPTIONS.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
       if (fileAttr?.key === 'transfer_method') {
         return TRANSFER_METHOD.map(item => ({
-          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`),
+          name: t(`${optionNameI18NPrefix}.${item.i18nKey}`, { ns: 'workflow' }),
           value: item.value,
         }))
       }
@@ -232,7 +232,7 @@ const ConditionItem = ({
                               </div>
                             </div>
                           )
-                        : <div className="system-sm-regular text-left text-components-input-text-placeholder">{t('common.placeholder.select')}</div>
+                        : <div className="system-sm-regular text-left text-components-input-text-placeholder">{t('placeholder.select', { ns: 'common' })}</div>
                     )}
                     hideChecked
                   />

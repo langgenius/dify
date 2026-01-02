@@ -3,7 +3,7 @@ import type {
   Node,
 } from '../types'
 import ELK from 'elkjs/lib/elk.bundled.js'
-import { cloneDeep } from 'lodash-es'
+import { cloneDeep } from 'es-toolkit/object'
 import { useCallback } from 'react'
 import {
   useReactFlow,

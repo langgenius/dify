@@ -3,7 +3,7 @@ import type { HtmlContentProps } from '@/app/components/base/popover'
 import type { Tag } from '@/app/components/base/tag-management/constant'
 import { RiAddLine, RiPriceTag3Line } from '@remixicon/react'
 import { useUnmount } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -51,7 +51,7 @@ const Panel = (props: PanelProps) => {
     try {
       setCreating(true)
       const newTag = await createTag(keywords, type)
-      notify({ type: 'success', message: t('common.tag.created') })
+      notify({ type: 'success', message: t('tag.created', { ns: 'common' }) })
       setTagList([
         ...tagList,
         newTag,
@@ -61,26 +61,26 @@ const Panel = (props: PanelProps) => {
       onCreate()
     }
     catch {
-      notify({ type: 'error', message: t('common.tag.failed') })
+      notify({ type: 'error', message: t('tag.failed', { ns: 'common' }) })
       setCreating(false)
     }
   }
   const bind = async (tagIDs: string[]) => {
     try {
       await bindTag(tagIDs, targetID, type)
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
   }
   const unbind = async (tagID: string) => {
     try {
       await unBindTag(tagID, targetID, type)
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
   }
   const selectTag = (tag: Tag) => {
@@ -122,7 +122,7 @@ const Panel = (props: PanelProps) => {
           showLeftIcon
           showClearIcon
           value={keywords}
-          placeholder={t('common.tag.selectorPlaceholder') || ''}
+          placeholder={t('tag.selectorPlaceholder', { ns: 'common' }) || ''}
           onChange={e => handleKeywordsChange(e.target.value)}
           onClear={() => handleKeywordsChange('')}
         />
@@ -135,7 +135,7 @@ const Panel = (props: PanelProps) => {
           >
             <RiAddLine className="h-4 w-4 text-text-tertiary" />
             <div className="system-md-regular grow truncate px-1 text-text-secondary">
-              {`${t('common.tag.create')} `}
+              {`${t('tag.create', { ns: 'common' })} `}
               <span className="system-md-medium">{`'${keywords}'`}</span>
             </div>
           </div>
@@ -190,7 +190,7 @@ const Panel = (props: PanelProps) => {
         <div className="p-1">
           <div className="flex flex-col items-center gap-y-1 p-3">
             <RiPriceTag3Line className="h-6 w-6 text-text-quaternary" />
-            <div className="system-xs-regular text-text-tertiary">{t('common.tag.noTag')}</div>
+            <div className="system-xs-regular text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
           </div>
         </div>
       )}
@@ -202,7 +202,7 @@ const Panel = (props: PanelProps) => {
         >
           <RiPriceTag3Line className="h-4 w-4 text-text-tertiary" />
           <div className="system-md-regular grow truncate px-1 text-text-secondary">
-            {t('common.tag.manageTags')}
+            {t('tag.manageTags', { ns: 'common' })}
           </div>
         </div>
       </div>

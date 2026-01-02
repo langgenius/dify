@@ -47,7 +47,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
   plan,
 }) => {
   const { t } = useTranslation()
-  const i18nPrefix = `billing.plans.${plan}`
+  const i18nPrefix = `plans.${plan}` as const
   const isFreePlan = plan === SelfHostedPlan.community
   const isPremiumPlan = plan === SelfHostedPlan.premium
   const isEnterprisePlan = plan === SelfHostedPlan.enterprise
@@ -58,7 +58,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
     if (!isCurrentWorkspaceManager) {
       Toast.notify({
         type: 'error',
-        message: t('billing.buyPermissionDeniedTip'),
+        message: t('buyPermissionDeniedTip', { ns: 'billing' }),
         className: 'z-[1001]',
       })
       return
@@ -85,16 +85,16 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
         <div className=" flex flex-col gap-y-6 px-1 pt-10">
           {STYLE_MAP[plan].icon}
           <div className="flex min-h-[104px] flex-col gap-y-2">
-            <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`)}</div>
-            <div className="system-md-regular line-clamp-2 text-text-secondary">{t(`${i18nPrefix}.description`)}</div>
+            <div className="text-[30px] font-medium leading-[1.2] text-text-primary">{t(`${i18nPrefix}.name`, { ns: 'billing' })}</div>
+            <div className="system-md-regular line-clamp-2 text-text-secondary">{t(`${i18nPrefix}.description`, { ns: 'billing' })}</div>
           </div>
         </div>
         {/* Price */}
         <div className="flex items-end gap-x-2 px-1 pb-8 pt-4">
-          <div className="title-4xl-semi-bold shrink-0 text-text-primary">{t(`${i18nPrefix}.price`)}</div>
+          <div className="title-4xl-semi-bold shrink-0 text-text-primary">{t(`${i18nPrefix}.price`, { ns: 'billing' })}</div>
           {!isFreePlan && (
             <span className="system-md-regular pb-0.5 text-text-tertiary">
-              {t(`${i18nPrefix}.priceTip`)}
+              {t(`${i18nPrefix}.priceTip`, { ns: 'billing' })}
             </span>
           )}
         </div>
@@ -115,7 +115,7 @@ const SelfHostedPlanItem: FC<SelfHostedPlanItemProps> = ({
             </div>
           </div>
           <span className="system-xs-regular text-text-tertiary">
-            {t('billing.plans.premium.comingSoon')}
+            {t('plans.premium.comingSoon', { ns: 'billing' })}
           </span>
         </div>
       )}

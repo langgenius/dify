@@ -35,7 +35,7 @@ const ConditionValue = ({
   const { t } = useTranslation()
   const nodes = useNodes()
   const variableName = labelName || (isSystemVar(variableSelector) ? variableSelector.slice(0).join('.') : variableSelector.slice(1).join('.'))
-  const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`workflow.nodes.ifElse.comparisonOperator.${operator}`) : operator
+  const operatorName = isComparisonOperatorNeedTranslate(operator) ? t(`nodes.ifElse.comparisonOperator.${operator}`, { ns: 'workflow' }) : operator
   const notHasValue = comparisonOperatorNotRequireValue(operator)
   const node: Node<CommonNodeType> | undefined = nodes.find(n => n.id === variableSelector[0]) as Node<CommonNodeType>
   const isException = isExceptionVariable(variableName, node?.data.type)
@@ -63,7 +63,7 @@ const ConditionValue = ({
     if (isSelect) {
       const name = [...FILE_TYPE_OPTIONS, ...TRANSFER_METHOD].filter(item => item.value === (Array.isArray(value) ? value[0] : value))[0]
       return name
-        ? t(`workflow.nodes.ifElse.optionName.${name.i18nKey}`).replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
+        ? t(`nodes.ifElse.optionName.${name.i18nKey}`, { ns: 'workflow' }).replace(/\{\{#([^#]*)#\}\}/g, (a, b) => {
             const arr: string[] = b.split('.')
             if (isSystemVar(arr))
               return `{{${b}}}`

@@ -10,7 +10,7 @@ import SimplePieChart from '@/app/components/base/simple-pie-chart'
 import { ToastContext } from '@/app/components/base/toast'
 import { IS_CE_EDITION } from '@/config'
 
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { LanguagesSupported } from '@/i18n-config/language'
 import { upload } from '@/service/base'
@@ -40,7 +40,7 @@ const FileUploader = ({
 }: IFileUploaderProps) => {
   const { t } = useTranslation()
   const { notify } = useContext(ToastContext)
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const [dragging, setDragging] = useState(false)
   const dropRef = useRef<HTMLDivElement>(null)
   const dragRef = useRef<HTMLDivElement>(null)
@@ -96,11 +96,11 @@ const FileUploader = ({
     const ext = `.${getFileType(file)}`
     const isValidType = ACCEPTS.includes(ext.toLowerCase())
     if (!isValidType)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.typeError') })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.typeError', { ns: 'datasetCreation' }) })
 
     const isValidSize = size <= fileUploadConfig.file_size_limit * 1024 * 1024
     if (!isValidSize)
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.size', { size: fileUploadConfig.file_size_limit }) })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.size', { ns: 'datasetCreation', size: fileUploadConfig.file_size_limit }) })
 
     return isValidType && isValidSize
   }, [fileUploadConfig, notify, t, ACCEPTS])
@@ -132,7 +132,7 @@ const FileUploader = ({
         return Promise.resolve({ ...completeFile })
       })
       .catch((e) => {
-        const errorMessage = getFileUploadErrorMessage(e, t('datasetCreation.stepOne.uploader.failed'), t)
+        const errorMessage = getFileUploadErrorMessage(e, t('stepOne.uploader.failed', { ns: 'datasetCreation' }), t)
         notify({ type: 'error', message: errorMessage })
         onFileUpdate(fileItem, -2, fileListRef.current)
         return Promise.resolve({ ...fileItem })
@@ -168,7 +168,7 @@ const FileUploader = ({
       return false
 
     if (files.length + fileList.length > filesCountLimit && !IS_CE_EDITION) {
-      notify({ type: 'error', message: t('datasetCreation.stepOne.uploader.validation.filesNumber', { filesNumber: filesCountLimit }) })
+      notify({ type: 'error', message: t('stepOne.uploader.validation.filesNumber', { ns: 'datasetCreation', filesNumber: filesCountLimit }) })
       return false
     }
 
@@ -313,7 +313,7 @@ const FileUploader = ({
         />
       )}
 
-      <div className={cn('mb-1 text-sm font-semibold leading-6 text-text-secondary', titleClassName)}>{t('datasetCreation.stepOne.uploader.title')}</div>
+      <div className={cn('mb-1 text-sm font-semibold leading-6 text-text-secondary', titleClassName)}>{t('stepOne.uploader.title', { ns: 'datasetCreation' })}</div>
 
       {!hideUpload && (
         <div ref={dropRef} className={cn('relative mb-2 box-border flex min-h-20 max-w-[640px] flex-col items-center justify-center gap-1 rounded-xl border border-dashed border-components-dropzone-border bg-components-dropzone-bg px-4 py-3 text-xs leading-4 text-text-tertiary', dragging && 'border-components-dropzone-border-accent bg-components-dropzone-bg-accent')}>
@@ -321,14 +321,15 @@ const FileUploader = ({
             <RiUploadCloud2Line className="mr-2 size-5" />
 
             <span>
-              {supportBatchUpload ? t('datasetCreation.stepOne.uploader.button') : t('datasetCreation.stepOne.uploader.buttonSingleFile')}
+              {supportBatchUpload ? t('stepOne.uploader.button', { ns: 'datasetCreation' }) : t('stepOne.uploader.buttonSingleFile', { ns: 'datasetCreation' })}
               {supportTypes.length > 0 && (
-                <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('datasetCreation.stepOne.uploader.browse')}</label>
+                <label className="ml-1 cursor-pointer text-text-accent" onClick={selectHandle}>{t('stepOne.uploader.browse', { ns: 'datasetCreation' })}</label>
               )}
             </span>
           </div>
           <div>
-            {t('datasetCreation.stepOne.uploader.tip', {
+            {t('stepOne.uploader.tip', {
+              ns: 'datasetCreation',
               size: fileUploadConfig.file_size_limit,
               supportTypes: supportTypesShowNames,
               batchCount: fileUploadConfig.batch_count_limit,

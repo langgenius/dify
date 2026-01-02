@@ -3,7 +3,7 @@
 import type { MouseEventHandler } from 'react'
 import { RiCloseLine, RiCommandLine, RiCornerDownLeftLine } from '@remixicon/react'
 import { useDebounceFn, useKeyPress } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -127,8 +127,8 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
         notify({
           type: status === DSLImportStatus.COMPLETED ? 'success' : 'warning',
-          message: t(status === DSLImportStatus.COMPLETED ? 'app.newApp.appCreated' : 'app.newApp.caution'),
-          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('app.newApp.appCreateDSLWarning'),
+          message: t(status === DSLImportStatus.COMPLETED ? 'newApp.appCreated' : 'newApp.caution', { ns: 'app' }),
+          children: status === DSLImportStatus.COMPLETED_WITH_WARNINGS && t('newApp.appCreateDSLWarning', { ns: 'app' }),
         })
         localStorage.setItem(NEED_REFRESH_APP_LIST_KEY, '1')
         if (app_id)
@@ -146,12 +146,12 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         setImportId(id)
       }
       else {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
     isCreatingRef.current = false
   }
@@ -186,7 +186,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
 
         notify({
           type: 'success',
-          message: t('app.newApp.appCreated'),
+          message: t('newApp.appCreated', { ns: 'app' }),
         })
         if (app_id)
           await handleCheckPluginDependencies(app_id)
@@ -194,23 +194,23 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         getRedirection(isCurrentWorkspaceEditor, { id: app_id!, mode: app_mode }, push)
       }
       else if (status === DSLImportStatus.FAILED) {
-        notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+        notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
       }
     }
     // eslint-disable-next-line unused-imports/no-unused-vars
     catch (e) {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
   }
 
   const tabs = [
     {
       key: CreateFromDSLModalTab.FROM_FILE,
-      label: t('app.importFromDSLFile'),
+      label: t('importFromDSLFile', { ns: 'app' }),
     },
     {
       key: CreateFromDSLModalTab.FROM_URL,
-      label: t('app.importFromDSLUrl'),
+      label: t('importFromDSLUrl', { ns: 'app' }),
     },
   ]
 
@@ -232,7 +232,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         onClose={noop}
       >
         <div className="title-2xl-semi-bold flex items-center justify-between pb-3 pl-6 pr-5 pt-6 text-text-primary">
-          {t('app.importFromDSL')}
+          {t('importFromDSL', { ns: 'app' })}
           <div
             className="flex h-8 w-8 cursor-pointer items-center"
             onClick={() => onClose()}
@@ -276,7 +276,7 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
               <div>
                 <div className="system-md-semibold mb-1 text-text-secondary">DSL URL</div>
                 <Input
-                  placeholder={t('app.importFromDSLUrlPlaceholder') || ''}
+                  placeholder={t('importFromDSLUrlPlaceholder', { ns: 'app' }) || ''}
                   value={dslUrlValue}
                   onChange={e => setDslUrlValue(e.target.value)}
                 />
@@ -290,14 +290,14 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
           </div>
         )}
         <div className="flex justify-end px-6 py-5">
-          <Button className="mr-2" onClick={onClose}>{t('app.newApp.Cancel')}</Button>
+          <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
           <Button
             disabled={buttonDisabled}
             variant="primary"
             onClick={handleCreateApp}
             className="gap-1"
           >
-            <span>{t('app.newApp.Create')}</span>
+            <span>{t('newApp.Create', { ns: 'app' })}</span>
             <div className="flex gap-0.5">
               <RiCommandLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
               <RiCornerDownLeftLine size={14} className="system-kbd rounded-sm bg-components-kbd-bg-white p-0.5" />
@@ -311,24 +311,24 @@ const CreateFromDSLModal = ({ show, onSuccess, onClose, activeTab = CreateFromDS
         className="w-[480px]"
       >
         <div className="flex flex-col items-start gap-2 self-stretch pb-4">
-          <div className="title-2xl-semi-bold text-text-primary">{t('app.newApp.appCreateDSLErrorTitle')}</div>
+          <div className="title-2xl-semi-bold text-text-primary">{t('newApp.appCreateDSLErrorTitle', { ns: 'app' })}</div>
           <div className="system-md-regular flex grow flex-col text-text-secondary">
-            <div>{t('app.newApp.appCreateDSLErrorPart1')}</div>
-            <div>{t('app.newApp.appCreateDSLErrorPart2')}</div>
+            <div>{t('newApp.appCreateDSLErrorPart1', { ns: 'app' })}</div>
+            <div>{t('newApp.appCreateDSLErrorPart2', { ns: 'app' })}</div>
             <br />
             <div>
-              {t('app.newApp.appCreateDSLErrorPart3')}
+              {t('newApp.appCreateDSLErrorPart3', { ns: 'app' })}
               <span className="system-md-medium">{versions?.importedVersion}</span>
             </div>
             <div>
-              {t('app.newApp.appCreateDSLErrorPart4')}
+              {t('newApp.appCreateDSLErrorPart4', { ns: 'app' })}
               <span className="system-md-medium">{versions?.systemVersion}</span>
             </div>
           </div>
         </div>
         <div className="flex items-start justify-end gap-2 self-stretch pt-6">
-          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('app.newApp.Cancel')}</Button>
-          <Button variant="primary" destructive onClick={onDSLConfirm}>{t('app.newApp.Confirm')}</Button>
+          <Button variant="secondary" onClick={() => setShowErrorModal(false)}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+          <Button variant="primary" destructive onClick={onDSLConfirm}>{t('newApp.Confirm', { ns: 'app' })}</Button>
         </div>
       </Modal>
     </>

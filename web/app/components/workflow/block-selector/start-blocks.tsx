@@ -41,9 +41,9 @@ const StartBlocks = ({
     const normalizedSearch = searchText.toLowerCase()
     const getDisplayName = (blockType: BlockEnum) => {
       if (blockType === BlockEnumValues.TriggerWebhook)
-        return t('workflow.customWebhook')
+        return t('customWebhook', { ns: 'workflow' })
 
-      return t(`workflow.blocks.${blockType}`)
+      return t(`blocks.${blockType}`, { ns: 'workflow' })
     }
 
     return START_BLOCKS.filter((block) => {
@@ -67,7 +67,7 @@ const StartBlocks = ({
     onContentStateChange?.(!isEmpty)
   }, [isEmpty, onContentStateChange])
 
-  const renderBlock = useCallback((block: { type: BlockEnum, title: string, description?: string }) => (
+  const renderBlock = useCallback((block: typeof START_BLOCKS[number]) => (
     <Tooltip
       key={block.type}
       position="right"
@@ -82,17 +82,17 @@ const StartBlocks = ({
           />
           <div className="system-md-medium mb-1 text-text-primary">
             {block.type === BlockEnumValues.TriggerWebhook
-              ? t('workflow.customWebhook')
-              : t(`workflow.blocks.${block.type}`)}
+              ? t('customWebhook', { ns: 'workflow' })
+              : t(`blocks.${block.type}`, { ns: 'workflow' })}
           </div>
           <div className="system-xs-regular text-text-secondary">
-            {t(`workflow.blocksAbout.${block.type}`)}
+            {t(`blocksAbout.${block.type}`, { ns: 'workflow' })}
           </div>
           {(block.type === BlockEnumValues.TriggerWebhook || block.type === BlockEnumValues.TriggerSchedule) && (
             <div className="system-xs-regular mb-1 mt-1 text-text-tertiary">
-              {t('tools.author')}
+              {t('author', { ns: 'tools' })}
               {' '}
-              {t('workflow.difyTeam')}
+              {t('difyTeam', { ns: 'workflow' })}
             </div>
           )}
         </div>
@@ -107,9 +107,9 @@ const StartBlocks = ({
           type={block.type}
         />
         <div className="flex w-0 grow items-center justify-between text-sm text-text-secondary">
-          <span className="truncate">{t(`workflow.blocks.${block.type}`)}</span>
+          <span className="truncate">{t(`blocks.${block.type}`, { ns: 'workflow' })}</span>
           {block.type === BlockEnumValues.Start && (
-            <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{t('workflow.blocks.originalStartNode')}</span>
+            <span className="system-xs-regular ml-2 shrink-0 text-text-quaternary">{t('blocks.originalStartNode', { ns: 'workflow' })}</span>
           )}
         </div>
       </div>

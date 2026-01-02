@@ -11,8 +11,8 @@ import {
   RiLoader4Line,
   RiMoreLine,
 } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -341,7 +341,7 @@ const VarReferencePicker: FC<Props> = ({
       )
     }
     if (!isValidVar && hasValue)
-      return t('workflow.errorMsg.invalidVariable')
+      return t('errorMsg.invalidVariable', { ns: 'workflow' })
 
     return null
   }, [isValidVar, isShowAPart, hasValue, t, outputVarNode?.title, outputVarNode?.type, value, type])
@@ -574,11 +574,11 @@ const VarReferencePicker: FC<Props> = ({
                                             ? (
                                                 <div className="flex items-center">
                                                   <RiLoader4Line className="mr-1 h-3.5 w-3.5 animate-spin text-text-secondary" />
-                                                  <span>{placeholder ?? t('workflow.common.setVarValuePlaceholder')}</span>
+                                                  <span>{placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })}</span>
                                                 </div>
                                               )
                                             : (
-                                                placeholder ?? t('workflow.common.setVarValuePlaceholder')
+                                                placeholder ?? t('common.setVarValuePlaceholder', { ns: 'workflow' })
                                               )}
                                         </div>
                                       )}

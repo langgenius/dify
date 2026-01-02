@@ -159,11 +159,11 @@ const MCPDetailContent: FC<Props> = ({
               <div className="system-md-semibold truncate text-text-primary" title={detail.name}>{detail.name}</div>
             </div>
             <div className="mt-0.5 flex items-center gap-1">
-              <Tooltip popupContent={t('tools.mcp.identifier')}>
+              <Tooltip popupContent={t('mcp.identifier', { ns: 'tools' })}>
                 <div className="system-xs-regular shrink-0 cursor-pointer text-text-secondary" onClick={() => copy(detail.server_identifier || '')}>{detail.server_identifier}</div>
               </Tooltip>
               <div className="system-xs-regular shrink-0 text-text-quaternary">·</div>
-              <Tooltip popupContent={t('tools.mcp.modal.serverUrl')}>
+              <Tooltip popupContent={t('mcp.modal.serverUrl', { ns: 'tools' })}>
                 <div className="system-xs-regular truncate text-text-secondary">{detail.server_url}</div>
               </Tooltip>
             </div>
@@ -187,7 +187,7 @@ const MCPDetailContent: FC<Props> = ({
               disabled={!isCurrentWorkspaceManager}
             >
               <Indicator className="mr-2" color="green" />
-              {t('tools.auth.authorized')}
+              {t('auth.authorized', { ns: 'tools' })}
             </Button>
           )}
           {!detail.is_team_authorization && !isAuthorizing && (
@@ -197,7 +197,7 @@ const MCPDetailContent: FC<Props> = ({
               onClick={handleAuthorize}
               disabled={!isCurrentWorkspaceManager}
             >
-              {t('tools.mcp.authorize')}
+              {t('mcp.authorize', { ns: 'tools' })}
             </Button>
           )}
           {isAuthorizing && (
@@ -207,7 +207,7 @@ const MCPDetailContent: FC<Props> = ({
               disabled
             >
               <RiLoader2Line className={cn('mr-1 h-4 w-4 animate-spin')} />
-              {t('tools.mcp.authorizing')}
+              {t('mcp.authorizing', { ns: 'tools' })}
             </Button>
           )}
         </div>
@@ -217,8 +217,8 @@ const MCPDetailContent: FC<Props> = ({
           <>
             <div className="flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2">
               <div className="flex h-6 items-center">
-                {!isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('tools.mcp.gettingTools')}</div>}
-                {isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('tools.mcp.updateTools')}</div>}
+                {!isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.gettingTools', { ns: 'tools' })}</div>}
+                {isUpdating && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.updateTools', { ns: 'tools' })}</div>}
               </div>
               <div></div>
             </div>
@@ -229,12 +229,12 @@ const MCPDetailContent: FC<Props> = ({
         )}
         {!isUpdating && detail.is_team_authorization && !isGettingTools && !toolList.length && (
           <div className="flex h-full w-full flex-col items-center justify-center">
-            <div className="system-sm-regular mb-3 text-text-tertiary">{t('tools.mcp.toolsEmpty')}</div>
+            <div className="system-sm-regular mb-3 text-text-tertiary">{t('mcp.toolsEmpty', { ns: 'tools' })}</div>
             <Button
               variant="primary"
               onClick={handleUpdateTools}
             >
-              {t('tools.mcp.getTools')}
+              {t('mcp.getTools', { ns: 'tools' })}
             </Button>
           </div>
         )}
@@ -242,13 +242,13 @@ const MCPDetailContent: FC<Props> = ({
           <>
             <div className="flex shrink-0 justify-between gap-2 px-4 pb-1 pt-2">
               <div className="flex h-6 items-center">
-                {toolList.length > 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('tools.mcp.toolsNum', { count: toolList.length })}</div>}
-                {toolList.length === 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('tools.mcp.onlyTool')}</div>}
+                {toolList.length > 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.toolsNum', { ns: 'tools', count: toolList.length })}</div>}
+                {toolList.length === 1 && <div className="system-sm-semibold-uppercase text-text-secondary">{t('mcp.onlyTool', { ns: 'tools' })}</div>}
               </div>
               <div>
                 <Button size="small" onClick={showUpdateConfirm}>
                   <RiLoopLeftLine className="mr-1 h-3.5 w-3.5" />
-                  {t('tools.mcp.update')}
+                  {t('mcp.update', { ns: 'tools' })}
                 </Button>
               </div>
             </div>
@@ -265,9 +265,9 @@ const MCPDetailContent: FC<Props> = ({
 
         {!isUpdating && !detail.is_team_authorization && (
           <div className="flex h-full w-full flex-col items-center justify-center">
-            {!isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('tools.mcp.authorizingRequired')}</div>}
-            {isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('tools.mcp.authorizing')}</div>}
-            <div className="system-sm-regular text-text-tertiary">{t('tools.mcp.authorizeTip')}</div>
+            {!isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('mcp.authorizingRequired', { ns: 'tools' })}</div>}
+            {isAuthorizing && <div className="system-md-medium mb-1 text-text-secondary">{t('mcp.authorizing', { ns: 'tools' })}</div>}
+            <div className="system-sm-regular text-text-tertiary">{t('mcp.authorizeTip', { ns: 'tools' })}</div>
           </div>
         )}
       </div>
@@ -282,10 +282,10 @@ const MCPDetailContent: FC<Props> = ({
       {isShowDeleteConfirm && (
         <Confirm
           isShow
-          title={t('tools.mcp.delete')}
+          title={t('mcp.delete', { ns: 'tools' })}
           content={(
             <div>
-              {t('tools.mcp.deleteConfirmTitle', { mcp: detail.name })}
+              {t('mcp.deleteConfirmTitle', { ns: 'tools', mcp: detail.name })}
             </div>
           )}
           onCancel={hideDeleteConfirm}
@@ -297,8 +297,8 @@ const MCPDetailContent: FC<Props> = ({
       {isShowUpdateConfirm && (
         <Confirm
           isShow
-          title={t('tools.mcp.toolUpdateConfirmTitle')}
-          content={t('tools.mcp.toolUpdateConfirmContent')}
+          title={t('mcp.toolUpdateConfirmTitle', { ns: 'tools' })}
+          content={t('mcp.toolUpdateConfirmContent', { ns: 'tools' })}
           onCancel={hideUpdateConfirm}
           onConfirm={handleUpdateTools}
         />

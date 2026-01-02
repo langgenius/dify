@@ -31,21 +31,21 @@ const VarList: FC<Props> = ({
       const newList = produce(list, (draft) => {
         draft[index] = payload
       })
-      let errorMsgKey = ''
-      let typeName = ''
+      let errorMsgKey: 'varKeyError.keyAlreadyExists' | '' = ''
+      let typeName: 'variableConfig.varName' | 'variableConfig.labelName' | '' = ''
       if (hasDuplicateStr(newList.map(item => item.variable))) {
-        errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
-        typeName = 'appDebug.variableConfig.varName'
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.varName'
       }
       else if (hasDuplicateStr(newList.map(item => item.label as string))) {
-        errorMsgKey = 'appDebug.varKeyError.keyAlreadyExists'
-        typeName = 'appDebug.variableConfig.labelName'
+        errorMsgKey = 'varKeyError.keyAlreadyExists'
+        typeName = 'variableConfig.labelName'
       }
 
-      if (errorMsgKey) {
+      if (errorMsgKey && typeName) {
         Toast.notify({
           type: 'error',
-          message: t(errorMsgKey, { key: t(typeName) }),
+          message: t(errorMsgKey, { ns: 'appDebug', key: t(typeName, { ns: 'appDebug' }) }),
         })
         return false
       }
@@ -83,7 +83,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <div className="flex h-[42px] items-center justify-center rounded-md bg-components-panel-bg text-xs font-normal leading-[18px] text-text-tertiary">
-        {t('workflow.nodes.start.noVarTip')}
+        {t('nodes.start.noVarTip', { ns: 'workflow' })}
       </div>
     )
   }

@@ -1,20 +1,14 @@
 import { cleanup, fireEvent, render } from '@testing-library/react'
 import * as React from 'react'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import InlineDeleteConfirm from './index'
 
-// Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'common.operation.deleteConfirmTitle': 'Delete?',
-        'common.operation.yes': 'Yes',
-        'common.operation.no': 'No',
-        'common.operation.confirmAction': 'Please confirm your action.',
-      }
-      return translations[key] || key
-    },
-  }),
+// Mock react-i18next with custom translations for test assertions
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'operation.deleteConfirmTitle': 'Delete?',
+  'operation.yes': 'Yes',
+  'operation.no': 'No',
+  'operation.confirmAction': 'Please confirm your action.',
 }))
 
 afterEach(cleanup)

@@ -2,7 +2,7 @@ import type { RenderOptions } from '@testing-library/react'
 import type { Mock, MockedFunction } from 'vitest'
 import type { ModalContextState } from '@/context/modal-context'
 import { fireEvent, render } from '@testing-library/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { defaultPlan } from '@/app/components/billing/config'
 import { useModalContext as actualUseModalContext } from '@/context/modal-context'
 

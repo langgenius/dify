@@ -90,11 +90,11 @@ const BlockInput: FC<IBlockInputProps> = ({
   const handleSubmit = (value: string) => {
     if (onConfirm) {
       const keys = getInputKeys(value)
-      const { isValid, errorKey, errorMessageKey } = checkKeys(keys)
-      if (!isValid) {
+      const result = checkKeys(keys)
+      if (!result.isValid) {
         Toast.notify({
           type: 'error',
-          message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+          message: t(`varKeyError.${result.errorMessageKey}`, { ns: 'appDebug', key: result.errorKey }),
         })
         return
       }

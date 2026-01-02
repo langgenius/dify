@@ -47,17 +47,17 @@ const TagInput: FC<TagInputProps> = ({
     const valueTrimmed = value.trim()
     if (!valueTrimmed) {
       if (required)
-        notify({ type: 'error', message: t('datasetDocuments.segment.keywordEmpty') })
+        notify({ type: 'error', message: t('segment.keywordEmpty', { ns: 'datasetDocuments' }) })
       return
     }
 
     if ((items.find(item => item === valueTrimmed))) {
-      notify({ type: 'error', message: t('datasetDocuments.segment.keywordDuplicate') })
+      notify({ type: 'error', message: t('segment.keywordDuplicate', { ns: 'datasetDocuments' }) })
       return
     }
 
     if (valueTrimmed.length > 20) {
-      notify({ type: 'error', message: t('datasetDocuments.segment.keywordError') })
+      notify({ type: 'error', message: t('segment.keywordError', { ns: 'datasetDocuments' }) })
       return
     }
 
@@ -127,7 +127,7 @@ const TagInput: FC<TagInputProps> = ({
                 setValue(e.target.value)
               }}
               onKeyDown={handleKeyDown}
-              placeholder={t(placeholder || (isSpecialMode ? 'common.model.params.stop_sequencesPlaceholder' : 'datasetDocuments.segment.addKeyWord'))}
+              placeholder={placeholder || (isSpecialMode ? t('model.params.stop_sequencesPlaceholder', { ns: 'common' }) : t('segment.addKeyWord', { ns: 'datasetDocuments' }))}
             />
           </div>
         )

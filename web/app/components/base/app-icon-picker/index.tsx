@@ -3,7 +3,7 @@ import type { Area } from 'react-easy-crop'
 import type { OnImageInput } from './ImageInput'
 import type { AppIconType, ImageFile } from '@/types/app'
 import { RiImageCircleAiLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { DISABLE_UPLOAD_IMAGE_AS_ICON } from '@/config'
@@ -45,8 +45,8 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
   const { t } = useTranslation()
 
   const tabs = [
-    { key: 'emoji', label: t('app.iconPicker.emoji'), icon: <span className="text-lg">🤖</span> },
-    { key: 'image', label: t('app.iconPicker.image'), icon: <RiImageCircleAiLine className="size-4" /> },
+    { key: 'emoji', label: t('iconPicker.emoji', { ns: 'app' }), icon: <span className="text-lg">🤖</span> },
+    { key: 'image', label: t('iconPicker.image', { ns: 'app' }), icon: <RiImageCircleAiLine className="size-4" /> },
   ]
   const [activeTab, setActiveTab] = useState<AppIconType>('emoji')
 
@@ -144,11 +144,11 @@ const AppIconPicker: FC<AppIconPickerProps> = ({
       <Divider className="m-0" />
       <div className="flex w-full items-center justify-center gap-2 p-3">
         <Button className="w-full" onClick={() => onClose?.()}>
-          {t('app.iconPicker.cancel')}
+          {t('iconPicker.cancel', { ns: 'app' })}
         </Button>
 
         <Button variant="primary" className="w-full" disabled={uploading} loading={uploading} onClick={handleSelect}>
-          {t('app.iconPicker.ok')}
+          {t('iconPicker.ok', { ns: 'app' })}
         </Button>
       </div>
     </Modal>

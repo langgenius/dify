@@ -2,7 +2,7 @@ import type { FC } from 'react'
 import type { Label } from '@/app/components/tools/labels/constant'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import Checkbox from '@/app/components/base/checkbox'
@@ -72,7 +72,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
           )}
           >
             <div title={value.length > 0 ? selectedLabels : ''} className={cn('grow truncate text-[13px] leading-[18px] text-text-secondary', !value.length && '!text-text-quaternary')}>
-              {!value.length && t('tools.createTool.toolInput.labelPlaceholder')}
+              {!value.length && t('createTool.toolInput.labelPlaceholder', { ns: 'tools' })}
               {!!value.length && selectedLabels}
             </div>
             <div className="ml-1 shrink-0 text-text-secondary opacity-60">
@@ -109,7 +109,7 @@ const LabelSelector: FC<LabelSelectorProps> = ({
               {!filteredLabelList.length && (
                 <div className="flex flex-col items-center gap-1 p-3">
                   <Tag03 className="h-6 w-6 text-text-quaternary" />
-                  <div className="text-xs leading-[14px] text-text-tertiary">{t('common.tag.noTag')}</div>
+                  <div className="text-xs leading-[14px] text-text-tertiary">{t('tag.noTag', { ns: 'common' })}</div>
                 </div>
               )}
             </div>

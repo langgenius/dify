@@ -11,7 +11,7 @@ import {
   RiPlayCircleLine,
 } from '@remixicon/react'
 import { useBoolean, useDebounceFn } from 'ahooks'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useRouter } from 'next/navigation'
 import * as React from 'react'
 import { useCallback, useState } from 'react'
@@ -120,13 +120,13 @@ const Operations = ({
     }
     const [e] = await asyncRunSafe<CommonResponse>(opApi({ datasetId, documentId: id }) as Promise<CommonResponse>)
     if (!e) {
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       // If it is a delete operation, need to update the selectedIds state
       if (selectedIds && onSelectedIdChange && operationName === DocumentActionType.delete)
         onSelectedIdChange(selectedIds.filter(selectedId => selectedId !== id))
       onUpdate(operationName)
     }
-    else { notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') }) }
+    else { notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) }) }
     if (operationName === DocumentActionType.delete)
       setDeleting(false)
   }
@@ -168,7 +168,7 @@ const Operations = ({
           {archived
             ? (
                 <Tooltip
-                  popupContent={t('datasetDocuments.list.action.enableWarning')}
+                  popupContent={t('list.action.enableWarning', { ns: 'datasetDocuments' })}
                   popupClassName="!font-semibold"
                 >
                   <div>
@@ -183,7 +183,7 @@ const Operations = ({
       {embeddingAvailable && (
         <>
           <Tooltip
-            popupContent={t('datasetDocuments.list.action.settings')}
+            popupContent={t('list.action.settings', { ns: 'datasetDocuments' })}
             popupClassName="text-text-secondary system-xs-medium"
             needsDelay={false}
           >
@@ -212,12 +212,12 @@ const Operations = ({
                       }}
                     >
                       <RiEditLine className="h-4 w-4 text-text-tertiary" />
-                      <span className={s.actionName}>{t('datasetDocuments.list.table.rename')}</span>
+                      <span className={s.actionName}>{t('list.table.rename', { ns: 'datasetDocuments' })}</span>
                     </div>
                     {['notion_import', DataSourceType.WEB].includes(data_source_type) && (
                       <div className={s.actionItem} onClick={() => onOperate('sync')}>
                         <RiLoopLeftLine className="h-4 w-4 text-text-tertiary" />
-                        <span className={s.actionName}>{t('datasetDocuments.list.action.sync')}</span>
+                        <span className={s.actionName}>{t('list.action.sync', { ns: 'datasetDocuments' })}</span>
                       </div>
                     )}
                     <Divider className="my-1" />
@@ -226,30 +226,30 @@ const Operations = ({
                 {!archived && display_status?.toLowerCase() === 'indexing' && (
                   <div className={s.actionItem} onClick={() => onOperate('pause')}>
                     <RiPauseCircleLine className="h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('datasetDocuments.list.action.pause')}</span>
+                    <span className={s.actionName}>{t('list.action.pause', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {!archived && display_status?.toLowerCase() === 'paused' && (
                   <div className={s.actionItem} onClick={() => onOperate('resume')}>
                     <RiPlayCircleLine className="h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('datasetDocuments.list.action.resume')}</span>
+                    <span className={s.actionName}>{t('list.action.resume', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {!archived && (
                   <div className={s.actionItem} onClick={() => onOperate('archive')}>
                     <RiArchive2Line className="h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('datasetDocuments.list.action.archive')}</span>
+                    <span className={s.actionName}>{t('list.action.archive', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 {archived && (
                   <div className={s.actionItem} onClick={() => onOperate('un_archive')}>
                     <RiArchive2Line className="h-4 w-4 text-text-tertiary" />
-                    <span className={s.actionName}>{t('datasetDocuments.list.action.unarchive')}</span>
+                    <span className={s.actionName}>{t('list.action.unarchive', { ns: 'datasetDocuments' })}</span>
                   </div>
                 )}
                 <div className={cn(s.actionItem, s.deleteActionItem, 'group')} onClick={() => setShowModal(true)}>
                   <RiDeleteBinLine className="h-4 w-4 text-text-tertiary group-hover:text-text-destructive" />
-                  <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('datasetDocuments.list.action.delete')}</span>
+                  <span className={cn(s.actionName, 'group-hover:text-text-destructive')}>{t('list.action.delete', { ns: 'datasetDocuments' })}</span>
                 </div>
               </div>
             )}
@@ -272,9 +272,9 @@ const Operations = ({
             isShow={showModal}
             isLoading={deleting}
             isDisabled={deleting}
-            title={t('datasetDocuments.list.delete.title')}
-            content={t('datasetDocuments.list.delete.content')}
-            confirmText={t('common.operation.sure')}
+            title={t('list.delete.title', { ns: 'datasetDocuments' })}
+            content={t('list.delete.content', { ns: 'datasetDocuments' })}
+            confirmText={t('operation.sure', { ns: 'common' })}
             onConfirm={() => onOperate('delete')}
             onCancel={() => setShowModal(false)}
           />

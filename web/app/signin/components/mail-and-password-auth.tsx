@@ -1,16 +1,15 @@
 import type { ResponseError } from '@/service/fetch'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import { trackEvent } from '@/app/components/base/amplitude'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import { emailRegex } from '@/config'
-import I18NContext from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { login } from '@/service/common'
 import { encryptPassword } from '@/utils/encryption'
 import { resolvePostLoginRedirect } from '../utils/post-login-redirect'
@@ -23,7 +22,7 @@ type MailAndPasswordAuthProps = {
 
 export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegistration: _allowRegistration }: MailAndPasswordAuthProps) {
   const { t } = useTranslation()
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
   const router = useRouter()
   const searchParams = useSearchParams()
   const [showPassword, setShowPassword] = useState(false)
@@ -35,18 +34,18 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
   const handleEmailPasswordLogin = async () => {
     if (!email) {
-      Toast.notify({ type: 'error', message: t('login.error.emailEmpty') })
+      Toast.notify({ type: 'error', message: t('error.emailEmpty', { ns: 'login' }) })
       return
     }
     if (!emailRegex.test(email)) {
       Toast.notify({
         type: 'error',
-        message: t('login.error.emailInValid'),
+        message: t('error.emailInValid', { ns: 'login' }),
       })
       return
     }
     if (!password?.trim()) {
-      Toast.notify({ type: 'error', message: t('login.error.passwordEmpty') })
+      Toast.notify({ type: 'error', message: t('error.passwordEmpty', { ns: 'login' }) })
       return
     }
 
@@ -90,7 +89,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
       if ((error as ResponseError).code === 'authentication_failed') {
         Toast.notify({
           type: 'error',
-          message: t('login.error.invalidEmailOrPassword'),
+          message: t('error.invalidEmailOrPassword', { ns: 'login' }),
         })
       }
     }
@@ -103,7 +102,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
     <form onSubmit={noop}>
       <div className="mb-3">
         <label htmlFor="email" className="system-md-semibold my-2 text-text-secondary">
-          {t('login.email')}
+          {t('email', { ns: 'login' })}
         </label>
         <div className="mt-1">
           <Input
@@ -113,7 +112,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
             id="email"
             type="email"
             autoComplete="email"
-            placeholder={t('login.emailPlaceholder') || ''}
+            placeholder={t('emailPlaceholder', { ns: 'login' }) || ''}
             tabIndex={1}
           />
         </div>
@@ -121,14 +120,14 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
 
       <div className="mb-3">
         <label htmlFor="password" className="my-2 flex items-center justify-between">
-          <span className="system-md-semibold text-text-secondary">{t('login.password')}</span>
+          <span className="system-md-semibold text-text-secondary">{t('password', { ns: 'login' })}</span>
           <Link
             href={`/reset-password?${searchParams.toString()}`}
             className={`system-xs-regular ${isEmailSetup ? 'text-components-button-secondary-accent-text' : 'pointer-events-none text-components-button-secondary-accent-text-disabled'}`}
             tabIndex={isEmailSetup ? 0 : -1}
             aria-disabled={!isEmailSetup}
           >
-            {t('login.forget')}
+            {t('forget', { ns: 'login' })}
           </Link>
         </label>
         <div className="relative mt-1">
@@ -142,7 +141,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
             }}
             type={showPassword ? 'text' : 'password'}
             autoComplete="current-password"
-            placeholder={t('login.passwordPlaceholder') || ''}
+            placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
             tabIndex={2}
           />
           <div className="absolute inset-y-0 right-0 flex items-center">
@@ -165,7 +164,7 @@ export default function MailAndPasswordAuth({ isInvite, isEmailSetup, allowRegis
           disabled={isLoading || !email || !password}
           className="w-full"
         >
-          {t('login.signBtn')}
+          {t('signBtn', { ns: 'login' })}
         </Button>
       </div>
     </form>

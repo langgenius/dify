@@ -5,7 +5,8 @@ import type {
 import { RiCloseLine } from '@remixicon/react'
 import { useMount } from 'ahooks'
 import copy from 'copy-to-clipboard'
-import { capitalize, noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { capitalize } from 'es-toolkit/string'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -86,7 +87,7 @@ const ConversationVariableModal = ({
       <div className="flex h-full w-full">
         {/* LEFT */}
         <div className="flex h-full w-[224px] shrink-0 flex-col border-r border-divider-burn bg-background-sidenav-bg">
-          <div className="system-xl-semibold shrink-0 pb-3 pl-5 pr-4 pt-5 text-text-primary">{t('workflow.chatVariable.panelTitle')}</div>
+          <div className="system-xl-semibold shrink-0 pb-3 pl-5 pr-4 pt-5 text-text-primary">{t('chatVariable.panelTitle', { ns: 'workflow' })}</div>
           <div className="grow overflow-y-auto px-3 py-2">
             {varList.map(chatVar => (
               <div key={chatVar.id} className={cn('radius-md group mb-0.5 flex cursor-pointer items-center p-2 hover:bg-state-base-hover', currentVar.id === chatVar.id && 'bg-state-base-hover')} onClick={() => setCurrentVar(chatVar)}>
@@ -106,7 +107,7 @@ const ConversationVariableModal = ({
           </div>
           <div className="flex h-0 grow flex-col p-4 pt-2">
             <div className="mb-2 flex shrink-0 items-center gap-2">
-              <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('workflow.chatVariable.storedContent').toLocaleUpperCase()}</div>
+              <div className="system-xs-medium-uppercase shrink-0 text-text-tertiary">{t('chatVariable.storedContent', { ns: 'workflow' }).toLocaleUpperCase()}</div>
               <div
                 className="h-px grow"
                 style={{
@@ -116,8 +117,8 @@ const ConversationVariableModal = ({
               </div>
               {latestValueTimestampMap[currentVar.id] && (
                 <div className="system-xs-regular shrink-0 text-text-tertiary">
-                  {t('workflow.chatVariable.updatedAt')}
-                  {formatTime(latestValueTimestampMap[currentVar.id], t('appLog.dateTimeFormat') as string)}
+                  {t('chatVariable.updatedAt', { ns: 'workflow' })}
+                  {formatTime(latestValueTimestampMap[currentVar.id], t('dateTimeFormat', { ns: 'appLog' }) as string)}
                 </div>
               )}
             </div>

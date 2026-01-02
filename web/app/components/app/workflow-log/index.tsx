@@ -5,17 +5,16 @@ import { useDebounce } from 'ahooks'
 import dayjs from 'dayjs'
 import timezone from 'dayjs/plugin/timezone'
 import utc from 'dayjs/plugin/utc'
-import { omit } from 'lodash-es'
+import { omit } from 'es-toolkit/object'
 import * as React from 'react'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import useSWR from 'swr'
 import EmptyElement from '@/app/components/app/log/empty-element'
 import Loading from '@/app/components/base/loading'
 import Pagination from '@/app/components/base/pagination'
 import { APP_PAGE_LIMIT } from '@/config'
 import { useAppContext } from '@/context/app-context'
-import { fetchWorkflowLogs } from '@/service/log'
+import { useWorkflowLogs } from '@/service/use-log'
 import Filter, { TIME_PERIOD_MAPPING } from './filter'
 import List from './list'
 
@@ -55,16 +54,16 @@ const Logs: FC<ILogsProps> = ({ appDetail }) => {
     ...omit(debouncedQueryParams, ['period', 'status']),
   }
 
-  const { data: workflowLogs, mutate } = useSWR({
-    url: `/apps/${appDetail.id}/workflow-app-logs`,
+  const { data: workflowLogs, refetch: mutate } = useWorkflowLogs({
+    appId: appDetail.id,
     params: query,
-  }, fetchWorkflowLogs)
+  })
   const total = workflowLogs?.total
 
   return (
     <div className="flex h-full flex-col">
-      <h1 className="system-xl-semibold text-text-primary">{t('appLog.workflowTitle')}</h1>
-      <p className="system-sm-regular text-text-tertiary">{t('appLog.workflowSubtitle')}</p>
+      <h1 className="system-xl-semibold text-text-primary">{t('workflowTitle', { ns: 'appLog' })}</h1>
+      <p className="system-sm-regular text-text-tertiary">{t('workflowSubtitle', { ns: 'appLog' })}</p>
       <div className="flex max-h-[calc(100%-16px)] flex-1 flex-col py-4">
         <Filter queryParams={queryParams} setQueryParams={setQueryParams} />
         {/* workflow log */}

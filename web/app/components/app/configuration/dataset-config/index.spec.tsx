@@ -52,7 +52,7 @@ vi.mock('../debug/hooks', () => ({
   useFormattingChangedDispatcher: vi.fn(() => vi.fn()),
 }))
 
-vi.mock('lodash-es', () => ({
+vi.mock('es-toolkit/compat', () => ({
   intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)
@@ -80,7 +80,6 @@ vi.mock('uuid', () => ({
 
 // Mock child components
 vi.mock('./card-item', () => ({
-  __esModule: true,
   default: ({ config, onRemove, onSave, editable }: any) => (
     <div data-testid={`card-item-${config.id}`}>
       <span>{config.name}</span>
@@ -91,7 +90,6 @@ vi.mock('./card-item', () => ({
 }))
 
 vi.mock('./params-config', () => ({
-  __esModule: true,
   default: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
       Params (
@@ -102,7 +100,6 @@ vi.mock('./params-config', () => ({
 }))
 
 vi.mock('./context-var', () => ({
-  __esModule: true,
   default: ({ value, options, onChange }: any) => (
     <select data-testid="context-var" value={value} onChange={e => onChange(e.target.value)}>
       <option value="">Select context variable</option>
@@ -114,7 +111,6 @@ vi.mock('./context-var', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter', () => ({
-  __esModule: true,
   default: ({
     metadataList,
     metadataFilterMode,
@@ -198,7 +194,6 @@ const mockConfigContext: any = {
 }
 
 vi.mock('@/context/debug-configuration', () => ({
-  __esModule: true,
   default: ({ children }: any) => (
     <div data-testid="config-context-provider">
       {children}

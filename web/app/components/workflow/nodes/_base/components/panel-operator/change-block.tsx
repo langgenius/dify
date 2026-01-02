@@ -2,7 +2,7 @@ import type {
   Node,
   OnSelectBlock,
 } from '@/app/components/workflow/types'
-import { intersection } from 'lodash-es'
+import { intersection } from 'es-toolkit/array'
 import {
   memo,
   useCallback,
@@ -61,7 +61,7 @@ const ChangeBlock = ({
   const renderTrigger = useCallback(() => {
     return (
       <div className="flex h-8 w-[232px] cursor-pointer items-center rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover">
-        {t('workflow.panel.changeBlock')}
+        {t('panel.changeBlock', { ns: 'workflow' })}
       </div>
     )
   }, [t])

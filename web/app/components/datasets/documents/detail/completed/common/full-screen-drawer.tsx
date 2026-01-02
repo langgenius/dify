@@ -1,4 +1,4 @@
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { cn } from '@/utils/classnames'
 import Drawer from './drawer'

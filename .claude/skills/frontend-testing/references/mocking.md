@@ -52,22 +52,28 @@ Modules are not mocked automatically. Use `vi.mock` in test files, or add global
 ### 1. i18n (Auto-loaded via Global Mock)
 
 A global mock is defined in `web/vitest.setup.ts` and is auto-loaded by Vitest setup.
-**No explicit mock needed** for most tests - it returns translation keys as-is.
 
-For tests requiring custom translations, override the mock:
+The global mock provides:
+
+- `useTranslation` - returns translation keys with namespace prefix
+- `Trans` component - renders i18nKey and components
+- `useMixedTranslation` (from `@/app/components/plugins/marketplace/hooks`)
+- `useGetLanguage` (from `@/context/i18n`) - returns `'en-US'`
+
+**Default behavior**: Most tests should use the global mock (no local override needed).
+
+**For custom translations**: Use the helper function from `@/test/i18n-mock`:
 
 ```typescript
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'my.custom.key': 'Custom translation',
-      }
-      return translations[key] || key
-    },
-  }),
+import { createReactI18nextMock } from '@/test/i18n-mock'
+
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'my.custom.key': 'Custom translation',
+  'button.save': 'Save',
 }))
 ```
+
+**Avoid**: Manually defining `useTranslation` mocks that just return the key - the global mock already does this.
 
 ### 2. Next.js Router
 
@@ -242,32 +248,9 @@ describe('Component with Context', () => {
 })
 ```
 
-### 7. SWR / React Query
+### 7. React Query
 
 ```typescript
-// SWR
-vi.mock('swr', () => ({
-  __esModule: true,
-  default: vi.fn(),
-}))
-
-import useSWR from 'swr'
-const mockedUseSWR = vi.mocked(useSWR)
-
-describe('Component with SWR', () => {
-  it('should show loading state', () => {
-    mockedUseSWR.mockReturnValue({
-      data: undefined,
-      error: undefined,
-      isLoading: true,
-    })
-    
-    render(<Component />)
-    expect(screen.getByText(/loading/i)).toBeInTheDocument()
-  })
-})
-
-// React Query
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
 const createTestQueryClient = () => new QueryClient({

@@ -3,8 +3,8 @@ import type { FC } from 'react'
 import type { AssignerNodeOperation } from '../../types'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
 import { RiDeleteBinLine } from '@remixicon/react'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -119,7 +119,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t('workflow.nodes.assigner.noVarTip')}
+        {t('nodes.assigner.noVarTip', { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }
@@ -144,7 +144,7 @@ const VarList: FC<Props> = ({
                   onChange={handleAssignedVarChange(index)}
                   onOpen={handleOpen(index)}
                   filterVar={filterVar}
-                  placeholder={t('workflow.nodes.assigner.selectAssignedVariable') as string}
+                  placeholder={t('nodes.assigner.selectAssignedVariable', { ns: 'workflow' }) as string}
                   minWidth={352}
                   popupFor="assigned"
                   className="w-full"
@@ -172,7 +172,7 @@ const VarList: FC<Props> = ({
                     onChange={handleToAssignedVarChange(index)}
                     filterVar={handleFilterToAssignedVar(index)}
                     valueTypePlaceHolder={toAssignedVarType}
-                    placeholder={t('workflow.nodes.assigner.setParameter') as string}
+                    placeholder={t('nodes.assigner.setParameter', { ns: 'workflow' }) as string}
                     minWidth={352}
                     popupFor="toAssigned"
                     className="w-full"

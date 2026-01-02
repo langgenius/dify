@@ -1,5 +1,5 @@
 import type { MetadataShape } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import {
   useCallback,
   useState,
@@ -44,12 +44,12 @@ const MetadataFilter = ({
         <div className="flex grow items-center justify-between pr-4">
           <div className="flex items-center">
             <div className="system-sm-semibold-uppercase mr-0.5 text-text-secondary">
-              {t('workflow.nodes.knowledgeRetrieval.metadata.title')}
+              {t('nodes.knowledgeRetrieval.metadata.title', { ns: 'workflow' })}
             </div>
             <Tooltip
               popupContent={(
                 <div className="w-[200px]">
-                  {t('workflow.nodes.knowledgeRetrieval.metadata.tip')}
+                  {t('nodes.knowledgeRetrieval.metadata.tip', { ns: 'workflow' })}
                 </div>
               )}
             />
@@ -76,7 +76,7 @@ const MetadataFilter = ({
           metadataFilterMode === MetadataFilteringModeEnum.automatic && (
             <>
               <div className="body-xs-regular px-4 text-text-tertiary">
-                {t('workflow.nodes.knowledgeRetrieval.metadata.options.automatic.desc')}
+                {t('nodes.knowledgeRetrieval.metadata.options.automatic.desc', { ns: 'workflow' })}
               </div>
               <div className="mt-1 px-4">
                 <ModelParameterModal

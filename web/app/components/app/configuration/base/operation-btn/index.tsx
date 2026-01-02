@@ -4,7 +4,7 @@ import {
   RiAddLine,
   RiEditLine,
 } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
@@ -37,7 +37,7 @@ const OperationBtn: FC<IOperationBtnProps> = ({
         {iconMap[type]}
       </div>
       <div className="text-xs font-medium">
-        {actionName || t(`common.operation.${type}`)}
+        {actionName || t(`operation.${type}`, { ns: 'common' })}
       </div>
     </div>
   )

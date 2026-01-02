@@ -4,7 +4,8 @@ import type {
   OnSend,
   TextGenerationConfig,
 } from '@/app/components/base/text-generation/types'
-import { cloneDeep, noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { cloneDeep } from 'es-toolkit/object'
 import { memo } from 'react'
 import TextGeneration from '@/app/components/app/text-generate/item'
 import { TransferMethod } from '@/app/components/base/chat/types'

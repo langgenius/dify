@@ -1,5 +1,5 @@
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import * as React from 'react'
 import { useState } from 'react'
 import { Trans, useTranslation } from 'react-i18next'
@@ -134,13 +134,14 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
       </div>
       {step === STEP.start && (
         <>
-          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('common.members.transferModal.title')}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('members.transferModal.title', { ns: 'common' })}</div>
           <div className="space-y-1 pb-2 pt-1">
-            <div className="body-md-medium text-text-destructive">{t('common.members.transferModal.warning', { workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
-            <div className="body-md-regular text-text-secondary">{t('common.members.transferModal.warningTip')}</div>
+            <div className="body-md-medium text-text-destructive">{t('members.transferModal.warning', { ns: 'common', workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
+            <div className="body-md-regular text-text-secondary">{t('members.transferModal.warningTip', { ns: 'common' })}</div>
             <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.members.transferModal.sendTip"
+                i18nKey="members.transferModal.sendTip"
+                ns="common"
                 components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email: userProfile.email }}
               />
@@ -153,35 +154,36 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               variant="primary"
               onClick={sendCodeToOriginEmail}
             >
-              {t('common.members.transferModal.sendVerifyCode')}
+              {t('members.transferModal.sendVerifyCode', { ns: 'common' })}
             </Button>
             <Button
               className="!w-full"
               onClick={onClose}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
         </>
       )}
       {step === STEP.verify && (
         <>
-          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('common.members.transferModal.verifyEmail')}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('members.transferModal.verifyEmail', { ns: 'common' })}</div>
           <div className="pb-2 pt-1">
             <div className="body-md-regular text-text-secondary">
               <Trans
-                i18nKey="common.members.transferModal.verifyContent"
+                i18nKey="members.transferModal.verifyContent"
+                ns="common"
                 components={{ email: <span className="body-md-medium text-text-primary"></span> }}
                 values={{ email: userProfile.email }}
               />
             </div>
-            <div className="body-md-regular text-text-secondary">{t('common.members.transferModal.verifyContent2')}</div>
+            <div className="body-md-regular text-text-secondary">{t('members.transferModal.verifyContent2', { ns: 'common' })}</div>
           </div>
           <div className="pt-3">
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('common.members.transferModal.codeLabel')}</div>
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('members.transferModal.codeLabel', { ns: 'common' })}</div>
             <Input
               className="!w-full"
-              placeholder={t('common.members.transferModal.codePlaceholder')}
+              placeholder={t('members.transferModal.codePlaceholder', { ns: 'common' })}
               value={code}
               onChange={e => setCode(e.target.value)}
               maxLength={6}
@@ -194,35 +196,35 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               variant="primary"
               onClick={handleVerifyOriginEmail}
             >
-              {t('common.members.transferModal.continue')}
+              {t('members.transferModal.continue', { ns: 'common' })}
             </Button>
             <Button
               className="!w-full"
               onClick={onClose}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
           <div className="system-xs-regular mt-3 flex items-center gap-1 text-text-tertiary">
-            <span>{t('common.members.transferModal.resendTip')}</span>
+            <span>{t('members.transferModal.resendTip', { ns: 'common' })}</span>
             {time > 0 && (
-              <span>{t('common.members.transferModal.resendCount', { count: time })}</span>
+              <span>{t('members.transferModal.resendCount', { ns: 'common', count: time })}</span>
             )}
             {!time && (
-              <span onClick={sendCodeToOriginEmail} className="system-xs-medium cursor-pointer text-text-accent-secondary">{t('common.members.transferModal.resend')}</span>
+              <span onClick={sendCodeToOriginEmail} className="system-xs-medium cursor-pointer text-text-accent-secondary">{t('members.transferModal.resend', { ns: 'common' })}</span>
             )}
           </div>
         </>
       )}
       {step === STEP.transfer && (
         <>
-          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('common.members.transferModal.title')}</div>
+          <div className="title-2xl-semi-bold pb-3 text-text-primary">{t('members.transferModal.title', { ns: 'common' })}</div>
           <div className="space-y-1 pb-2 pt-1">
-            <div className="body-md-medium text-text-destructive">{t('common.members.transferModal.warning', { workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
-            <div className="body-md-regular text-text-secondary">{t('common.members.transferModal.warningTip')}</div>
+            <div className="body-md-medium text-text-destructive">{t('members.transferModal.warning', { ns: 'common', workspace: currentWorkspace.name.replace(/'/g, '’') })}</div>
+            <div className="body-md-regular text-text-secondary">{t('members.transferModal.warningTip', { ns: 'common' })}</div>
           </div>
           <div className="pt-3">
-            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('common.members.transferModal.transferLabel')}</div>
+            <div className="system-sm-medium mb-1 flex h-6 items-center text-text-secondary">{t('members.transferModal.transferLabel', { ns: 'common' })}</div>
             <MemberSelector
               exclude={[userProfile.id]}
               value={newOwner}
@@ -236,13 +238,13 @@ const TransferOwnershipModal = ({ onClose, show }: Props) => {
               variant="warning"
               onClick={handleTransfer}
             >
-              {t('common.members.transferModal.transfer')}
+              {t('members.transferModal.transfer', { ns: 'common' })}
             </Button>
             <Button
               className="!w-full"
               onClick={onClose}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
           </div>
         </>

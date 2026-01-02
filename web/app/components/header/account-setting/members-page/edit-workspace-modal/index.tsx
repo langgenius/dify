@@ -1,6 +1,6 @@
 'use client'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
@@ -32,11 +32,11 @@ const EditWorkspaceModal = ({
           name,
         },
       })
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       location.assign(`${location.origin}`)
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
   }
 
@@ -44,15 +44,15 @@ const EditWorkspaceModal = ({
     <div className={cn(s.wrap)}>
       <Modal overflowVisible isShow onClose={noop} className={cn(s.modal)}>
         <div className="mb-2 flex justify-between">
-          <div className="text-xl font-semibold text-text-primary">{t('common.account.editWorkspaceInfo')}</div>
+          <div className="text-xl font-semibold text-text-primary">{t('account.editWorkspaceInfo', { ns: 'common' })}</div>
           <RiCloseLine className="h-4 w-4 cursor-pointer text-text-tertiary" onClick={onCancel} />
         </div>
         <div>
-          <div className="mb-2 text-sm font-medium text-text-primary">{t('common.account.workspaceName')}</div>
+          <div className="mb-2 text-sm font-medium text-text-primary">{t('account.workspaceName', { ns: 'common' })}</div>
           <Input
             className="mb-2"
             value={name}
-            placeholder={t('common.account.workspaceNamePlaceholder')}
+            placeholder={t('account.workspaceNamePlaceholder', { ns: 'common' })}
             onChange={(e) => {
               setName(e.target.value)
             }}
@@ -66,7 +66,7 @@ const EditWorkspaceModal = ({
               size="large"
               onClick={onCancel}
             >
-              {t('common.operation.cancel')}
+              {t('operation.cancel', { ns: 'common' })}
             </Button>
             <Button
               size="large"
@@ -77,7 +77,7 @@ const EditWorkspaceModal = ({
               }}
               disabled={!isCurrentWorkspaceOwner}
             >
-              {t('common.operation.confirm')}
+              {t('operation.confirm', { ns: 'common' })}
             </Button>
           </div>
 

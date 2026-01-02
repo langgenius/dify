@@ -6,7 +6,7 @@ import {
   RiCloseLine,
   RiPlayLargeLine,
 } from '@remixicon/react'
-import { debounce } from 'lodash-es'
+import { debounce } from 'es-toolkit/compat'
 import * as React from 'react'
 import {
   cloneElement,
@@ -492,7 +492,7 @@ const BasePanel: FC<BasePanelProps> = ({
               {
                 isSupportSingleRun && !nodesReadOnly && (
                   <Tooltip
-                    popupContent={t('workflow.panel.runThisStep')}
+                    popupContent={t('panel.runThisStep', { ns: 'workflow' })}
                     popupClassName="mr-1"
                     disabled={isSingleRunning}
                   >
@@ -642,10 +642,10 @@ const BasePanel: FC<BasePanelProps> = ({
               !!availableNextBlocks.length && (
                 <div className="border-t-[0.5px] border-divider-regular p-4">
                   <div className="system-sm-semibold-uppercase mb-1 flex items-center text-text-secondary">
-                    {t('workflow.panel.nextStep').toLocaleUpperCase()}
+                    {t('panel.nextStep', { ns: 'workflow' }).toLocaleUpperCase()}
                   </div>
                   <div className="system-xs-regular mb-2 text-text-tertiary">
-                    {t('workflow.panel.addNextStep')}
+                    {t('panel.addNextStep', { ns: 'workflow' })}
                   </div>
                   <NextStep selectedNode={selectedNode} />
                 </div>

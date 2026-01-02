@@ -1,8 +1,8 @@
 'use client'
 import type { FC } from 'react'
 import type { ValueSelector, Var } from '@/app/components/workflow/types'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
-import { noop } from 'lodash-es'
 import * as React from 'react'
 import { useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
@@ -54,7 +54,7 @@ const VarList: FC<Props> = ({
   if (list.length === 0) {
     return (
       <ListNoDataPlaceholder>
-        {t('workflow.nodes.variableAssigner.noVarTip')}
+        {t('nodes.variableAssigner.noVarTip', { ns: 'workflow' })}
       </ListNoDataPlaceholder>
     )
   }

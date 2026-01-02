@@ -4,7 +4,7 @@ import type {
 } from '@/app/components/workflow/types'
 import { RiArrowDownSLine } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { capitalize } from 'lodash-es'
+import { capitalize } from 'es-toolkit/string'
 import {
   memo,
   useCallback,
@@ -129,7 +129,7 @@ const ConditionNumberInput = ({
                   !value && (
                     <div className="flex h-6 items-center p-1 text-[13px] text-components-input-text-placeholder">
                       <Variable02 className="mr-1 h-4 w-4 shrink-0" />
-                      <div className="w-0 grow truncate">{t('workflow.nodes.ifElse.selectVariable')}</div>
+                      <div className="w-0 grow truncate">{t('nodes.ifElse.selectVariable', { ns: 'workflow' })}</div>
                     </div>
                   )
                 }
@@ -153,7 +153,7 @@ const ConditionNumberInput = ({
                 type="number"
                 value={value}
                 onChange={e => onValueChange(e.target.value)}
-                placeholder={t('workflow.nodes.ifElse.enterValue') || ''}
+                placeholder={t('nodes.ifElse.enterValue', { ns: 'workflow' }) || ''}
                 onFocus={setFocus}
                 onBlur={setBlur}
               />
