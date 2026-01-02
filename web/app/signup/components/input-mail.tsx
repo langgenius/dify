@@ -43,7 +43,7 @@ export default function Form({
     const res = await submitMail({ email, language: locale })
     if ((res as MailSendResponse).result === 'success')
       onSuccess(email, (res as MailSendResponse).data)
-  }, [email, locale, submitMail, t, isPending])
+  }, [email, locale, submitMail, t, isPending, onSuccess])
 
   return (
     <form onSubmit={(e) => {
