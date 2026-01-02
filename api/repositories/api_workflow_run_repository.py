@@ -264,7 +264,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_ids: Sequence[str] | None = None,
     ) -> Sequence[WorkflowRun]:
         """
-        Fetch a batch of workflow runs within a time window using keyset pagination.
+        Fetch ended workflow runs in a time window for archival and clean batching.
         """
         ...
 
