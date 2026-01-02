@@ -19,8 +19,8 @@ import { zenCommand } from './zen'
 export const slashScope: ScopeDescriptor = {
   id: 'slash',
   shortcut: ACTION_KEYS.SLASH,
-  title: i18n.t('app.gotoAnything.actions.slashTitle'),
-  description: i18n.t('app.gotoAnything.actions.slashDesc'),
+  title: i18n.t('gotoAnything.actions.slashTitle', { ns: 'app' }),
+  description: i18n.t('gotoAnything.actions.slashDesc', { ns: 'app' }),
   search: async (query, _searchTerm = '') => {
     // Delegate all search logic to the command registry system
     return slashCommandRegistry.search(query, i18n.language)

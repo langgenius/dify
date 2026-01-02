@@ -136,11 +136,11 @@ const IterationLogTrigger = ({
     >
       <Iteration className="h-4 w-4 shrink-0 text-components-button-tertiary-text" />
       <div className="system-sm-medium flex-1 text-left text-components-button-tertiary-text">
-        {t('workflow.nodes.iteration.iteration', { count: displayIterationCount })}
+        {t('nodes.iteration.iteration', { ns: 'workflow', count: displayIterationCount })}
         {errorCount > 0 && (
           <>
-            {t('workflow.nodes.iteration.comma')}
-            {t('workflow.nodes.iteration.error', { count: errorCount })}
+            {t('nodes.iteration.comma', { ns: 'workflow' })}
+            {t('nodes.iteration.error', { ns: 'workflow', count: errorCount })}
           </>
         )}
       </div>

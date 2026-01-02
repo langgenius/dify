@@ -46,7 +46,7 @@ const MixedVariableTextInput = ({
           }
           if (node.data.type === BlockEnum.Start) {
             acc.sys = {
-              title: t('workflow.blocks.start'),
+              title: t('blocks.start', { ns: 'workflow' }),
               type: BlockEnum.Start,
             }
           }

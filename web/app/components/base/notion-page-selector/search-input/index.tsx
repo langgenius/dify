@@ -25,7 +25,7 @@ const SearchInput = ({
         className="min-w-0 grow appearance-none border-0 bg-transparent px-1 text-[13px] leading-[16px] text-components-input-text-filled outline-0 placeholder:text-components-input-text-placeholder"
         value={value}
         onChange={(e: ChangeEvent<HTMLInputElement>) => onChange(e.target.value)}
-        placeholder={t('common.dataSource.notion.selector.searchPages') || ''}
+        placeholder={t('dataSource.notion.selector.searchPages', { ns: 'common' }) || ''}
       />
       {
         value && (

@@ -1,5 +1,5 @@
-import type { BackendEdgeSpec, BackendNodeSpec } from '@/service/debug'
 import type { StateCreator } from 'zustand'
+import type { BackendEdgeSpec, BackendNodeSpec } from '@/service/debug'
 
 export type VibeIntent = 'generate' | 'off_topic' | 'error' | ''
 

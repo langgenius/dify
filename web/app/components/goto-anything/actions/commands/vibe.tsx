@@ -18,7 +18,7 @@ const dispatchVibeCommand = (input?: string) => {
 
 export const vibeCommand: SlashCommandHandler<VibeDeps> = {
   name: 'vibe',
-  description: i18n.t('app.gotoAnything.actions.vibeDesc'),
+  description: i18n.t('gotoAnything.actions.vibeDesc', { ns: 'app' }),
   mode: 'submenu',
   isAvailable: () => isInWorkflowPage(),
 
@@ -28,10 +28,10 @@ export const vibeCommand: SlashCommandHandler<VibeDeps> = {
 
     return [{
       id: 'vibe',
-      title: i18n.t('app.gotoAnything.actions.vibeTitle', { lng: locale }) || 'Vibe',
+      title: i18n.t('gotoAnything.actions.vibeTitle', { ns: 'app', lng: locale }) || 'Vibe',
       description: hasInput
-        ? i18n.t('app.gotoAnything.actions.vibeDesc', { lng: locale })
-        : i18n.t('app.gotoAnything.actions.vibeHint', { lng: locale, prompt: VIBE_PROMPT_EXAMPLE }),
+        ? i18n.t('gotoAnything.actions.vibeDesc', { ns: 'app', lng: locale })
+        : i18n.t('gotoAnything.actions.vibeHint', { ns: 'app', lng: locale, prompt: VIBE_PROMPT_EXAMPLE }),
       type: 'command' as const,
       icon: (
         <div className="flex h-6 w-6 items-center justify-center rounded-md border-[0.5px] border-divider-regular bg-components-panel-bg">

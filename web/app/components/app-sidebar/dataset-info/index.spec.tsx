@@ -132,7 +132,6 @@ vi.mock('@/hooks/use-knowledge', () => ({
 }))
 
 vi.mock('@/app/components/datasets/rename-modal', () => ({
-  __esModule: true,
   default: ({
     show,
     onClose,

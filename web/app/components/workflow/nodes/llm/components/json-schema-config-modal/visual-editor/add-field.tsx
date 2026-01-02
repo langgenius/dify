@@ -28,7 +28,7 @@ const AddField = () => {
         onClick={handleAddField}
       >
         <RiAddCircleFill className="h-3.5 w-3.5" />
-        <span className="px-[3px]">{t('workflow.nodes.llm.jsonSchema.addField')}</span>
+        <span className="px-[3px]">{t('nodes.llm.jsonSchema.addField', { ns: 'workflow' })}</span>
       </Button>
     </div>
   )

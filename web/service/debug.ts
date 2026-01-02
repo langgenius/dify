@@ -39,7 +39,7 @@ export type BackendNodeSpec = {
   type: string
   title?: string
   config?: Record<string, any>
-  position?: { x: number; y: number }
+  position?: { x: number, y: number }
 }
 
 export type BackendEdgeSpec = {
