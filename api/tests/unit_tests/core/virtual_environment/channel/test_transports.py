@@ -1,5 +1,6 @@
 import os
 import socket
+import threading
 
 import pytest
 
@@ -25,6 +26,44 @@ def test_queue_transport_reads_across_chunks() -> None:
     data = transport.read(8)
     assert data == b"hellowor"
     assert transport.read(2) == b"ld"
+
+
+def test_queue_transport_reads_all_available_when_under_n() -> None:
+    transport = QueueTransportReadCloser()
+    writer = transport.get_write_handler()
+    writer.write(b"hi")
+    writer.write(b"there")
+
+    assert transport.read(32) == b"hithere"
+
+
+def test_queue_transport_returns_buffer_without_blocking() -> None:
+    transport = QueueTransportReadCloser()
+    writer = transport.get_write_handler()
+    writer.write(b"abcdef")
+
+    assert transport.read(4) == b"abcd"
+
+    result: list[bytes] = []
+    thread = threading.Thread(target=lambda: result.append(transport.read(4)))
+    thread.start()
+    thread.join(timeout=1)
+    if thread.is_alive():
+        transport.close()
+        thread.join(timeout=1)
+    assert not thread.is_alive()
+    assert result == [b"ef"]
+
+
+def test_queue_transport_returns_data_before_eof() -> None:
+    transport = QueueTransportReadCloser()
+    writer = transport.get_write_handler()
+    writer.write(b"end")
+    transport.close()
+
+    assert transport.read(10) == b"end"
+    with pytest.raises(TransportEOFError):
+        transport.read(1)
 
 
 def test_queue_transport_close_then_read_raises() -> None:

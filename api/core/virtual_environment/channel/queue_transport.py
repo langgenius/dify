@@ -73,11 +73,15 @@ class QueueTransportReadCloser(TransportReadCloser):
             raise TransportEOFError("Transport is closed")
 
         to_return = self._drain_buffer(n)
-        while len(to_return) < n and not self._closed:
+
+        while len(to_return) < n and not self._closed and self.q.qsize() > 0:
             chunk = self.q.get()
             if chunk is None:
                 self._closed = True
-                raise TransportEOFError("Transport is closed")
+                if len(to_return) == 0:
+                    raise TransportEOFError("Transport is closed")
+                else:
+                    break
 
             self._read_buffer.extend(chunk)
 
@@ -86,10 +90,6 @@ class QueueTransportReadCloser(TransportReadCloser):
                 to_return += self._drain_buffer(n - len(to_return))
             else:
                 # No more data needed, break
-                break
-
-            if self.q.qsize() == 0:
-                # If no more data is available, break to return what we have
                 break
 
         return to_return
