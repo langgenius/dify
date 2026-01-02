@@ -36,6 +36,7 @@ const triggerKeyPress = (combo: string) => {
 let mockQueryResult = { data: [] as SearchResult[], isLoading: false, isError: false, error: null as Error | null }
 vi.mock('@tanstack/react-query', () => ({
   useQuery: () => mockQueryResult,
+  keepPreviousData: (data: unknown) => data,
 }))
 
 vi.mock('@/context/i18n', () => ({

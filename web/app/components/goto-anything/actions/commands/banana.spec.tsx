@@ -48,7 +48,7 @@ describe('bananaCommand', () => {
       // Assert
       expect(bananaCommand.name).toBe('banana')
       expect(bananaCommand.mode).toBe('submenu')
-      expect(bananaCommand.description).toContain('app.gotoAnything.actions.vibeDesc')
+      expect(bananaCommand.description).toContain('gotoAnything.actions.vibeDesc')
     })
   })
 
@@ -91,16 +91,16 @@ describe('bananaCommand', () => {
       // Assert
       expect(result).toHaveLength(1)
       const [item] = result
-      expect(item.description).toContain('app.gotoAnything.actions.vibeHint')
+      expect(item.description).toContain('gotoAnything.actions.vibeHint')
       expect(item.data?.args?.dsl).toBe('')
       expect(item.data?.command).toBe('workflow.vibe')
       expect(mockedT).toHaveBeenCalledWith(
-        'app.gotoAnything.actions.vibeTitle',
-        expect.objectContaining({ lng: 'en' }),
+        'gotoAnything.actions.vibeTitle',
+        expect.objectContaining({ lng: 'en', ns: 'app' }),
       )
       expect(mockedT).toHaveBeenCalledWith(
-        'app.gotoAnything.actions.vibeHint',
-        expect.objectContaining({ prompt: expect.any(String), lng: 'en' }),
+        'gotoAnything.actions.vibeHint',
+        expect.objectContaining({ prompt: expect.any(String), lng: 'en', ns: 'app' }),
       )
     })
 
@@ -114,16 +114,16 @@ describe('bananaCommand', () => {
       // Assert
       expect(result).toHaveLength(1)
       const [item] = result
-      expect(item.description).toContain('app.gotoAnything.actions.vibeDesc')
+      expect(item.description).toContain('gotoAnything.actions.vibeDesc')
       expect(item.data?.args?.dsl).toBe('make a flow')
       expect(item.data?.command).toBe('workflow.vibe')
       expect(mockedT).toHaveBeenCalledWith(
-        'app.gotoAnything.actions.vibeTitle',
-        expect.objectContaining({ lng: 'fr' }),
+        'gotoAnything.actions.vibeTitle',
+        expect.objectContaining({ lng: 'fr', ns: 'app' }),
       )
       expect(mockedT).toHaveBeenCalledWith(
-        'app.gotoAnything.actions.vibeDesc',
-        expect.objectContaining({ lng: 'fr' }),
+        'gotoAnything.actions.vibeDesc',
+        expect.objectContaining({ lng: 'fr', ns: 'app' }),
       )
     })
 

@@ -114,11 +114,20 @@ const renderVibePanel = ({
     mockUseVibeFlowData.mockReturnValue(vibeFlowData)
 
   const workflowStore = createWorkflowStore({})
+  const vibeFlowState = vibeFlowData
+    ? {
+        vibeFlowVersions: vibeFlowData.versions,
+        vibeFlowCurrentIndex: vibeFlowData.currentVersionIndex,
+        currentVibeFlow: vibeFlowData.current,
+      }
+    : {}
+
   workflowStore.setState({
     showVibePanel: true,
     isVibeGenerating: false,
     vibePanelInstruction: '',
     vibePanelMermaidCode: '',
+    ...vibeFlowState,
     ...workflowState,
   })
 

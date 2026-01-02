@@ -79,11 +79,11 @@ describe('vibeCommand', () => {
       // Assert
       expect(result).toHaveLength(1)
       const [item] = result
-      expect(item.description).toContain('app.gotoAnything.actions.vibeHint')
+      expect(item.description).toContain('gotoAnything.actions.vibeHint')
       expect(item.data?.args?.dsl).toBe('')
       expect(mockedT).toHaveBeenCalledWith(
-        'app.gotoAnything.actions.vibeHint',
-        expect.objectContaining({ prompt: expect.any(String), lng: 'en' }),
+        'gotoAnything.actions.vibeHint',
+        expect.objectContaining({ prompt: expect.any(String), lng: 'en', ns: 'app' }),
       )
     })
 
@@ -97,7 +97,7 @@ describe('vibeCommand', () => {
       // Assert
       expect(result).toHaveLength(1)
       const [item] = result
-      expect(item.description).toContain('app.gotoAnything.actions.vibeDesc')
+      expect(item.description).toContain('gotoAnything.actions.vibeDesc')
       expect(item.data?.args?.dsl).toBe('make a flow')
     })
   })
