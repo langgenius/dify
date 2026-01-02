@@ -1,6 +1,5 @@
 import type { ReactNode } from 'react'
 import * as React from 'react'
-import AceDataCloudOAuthInitializer from '@/app/components/acedatacloud-oauth-initializer'
 import { AppInitializer } from '@/app/components/app-initializer'
 import AmplitudeProvider from '@/app/components/base/amplitude'
 import GA, { GaType } from '@/app/components/base/ga'
@@ -22,7 +21,6 @@ const Layout = ({ children }: { children: ReactNode }) => {
       <GA gaType={GaType.admin} />
       <AmplitudeProvider />
       <AppInitializer>
-        <AceDataCloudOAuthInitializer />
         <AppContextProvider>
           <EventEmitterContextProvider>
             <ProviderContextProvider>
