@@ -49,6 +49,7 @@ def _mock_client(monkeypatch):
         response = MagicMock()
         response.get.return_value = f'"{md5_hash}"'
         return response
+
     client.put_object.side_effect = mock_put_object
     boto_client = MagicMock(return_value=client)
     monkeypatch.setattr(storage_module.boto3, "client", boto_client)
