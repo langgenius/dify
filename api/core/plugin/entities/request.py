@@ -282,3 +282,11 @@ class TriggerDispatchResponse(BaseModel):
             return deserialize_response(binascii.unhexlify(v.encode()))
         except Exception as e:
             raise ValueError("Failed to deserialize response from hex string") from e
+
+
+class RequestListTools(BaseModel):
+    """
+    Request to list all available tools
+    """
+
+    pass
