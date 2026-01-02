@@ -1,4 +1,4 @@
-name: autofix.ci
+name: Autofix.ci
 on:
   pull_request:
     branches: ["main"]

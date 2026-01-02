@@ -1,4 +1,4 @@
-name: Style check
+name: Style Check
 
 on:
   workflow_call:

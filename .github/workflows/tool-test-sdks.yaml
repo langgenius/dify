@@ -1,4 +1,4 @@
-name: Run Unit Test For SDKs
+name: Run Unit Test for SDKs
 
 on:
   pull_request:
