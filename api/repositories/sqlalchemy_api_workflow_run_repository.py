@@ -326,14 +326,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 select(WorkflowRun)
                 .where(
                     WorkflowRun.created_at < end_before,
-                    WorkflowRun.status.in_(
-                        [
-                            WorkflowExecutionStatus.SUCCEEDED.value,
-                            WorkflowExecutionStatus.FAILED.value,
-                            WorkflowExecutionStatus.STOPPED.value,
-                            WorkflowExecutionStatus.PARTIAL_SUCCEEDED.value,
-                        ]
-                    ),
+                    WorkflowRun.status.in_(WorkflowExecutionStatus.ended_values()),
                 )
                 .order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
                 .limit(batch_size)
