@@ -9,13 +9,6 @@ import Processing from './index'
 // Mock External Dependencies
 // ==========================================
 
-// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock useDocLink - returns a function that generates doc URLs
 // Strips leading slash from path to match actual implementation behavior
 vi.mock('@/context/i18n', () => ({
@@ -41,7 +34,6 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock the EmbeddingProcess component to track props
 let embeddingProcessProps: Record<string, unknown> = {}
 vi.mock('./embedding-process', () => ({
-  __esModule: true,
   default: (props: Record<string, unknown>) => {
     embeddingProcessProps = props
     return (

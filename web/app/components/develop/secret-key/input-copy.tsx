@@ -44,7 +44,7 @@ const InputCopy = ({
             }}
           >
             <Tooltip
-              popupContent={isCopied ? `${t('appApi.copied')}` : `${t('appApi.copy')}`}
+              popupContent={isCopied ? `${t('copied', { ns: 'appApi' })}` : `${t('copy', { ns: 'appApi' })}`}
               position="bottom"
             >
               <span className="text-text-secondary">{value}</span>

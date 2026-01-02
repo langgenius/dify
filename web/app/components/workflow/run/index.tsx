@@ -133,7 +133,7 @@ const RunPanel: FC<RunProps> = ({
             )}
             onClick={() => switchTab('RESULT')}
           >
-            {t('runLog.result')}
+            {t('result', { ns: 'runLog' })}
           </div>
         )}
         <div
@@ -143,7 +143,7 @@ const RunPanel: FC<RunProps> = ({
           )}
           onClick={() => switchTab('DETAIL')}
         >
-          {t('runLog.detail')}
+          {t('detail', { ns: 'runLog' })}
         </div>
         <div
           className={cn(
@@ -152,7 +152,7 @@ const RunPanel: FC<RunProps> = ({
           )}
           onClick={() => switchTab('TRACING')}
         >
-          {t('runLog.tracing')}
+          {t('tracing', { ns: 'runLog' })}
         </div>
       </div>
       {/* panel detail */}

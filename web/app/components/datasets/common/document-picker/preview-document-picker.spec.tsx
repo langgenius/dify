@@ -7,10 +7,11 @@ import PreviewDocumentPicker from './preview-document-picker'
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
-      if (key === 'dataset.preprocessDocument' && params?.num)
+      if (key === 'preprocessDocument' && params?.num)
         return `${params.num} files`
 
-      return key
+      const prefix = params?.ns ? `${params.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))

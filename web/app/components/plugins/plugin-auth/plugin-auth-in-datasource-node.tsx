@@ -26,7 +26,7 @@ const PluginAuthInDataSourceNode = ({
               onClick={onJumpToDataSourcePage}
             >
               <RiAddLine className="mr-1 h-4 w-4" />
-              {t('common.integrations.connect')}
+              {t('integrations.connect', { ns: 'common' })}
             </Button>
           </div>
         )
