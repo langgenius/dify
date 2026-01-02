@@ -20,6 +20,8 @@ data:
 
   # Plugin daemon tuning (avoid install timeouts in slow networks).
   PIP_MIRROR_URL: "https://mirrors.cloud.tencent.com/pypi/simple"
+  # Keep API/plugin-daemon max package size consistent (API uses PLUGIN_MAX_PACKAGE_SIZE, daemon uses MAX_PLUGIN_PACKAGE_SIZE).
+  PLUGIN_MAX_PACKAGE_SIZE: "52428800"
   MAX_PLUGIN_PACKAGE_SIZE: "52428800"
   PYTHON_ENV_INIT_TIMEOUT: "600"
   PLUGIN_MAX_EXECUTION_TIMEOUT: "900"

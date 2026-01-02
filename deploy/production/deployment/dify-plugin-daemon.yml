@@ -136,6 +136,10 @@ spec:
             - mountPath: /app/storage
               name: dify-storage
               subPath: plugin-daemon-storage
+            # Avoid running python venv creation / pre-compile on CFS (very slow for many small files).
+            # Keep plugin packages/assets on the PVC, but move the working dir to node-local storage.
+            - mountPath: /app/storage/cwd
+              name: plugin-working
       imagePullSecrets:
         - name: docker-registry
       restartPolicy: Always
@@ -146,3 +150,5 @@ spec:
         - name: dify-storage
           persistentVolumeClaim:
             claimName: dify
+        - name: plugin-working
+          emptyDir: {}
