@@ -1,0 +1,13 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-nginx
+  namespace: acedatacloud
+spec:
+  type: ClusterIP
+  selector:
+    app: dify-nginx
+  ports:
+    - name: http
+      port: 80
+      targetPort: 80

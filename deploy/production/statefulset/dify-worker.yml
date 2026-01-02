@@ -1,0 +1,218 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  annotations:
+  labels:
+    app: dify-worker
+    app.kubernetes.io/instance: dify-worker
+  name: dify-worker
+  namespace: acedatacloud
+spec:
+  podManagementPolicy: OrderedReady
+  replicas: 2
+  revisionHistoryLimit: 10
+  selector:
+    matchLabels:
+      app: dify-worker
+  serviceName: dify-worker-headless
+  template:
+    metadata:
+      labels:
+        app: dify-worker
+    spec:
+      automountServiceAccountToken: false
+      affinity:
+        podAffinity:
+          preferredDuringSchedulingIgnoredDuringExecution:
+            - weight: 100
+              podAffinityTerm:
+                labelSelector:
+                  matchLabels:
+                    app: dify-api
+                topologyKey: kubernetes.io/hostname
+      initContainers:
+      - name: wait-for-api
+        image: busybox:latest
+        command:
+          - sh
+          - -c
+          - |
+            for i in $(seq 1 120); do
+              if wget -qO- --timeout=2 http://dify-api:5001/health >/dev/null 2>&1; then
+                exit 0
+              fi
+              sleep 5
+            done
+            echo "dify-api /health not ready after 10 minutes"
+            exit 1
+      - name: init-permissions
+        image: busybox:latest
+        command:
+          - sh
+          - -c
+          - |
+            FLAG_FILE="/app/api/storage/.init_permissions"
+            if [ -f "$FLAG_FILE" ]; then
+              echo "Permissions already initialized. Exiting."
+              exit 0
+            fi
+            echo "Initializing permissions for /app/api/storage"
+            chown -R 1001:1001 /app/api/storage && touch "$FLAG_FILE"
+            echo "Permissions initialized. Exiting."
+        volumeMounts:
+        - mountPath: /app/api/storage
+          name: dify-storage
+          subPath: api-storage
+      containers:
+      - envFrom:
+        - configMapRef:
+            name: dify-env
+        env:
+        - name: MODE
+          value: worker
+        - name: LOG_LEVEL
+          value: INFO
+        - name: SECRET_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dify
+              key: SECRET_KEY
+        - name: PLUGIN_DAEMON_URL
+          value: http://dify-plugin-daemon:5002
+        - name: PLUGIN_DAEMON_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dify
+              key: SECRET_KEY
+        - name: INNER_API_KEY_FOR_PLUGIN
+          valueFrom:
+            secretKeyRef:
+              name: dify
+              key: SECRET_KEY
+        - name: DB_TYPE
+          value: postgresql
+        - name: DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: PGSQL_USER
+              name: pgsql-qcloud
+              optional: false
+        - name: DB_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: PGSQL_PASSWORD
+              name: pgsql-qcloud
+              optional: false
+        - name: DB_HOST
+          valueFrom:
+            secretKeyRef:
+              key: PGSQL_HOST
+              name: pgsql-qcloud
+              optional: false
+        - name: DB_PORT
+          valueFrom:
+            secretKeyRef:
+              key: PGSQL_PORT
+              name: pgsql-qcloud
+              optional: false
+        - name: DB_DATABASE
+          value: acedatacloud_dify
+        - name: REDIS_HOST
+          valueFrom:
+            secretKeyRef:
+              key: REDIS_HOST
+              name: redis-qcloud
+              optional: false
+        - name: REDIS_PORT
+          valueFrom:
+            secretKeyRef:
+              key: REDIS_PORT
+              name: redis-qcloud
+              optional: false
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              key: REDIS_PASSWORD
+              name: redis-qcloud
+              optional: false
+        - name: REDIS_USE_SSL
+          value: "false"
+        - name: REDIS_DB
+          value: "1"
+        - name: REDIS_SERIALIZATION_PROTOCOL
+          value: "2"
+        - name: CELERY_BROKER_URL
+          value: redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/1
+        - name: WEB_API_CORS_ALLOW_ORIGINS
+          value: '*'
+        - name: CONSOLE_CORS_ALLOW_ORIGINS
+          value: '*'
+        - name: STORAGE_TYPE
+          value: opendal
+        - name: OPENDAL_SCHEME
+          value: fs
+        - name: OPENDAL_FS_ROOT
+          value: storage
+        - name: VECTOR_STORE
+          value: tencent
+        - name: TENCENT_VECTOR_DB_URL
+          valueFrom:
+            secretKeyRef:
+              key: DB_URL
+              name: vdb-qcloud
+              optional: false
+        - name: TENCENT_VECTOR_DB_API_KEY
+          valueFrom:
+            secretKeyRef:
+              key: DB_API_KEY
+              name: vdb-qcloud
+              optional: false
+        - name: TENCENT_VECTOR_DB_TIMEOUT
+          value: "30"
+        - name: TENCENT_VECTOR_DB_USERNAME
+          valueFrom:
+            secretKeyRef:
+              key: DB_USERNAME
+              name: vdb-qcloud
+              optional: false
+        - name: TENCENT_VECTOR_DB_DATABASE
+          value: acedatacloud_dify
+        - name: TENCENT_VECTOR_DB_SHARD
+          value: "1"
+        - name: TENCENT_VECTOR_DB_REPLICAS
+          value: "2"
+        - name: TENCENT_VECTOR_DB_ENABLE_HYBRID_SEARCH
+          value: "false"
+        image: ghcr.io/acedatacloud/dify-api:latest
+        imagePullPolicy: IfNotPresent
+        name: dify-worker
+        resources:
+          limits:
+            cpu: 500m
+            memory: 1Gi
+          requests:
+            cpu: 300m
+            memory: 512Mi
+        securityContext:
+          privileged: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /app/api/storage
+          name: dify-storage
+          subPath: api-storage
+      dnsPolicy: ClusterFirst
+      imagePullSecrets:
+      - name: docker-registry
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - name: dify-storage
+        persistentVolumeClaim:
+          claimName: dify
+  updateStrategy:
+    rollingUpdate:
+      partition: 0
+    type: RollingUpdate

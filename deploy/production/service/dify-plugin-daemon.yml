@@ -1,0 +1,16 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-plugin-daemon
+  namespace: acedatacloud
+spec:
+  type: ClusterIP
+  selector:
+    app: dify-plugin-daemon
+  ports:
+    - name: http
+      port: 5002
+      targetPort: 5002
+    - name: remote-install
+      port: 5003
+      targetPort: 5003

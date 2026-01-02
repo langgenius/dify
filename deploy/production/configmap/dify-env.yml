@@ -1,0 +1,31 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dify-env
+  namespace: acedatacloud
+data:
+  # External base URLs (must be set for OAuth callbacks and secure cookie behavior).
+  CONSOLE_API_URL: "https://dify.acedata.cloud"
+  # Keep a trailing slash so proxies that rewrite absolute Location headers don't turn it into `?oauth_new_user=...`.
+  CONSOLE_WEB_URL: "https://dify.acedata.cloud/"
+  APP_API_URL: "https://dify.acedata.cloud"
+  APP_WEB_URL: "https://dify.acedata.cloud/"
+  SERVICE_API_URL: "https://dify.acedata.cloud"
+  FILES_URL: "https://dify.acedata.cloud/files"
+  ENDPOINT_URL_TEMPLATE: "https://dify.acedata.cloud/e/{hook_id}"
+  TRIGGER_URL: "https://dify.acedata.cloud/triggers"
+
+  # Behind reverse proxies (EdgeOne / Nginx): respect forwarded headers for correct scheme/port.
+  RESPECT_XFORWARD_HEADERS_ENABLED: "true"
+
+  # Plugin daemon tuning (avoid install timeouts in slow networks).
+  PIP_MIRROR_URL: "https://mirrors.cloud.tencent.com/pypi/simple"
+  MAX_PLUGIN_PACKAGE_SIZE: "52428800"
+  PYTHON_ENV_INIT_TIMEOUT: "600"
+  PLUGIN_MAX_EXECUTION_TIMEOUT: "900"
+  PLUGIN_STDIO_BUFFER_SIZE: "1024"
+  PLUGIN_STDIO_MAX_BUFFER_SIZE: "5242880"
+  PLUGIN_INSTALLED_PATH: "plugin"
+  PLUGIN_PACKAGE_CACHE_PATH: "plugin_packages"
+  PLUGIN_MEDIA_CACHE_PATH: "assets"
+  FORCE_VERIFYING_SIGNATURE: "true"

@@ -1,0 +1,72 @@
+name: Deploy to Production
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - .gitignore
+      - README.md
+      - ".github/ISSUE_TEMPLATE/**"
+jobs:
+  run:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: docker
+    steps:
+      - name: Generate Build Number
+        uses: einaregilsson/build-number@v2
+        with:
+          token: ${{ secrets.github_token }}
+        env:
+          ACTIONS_ALLOW_UNSECURE_COMMANDS: "true"
+
+      - name: Get Build Number
+        run: |
+          echo $BUILD_NUMBER
+
+      - name: Checkout
+        uses: actions/checkout@master
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+
+      - name: Install Docker Compose
+        run: |
+          sudo apt-get update
+          sudo apt-get install docker-compose
+
+      - name: Docker Login
+        uses: docker/login-action@v2
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Test IP Address
+        run: |
+          wget -qO- https://ipecho.net/plain ; echo
+
+      - name: Set Kubectl
+        uses: Azure/k8s-set-context@v1
+        with:
+          kubeconfig: ${{ secrets.KUBE_CONFIG }}
+
+      - name: Test Kubectl
+        run: |
+          kubectl get nodes
+          kubectl get svc -n acedatacloud
+
+      - name: Build Docker images
+        run: docker-compose build
+
+      - name: Push Docker images
+        run: docker-compose push
+
+      - name: Deploy
+        run: bash ../deploy/run.sh

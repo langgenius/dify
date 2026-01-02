@@ -1,0 +1,66 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dify-nginx
+  name: dify-nginx
+  namespace: acedatacloud
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: dify-nginx
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: dify-nginx
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - image: nginx:latest
+        imagePullPolicy: IfNotPresent
+        name: dify-nginx
+        ports:
+        - containerPort: 80
+          protocol: TCP
+        resources:
+          limits:
+            cpu: 100m
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 128Mi
+        securityContext:
+          privileged: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+        volumeMounts:
+        - mountPath: /etc/nginx/nginx.conf
+          name: dify-nginx
+          subPath: nginx.conf
+        - mountPath: /etc/nginx/proxy.conf
+          name: dify-nginx
+          subPath: proxy.conf
+        - mountPath: /etc/nginx/conf.d/default.conf
+          name: dify-nginx
+          subPath: default.conf
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30
+      volumes:
+      - configMap:
+          defaultMode: 420
+          name: dify-nginx
+        name: dify-nginx

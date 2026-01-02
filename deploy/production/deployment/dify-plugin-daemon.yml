@@ -1,0 +1,148 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dify-plugin-daemon
+  name: dify-plugin-daemon
+  namespace: acedatacloud
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: dify-plugin-daemon
+  template:
+    metadata:
+      labels:
+        app: dify-plugin-daemon
+    spec:
+      containers:
+        - name: dify-plugin-daemon
+          image: langgenius/dify-plugin-daemon:0.5.2-local
+          imagePullPolicy: IfNotPresent
+          envFrom:
+            - configMapRef:
+                name: dify-env
+          env:
+            - name: DB_TYPE
+              value: postgresql
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_USER
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_PASSWORD
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_HOST
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_PORT
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_DATABASE
+              value: acedatacloud_dify
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_HOST
+                  name: redis-qcloud
+                  optional: false
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_PORT
+                  name: redis-qcloud
+                  optional: false
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_PASSWORD
+                  name: redis-qcloud
+                  optional: false
+            - name: REDIS_USE_SSL
+              value: "false"
+            - name: REDIS_DB
+              value: "1"
+            - name: REDIS_SERIALIZATION_PROTOCOL
+              value: "2"
+            - name: SERVER_PORT
+              value: "5002"
+            - name: SERVER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify
+                  key: SECRET_KEY
+            - name: DIFY_INNER_API_URL
+              value: http://dify-api:5001
+            - name: DIFY_INNER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify
+                  key: SECRET_KEY
+            - name: PLUGIN_REMOTE_INSTALLING_HOST
+              value: 0.0.0.0
+            - name: PLUGIN_REMOTE_INSTALLING_PORT
+              value: "5003"
+            - name: PPROF_ENABLED
+              value: "false"
+            - name: PLUGIN_STORAGE_TYPE
+              value: local
+            - name: PLUGIN_STORAGE_LOCAL_ROOT
+              value: /app/storage
+            - name: PLUGIN_WORKING_PATH
+              value: /app/storage/cwd
+          ports:
+            - containerPort: 5002
+              protocol: TCP
+            - containerPort: 5003
+              protocol: TCP
+          resources:
+            limits:
+              cpu: "1"
+              memory: 2Gi
+            requests:
+              cpu: 200m
+              memory: 256Mi
+          securityContext:
+            privileged: false
+          readinessProbe:
+            httpGet:
+              path: /health/check
+              port: 5002
+            initialDelaySeconds: 5
+            periodSeconds: 10
+            timeoutSeconds: 3
+            failureThreshold: 6
+          livenessProbe:
+            httpGet:
+              path: /health/check
+              port: 5002
+            initialDelaySeconds: 15
+            periodSeconds: 20
+            timeoutSeconds: 3
+            failureThreshold: 3
+          volumeMounts:
+            - mountPath: /app/storage
+              name: dify-storage
+              subPath: plugin-daemon-storage
+      imagePullSecrets:
+        - name: docker-registry
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/os: linux
+      terminationGracePeriodSeconds: 30
+      volumes:
+        - name: dify-storage
+          persistentVolumeClaim:
+            claimName: dify

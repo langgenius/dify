@@ -1,0 +1,81 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dify-sandbox
+  name: dify-sandbox
+  namespace: acedatacloud
+spec:
+  progressDeadlineSeconds: 600
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: dify-sandbox
+  strategy:
+    rollingUpdate:
+      maxSurge: 25%
+      maxUnavailable: 25%
+    type: RollingUpdate
+  template:
+    metadata:
+      creationTimestamp: null
+      labels:
+        app: dify-sandbox
+    spec:
+      automountServiceAccountToken: false
+      containers:
+      - env:
+        - name: API_KEY
+          valueFrom:
+            secretKeyRef:
+              name: dify
+              key: SECRET_KEY
+        - name: GIN_MODE
+          value: release
+        - name: WORKER_TIMEOUT
+          value: "15"
+        - name: ENABLE_NETWORK
+          value: "true"
+        - name: SANDBOX_PORT
+          value: "8194"
+        image: langgenius/dify-sandbox:0.2.12
+        imagePullPolicy: IfNotPresent
+        name: dify-sandbox
+        ports:
+        - containerPort: 8194
+          protocol: TCP
+        readinessProbe:
+          httpGet:
+            path: /health
+            port: 8194
+          initialDelaySeconds: 5
+          periodSeconds: 10
+          timeoutSeconds: 3
+          failureThreshold: 6
+        livenessProbe:
+          httpGet:
+            path: /health
+            port: 8194
+          initialDelaySeconds: 15
+          periodSeconds: 20
+          timeoutSeconds: 3
+          failureThreshold: 3
+        resources:
+          limits:
+            cpu: 200m
+            memory: 1Gi
+          requests:
+            cpu: 10m
+            memory: 128Mi
+        securityContext:
+          privileged: false
+        terminationMessagePath: /dev/termination-log
+        terminationMessagePolicy: File
+      dnsPolicy: ClusterFirst
+      nodeSelector:
+        kubernetes.io/os: linux
+      restartPolicy: Always
+      schedulerName: default-scheduler
+      securityContext: {}
+      terminationGracePeriodSeconds: 30

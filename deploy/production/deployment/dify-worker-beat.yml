@@ -1,0 +1,142 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  labels:
+    app: dify-worker-beat
+  name: dify-worker-beat
+  namespace: acedatacloud
+spec:
+  replicas: 1
+  revisionHistoryLimit: 1
+  selector:
+    matchLabels:
+      app: dify-worker-beat
+  template:
+    metadata:
+      labels:
+        app: dify-worker-beat
+    spec:
+      automountServiceAccountToken: false
+      initContainers:
+        - name: wait-for-api
+          image: busybox:latest
+          command:
+            - sh
+            - -c
+            - |
+              for i in $(seq 1 120); do
+                if wget -qO- --timeout=2 http://dify-api:5001/health >/dev/null 2>&1; then
+                  exit 0
+                fi
+                sleep 5
+              done
+              echo "dify-api /health not ready after 10 minutes"
+              exit 1
+      containers:
+        - name: dify-worker-beat
+          envFrom:
+            - configMapRef:
+                name: dify-env
+          image: ghcr.io/acedatacloud/dify-api:latest
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: MODE
+              value: beat
+            - name: LOG_LEVEL
+              value: INFO
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify
+                  key: SECRET_KEY
+            - name: DB_TYPE
+              value: postgresql
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_USER
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_PASSWORD
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_HOST
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: PGSQL_PORT
+                  name: pgsql-qcloud
+                  optional: false
+            - name: DB_DATABASE
+              value: acedatacloud_dify
+            - name: REDIS_HOST
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_HOST
+                  name: redis-qcloud
+                  optional: false
+            - name: REDIS_PORT
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_PORT
+                  name: redis-qcloud
+                  optional: false
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  key: REDIS_PASSWORD
+                  name: redis-qcloud
+                  optional: false
+            - name: REDIS_USE_SSL
+              value: "false"
+            - name: REDIS_DB
+              value: "1"
+            - name: REDIS_SERIALIZATION_PROTOCOL
+              value: "2"
+            - name: CELERY_BROKER_URL
+              value: redis://:$(REDIS_PASSWORD)@$(REDIS_HOST):$(REDIS_PORT)/1
+            - name: WEB_API_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: CONSOLE_CORS_ALLOW_ORIGINS
+              value: '*'
+            - name: STORAGE_TYPE
+              value: opendal
+            - name: OPENDAL_SCHEME
+              value: fs
+            - name: OPENDAL_FS_ROOT
+              value: storage
+            - name: PLUGIN_DAEMON_URL
+              value: http://dify-plugin-daemon:5002
+            - name: PLUGIN_DAEMON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify
+                  key: SECRET_KEY
+            - name: INNER_API_KEY_FOR_PLUGIN
+              valueFrom:
+                secretKeyRef:
+                  name: dify
+                  key: SECRET_KEY
+          resources:
+            limits:
+              cpu: 200m
+              memory: 1Gi
+            requests:
+              cpu: 20m
+              memory: 128Mi
+          securityContext:
+            privileged: false
+      imagePullSecrets:
+        - name: docker-registry
+      restartPolicy: Always
+      nodeSelector:
+        kubernetes.io/os: linux
+      terminationGracePeriodSeconds: 30

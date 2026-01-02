@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-worker-headless
+  namespace: acedatacloud
+spec:
+  clusterIP: None
+  selector:
+    app: dify-worker
+  ports:
+    - name: http
+      port: 5001
+      targetPort: 5001
+
