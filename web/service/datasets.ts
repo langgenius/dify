@@ -40,7 +40,6 @@ import type {
   SegmentsResponse,
   SegmentUpdater,
 } from '@/models/datasets'
-import type { RetrievalConfig } from '@/types/app'
 import qs from 'qs'
 import { DataSourceProvider } from '@/models/common'
 import { del, get, patch, post, put } from './base'
