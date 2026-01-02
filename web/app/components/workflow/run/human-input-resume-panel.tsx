@@ -21,7 +21,7 @@ const HumanInputResumePanel: FC<HumanInputResumePanelProps> = ({
   pauseReason,
   onResumed,
 }) => {
-  const { t } = useTranslation()
+  const { t } = useTranslation('workflow')
   const [resumeReason, setResumeReason] = useState('')
   const [isSubmitting, setIsSubmitting] = useState(false)
 
@@ -30,7 +30,7 @@ const HumanInputResumePanel: FC<HumanInputResumePanelProps> = ({
     if (!trimmedReason) {
       Toast.notify({
         type: 'error',
-        message: t('workflow.nodes.humanInput.resumeReasonRequired'),
+        message: t('nodes.humanInput.resumeReasonRequired', { ns: 'workflow' }),
       })
       return
     }
@@ -44,7 +44,7 @@ const HumanInputResumePanel: FC<HumanInputResumePanelProps> = ({
       // 使用 info 级别提示，因为后端 Celery 任务可能执行失败
       Toast.notify({
         type: 'info',
-        message: t('workflow.nodes.humanInput.action.resumeRequested'),
+        message: t('nodes.humanInput.action.resumeRequested', { ns: 'workflow' }),
       })
       onResumed?.()
     }
@@ -66,7 +66,7 @@ const HumanInputResumePanel: FC<HumanInputResumePanelProps> = ({
     <div className="rounded-lg border border-components-panel-border bg-components-panel-bg p-4">
       <div className="mb-3">
         <div className="system-sm-semibold mb-1 text-text-primary">
-          {t('workflow.nodes.humanInput.status.paused')}
+          {t('nodes.humanInput.status.paused', { ns: 'workflow' })}
         </div>
         {pauseReason && (
           <div className="system-xs-regular text-text-tertiary">
@@ -77,11 +77,11 @@ const HumanInputResumePanel: FC<HumanInputResumePanelProps> = ({
 
       <div className="mb-3">
         <div className="system-xs-medium mb-1 text-text-secondary">
-          {t('workflow.nodes.humanInput.resumeReason')}
+          {t('nodes.humanInput.resumeReason', { ns: 'workflow' })}
         </div>
         <Textarea
           className="min-h-[80px] w-full resize-none"
-          placeholder={t('workflow.nodes.humanInput.resumeReasonPlaceholder') || ''}
+          placeholder={t('nodes.humanInput.resumeReasonPlaceholder', { ns: 'workflow' }) || ''}
           value={resumeReason}
           onChange={e => setResumeReason(e.target.value)}
           disabled={isSubmitting}
@@ -96,7 +96,7 @@ const HumanInputResumePanel: FC<HumanInputResumePanelProps> = ({
           disabled={isSubmitting || !resumeReason.trim()}
         >
           <RiCheckLine className="mr-1 h-4 w-4" />
-          {t('workflow.nodes.humanInput.approve')}
+          {t('nodes.humanInput.approve', { ns: 'workflow' })}
         </Button>
         <Button
           variant="secondary-accent"
@@ -105,7 +105,7 @@ const HumanInputResumePanel: FC<HumanInputResumePanelProps> = ({
           disabled={isSubmitting || !resumeReason.trim()}
         >
           <RiCloseLine className="mr-1 h-4 w-4" />
-          {t('workflow.nodes.humanInput.reject')}
+          {t('nodes.humanInput.reject', { ns: 'workflow' })}
         </Button>
       </div>
     </div>

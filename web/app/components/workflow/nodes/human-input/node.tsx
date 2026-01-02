@@ -5,7 +5,7 @@ import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { NodeSourceHandle } from '../_base/components/node-handle'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
   const { data } = props
@@ -16,7 +16,7 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
     <div className="mb-1 px-3 py-2">
       <div className="mb-1 flex items-center gap-1">
         <div className="text-xs font-medium text-gray-500">
-          {t(`${i18nPrefix}.pauseReason`)}
+          {t(`${i18nPrefix}.pauseReason`, { ns: 'workflow' })}
         </div>
       </div>
       {pause_reason && (
@@ -26,16 +26,16 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
       )}
       {!pause_reason && (
         <div className="mb-2 text-xs italic text-gray-400">
-          {t(`${i18nPrefix}.pauseReasonPlaceholder`)}
+          {t(`${i18nPrefix}.pauseReasonPlaceholder`, { ns: 'workflow' })}
         </div>
       )}
       {/* Approve Branch */}
       <div className="relative flex h-6 items-center px-1">
         <div
           className="w-full text-right text-xs font-semibold text-text-success"
-          aria-label={t(`${i18nPrefix}.approve`)}
+          aria-label={t(`${i18nPrefix}.approve`, { ns: 'workflow' })}
         >
-          {t(`${i18nPrefix}.approve`)}
+          {t(`${i18nPrefix}.approve`, { ns: 'workflow' })}
         </div>
         <NodeSourceHandle
           {...props}
@@ -47,9 +47,9 @@ const Node: FC<NodeProps<HumanInputNodeType>> = (props) => {
       <div className="relative flex h-6 items-center px-1">
         <div
           className="w-full text-right text-xs font-semibold text-text-destructive"
-          aria-label={t(`${i18nPrefix}.reject`)}
+          aria-label={t(`${i18nPrefix}.reject`, { ns: 'workflow' })}
         >
-          {t(`${i18nPrefix}.reject`)}
+          {t(`${i18nPrefix}.reject`, { ns: 'workflow' })}
         </div>
         <NodeSourceHandle
           {...props}

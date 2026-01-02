@@ -21,10 +21,10 @@ const nodeDefault: NodeDefault<HumanInputNodeType> = {
       { id: 'reject', name: 'Reject' },
     ],
   },
-  checkValid(payload: HumanInputNodeType, t: any) {
+  checkValid(payload: HumanInputNodeType, t: (key: string, options?: { ns?: string }) => string) {
     let errorMessages = ''
     if (!payload.pause_reason) {
-      errorMessages = t(`${i18nPrefix}.pauseReasonRequired`)
+      errorMessages = t(`${i18nPrefix}.pauseReasonRequired`, { ns: 'workflow' })
     }
     return {
       isValid: !errorMessages,

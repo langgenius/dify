@@ -7,7 +7,7 @@ import Input from '@/app/components/base/input'
 import Field from '@/app/components/workflow/nodes/_base/components/field'
 import useConfig from './use-config'
 
-const i18nPrefix = 'workflow.nodes.humanInput'
+const i18nPrefix = 'nodes.humanInput'
 
 const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
   id,
@@ -25,8 +25,8 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
     <div className="mt-2">
       <div className="space-y-4 px-4 pb-4">
         <Field
-          title={t(`${i18nPrefix}.pauseReason`)}
-          tooltip={t(`${i18nPrefix}.description`)}
+          title={t(`${i18nPrefix}.pauseReason`, { ns: 'workflow' })}
+          tooltip={t(`${i18nPrefix}.description`, { ns: 'workflow' })}
         >
           <div className="space-y-2">
             <Input
@@ -34,12 +34,12 @@ const Panel: FC<NodePanelProps<HumanInputNodeType>> = ({
               onChange={(e) => {
                 handlePauseReasonChange(e.target.value)
               }}
-              placeholder={t(`${i18nPrefix}.pauseReasonPlaceholder`)}
+              placeholder={t(`${i18nPrefix}.pauseReasonPlaceholder`, { ns: 'workflow' })}
               disabled={readOnly}
             />
             {!inputs.pause_reason && (
               <div className="text-xs text-red-500">
-                {t(`${i18nPrefix}.pauseReasonRequired`)}
+                {t(`${i18nPrefix}.pauseReasonRequired`, { ns: 'workflow' })}
               </div>
             )}
           </div>
