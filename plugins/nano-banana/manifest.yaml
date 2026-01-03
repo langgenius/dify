@@ -1,4 +1,4 @@
-version: 0.0.7
+version: 0.0.14
 type: plugin
 author: acedatacloud
 name: nano-banana
@@ -23,7 +23,7 @@ plugins:
   tools:
     - provider/nano-banana.yaml
 meta:
-  version: 0.0.7
+  version: 0.0.14
   arch:
     - amd64
     - arm64

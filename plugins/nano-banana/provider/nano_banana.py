@@ -5,7 +5,7 @@ from typing import Any
 from dify_plugin import ToolProvider
 from dify_plugin.errors.tool import ToolProviderCredentialValidationError
 
-from tools.acedata_client import AceDataNanoBananaApiError, AceDataNanoBananaClient, AceDataNanoBananaError
+from tools.acedata_client import AceDataNanoBananaClient, AceDataNanoBananaError
 
 
 class NanoBananaProvider(ToolProvider):
@@ -23,10 +23,8 @@ class NanoBananaProvider(ToolProvider):
                 resolution="1K",
                 timeout_s=30,
             )
-        except AceDataNanoBananaApiError as e:
-            trace_suffix = f" (trace_id={e.trace_id})" if e.trace_id else ""
-            raise ToolProviderCredentialValidationError(f"{e.code}: {e.message}{trace_suffix}") from e
-        except AceDataNanoBananaError as e:
-            raise ToolProviderCredentialValidationError(str(e)) from e
         except Exception as e:
+            if isinstance(e, AceDataNanoBananaError):
+                raise ToolProviderCredentialValidationError(str(e)) from e
+
             raise ToolProviderCredentialValidationError(f"Credential validation failed: {e!s}") from e

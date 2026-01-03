@@ -21,10 +21,11 @@ output_schema:
           type: string
         message:
           type: string
+      additionalProperties: true
     task_id:
-      type: string
+      type: [string, "null"]
     trace_id:
-      type: string
+      type: [string, "null"]
     data:
       type: array
       items:
@@ -34,6 +35,7 @@ output_schema:
             type: string
           prompt:
             type: string
+        additionalProperties: true
 parameters:
   - name: prompt
     type: string
@@ -110,17 +112,6 @@ parameters:
         label: { en_US: 2K, zh_Hans: 2K }
       - value: 4K
         label: { en_US: 4K, zh_Hans: 4K }
-  - name: callback_url
-    type: string
-    required: false
-    label:
-      en_US: Callback URL
-      zh_Hans: 回调地址
-    human_description:
-      en_US: Optional webhook callback URL (publicly accessible).
-      zh_Hans: 可选回调地址（需要公网可访问）。
-    llm_description: Optional webhook callback URL for async result callback.
-    form: form
 extra:
   python:
     source: tools/nano_banana_generate.py

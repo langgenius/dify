@@ -117,19 +117,9 @@ Study these examples to understand plugin implementation:
 dify-plugin plugin package ./YOUR_PLUGIN_DIR
 ```
 
-#### Automated GitHub Workflow
+#### Publishing
 
-Configure GitHub Actions to automate PR creation:
-
-1. Create a Personal Access Token for your forked repository
-2. Add it as `PLUGIN_ACTION` secret in your source repo
-3. Create `.github/workflows/plugin-publish.yml`
-
-When you create a release, the action will:
-- Package your plugin
-- Create a PR to your fork
-
-[Detailed workflow documentation](https://docs.dify.ai/plugins/publish-plugins/plugin-auto-publish-pr)
+Package a `.difypkg` and distribute it via your preferred channel (private distribution, GitHub releases, or Marketplace).
 </details>
 
 ## Privacy Policy
