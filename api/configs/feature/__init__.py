@@ -864,6 +864,19 @@ class AuthConfig(BaseSettings):
         default=False,
     )
 
+    ACEDATACLOUD_PLATFORM_API_BASE_URL: str = Field(
+        description="AceDataCloud platform API base url, used for auto-provisioning plugin credentials.",
+        default="https://platform.acedata.cloud",
+    )
+
+    ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS: bool = Field(
+        description=(
+            "When enabled, after AceDataCloud OAuth login Dify will fetch the user's API token from "
+            "AceDataCloud platform and auto-create/update tool credentials for installed AceDataCloud plugins."
+        ),
+        default=False,
+    )
+
     GITHUB_CLIENT_ID: str | None = Field(
         description="GitHub OAuth client ID",
         default=None,
