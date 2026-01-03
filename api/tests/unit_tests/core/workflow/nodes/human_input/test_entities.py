@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.workflow.entities import GraphInitParams
-from core.workflow.node_events import PauseRequestedEvent
+from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
 from core.workflow.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -35,6 +35,7 @@ from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.repositories.human_input_form_repository import HumanInputFormRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from tests.unit_tests.core.workflow.graph_engine.human_input_test_utils import InMemoryHumanInputFormRepository
 
 
 class TestDeliveryMethod:
@@ -337,7 +338,6 @@ class TestHumanInputNodeVariableResolution:
             graph_runtime_state=runtime_state,
             form_repository=mock_repo,
         )
-        node.init_node_data(config["data"])
 
         run_result = node._run()
         pause_event = next(run_result)
@@ -377,3 +377,64 @@ class TestValidation:
                 title="Test",
                 timeout_unit="invalid-unit",  # Invalid unit
             )
+
+
+class TestHumanInputNodeRenderedContent:
+    """Tests for rendering submitted content."""
+
+    def test_replaces_outputs_placeholders_after_submission(self):
+        variable_pool = VariablePool(
+            system_variables=SystemVariable(
+                user_id="user",
+                app_id="app",
+                workflow_id="workflow",
+                workflow_execution_id="exec-1",
+            ),
+            user_inputs={},
+            conversation_variables=[],
+        )
+        runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=0.0)
+        graph_init_params = GraphInitParams(
+            tenant_id="tenant",
+            app_id="app",
+            workflow_id="workflow",
+            graph_config={"nodes": [], "edges": []},
+            user_id="user",
+            user_from="account",
+            invoke_from="debugger",
+            call_depth=0,
+        )
+
+        node_data = HumanInputNodeData(
+            title="Human Input",
+            form_content="Name: {{#$outputs.name#}}",
+            inputs=[
+                FormInput(
+                    type=FormInputType.TEXT_INPUT,
+                    output_variable_name="name",
+                )
+            ],
+            user_actions=[UserAction(id="approve", title="Approve")],
+        )
+        config = {"id": "human", "data": node_data.model_dump()}
+
+        form_repository = InMemoryHumanInputFormRepository()
+        node = HumanInputNode(
+            id=config["id"],
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=runtime_state,
+            form_repository=form_repository,
+        )
+
+        pause_gen = node._run()
+        pause_event = next(pause_gen)
+        assert isinstance(pause_event, PauseRequestedEvent)
+        with pytest.raises(StopIteration):
+            next(pause_gen)
+
+        form_repository.set_submission(action_id="approve", form_data={"name": "Alice"})
+
+        result = node._run()
+        assert isinstance(result, NodeRunResult)
+        assert result.outputs["__rendered_content"] == "Name: Alice"

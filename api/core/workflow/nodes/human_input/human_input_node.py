@@ -1,3 +1,4 @@
+import json
 import logging
 from collections.abc import Generator, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
@@ -216,7 +217,11 @@ class HumanInputNode(Node[HumanInputNodeData]):
             submitted_data = form.submitted_data or {}
             outputs: dict[str, Any] = dict(submitted_data)
             outputs["__action_id"] = selected_action_id
-            outputs["__rendered_content"] = form.rendered_content
+            outputs["__rendered_content"] = self._render_form_content_with_outputs(
+                form.rendered_content,
+                outputs,
+                self._node_data.outputs_field_names(),
+            )
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs=outputs,
@@ -224,7 +229,13 @@ class HumanInputNode(Node[HumanInputNodeData]):
             )
 
         if form.status == HumanInputFormStatus.TIMEOUT or form.expiration_time <= naive_utc_now():
-            outputs: dict[str, Any] = {"__rendered_content": form.rendered_content}
+            outputs: dict[str, Any] = {
+                "__rendered_content": self._render_form_content_with_outputs(
+                    form.rendered_content,
+                    {},
+                    self._node_data.outputs_field_names(),
+                )
+            }
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs=outputs,
@@ -243,12 +254,34 @@ class HumanInputNode(Node[HumanInputNodeData]):
         This method should:
         1. Parse the form_content markdown
         2. Substitute {{#node_name.var_name#}} with actual values
-        3. Keep {{#$output.field_name#}} placeholders for form inputs
+        3. Keep {{#$outputs.field_name#}} placeholders for form inputs
         """
         rendered_form_content = self.graph_runtime_state.variable_pool.convert_template(
             self._node_data.form_content,
         )
         return rendered_form_content.markdown
+
+    @staticmethod
+    def _render_form_content_with_outputs(
+        form_content: str,
+        outputs: Mapping[str, Any],
+        field_names: Sequence[str],
+    ) -> str:
+        """
+        Replace {{#$outputs.xxx#}} placeholders with submitted values.
+        """
+        rendered_content = form_content
+        for field_name in field_names:
+            placeholder = "{{#$outputs." + field_name + "#}}"
+            value = outputs.get(field_name)
+            if value is None:
+                replacement = ""
+            elif isinstance(value, (dict, list)):
+                replacement = json.dumps(value, ensure_ascii=False)
+            else:
+                replacement = str(value)
+            rendered_content = rendered_content.replace(placeholder, replacement)
+        return rendered_content
 
     @classmethod
     def _extract_variable_selector_to_variable_mapping(
