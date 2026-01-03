@@ -93,11 +93,14 @@ class TestEndpointCreateApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "plugin_unique_identifier": plugin_id,
-                    "name": name,
-                    "settings": settings,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "plugin_unique_identifier": plugin_id,
+                        "name": name,
+                        "settings": settings,
+                    },
+                ),
             ):
                 resource = EndpointCreateApi()
                 result = resource.post()
@@ -137,11 +140,14 @@ class TestEndpointCreateApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "plugin_unique_identifier": invalid_plugin_id,
-                    "name": name,
-                    "settings": settings,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "plugin_unique_identifier": invalid_plugin_id,
+                        "name": name,
+                        "settings": settings,
+                    },
+                ),
             ):
                 resource = EndpointCreateApi()
 
@@ -172,16 +178,20 @@ class TestEndpointCreateApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "plugin_unique_identifier": plugin_id,
-                    "name": empty_name,
-                    "settings": settings,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "plugin_unique_identifier": plugin_id,
+                        "name": empty_name,
+                        "settings": settings,
+                    },
+                ),
             ):
                 resource = EndpointCreateApi()
 
                 # Act & Assert
                 from pydantic import ValidationError
+
                 with pytest.raises(ValidationError):
                     resource.post()
 
@@ -207,16 +217,20 @@ class TestEndpointCreateApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "plugin_unique_identifier": plugin_id,
-                    "name": name,
-                    "settings": invalid_settings,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "plugin_unique_identifier": plugin_id,
+                        "name": name,
+                        "settings": invalid_settings,
+                    },
+                ),
             ):
                 resource = EndpointCreateApi()
 
                 # Act & Assert
                 from pydantic import ValidationError
+
                 with pytest.raises(ValidationError):
                     resource.post()
 
@@ -382,6 +396,7 @@ class TestEndpointListApi:
 
                 # Act & Assert
                 from pydantic import ValidationError
+
                 with pytest.raises(ValidationError):
                     resource.get()
 
@@ -561,11 +576,14 @@ class TestEndpointUpdateApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "endpoint_id": endpoint_id,
-                    "name": name,
-                    "settings": settings,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "endpoint_id": endpoint_id,
+                        "name": name,
+                        "settings": settings,
+                    },
+                ),
             ):
                 resource = EndpointUpdateApi()
                 result = resource.post()
@@ -640,9 +658,12 @@ class TestEndpointDeleteApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "endpoint_id": endpoint_id,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "endpoint_id": endpoint_id,
+                    },
+                ),
             ):
                 resource = EndpointDeleteApi()
                 result = resource.post()
@@ -715,9 +736,12 @@ class TestEndpointEnableApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "endpoint_id": endpoint_id,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "endpoint_id": endpoint_id,
+                    },
+                ),
             ):
                 resource = EndpointEnableApi()
                 result = resource.post()
@@ -790,9 +814,12 @@ class TestEndpointDisableApi:
                     return_value=(mock_account, "tenant-456"),
                 ),
                 patch("libs.login._get_user", return_value=mock_account),
-                patch("controllers.console.workspace.endpoint.console_ns.payload", {
-                    "endpoint_id": endpoint_id,
-                }),
+                patch(
+                    "controllers.console.workspace.endpoint.console_ns.payload",
+                    {
+                        "endpoint_id": endpoint_id,
+                    },
+                ),
             ):
                 resource = EndpointDisableApi()
                 result = resource.post()

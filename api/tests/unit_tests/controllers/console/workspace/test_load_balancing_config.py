@@ -6,18 +6,18 @@ This module tests load balancing configuration endpoints:
 - Authorization checks
 - Error handling
 """
+
 from __future__ import annotations
 
 import builtins
 import importlib
 import sys
 from types import SimpleNamespace
-from unittest.mock import MagicMock
-
 from unittest.mock import MagicMock, patch
 
 import pytest
 from flask import Flask
+from flask.views import MethodView
 from werkzeug.exceptions import Forbidden
 
 from controllers.console.workspace.load_balancing_config import (
@@ -26,17 +26,8 @@ from controllers.console.workspace.load_balancing_config import (
 )
 from core.model_runtime.entities.model_entities import ModelType
 from core.model_runtime.errors.validate import CredentialsValidateFailedError
-from models.account import Account
 from models import TenantAccountRole
-
-
-import pytest
-from flask import Flask
-from flask.views import MethodView
-from werkzeug.exceptions import Forbidden
-
-from core.model_runtime.entities.model_entities import ModelType
-from core.model_runtime.errors.validate import CredentialsValidateFailedError
+from models.account import Account
 
 if not hasattr(builtins, "MethodView"):
     builtins.MethodView = MethodView  # type: ignore[attr-defined]
@@ -165,6 +156,7 @@ def test_validate_credentials_with_config_id(app: Flask, load_balancing_module, 
         credentials={"api_key": "sk-***"},
         config_id="cfg-1",
     )
+
 
 class TestLoadBalancingCredentialsValidateApi:
     """Unit tests for LoadBalancingCredentialsValidateApi."""
@@ -314,7 +306,9 @@ class TestLoadBalancingCredentialsValidateApi:
             credentials=credentials,
         )
 
-    def test_validate_credentials_unauthorized(self, app, mock_account_normal, mock_load_balancing_service, mock_decorators):
+    def test_validate_credentials_unauthorized(
+        self, app, mock_account_normal, mock_load_balancing_service, mock_decorators
+    ):
         """Test that non-privileged users cannot validate credentials."""
         # Arrange
         provider = "openai"
@@ -341,7 +335,9 @@ class TestLoadBalancingCredentialsValidateApi:
                 with pytest.raises(Forbidden):
                     resource.post(provider)
 
-    def test_validate_credentials_owner_allowed(self, app, mock_account_owner, mock_load_balancing_service, mock_decorators):
+    def test_validate_credentials_owner_allowed(
+        self, app, mock_account_owner, mock_load_balancing_service, mock_decorators
+    ):
         """Test that owner role can validate credentials."""
         # Arrange
         provider = "openai"
@@ -375,7 +371,9 @@ class TestLoadBalancingCredentialsValidateApi:
         # Assert
         assert result == {"result": "success"}
 
-    def test_validate_credentials_missing_model(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
+    def test_validate_credentials_missing_model(
+        self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
+    ):
         """Test validation with missing model parameter."""
         # Arrange
         provider = "openai"
@@ -400,10 +398,13 @@ class TestLoadBalancingCredentialsValidateApi:
                 # Act & Assert
                 # RequestParser should raise BadRequest for missing required field
                 from werkzeug.exceptions import BadRequest
+
                 with pytest.raises(BadRequest):
                     resource.post(provider)
 
-    def test_validate_credentials_invalid_model_type(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
+    def test_validate_credentials_invalid_model_type(
+        self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
+    ):
         """Test validation with invalid model_type."""
         # Arrange
         provider = "openai"
@@ -430,10 +431,13 @@ class TestLoadBalancingCredentialsValidateApi:
                 # Act & Assert
                 # RequestParser should raise BadRequest for invalid choice
                 from werkzeug.exceptions import BadRequest
+
                 with pytest.raises(BadRequest):
                     resource.post(provider)
 
-    def test_validate_credentials_missing_credentials(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
+    def test_validate_credentials_missing_credentials(
+        self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
+    ):
         """Test validation with missing credentials parameter."""
         # Arrange
         provider = "openai"
@@ -457,10 +461,13 @@ class TestLoadBalancingCredentialsValidateApi:
 
                 # Act & Assert
                 from werkzeug.exceptions import BadRequest
+
                 with pytest.raises(BadRequest):
                     resource.post(provider)
 
-    def test_validate_credentials_different_model_types(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
+    def test_validate_credentials_different_model_types(
+        self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
+    ):
         """Test validation with different model types."""
         # Arrange
         provider = "openai"
@@ -554,7 +561,9 @@ class TestLoadBalancingConfigCredentialsValidateApi:
             mock_csrf.return_value = None
             yield {"db": mock_db, "csrf": mock_csrf}
 
-    def test_validate_config_credentials_success(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
+    def test_validate_config_credentials_success(
+        self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
+    ):
         """Test successful config credentials validation."""
         # Arrange
         provider = "openai"
@@ -597,7 +606,9 @@ class TestLoadBalancingConfigCredentialsValidateApi:
             config_id=config_id,
         )
 
-    def test_validate_config_credentials_failure(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
+    def test_validate_config_credentials_failure(
+        self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
+    ):
         """Test config credentials validation failure."""
         # Arrange
         provider = "openai"
@@ -635,7 +646,9 @@ class TestLoadBalancingConfigCredentialsValidateApi:
         # Assert
         assert result == {"result": "error", "error": error_message}
 
-    def test_validate_config_credentials_unauthorized(self, app, mock_account_normal, mock_load_balancing_service, mock_decorators):
+    def test_validate_config_credentials_unauthorized(
+        self, app, mock_account_normal, mock_load_balancing_service, mock_decorators
+    ):
         """Test that non-privileged users cannot validate config credentials."""
         # Arrange
         provider = "openai"
@@ -663,7 +676,9 @@ class TestLoadBalancingConfigCredentialsValidateApi:
                 with pytest.raises(Forbidden):
                     resource.post(provider, config_id)
 
-    def test_validate_config_credentials_with_config_id(self, app, mock_account_admin, mock_load_balancing_service, mock_decorators):
+    def test_validate_config_credentials_with_config_id(
+        self, app, mock_account_admin, mock_load_balancing_service, mock_decorators
+    ):
         """Test that config_id is passed to validation service."""
         # Arrange
         provider = "openai"
