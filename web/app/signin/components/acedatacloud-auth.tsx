@@ -15,7 +15,6 @@ export default function AceDataCloudAuth(props: AceDataCloudAuthProps) {
   const getOAuthLink = () => {
     const url = getPurifyHref(`${API_PREFIX}/oauth/login/acedatacloud`)
     const params = new URLSearchParams(searchParams.toString())
-    params.delete('no_acedatacloud_oauth')
     const queryString = params.toString()
     return queryString ? `${url}?${queryString}` : url
   }

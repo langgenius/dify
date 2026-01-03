@@ -215,20 +215,7 @@ class FeatureService:
         if dify_config.MARKETPLACE_ENABLED:
             system_features.enable_marketplace = True
 
-        cls._enforce_login_method_constraints(system_features)
         return system_features
-
-    @classmethod
-    def _enforce_login_method_constraints(cls, system_features: SystemFeatureModel) -> None:
-        if not dify_config.ENABLE_ACEDATACLOUD_OAUTH_LOGIN:
-            return
-
-        system_features.enable_email_code_login = False
-        system_features.enable_email_password_login = False
-        system_features.enable_social_oauth_login = False
-        system_features.sso_enforced_for_signin = False
-        system_features.sso_enforced_for_signin_protocol = ""
-        system_features.is_allow_register = False
 
     @classmethod
     def _fulfill_system_params_from_env(cls, system_features: SystemFeatureModel):
