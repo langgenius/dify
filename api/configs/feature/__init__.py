@@ -243,6 +243,15 @@ class PluginConfig(BaseSettings):
         default=15728640 * 12,
     )
 
+    DEFAULT_TENANT_PLUGIN_UNIQUE_IDENTIFIERS: list[str] = Field(
+        description=(
+            "Plugin unique identifiers to auto-install for every newly created workspace (tenant). "
+            "Accepts a JSON array via env, e.g. "
+            "'[\"acedatacloud/nano-banana:0.0.1@dify\"]'."
+        ),
+        default_factory=list,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """

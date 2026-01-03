@@ -9,6 +9,31 @@ description:
     en_US: Generate an image with Ace Data Cloud Nano Banana Images API.
     zh_Hans: 通过 Ace Data Cloud Nano Banana Images API 生成图片。
   llm: Generate an image from prompt via Ace Data Cloud Nano Banana Images API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          image_url:
+            type: string
+          prompt:
+            type: string
 parameters:
   - name: prompt
     type: string
@@ -53,20 +78,20 @@ parameters:
     llm_description: Optional. Choose a supported aspect ratio like 1:1 or 16:9.
     form: form
     options:
-      - value: 1:1
-        label: { en_US: 1:1, zh_Hans: 1:1 }
-      - value: 3:2
-        label: { en_US: 3:2, zh_Hans: 3:2 }
-      - value: 2:3
-        label: { en_US: 2:3, zh_Hans: 2:3 }
-      - value: 16:9
-        label: { en_US: 16:9, zh_Hans: 16:9 }
-      - value: 9:16
-        label: { en_US: 9:16, zh_Hans: 9:16 }
-      - value: 4:3
-        label: { en_US: 4:3, zh_Hans: 4:3 }
-      - value: 3:4
-        label: { en_US: 3:4, zh_Hans: 3:4 }
+      - value: "1:1"
+        label: { en_US: "1:1", zh_Hans: "1:1" }
+      - value: "3:2"
+        label: { en_US: "3:2", zh_Hans: "3:2" }
+      - value: "2:3"
+        label: { en_US: "2:3", zh_Hans: "2:3" }
+      - value: "16:9"
+        label: { en_US: "16:9", zh_Hans: "16:9" }
+      - value: "9:16"
+        label: { en_US: "9:16", zh_Hans: "9:16" }
+      - value: "4:3"
+        label: { en_US: "4:3", zh_Hans: "4:3" }
+      - value: "3:4"
+        label: { en_US: "3:4", zh_Hans: "3:4" }
   - name: resolution
     type: select
     required: false
@@ -99,4 +124,3 @@ parameters:
 extra:
   python:
     source: tools/nano_banana_generate.py
-

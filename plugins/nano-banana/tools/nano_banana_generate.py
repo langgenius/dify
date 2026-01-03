@@ -6,7 +6,7 @@ from typing import Any
 from dify_plugin import Tool
 from dify_plugin.entities.tool import ToolInvokeMessage
 
-from tools.acedata_client import AceDataNanoBananaClient
+from tools.acedata_client import AceDataNanoBananaApiError, AceDataNanoBananaClient
 
 
 class NanoBananaGenerateImageTool(Tool):
@@ -28,14 +28,24 @@ class NanoBananaGenerateImageTool(Tool):
         callback_url = callback_url.strip() if isinstance(callback_url, str) and callback_url.strip() else None
 
         client = AceDataNanoBananaClient(bearer_token=str(self.runtime.credentials["acedata_bearer_token"]))
-        result = client.generate(
-            prompt=prompt.strip(),
-            model=model,
-            aspect_ratio=aspect_ratio,
-            resolution=resolution,
-            callback_url=callback_url,
-            timeout_s=120,
-        )
+        try:
+            result = client.generate(
+                prompt=prompt.strip(),
+                model=model,
+                aspect_ratio=aspect_ratio,
+                resolution=resolution,
+                callback_url=callback_url,
+                timeout_s=120,
+            )
+        except AceDataNanoBananaApiError as e:
+            yield self.create_json_message(
+                {
+                    "success": False,
+                    "error": {"code": e.code, "message": e.message},
+                    "trace_id": e.trace_id,
+                }
+            )
+            return
 
         for image_url in result.image_urls:
             yield self.create_image_message(image_url)
@@ -43,11 +53,8 @@ class NanoBananaGenerateImageTool(Tool):
         yield self.create_json_message(
             {
                 "success": True,
-                "action": "generate",
                 "task_id": result.task_id,
                 "trace_id": result.trace_id,
                 "data": result.data,
-                "image_urls": result.image_urls,
             }
         )
-

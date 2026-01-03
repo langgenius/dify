@@ -11,6 +11,14 @@ class AceDataNanoBananaError(RuntimeError):
 
 
 @dataclass(frozen=True)
+class AceDataNanoBananaApiError(AceDataNanoBananaError):
+    code: str
+    message: str
+    trace_id: str | None = None
+    status_code: int | None = None
+
+
+@dataclass(frozen=True)
 class AceDataNanoBananaResult:
     action: str
     task_id: str | None
@@ -70,12 +78,18 @@ class AceDataNanoBananaClient:
         prompt: str,
         image_urls: list[str],
         model: str | None = None,
+        aspect_ratio: str | None = None,
+        resolution: str | None = None,
         callback_url: str | None = None,
         timeout_s: int = 120,
     ) -> AceDataNanoBananaResult:
         payload: dict[str, Any] = {"action": "edit", "prompt": prompt, "image_urls": image_urls}
         if model:
             payload["model"] = model
+        if aspect_ratio:
+            payload["aspect_ratio"] = aspect_ratio
+        if resolution:
+            payload["resolution"] = resolution
         if callback_url:
             payload["callback_url"] = callback_url
         return self._post_images(payload=payload, timeout_s=timeout_s)
@@ -109,9 +123,11 @@ class AceDataNanoBananaClient:
             error = body.get("error") if isinstance(body.get("error"), dict) else {}
             code = error.get("code") if isinstance(error.get("code"), str) else None
             message = error.get("message") if isinstance(error.get("message"), str) else None
-            trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
-            raise AceDataNanoBananaError(
-                f"HTTP {resp.status_code}: {code or 'error'}: {message or body}{trace_suffix}"
+            raise AceDataNanoBananaApiError(
+                code=code or "error",
+                message=message or str(body),
+                trace_id=trace_id,
+                status_code=resp.status_code,
             )
 
         if body.get("success") is not True:
@@ -119,8 +135,12 @@ class AceDataNanoBananaClient:
             error = body.get("error") if isinstance(body.get("error"), dict) else {}
             code = error.get("code") if isinstance(error.get("code"), str) else None
             message = error.get("message") if isinstance(error.get("message"), str) else None
-            trace_suffix = f" (trace_id={trace_id})" if trace_id else ""
-            raise AceDataNanoBananaError(f"{code or 'api_error'}: {message or body}{trace_suffix}")
+            raise AceDataNanoBananaApiError(
+                code=code or "api_error",
+                message=message or str(body),
+                trace_id=trace_id,
+                status_code=resp.status_code,
+            )
 
         data = body.get("data") if isinstance(body.get("data"), list) else []
         return AceDataNanoBananaResult(

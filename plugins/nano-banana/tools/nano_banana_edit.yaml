@@ -9,6 +9,31 @@ description:
     en_US: Edit image(s) with Ace Data Cloud Nano Banana Images API.
     zh_Hans: 通过 Ace Data Cloud Nano Banana Images API 编辑图片。
   llm: Edit image(s) with a prompt and image_urls via Ace Data Cloud Nano Banana Images API.
+output_schema:
+  type: object
+  properties:
+    success:
+      type: boolean
+    error:
+      type: object
+      properties:
+        code:
+          type: string
+        message:
+          type: string
+    task_id:
+      type: string
+    trace_id:
+      type: string
+    data:
+      type: array
+      items:
+        type: object
+        properties:
+          image_url:
+            type: string
+          prompt:
+            type: string
 parameters:
   - name: prompt
     type: string
@@ -56,6 +81,50 @@ parameters:
         label:
           en_US: nano-banana-pro
           zh_Hans: nano-banana-pro
+  - name: aspect_ratio
+    type: select
+    required: false
+    label:
+      en_US: Aspect ratio
+      zh_Hans: 画面比例
+    human_description:
+      en_US: Aspect ratio for editing. Default is 1:1.
+      zh_Hans: 编辑图片的比例，默认 1:1。
+    llm_description: Optional. Choose a supported aspect ratio like 1:1 or 16:9.
+    form: form
+    options:
+      - value: "1:1"
+        label: { en_US: "1:1", zh_Hans: "1:1" }
+      - value: "3:2"
+        label: { en_US: "3:2", zh_Hans: "3:2" }
+      - value: "2:3"
+        label: { en_US: "2:3", zh_Hans: "2:3" }
+      - value: "16:9"
+        label: { en_US: "16:9", zh_Hans: "16:9" }
+      - value: "9:16"
+        label: { en_US: "9:16", zh_Hans: "9:16" }
+      - value: "4:3"
+        label: { en_US: "4:3", zh_Hans: "4:3" }
+      - value: "3:4"
+        label: { en_US: "3:4", zh_Hans: "3:4" }
+  - name: resolution
+    type: select
+    required: false
+    label:
+      en_US: Resolution
+      zh_Hans: 分辨率
+    human_description:
+      en_US: Optional. Only works when model is nano-banana-pro.
+      zh_Hans: 可选，仅在模型为 nano-banana-pro 时生效。
+    llm_description: Optional. Use 1K/2K/4K when model is nano-banana-pro.
+    form: form
+    options:
+      - value: 1K
+        label: { en_US: 1K, zh_Hans: 1K }
+      - value: 2K
+        label: { en_US: 2K, zh_Hans: 2K }
+      - value: 4K
+        label: { en_US: 4K, zh_Hans: 4K }
   - name: callback_url
     type: string
     required: false
@@ -70,4 +139,3 @@ parameters:
 extra:
   python:
     source: tools/nano_banana_edit.py
-

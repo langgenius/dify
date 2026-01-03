@@ -667,6 +667,32 @@ class TestTenantService:
         self._assert_database_operations_called(mock_db_dependencies["db"])
         assert mock_rsa_dependencies.called, "RSA key generation was not called"
 
+    def test_create_tenant_triggers_default_plugin_bootstrap(
+        self, mock_db_dependencies, mock_rsa_dependencies, mock_external_service_dependencies
+    ):
+        mock_external_service_dependencies[
+            "feature_service"
+        ].get_system_features.return_value.is_allow_create_workspace = True
+
+        with (
+            patch("services.account_service.Tenant") as mock_tenant_class,
+            patch("services.account_service.TenantPluginAutoUpgradeStrategy") as mock_plugin_strategy_class,
+            patch(
+                "services.plugin.plugin_bootstrap_service.PluginBootstrapService.install_default_plugins"
+            ) as mock_install_default_plugins,
+        ):
+            tenant_instance = MagicMock()
+            tenant_instance.id = "tenant-123"
+            mock_tenant_class.return_value = tenant_instance
+
+            mock_plugin_strategy_class.StrategySetting.FIX_ONLY = "fix_only"
+            mock_plugin_strategy_class.UpgradeMode.EXCLUDE = "exclude"
+            mock_plugin_strategy_class.return_value = MagicMock()
+
+            TenantService.create_tenant(name="Test Workspace")
+
+            mock_install_default_plugins.assert_called_once_with("tenant-123")
+
     # ==================== Member Management Tests ====================
 
     def test_create_tenant_member_success(self, mock_db_dependencies):
