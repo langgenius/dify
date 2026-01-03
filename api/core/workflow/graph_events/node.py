@@ -15,6 +15,7 @@ class NodeRunStartedEvent(GraphNodeEventBase):
     predecessor_node_id: str | None = None
     agent_strategy: AgentNodeStrategyInit | None = None
     start_at: datetime = Field(..., description="node start time")
+    is_resumption: bool = False
 
     # FIXME(-LAN-): only for ToolNode
     provider_type: str = ""

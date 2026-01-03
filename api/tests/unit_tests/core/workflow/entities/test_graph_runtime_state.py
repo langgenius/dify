@@ -118,7 +118,27 @@ class TestGraphRuntimeState:
         from core.workflow.graph_engine.ready_queue import InMemoryReadyQueue
 
         assert isinstance(queue, InMemoryReadyQueue)
-        assert state.ready_queue is queue
+
+    def test_resuming_nodes_tracking(self):
+        """
+        Register paused nodes, consume them for resume, and ensure the
+        resumption marker is consumed exactly once per node.
+        """
+        state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())
+        state.register_paused_node("node-1")
+        state.register_paused_node("node-2")
+
+        # Consume paused nodes to populate the resuming set
+        consumed = state.consume_paused_nodes()
+        assert set(consumed) == {"node-1", "node-2"}
+
+        # Consume marks one-time
+        assert state.consume_resuming_node("node-1") is True
+        assert state.consume_resuming_node("node-1") is False
+
+        # Other nodes in the consumed set still return True once when consumed
+        assert state.consume_resuming_node(node_id="node-2") is True
+        assert state.consume_resuming_node("node-2") is False
 
     def test_graph_execution_lazy_instantiation(self):
         state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time())

@@ -307,6 +307,7 @@ class NodeStartStreamResponse(StreamResponse):
         iteration_id: str | None = None
         loop_id: str | None = None
         agent_strategy: AgentNodeStrategyInit | None = None
+        is_resumption: bool = False
 
     event: StreamEvent = StreamEvent.NODE_STARTED
     workflow_run_id: str

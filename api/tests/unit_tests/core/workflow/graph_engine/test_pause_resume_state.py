@@ -12,6 +12,7 @@ from core.workflow.graph_events import (
     GraphRunSucceededEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.graph_events.graph import GraphRunStartedEvent
 from core.workflow.nodes.base.entities import OutputVariableEntity
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
@@ -157,6 +158,10 @@ def test_engine_resume_restores_state_and_completion():
     baseline_repo = _mock_form_repository_with_submission(action_id="continue")
     baseline_graph = _build_human_input_graph(baseline_state, baseline_repo)
     baseline_events = _run_graph(baseline_graph, baseline_state)
+    assert baseline_events
+    first_paused_event = baseline_events[0]
+    assert isinstance(first_paused_event, GraphRunStartedEvent)
+    assert first_paused_event.is_resumption is False
     assert isinstance(baseline_events[-1], GraphRunSucceededEvent)
     baseline_success_nodes = _node_successes(baseline_events)
 
@@ -165,6 +170,10 @@ def test_engine_resume_restores_state_and_completion():
     pause_repo = _mock_form_repository_without_submission()
     paused_graph = _build_human_input_graph(paused_state, pause_repo)
     paused_events = _run_graph(paused_graph, paused_state)
+    assert paused_events
+    first_paused_event = paused_events[0]
+    assert isinstance(first_paused_event, GraphRunStartedEvent)
+    assert first_paused_event.is_resumption is False
     assert isinstance(paused_events[-1], GraphRunPausedEvent)
     snapshot = paused_state.dumps()
 
@@ -173,6 +182,10 @@ def test_engine_resume_restores_state_and_completion():
     resume_repo = _mock_form_repository_with_submission(action_id="continue")
     resumed_graph = _build_human_input_graph(resumed_state, resume_repo)
     resumed_events = _run_graph(resumed_graph, resumed_state)
+    assert resumed_events
+    first_resumed_event = resumed_events[0]
+    assert isinstance(first_resumed_event, GraphRunStartedEvent)
+    assert first_resumed_event.is_resumption is True
     assert isinstance(resumed_events[-1], GraphRunSucceededEvent)
 
     combined_success_nodes = _node_successes(paused_events) + _node_successes(resumed_events)

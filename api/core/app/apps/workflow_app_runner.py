@@ -418,6 +418,7 @@ class WorkflowBasedAppRunner:
                     agent_strategy=event.agent_strategy,
                     provider_type=event.provider_type,
                     provider_id=event.provider_id,
+                    is_resumption=event.is_resumption,
                 )
             )
         elif isinstance(event, NodeRunSucceededEvent):

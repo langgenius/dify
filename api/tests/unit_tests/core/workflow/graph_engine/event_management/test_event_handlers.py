@@ -117,3 +117,51 @@ def test_retry_does_not_emit_additional_start_event() -> None:
 
     node_execution = graph_execution.get_or_create_node_execution(node_id)
     assert node_execution.retry_count == 1
+
+
+def test_node_start_marks_resumption_when_resuming_node() -> None:
+    """Ensure NodeRunStartedEvent is annotated with is_resumption when resuming."""
+
+    node_id = "resumed-node"
+    handler, event_manager, _ = _build_event_handler(node_id)
+
+    # Simulate paused node being consumed for resume
+    handler._graph_runtime_state.register_paused_node(node_id)
+    handler._graph_runtime_state.consume_paused_nodes()
+
+    start_event = NodeRunStartedEvent(
+        id="exec-1",
+        node_id=node_id,
+        node_type=NodeType.CODE,
+        node_title="Resumed Node",
+        start_at=naive_utc_now(),
+    )
+    handler.dispatch(start_event)
+
+    collected = event_manager._events  # type: ignore[attr-defined]
+    assert len(collected) == 1
+    emitted_event = collected[0]
+    assert isinstance(emitted_event, NodeRunStartedEvent)
+    assert emitted_event.is_resumption is True
+
+
+def test_node_start_marks_fresh_run_as_not_resumption() -> None:
+    """Ensure fresh NodeRunStartedEvent carries is_resumption=False."""
+
+    node_id = "fresh-node"
+    handler, event_manager, _ = _build_event_handler(node_id)
+
+    start_event = NodeRunStartedEvent(
+        id="exec-2",
+        node_id=node_id,
+        node_type=NodeType.CODE,
+        node_title="Fresh Node",
+        start_at=naive_utc_now(),
+    )
+    handler.dispatch(start_event)
+
+    collected = event_manager._events  # type: ignore[attr-defined]
+    assert len(collected) == 1
+    emitted_event = collected[0]
+    assert isinstance(emitted_event, NodeRunStartedEvent)
+    assert emitted_event.is_resumption is False

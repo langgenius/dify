@@ -391,6 +391,7 @@ class WorkflowResponseConverter:
                 iteration_id=event.in_iteration_id,
                 loop_id=event.in_loop_id,
                 agent_strategy=event.agent_strategy,
+                is_resumption=event.is_resumption,
             ),
         )
 

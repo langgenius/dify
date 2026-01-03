@@ -131,6 +131,9 @@ class EventHandler:
         node_execution.mark_started(event.id)
         self._graph_runtime_state.increment_node_run_steps()
 
+        # Mark whether this start is part of a resume flow
+        event.is_resumption = self._graph_runtime_state.consume_resuming_node(event.node_id)
+
         # Track in response coordinator for stream ordering
         self._response_coordinator.track_node_execution(event.node_id, event.id)
 

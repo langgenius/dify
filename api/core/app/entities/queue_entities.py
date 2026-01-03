@@ -318,6 +318,7 @@ class QueueNodeStartedEvent(AppQueueEvent):
     # FIXME(-LAN-): only for ToolNode, need to refactor
     provider_type: str  # should be a core.tools.entities.tool_entities.ToolProviderType
     provider_id: str
+    is_resumption: bool = False
 
 
 class QueueNodeSucceededEvent(AppQueueEvent):

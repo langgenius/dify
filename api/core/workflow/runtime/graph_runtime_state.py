@@ -177,6 +177,9 @@ class GraphRuntimeState:
         self._pending_response_coordinator_dump: str | None = None
         self._pending_graph_execution_workflow_id: str | None = None
         self._paused_nodes: set[str] = set()
+        # Tracks nodes that are being resumed in the current execution cycle.
+        # Populated when paused nodes are consumed during resume.
+        self._resuming_nodes: set[str] = set()
 
         if graph is not None:
             self.attach_graph(graph)
@@ -363,7 +366,18 @@ class GraphRuntimeState:
 
         nodes = list(self._paused_nodes)
         self._paused_nodes.clear()
+        # Mark these nodes as resuming so downstream handlers can annotate events.
+        self._resuming_nodes.update(nodes)
         return nodes
+
+    def consume_resuming_node(self, node_id: str) -> bool:
+        """
+        Return True iff `node_id` is in the resuming set and remove it.
+        """
+        if node_id in self._resuming_nodes:
+            self._resuming_nodes.remove(node_id)
+            return True
+        return False
 
     # ------------------------------------------------------------------
     # Builders
