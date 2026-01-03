@@ -1,4 +1,3 @@
-
 """Unit tests for load balancing credential validation APIs."""
 """Unit tests for Load Balancing Config Controller.
 
@@ -8,8 +7,6 @@ This module tests load balancing configuration endpoints:
 - Authorization checks
 - Error handling
 """
-
-
 from __future__ import annotations
 
 import builtins
