@@ -1,7 +1,7 @@
 from typing import Literal
 
 from flask import request
-from flask_restx import Api, Namespace, Resource, fields
+from flask_restx import Namespace, Resource, fields
 from flask_restx.api import HTTPStatus
 from pydantic import BaseModel, Field
 
@@ -92,7 +92,7 @@ annotation_list_fields = {
 }
 
 
-def build_annotation_list_model(api_or_ns: Api | Namespace):
+def build_annotation_list_model(api_or_ns: Namespace):
     """Build the annotation list model for the API or Namespace."""
     copied_annotation_list_fields = annotation_list_fields.copy()
     copied_annotation_list_fields["data"] = fields.List(fields.Nested(build_annotation_model(api_or_ns)))
