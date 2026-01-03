@@ -299,6 +299,19 @@ class PluginConfig(BaseSettings):
         default_factory=list,
     )
 
+    PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_ENABLED: bool = Field(
+        description="When enabled, sync GitHub latest-release plugin packages asynchronously after user login.",
+        default=False,
+    )
+
+    PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_REPOS: list[str] = Field(
+        description=(
+            "GitHub repos to sync latest release plugins on login. "
+            "When empty, falls back to DEFAULT_TENANT_GITHUB_RELEASE_REPOS."
+        ),
+        default_factory=list,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """

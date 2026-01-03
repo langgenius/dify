@@ -27,6 +27,12 @@ def _platform_headers(*, user_id: str, access_token: str) -> dict[str, str]:
     }
 
 
+def _mask_token(token: str) -> str:
+    if len(token) <= 12:
+        return "***"
+    return f"{token[:6]}...{token[-4:]}"
+
+
 def _extract_latest_application(payload: dict) -> dict | None:
     items = payload.get("items")
     if isinstance(items, list) and items:
@@ -63,6 +69,13 @@ def _get_or_create_platform_token(*, user_id: str, access_token: str) -> str:
     )
     resp.raise_for_status()
     payload = resp.json()
+    logger.info(
+        "AceDataCloud token: applications listed. user_id=%s status=%s keys=%s items=%s",
+        user_id,
+        resp.status_code,
+        sorted(payload.keys()) if isinstance(payload, dict) else [],
+        len(payload.get("items", [])) if isinstance(payload, dict) and isinstance(payload.get("items"), list) else 0,
+    )
 
     app = _extract_latest_application(payload)
     if not app:
@@ -79,11 +92,28 @@ def _get_or_create_platform_token(*, user_id: str, access_token: str) -> str:
         )
         create_resp.raise_for_status()
         app = create_resp.json()
+        logger.info(
+            "AceDataCloud token: application created. user_id=%s status=%s application_id=%s",
+            user_id,
+            create_resp.status_code,
+            app.get("id") if isinstance(app, dict) else None,
+        )
+    else:
+        creds = app.get("credentials")
+        logger.info(
+            "AceDataCloud token: application found. user_id=%s application_id=%s credentials=%s",
+            user_id,
+            app.get("id"),
+            len(creds) if isinstance(creds, list) else 0,
+        )
 
     token = _extract_token_from_application(app)
     if token:
         logger.info(
-            "AceDataCloud token: found token in application. user_id=%s application_id=%s", user_id, app.get("id")
+            "AceDataCloud token: found token in application. user_id=%s application_id=%s token=%s",
+            user_id,
+            app.get("id"),
+            _mask_token(token),
         )
         return token
 
@@ -105,9 +135,17 @@ def _get_or_create_platform_token(*, user_id: str, access_token: str) -> str:
         json={"application_id": application_id},
     )
     cred_resp.raise_for_status()
-    token = _extract_token_from_credential(cred_resp.json())
+    cred_payload = cred_resp.json()
+    token = _extract_token_from_credential(cred_payload if isinstance(cred_payload, dict) else {})
     if not token:
         raise ValueError("AceDataCloud token: credential token is missing")
+    logger.info(
+        "AceDataCloud token: credential created. user_id=%s application_id=%s status=%s token=%s",
+        user_id,
+        application_id,
+        cred_resp.status_code,
+        _mask_token(token),
+    )
 
     return token
 
@@ -148,6 +186,7 @@ def _upsert_provider_credentials(*, tenant_id: str, account_id: str, provider_id
             credential_id=existing.id,
             credentials=credentials,
             name=existing.name,
+            validate=False,
         )
         return
 
@@ -159,6 +198,7 @@ def _upsert_provider_credentials(*, tenant_id: str, account_id: str, provider_id
         credentials=credentials,
         name=ACEDATACLOUD_CREDENTIAL_NAME,
         api_type=CredentialType.API_KEY,
+        validate=False,
     )
 
 
@@ -196,6 +236,17 @@ def provision_acedatacloud_plugin_credentials_task(
     manager = PluginToolManager()
     providers = manager.fetch_tool_providers(tenant_id)
     all_plugin_ids = sorted({p.plugin_id for p in providers if isinstance(p.plugin_id, str) and p.plugin_id})
+    discovered = [
+        {
+            "plugin_id": p.plugin_id,
+            "provider_id": p.declaration.identity.name,
+            "provider_name": p.declaration.identity.name.split("/", 2)[-1]
+            if isinstance(p.declaration.identity.name, str)
+            else None,
+        }
+        for p in providers
+        if isinstance(p.plugin_id, str) and isinstance(p.declaration.identity.name, str)
+    ]
     acedatacloud_provider_ids = [
         p.declaration.identity.name
         for p in providers
@@ -209,6 +260,7 @@ def provision_acedatacloud_plugin_credentials_task(
         all_plugin_ids,
         len(acedatacloud_provider_ids),
     )
+    logger.info("AceDataCloud credentials: provider details. tenant_id=%s providers=%s", tenant_id, discovered)
     if not acedatacloud_provider_ids:
         default_release_repos = dify_config.DEFAULT_TENANT_GITHUB_RELEASE_REPOS
         default_github_plugins = dify_config.DEFAULT_TENANT_GITHUB_PLUGINS

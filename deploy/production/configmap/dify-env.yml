@@ -34,6 +34,8 @@ data:
   PLUGIN_GITHUB_SIGNATURE_BYPASS_ENABLED: "true"
   PLUGIN_GITHUB_SIGNATURE_BYPASS_REPOS: "[\"AceDataCloud/Dify\"]"
   DEFAULT_TENANT_GITHUB_RELEASE_REPOS: "[\"AceDataCloud/Dify\"]"
+  PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_ENABLED: "true"
+  PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_REPOS: "[\"AceDataCloud/Dify\"]"
 
   # Ace Data Cloud Login (Console).
   # When true, console sign-in will only allow Ace Data Cloud OAuth login and disable other login methods.

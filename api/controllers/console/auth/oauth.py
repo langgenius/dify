@@ -334,13 +334,12 @@ def _persist_acedatacloud_token(*, account: Account, open_id: str, token_respons
             if not access_token:
                 raise ValueError("AceDataCloud access_token is required for auto-provisioning")
 
-            for tenant in tenants:
-                provision_acedatacloud_plugin_credentials_task.delay(
-                    tenant_id=str(tenant.id),
-                    account_id=str(account.id),
-                    acedatacloud_user_id=str(open_id),
-                    acedatacloud_access_token=str(access_token),
-                )
+            provision_acedatacloud_plugin_credentials_task.delay(
+                tenant_id=str(tenant_id),
+                account_id=str(account.id),
+                acedatacloud_user_id=str(open_id),
+                acedatacloud_access_token=str(access_token),
+            )
     except Exception:
         logger.exception("Failed to persist AceDataCloud token for account %s", account.id)
 
