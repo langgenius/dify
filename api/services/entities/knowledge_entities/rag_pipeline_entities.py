@@ -23,7 +23,7 @@ class RagPipelineDatasetCreateEntity(BaseModel):
     description: str
     icon_info: IconInfo
     permission: str
-    partial_member_list: list[str] | None = None
+    partial_member_list: list[dict[str, str]] | None = None
     yaml_content: str | None = None
 
 

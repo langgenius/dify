@@ -1,16 +1,17 @@
 'use client'
 
-import React, { useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import {
   useRouter,
   useSearchParams,
 } from 'next/navigation'
+import * as React from 'react'
+import { useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { CreateFromDSLModalTab } from '@/app/components/app/create-from-dsl-modal'
-import { useProviderContext } from '@/context/provider-context'
 import { FileArrow01, FilePlus01, FilePlus02 } from '@/app/components/base/icons/src/vender/line/files'
-import cn from '@/utils/classnames'
-import dynamic from 'next/dynamic'
+import { useProviderContext } from '@/context/provider-context'
+import { cn } from '@/utils/classnames'
 
 const CreateAppModal = dynamic(() => import('@/app/components/app/create-app-modal'), {
   ssr: false,
@@ -57,22 +58,23 @@ const CreateAppCard = ({
       ref={ref}
       className={cn('relative col-span-1 inline-flex h-[160px] flex-col justify-between rounded-xl border-[0.5px] border-components-card-border bg-components-card-bg', className)}
     >
-      <div className='grow rounded-t-xl p-2'>
-        <div className='px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary'>{t('app.createApp')}</div>
-        <button type="button" className='mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary' onClick={() => setShowNewAppModal(true)}>
-          <FilePlus01 className='mr-2 h-4 w-4 shrink-0' />
-          {t('app.newApp.startFromBlank')}
+      <div className="grow rounded-t-xl p-2">
+        <div className="px-6 pb-1 pt-2 text-xs font-medium leading-[18px] text-text-tertiary">{t('createApp', { ns: 'app' })}</div>
+        <button type="button" className="mb-1 flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppModal(true)}>
+          <FilePlus01 className="mr-2 h-4 w-4 shrink-0" />
+          {t('newApp.startFromBlank', { ns: 'app' })}
         </button>
-        <button type="button" className='flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary' onClick={() => setShowNewAppTemplateDialog(true)}>
-          <FilePlus02 className='mr-2 h-4 w-4 shrink-0' />
-          {t('app.newApp.startFromTemplate')}
+        <button type="button" className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary" onClick={() => setShowNewAppTemplateDialog(true)}>
+          <FilePlus02 className="mr-2 h-4 w-4 shrink-0" />
+          {t('newApp.startFromTemplate', { ns: 'app' })}
         </button>
         <button
           type="button"
           onClick={() => setShowCreateFromDSLModal(true)}
-          className='flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary'>
-          <FileArrow01 className='mr-2 h-4 w-4 shrink-0' />
-          {t('app.importDSL')}
+          className="flex w-full cursor-pointer items-center rounded-lg px-6 py-[7px] text-[13px] font-medium leading-[18px] text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary"
+        >
+          <FileArrow01 className="mr-2 h-4 w-4 shrink-0" />
+          {t('importDSL', { ns: 'app' })}
         </button>
       </div>
 

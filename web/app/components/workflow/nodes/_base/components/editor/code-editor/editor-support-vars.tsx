@@ -1,13 +1,14 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useRef, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
 import type { Props as EditorProps } from '.'
-import Editor from '.'
-import cn from '@/utils/classnames'
-import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
 import type { NodeOutPutVar, Variable } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import VarReferenceVars from '@/app/components/workflow/nodes/_base/components/variable/var-reference-vars'
+import { cn } from '@/utils/classnames'
+import Editor from '.'
 
 const TO_WINDOW_OFFSET = 8
 
@@ -84,7 +85,8 @@ const CodeEditor: FC<Props> = ({
 
   const getUniqVarName = (varName: string) => {
     if (varList.find(v => v.variable === varName)) {
-      const match = varName.match(/_(\d+)$/)
+      const varNameRegex = /_(\d+)$/
+      const match = varNameRegex.exec(varName)
 
       const index = (() => {
         if (match)
@@ -143,12 +145,12 @@ const CodeEditor: FC<Props> = ({
       <Editor
         {...editorProps}
         onMount={onEditorMounted}
-        placeholder={t('workflow.common.jinjaEditorPlaceholder')!}
+        placeholder={t('common.jinjaEditorPlaceholder', { ns: 'workflow' })!}
       />
       {isShowVarPicker && (
         <div
           ref={popupRef}
-          className='w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg'
+          className="w-[228px] space-y-1 rounded-lg border border-components-panel-border bg-components-panel-bg p-1 shadow-lg"
           style={{
             position: 'fixed',
             top: popupPosition.y,

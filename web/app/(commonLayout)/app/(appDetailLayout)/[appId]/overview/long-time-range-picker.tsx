@@ -1,13 +1,17 @@
 'use client'
-import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { FC } from 'react'
-import React from 'react'
+import type { PeriodParams } from '@/app/components/app/overview/app-chart'
 import type { Item } from '@/app/components/base/select'
-import { SimpleSelect } from '@/app/components/base/select'
-import { useTranslation } from 'react-i18next'
+import type { I18nKeysByPrefix } from '@/types/i18n'
 import dayjs from 'dayjs'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import { SimpleSelect } from '@/app/components/base/select'
+
+type TimePeriodName = I18nKeysByPrefix<'appLog', 'filter.period.'>
+
 type Props = {
-  periodMapping: { [key: string]: { value: number; name: string } }
+  periodMapping: { [key: string]: { value: number, name: TimePeriodName } }
   onSelect: (payload: PeriodParams) => void
   queryDateFormat: string
 }
@@ -24,9 +28,9 @@ const LongTimeRangePicker: FC<Props> = ({
   const handleSelect = React.useCallback((item: Item) => {
     const id = item.value
     const value = periodMapping[id]?.value ?? '-1'
-    const name = item.name || t('appLog.filter.period.allTime')
+    const name = item.name || t('filter.period.allTime', { ns: 'appLog' })
     if (value === -1) {
-      onSelect({ name: t('appLog.filter.period.allTime'), query: undefined })
+      onSelect({ name: t('filter.period.allTime', { ns: 'appLog' }), query: undefined })
     }
     else if (value === 0) {
       const startOfToday = today.startOf('day').format(queryDateFormat)
@@ -52,11 +56,11 @@ const LongTimeRangePicker: FC<Props> = ({
 
   return (
     <SimpleSelect
-      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`appLog.filter.period.${v.name}`) }))}
-      className='mt-0 !w-40'
+      items={Object.entries(periodMapping).map(([k, v]) => ({ value: k, name: t(`filter.period.${v.name}`, { ns: 'appLog' }) }))}
+      className="mt-0 !w-40"
       notClearable={true}
       onSelect={handleSelect}
-      defaultValue={'2'}
+      defaultValue="2"
     />
   )
 }

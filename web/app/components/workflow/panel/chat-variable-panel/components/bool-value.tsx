@@ -1,6 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import OptionCard from '../../../nodes/_base/components/option-card'
 
 type Props = {
@@ -20,15 +21,17 @@ const BoolValue: FC<Props> = ({
   }, [onChange])
 
   return (
-    <div className='flex w-full space-x-1'>
-      <OptionCard className='grow'
+    <div className="flex w-full space-x-1">
+      <OptionCard
+        className="grow"
         selected={booleanValue}
-        title='True'
+        title="True"
         onSelect={handleChange(true)}
       />
-      <OptionCard className='grow'
+      <OptionCard
+        className="grow"
         selected={!booleanValue}
-        title='False'
+        title="False"
         onSelect={handleChange(false)}
       />
     </div>

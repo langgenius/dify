@@ -4,7 +4,7 @@ from uuid import UUID
 from flask import request
 from flask_restx import Resource
 from flask_restx._http import HTTPStatus
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -37,13 +37,46 @@ class ConversationListQuery(BaseModel):
 
 
 class ConversationRenamePayload(BaseModel):
-    name: str = Field(description="New conversation name")
+    name: str | None = Field(default=None, description="New conversation name (required if auto_generate is false)")
     auto_generate: bool = Field(default=False, description="Auto-generate conversation name")
+
+    @model_validator(mode="after")
+    def validate_name_requirement(self):
+        if not self.auto_generate:
+            if self.name is None or not self.name.strip():
+                raise ValueError("name is required when auto_generate is false")
+        return self
 
 
 class ConversationVariablesQuery(BaseModel):
     last_id: UUID | None = Field(default=None, description="Last variable ID for pagination")
     limit: int = Field(default=20, ge=1, le=100, description="Number of variables to return")
+    variable_name: str | None = Field(
+        default=None, description="Filter variables by name", min_length=1, max_length=255
+    )
+
+    @field_validator("variable_name", mode="before")
+    @classmethod
+    def validate_variable_name(cls, v: str | None) -> str | None:
+        """
+        Validate variable_name to prevent injection attacks.
+        """
+        if v is None:
+            return v
+
+        # Only allow safe characters: alphanumeric, underscore, hyphen, period
+        if not v.replace("-", "").replace("_", "").replace(".", "").isalnum():
+            raise ValueError(
+                "Variable name can only contain letters, numbers, hyphens (-), underscores (_), and periods (.)"
+            )
+
+        # Prevent SQL injection patterns
+        dangerous_patterns = ["'", '"', ";", "--", "/*", "*/", "xp_", "sp_"]
+        for pattern in dangerous_patterns:
+            if pattern in v.lower():
+                raise ValueError(f"Variable name contains invalid characters: {pattern}")
+
+        return v
 
 
 class ConversationVariableUpdatePayload(BaseModel):
@@ -192,7 +225,7 @@ class ConversationVariablesApi(Resource):
 
         try:
             return ConversationService.get_conversational_variable(
-                app_model, conversation_id, end_user, query_args.limit, last_id
+                app_model, conversation_id, end_user, query_args.limit, last_id, query_args.variable_name
             )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")

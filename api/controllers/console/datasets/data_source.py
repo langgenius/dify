@@ -140,6 +140,18 @@ class DataSourceNotionListApi(Resource):
         credential_id = request.args.get("credential_id", default=None, type=str)
         if not credential_id:
             raise ValueError("Credential id is required.")
+
+        # Get datasource_parameters from query string (optional, for GitHub and other datasources)
+        datasource_parameters_str = request.args.get("datasource_parameters", default=None, type=str)
+        datasource_parameters = {}
+        if datasource_parameters_str:
+            try:
+                datasource_parameters = json.loads(datasource_parameters_str)
+                if not isinstance(datasource_parameters, dict):
+                    raise ValueError("datasource_parameters must be a JSON object.")
+            except json.JSONDecodeError:
+                raise ValueError("Invalid datasource_parameters JSON format.")
+
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
@@ -187,7 +199,7 @@ class DataSourceNotionListApi(Resource):
             online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
                 datasource_runtime.get_online_document_pages(
                     user_id=current_user.id,
-                    datasource_parameters={},
+                    datasource_parameters=datasource_parameters,
                     provider_type=datasource_runtime.datasource_provider_type(),
                 )
             )
@@ -218,14 +230,14 @@ class DataSourceNotionListApi(Resource):
 
 
 @console_ns.route(
-    "/notion/workspaces/<uuid:workspace_id>/pages/<uuid:page_id>/<string:page_type>/preview",
+    "/notion/pages/<uuid:page_id>/<string:page_type>/preview",
     "/datasets/notion-indexing-estimate",
 )
 class DataSourceNotionApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    def get(self, workspace_id, page_id, page_type):
+    def get(self, page_id, page_type):
         _, current_tenant_id = current_account_with_tenant()
 
         credential_id = request.args.get("credential_id", default=None, type=str)
@@ -239,11 +251,10 @@ class DataSourceNotionApi(Resource):
             plugin_id="langgenius/notion_datasource",
         )
 
-        workspace_id = str(workspace_id)
         page_id = str(page_id)
 
         extractor = NotionExtractor(
-            notion_workspace_id=workspace_id,
+            notion_workspace_id="",
             notion_obj_id=page_id,
             notion_page_type=page_type,
             notion_access_token=credential.get("integration_secret"),

@@ -1,8 +1,9 @@
-import cn from '@/utils/classnames'
-import React, { useCallback, useMemo, useState } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo, useState } from 'react'
+import { cn } from '@/utils/classnames'
 
 type CredentialIconProps = {
-  avatar_url?: string
+  avatarUrl?: string
   name: string
   size?: number
   className?: string
@@ -16,12 +17,12 @@ const ICON_BG_COLORS = [
 ]
 
 export const CredentialIcon: React.FC<CredentialIconProps> = ({
-  avatar_url,
+  avatarUrl,
   name,
   size = 20,
   className = '',
 }) => {
-  const [showAvatar, setShowAvatar] = useState(!!avatar_url && avatar_url !== 'default')
+  const [showAvatar, setShowAvatar] = useState(!!avatarUrl && avatarUrl !== 'default')
   const firstLetter = useMemo(() => name.charAt(0).toUpperCase(), [name])
   const bgColor = useMemo(() => ICON_BG_COLORS[firstLetter.charCodeAt(0) % ICON_BG_COLORS.length], [firstLetter])
 
@@ -29,17 +30,20 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
     setShowAvatar(false)
   }, [])
 
-  if (avatar_url && avatar_url !== 'default' && showAvatar) {
+  if (avatarUrl && avatarUrl !== 'default' && showAvatar) {
     return (
       <div
-        className='flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-divider-regular'
+        className={cn(
+          'flex shrink-0 items-center justify-center overflow-hidden rounded-md border border-divider-regular',
+          className,
+        )}
         style={{ width: `${size}px`, height: `${size}px` }}
       >
         <img
-          src={avatar_url}
+          src={avatarUrl}
           width={size}
           height={size}
-          className={cn('shrink-0 object-contain', className)}
+          className="shrink-0 object-contain"
           onError={onImgLoadError}
         />
       </div>
@@ -55,7 +59,7 @@ export const CredentialIcon: React.FC<CredentialIconProps> = ({
       )}
       style={{ width: `${size}px`, height: `${size}px` }}
     >
-      <span className='bg-gradient-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text text-[13px] font-semibold leading-[1.2] text-transparent opacity-90'>
+      <span className="bg-gradient-to-b from-components-avatar-shape-fill-stop-0 to-components-avatar-shape-fill-stop-100 bg-clip-text text-[13px] font-semibold leading-[1.2] text-transparent opacity-90">
         {firstLetter}
       </span>
     </div>

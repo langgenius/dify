@@ -1,37 +1,32 @@
 import type { FC } from 'react'
-import { useMemo, useRef, useState } from 'react'
-import { useMount } from 'ahooks'
-import { useTranslation } from 'react-i18next'
-import { isEqual } from 'lodash-es'
+import type { Member } from '@/models/common'
+import type { DataSet } from '@/models/datasets'
+import type { RetrievalConfig } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
-import { ApiConnectionMod } from '@/app/components/base/icons/src/vender/solid/development'
-import cn from '@/utils/classnames'
-import IndexMethod from '@/app/components/datasets/settings/index-method'
-import Divider from '@/app/components/base/divider'
+import { isEqual } from 'es-toolkit/predicate'
+import { useEffect, useMemo, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Textarea from '@/app/components/base/textarea'
-import { type DataSet, DatasetPermission } from '@/models/datasets'
 import { useToastContext } from '@/app/components/base/toast'
-import { updateDatasetSetting } from '@/service/datasets'
-import { useAppContext } from '@/context/app-context'
-import { useModalContext } from '@/context/modal-context'
-import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
-import type { RetrievalConfig } from '@/types/app'
-import RetrievalSettings from '@/app/components/datasets/external-knowledge-base/create/RetrievalSettings'
-import RetrievalMethodConfig from '@/app/components/datasets/common/retrieval-method-config'
-import EconomicalRetrievalMethodConfig from '@/app/components/datasets/common/economical-retrieval-method-config'
 import { isReRankModelSelected } from '@/app/components/datasets/common/check-rerank-model'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { fetchMembers } from '@/service/common'
-import type { Member } from '@/models/common'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
-import { useDocLink } from '@/context/i18n'
+import IndexMethod from '@/app/components/datasets/settings/index-method'
+import PermissionSelector from '@/app/components/datasets/settings/permission-selector'
 import { checkShowMultiModalTip } from '@/app/components/datasets/settings/utils'
+import { ACCOUNT_SETTING_TAB } from '@/app/components/header/account-setting/constants'
+import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { useModelList } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
+import { useAppContext } from '@/context/app-context'
+import { useDocLink } from '@/context/i18n'
+import { useModalContext } from '@/context/modal-context'
+import { DatasetPermission } from '@/models/datasets'
+import { updateDatasetSetting } from '@/service/datasets'
+import { useMembers } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
+import { RetrievalChangeTip, RetrievalSection } from './retrieval-section'
 
 type SettingsModalProps = {
   currentDataset: DataSet
@@ -68,6 +63,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [scoreThresholdEnabled, setScoreThresholdEnabled] = useState(localeCurrentDataset?.external_retrieval_model.score_threshold_enabled ?? false)
   const [selectedMemberIDs, setSelectedMemberIDs] = useState<string[]>(currentDataset.partial_member_list || [])
   const [memberList, setMemberList] = useState<Member[]>([])
+  const { data: membersData } = useMembers()
 
   const [indexMethod, setIndexMethod] = useState(currentDataset.indexing_technique)
   const [retrievalConfig, setRetrievalConfig] = useState(localeCurrentDataset?.retrieval_model_dict as RetrievalConfig)
@@ -79,7 +75,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
   const [isHideChangedTip, setIsHideChangedTip] = useState(false)
   const isRetrievalChanged = !isEqual(retrievalConfig, localeCurrentDataset?.retrieval_model_dict) || indexMethod !== localeCurrentDataset?.indexing_technique
 
-  const handleSettingsChange = (data: { top_k?: number; score_threshold?: number; score_threshold_enabled?: boolean }) => {
+  const handleSettingsChange = (data: { top_k?: number, score_threshold?: number, score_threshold_enabled?: boolean }) => {
     if (data.top_k !== undefined)
       setTopK(data.top_k)
     if (data.score_threshold !== undefined)
@@ -100,7 +96,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
     if (loading)
       return
     if (!localeCurrentDataset.name?.trim()) {
-      notify({ type: 'error', message: t('datasetSettings.form.nameError') })
+      notify({ type: 'error', message: t('form.nameError', { ns: 'datasetSettings' }) })
       return
     }
     if (
@@ -110,7 +106,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         indexMethod,
       })
     ) {
-      notify({ type: 'error', message: t('appDebug.datasetConfig.rerankModelRequired') })
+      notify({ type: 'error', message: t('datasetConfig.rerankModelRequired', { ns: 'appDebug' }) })
       return
     }
     try {
@@ -150,7 +146,7 @@ const SettingsModal: FC<SettingsModalProps> = ({
         })
       }
       await updateDatasetSetting(requestParams)
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
       onSave({
         ...localeCurrentDataset,
         indexing_technique: indexMethod,
@@ -158,24 +154,19 @@ const SettingsModal: FC<SettingsModalProps> = ({
       })
     }
     catch {
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     }
     finally {
       setLoading(false)
     }
   }
 
-  const getMembers = async () => {
-    const { accounts } = await fetchMembers({ url: '/workspaces/current/members', params: {} })
-    if (!accounts)
+  useEffect(() => {
+    if (!membersData?.accounts)
       setMemberList([])
     else
-      setMemberList(accounts)
-  }
-
-  useMount(() => {
-    getMembers()
-  })
+      setMemberList(membersData.accounts)
+  }, [membersData])
 
   const showMultiModalTip = useMemo(() => {
     return checkShowMultiModalTip({
@@ -196,56 +187,56 @@ const SettingsModal: FC<SettingsModalProps> = ({
 
   return (
     <div
-      className='flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl'
+      className="flex w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl"
       style={{
         height: 'calc(100vh - 72px)',
       }}
       ref={ref}
     >
-      <div className='flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5'>
-        <div className='flex flex-col text-base font-semibold text-text-primary'>
-          <div className='leading-6'>{t('datasetSettings.title')}</div>
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-divider-regular pl-6 pr-5">
+        <div className="flex flex-col text-base font-semibold text-text-primary">
+          <div className="leading-6">{t('title', { ns: 'datasetSettings' })}</div>
         </div>
-        <div className='flex items-center'>
+        <div className="flex items-center">
           <div
             onClick={onCancel}
-            className='flex h-6 w-6 cursor-pointer items-center justify-center'
+            className="flex h-6 w-6 cursor-pointer items-center justify-center"
           >
-            <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+            <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>
       </div>
       {/* Body */}
-      <div className='overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5'>
+      <div className="overflow-y-auto border-b border-divider-regular p-6 pb-[68px] pt-5">
         <div className={cn(rowClass, 'items-center')}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.name')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.name', { ns: 'datasetSettings' })}</div>
           </div>
           <Input
             value={localeCurrentDataset.name}
             onChange={e => handleValueChange('name', e.target.value)}
-            className='block h-9'
-            placeholder={t('datasetSettings.form.namePlaceholder') || ''}
+            className="block h-9"
+            placeholder={t('form.namePlaceholder', { ns: 'datasetSettings' }) || ''}
           />
         </div>
         <div className={cn(rowClass)}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.desc')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.desc', { ns: 'datasetSettings' })}</div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <Textarea
               value={localeCurrentDataset.description || ''}
               onChange={e => handleValueChange('description', e.target.value)}
-              className='resize-none'
-              placeholder={t('datasetSettings.form.descPlaceholder') || ''}
+              className="resize-none"
+              placeholder={t('form.descPlaceholder', { ns: 'datasetSettings' }) || ''}
             />
           </div>
         </div>
         <div className={rowClass}>
           <div className={labelClass}>
-            <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.permissions')}</div>
+            <div className="system-sm-semibold text-text-secondary">{t('form.permissions', { ns: 'datasetSettings' })}</div>
           </div>
-          <div className='w-full'>
+          <div className="w-full">
             <PermissionSelector
               disabled={!localeCurrentDataset?.embedding_available || isCurrentWorkspaceDatasetOperator}
               permission={localeCurrentDataset.permission}
@@ -259,9 +250,9 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {currentDataset && currentDataset.indexing_technique && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.indexMethod')}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('form.indexMethod', { ns: 'datasetSettings' })}</div>
             </div>
-            <div className='grow'>
+            <div className="grow">
               <IndexMethod
                 disabled={!localeCurrentDataset?.embedding_available}
                 value={indexMethod}
@@ -276,10 +267,10 @@ const SettingsModal: FC<SettingsModalProps> = ({
         {indexMethod === IndexingType.QUALIFIED && (
           <div className={cn(rowClass)}>
             <div className={labelClass}>
-              <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.embeddingModel')}</div>
+              <div className="system-sm-semibold text-text-secondary">{t('form.embeddingModel', { ns: 'datasetSettings' })}</div>
             </div>
-            <div className='w-full'>
-              <div className='h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60'>
+            <div className="w-full">
+              <div className="h-8 w-full rounded-lg bg-components-input-bg-normal opacity-60">
                 <ModelSelector
                   readonly
                   defaultModel={{
@@ -289,117 +280,64 @@ const SettingsModal: FC<SettingsModalProps> = ({
                   modelList={embeddingModelList}
                 />
               </div>
-              <div className='mt-2 w-full text-xs leading-6 text-text-tertiary'>
-                {t('datasetSettings.form.embeddingModelTip')}
-                <span className='cursor-pointer text-text-accent' onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('datasetSettings.form.embeddingModelTipLink')}</span>
+              <div className="mt-2 w-full text-xs leading-6 text-text-tertiary">
+                {t('form.embeddingModelTip', { ns: 'datasetSettings' })}
+                <span className="cursor-pointer text-text-accent" onClick={() => setShowAccountSettingModal({ payload: ACCOUNT_SETTING_TAB.PROVIDER })}>{t('form.embeddingModelTipLink', { ns: 'datasetSettings' })}</span>
               </div>
             </div>
           </div>
         )}
 
         {/* Retrieval Method Config */}
-        {currentDataset?.provider === 'external'
-          ? <>
-            <div className={rowClass}><Divider /></div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-              </div>
-              <RetrievalSettings
+        {isExternal
+          ? (
+              <RetrievalSection
+                isExternal
+                rowClass={rowClass}
+                labelClass={labelClass}
+                t={t as any}
                 topK={topK}
                 scoreThreshold={scoreThreshold}
                 scoreThresholdEnabled={scoreThresholdEnabled}
-                onChange={handleSettingsChange}
-                isInRetrievalSetting={true}
+                onExternalSettingChange={handleSettingsChange}
+                currentDataset={currentDataset}
               />
-            </div>
-            <div className={rowClass}><Divider /></div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeAPI')}</div>
-              </div>
-              <div className='w-full max-w-[480px]'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <ApiConnectionMod className='h-4 w-4 text-text-secondary' />
-                  <div className='system-sm-medium overflow-hidden text-ellipsis text-text-secondary'>
-                    {currentDataset?.external_knowledge_info.external_knowledge_api_name}
-                  </div>
-                  <div className='system-xs-regular text-text-tertiary'>·</div>
-                  <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_api_endpoint}</div>
-                </div>
-              </div>
-            </div>
-            <div className={rowClass}>
-              <div className={labelClass}>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.externalKnowledgeID')}</div>
-              </div>
-              <div className='w-full max-w-[480px]'>
-                <div className='flex h-full items-center gap-1 rounded-lg bg-components-input-bg-normal px-3 py-2'>
-                  <div className='system-xs-regular text-text-tertiary'>{currentDataset?.external_knowledge_info.external_knowledge_id}</div>
-                </div>
-              </div>
-            </div>
-            <div className={rowClass}><Divider /></div>
-          </>
-          : <div className={rowClass}>
-            <div className={cn(labelClass, 'w-auto min-w-[168px]')}>
-              <div>
-                <div className='system-sm-semibold text-text-secondary'>{t('datasetSettings.form.retrievalSetting.title')}</div>
-                <div className='text-xs font-normal leading-[18px] text-text-tertiary'>
-                  <a target='_blank' rel='noopener noreferrer' href={docLink('/guides/knowledge-base/create-knowledge-and-upload-documents/setting-indexing-methods#setting-the-retrieval-setting')} className='text-text-accent'>{t('datasetSettings.form.retrievalSetting.learnMore')}</a>
-                  {t('datasetSettings.form.retrievalSetting.description')}
-                </div>
-              </div>
-            </div>
-            <div>
-              {indexMethod === IndexingType.QUALIFIED
-                ? (
-                  <RetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                    showMultiModalTip={showMultiModalTip}
-                  />
-                )
-                : (
-                  <EconomicalRetrievalMethodConfig
-                    value={retrievalConfig}
-                    onChange={setRetrievalConfig}
-                  />
-                )}
-            </div>
-          </div>}
+            )
+          : (
+              <RetrievalSection
+                isExternal={false}
+                rowClass={rowClass}
+                labelClass={labelClass}
+                t={t as any}
+                indexMethod={indexMethod}
+                retrievalConfig={retrievalConfig}
+                showMultiModalTip={showMultiModalTip}
+                onRetrievalConfigChange={setRetrievalConfig}
+                docLink={docLink}
+              />
+            )}
       </div>
-      {isRetrievalChanged && !isHideChangedTip && (
-        <div className='absolute bottom-[76px] left-[30px] right-[30px] z-10 flex h-10 items-center justify-between rounded-lg border border-[#FEF0C7] bg-[#FFFAEB] px-3 shadow-lg'>
-          <div className='flex items-center'>
-            <AlertTriangle className='mr-1 h-3 w-3 text-[#F79009]' />
-            <div className='text-xs font-medium leading-[18px] text-gray-700'>{t('appDebug.datasetConfig.retrieveChangeTip')}</div>
-          </div>
-          <div className='cursor-pointer p-1' onClick={(e) => {
-            setIsHideChangedTip(true)
-            e.stopPropagation()
-            e.nativeEvent.stopImmediatePropagation()
-          }}>
-            <RiCloseLine className='h-4 w-4 text-gray-500' />
-          </div>
-        </div>
-      )}
+      <RetrievalChangeTip
+        visible={isRetrievalChanged && !isHideChangedTip}
+        message={t('datasetConfig.retrieveChangeTip', { ns: 'appDebug' })}
+        onDismiss={() => setIsHideChangedTip(true)}
+      />
 
       <div
-        className='sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4'
+        className="sticky bottom-0 z-[5] flex w-full justify-end border-t border-divider-regular bg-background-section px-6 py-4"
       >
         <Button
           onClick={onCancel}
-          className='mr-2'
+          className="mr-2"
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           disabled={loading}
           onClick={handleSave}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
     </div>
