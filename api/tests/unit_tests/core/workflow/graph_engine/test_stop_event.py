@@ -7,7 +7,7 @@ to WorkerPool, Worker, Dispatcher, and Nodes.
 
 import threading
 import time
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, Mock, patch
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.workflow.entities.graph_init_params import GraphInitParams
@@ -371,7 +371,8 @@ class TestStopEventIntegration:
 class TestStopEventTimeoutBehavior:
     """Test stop_event behavior with join timeouts."""
 
-    def test_dispatcher_uses_shorter_timeout(self):
+    @patch("core.workflow.graph_engine.orchestration.dispatcher.threading.Thread")
+    def test_dispatcher_uses_shorter_timeout(self, mock_thread_cls: MagicMock):
         """Test that Dispatcher uses 2s timeout instead of 10s."""
         runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
         mock_graph = MagicMock(spec=Graph)
@@ -386,11 +387,18 @@ class TestStopEventTimeoutBehavior:
             command_channel=InMemoryChannel(),
         )
 
-        # Dispatcher should be created with stop_event
         dispatcher = engine._dispatcher
-        assert dispatcher._stop_event is not None
+        dispatcher.start()  # This will create and start the mocked thread
 
-    def test_worker_pool_uses_shorter_timeout(self):
+        mock_thread_instance = mock_thread_cls.return_value
+        mock_thread_instance.is_alive.return_value = True
+
+        dispatcher.stop()
+
+        mock_thread_instance.join.assert_called_once_with(timeout=2.0)
+
+    @patch("core.workflow.graph_engine.worker_management.worker_pool.Worker")
+    def test_worker_pool_uses_shorter_timeout(self, mock_worker_cls: MagicMock):
         """Test that WorkerPool uses 2s timeout instead of 10s."""
         runtime_state = GraphRuntimeState(variable_pool=VariablePool(), start_at=time.perf_counter())
         mock_graph = MagicMock(spec=Graph)
@@ -405,9 +413,15 @@ class TestStopEventTimeoutBehavior:
             command_channel=InMemoryChannel(),
         )
 
-        # WorkerPool should be created with stop_event
         worker_pool = engine._worker_pool
-        assert worker_pool._stop_event is not None
+        worker_pool.start(initial_count=1)  # Start with one worker
+
+        mock_worker_instance = mock_worker_cls.return_value
+        mock_worker_instance.is_alive.return_value = True
+
+        worker_pool.stop()
+
+        mock_worker_instance.join.assert_called_once_with(timeout=2.0)
 
 
 class TestStopEventResumeBehavior:
@@ -506,7 +520,6 @@ class TestWorkerStopBehavior:
         event_queue = MagicMock()
 
         # Create a proper mock graph with real dict
-        from unittest.mock import Mock
         mock_graph = Mock(spec=Graph)
         mock_graph.nodes = {}  # Use real dict
 
