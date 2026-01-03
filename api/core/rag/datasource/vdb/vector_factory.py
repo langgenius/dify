@@ -143,6 +143,10 @@ class Vector:
                 from core.rag.datasource.vdb.couchbase.couchbase_vector import CouchbaseVectorFactory
 
                 return CouchbaseVectorFactory
+            case VectorType.DORIS:
+                from core.rag.datasource.vdb.doris.doris_vector import DorisVectorFactory
+
+                return DorisVectorFactory
             case VectorType.BAIDU:
                 from core.rag.datasource.vdb.baidu.baidu_vector import BaiduVectorFactory
 
