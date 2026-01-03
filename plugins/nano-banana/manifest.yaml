@@ -1,19 +1,19 @@
-version: 0.0.1
+version: 0.0.17
 type: plugin
 author: acedatacloud
 name: nano-banana
 label:
-  en_US: nano-banana
-  ja_JP: nano-banana
-  zh_Hans: nano-banana
-  pt_BR: nano-banana
-description:
   en_US: Nano Banana
   ja_JP: Nano Banana
   zh_Hans: Nano Banana
   pt_BR: Nano Banana
-icon: icon.svg
-icon_dark: icon-dark.svg
+description:
+  en_US: Generate and edit images via Ace Data Cloud Nano Banana Images API.
+  ja_JP: Ace Data Cloud Nano Banana Images API を使って画像生成・編集を行います。
+  zh_Hans: 通过 Ace Data Cloud Nano Banana Images API 生成与编辑图片。
+  pt_BR: Gere e edite imagens via Ace Data Cloud Nano Banana Images API.
+icon: icon.jpg
+icon_dark: icon.jpg
 resource:
   memory: 268435456
   permission:
@@ -23,7 +23,7 @@ plugins:
   tools:
     - provider/nano-banana.yaml
 meta:
-  version: 0.0.1
+  version: 0.0.17
   arch:
     - amd64
     - arm64

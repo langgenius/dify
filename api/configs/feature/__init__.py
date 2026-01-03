@@ -3,6 +3,7 @@ from typing import Literal
 
 from pydantic import (
     AliasChoices,
+    BaseModel,
     Field,
     HttpUrl,
     NegativeInt,
@@ -238,9 +239,55 @@ class PluginConfig(BaseSettings):
         default=15728640,
     )
 
+    PLUGIN_GITHUB_SIGNATURE_BYPASS_ENABLED: bool = Field(
+        description=(
+            "When enabled, GitHub plugin installation will enforce signature verification for non-allowlisted repos, "
+            "but bypass signature verification for allowlisted repos."
+        ),
+        default=False,
+    )
+
+    PLUGIN_GITHUB_SIGNATURE_BYPASS_REPOS: list[str] = Field(
+        description=(
+            "GitHub repo allowlist for signature bypass. "
+            "Each item can be: 'Org', 'Org/*', or 'Org/Repo'. Case-insensitive."
+        ),
+        default_factory=list,
+    )
+
     PLUGIN_MAX_BUNDLE_SIZE: PositiveInt = Field(
         description="Maximum allowed size for plugin bundles in bytes",
         default=15728640 * 12,
+    )
+
+    class DefaultTenantGithubPlugin(BaseModel):
+        repo: str = Field(description="GitHub repo in the form of <org>/<repo>.")
+        version: str = Field(description="GitHub release tag, e.g. v0.0.13.")
+        package: str = Field(description="Release asset filename, e.g. nano-banana-0.0.13.difypkg.")
+        plugin_unique_identifier: str | None = Field(
+            default=None,
+            description=(
+                "Optional plugin unique identifier to install directly if the package is already available in "
+                "plugin-daemon. If omitted or unavailable, Dify will download the package from GitHub release first."
+            ),
+        )
+
+    DEFAULT_TENANT_PLUGIN_UNIQUE_IDENTIFIERS: list[str] = Field(
+        description=(
+            "Plugin unique identifiers to auto-install for every newly created workspace (tenant). "
+            "Accepts a JSON array via env, e.g. "
+            "'[\"acedatacloud/nano-banana:0.0.1@dify\"]'."
+        ),
+        default_factory=list,
+    )
+
+    DEFAULT_TENANT_GITHUB_PLUGINS: list[DefaultTenantGithubPlugin] = Field(
+        description=(
+            "GitHub release packages to auto-install for every newly created workspace (tenant). "
+            "Accepts a JSON array, e.g. "
+            '\'[{"repo":"acedatacloud/nano-banana","version":"v0.0.13","package":"nano-banana-0.0.13.difypkg"}]\'.'
+        ),
+        default_factory=list,
     )
 
 

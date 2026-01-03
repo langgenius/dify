@@ -46,6 +46,50 @@ class PluginService:
     REDIS_TTL = 60 * 5  # 5 minutes
 
     @staticmethod
+    def _is_github_repo_allowlisted_for_signature_bypass(repo: str) -> bool:
+        """
+        Repo format: "Owner/Repo"
+        Allowlist supports:
+        - "Owner"
+        - "Owner/*"
+        - "Owner/Repo"
+        """
+        if not dify_config.PLUGIN_GITHUB_SIGNATURE_BYPASS_ENABLED:
+            return False
+
+        repo_norm = repo.strip().lower()
+        if not repo_norm:
+            return False
+
+        owner = repo_norm.split("/", 1)[0]
+
+        for item in dify_config.PLUGIN_GITHUB_SIGNATURE_BYPASS_REPOS:
+            rule = item.strip().lower()
+            if not rule:
+                continue
+
+            if "/" not in rule:
+                if owner == rule:
+                    return True
+                continue
+
+            if rule.endswith("/*"):
+                if owner == rule[:-2]:
+                    return True
+                continue
+
+            if repo_norm == rule:
+                return True
+
+        return False
+
+    @staticmethod
+    def _should_verify_signature_for_github_repo(repo: str) -> bool:
+        if not dify_config.PLUGIN_GITHUB_SIGNATURE_BYPASS_ENABLED:
+            return False
+        return not PluginService._is_github_repo_allowlisted_for_signature_bypass(repo)
+
+    @staticmethod
     def fetch_latest_plugin_version(plugin_ids: Sequence[str]) -> Mapping[str, LatestPluginCache | None]:
         """
         Fetch the latest plugin version
@@ -366,12 +410,13 @@ class PluginService:
             f"https://github.com/{repo}/releases/download/{version}/{package}", dify_config.PLUGIN_MAX_PACKAGE_SIZE
         )
         features = FeatureService.get_system_features()
+        verify_signature = verify_signature or PluginService._should_verify_signature_for_github_repo(repo)
 
         manager = PluginInstaller()
         response = manager.upload_pkg(
             tenant_id,
             pkg,
-            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only,
+            verify_signature=features.plugin_installation_permission.restrict_to_marketplace_only or verify_signature,
         )
         PluginService._check_plugin_installation_scope(response.verification)
 
@@ -416,6 +461,14 @@ class PluginService:
         manager = PluginInstaller()
         plugin_decode_response = manager.decode_plugin_from_identifier(tenant_id, plugin_unique_identifier)
         PluginService._check_plugin_installation_scope(plugin_decode_response.verification)
+
+        if dify_config.PLUGIN_GITHUB_SIGNATURE_BYPASS_ENABLED:
+            return manager.install_from_identifiers(
+                tenant_id,
+                [plugin_unique_identifier],
+                PluginInstallationSource.Package,
+                [{}],
+            )
 
         return manager.install_from_identifiers(
             tenant_id,

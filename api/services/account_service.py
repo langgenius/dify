@@ -1006,6 +1006,10 @@ class TenantService:
 
         tenant.encrypt_public_key = generate_key_pair(tenant.id)
         db.session.commit()
+
+        from services.plugin.plugin_bootstrap_service import PluginBootstrapService
+
+        PluginBootstrapService.install_default_plugins(str(tenant.id))
         return tenant
 
     @staticmethod

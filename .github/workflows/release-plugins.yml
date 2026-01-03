@@ -1,0 +1,146 @@
+name: Release Plugins
+
+on:
+  push:
+    branches: ["**"]
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    env:
+      ENABLE_PLUGIN_CHANGE_DETECTION: "false"
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Detect plugin changes
+        id: changes
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${ENABLE_PLUGIN_CHANGE_DETECTION}" != "true" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          BEFORE="${{ github.event.before }}"
+          AFTER="${{ github.sha }}"
+          if [[ -z "${BEFORE}" || "${BEFORE}" == "0000000000000000000000000000000000000000" ]]; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if git diff --name-only "$BEFORE" "$AFTER" -- plugins/ | grep -q .; then
+            echo "changed=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "changed=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Stop if no plugin changes
+        if: steps.changes.outputs.changed != 'true'
+        run: |
+          echo "No changes under plugins/. Skip release."
+
+      - name: Compute version
+        if: steps.changes.outputs.changed == 'true'
+        id: version
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch --tags --force
+
+          DATE="$(date -u +'%Y.%m.%d')"
+          YEAR="$(date -u +'%Y')"
+          MMDD_INT="$(date -u +'%m%d' | sed -E 's/^0+//')"
+          if [[ -z "${MMDD_INT}" ]]; then
+            MMDD_INT="0"
+          fi
+          DATE_ESCAPED="${DATE//./\\.}"
+
+          if [[ "${GITHUB_REF_NAME}" == "main" ]]; then
+            # Release tags: vYYYY.MM.DD.N
+            latest="$(git tag -l "v${DATE}.*" | grep -v -- '-dev$' | sed -E "s/^v${DATE_ESCAPED}\\.([0-9]+)$/\\1/" | sort -n | tail -n 1 || true)"
+            next="${latest:-0}"
+            next="$((next + 1))"
+            TAG_VERSION="${DATE}.${next}"
+            MANIFEST_VERSION="${YEAR}.${MMDD_INT}.${next}"
+            TAG="v${TAG_VERSION}"
+            PRERELEASE="false"
+          else
+            # Dev tags: vYYYY.MM.DD.N-dev
+            latest="$(git tag -l "v${DATE}.*-dev" | sed -E "s/^v${DATE_ESCAPED}\\.([0-9]+)-dev$/\\1/" | sort -n | tail -n 1 || true)"
+            next="${latest:-0}"
+            next="$((next + 1))"
+            TAG_VERSION="${DATE}.${next}-dev"
+            MANIFEST_VERSION="${YEAR}.${MMDD_INT}.${next}-dev"
+            TAG="v${TAG_VERSION}"
+            PRERELEASE="true"
+          fi
+          echo "version=${TAG_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "manifest_version=${MANIFEST_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "prerelease=${PRERELEASE}" >> "$GITHUB_OUTPUT"
+
+      - name: Download dify-plugin CLI
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        env:
+          DIFY_PLUGIN_CLI_VERSION: "latest"
+        run: |
+          set -euo pipefail
+          mkdir -p "$RUNNER_TEMP/bin"
+          TAG="${DIFY_PLUGIN_CLI_VERSION}"
+          if [[ "${TAG}" == "latest" ]]; then
+            TAG="$(curl -fsSL \
+              -H "Authorization: Bearer ${{ github.token }}" \
+              -H "X-GitHub-Api-Version: 2022-11-28" \
+              https://api.github.com/repos/langgenius/dify-plugin-daemon/releases/latest \
+              | python3 -c "import json,sys; print(json.load(sys.stdin)['tag_name'])")"
+          fi
+          curl -fsSL \
+            "https://github.com/langgenius/dify-plugin-daemon/releases/download/${TAG}/dify-plugin-linux-amd64" \
+            -o "$RUNNER_TEMP/bin/dify-plugin"
+          chmod +x "$RUNNER_TEMP/bin/dify-plugin"
+          "$RUNNER_TEMP/bin/dify-plugin" --help >/dev/null
+
+      - name: Package all plugins (timestamp version)
+        if: steps.changes.outputs.changed == 'true'
+        shell: bash
+        run: |
+          set -euo pipefail
+          VERSION="${{ steps.version.outputs.version }}"
+          MANIFEST_VERSION="${{ steps.version.outputs.manifest_version }}"
+          OUT_DIR="$RUNNER_TEMP/difypkgs"
+          mkdir -p "$OUT_DIR"
+
+          while IFS= read -r manifest; do
+            plugin_dir="$(dirname "$manifest")"
+            plugin_name="$(python3 -c "import re; import pathlib; p=pathlib.Path('$manifest'); t=p.read_text(encoding='utf-8'); m=re.search(r'^name:\\s*([a-z0-9_-]+)\\s*$', t, re.M); print(m.group(1) if m else p.parent.name)")"
+            tmp_dir="$RUNNER_TEMP/plugin-src/${plugin_name}"
+            rm -rf "$tmp_dir"
+            mkdir -p "$tmp_dir"
+            rsync -a --delete "$plugin_dir/" "$tmp_dir/"
+
+            python3 scripts/release_plugins.py "$MANIFEST_VERSION" "$tmp_dir/manifest.yaml"
+
+            out_pkg="${OUT_DIR}/${plugin_name}-${VERSION}.difypkg"
+            "$RUNNER_TEMP/bin/dify-plugin" plugin package "$tmp_dir" -o "$out_pkg"
+            echo "Packaged: $out_pkg"
+          done < <(find plugins -maxdepth 2 -type f -name manifest.yaml | sort)
+
+          ls -la "$OUT_DIR"
+          echo "out_dir=$OUT_DIR" >> "$GITHUB_OUTPUT"
+
+      - name: Create GitHub Release
+        if: steps.changes.outputs.changed == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.version.outputs.tag }}
+          name: Plugins ${{ steps.version.outputs.tag }}
+          generate_release_notes: true
+          prerelease: ${{ steps.version.outputs.prerelease }}
+          files: |
+            ${{ runner.temp }}/difypkgs/*.difypkg

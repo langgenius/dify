@@ -23,7 +23,8 @@ class NanoBananaProvider(ToolProvider):
                 resolution="1K",
                 timeout_s=30,
             )
-        except AceDataNanoBananaError as e:
-            raise ToolProviderCredentialValidationError(str(e)) from e
         except Exception as e:
+            if isinstance(e, AceDataNanoBananaError):
+                raise ToolProviderCredentialValidationError(str(e)) from e
+
             raise ToolProviderCredentialValidationError(f"Credential validation failed: {e!s}") from e

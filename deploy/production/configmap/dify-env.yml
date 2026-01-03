@@ -30,7 +30,9 @@ data:
   PLUGIN_INSTALLED_PATH: "plugin"
   PLUGIN_PACKAGE_CACHE_PATH: "plugin_packages"
   PLUGIN_MEDIA_CACHE_PATH: "assets"
-  FORCE_VERIFYING_SIGNATURE: "true"
+  FORCE_VERIFYING_SIGNATURE: "false"
+  PLUGIN_GITHUB_SIGNATURE_BYPASS_ENABLED: "true"
+  PLUGIN_GITHUB_SIGNATURE_BYPASS_REPOS: "[\"AceDataCloud/Dify\"]"
 
   # Ace Data Cloud Login (Console).
   # When true, console sign-in will only allow Ace Data Cloud OAuth login and disable other login methods.
