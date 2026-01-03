@@ -20,8 +20,17 @@ class PluginBootstrapService:
         """
         identifiers = dify_config.DEFAULT_TENANT_PLUGIN_UNIQUE_IDENTIFIERS
         github_plugins = dify_config.DEFAULT_TENANT_GITHUB_PLUGINS
-        if not identifiers and not github_plugins:
+        github_release_repos = dify_config.DEFAULT_TENANT_GITHUB_RELEASE_REPOS
+        if not identifiers and not github_plugins and not github_release_repos:
             return
+
+        logger.info(
+            "Default plugin auto-install triggered. tenant_id=%s identifiers=%s github_items=%s github_latest_repos=%s",
+            tenant_id,
+            len(identifiers),
+            len(github_plugins),
+            len(github_release_repos),
+        )
 
         features = FeatureService.get_system_features()
         if features.plugin_installation_permission.restrict_to_marketplace_only:
@@ -83,6 +92,11 @@ class PluginBootstrapService:
 
         if to_install:
             try:
+                logger.info(
+                    "Starting default plugin installation task from identifiers. tenant_id=%s count=%s",
+                    tenant_id,
+                    len(to_install),
+                )
                 manager.install_from_identifiers(
                     tenant_id=tenant_id,
                     identifiers=to_install,
@@ -97,10 +111,17 @@ class PluginBootstrapService:
                 )
 
         if not github_plugins:
-            return
+            github_plugins = []
 
         for item in github_plugins:
             try:
+                logger.info(
+                    "Auto-install default GitHub plugin configured item. tenant_id=%s repo=%s version=%s package=%s",
+                    tenant_id,
+                    item.repo,
+                    item.version,
+                    item.package,
+                )
                 if item.plugin_unique_identifier and item.plugin_unique_identifier in installed_identifiers:
                     continue
 
@@ -109,6 +130,11 @@ class PluginBootstrapService:
                     try:
                         PluginService.install_from_local_pkg(tenant_id, [item.plugin_unique_identifier])
                         installed_identifiers.add(item.plugin_unique_identifier)
+                        logger.info(
+                            "Auto-install GitHub plugin done via existing identifier. tenant_id=%s identifier=%s",
+                            tenant_id,
+                            item.plugin_unique_identifier,
+                        )
                         continue
                     except Exception:
                         logger.info(
@@ -126,6 +152,12 @@ class PluginBootstrapService:
                 )
                 PluginService.install_from_local_pkg(tenant_id, [decoded.unique_identifier])
                 installed_identifiers.add(decoded.unique_identifier)
+                logger.info(
+                    "Auto-install GitHub plugin done. tenant_id=%s repo=%s identifier=%s",
+                    tenant_id,
+                    item.repo,
+                    decoded.unique_identifier,
+                )
             except Exception:
                 logger.exception(
                     "Failed to auto-install default GitHub plugin. tenant_id=%s repo=%s version=%s package=%s",
@@ -133,4 +165,21 @@ class PluginBootstrapService:
                     item.repo,
                     item.version,
                     item.package,
+                )
+
+        if not github_release_repos:
+            return
+
+        for repo in github_release_repos:
+            try:
+                logger.info("Auto-install GitHub latest release plugins start. tenant_id=%s repo=%s", tenant_id, repo)
+                PluginService.sync_latest_release_plugins_for_tenant(tenant_id=tenant_id, repo=repo)
+                logger.info(
+                    "Auto-install GitHub latest release plugins finished. tenant_id=%s repo=%s", tenant_id, repo
+                )
+            except Exception:
+                logger.exception(
+                    "Failed to auto-install default GitHub latest-release plugins. tenant_id=%s repo=%s",
+                    tenant_id,
+                    repo,
                 )

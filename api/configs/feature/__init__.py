@@ -290,6 +290,15 @@ class PluginConfig(BaseSettings):
         default_factory=list,
     )
 
+    DEFAULT_TENANT_GITHUB_RELEASE_REPOS: list[str] = Field(
+        description=(
+            "GitHub repos whose latest (non-prerelease) release .difypkg assets will be auto-installed "
+            "for every newly created workspace (tenant). Accepts a JSON array, e.g. "
+            "'[\"AceDataCloud/Dify\"]'."
+        ),
+        default_factory=list,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """

@@ -416,6 +416,8 @@ class AccountService:
 
         AccountService._store_refresh_token(refresh_token, account.id)
 
+        logger.info("Account logged in. account_id=%s", account.id)
+
         return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod
@@ -980,6 +982,13 @@ class TenantService:
     @staticmethod
     def create_tenant(name: str, is_setup: bool | None = False, is_from_dashboard: bool | None = False) -> Tenant:
         """Create tenant"""
+        logger.info(
+            "Creating tenant. name=%s is_setup=%s is_from_dashboard=%s allow_create_workspace=%s",
+            name,
+            is_setup,
+            is_from_dashboard,
+            FeatureService.get_system_features().is_allow_create_workspace,
+        )
         if (
             not FeatureService.get_system_features().is_allow_create_workspace
             and not is_setup
@@ -1009,6 +1018,7 @@ class TenantService:
 
         from services.plugin.plugin_bootstrap_service import PluginBootstrapService
 
+        logger.info("Triggering default plugin auto-install for new tenant. tenant_id=%s", tenant.id)
         PluginBootstrapService.install_default_plugins(str(tenant.id))
         return tenant
 
@@ -1327,6 +1337,7 @@ class RegisterService:
             if provider == "acedatacloud" and dify_config.ACEDATACLOUD_AUTH_AUTO_REGISTER:
                 # Allow AceDataCloud OAuth to auto-provision Dify accounts even when registration is disabled.
                 effective_is_setup = True
+                logger.info("AceDataCloud auto-register enabled. email=%s", email)
 
             account = AccountService.create_account(
                 email=email,
@@ -1341,15 +1352,34 @@ class RegisterService:
             if open_id is not None and provider is not None:
                 AccountService.link_account_integrate(provider, open_id, account)
 
+            allow_create_workspace = FeatureService.get_system_features().is_allow_create_workspace
+            if provider == "acedatacloud" and dify_config.ACEDATACLOUD_AUTH_AUTO_REGISTER:
+                allow_create_workspace = True
+
             if (
-                FeatureService.get_system_features().is_allow_create_workspace
+                allow_create_workspace
                 and create_workspace_required
                 and FeatureService.get_system_features().license.workspaces.is_available()
             ):
+                logger.info(
+                    "Auto-creating workspace for new account. account_id=%s provider=%s",
+                    account.id,
+                    provider,
+                )
                 tenant = TenantService.create_tenant(f"{account.name}'s Workspace")
                 TenantService.create_tenant_member(tenant, account, role="owner")
                 account.current_tenant = tenant
                 tenant_was_created.send(tenant)
+            else:
+                logger.info(
+                    "Skip auto-creating workspace for new account. account_id=%s provider=%s "
+                    "allow_create_workspace=%s create_workspace_required=%s workspaces_available=%s",
+                    account.id,
+                    provider,
+                    allow_create_workspace,
+                    create_workspace_required,
+                    FeatureService.get_system_features().license.workspaces.is_available(),
+                )
 
             db.session.commit()
         except WorkSpaceNotAllowedCreateError:
