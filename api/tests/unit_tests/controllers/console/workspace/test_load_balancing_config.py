@@ -1,5 +1,4 @@
-"""Unit tests for load balancing credential validation APIs."""
-"""Unit tests for Load Balancing Config Controller.
+"""Unit tests for load balancing credential validation APIs.
 
 This module tests load balancing configuration endpoints:
 - Credentials validation
