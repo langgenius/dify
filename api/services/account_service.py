@@ -418,6 +418,55 @@ class AccountService:
 
         logger.info("Account logged in. account_id=%s", account.id)
 
+        if dify_config.PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_ENABLED:
+            tenant_id = getattr(account, "current_tenant_id", None)
+            if not tenant_id:
+                try:
+                    tenants = TenantService.get_join_tenants(account)
+                    tenant_id = tenants[0].id if tenants else None
+                except Exception:
+                    logger.exception("Failed to load tenant for GitHub sync on login. account_id=%s", account.id)
+                    tenant_id = None
+
+            logger.info(
+                "GitHub latest release sync on login: eligibility. enabled=%s account_id=%s tenant_id=%s",
+                dify_config.PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_ENABLED,
+                account.id,
+                tenant_id,
+            )
+            if tenant_id:
+                try:
+                    from tasks.sync_github_latest_release_plugins_on_login_task import (
+                        sync_github_latest_release_plugins_on_login_task,
+                    )
+
+                    task = sync_github_latest_release_plugins_on_login_task.delay(
+                        tenant_id=str(tenant_id),
+                        account_id=str(account.id),
+                    )
+                    logger.info(
+                        "Enqueued GitHub latest release sync on login. account_id=%s tenant_id=%s task_id=%s",
+                        account.id,
+                        tenant_id,
+                        getattr(task, "id", None),
+                    )
+                except Exception:
+                    logger.exception(
+                        "Failed to enqueue GitHub latest release sync on login. account_id=%s tenant_id=%s",
+                        account.id,
+                        tenant_id,
+                    )
+            else:
+                logger.info(
+                    "Skip enqueue GitHub latest release sync on login: missing tenant. account_id=%s",
+                    account.id,
+                )
+        else:
+            logger.debug(
+                "GitHub latest release sync on login: disabled. account_id=%s",
+                account.id,
+            )
+
         return TokenPair(access_token=access_token, refresh_token=refresh_token, csrf_token=csrf_token)
 
     @staticmethod

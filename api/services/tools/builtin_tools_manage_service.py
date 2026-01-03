@@ -146,6 +146,7 @@ class BuiltinToolManageService:
         credential_id: str,
         credentials: dict | None = None,
         name: str | None = None,
+        validate: bool = True,
     ):
         """
         update builtin tool provider
@@ -179,7 +180,7 @@ class BuiltinToolManageService:
                         for key, value in credentials.items()
                     }
 
-                    if CredentialType.of(db_provider.credential_type).is_validate_allowed():
+                    if validate and CredentialType.of(db_provider.credential_type).is_validate_allowed():
                         provider_controller.validate_credentials(user_id, new_credentials)
 
                     # encrypt credentials
@@ -218,6 +219,7 @@ class BuiltinToolManageService:
         credentials: dict,
         expires_at: int = -1,
         name: str | None = None,
+        validate: bool = True,
     ):
         """
         add builtin tool provider
@@ -239,7 +241,7 @@ class BuiltinToolManageService:
                         raise ValueError(f"you have reached the maximum number of providers for {provider}")
 
                     # validate credentials if allowed
-                    if CredentialType.of(api_type).is_validate_allowed():
+                    if validate and CredentialType.of(api_type).is_validate_allowed():
                         provider_controller.validate_credentials(user_id, credentials)
 
                     # generate name if not provided

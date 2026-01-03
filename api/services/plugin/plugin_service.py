@@ -297,7 +297,7 @@ class PluginService:
         return True
 
     @staticmethod
-    def sync_latest_release_plugins_for_tenant(*, tenant_id: str, repo: str) -> None:
+    def sync_latest_release_plugins_for_tenant(*, tenant_id: str, repo: str) -> int:
         """
         Sync repo latest (non-prerelease) release plugins to the tenant, best-effort.
         Only runs when a new release tag is detected (or previous sync failed).
@@ -307,7 +307,7 @@ class PluginService:
         repo = repo.strip()
         if not repo:
             logger.info("GitHub latest release sync: repo empty, skip. tenant_id=%s", tenant_id)
-            return
+            return 0
 
         release = PluginService.fetch_latest_github_release(repo)
         if not PluginService._is_supported_github_release(release):
@@ -317,7 +317,7 @@ class PluginService:
                 repo,
                 release.tag_name,
             )
-            return
+            return 0
 
         tag_key = f"{PluginService.GITHUB_RELEASE_SYNC_TAG_PREFIX}{tenant_id}:{repo.lower()}"
         sync_ttl_s = 60 * 10
@@ -329,7 +329,7 @@ class PluginService:
                 repo,
                 release.tag_name,
             )
-            return
+            return 0
         logger.info(
             "GitHub latest release sync: new tag detected. tenant_id=%s repo=%s last_tag=%s new_tag=%s",
             tenant_id,
@@ -357,7 +357,7 @@ class PluginService:
                 repo,
                 release.tag_name,
             )
-            return
+            return 0
 
         to_install = [
             d.unique_identifier
@@ -372,7 +372,7 @@ class PluginService:
                 release.tag_name,
             )
             redis_client.setex(tag_key, sync_ttl_s, release.tag_name)
-            return
+            return 0
 
         logger.info(
             "GitHub latest release sync: installing. tenant_id=%s repo=%s tag=%s count=%s",
@@ -383,6 +383,7 @@ class PluginService:
         )
         PluginService.install_from_local_pkg(tenant_id, to_install)
         redis_client.setex(tag_key, sync_ttl_s, release.tag_name)
+        return len(to_install)
 
     @staticmethod
     def _check_marketplace_only_permission():

@@ -299,6 +299,19 @@ class PluginConfig(BaseSettings):
         default_factory=list,
     )
 
+    PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_ENABLED: bool = Field(
+        description="When enabled, sync GitHub latest-release plugin packages asynchronously after user login.",
+        default=False,
+    )
+
+    PLUGIN_SYNC_GITHUB_LATEST_RELEASE_ON_LOGIN_REPOS: list[str] = Field(
+        description=(
+            "GitHub repos to sync latest release plugins on login. "
+            "When empty, falls back to DEFAULT_TENANT_GITHUB_RELEASE_REPOS."
+        ),
+        default_factory=list,
+    )
+
 
 class MarketplaceConfig(BaseSettings):
     """
@@ -861,6 +874,19 @@ class AuthConfig(BaseSettings):
 
     ENABLE_ACEDATACLOUD_OAUTH_LOGIN: bool = Field(
         description="When enabled, only allow AceDataCloud OAuth login for the console.",
+        default=False,
+    )
+
+    ACEDATACLOUD_PLATFORM_API_BASE_URL: str = Field(
+        description="AceDataCloud platform API base url, used for auto-provisioning plugin credentials.",
+        default="https://platform.acedata.cloud",
+    )
+
+    ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS: bool = Field(
+        description=(
+            "When enabled, after AceDataCloud OAuth login Dify will fetch the user's API token from "
+            "AceDataCloud platform and auto-create/update tool credentials for installed AceDataCloud plugins."
+        ),
         default=False,
     )
 

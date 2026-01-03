@@ -324,6 +324,22 @@ def _persist_acedatacloud_token(*, account: Account, open_id: str, token_respons
         AccountService.link_account_integrate(
             provider=ACEDATACLOUD_PROVIDER, open_id=open_id, account=account, encrypted_token=token_file
         )
+
+        if dify_config.ACEDATACLOUD_AUTO_PROVISION_PLUGIN_CREDENTIALS:
+            from tasks.provision_acedatacloud_plugin_credentials_task import (
+                provision_acedatacloud_plugin_credentials_task,
+            )
+
+            access_token = token_response.get("access_token")
+            if not access_token:
+                raise ValueError("AceDataCloud access_token is required for auto-provisioning")
+
+            provision_acedatacloud_plugin_credentials_task.delay(
+                tenant_id=str(tenant_id),
+                account_id=str(account.id),
+                acedatacloud_user_id=str(open_id),
+                acedatacloud_access_token=str(access_token),
+            )
     except Exception:
         logger.exception("Failed to persist AceDataCloud token for account %s", account.id)
 
