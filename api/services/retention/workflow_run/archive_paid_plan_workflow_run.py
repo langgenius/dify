@@ -437,11 +437,6 @@ class WorkflowRunArchiver:
         )
         return f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
 
-    @staticmethod
-    def _get_table_member_path(table_name: str) -> str:
-        """Get the archive bundle path for a table data file."""
-        return f"{table_name}.jsonl.gz"
-
     def _generate_manifest(
         self,
         run: WorkflowRun,
@@ -450,6 +445,11 @@ class WorkflowRunArchiver:
         """Generate a manifest for the archived workflow run."""
         return {
             "schema_version": self.ARCHIVE_SCHEMA_VERSION,
+            "workflow_run_id": run.id,
+            "tenant_id": run.tenant_id,
+            "app_id": run.app_id,
+            "workflow_id": run.workflow_id,
+            "created_at": run.created_at.isoformat(),
             "archived_at": datetime.datetime.now(datetime.UTC).isoformat(),
             "tables": {
                 stat.table_name: {
@@ -475,8 +475,7 @@ class WorkflowRunArchiver:
                 data = table_payloads.get(table_name)
                 if data is None:
                     raise ValueError(f"Missing archive payload for {table_name}")
-                member_path = self._get_table_member_path(table_name)
-                self._add_tar_member(tar, member_path, data)
+                self._add_tar_member(tar, f"{table_name}.jsonl.gz", data)
         return buffer.getvalue()
 
     def _mark_archived(self, session: Session, run_id: str) -> None:
