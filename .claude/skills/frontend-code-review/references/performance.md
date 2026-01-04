@@ -26,7 +26,7 @@ Wrong:
 <HeavyComp
     config={{
         provider: ...,
-        detail: ...   
+        detail: ...
     }}
 />
 ```
