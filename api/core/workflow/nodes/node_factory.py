@@ -44,7 +44,7 @@ class DifyNodeFactory(NodeFactory):
         self.graph_runtime_state = graph_runtime_state
         self._code_executor: type[CodeExecutor] = code_executor or CodeExecutor
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
-            tuple(code_providers) if code_providers else (Python3CodeProvider, JavascriptCodeProvider)
+            tuple(code_providers) if code_providers else CodeNode._DEFAULT_CODE_PROVIDERS
         )
         self._code_limits = code_limits or CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
