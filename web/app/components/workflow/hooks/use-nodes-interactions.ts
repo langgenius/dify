@@ -2411,6 +2411,9 @@ export const useNodesInteractions = () => {
 
     const handlers: GroupHandler[] = Array.from(handlerMap.values())
 
+    // head nodes: nodes that receive input from outside the group
+    const headNodeIds = [...new Set(inboundEdges.map(edge => edge.target))]
+
     // put the group node at the top-left corner of the selection, slightly offset
     const { x: minX, y: minY } = getTopLeftNodePosition(bundledNodes)
 
@@ -2420,6 +2423,8 @@ export const useNodesInteractions = () => {
       type: BlockEnum.Group,
       members,
       handlers,
+      headNodeIds,
+      leafNodeIds,
       selected: true,
     }
 

@@ -16,4 +16,6 @@ export type GroupHandler = {
 export type GroupNodeData = CommonNodeType<{
   members?: GroupMember[]
   handlers?: GroupHandler[]
+  headNodeIds?: string[] // nodes that receive input from outside the group
+  leafNodeIds?: string[] // nodes that send output to outside the group
 }>

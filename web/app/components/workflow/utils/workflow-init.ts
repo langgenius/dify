@@ -1,4 +1,5 @@
 import type { CustomGroupNodeData } from '../custom-group-node'
+import type { GroupNodeData } from '../nodes/group/types'
 import type { IfElseNodeType } from '../nodes/if-else/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
@@ -92,8 +93,9 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
   const hasIterationNode = nodes.some(node => node.data.type === BlockEnum.Iteration)
   const hasLoopNode = nodes.some(node => node.data.type === BlockEnum.Loop)
   const hasGroupNode = nodes.some(node => node.type === CUSTOM_GROUP_NODE)
+  const hasBusinessGroupNode = nodes.some(node => node.data.type === BlockEnum.Group)
 
-  if (!hasIterationNode && !hasLoopNode && !hasGroupNode) {
+  if (!hasIterationNode && !hasLoopNode && !hasGroupNode && !hasBusinessGroupNode) {
     return {
       nodes,
       edges,
@@ -248,9 +250,71 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
     }
   }
 
+  // Rebuild isTemp edges for business Group nodes (BlockEnum.Group)
+  // These edges connect the group node to external nodes for visual display
+  const groupTempEdges: Edge[] = []
+  const inboundEdgeIds = new Set<string>()
+
+  nodes.forEach((groupNode) => {
+    if (groupNode.data.type !== BlockEnum.Group)
+      return
+
+    const groupData = groupNode.data as GroupNodeData
+    const { members = [], headNodeIds = [], leafNodeIds = [], handlers = [] } = groupData
+    const memberSet = new Set(members.map(m => m.id))
+    const headSet = new Set(headNodeIds)
+    const leafSet = new Set(leafNodeIds)
+
+    edges.forEach((edge) => {
+      // Inbound edge: source outside group, target is a head node
+      // Use Set to dedupe since multiple head nodes may share same external source
+      if (!memberSet.has(edge.source) && headSet.has(edge.target)) {
+        const edgeId = `${edge.source}-${edge.sourceHandle}-${groupNode.id}-target`
+        if (!inboundEdgeIds.has(edgeId)) {
+          inboundEdgeIds.add(edgeId)
+          groupTempEdges.push({
+            id: edgeId,
+            type: 'custom',
+            source: edge.source,
+            sourceHandle: edge.sourceHandle,
+            target: groupNode.id,
+            targetHandle: 'target',
+            data: {
+              sourceType: edge.data?.sourceType,
+              targetType: BlockEnum.Group,
+              _isTemp: true,
+            },
+          } as Edge)
+        }
+      }
+
+      // Outbound edge: source is a leaf node, target outside group
+      if (leafSet.has(edge.source) && !memberSet.has(edge.target)) {
+        const handler = handlers.find(
+          h => h.nodeId === edge.source && h.sourceHandle === edge.sourceHandle,
+        )
+        if (handler) {
+          groupTempEdges.push({
+            id: `${groupNode.id}-${handler.id}-${edge.target}-${edge.targetHandle}`,
+            type: 'custom',
+            source: groupNode.id,
+            sourceHandle: handler.id,
+            target: edge.target!,
+            targetHandle: edge.targetHandle,
+            data: {
+              sourceType: BlockEnum.Group,
+              targetType: edge.data?.targetType,
+              _isTemp: true,
+            },
+          } as Edge)
+        }
+      }
+    })
+  })
+
   return {
     nodes: [...nodes, ...newIterationStartNodes, ...newLoopStartNodes],
-    edges: [...edges, ...newEdges, ...groupInternalEdges],
+    edges: [...edges, ...newEdges, ...groupInternalEdges, ...groupTempEdges],
   }
 }
 
