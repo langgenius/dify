@@ -8,7 +8,6 @@ from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
 
 from . import helpers
@@ -26,6 +25,7 @@ if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
 
+_UPDATED_VARIABLES_KEY = "__updated_variables"
 
 def _target_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_id: str, item: VariableOperationItem):
     selector_node_id = item.variable_selector[0]
@@ -196,11 +196,19 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
                 raise VariableNotFoundError(variable_selector=selector)
             process_data[variable.name] = variable.value
 
-        updated_variables = [
-            common_helpers.variable_to_processed_data(selector, seg)
-            for selector in updated_variable_selectors
-            if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
-        ]
+        updated_variables = []
+        for selector in updated_variable_selectors:
+            seg = self.graph_runtime_state.variable_pool.get(selector)
+            if seg is None:
+                continue
+            updated_variables.append(
+                {
+                    "name": selector[1],
+                    "selector": list(selector[:2]),
+                    "value_type": seg.value_type,
+                    "new_value": seg.value,
+                }
+            )
 
         output_variables: dict[str, Any] = {}
         for selector in updated_variable_selectors:
@@ -211,7 +219,7 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
                 continue
             selector_key = ".".join(variable.selector)
             output_variables[selector_key] = variable.value
-        process_data = common_helpers.set_updated_variables(process_data, updated_variables)
+        process_data[_UPDATED_VARIABLES_KEY] = updated_variables
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
