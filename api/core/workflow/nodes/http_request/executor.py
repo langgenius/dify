@@ -43,10 +43,10 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 class HttpClientProtocol(Protocol):
     @property
-    def MaxRetriesExceededError(self) -> type[Exception]: ...
+    def MaxRetriesExceededError(self) -> type[Exception]: ...  # noqa: N802
 
     @property
-    def RequestError(self) -> type[Exception]: ...
+    def RequestError(self) -> type[Exception]: ...  # noqa: N802
 
     def get(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
 
