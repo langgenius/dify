@@ -3,8 +3,6 @@ import mimetypes
 from collections.abc import Callable, Mapping, Sequence
 from typing import TYPE_CHECKING, Any
 
-import httpx
-
 from configs import dify_config
 from core.file import File, FileTransferMethod, file_manager
 from core.helper import ssrf_proxy
@@ -19,7 +17,6 @@ from core.workflow.nodes.http_request.executor import (
     Executor,
     FileManagerProtocol,
     HttpClientProtocol,
-    HttpxModuleProtocol,
 )
 from factories import file_factory
 
@@ -53,9 +50,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
         *,
-        executor_class: type[Executor] = Executor,
         http_client: HttpClientProtocol = ssrf_proxy,
-        httpx_module: HttpxModuleProtocol = httpx,
         tool_file_manager_factory: Callable[[], ToolFileManager] = ToolFileManager,
         file_manager: FileManagerProtocol = file_manager,
     ) -> None:
@@ -65,9 +60,7 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._executor_class = executor_class
         self._http_client = http_client
-        self._httpx_module = httpx_module
         self._tool_file_manager_factory = tool_file_manager_factory
         self._file_manager = file_manager
 
@@ -103,13 +96,12 @@ class HttpRequestNode(Node[HttpRequestNodeData]):
     def _run(self) -> NodeRunResult:
         process_data = {}
         try:
-            http_executor = self._executor_class(
+            http_executor = Executor(
                 node_data=self.node_data,
                 timeout=self._get_request_timeout(self.node_data),
                 variable_pool=self.graph_runtime_state.variable_pool,
                 max_retries=0,
                 http_client=self._http_client,
-                httpx_module=self._httpx_module,
                 file_manager=self._file_manager,
             )
             process_data["request"] = http_executor.to_log()

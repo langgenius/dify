@@ -43,6 +43,7 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 class HttpClientProtocol(Protocol):
     MaxRetriesExceededError: type[Exception]
+    RequestError: type[Exception]
 
     def get(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
 
@@ -55,10 +56,6 @@ class HttpClientProtocol(Protocol):
     def delete(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
 
     def patch(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
-
-
-class HttpxModuleProtocol(Protocol):
-    RequestError: type[Exception]
 
 
 class FileManagerProtocol(Protocol):
@@ -103,7 +100,6 @@ class Executor:
         variable_pool: VariablePool,
         max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
         http_client: HttpClientProtocol = ssrf_proxy,
-        httpx_module: HttpxModuleProtocol = httpx,
         file_manager: FileManagerProtocol = file_manager,
     ):
         # If authorization API key is present, convert the API key using the variable pool
@@ -132,7 +128,6 @@ class Executor:
         self.json = None
         self.max_retries = max_retries
         self._http_client = http_client
-        self._httpx = httpx_module
         self._file_manager = file_manager
 
         # init template
@@ -388,7 +383,7 @@ class Executor:
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
             response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
-        except (self._http_client.MaxRetriesExceededError, self._httpx.RequestError) as e:
+        except (self._http_client.MaxRetriesExceededError, self._http_client.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
         return response
