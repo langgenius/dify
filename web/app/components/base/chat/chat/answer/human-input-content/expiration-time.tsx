@@ -1,6 +1,6 @@
 'use client'
 import { useTranslation } from 'react-i18next'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { formatRelativeTimeInZone } from './utils'
 
 type ExpirationTimeProps = {
@@ -11,7 +11,7 @@ const ExpirationTime = ({
   expirationTime,
 }: ExpirationTimeProps) => {
   const { t } = useTranslation()
-  const { locale } = useI18N()
+  const locale = useLocale()
   const relativeTime = formatRelativeTimeInZone(expirationTime, locale)
 
   return (
