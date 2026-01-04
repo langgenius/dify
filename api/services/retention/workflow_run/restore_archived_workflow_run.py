@@ -419,8 +419,8 @@ class WorkflowRunRestore:
     def restore_batch(
         self,
         tenant_ids: list[str] | None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime,
+        end_date: datetime,
         limit: int | None = None,
     ) -> list[RestoreResult]:
         """
@@ -428,8 +428,8 @@ class WorkflowRunRestore:
 
         Args:
             tenant_ids: Optional tenant IDs
-            start_date: Optional start date filter
-            end_date: Optional end date filter
+            start_date: Start date filter
+            end_date: End date filter
             limit: Maximum number of runs to restore (default: 100)
 
         Returns:

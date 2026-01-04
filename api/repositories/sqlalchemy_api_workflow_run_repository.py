@@ -494,15 +494,15 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         self,
         session: Session,
         tenant_ids: Sequence[str] | None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime,
+        end_date: datetime,
         limit: int | None = None,
     ) -> Sequence[WorkflowRun]:
-        conditions = [WorkflowRun.is_archived == True]
-        if start_date is not None:
-            conditions.append(WorkflowRun.created_at >= start_date)
-        if end_date is not None:
-            conditions.append(WorkflowRun.created_at < end_date)
+        conditions = [
+            WorkflowRun.is_archived == True,
+            WorkflowRun.created_at >= start_date,
+            WorkflowRun.created_at < end_date,
+        ]
         stmt = select(WorkflowRun).where(*conditions)
         if tenant_ids:
             stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))

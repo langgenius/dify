@@ -308,8 +308,8 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         self,
         session: Session,
         tenant_ids: Sequence[str] | None,
-        start_date: datetime | None = None,
-        end_date: datetime | None = None,
+        start_date: datetime,
+        end_date: datetime,
         limit: int | None = None,
     ) -> Sequence[WorkflowRun]:
         """
