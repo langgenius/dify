@@ -93,7 +93,6 @@ function createMockProviderContext(overrides: Partial<ProviderContextState> = {}
         provider: 'openai',
         label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
         icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-        icon_large: { en_US: 'icon', zh_Hans: 'icon' },
         status: ModelStatusEnum.active,
         models: [
           {
@@ -711,7 +710,6 @@ describe('DebugWithSingleModel', () => {
             provider: 'openai',
             label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
             icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            icon_large: { en_US: 'icon', zh_Hans: 'icon' },
             status: ModelStatusEnum.active,
             models: [
               {
@@ -742,7 +740,6 @@ describe('DebugWithSingleModel', () => {
             provider: 'different-provider',
             label: { en_US: 'Different Provider', zh_Hans: '不同提供商' },
             icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            icon_large: { en_US: 'icon', zh_Hans: 'icon' },
             status: ModelStatusEnum.active,
             models: [],
           },
@@ -925,7 +922,6 @@ describe('DebugWithSingleModel', () => {
             provider: 'openai',
             label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
             icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            icon_large: { en_US: 'icon', zh_Hans: 'icon' },
             status: ModelStatusEnum.active,
             models: [
               {
@@ -975,7 +971,6 @@ describe('DebugWithSingleModel', () => {
             provider: 'openai',
             label: { en_US: 'OpenAI', zh_Hans: 'OpenAI' },
             icon_small: { en_US: 'icon', zh_Hans: 'icon' },
-            icon_large: { en_US: 'icon', zh_Hans: 'icon' },
             status: ModelStatusEnum.active,
             models: [
               {
