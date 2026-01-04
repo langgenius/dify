@@ -3,8 +3,6 @@ from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
-from configs import dify_config as default_dify_config
-from configs.app_config import DifyConfig
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
@@ -12,6 +10,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.workflow.enums import NodeType
 from core.workflow.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.code.code_node import CodeNodeLimits
 from libs.typing import is_str, is_str_dict
 
 from .node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
@@ -37,7 +36,7 @@ class DifyNodeFactory(NodeFactory):
         *,
         code_executor: type[CodeExecutor] | None = None,
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
-        dify_config: DifyConfig | None = None,
+        code_limits: CodeNodeLimits | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
@@ -45,7 +44,7 @@ class DifyNodeFactory(NodeFactory):
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
             tuple(code_providers) if code_providers else (Python3CodeProvider, JavascriptCodeProvider)
         )
-        self._dify_config: DifyConfig = dify_config or default_dify_config
+        self._code_limits = code_limits
 
     @override
     def create_node(self, node_config: dict[str, object]) -> Node:
@@ -96,7 +95,7 @@ class DifyNodeFactory(NodeFactory):
                 graph_runtime_state=self.graph_runtime_state,
                 code_executor=self._code_executor,
                 code_providers=self._code_providers,
-                dify_config=self._dify_config,
+                code_limits=self._code_limits,
             )
 
         return node_class(
