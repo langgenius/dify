@@ -50,6 +50,9 @@ WORKDIR /app/api
 
 # Create non-root user
 ARG dify_uid=1001
+ARG NODE_MAJOR=20
+ARG NODE_PACKAGE_VERSION=20.19.6-1nodesource1
+ARG NODESOURCE_KEY_FPR=6F71F525282841EEDAF851B42F59B5F99B1BE0B4
 RUN groupadd -r -g ${dify_uid} dify && \
     useradd -r -u ${dify_uid} -g ${dify_uid} -s /bin/bash dify && \
     chown -R dify:dify /app
@@ -61,15 +64,19 @@ RUN \
         curl \
         gnupg \
     && mkdir -p /etc/apt/keyrings \
-    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
-        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
-    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key -o /tmp/nodesource.gpg \
+    && gpg --show-keys --with-colons /tmp/nodesource.gpg \
+        | awk -F: '/^fpr:/ {print $10}' \
+        | grep -Fx "${NODESOURCE_KEY_FPR}" \
+    && gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg /tmp/nodesource.gpg \
+    && rm -f /tmp/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_${NODE_MAJOR}.x nodistro main" \
         > /etc/apt/sources.list.d/nodesource.list \
     && apt-get update \
     # Install dependencies
     && apt-get install -y --no-install-recommends \
         # basic environment
-        nodejs \
+        nodejs=${NODE_PACKAGE_VERSION} \
         # for gmpy2 \
         libgmp-dev libmpfr-dev libmpc-dev \
         # For Security
