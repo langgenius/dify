@@ -66,7 +66,7 @@ describe('UpgradeBtn', () => {
 
     it('should render custom label when labelKey is provided', () => {
       // Act
-      render(<UpgradeBtn labelKey="custom.label.key" />)
+      render(<UpgradeBtn labelKey={'custom.label.key' as any} />)
 
       // Assert
       expect(screen.getByText(/custom\.label\.key/i)).toBeInTheDocument()
@@ -74,7 +74,7 @@ describe('UpgradeBtn', () => {
 
     it('should render custom label in plain button when labelKey is provided with isPlain', () => {
       // Act
-      render(<UpgradeBtn isPlain labelKey="custom.label.key" />)
+      render(<UpgradeBtn isPlain labelKey={'custom.label.key' as any} />)
 
       // Assert
       const button = screen.getByRole('button')
@@ -372,7 +372,7 @@ describe('UpgradeBtn', () => {
 
     it('should handle empty string labelKey', () => {
       // Act
-      render(<UpgradeBtn labelKey="" />)
+      render(<UpgradeBtn labelKey={'' as any} />)
 
       // Assert - empty labelKey is falsy, so it falls back to default label
       expect(screen.getByText(/billing\.upgradeBtn\.encourage/i)).toBeInTheDocument()
@@ -391,7 +391,7 @@ describe('UpgradeBtn', () => {
 
     it('should handle isPlain with custom labelKey', () => {
       // Act
-      render(<UpgradeBtn isPlain labelKey="custom.key" />)
+      render(<UpgradeBtn isPlain labelKey={'custom.key' as any} />)
 
       // Assert - labelKey should override plain text
       expect(screen.getByText(/custom\.key/i)).toBeInTheDocument()
@@ -400,7 +400,7 @@ describe('UpgradeBtn', () => {
 
     it('should handle isShort with custom labelKey', () => {
       // Act
-      render(<UpgradeBtn isShort labelKey="custom.short.key" />)
+      render(<UpgradeBtn isShort labelKey={'custom.short.key' as any} />)
 
       // Assert - labelKey should override isShort behavior
       expect(screen.getByText(/custom\.short\.key/i)).toBeInTheDocument()
@@ -423,7 +423,7 @@ describe('UpgradeBtn', () => {
           isShort
           onClick={handleClick}
           loc="test-loc"
-          labelKey="custom.all"
+          labelKey={'custom.all' as any}
         />,
       )
       const badge = screen.getByText(/custom\.all/i)

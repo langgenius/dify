@@ -285,7 +285,7 @@ class ModelProviderFactory:
         """
         Get provider icon
         :param provider: provider name
-        :param icon_type: icon type (icon_small or icon_large)
+        :param icon_type: icon type (icon_small or icon_small_dark)
         :param lang: language (zh_Hans or en_US)
         :return: provider icon
         """
@@ -309,13 +309,7 @@ class ModelProviderFactory:
             else:
                 file_name = provider_schema.icon_small_dark.en_US
         else:
-            if not provider_schema.icon_large:
-                raise ValueError(f"Provider {provider} does not have large icon.")
-
-            if lang.lower() == "zh_hans":
-                file_name = provider_schema.icon_large.zh_Hans
-            else:
-                file_name = provider_schema.icon_large.en_US
+            raise ValueError(f"Unsupported icon type: {icon_type}.")
 
         if not file_name:
             raise ValueError(f"Provider {provider} does not have icon.")

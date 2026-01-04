@@ -75,16 +75,16 @@ const EmptyElement: FC<{ canAdd: boolean, onClick: () => void, type?: 'upload' |
           {type === 'upload' ? <FolderPlusIcon /> : <NotionIcon />}
         </div>
         <span className={s.emptyTitle}>
-          {t('datasetDocuments.list.empty.title')}
+          {t('list.empty.title', { ns: 'datasetDocuments' })}
           <ThreeDotsIcon className="relative -left-1.5 -top-3 inline" />
         </span>
         <div className={s.emptyTip}>
-          {t(`datasetDocuments.list.empty.${type}.tip`)}
+          {t(`list.empty.${type}.tip`, { ns: 'datasetDocuments' })}
         </div>
         {type === 'upload' && canAdd && (
           <Button onClick={onClick} className={s.addFileBtn} variant="secondary-accent">
             <PlusIcon className={s.plusIcon} />
-            {t('datasetDocuments.list.addFile')}
+            {t('list.addFile', { ns: 'datasetDocuments' })}
           </Button>
         )}
       </div>
@@ -120,7 +120,7 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   const debouncedSearchValue = useDebounce(searchValue, { wait: 500 })
 
   const statusFilterItems: Item[] = useMemo(() => [
-    { value: 'all', name: t('datasetDocuments.list.index.all') as string },
+    { value: 'all', name: t('list.index.all', { ns: 'datasetDocuments' }) as string },
     { value: 'queuing', name: DOC_INDEX_STATUS_MAP.queuing.text },
     { value: 'indexing', name: DOC_INDEX_STATUS_MAP.indexing.text },
     { value: 'paused', name: DOC_INDEX_STATUS_MAP.paused.text },
@@ -132,8 +132,8 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   ], [DOC_INDEX_STATUS_MAP, t])
   const normalizedStatusFilterValue = useMemo(() => normalizeStatusForQuery(statusFilterValue), [statusFilterValue])
   const sortItems: Item[] = useMemo(() => [
-    { value: 'created_at', name: t('datasetDocuments.list.sort.uploadTime') as string },
-    { value: 'hit_count', name: t('datasetDocuments.list.sort.hitCount') as string },
+    { value: 'created_at', name: t('list.sort.uploadTime', { ns: 'datasetDocuments' }) as string },
+    { value: 'hit_count', name: t('list.sort.hitCount', { ns: 'datasetDocuments' }) as string },
   ], [t])
 
   // Initialize search value from URL on mount
@@ -300,15 +300,15 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
   return (
     <div className="flex h-full flex-col">
       <div className="flex flex-col justify-center gap-1 px-6 pt-4">
-        <h1 className="text-base font-semibold text-text-primary">{t('datasetDocuments.list.title')}</h1>
+        <h1 className="text-base font-semibold text-text-primary">{t('list.title', { ns: 'datasetDocuments' })}</h1>
         <div className="flex items-center space-x-0.5 text-sm font-normal text-text-tertiary">
-          <span>{t('datasetDocuments.list.desc')}</span>
+          <span>{t('list.desc', { ns: 'datasetDocuments' })}</span>
           <a
             className="flex items-center text-text-accent"
             target="_blank"
             href={docLink('/guides/knowledge-base/integrate-knowledge-within-application')}
           >
-            <span>{t('datasetDocuments.list.learnMore')}</span>
+            <span>{t('list.learnMore', { ns: 'datasetDocuments' })}</span>
             <RiExternalLinkLine className="h-3 w-3" />
           </a>
         </div>
@@ -361,11 +361,11 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
           <div className="flex !h-8 items-center justify-center gap-2">
             {!isFreePlan && <AutoDisabledDocument datasetId={datasetId} />}
             <IndexFailed datasetId={datasetId} />
-            {!embeddingAvailable && <StatusWithAction type="warning" description={t('dataset.embeddingModelNotAvailable')} />}
+            {!embeddingAvailable && <StatusWithAction type="warning" description={t('embeddingModelNotAvailable', { ns: 'dataset' })} />}
             {embeddingAvailable && (
               <Button variant="secondary" className="shrink-0" onClick={showEditMetadataModal}>
                 <RiDraftLine className="mr-1 size-4" />
-                {t('dataset.metadata.metadata')}
+                {t('metadata.metadata', { ns: 'dataset' })}
               </Button>
             )}
             {isShowEditMetadataModal && (
@@ -383,9 +383,9 @@ const Documents: FC<IDocumentsProps> = ({ datasetId }) => {
             {embeddingAvailable && (
               <Button variant="primary" onClick={routeToDocCreate} className="shrink-0">
                 <PlusIcon className={cn('mr-2 h-4 w-4 stroke-current')} />
-                {isDataSourceNotion && t('datasetDocuments.list.addPages')}
-                {isDataSourceWeb && t('datasetDocuments.list.addUrl')}
-                {(!dataset?.data_source_type || isDataSourceFile) && t('datasetDocuments.list.addFile')}
+                {isDataSourceNotion && t('list.addPages', { ns: 'datasetDocuments' })}
+                {isDataSourceWeb && t('list.addUrl', { ns: 'datasetDocuments' })}
+                {(!dataset?.data_source_type || isDataSourceFile) && t('list.addFile', { ns: 'datasetDocuments' })}
               </Button>
             )}
           </div>

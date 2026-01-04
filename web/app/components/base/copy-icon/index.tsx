@@ -14,7 +14,7 @@ type Props = {
   content: string
 }
 
-const prefixEmbedded = 'appOverview.overview.appInfo.embedded'
+const prefixEmbedded = 'overview.appInfo.embedded'
 
 const CopyIcon = ({ content }: Props) => {
   const { t } = useTranslation()
@@ -33,8 +33,8 @@ const CopyIcon = ({ content }: Props) => {
     <Tooltip
       popupContent={
         (isCopied
-          ? t(`${prefixEmbedded}.copied`)
-          : t(`${prefixEmbedded}.copy`)) || ''
+          ? t(`${prefixEmbedded}.copied`, { ns: 'appOverview' })
+          : t(`${prefixEmbedded}.copy`, { ns: 'appOverview' })) || ''
       }
     >
       <div onMouseLeave={onMouseLeave}>

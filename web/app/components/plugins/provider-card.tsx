@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 import Badge from '../base/badge'
@@ -36,7 +36,7 @@ const ProviderCardComponent: FC<Props> = ({
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
   const { org, label } = payload
-  const { locale } = useI18N()
+  const locale = useLocale()
 
   // Memoize the marketplace link params to prevent unnecessary re-renders
   const marketplaceLinkParams = useMemo(() => ({ language: locale, theme }), [locale, theme])
@@ -74,14 +74,14 @@ const ProviderCardComponent: FC<Props> = ({
           variant="primary"
           onClick={showInstallFromMarketplace}
         >
-          {t('plugin.detailPanel.operation.install')}
+          {t('detailPanel.operation.install', { ns: 'plugin' })}
         </Button>
         <Button
           className="grow"
           variant="secondary"
         >
           <a href={getPluginLinkInMarketplace(payload, marketplaceLinkParams)} target="_blank" className="flex items-center gap-0.5">
-            {t('plugin.detailPanel.operation.detail')}
+            {t('detailPanel.operation.detail', { ns: 'plugin' })}
             <RiArrowRightUpLine className="h-4 w-4" />
           </a>
         </Button>
