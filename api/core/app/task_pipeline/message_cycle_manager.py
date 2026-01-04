@@ -238,6 +238,7 @@ class MessageCycleManager:
         tool_arguments: str | None = None,
         tool_files: list[str] | None = None,
         tool_error: str | None = None,
+        tool_elapsed_time: float | None = None,
         event_type: StreamEvent | None = None,
     ) -> MessageStreamResponse:
         """
@@ -253,19 +254,38 @@ class MessageCycleManager:
         :param tool_error: error message if tool failed
         :return:
         """
-        return MessageStreamResponse(
+        response = MessageStreamResponse(
             task_id=self._application_generate_entity.task_id,
             id=message_id,
             answer=answer,
             from_variable_selector=from_variable_selector,
-            chunk_type=chunk_type,
-            tool_call_id=tool_call_id,
-            tool_name=tool_name,
-            tool_arguments=tool_arguments,
-            tool_files=tool_files,
-            tool_error=tool_error,
             event=event_type or StreamEvent.MESSAGE,
         )
+
+        if chunk_type:
+            response = response.model_copy(update={"chunk_type": chunk_type})
+
+        if chunk_type == "tool_call":
+            response = response.model_copy(
+                update={
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "tool_arguments": tool_arguments,
+                }
+            )
+        elif chunk_type == "tool_result":
+            response = response.model_copy(
+                update={
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "tool_arguments": tool_arguments,
+                    "tool_files": tool_files,
+                    "tool_error": tool_error,
+                    "tool_elapsed_time": tool_elapsed_time,
+                }
+            )
+
+        return response
 
     def message_replace_to_stream_response(self, answer: str, reason: str = "") -> MessageReplaceStreamResponse:
         """

@@ -80,6 +80,7 @@ from core.workflow.node_events import (
     ToolCallChunkEvent,
     ToolResultChunkEvent,
 )
+from core.workflow.node_events.node import ThoughtEndChunkEvent, ThoughtStartChunkEvent
 from core.workflow.nodes.base.entities import VariableSelector
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.base.variable_template_parser import VariableTemplateParser
@@ -565,13 +566,26 @@ class LLMNode(Node[LLMNodeData]):
                         # Generation output: split out thoughts, forward only non-thought content chunks
                         for kind, segment in think_parser.process(text_part):
                             if not segment:
-                                continue
+                                if kind not in {"thought_start", "thought_end"}:
+                                    continue
 
-                            if kind == "thought":
+                            if kind == "thought_start":
+                                yield ThoughtStartChunkEvent(
+                                    selector=[node_id, "generation", "thought"],
+                                    chunk="",
+                                    is_final=False,
+                                )
+                            elif kind == "thought":
                                 reasoning_chunks.append(segment)
                                 yield ThoughtChunkEvent(
                                     selector=[node_id, "generation", "thought"],
                                     chunk=segment,
+                                    is_final=False,
+                                )
+                            elif kind == "thought_end":
+                                yield ThoughtEndChunkEvent(
+                                    selector=[node_id, "generation", "thought"],
+                                    chunk="",
                                     is_final=False,
                                 )
                             else:
@@ -596,13 +610,25 @@ class LLMNode(Node[LLMNodeData]):
             raise LLMNodeError(f"Failed to parse structured output: {e}")
 
         for kind, segment in think_parser.flush():
-            if not segment:
+            if not segment and kind not in {"thought_start", "thought_end"}:
                 continue
-            if kind == "thought":
+            if kind == "thought_start":
+                yield ThoughtStartChunkEvent(
+                    selector=[node_id, "generation", "thought"],
+                    chunk="",
+                    is_final=False,
+                )
+            elif kind == "thought":
                 reasoning_chunks.append(segment)
                 yield ThoughtChunkEvent(
                     selector=[node_id, "generation", "thought"],
                     chunk=segment,
+                    is_final=False,
+                )
+            elif kind == "thought_end":
+                yield ThoughtEndChunkEvent(
+                    selector=[node_id, "generation", "thought"],
+                    chunk="",
                     is_final=False,
                 )
             else:
@@ -1649,6 +1675,7 @@ class LLMNode(Node[LLMNodeData]):
             "output": tool_call.output,
             "files": files,
             "status": tool_call.status.value if hasattr(tool_call.status, "value") else tool_call.status,
+            "elapsed_time": tool_call.elapsed_time,
         }
 
     def _flush_thought_segment(self, buffers: StreamBuffers, trace_state: TraceState) -> None:
@@ -1707,6 +1734,7 @@ class LLMNode(Node[LLMNodeData]):
                     id=tool_call_id,
                     name=tool_name,
                     arguments=tool_arguments,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 ),
             )
             trace_state.trace_segments.append(tool_call_segment)
@@ -1755,6 +1783,7 @@ class LLMNode(Node[LLMNodeData]):
                     id=tool_call_id,
                     name=tool_name,
                     arguments=None,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 ),
             )
             if existing_tool_segment is None:
@@ -1767,6 +1796,7 @@ class LLMNode(Node[LLMNodeData]):
                     id=tool_call_id,
                     name=tool_name,
                     arguments=None,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 )
             tool_call_segment.tool_call.output = (
                 str(tool_output) if tool_output is not None else str(tool_error) if tool_error is not None else None
@@ -1785,6 +1815,7 @@ class LLMNode(Node[LLMNodeData]):
                     output=result_output,
                     files=tool_files,
                     status=ToolResultStatus.ERROR if tool_error else ToolResultStatus.SUCCESS,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 ),
                 is_final=False,
             )
@@ -1806,16 +1837,30 @@ class LLMNode(Node[LLMNodeData]):
                 chunk_text = str(chunk_text)
 
             for kind, segment in buffers.think_parser.process(chunk_text):
-                if not segment:
+                if not segment and kind not in {"thought_start", "thought_end"}:
                     continue
 
-                if kind == "thought":
+                if kind == "thought_start":
+                    self._flush_content_segment(buffers, trace_state)
+                    yield ThoughtStartChunkEvent(
+                        selector=[self._node_id, "generation", "thought"],
+                        chunk="",
+                        is_final=False,
+                    )
+                elif kind == "thought":
                     self._flush_content_segment(buffers, trace_state)
                     buffers.current_turn_reasoning.append(segment)
                     buffers.pending_thought.append(segment)
                     yield ThoughtChunkEvent(
                         selector=[self._node_id, "generation", "thought"],
                         chunk=segment,
+                        is_final=False,
+                    )
+                elif kind == "thought_end":
+                    self._flush_thought_segment(buffers, trace_state)
+                    yield ThoughtEndChunkEvent(
+                        selector=[self._node_id, "generation", "thought"],
+                        chunk="",
                         is_final=False,
                     )
                 else:
@@ -1843,15 +1888,29 @@ class LLMNode(Node[LLMNodeData]):
         self, buffers: StreamBuffers, trace_state: TraceState, aggregate: AggregatedResult
     ) -> Generator[NodeEventBase, None, None]:
         for kind, segment in buffers.think_parser.flush():
-            if not segment:
+            if not segment and kind not in {"thought_start", "thought_end"}:
                 continue
-            if kind == "thought":
+            if kind == "thought_start":
+                self._flush_content_segment(buffers, trace_state)
+                yield ThoughtStartChunkEvent(
+                    selector=[self._node_id, "generation", "thought"],
+                    chunk="",
+                    is_final=False,
+                )
+            elif kind == "thought":
                 self._flush_content_segment(buffers, trace_state)
                 buffers.current_turn_reasoning.append(segment)
                 buffers.pending_thought.append(segment)
                 yield ThoughtChunkEvent(
                     selector=[self._node_id, "generation", "thought"],
                     chunk=segment,
+                    is_final=False,
+                )
+            elif kind == "thought_end":
+                self._flush_thought_segment(buffers, trace_state)
+                yield ThoughtEndChunkEvent(
+                    selector=[self._node_id, "generation", "thought"],
+                    chunk="",
                     is_final=False,
                 )
             else:
@@ -1960,6 +2019,7 @@ class LLMNode(Node[LLMNodeData]):
                     arguments=json.dumps(tool_args) if tool_args else "",
                     output=result_text,
                     status=status,
+                    elapsed_time=log.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if log.metadata else None,
                 )
             )
 

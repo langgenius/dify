@@ -42,6 +42,7 @@ class ToolCallDetail(BaseModel):
     name: str = Field(..., description="Name of the tool")
     arguments: str = Field(default="", description="JSON string of tool arguments")
     result: str = Field(default="", description="Result from the tool execution")
+    elapsed_time: float | None = Field(default=None, description="Elapsed time in seconds")
 
 
 class LLMGenerationDetailData(BaseModel):

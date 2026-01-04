@@ -160,6 +160,7 @@ class StreamEventBuffer:
                 "name": tool_name or "",
                 "arguments": tool_arguments or "",
                 "result": "",
+                "elapsed_time": None,
             }
             self.tool_calls.append(tool_call)
             idx = len(self.tool_calls) - 1
@@ -168,13 +169,14 @@ class StreamEventBuffer:
 
         self._last_event_type = "tool_call"
 
-    def record_tool_result(self, tool_call_id: str, result: str) -> None:
+    def record_tool_result(self, tool_call_id: str, result: str, tool_elapsed_time: float | None = None) -> None:
         """Record a tool result event (update existing tool call)."""
         if not tool_call_id:
             return
         if tool_call_id in self._tool_call_id_map:
             idx = self._tool_call_id_map[tool_call_id]
             self.tool_calls[idx]["result"] = result
+            self.tool_calls[idx]["elapsed_time"] = tool_elapsed_time
 
     def finalize(self) -> None:
         """Finalize the buffer, flushing any pending data."""
@@ -523,7 +525,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_name = tool_payload.name if tool_payload and tool_payload.name else ""
         tool_arguments = tool_call.arguments if tool_call and tool_call.arguments else ""
         tool_files = tool_result.files if tool_result else []
-
+        tool_elapsed_time = tool_result.elapsed_time if tool_result else None
         # Record stream event based on chunk type
         chunk_type = event.chunk_type or ChunkType.TEXT
         match chunk_type:
@@ -543,6 +545,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
                 self._stream_buffer.record_tool_result(
                     tool_call_id=tool_call_id,
                     result=delta_text,
+                    tool_elapsed_time=tool_elapsed_time,
                 )
                 self._task_state.answer += delta_text
 
@@ -555,6 +558,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_name=tool_name or None,
             tool_arguments=tool_arguments or None,
             tool_files=tool_files,
+            tool_elapsed_time=tool_elapsed_time,
         )
 
     def _handle_iteration_start_event(

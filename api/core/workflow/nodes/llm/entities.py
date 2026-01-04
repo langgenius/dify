@@ -163,6 +163,7 @@ class ThinkTagStreamParser:
                     thought_text = self._buffer[: end_match.start()]
                     if thought_text:
                         parts.append(("thought", thought_text))
+                    parts.append(("thought_end", ""))
                     self._buffer = self._buffer[end_match.end() :]
                     self._in_think = False
                     continue
@@ -180,6 +181,7 @@ class ThinkTagStreamParser:
                 if prefix:
                     parts.append(("text", prefix))
                 self._buffer = self._buffer[start_match.end() :]
+                parts.append(("thought_start", ""))
                 self._in_think = True
                 continue
 
@@ -195,7 +197,7 @@ class ThinkTagStreamParser:
             # Extra safeguard: strip any stray tags that slipped through.
             content = self._START_PATTERN.sub("", content)
             content = self._END_PATTERN.sub("", content)
-            if content:
+            if content or kind in {"thought_start", "thought_end"}:
                 cleaned_parts.append((kind, content))
 
         return cleaned_parts
@@ -210,12 +212,19 @@ class ThinkTagStreamParser:
         if content.lower().startswith(self._START_PREFIX) or content.lower().startswith(self._END_PREFIX):
             content = ""
         self._buffer = ""
-        if not content:
+        if not content and not self._in_think:
             return []
         # Strip any complete tags that might still be present.
         content = self._START_PATTERN.sub("", content)
         content = self._END_PATTERN.sub("", content)
-        return [(kind, content)] if content else []
+
+        result: list[tuple[str, str]] = []
+        if content:
+            result.append((kind, content))
+        if self._in_think:
+            result.append(("thought_end", ""))
+            self._in_think = False
+        return result
 
 
 class StreamBuffers(BaseModel):

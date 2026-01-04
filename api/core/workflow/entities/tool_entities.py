@@ -22,6 +22,7 @@ class ToolResult(BaseModel):
     output: str | None = Field(default=None, description="Tool output text, error or success message")
     files: list[str] = Field(default_factory=list, description="File produced by tool")
     status: ToolResultStatus | None = Field(default=ToolResultStatus.SUCCESS, description="Tool execution status")
+    elapsed_time: float | None = Field(default=None, description="Elapsed seconds spent executing the tool")
 
 
 class ToolCallResult(BaseModel):
@@ -31,3 +32,4 @@ class ToolCallResult(BaseModel):
     output: str | None = Field(default=None, description="Tool output text, error or success message")
     files: list[File] = Field(default_factory=list, description="File produced by tool")
     status: ToolResultStatus = Field(default=ToolResultStatus.SUCCESS, description="Tool execution status")
+    elapsed_time: float | None = Field(default=None, description="Elapsed seconds spent executing the tool")

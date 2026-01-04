@@ -580,9 +580,10 @@ class Node(Generic[NodeDataT]):
         from core.workflow.entities import ToolResult, ToolResultStatus
         from core.workflow.graph_events import ChunkType
 
-        tool_result = event.tool_result
-        status: ToolResultStatus = (
-            tool_result.status if tool_result and tool_result.status is not None else ToolResultStatus.SUCCESS
+        tool_result = event.tool_result or ToolResult()
+        status: ToolResultStatus = tool_result.status or ToolResultStatus.SUCCESS
+        tool_result = tool_result.model_copy(
+            update={"status": status, "files": tool_result.files or []},
         )
 
         return NodeRunStreamChunkEvent(
@@ -593,13 +594,7 @@ class Node(Generic[NodeDataT]):
             chunk=event.chunk,
             is_final=event.is_final,
             chunk_type=ChunkType.TOOL_RESULT,
-            tool_result=ToolResult(
-                id=tool_result.id if tool_result else None,
-                name=tool_result.name if tool_result else None,
-                output=tool_result.output if tool_result else None,
-                files=tool_result.files if tool_result else [],
-                status=status,
-            ),
+            tool_result=tool_result,
         )
 
     @_dispatch.register
