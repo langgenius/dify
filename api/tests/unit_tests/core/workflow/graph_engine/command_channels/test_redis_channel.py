@@ -4,7 +4,13 @@ import json
 from unittest.mock import MagicMock
 
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
-from core.workflow.graph_engine.entities.commands import AbortCommand, CommandType, GraphEngineCommand
+from core.workflow.graph_engine.entities.commands import (
+    AbortCommand,
+    CommandType,
+    GraphEngineCommand,
+    UpdateVariablesCommand,
+    VariableUpdate,
+)
 
 
 class TestRedisChannel:
@@ -147,6 +153,38 @@ class TestRedisChannel:
         assert len(commands) == 2
         assert commands[0].command_type == CommandType.ABORT
         assert isinstance(commands[1], AbortCommand)
+
+    def test_fetch_commands_with_update_variables_command(self):
+        """Test fetching update variables command from Redis."""
+        mock_redis = MagicMock()
+        pending_pipe = MagicMock()
+        fetch_pipe = MagicMock()
+        pending_context = MagicMock()
+        fetch_context = MagicMock()
+        pending_context.__enter__.return_value = pending_pipe
+        pending_context.__exit__.return_value = None
+        fetch_context.__enter__.return_value = fetch_pipe
+        fetch_context.__exit__.return_value = None
+        mock_redis.pipeline.side_effect = [pending_context, fetch_context]
+
+        update_command = UpdateVariablesCommand(
+            updates=[
+                VariableUpdate(selector=["node1", "foo"], value="bar"),
+                VariableUpdate(selector=["node2", "baz"], value=123),
+            ]
+        )
+        command_json = json.dumps(update_command.model_dump())
+
+        pending_pipe.execute.return_value = [b"1", 1]
+        fetch_pipe.execute.return_value = [[command_json.encode()], 1]
+
+        channel = RedisChannel(mock_redis, "test:key")
+        commands = channel.fetch_commands()
+
+        assert len(commands) == 1
+        assert isinstance(commands[0], UpdateVariablesCommand)
+        assert commands[0].updates[0].selector == ("node1", "foo")
+        assert commands[0].updates[0].value == "bar"
 
     def test_fetch_commands_skips_invalid_json(self):
         """Test that invalid JSON commands are skipped."""
