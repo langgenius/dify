@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, final, cast
+from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
@@ -99,8 +99,7 @@ class DifyNodeFactory(NodeFactory):
 
         # Create node instance
         if node_type == NodeType.CODE:
-            code_node_class = cast(type[CodeNode], node_class)
-            return code_node_class(
+            return CodeNode(
                 id=node_id,
                 config=node_config,
                 graph_init_params=self.graph_init_params,
