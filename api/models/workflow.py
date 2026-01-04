@@ -1749,17 +1749,6 @@ class WorkflowPause(DefaultFieldsMixin, Base):
         back_populates="pause",
     )
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "workflow_id": self.workflow_id,
-            "workflow_run_id": self.workflow_run_id,
-            "resumed_at": self.resumed_at.isoformat() if self.resumed_at else None,
-            "state_object_key": self.state_object_key,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-        }
-
 
 class WorkflowPauseReason(DefaultFieldsMixin, Base):
     __tablename__ = "workflow_pause_reasons"
