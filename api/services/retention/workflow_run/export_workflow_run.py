@@ -164,6 +164,7 @@ class WorkflowRunExportService:
                         json.dumps(records, indent=2, default=str),
                     )
 
+            table_stats["workflow_run"] = {"row_count": 1}
             manifest = {
                 "schema_version": "1.0",
                 "workflow_run_id": run.id,
@@ -264,6 +265,7 @@ class WorkflowRunExportService:
                     json.dumps(app_logs, indent=2, default=str),
                 )
             # Update manifest tables info
+            tables["workflow_run"] = {"row_count": 1}
             tables["workflow_app_logs"] = {"row_count": len(app_logs)}
 
             # Update manifest with export info
