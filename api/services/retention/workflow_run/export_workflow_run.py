@@ -8,6 +8,7 @@ supporting both archived (from storage) and non-archived (from DB) runs.
 import io
 import json
 import logging
+import tarfile
 import zipfile
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -58,6 +59,8 @@ class WorkflowRunExportService:
         "workflow_pause_reasons",
         "workflow_trigger_logs",
     ]
+    ARCHIVE_SCHEMA_VERSION = "1.0"
+    ARCHIVE_BUNDLE_NAME = f"archive.v{ARCHIVE_SCHEMA_VERSION}.tar"
 
     def __init__(self):
         self.workflow_run_repo: APIWorkflowRunRepository | None = None
@@ -209,36 +212,48 @@ class WorkflowRunExportService:
                 json.dumps(run_data, indent=2, default=str),
             )
 
-            # Load manifest
             created_at = run.created_at
             prefix = (
                 f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
                 f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
             )
-            manifest_key = f"{prefix}/manifest.json"
+            archive_key = f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
             try:
-                manifest_data = storage.get_object(manifest_key)
-                manifest = json.loads(manifest_data.decode("utf-8"))
+                archive_data = storage.get_object(archive_key)
             except FileNotFoundError:
-                raise WorkflowRunExportError(f"Archived manifest not found: {manifest_key}")
+                raise WorkflowRunExportError(f"Archive bundle not found: {archive_key}")
 
-            # Download and add each archived table's data
-            tables = manifest.get("tables", {})
-            for table_name, info in tables.items():
-                row_count = info.get("row_count", 0)
-                if row_count == 0:
-                    continue
-
-                table_key = f"{prefix}/table={table_name}/data.jsonl.gz"
+            with tarfile.open(fileobj=io.BytesIO(archive_data), mode="r") as tar:
                 try:
-                    data = storage.get_object(table_key)
+                    fileobj = tar.extractfile("manifest.json")
+                except KeyError as e:
+                    raise WorkflowRunExportError("manifest.json missing from archive bundle") from e
+                if fileobj is None:
+                    raise WorkflowRunExportError("manifest.json missing from archive bundle")
+                manifest = json.loads(fileobj.read().decode("utf-8"))
+
+                # Download and add each archived table's data
+                tables = manifest.get("tables", {})
+                for table_name, info in tables.items():
+                    row_count = info.get("row_count", 0)
+                    if row_count == 0:
+                        continue
+
+                    member_path = f"{table_name}.jsonl.gz"
+                    try:
+                        fileobj = tar.extractfile(member_path)
+                    except KeyError:
+                        logger.warning("Table data not found: %s", member_path)
+                        continue
+                    if fileobj is None:
+                        logger.warning("Table data not found: %s", member_path)
+                        continue
+                    data = fileobj.read()
                     records = ArchiveStorage.deserialize_from_jsonl_gz(data)
                     zf.writestr(
                         f"{table_name}.json",
                         json.dumps(records, indent=2, default=str),
                     )
-                except FileNotFoundError:
-                    logger.warning("Table data not found: %s", table_key)
 
             # Add DB-resident tables (workflow_app_logs)
             table_data = self._collect_db_table_data(session, run)
