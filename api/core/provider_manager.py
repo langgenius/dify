@@ -331,7 +331,6 @@ class ProviderManager:
                 provider=provider_schema.provider,
                 label=provider_schema.label,
                 icon_small=provider_schema.icon_small,
-                icon_large=provider_schema.icon_large,
                 supported_model_types=provider_schema.supported_model_types,
             ),
         )
