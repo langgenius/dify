@@ -118,7 +118,8 @@ const Popup = () => {
             children: (
               <div className="system-xs-regular text-text-secondary">
                 <Trans
-                  i18nKey="datasetPipeline.publishPipeline.success.tip"
+                  i18nKey="publishPipeline.success.tip"
+                  ns="datasetPipeline"
                   components={{
                     CustomLink: (
                       <Link

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
 import { RiAlertFill } from '@remixicon/react'
-import { camelCase } from 'es-toolkit/compat'
+import { camelCase } from 'es-toolkit/string'
 import Link from 'next/link'
 import * as React from 'react'
 import { useMemo } from 'react'
@@ -74,6 +74,7 @@ const DeprecationNotice: FC<DeprecationNoticeProps> = ({
               <Trans
                 t={t}
                 i18nKey={`${i18nPrefix}.fullMessage`}
+                ns="plugin"
                 components={{
                   CustomLink: (
                     <Link

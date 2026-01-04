@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Prikazno ime",
   "variableConfig.editModalTitle": "Uredi vnosno polje",
   "variableConfig.errorMsg.atLeastOneOption": "Potrebna je vsaj ena možnost",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "Shema JSON ni veljaven JSON",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "Shema JSON mora imeti tip \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Ime nalepke je obvezno",
   "variableConfig.errorMsg.optionRepeat": "Ima možnosti ponavljanja",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Imena spremenljivke ni mogoče ponoviti",

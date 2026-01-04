@@ -3,7 +3,7 @@ import type {
   OnSelectBlock,
 } from '@/app/components/workflow/types'
 import { RiMoreFill } from '@remixicon/react'
-import { intersection } from 'es-toolkit/compat'
+import { intersection } from 'es-toolkit/array'
 import {
   useCallback,
 } from 'react'

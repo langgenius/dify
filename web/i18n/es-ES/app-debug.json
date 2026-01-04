@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Nombre para mostrar",
   "variableConfig.editModalTitle": "Editar Campo de Entrada",
   "variableConfig.errorMsg.atLeastOneOption": "Se requiere al menos una opción",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "El esquema JSON no es un JSON válido",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "El esquema JSON debe tener el tipo \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Nombre de la etiqueta es requerido",
   "variableConfig.errorMsg.optionRepeat": "Hay opciones repetidas",
   "variableConfig.errorMsg.varNameCanBeRepeat": "El nombre de la variable no puede repetirse",
