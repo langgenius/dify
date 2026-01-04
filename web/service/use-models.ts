@@ -82,7 +82,7 @@ export const useGetModelCredential = (
 ) => {
   return useQuery({
     enabled,
-    queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId],
+    queryKey: [NAME_SPACE, 'model-list', provider, model, modelType, credentialId, configFrom],
     queryFn: () => fetchModelCredential(provider, model, modelType, configFrom, credentialId),
     staleTime: 0,
     gcTime: 0,

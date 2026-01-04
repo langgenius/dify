@@ -39,9 +39,9 @@ export const useSegmentList = (
   disable?: boolean,
 ) => {
   const { datasetId, documentId, params } = payload
-  const { page, limit, keyword, enabled } = params
+
   return useQuery<SegmentsResponse>({
-    queryKey: [...useSegmentListKey, { datasetId, documentId, page, limit, keyword, enabled }],
+    queryKey: [...useSegmentListKey, datasetId, documentId, params],
     queryFn: () => {
       return fetchSegmentList(datasetId, documentId, params)
     },
@@ -115,9 +115,9 @@ export const useChildSegmentList = (
   disable?: boolean,
 ) => {
   const { datasetId, documentId, segmentId, params } = payload
-  const { page, limit, keyword } = params
+
   return useQuery({
-    queryKey: [...useChildSegmentListKey, { datasetId, documentId, segmentId, page, limit, keyword }],
+    queryKey: [...useChildSegmentListKey, datasetId, documentId, segmentId, params],
     queryFn: () => {
       return fetchChildSegments(datasetId, documentId, segmentId, params)
     },
