@@ -539,6 +539,16 @@ export const useChat = (
             })
           }
         },
+        onHumanInputFormFilled: ({ data }) => {
+          delete responseItem.humanInputFormData
+          responseItem.humanInputFormFilledData = data
+          updateCurrentQAOnTree({
+            placeholderQuestionId,
+            questionItem,
+            responseItem,
+            parentId: params.parent_message_id,
+          })
+        },
         onWorkflowPaused: ({ data: _data }) => {
           responseItem.workflowProcess!.status = WorkflowRunningStatus.Paused
           updateCurrentQAOnTree({

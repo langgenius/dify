@@ -181,6 +181,7 @@ export const useWorkflowRun = () => {
       onError,
       onWorkflowPaused,
       onHumanInputRequired,
+      onHumanInputFormFilled,
       onCompleted,
       ...restCallback
     } = callback || {}
@@ -610,6 +611,7 @@ export const useWorkflowRun = () => {
             baseSseOptions.onTextReplace,
             baseSseOptions.onAgentLog,
             baseSseOptions.onHumanInputRequired,
+            baseSseOptions.onHumanInputFormFilled,
             baseSseOptions.onWorkflowPaused,
             baseSseOptions.onDataSourceNodeProcessing,
             baseSseOptions.onDataSourceNodeCompleted,
@@ -791,6 +793,10 @@ export const useWorkflowRun = () => {
         handleWorkflowNodeHumanInputRequired(params)
         if (onHumanInputRequired)
           onHumanInputRequired(params)
+      },
+      onHumanInputFormFilled: (params) => {
+        if (onHumanInputFormFilled)
+          onHumanInputFormFilled(params)
       },
       ...restCallback,
     }

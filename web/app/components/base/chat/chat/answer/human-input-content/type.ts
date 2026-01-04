@@ -19,8 +19,6 @@ export type HumanInputContentProps = {
 
 export type HumanInputFormProps = {
   formData: HumanInputFormData
-  showTimeout?: boolean
-  expirationTime?: number
   onSubmit?: (formID: string, data: any) => Promise<void>
 }
 

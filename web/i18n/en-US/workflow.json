@@ -588,6 +588,7 @@
   "nodes.humanInput.userActions.emptyTip": "Click the '+' button to add user actions",
   "nodes.humanInput.userActions.title": "User Actions",
   "nodes.humanInput.userActions.tooltip": "Define buttons that users can click to respond to this form. Each button can trigger different workflow paths.",
+  "nodes.humanInput.userActions.triggered": "<strong>{{actionName}}</strong> has been triggered",
   "nodes.ifElse.addCondition": "Add Condition",
   "nodes.ifElse.addSubVariable": "Sub Variable",
   "nodes.ifElse.and": "and",

@@ -4,14 +4,11 @@ import * as React from 'react'
 import { useCallback, useState } from 'react'
 import Button from '@/app/components/base/button'
 import ContentItem from './content-item'
-import ExpirationTime from './expiration-time'
 import { getButtonStyle, initializeInputs, splitByOutputVar } from './utils'
 
 const HumanInputForm = ({
   formData,
-  showTimeout,
   onSubmit,
-  expirationTime,
 }: HumanInputFormProps) => {
   const formID = formData.form_id
   const defaultInputs = initializeInputs(formData.inputs)
@@ -56,9 +53,6 @@ const HumanInputForm = ({
           </Button>
         ))}
       </div>
-      {showTimeout && typeof expirationTime === 'number' && (
-        <ExpirationTime expirationTime={expirationTime} />
-      )}
     </>
   )
 }

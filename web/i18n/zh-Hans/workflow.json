@@ -588,6 +588,7 @@
   "nodes.humanInput.userActions.emptyTip": "点击 '+' 按钮添加用户操作",
   "nodes.humanInput.userActions.title": "用户操作",
   "nodes.humanInput.userActions.tooltip": "定义用户可以点击以响应此表单的按钮。每个按钮都可以触发不同的工作流路径。",
+  "nodes.humanInput.userActions.triggered": "已触发<strong>{{actionName}}</strong>",
   "nodes.ifElse.addCondition": "添加条件",
   "nodes.ifElse.addSubVariable": "添加子变量",
   "nodes.ifElse.and": "and",

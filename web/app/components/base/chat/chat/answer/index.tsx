@@ -6,8 +6,10 @@ import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
+import type { ExecutedAction } from './human-input-content/type'
 import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
 import type { AppData } from '@/models/share'
+import type { HumanInputFormData } from '@/types/workflow'
 import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
@@ -70,6 +72,7 @@ const Answer: FC<AnswerProps> = ({
     allFiles,
     message_files,
     humanInputFormData,
+    humanInputFormFilledData,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -100,6 +103,30 @@ const Answer: FC<AnswerProps> = ({
       showDebugModeTip: !isWebappEnabled,
     }
   }, [getHumanInputNodeData, humanInputFormData?.node_id])
+
+  const filledFormData = useMemo((): HumanInputFormData | undefined => {
+    if (!humanInputFormFilledData)
+      return
+    return {
+      form_id: '',
+      node_id: humanInputFormFilledData.node_id,
+      node_title: '',
+      form_content: humanInputFormFilledData.rendered_content,
+      inputs: [],
+      actions: [],
+      web_app_form_token: '',
+      resolved_placeholder_values: {},
+    }
+  }, [humanInputFormFilledData])
+
+  const executedAction = useMemo((): ExecutedAction | undefined => {
+    if (!humanInputFormFilledData)
+      return
+    return {
+      id: humanInputFormFilledData.action_id,
+      title: humanInputFormFilledData.action_text,
+    }
+  }, [humanInputFormFilledData])
 
   const getContainerWidth = () => {
     if (containerRef.current)
@@ -200,15 +227,25 @@ const Answer: FC<AnswerProps> = ({
                 <BasicContent item={item} />
               )
             }
-            {humanInputFormData && (
-              <HumanInputContent
-                formData={humanInputFormData}
-                showEmailTip={deliveryMethodsConfig.showEmailTip}
-                isEmailDebugMode={deliveryMethodsConfig.isEmailDebugMode}
-                showDebugModeTip={deliveryMethodsConfig.showDebugModeTip}
-                onSubmit={onHumanInputFormSubmit}
-              />
-            )}
+            {
+              humanInputFormData && (
+                <HumanInputContent
+                  formData={humanInputFormData}
+                  showEmailTip={deliveryMethodsConfig.showEmailTip}
+                  isEmailDebugMode={deliveryMethodsConfig.isEmailDebugMode}
+                  showDebugModeTip={deliveryMethodsConfig.showDebugModeTip}
+                  onSubmit={onHumanInputFormSubmit}
+                />
+              )
+            }
+            {
+              filledFormData && (
+                <HumanInputContent
+                  formData={filledFormData}
+                  executedAction={executedAction}
+                />
+              )
+            }
             {
               (hasAgentThoughts) && (
                 <AgentContent
