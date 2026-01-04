@@ -8,6 +8,7 @@ This module tests the core authentication endpoints including:
 - Account status validation
 """
 
+import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -26,6 +27,11 @@ from controllers.console.error import (
     WorkspacesLimitExceeded,
 )
 from services.errors.account import AccountLoginError, AccountPasswordError
+
+
+def encode_password(password: str) -> str:
+    """Helper to encode password as Base64 for testing."""
+    return base64.b64encode(password.encode("utf-8")).decode()
 
 
 class TestLoginApi:
@@ -106,7 +112,9 @@ class TestLoginApi:
 
         # Act
         with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": "ValidPass123!"}
+            "/login",
+            method="POST",
+            json={"email": "test@example.com", "password": encode_password("ValidPass123!")},
         ):
             login_api = LoginApi()
             response = login_api.post()
@@ -158,7 +166,11 @@ class TestLoginApi:
         with app.test_request_context(
             "/login",
             method="POST",
-            json={"email": "test@example.com", "password": "ValidPass123!", "invite_token": "valid_token"},
+            json={
+                "email": "test@example.com",
+                "password": encode_password("ValidPass123!"),
+                "invite_token": "valid_token",
+            },
         ):
             login_api = LoginApi()
             response = login_api.post()
@@ -186,7 +198,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": "password"}
+            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("password")}
         ):
             login_api = LoginApi()
             with pytest.raises(EmailPasswordLoginLimitError):
@@ -209,7 +221,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login", method="POST", json={"email": "frozen@example.com", "password": "password"}
+            "/login", method="POST", json={"email": "frozen@example.com", "password": encode_password("password")}
         ):
             login_api = LoginApi()
             with pytest.raises(AccountInFreezeError):
@@ -246,7 +258,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": "WrongPass123!"}
+            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("WrongPass123!")}
         ):
             login_api = LoginApi()
             with pytest.raises(AuthenticationFailedError):
@@ -277,7 +289,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login", method="POST", json={"email": "banned@example.com", "password": "ValidPass123!"}
+            "/login", method="POST", json={"email": "banned@example.com", "password": encode_password("ValidPass123!")}
         ):
             login_api = LoginApi()
             with pytest.raises(AccountBannedError):
@@ -322,7 +334,7 @@ class TestLoginApi:
 
         # Act & Assert
         with app.test_request_context(
-            "/login", method="POST", json={"email": "test@example.com", "password": "ValidPass123!"}
+            "/login", method="POST", json={"email": "test@example.com", "password": encode_password("ValidPass123!")}
         ):
             login_api = LoginApi()
             with pytest.raises(WorkspacesLimitExceeded):
@@ -349,7 +361,11 @@ class TestLoginApi:
         with app.test_request_context(
             "/login",
             method="POST",
-            json={"email": "different@example.com", "password": "ValidPass123!", "invite_token": "token"},
+            json={
+                "email": "different@example.com",
+                "password": encode_password("ValidPass123!"),
+                "invite_token": "token",
+            },
         ):
             login_api = LoginApi()
             with pytest.raises(InvalidEmailError):

@@ -32,23 +32,9 @@ class ParserPostDefault(BaseModel):
     model_settings: list[Inner]
 
 
-console_ns.schema_model(
-    ParserGetDefault.__name__, ParserGetDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserPostDefault.__name__, ParserPostDefault.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-
 class ParserDeleteModels(BaseModel):
     model: str
     model_type: ModelType
-
-
-console_ns.schema_model(
-    ParserDeleteModels.__name__, ParserDeleteModels.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
 
 
 class LoadBalancingPayload(BaseModel):
@@ -119,33 +105,19 @@ class ParserParameter(BaseModel):
     model: str
 
 
-console_ns.schema_model(
-    ParserPostModels.__name__, ParserPostModels.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
-console_ns.schema_model(
-    ParserGetCredentials.__name__,
-    ParserGetCredentials.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
 
-console_ns.schema_model(
-    ParserCreateCredential.__name__,
-    ParserCreateCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserUpdateCredential.__name__,
-    ParserUpdateCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserDeleteCredential.__name__,
-    ParserDeleteCredential.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserParameter.__name__, ParserParameter.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+reg(ParserGetDefault)
+reg(ParserPostDefault)
+reg(ParserDeleteModels)
+reg(ParserPostModels)
+reg(ParserGetCredentials)
+reg(ParserCreateCredential)
+reg(ParserUpdateCredential)
+reg(ParserDeleteCredential)
+reg(ParserParameter)
 
 
 @console_ns.route("/workspaces/current/default-model")
@@ -258,7 +230,7 @@ class ModelProviderModelApi(Resource):
 
         return {"result": "success"}, 200
 
-    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__], validate=True)
+    @console_ns.expect(console_ns.models[ParserDeleteModels.__name__])
     @setup_required
     @login_required
     @is_admin_or_owner_required
@@ -310,9 +282,10 @@ class ModelProviderModelCredentialApi(Resource):
                 tenant_id=tenant_id, provider_name=provider
             )
         else:
-            model_type = args.model_type
+            # Normalize model_type to the origin value stored in DB (e.g., "text-generation" for LLM)
+            normalized_model_type = args.model_type.to_origin_model_type()
             available_credentials = model_provider_service.provider_manager.get_provider_model_available_credentials(
-                tenant_id=tenant_id, provider_name=provider, model_type=model_type, model_name=args.model
+                tenant_id=tenant_id, provider_name=provider, model_type=normalized_model_type, model_name=args.model
             )
 
         return jsonable_encoder(

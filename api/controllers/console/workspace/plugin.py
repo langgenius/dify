@@ -1,5 +1,6 @@
 import io
-from typing import Literal
+from collections.abc import Mapping
+from typing import Any, Literal
 
 from flask import request, send_file
 from flask_restx import Resource
@@ -22,6 +23,10 @@ from services.plugin.plugin_service import PluginService
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
 
+def reg(cls: type[BaseModel]):
+    console_ns.schema_model(cls.__name__, cls.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
+
+
 @console_ns.route("/workspaces/current/plugin/debugging-key")
 class PluginDebuggingKeyApi(Resource):
     @setup_required
@@ -42,13 +47,11 @@ class PluginDebuggingKeyApi(Resource):
 
 
 class ParserList(BaseModel):
-    page: int = Field(default=1)
-    page_size: int = Field(default=256)
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
-console_ns.schema_model(
-    ParserList.__name__, ParserList.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+reg(ParserList)
 
 
 @console_ns.route("/workspaces/current/plugin/list")
@@ -70,11 +73,6 @@ class PluginListApi(Resource):
 
 class ParserLatest(BaseModel):
     plugin_ids: list[str]
-
-
-console_ns.schema_model(
-    ParserLatest.__name__, ParserLatest.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
 
 
 class ParserIcon(BaseModel):
@@ -109,8 +107,8 @@ class ParserPluginIdentifierQuery(BaseModel):
 
 
 class ParserTasks(BaseModel):
-    page: int
-    page_size: int
+    page: int = Field(default=1, ge=1, description="Page number")
+    page_size: int = Field(default=256, ge=1, le=256, description="Page size (1-256)")
 
 
 class ParserMarketplaceUpgrade(BaseModel):
@@ -144,6 +142,15 @@ class ParserDynamicOptions(BaseModel):
     provider_type: Literal["tool", "trigger"]
 
 
+class ParserDynamicOptionsWithCredentials(BaseModel):
+    plugin_id: str
+    provider: str
+    action: str
+    parameter: str
+    credential_id: str
+    credentials: Mapping[str, Any]
+
+
 class PluginPermissionSettingsPayload(BaseModel):
     install_permission: TenantPluginPermission.InstallPermission = TenantPluginPermission.InstallPermission.EVERYONE
     debug_permission: TenantPluginPermission.DebugPermission = TenantPluginPermission.DebugPermission.EVERYONE
@@ -173,72 +180,23 @@ class ParserReadme(BaseModel):
     language: str = Field(default="en-US")
 
 
-console_ns.schema_model(
-    ParserIcon.__name__, ParserIcon.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserAsset.__name__, ParserAsset.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserGithubUpload.__name__, ParserGithubUpload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserPluginIdentifiers.__name__,
-    ParserPluginIdentifiers.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserGithubInstall.__name__, ParserGithubInstall.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserPluginIdentifierQuery.__name__,
-    ParserPluginIdentifierQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserTasks.__name__, ParserTasks.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserMarketplaceUpgrade.__name__,
-    ParserMarketplaceUpgrade.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserGithubUpgrade.__name__, ParserGithubUpgrade.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserUninstall.__name__, ParserUninstall.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
-
-console_ns.schema_model(
-    ParserPermissionChange.__name__,
-    ParserPermissionChange.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserDynamicOptions.__name__,
-    ParserDynamicOptions.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserPreferencesChange.__name__,
-    ParserPreferencesChange.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserExcludePlugin.__name__,
-    ParserExcludePlugin.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
-console_ns.schema_model(
-    ParserReadme.__name__, ParserReadme.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
-)
+reg(ParserLatest)
+reg(ParserIcon)
+reg(ParserAsset)
+reg(ParserGithubUpload)
+reg(ParserPluginIdentifiers)
+reg(ParserGithubInstall)
+reg(ParserPluginIdentifierQuery)
+reg(ParserTasks)
+reg(ParserMarketplaceUpgrade)
+reg(ParserGithubUpgrade)
+reg(ParserUninstall)
+reg(ParserPermissionChange)
+reg(ParserDynamicOptions)
+reg(ParserDynamicOptionsWithCredentials)
+reg(ParserPreferencesChange)
+reg(ParserExcludePlugin)
+reg(ParserReadme)
 
 
 @console_ns.route("/workspaces/current/plugin/list/latest-versions")
@@ -703,6 +661,37 @@ class PluginFetchDynamicSelectOptionsApi(Resource):
                 parameter=args.parameter,
                 credential_id=args.credential_id,
                 provider_type=args.provider_type,
+            )
+        except PluginDaemonClientSideError as e:
+            raise ValueError(e)
+
+        return jsonable_encoder({"options": options})
+
+
+@console_ns.route("/workspaces/current/plugin/parameters/dynamic-options-with-credentials")
+class PluginFetchDynamicSelectOptionsWithCredentialsApi(Resource):
+    @console_ns.expect(console_ns.models[ParserDynamicOptionsWithCredentials.__name__])
+    @setup_required
+    @login_required
+    @is_admin_or_owner_required
+    @account_initialization_required
+    def post(self):
+        """Fetch dynamic options using credentials directly (for edit mode)."""
+        current_user, tenant_id = current_account_with_tenant()
+        user_id = current_user.id
+
+        args = ParserDynamicOptionsWithCredentials.model_validate(console_ns.payload)
+
+        try:
+            options = PluginParameterService.get_dynamic_select_options_with_credentials(
+                tenant_id=tenant_id,
+                user_id=user_id,
+                plugin_id=args.plugin_id,
+                provider=args.provider,
+                action=args.action,
+                parameter=args.parameter,
+                credential_id=args.credential_id,
+                credentials=args.credentials,
             )
         except PluginDaemonClientSideError as e:
             raise ValueError(e)

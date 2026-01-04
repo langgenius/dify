@@ -3,15 +3,15 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useToastContext } from '@/app/components/base/toast'
 import {
   DSL_EXPORT_CHECK,
 } from '@/app/components/workflow/constants'
-import { useNodesSyncDraft } from './use-nodes-sync-draft'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { fetchWorkflowDraft } from '@/service/workflow'
-import { useToastContext } from '@/app/components/base/toast'
 import { useWorkflowStore } from '@/app/components/workflow/store'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
 import { useExportPipelineDSL } from '@/service/use-pipeline'
+import { fetchWorkflowDraft } from '@/service/workflow'
+import { useNodesSyncDraft } from './use-nodes-sync-draft'
 
 export const useDSL = () => {
   const { t } = useTranslation()
@@ -46,7 +46,7 @@ export const useDSL = () => {
       URL.revokeObjectURL(url)
     }
     catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
     finally {
       setExporting(false)
@@ -72,7 +72,7 @@ export const useDSL = () => {
       } as any)
     }
     catch {
-      notify({ type: 'error', message: t('app.exportFailed') })
+      notify({ type: 'error', message: t('exportFailed', { ns: 'app' }) })
     }
   }, [eventEmitter, handleExportDSL, notify, t, workflowStore])
 

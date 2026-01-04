@@ -3,8 +3,8 @@ from typing import Self
 from uuid import UUID
 
 from flask import request
-from flask_restx import marshal, reqparse
-from pydantic import BaseModel, model_validator
+from flask_restx import marshal
+from pydantic import BaseModel, Field, model_validator
 from sqlalchemy import desc, select
 from werkzeug.exceptions import Forbidden, NotFound
 
@@ -37,22 +37,19 @@ from services.dataset_service import DatasetService, DocumentService
 from services.entities.knowledge_entities.knowledge_entities import KnowledgeConfig, ProcessRule, RetrievalModel
 from services.file_service import FileService
 
-# Define parsers for document operations
-document_text_create_parser = (
-    reqparse.RequestParser()
-    .add_argument("name", type=str, required=True, nullable=False, location="json")
-    .add_argument("text", type=str, required=True, nullable=False, location="json")
-    .add_argument("process_rule", type=dict, required=False, nullable=True, location="json")
-    .add_argument("original_document_id", type=str, required=False, location="json")
-    .add_argument("doc_form", type=str, default="text_model", required=False, nullable=False, location="json")
-    .add_argument("doc_language", type=str, default="English", required=False, nullable=False, location="json")
-    .add_argument(
-        "indexing_technique", type=str, choices=Dataset.INDEXING_TECHNIQUE_LIST, nullable=False, location="json"
-    )
-    .add_argument("retrieval_model", type=dict, required=False, nullable=True, location="json")
-    .add_argument("embedding_model", type=str, required=False, nullable=True, location="json")
-    .add_argument("embedding_model_provider", type=str, required=False, nullable=True, location="json")
-)
+
+class DocumentTextCreatePayload(BaseModel):
+    name: str
+    text: str
+    process_rule: ProcessRule | None = None
+    original_document_id: str | None = None
+    doc_form: str = Field(default="text_model")
+    doc_language: str = Field(default="English")
+    indexing_technique: str | None = None
+    retrieval_model: RetrievalModel | None = None
+    embedding_model: str | None = None
+    embedding_model_provider: str | None = None
+
 
 DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
 
@@ -72,7 +69,7 @@ class DocumentTextUpdate(BaseModel):
         return self
 
 
-for m in [ProcessRule, RetrievalModel, DocumentTextUpdate]:
+for m in [ProcessRule, RetrievalModel, DocumentTextCreatePayload, DocumentTextUpdate]:
     service_api_ns.schema_model(m.__name__, m.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))  # type: ignore
 
 
@@ -83,7 +80,7 @@ for m in [ProcessRule, RetrievalModel, DocumentTextUpdate]:
 class DocumentAddByTextApi(DatasetApiResource):
     """Resource for documents."""
 
-    @service_api_ns.expect(document_text_create_parser)
+    @service_api_ns.expect(service_api_ns.models[DocumentTextCreatePayload.__name__])
     @service_api_ns.doc("create_document_by_text")
     @service_api_ns.doc(description="Create a new document by providing text content")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID"})
@@ -99,7 +96,8 @@ class DocumentAddByTextApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id, dataset_id):
         """Create document by text."""
-        args = document_text_create_parser.parse_args()
+        payload = DocumentTextCreatePayload.model_validate(service_api_ns.payload or {})
+        args = payload.model_dump(exclude_none=True)
 
         dataset_id = str(dataset_id)
         tenant_id = str(tenant_id)
@@ -111,33 +109,29 @@ class DocumentAddByTextApi(DatasetApiResource):
         if not dataset.indexing_technique and not args["indexing_technique"]:
             raise ValueError("indexing_technique is required.")
 
-        text = args.get("text")
-        name = args.get("name")
-        if text is None or name is None:
-            raise ValueError("Both 'text' and 'name' must be non-null values.")
-
-        embedding_model_provider = args.get("embedding_model_provider")
-        embedding_model = args.get("embedding_model")
+        embedding_model_provider = payload.embedding_model_provider
+        embedding_model = payload.embedding_model
         if embedding_model_provider and embedding_model:
             DatasetService.check_embedding_model_setting(tenant_id, embedding_model_provider, embedding_model)
 
-        retrieval_model = args.get("retrieval_model")
+        retrieval_model = payload.retrieval_model
         if (
             retrieval_model
-            and retrieval_model.get("reranking_model")
-            and retrieval_model.get("reranking_model").get("reranking_provider_name")
+            and retrieval_model.reranking_model
+            and retrieval_model.reranking_model.reranking_provider_name
+            and retrieval_model.reranking_model.reranking_model_name
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                retrieval_model.get("reranking_model").get("reranking_provider_name"),
-                retrieval_model.get("reranking_model").get("reranking_model_name"),
+                retrieval_model.reranking_model.reranking_provider_name,
+                retrieval_model.reranking_model.reranking_model_name,
             )
 
         if not current_user:
             raise ValueError("current_user is required")
 
         upload_file = FileService(db.engine).upload_text(
-            text=str(text), text_name=str(name), user_id=current_user.id, tenant_id=tenant_id
+            text=payload.text, text_name=payload.name, user_id=current_user.id, tenant_id=tenant_id
         )
         data_source = {
             "type": "upload_file",
@@ -174,7 +168,7 @@ class DocumentAddByTextApi(DatasetApiResource):
 class DocumentUpdateByTextApi(DatasetApiResource):
     """Resource for update documents."""
 
-    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__], validate=True)
+    @service_api_ns.expect(service_api_ns.models[DocumentTextUpdate.__name__])
     @service_api_ns.doc("update_document_by_text")
     @service_api_ns.doc(description="Update an existing document by providing text content")
     @service_api_ns.doc(params={"dataset_id": "Dataset ID", "document_id": "Document ID"})
@@ -189,22 +183,23 @@ class DocumentUpdateByTextApi(DatasetApiResource):
     @cloud_edition_billing_rate_limit_check("knowledge", "dataset")
     def post(self, tenant_id: str, dataset_id: UUID, document_id: UUID):
         """Update document by text."""
-        args = DocumentTextUpdate.model_validate(service_api_ns.payload).model_dump(exclude_unset=True)
+        payload = DocumentTextUpdate.model_validate(service_api_ns.payload or {})
         dataset = db.session.query(Dataset).where(Dataset.tenant_id == tenant_id, Dataset.id == str(dataset_id)).first()
-
+        args = payload.model_dump(exclude_none=True)
         if not dataset:
             raise ValueError("Dataset does not exist.")
 
-        retrieval_model = args.get("retrieval_model")
+        retrieval_model = payload.retrieval_model
         if (
             retrieval_model
-            and retrieval_model.get("reranking_model")
-            and retrieval_model.get("reranking_model").get("reranking_provider_name")
+            and retrieval_model.reranking_model
+            and retrieval_model.reranking_model.reranking_provider_name
+            and retrieval_model.reranking_model.reranking_model_name
         ):
             DatasetService.check_reranking_model_setting(
                 tenant_id,
-                retrieval_model.get("reranking_model").get("reranking_provider_name"),
-                retrieval_model.get("reranking_model").get("reranking_model_name"),
+                retrieval_model.reranking_model.reranking_provider_name,
+                retrieval_model.reranking_model.reranking_model_name,
             )
 
         # indexing_technique is already set in dataset since this is an update

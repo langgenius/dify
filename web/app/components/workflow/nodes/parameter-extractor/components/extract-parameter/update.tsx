@@ -1,25 +1,27 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
 import type { Param } from '../../types'
-import { ParamType } from '../../types'
-import AddButton from '@/app/components/base/button/add-button'
-import Modal from '@/app/components/base/modal'
-import Button from '@/app/components/base/button'
+import type { MoreInfo } from '@/app/components/workflow/types'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Field from '@/app/components/app/configuration/config-var/config-modal/field'
+import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
+import Button from '@/app/components/base/button'
+import AddButton from '@/app/components/base/button/add-button'
 import Input from '@/app/components/base/input'
-import Textarea from '@/app/components/base/textarea'
+import Modal from '@/app/components/base/modal'
 import Select from '@/app/components/base/select'
 import Switch from '@/app/components/base/switch'
+import Textarea from '@/app/components/base/textarea'
 import Toast from '@/app/components/base/toast'
-import ConfigSelect from '@/app/components/app/configuration/config-var/config-select'
-import { ChangeType, type MoreInfo } from '@/app/components/workflow/types'
+import { ChangeType } from '@/app/components/workflow/types'
 import { checkKeys } from '@/utils/var'
+import { ParamType } from '../../types'
 
-const i18nPrefix = 'workflow.nodes.parameterExtractor'
-const errorI18nPrefix = 'workflow.errorMsg'
+const i18nPrefix = 'nodes.parameterExtractor'
+const errorI18nPrefix = 'errorMsg'
 
 const DEFAULT_PARAM: Param = {
   name: '',
@@ -54,19 +56,19 @@ const AddExtractParameter: FC<Props> = ({
         if (!isValid) {
           Toast.notify({
             type: 'error',
-            message: t(`appDebug.varKeyError.${errorMessageKey}`, { key: errorKey }),
+            message: t(`varKeyError.${errorMessageKey}`, { ns: 'appDebug', key: errorKey }),
           })
           return
         }
       }
       setRenameInfo(key === 'name'
         ? {
-          type: ChangeType.changeVarName,
-          payload: {
-            beforeKey: param.name,
-            afterKey: value,
-          },
-        }
+            type: ChangeType.changeVarName,
+            payload: {
+              beforeKey: param.name,
+              afterKey: value,
+            },
+          }
         : undefined)
       setParam((prev) => {
         return {
@@ -97,11 +99,11 @@ const AddExtractParameter: FC<Props> = ({
   const checkValid = useCallback(() => {
     let errMessage = ''
     if (!param.name)
-      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.addExtractParameterContent.name`) })
+      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.addExtractParameterContent.name`, { ns: 'workflow' }) })
     if (!errMessage && param.type === ParamType.select && (!param.options || param.options.length === 0))
-      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { field: t('appDebug.variableConfig.options') })
+      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { ns: 'workflow', field: t('variableConfig.options', { ns: 'appDebug' }) })
     if (!errMessage && !param.description)
-      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { field: t(`${i18nPrefix}.addExtractParameterContent.description`) })
+      errMessage = t(`${errorI18nPrefix}.fieldRequired`, { ns: 'workflow', field: t(`${i18nPrefix}.addExtractParameterContent.description`, { ns: 'workflow' }) })
 
     if (errMessage) {
       Toast.notify({
@@ -124,31 +126,31 @@ const AddExtractParameter: FC<Props> = ({
   return (
     <div>
       {isAdd && (
-        <AddButton className='mx-1' onClick={showAddModal} />
+        <AddButton className="mx-1" onClick={showAddModal} />
       )}
       {isShowModal && (
         <Modal
-          title={t(`${i18nPrefix}.addExtractParameter`)}
+          title={t(`${i18nPrefix}.addExtractParameter`, { ns: 'workflow' })}
           isShow
           onClose={hideModal}
-          className='!w-[400px] !max-w-[400px] !p-4'
+          className="!w-[400px] !max-w-[400px] !p-4"
         >
           <div>
-            <div className='space-y-2'>
-              <Field title={t(`${i18nPrefix}.addExtractParameterContent.name`)}>
+            <div className="space-y-2">
+              <Field title={t(`${i18nPrefix}.addExtractParameterContent.name`, { ns: 'workflow' })}>
                 <Input
                   value={param.name}
                   onChange={e => handleParamChange('name')(e.target.value)}
-                  placeholder={t(`${i18nPrefix}.addExtractParameterContent.namePlaceholder`)!}
+                  placeholder={t(`${i18nPrefix}.addExtractParameterContent.namePlaceholder`, { ns: 'workflow' })!}
                 />
               </Field>
-              <Field title={t(`${i18nPrefix}.addExtractParameterContent.type`)}>
+              <Field title={t(`${i18nPrefix}.addExtractParameterContent.type`, { ns: 'workflow' })}>
                 <Select
                   defaultValue={param.type}
                   allowSearch={false}
                   // bgClassName='bg-gray-100'
                   onSelect={v => handleParamChange('type')(v.value)}
-                  optionClassName='capitalize'
+                  optionClassName="capitalize"
                   items={
                     TYPES.map(type => ({
                       value: type,
@@ -158,27 +160,27 @@ const AddExtractParameter: FC<Props> = ({
                 />
               </Field>
               {param.type === ParamType.select && (
-                <Field title={t('appDebug.variableConfig.options')}>
+                <Field title={t('variableConfig.options', { ns: 'appDebug' })}>
                   <ConfigSelect options={param.options || []} onChange={handleParamChange('options')} />
                 </Field>
               )}
-              <Field title={t(`${i18nPrefix}.addExtractParameterContent.description`)}>
+              <Field title={t(`${i18nPrefix}.addExtractParameterContent.description`, { ns: 'workflow' })}>
                 <Textarea
                   value={param.description}
                   onChange={e => handleParamChange('description')(e.target.value)}
-                  placeholder={t(`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`)!}
+                  placeholder={t(`${i18nPrefix}.addExtractParameterContent.descriptionPlaceholder`, { ns: 'workflow' })!}
                 />
               </Field>
-              <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`)}>
+              <Field title={t(`${i18nPrefix}.addExtractParameterContent.required`, { ns: 'workflow' })}>
                 <>
-                  <div className='mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary'>{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`)}</div>
-                  <Switch size='l' defaultValue={param.required} onChange={handleParamChange('required')} />
+                  <div className="mb-1.5 text-xs font-normal leading-[18px] text-text-tertiary">{t(`${i18nPrefix}.addExtractParameterContent.requiredContent`, { ns: 'workflow' })}</div>
+                  <Switch size="l" defaultValue={param.required} onChange={handleParamChange('required')} />
                 </>
               </Field>
             </div>
-            <div className='mt-4 flex justify-end space-x-2'>
-              <Button className='!w-[95px]' onClick={hideModal} >{t('common.operation.cancel')}</Button>
-              <Button className='!w-[95px]' variant='primary' onClick={handleSave} >{isAdd ? t('common.operation.add') : t('common.operation.save')}</Button>
+            <div className="mt-4 flex justify-end space-x-2">
+              <Button className="!w-[95px]" onClick={hideModal}>{t('operation.cancel', { ns: 'common' })}</Button>
+              <Button className="!w-[95px]" variant="primary" onClick={handleSave}>{isAdd ? t('operation.add', { ns: 'common' }) : t('operation.save', { ns: 'common' })}</Button>
             </div>
           </div>
         </Modal>
