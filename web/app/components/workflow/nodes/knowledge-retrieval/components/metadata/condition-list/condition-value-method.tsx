@@ -1,12 +1,12 @@
-import { useState } from 'react'
-import { capitalize } from 'lodash-es'
 import { RiArrowDownSLine } from '@remixicon/react'
+import { capitalize } from 'es-toolkit/string'
+import { useState } from 'react'
+import Button from '@/app/components/base/button'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
 import { cn } from '@/utils/classnames'
 
 export type ConditionValueMethodProps = {
@@ -27,21 +27,21 @@ const ConditionValueMethod = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom-start'
+      placement="bottom-start"
       offset={{ mainAxis: 4, crossAxis: 0 }}
     >
       <PortalToFollowElemTrigger asChild onClick={() => setOpen(v => !v)}>
         <Button
-          className='shrink-0'
-          variant='ghost'
-          size='small'
+          className="shrink-0"
+          variant="ghost"
+          size="small"
         >
           {capitalize(valueMethod)}
-          <RiArrowDownSLine className='ml-[1px] h-3.5 w-3.5' />
+          <RiArrowDownSLine className="ml-[1px] h-3.5 w-3.5" />
         </Button>
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[1000]'>
-        <div className='w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg'>
+      <PortalToFollowElemContent className="z-[1000]">
+        <div className="w-[112px] rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg">
           {
             options.map(option => (
               <div

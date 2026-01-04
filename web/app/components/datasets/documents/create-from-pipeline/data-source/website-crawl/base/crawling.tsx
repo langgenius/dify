@@ -1,5 +1,5 @@
 'use client'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 import { cn } from '@/utils/classnames'
 
@@ -29,15 +29,15 @@ const Item = React.memo(({
   secondLineWidth,
 }: ItemProps) => {
   return (
-    <div className='flex gap-x-2 px-2 py-[5px]'>
-      <div className='py-0.5'>
-        <Block className='size-4 rounded-[4px]' />
+    <div className="flex gap-x-2 px-2 py-[5px]">
+      <div className="py-0.5">
+        <Block className="size-4 rounded-[4px]" />
       </div>
-      <div className='flex grow flex-col'>
-        <div className='flex h-5 w-full items-center'>
+      <div className="flex grow flex-col">
+        <div className="flex h-5 w-full items-center">
           <Block className={cn('h-2.5 rounded-sm', firstLineWidth)} />
         </div>
-        <div className='flex h-[18px] w-full items-center'>
+        <div className="flex h-[18px] w-full items-center">
           <Block className={cn('h-1.5 rounded-sm', secondLineWidth)} />
         </div>
       </div>
@@ -65,15 +65,19 @@ const Crawling = ({
 
   return (
     <div className={cn('mt-2 flex flex-col gap-y-2 pt-2', className)}>
-      <div className='system-sm-medium text-text-primary'>
-        {t('datasetCreation.stepOne.website.totalPageScraped')} {crawledNum}/{totalNum}
+      <div className="system-sm-medium text-text-primary">
+        {t('stepOne.website.totalPageScraped', { ns: 'datasetCreation' })}
+        {' '}
+        {crawledNum}
+        /
+        {totalNum}
       </div>
-      <div className='overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg'>
-        <div className='flex items-center gap-x-2 px-4 py-2'>
-          <Block className='size-4 rounded-[4px]' />
-          <Block className='h-2.5 w-14 rounded-sm' />
+      <div className="overflow-hidden rounded-xl border border-components-panel-border bg-components-panel-bg">
+        <div className="flex items-center gap-x-2 px-4 py-2">
+          <Block className="size-4 rounded-[4px]" />
+          <Block className="h-2.5 w-14 rounded-sm" />
         </div>
-        <div className='flex flex-col gap-px border-t border-divider-subtle bg-background-default-subtle p-2'>
+        <div className="flex flex-col gap-px border-t border-divider-subtle bg-background-default-subtle p-2">
           {itemsConfig.map((item, index) => (
             <Item
               key={index}

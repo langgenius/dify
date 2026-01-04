@@ -1,16 +1,17 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
 import type { DocumentItem } from '@/models/datasets'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import PreviewDocumentPicker from './preview-document-picker'
 
 // Override shared i18n mock for custom translations
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, params?: Record<string, unknown>) => {
-      if (key === 'dataset.preprocessDocument' && params?.num)
+      if (key === 'preprocessDocument' && params?.num)
         return `${params.num} files`
 
-      return key
+      const prefix = params?.ns ? `${params.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))
@@ -76,8 +77,7 @@ const createMockDocumentList = (count: number): DocumentItem[] => {
       id: `doc-${index + 1}`,
       name: `Document ${index + 1}`,
       extension: index % 2 === 0 ? 'pdf' : 'txt',
-    }),
-  )
+    }))
 }
 
 // Factory function to create default props
@@ -502,7 +502,7 @@ describe('PreviewDocumentPicker', () => {
         { ext: 'md', icon: 'file-markdown-icon' },
       ]
 
-      test.each(extensions)('should render correct icon for $ext extension', ({ ext, icon }) => {
+      it.each(extensions)('should render correct icon for $ext extension', ({ ext, icon }) => {
         renderComponent({
           value: createMockDocumentItem({ extension: ext }),
           files: [], // Use empty files to avoid duplicate icons

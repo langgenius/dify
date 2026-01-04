@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react'
+import { noop } from 'es-toolkit/function'
 import { z } from 'zod'
 import withValidation from '.'
-import { noop } from 'lodash-es'
 
 describe('withValidation HOC', () => {
   // schema for validation
@@ -11,7 +11,13 @@ describe('withValidation HOC', () => {
   }
 
   const TestComponent = ({ name, age }: Props) => (
-    <div>{name} - {age}</div>
+    <div>
+      {name}
+      {' '}
+      -
+      {' '}
+      {age}
+    </div>
   )
   const WrappedComponent = withValidation(TestComponent, schema)
 
@@ -24,12 +30,12 @@ describe('withValidation HOC', () => {
   })
 
   it('renders the component when validation passes', () => {
-    render(<WrappedComponent name='Valid Name' age={30} />)
+    render(<WrappedComponent name="Valid Name" age={30} />)
     expect(screen.getByText('Valid Name - 30')).toBeInTheDocument()
   })
 
   it('renders the component when props is invalid but not in schema ', () => {
-    render(<WrappedComponent name='Valid Name' age={'aaa' as any} />)
+    render(<WrappedComponent name="Valid Name" age={'aaa' as any} />)
     expect(screen.getByText('Valid Name - aaa')).toBeInTheDocument()
   })
 

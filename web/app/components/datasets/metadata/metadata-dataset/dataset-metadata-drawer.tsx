@@ -1,24 +1,25 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useRef, useState } from 'react'
 import type { BuiltInMetadataItem, MetadataItemWithValueLength } from '../types'
-import Drawer from '@/app/components/base/drawer'
-import Button from '@/app/components/base/button'
 import { RiAddLine, RiDeleteBinLine, RiEditLine } from '@remixicon/react'
-import { getIcon } from '../utils/get-icon'
-import { cn } from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
-import Field from './field'
-import Input from '@/app/components/base/input'
+import { useBoolean, useHover } from 'ahooks'
+import * as React from 'react'
+import { useCallback, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
+import Drawer from '@/app/components/base/drawer'
+import Input from '@/app/components/base/input'
+import Modal from '@/app/components/base/modal'
 import Switch from '@/app/components/base/switch'
+import Toast from '@/app/components/base/toast'
 import Tooltip from '@/app/components/base/tooltip'
 import CreateModal from '@/app/components/datasets/metadata/metadata-dataset/create-metadata-modal'
-import { useBoolean, useHover } from 'ahooks'
-import Confirm from '@/app/components/base/confirm'
-import Toast from '@/app/components/base/toast'
+import { cn } from '@/utils/classnames'
+import { getIcon } from '../utils/get-icon'
+import Field from './field'
 
-const i18nPrefix = 'dataset.metadata.datasetMetadata'
+const i18nPrefix = 'metadata.datasetMetadata'
 
 type Props = {
   userMetadata: MetadataItemWithValueLength[]
@@ -78,28 +79,28 @@ const Item: FC<ItemProps> = ({
           disabled && 'opacity-30', // not include border and bg
         )}
       >
-        <div className='flex h-full items-center space-x-1 text-text-tertiary'>
-          <Icon className='size-4 shrink-0' />
-          <div className='system-sm-medium max-w-[250px] truncate text-text-primary'>{payload.name}</div>
-          <div className='system-xs-regular shrink-0'>{payload.type}</div>
+        <div className="flex h-full items-center space-x-1 text-text-tertiary">
+          <Icon className="size-4 shrink-0" />
+          <div className="system-sm-medium max-w-[250px] truncate text-text-primary">{payload.name}</div>
+          <div className="system-xs-regular shrink-0">{payload.type}</div>
         </div>
         {(!readonly || disabled) && (
-          <div className='system-xs-regular ml-2 shrink-0 text-text-tertiary group-hover/item:hidden'>
-            {disabled ? t(`${i18nPrefix}.disabled`) : t(`${i18nPrefix}.values`, { num: payload.count || 0 })}
+          <div className="system-xs-regular ml-2 shrink-0 text-text-tertiary group-hover/item:hidden">
+            {disabled ? t(`${i18nPrefix}.disabled`, { ns: 'dataset' }) : t(`${i18nPrefix}.values`, { ns: 'dataset', num: payload.count || 0 })}
           </div>
         )}
-        <div className='ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex'>
-          <RiEditLine className='size-4 cursor-pointer' onClick={handleRename} />
-          <div ref={deleteBtnRef} className='hover:text-text-destructive'>
-            <RiDeleteBinLine className='size-4 cursor-pointer' onClick={showDeleteConfirm} />
+        <div className="ml-2 hidden items-center space-x-1 text-text-tertiary group-hover/item:flex">
+          <RiEditLine className="size-4 cursor-pointer" onClick={handleRename} />
+          <div ref={deleteBtnRef} className="hover:text-text-destructive">
+            <RiDeleteBinLine className="size-4 cursor-pointer" onClick={showDeleteConfirm} />
           </div>
         </div>
         {isShowDeleteConfirm && (
           <Confirm
             isShow
-            type='warning'
-            title={t('dataset.metadata.datasetMetadata.deleteTitle')}
-            content={t('dataset.metadata.datasetMetadata.deleteContent', { name: payload.name })}
+            type="warning"
+            title={t('metadata.datasetMetadata.deleteTitle', { ns: 'dataset' })}
+            content={t('metadata.datasetMetadata.deleteContent', { ns: 'dataset', name: payload.name })}
             onConfirm={handleDelete}
             onCancel={hideDeleteConfirm}
           />
@@ -136,7 +137,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
     await onAdd(data)
     Toast.notify({
       type: 'success',
-      message: t('common.api.actionSuccess'),
+      message: t('api.actionSuccess', { ns: 'common' }),
     })
     setOpen(false)
   }, [onAdd, t])
@@ -150,7 +151,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       })
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
     }
     setIsShowRenameModal(false)
@@ -161,7 +162,7 @@ const DatasetMetadataDrawer: FC<Props> = ({
       await onRemove(payload.id)
       Toast.notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
     }
   }, [onRemove, t])
@@ -171,22 +172,26 @@ const DatasetMetadataDrawer: FC<Props> = ({
       isOpen={true}
       onClose={onClose}
       showClose
-      title={t('dataset.metadata.metadata')}
+      title={t('metadata.metadata', { ns: 'dataset' })}
       footer={null}
-      panelClassName='px-4 block !max-w-[420px] my-2 rounded-l-2xl'
+      panelClassName="px-4 block !max-w-[420px] my-2 rounded-l-2xl"
     >
-      <div className='h-full overflow-y-auto'>
-        <div className='system-sm-regular text-text-tertiary'>{t(`${i18nPrefix}.description`)}</div>
+      <div className="h-full overflow-y-auto">
+        <div className="system-sm-regular text-text-tertiary">{t(`${i18nPrefix}.description`, { ns: 'dataset' })}</div>
         <CreateModal
           open={open}
           setOpen={setOpen}
-          trigger={<Button variant='primary' className='mt-3'>
-            <RiAddLine className='mr-1' />
-            {t(`${i18nPrefix}.addMetaData`)}
-          </Button>} hasBack onSave={handleAdd}
+          trigger={(
+            <Button variant="primary" className="mt-3">
+              <RiAddLine className="mr-1" />
+              {t(`${i18nPrefix}.addMetaData`, { ns: 'dataset' })}
+            </Button>
+          )}
+          hasBack
+          onSave={handleAdd}
         />
 
-        <div className='mt-3 space-y-1'>
+        <div className="mt-3 space-y-1">
           {userMetadata.map(payload => (
             <Item
               key={payload.id}
@@ -197,16 +202,16 @@ const DatasetMetadataDrawer: FC<Props> = ({
           ))}
         </div>
 
-        <div className='mt-3 flex h-6 items-center'>
+        <div className="mt-3 flex h-6 items-center">
           <Switch
             defaultValue={isBuiltInEnabled}
             onChange={onIsBuiltInEnabledChange}
           />
-          <div className='system-sm-semibold ml-2 mr-0.5 text-text-secondary'>{t(`${i18nPrefix}.builtIn`)}</div>
-          <Tooltip popupContent={<div className='max-w-[100px]'>{t(`${i18nPrefix}.builtInDescription`)}</div>} />
+          <div className="system-sm-semibold ml-2 mr-0.5 text-text-secondary">{t(`${i18nPrefix}.builtIn`, { ns: 'dataset' })}</div>
+          <Tooltip popupContent={<div className="max-w-[100px]">{t(`${i18nPrefix}.builtInDescription`, { ns: 'dataset' })}</div>} />
         </div>
 
-        <div className='mt-1 space-y-1'>
+        <div className="mt-1 space-y-1">
           {builtInMetadata.map(payload => (
             <Item
               key={payload.name}
@@ -218,26 +223,31 @@ const DatasetMetadataDrawer: FC<Props> = ({
         </div>
 
         {isShowRenameModal && (
-          <Modal isShow title={t(`${i18nPrefix}.rename`)} onClose={() => setIsShowRenameModal(false)}>
-            <Field label={t(`${i18nPrefix}.name`)} className='mt-4'>
+          <Modal isShow title={t(`${i18nPrefix}.rename`, { ns: 'dataset' })} onClose={() => setIsShowRenameModal(false)}>
+            <Field label={t(`${i18nPrefix}.name`, { ns: 'dataset' })} className="mt-4">
               <Input
                 value={templeName}
                 onChange={e => setTempleName(e.target.value)}
-                placeholder={t(`${i18nPrefix}.namePlaceholder`)}
+                placeholder={t(`${i18nPrefix}.namePlaceholder`, { ns: 'dataset' })}
               />
             </Field>
-            <div className='mt-4 flex justify-end'>
+            <div className="mt-4 flex justify-end">
               <Button
-                className='mr-2'
+                className="mr-2"
                 onClick={() => {
                   setIsShowRenameModal(false)
                   setTempleName(currPayload!.name)
-                }}>{t('common.operation.cancel')}</Button>
+                }}
+              >
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
               <Button
                 onClick={handleRenamed}
-                variant='primary'
+                variant="primary"
                 disabled={!templeName}
-              >{t('common.operation.save')}</Button>
+              >
+                {t('operation.save', { ns: 'common' })}
+              </Button>
             </div>
           </Modal>
         )}

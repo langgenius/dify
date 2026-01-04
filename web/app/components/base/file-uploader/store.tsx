@@ -1,3 +1,7 @@
+import type {
+  FileEntity,
+} from './types'
+import { isEqual } from 'es-toolkit/predicate'
 import {
   createContext,
   useContext,
@@ -8,10 +12,6 @@ import {
   create,
   useStore as useZustandStore,
 } from 'zustand'
-import type {
-  FileEntity,
-} from './types'
-import { isEqual } from 'lodash-es'
 
 type Shape = {
   files: FileEntity[]

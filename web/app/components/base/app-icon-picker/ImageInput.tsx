@@ -1,15 +1,16 @@
 'use client'
 
 import type { ChangeEvent, FC } from 'react'
+import type { Area, CropperProps } from 'react-easy-crop'
 import { createRef, useEffect, useState } from 'react'
-import Cropper, { type Area, type CropperProps } from 'react-easy-crop'
-import { cn } from '@/utils/classnames'
+import Cropper from 'react-easy-crop'
 import { useTranslation } from 'react-i18next'
+import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
+import { cn } from '@/utils/classnames'
 import { ImagePlus } from '../icons/src/vender/line/images'
 import { useDraggableUploader } from './hooks'
 import { checkIsAnimatedImage } from './utils'
-import { ALLOW_FILE_EXTENSIONS } from '@/types/app'
 
 export type OnImageInput = {
   (isCropped: true, tempUrl: string, croppedAreaPixels: Area, fileName: string): void
@@ -28,7 +29,7 @@ const ImageInput: FC<UploaderProps> = ({
   onImageInput,
 }) => {
   const { t } = useTranslation()
-  const [inputImage, setInputImage] = useState<{ file: File; url: string }>()
+  const [inputImage, setInputImage] = useState<{ file: File, url: string }>()
   const [isAnimatedImage, setIsAnimatedImage] = useState<boolean>(false)
   useEffect(() => {
     return () => {
@@ -71,7 +72,7 @@ const ImageInput: FC<UploaderProps> = ({
   const handleShowImage = () => {
     if (isAnimatedImage) {
       return (
-        <img src={inputImage?.url} alt='' />
+        <img src={inputImage?.url} alt="" />
       )
     }
 
@@ -92,8 +93,7 @@ const ImageInput: FC<UploaderProps> = ({
   return (
     <div className={cn(className, 'w-full px-3 py-1.5')}>
       <div
-        className={cn(isDragActive && 'border-primary-600',
-          'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
+        className={cn(isDragActive && 'border-primary-600', 'relative flex aspect-square flex-col items-center justify-center rounded-lg border-[1.5px] border-dashed text-gray-500')}
         onDragEnter={handleDragEnter}
         onDragOver={handleDragOver}
         onDragLeave={handleDragLeave}
@@ -101,20 +101,27 @@ const ImageInput: FC<UploaderProps> = ({
       >
         {
           !inputImage
-            ? <>
-              <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
-              <div className="mb-[2px] text-sm font-medium">
-                <span className="pointer-events-none">{t('common.imageInput.dropImageHere')}&nbsp;</span>
-                <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('common.imageInput.browse')}</button>
-                <input
-                  ref={inputRef} type="file" className="hidden"
-                  onClick={e => ((e.target as HTMLInputElement).value = '')}
-                  accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
-                  onChange={handleLocalFileInput}
-                />
-              </div>
-              <div className="pointer-events-none">{t('common.imageInput.supportedFormats')}</div>
-            </>
+            ? (
+                <>
+                  <ImagePlus className="pointer-events-none mb-3 h-[30px] w-[30px]" />
+                  <div className="mb-[2px] text-sm font-medium">
+                    <span className="pointer-events-none">
+                      {t('imageInput.dropImageHere', { ns: 'common' })}
+&nbsp;
+                    </span>
+                    <button type="button" className="text-components-button-primary-bg" onClick={() => inputRef.current?.click()}>{t('imageInput.browse', { ns: 'common' })}</button>
+                    <input
+                      ref={inputRef}
+                      type="file"
+                      className="hidden"
+                      onClick={e => ((e.target as HTMLInputElement).value = '')}
+                      accept={ALLOW_FILE_EXTENSIONS.map(ext => `.${ext}`).join(',')}
+                      onChange={handleLocalFileInput}
+                    />
+                  </div>
+                  <div className="pointer-events-none">{t('imageInput.supportedFormats', { ns: 'common' })}</div>
+                </>
+              )
             : handleShowImage()
         }
       </div>

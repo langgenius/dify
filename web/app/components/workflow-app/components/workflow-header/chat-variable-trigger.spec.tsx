@@ -5,19 +5,16 @@ const mockUseNodesReadOnly = vi.fn()
 const mockUseIsChatMode = vi.fn()
 
 vi.mock('@/app/components/workflow/hooks', () => ({
-  __esModule: true,
   useNodesReadOnly: () => mockUseNodesReadOnly(),
 }))
 
 vi.mock('../../hooks', () => ({
-  __esModule: true,
   useIsChatMode: () => mockUseIsChatMode(),
 }))
 
 vi.mock('@/app/components/workflow/header/chat-variable-button', () => ({
-  __esModule: true,
   default: ({ disabled }: { disabled: boolean }) => (
-    <button data-testid='chat-variable-button' type='button' disabled={disabled}>
+    <button data-testid="chat-variable-button" type="button" disabled={disabled}>
       ChatVariableButton
     </button>
   ),

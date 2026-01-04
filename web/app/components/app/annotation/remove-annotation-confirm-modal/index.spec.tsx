@@ -1,16 +1,19 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import RemoveAnnotationConfirmModal from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
       const translations: Record<string, string> = {
-        'appDebug.feature.annotation.removeConfirm': 'Remove annotation?',
-        'common.operation.confirm': 'Confirm',
-        'common.operation.cancel': 'Cancel',
+        'feature.annotation.removeConfirm': 'Remove annotation?',
+        'operation.confirm': 'Confirm',
+        'operation.cancel': 'Cancel',
       }
-      return translations[key] || key
+      if (translations[key])
+        return translations[key]
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))
@@ -22,7 +25,7 @@ beforeEach(() => {
 describe('RemoveAnnotationConfirmModal', () => {
   // Rendering behavior driven by isShow and translations
   describe('Rendering', () => {
-    test('should display the confirm modal when visible', () => {
+    it('should display the confirm modal when visible', () => {
       // Arrange
       render(
         <RemoveAnnotationConfirmModal
@@ -38,7 +41,7 @@ describe('RemoveAnnotationConfirmModal', () => {
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
 
-    test('should not render modal content when hidden', () => {
+    it('should not render modal content when hidden', () => {
       // Arrange
       render(
         <RemoveAnnotationConfirmModal
@@ -55,7 +58,7 @@ describe('RemoveAnnotationConfirmModal', () => {
 
   // User interactions with confirm and cancel buttons
   describe('Interactions', () => {
-    test('should call onHide when cancel button is clicked', () => {
+    it('should call onHide when cancel button is clicked', () => {
       const onHide = vi.fn()
       const onRemove = vi.fn()
       // Arrange
@@ -75,7 +78,7 @@ describe('RemoveAnnotationConfirmModal', () => {
       expect(onRemove).not.toHaveBeenCalled()
     })
 
-    test('should call onRemove when confirm button is clicked', () => {
+    it('should call onRemove when confirm button is clicked', () => {
       const onHide = vi.fn()
       const onRemove = vi.fn()
       // Arrange

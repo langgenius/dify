@@ -1,34 +1,33 @@
 'use client'
 
-import { createContext, useContext, useContextSelector } from 'use-context-selector'
-import { useEffect, useState } from 'react'
-import dayjs from 'dayjs'
-import { useTranslation } from 'react-i18next'
+import type { Plan, UsagePlanInfo, UsageResetInfo } from '@/app/components/billing/type'
+import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { RETRIEVE_METHOD } from '@/types/app'
 import { useQueryClient } from '@tanstack/react-query'
+import dayjs from 'dayjs'
+import { noop } from 'es-toolkit/function'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { createContext, useContext, useContextSelector } from 'use-context-selector'
+import Toast from '@/app/components/base/toast'
+import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
+import { defaultPlan } from '@/app/components/billing/config'
+import { parseCurrentPlan } from '@/app/components/billing/utils'
+import {
+  CurrentSystemQuotaTypeEnum,
+  ModelStatusEnum,
+  ModelTypeEnum,
+} from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { ZENDESK_FIELD_IDS } from '@/config'
+import { fetchCurrentPlanInfo } from '@/service/billing'
 import {
   useModelListByType,
   useModelProviders,
   useSupportRetrievalMethods,
 } from '@/service/use-common'
 import {
-  CurrentSystemQuotaTypeEnum,
-  ModelStatusEnum,
-  ModelTypeEnum,
-} from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { Model, ModelProvider } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { RETRIEVE_METHOD } from '@/types/app'
-import type { Plan, UsageResetInfo } from '@/app/components/billing/type'
-import type { UsagePlanInfo } from '@/app/components/billing/type'
-import { fetchCurrentPlanInfo } from '@/service/billing'
-import { parseCurrentPlan } from '@/app/components/billing/utils'
-import { defaultPlan } from '@/app/components/billing/config'
-import Toast from '@/app/components/base/toast'
-import {
   useEducationStatus,
 } from '@/service/use-education'
-import { noop } from 'lodash-es'
-import { setZendeskConversationFields } from '@/app/components/base/zendesk/utils'
-import { ZENDESK_FIELD_IDS } from '@/config'
 
 export type ProviderContextState = {
   modelProviders: ModelProvider[]
@@ -61,7 +60,7 @@ export type ProviderContextState = {
       size: number
       limit: number
     }
-  },
+  }
   refreshLicenseLimit: () => void
   isAllowTransferWorkspace: boolean
   isAllowPublishAsCustomKnowledgePipelineTemplate: boolean
@@ -135,7 +134,7 @@ export const ProviderContextProvider = ({
 
   const [enableEducationPlan, setEnableEducationPlan] = useState(false)
   const [isEducationWorkspace, setIsEducationWorkspace] = useState(false)
-  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo } = useEducationStatus(!enableEducationPlan)
+  const { data: educationAccountInfo, isLoading: isLoadingEducationAccountInfo, isFetching: isFetchingEducationAccountInfo, isFetchedAfterMount: isEducationDataFetchedAfterMount } = useEducationStatus(!enableEducationPlan)
   const [isAllowTransferWorkspace, setIsAllowTransferWorkspace] = useState(false)
   const [isAllowPublishAsCustomKnowledgePipelineTemplate, setIsAllowPublishAsCustomKnowledgePipelineTemplate] = useState(false)
 
@@ -214,7 +213,7 @@ export const ProviderContextProvider = ({
         if (quota && quota.is_valid && quota.quota_used < quota.quota_limit) {
           Toast.notify({
             type: 'info',
-            message: t('common.provider.anthropicHosted.trialQuotaTip'),
+            message: t('provider.anthropicHosted.trialQuotaTip', { ns: 'common' }),
             duration: 60000,
             onClose: () => {
               localStorage.setItem('anthropic_quota_notice', 'true')
@@ -241,9 +240,9 @@ export const ProviderContextProvider = ({
       datasetOperatorEnabled,
       enableEducationPlan,
       isEducationWorkspace,
-      isEducationAccount: educationAccountInfo?.is_student || false,
-      allowRefreshEducationVerify: educationAccountInfo?.allow_refresh || false,
-      educationAccountExpireAt: educationAccountInfo?.expire_at || null,
+      isEducationAccount: isEducationDataFetchedAfterMount ? (educationAccountInfo?.is_student ?? false) : false,
+      allowRefreshEducationVerify: isEducationDataFetchedAfterMount ? (educationAccountInfo?.allow_refresh ?? false) : false,
+      educationAccountExpireAt: isEducationDataFetchedAfterMount ? (educationAccountInfo?.expire_at ?? null) : null,
       isLoadingEducationAccountInfo,
       isFetchingEducationAccountInfo,
       webappCopyrightEnabled,
@@ -251,7 +250,8 @@ export const ProviderContextProvider = ({
       refreshLicenseLimit: fetchPlan,
       isAllowTransferWorkspace,
       isAllowPublishAsCustomKnowledgePipelineTemplate,
-    }}>
+    }}
+    >
       {children}
     </ProviderContext.Provider>
   )

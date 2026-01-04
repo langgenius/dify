@@ -1,27 +1,21 @@
-import React from 'react'
 import { cleanup, fireEvent, render } from '@testing-library/react'
+import * as React from 'react'
+import { createReactI18nextMock } from '@/test/i18n-mock'
 import InlineDeleteConfirm from './index'
 
-// Mock react-i18next
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => {
-      const translations: Record<string, string> = {
-        'common.operation.deleteConfirmTitle': 'Delete?',
-        'common.operation.yes': 'Yes',
-        'common.operation.no': 'No',
-        'common.operation.confirmAction': 'Please confirm your action.',
-      }
-      return translations[key] || key
-    },
-  }),
+// Mock react-i18next with custom translations for test assertions
+vi.mock('react-i18next', () => createReactI18nextMock({
+  'operation.deleteConfirmTitle': 'Delete?',
+  'operation.yes': 'Yes',
+  'operation.no': 'No',
+  'operation.confirmAction': 'Please confirm your action.',
 }))
 
 afterEach(cleanup)
 
 describe('InlineDeleteConfirm', () => {
   describe('Rendering', () => {
-    test('should render with default text', () => {
+    it('should render with default text', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { getByText } = render(
@@ -33,7 +27,7 @@ describe('InlineDeleteConfirm', () => {
       expect(getByText('Yes')).toBeInTheDocument()
     })
 
-    test('should render with custom text', () => {
+    it('should render with custom text', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { getByText } = render(
@@ -51,7 +45,7 @@ describe('InlineDeleteConfirm', () => {
       expect(getByText('Confirm')).toBeInTheDocument()
     })
 
-    test('should have proper ARIA attributes', () => {
+    it('should have proper ARIA attributes', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { container } = render(
@@ -65,7 +59,7 @@ describe('InlineDeleteConfirm', () => {
   })
 
   describe('Button interactions', () => {
-    test('should call onCancel when cancel button is clicked', () => {
+    it('should call onCancel when cancel button is clicked', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { getByText } = render(
@@ -77,7 +71,7 @@ describe('InlineDeleteConfirm', () => {
       expect(onConfirm).not.toHaveBeenCalled()
     })
 
-    test('should call onConfirm when confirm button is clicked', () => {
+    it('should call onConfirm when confirm button is clicked', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { getByText } = render(
@@ -91,7 +85,7 @@ describe('InlineDeleteConfirm', () => {
   })
 
   describe('Variant prop', () => {
-    test('should render with delete variant by default', () => {
+    it('should render with delete variant by default', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { getByText } = render(
@@ -102,7 +96,7 @@ describe('InlineDeleteConfirm', () => {
       expect(confirmButton?.className).toContain('btn-destructive')
     })
 
-    test('should render without destructive class for warning variant', () => {
+    it('should render without destructive class for warning variant', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { getByText } = render(
@@ -117,7 +111,7 @@ describe('InlineDeleteConfirm', () => {
       expect(confirmButton?.className).not.toContain('btn-destructive')
     })
 
-    test('should render without destructive class for info variant', () => {
+    it('should render without destructive class for info variant', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { getByText } = render(
@@ -134,7 +128,7 @@ describe('InlineDeleteConfirm', () => {
   })
 
   describe('Custom className', () => {
-    test('should apply custom className to wrapper', () => {
+    it('should apply custom className to wrapper', () => {
       const onConfirm = vi.fn()
       const onCancel = vi.fn()
       const { container } = render(

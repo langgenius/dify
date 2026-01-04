@@ -3,8 +3,8 @@
  * This test verifies that the CSS-based text rendering fixes work correctly
  */
 
-import React from 'react'
 import { render } from '@testing-library/react'
+import * as React from 'react'
 
 // Mock Next.js navigation
 vi.mock('next/navigation', () => ({
@@ -13,7 +13,6 @@ vi.mock('next/navigation', () => ({
 
 // Mock classnames utility
 vi.mock('@/utils/classnames', () => ({
-  __esModule: true,
   default: (...classes: any[]) => classes.filter(Boolean).join(' '),
 }))
 
@@ -25,7 +24,8 @@ const TestNavLink = ({ mode }: { mode: 'expand' | 'collapse' }) => {
     <div className="nav-link-container">
       <div className={`flex h-9 items-center rounded-md py-2 text-sm font-normal ${
         mode === 'expand' ? 'px-3' : 'px-2.5'
-      }`}>
+      }`}
+      >
         <div className={`h-4 w-4 shrink-0 ${mode === 'expand' ? 'mr-2' : 'mr-0'}`}>
           Icon
         </div>
@@ -66,16 +66,16 @@ const TestAppInfo = ({ expand }: { expand: boolean }) => {
           }`}
           data-testid="app-text-container"
         >
-          <div className='flex w-full'>
+          <div className="flex w-full">
             <div
-              className='system-md-semibold truncate whitespace-nowrap text-text-secondary'
+              className="system-md-semibold truncate whitespace-nowrap text-text-secondary"
               data-testid="app-name"
             >
               {appDetail.name}
             </div>
           </div>
           <div
-            className='system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary'
+            className="system-2xs-medium-uppercase whitespace-nowrap text-text-tertiary"
             data-testid="app-type"
           >
             ChatBot

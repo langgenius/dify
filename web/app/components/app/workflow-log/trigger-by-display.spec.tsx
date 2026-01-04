@@ -5,11 +5,11 @@
  * Covers all trigger types: app-run, debugging, webhook, schedule, plugin, rag-pipeline.
  */
 
-import { render, screen } from '@testing-library/react'
-import TriggerByDisplay from './trigger-by-display'
-import { WorkflowRunTriggeredFrom } from '@/models/log'
 import type { TriggerMetadata } from '@/models/log'
+import { render, screen } from '@testing-library/react'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { Theme } from '@/types/app'
+import TriggerByDisplay from './trigger-by-display'
 
 // ============================================================================
 // Mocks
@@ -17,14 +17,12 @@ import { Theme } from '@/types/app'
 
 let mockTheme = Theme.light
 vi.mock('@/hooks/use-theme', () => ({
-  __esModule: true,
   default: () => ({ theme: mockTheme }),
 }))
 
 // Mock BlockIcon as it has complex dependencies
 vi.mock('@/app/components/workflow/block-icon', () => ({
-  __esModule: true,
-  default: ({ type, toolIcon }: { type: string; toolIcon?: string }) => (
+  default: ({ type, toolIcon }: { type: string, toolIcon?: string }) => (
     <div data-testid="block-icon" data-type={type} data-tool-icon={toolIcon || ''}>
       BlockIcon
     </div>

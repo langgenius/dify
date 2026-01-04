@@ -1,8 +1,8 @@
-import React from 'react'
+import type { ActionItem, SearchResult } from './actions/types'
 import { act, render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import GotoAnything from './index'
-import type { ActionItem, SearchResult } from './actions/types'
 
 const routerPush = vi.fn()
 vi.mock('next/navigation', () => ({
@@ -67,7 +67,6 @@ const matchActionMock = vi.fn(() => undefined)
 const searchAnythingMock = vi.fn(async () => mockQueryResult.data)
 
 vi.mock('./actions', () => ({
-  __esModule: true,
   createActions: () => createActionsMock(),
   matchAction: () => matchActionMock(),
   searchAnything: () => searchAnythingMock(),

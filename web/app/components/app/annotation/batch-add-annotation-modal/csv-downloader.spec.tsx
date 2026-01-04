@@ -1,9 +1,10 @@
-import React from 'react'
-import { render, screen } from '@testing-library/react'
-import CSVDownload from './csv-downloader'
-import I18nContext from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import type { Mock } from 'vitest'
 import type { Locale } from '@/i18n-config'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { useLocale } from '@/context/i18n'
+import { LanguagesSupported } from '@/i18n-config/language'
+import CSVDownload from './csv-downloader'
 
 const downloaderProps: any[] = []
 
@@ -17,17 +18,13 @@ vi.mock('react-papaparse', () => ({
   })),
 }))
 
+vi.mock('@/context/i18n', () => ({
+  useLocale: vi.fn(() => 'en-US'),
+}))
+
 const renderWithLocale = (locale: Locale) => {
-  return render(
-    <I18nContext.Provider value={{
-      locale,
-      i18n: {},
-      setLocaleOnClient: vi.fn().mockResolvedValue(undefined),
-    }}
-    >
-      <CSVDownload />
-    </I18nContext.Provider>,
-  )
+  ;(useLocale as Mock).mockReturnValue(locale)
+  return render(<CSVDownload />)
 }
 
 describe('CSVDownload', () => {

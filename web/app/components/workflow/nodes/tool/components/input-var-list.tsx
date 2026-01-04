@@ -1,23 +1,24 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback, useState } from 'react'
-import { produce } from 'immer'
-import { useTranslation } from 'react-i18next'
 import type { ToolVarInputs } from '../types'
-import { VarType as VarKindType } from '../types'
-import { cn } from '@/utils/classnames'
-import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
 import type { CredentialFormSchema } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type { Tool } from '@/app/components/tools/types'
+import type { ToolWithProvider, ValueSelector, Var } from '@/app/components/workflow/types'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { FormTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
 import { useLanguage } from '@/app/components/header/account-setting/model-provider-page/hooks'
-import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
-import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
-import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
-import { VarType } from '@/app/components/workflow/types'
 import AppSelector from '@/app/components/plugins/plugin-detail-panel/app-selector'
 import ModelParameterModal from '@/app/components/plugins/plugin-detail-panel/model-selector'
-import { noop } from 'lodash-es'
-import type { Tool } from '@/app/components/tools/types'
+import Input from '@/app/components/workflow/nodes/_base/components/input-support-select-var'
+import VarReferencePicker from '@/app/components/workflow/nodes/_base/components/variable/var-reference-picker'
+import useAvailableVarList from '@/app/components/workflow/nodes/_base/hooks/use-available-var-list'
+import { VarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import { VarType as VarKindType } from '../types'
 
 type Props = {
   readOnly: boolean
@@ -158,7 +159,7 @@ const InputVarList: FC<Props> = ({
   }, [onOpen])
 
   return (
-    <div className='space-y-3'>
+    <div className="space-y-3">
       {
         schema.map((schema, index) => {
           const {
@@ -180,11 +181,11 @@ const InputVarList: FC<Props> = ({
           const isString = !isNumber && !isSelect && !isFile && !isAppSelector && !isModelSelector
 
           return (
-            <div key={variable} className='space-y-1'>
-              <div className='flex items-center space-x-2 leading-[18px]'>
-                <span className='code-sm-semibold text-text-secondary'>{label[language] || label.en_US}</span>
-                <span className='system-xs-regular text-text-tertiary'>{paramType(type)}</span>
-                {required && <span className='system-xs-regular text-util-colors-orange-dark-orange-dark-600'>Required</span>}
+            <div key={variable} className="space-y-1">
+              <div className="flex items-center space-x-2 leading-[18px]">
+                <span className="code-sm-semibold text-text-secondary">{label[language] || label.en_US}</span>
+                <span className="system-xs-regular text-text-tertiary">{paramType(type)}</span>
+                {required && <span className="system-xs-regular text-util-colors-orange-dark-orange-dark-600">Required</span>}
               </div>
               {isString && (
                 <Input
@@ -195,8 +196,8 @@ const InputVarList: FC<Props> = ({
                   nodesOutputVars={availableVars}
                   availableNodes={availableNodesWithParent}
                   onFocusChange={handleInputFocus(variable)}
-                  placeholder={t('workflow.nodes.http.insertVarPlaceholder')!}
-                  placeholderClassName='!leading-[21px]'
+                  placeholder={t('nodes.http.insertVarPlaceholder', { ns: 'workflow' })!}
+                  placeholderClassName="!leading-[21px]"
                 />
               )}
               {(isNumber || isSelect) && (
@@ -238,7 +239,7 @@ const InputVarList: FC<Props> = ({
               )}
               {isModelSelector && (
                 <ModelParameterModal
-                  popupClassName='!w-[387px]'
+                  popupClassName="!w-[387px]"
                   isAdvancedMode
                   isInWorkflow
                   value={varInput as any}
@@ -247,7 +248,7 @@ const InputVarList: FC<Props> = ({
                   scope={scope}
                 />
               )}
-              {tooltip && <div className='body-xs-regular text-text-tertiary'>{tooltip[language] || tooltip.en_US}</div>}
+              {tooltip && <div className="body-xs-regular text-text-tertiary">{tooltip[language] || tooltip.en_US}</div>}
             </div>
           )
         })

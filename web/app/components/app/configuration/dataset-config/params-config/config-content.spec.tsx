@@ -1,23 +1,23 @@
-import type { MockInstance, MockedFunction } from 'vitest'
+import type { MockedFunction, MockInstance } from 'vitest'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
+import type { RetrievalConfig } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ConfigContent from './config-content'
-import type { DataSet } from '@/models/datasets'
-import { ChunkingMode, DataSourceType, DatasetPermission, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
-import type { DatasetConfigs } from '@/models/debug'
-import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
-import type { RetrievalConfig } from '@/types/app'
 import Toast from '@/app/components/base/toast'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import { ChunkingMode, DatasetPermission, DataSourceType, RerankingModeEnum, WeightedScoreEnum } from '@/models/datasets'
+import { RETRIEVE_METHOD, RETRIEVE_TYPE } from '@/types/app'
+import ConfigContent from './config-content'
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string; model: string }
-    onSelect?: (model: { provider: string; model: string }) => void
+    defaultModel?: { provider: string, model: string }
+    onSelect?: (model: { provider: string, model: string }) => void
   }
 
   const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
@@ -30,13 +30,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   )
 
   return {
-    __esModule: true,
     default: MockModelSelector,
   }
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  __esModule: true,
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 

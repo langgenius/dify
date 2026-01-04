@@ -15,19 +15,19 @@ describe('Description Validation Logic', () => {
   }
 
   describe('Backend Validation Function', () => {
-    test('allows description within 400 characters', () => {
+    it('allows description within 400 characters', () => {
       const validDescription = 'x'.repeat(400)
       expect(() => validateDescriptionLength(validDescription)).not.toThrow()
       expect(validateDescriptionLength(validDescription)).toBe(validDescription)
     })
 
-    test('allows empty description', () => {
+    it('allows empty description', () => {
       expect(() => validateDescriptionLength('')).not.toThrow()
       expect(() => validateDescriptionLength(null)).not.toThrow()
       expect(() => validateDescriptionLength(undefined)).not.toThrow()
     })
 
-    test('rejects description exceeding 400 characters', () => {
+    it('rejects description exceeding 400 characters', () => {
       const invalidDescription = 'x'.repeat(401)
       expect(() => validateDescriptionLength(invalidDescription)).toThrow(
         'Description cannot exceed 400 characters.',
@@ -36,7 +36,7 @@ describe('Description Validation Logic', () => {
   })
 
   describe('Backend Validation Consistency', () => {
-    test('App and Dataset have consistent validation limits', () => {
+    it('App and Dataset have consistent validation limits', () => {
       const maxLength = 400
       const validDescription = 'x'.repeat(maxLength)
       const invalidDescription = 'x'.repeat(maxLength + 1)
@@ -50,7 +50,7 @@ describe('Description Validation Logic', () => {
       expect(() => validateDescriptionLength(invalidDescription)).toThrow()
     })
 
-    test('validation error messages are consistent', () => {
+    it('validation error messages are consistent', () => {
       const expectedErrorMessage = 'Description cannot exceed 400 characters.'
 
       // This would be the error message from both App and Dataset backend validation
@@ -78,7 +78,7 @@ describe('Description Validation Logic', () => {
     ]
 
     testCases.forEach(({ length, shouldPass, description }) => {
-      test(`handles ${description} correctly`, () => {
+      it(`handles ${description} correctly`, () => {
         const testDescription = length > 0 ? 'x'.repeat(length) : ''
         expect(testDescription.length).toBe(length)
 

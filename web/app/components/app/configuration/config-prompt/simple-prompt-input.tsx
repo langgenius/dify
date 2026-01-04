@@ -1,32 +1,33 @@
 'use client'
 import type { FC } from 'react'
-import React, { useState } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { ExternalDataTool } from '@/models/common'
+import type { PromptVariable } from '@/models/debug'
+import type { GenRes } from '@/service/debug'
 import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
+import * as React from 'react'
+import { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
+import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
+import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
+import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
+import { useFeaturesStore } from '@/app/components/base/features/hooks'
+import PromptEditor from '@/app/components/base/prompt-editor'
+import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
+import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
+import { useToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
+import ConfigContext from '@/context/debug-configuration'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { useModalContext } from '@/context/modal-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import { getNewVar, getVars } from '@/utils/var'
 import ConfirmAddVar from './confirm-add-var'
 import PromptEditorHeightResizeWrap from './prompt-editor-height-resize-wrap'
-import { cn } from '@/utils/classnames'
-import type { PromptVariable } from '@/models/debug'
-import Tooltip from '@/app/components/base/tooltip'
-import { AppModeEnum } from '@/types/app'
-import { getNewVar, getVars } from '@/utils/var'
-import AutomaticBtn from '@/app/components/app/configuration/config/automatic/automatic-btn'
-import type { GenRes } from '@/service/debug'
-import GetAutomaticResModal from '@/app/components/app/configuration/config/automatic/get-automatic-res'
-import PromptEditor from '@/app/components/base/prompt-editor'
-import ConfigContext from '@/context/debug-configuration'
-import { useModalContext } from '@/context/modal-context'
-import type { ExternalDataTool } from '@/models/common'
-import { useToastContext } from '@/app/components/base/toast'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { ADD_EXTERNAL_DATA_TOOL } from '@/app/components/app/configuration/config-var'
-import { INSERT_VARIABLE_VALUE_BLOCK_COMMAND } from '@/app/components/base/prompt-editor/plugins/variable-block'
-import { PROMPT_EDITOR_UPDATE_VALUE_BY_EVENT_EMITTER } from '@/app/components/base/prompt-editor/plugins/update-block'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { useFeaturesStore } from '@/app/components/base/features/hooks'
-import { noop } from 'lodash-es'
 
 export type ISimplePromptInput = {
   mode: AppModeEnum
@@ -91,7 +92,7 @@ const Prompt: FC<ISimplePromptInput> = ({
       onValidateBeforeSaveCallback: (newExternalDataTool: ExternalDataTool) => {
         for (let i = 0; i < promptVariables.length; i++) {
           if (promptVariables[i].key === newExternalDataTool.variable) {
-            notify({ type: 'error', message: t('appDebug.varKeyError.keyAlreadyExists', { key: promptVariables[i].key }) })
+            notify({ type: 'error', message: t('varKeyError.keyAlreadyExists', { ns: 'appDebug', key: promptVariables[i].key }) })
             return false
           }
         }
@@ -173,22 +174,22 @@ const Prompt: FC<ISimplePromptInput> = ({
 
   return (
     <div className={cn('relative rounded-xl bg-gradient-to-r from-components-input-border-active-prompt-1 to-components-input-border-active-prompt-2 p-0.5 shadow-xs')}>
-      <div className='rounded-xl bg-background-section-burn'>
+      <div className="rounded-xl bg-background-section-burn">
         {!noTitle && (
           <div className="flex h-11 items-center justify-between pl-3 pr-2.5">
             <div className="flex items-center space-x-1">
-              <div className='h2 system-sm-semibold-uppercase text-text-secondary'>{mode !== AppModeEnum.COMPLETION ? t('appDebug.chatSubTitle') : t('appDebug.completionSubTitle')}</div>
+              <div className="h2 system-sm-semibold-uppercase text-text-secondary">{mode !== AppModeEnum.COMPLETION ? t('chatSubTitle', { ns: 'appDebug' }) : t('completionSubTitle', { ns: 'appDebug' })}</div>
               {!readonly && (
                 <Tooltip
-                  popupContent={
-                    <div className='w-[180px]'>
-                      {t('appDebug.promptTip')}
+                  popupContent={(
+                    <div className="w-[180px]">
+                      {t('promptTip', { ns: 'appDebug' })}
                     </div>
-                  }
+                  )}
                 />
               )}
             </div>
-            <div className='flex items-center'>
+            <div className="flex items-center">
               {!readonly && !isMobile && (
                 <AutomaticBtn onClick={showAutomaticTrue} />
               )}
@@ -197,19 +198,19 @@ const Prompt: FC<ISimplePromptInput> = ({
         )}
 
         <PromptEditorHeightResizeWrap
-          className='min-h-[228px] rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary'
+          className="min-h-[228px] rounded-t-xl bg-background-default px-4 pt-2 text-sm text-text-secondary"
           height={editorHeight}
           minHeight={minHeight}
           onHeightChange={setEditorHeight}
           hideResize={noResize}
           footer={(
-            <div className='flex rounded-b-xl bg-background-default pb-2 pl-4'>
+            <div className="flex rounded-b-xl bg-background-default pb-2 pl-4">
               <div className="h-[18px] rounded-md bg-components-badge-bg-gray-soft px-1 text-xs leading-[18px] text-text-tertiary">{promptTemplate.length}</div>
             </div>
           )}
         >
           <PromptEditor
-            className='min-h-[210px]'
+            className="min-h-[210px]"
             compact
             value={promptTemplate}
             contextBlock={{

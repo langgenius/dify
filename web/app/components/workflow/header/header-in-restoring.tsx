@@ -1,8 +1,18 @@
+import { RiHistoryLine } from '@remixicon/react'
 import {
   useCallback,
 } from 'react'
-import { RiHistoryLine } from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import useTheme from '@/hooks/use-theme'
+import { useInvalidAllLastRun } from '@/service/use-workflow'
+import { cn } from '@/utils/classnames'
+import Toast from '../../base/toast'
+import {
+  useNodesSyncDraft,
+  useWorkflowRun,
+} from '../hooks'
+import { useHooksStore } from '../hooks-store'
 import {
   useStore,
   useWorkflowStore,
@@ -10,17 +20,7 @@ import {
 import {
   WorkflowVersion,
 } from '../types'
-import {
-  useNodesSyncDraft,
-  useWorkflowRun,
-} from '../hooks'
-import Toast from '../../base/toast'
 import RestoringTitle from './restoring-title'
-import Button from '@/app/components/base/button'
-import { useInvalidAllLastRun } from '@/service/use-workflow'
-import { useHooksStore } from '../hooks-store'
-import useTheme from '@/hooks/use-theme'
-import { cn } from '@/utils/classnames'
 
 export type HeaderInRestoringProps = {
   onRestoreSettled?: () => void
@@ -58,13 +58,13 @@ const HeaderInRestoring = ({
       onSuccess: () => {
         Toast.notify({
           type: 'success',
-          message: t('workflow.versionHistory.action.restoreSuccess'),
+          message: t('versionHistory.action.restoreSuccess', { ns: 'workflow' }),
         })
       },
       onError: () => {
         Toast.notify({
           type: 'error',
-          message: t('workflow.versionHistory.action.restoreFailure'),
+          message: t('versionHistory.action.restoreFailure', { ns: 'workflow' }),
         })
       },
       onSettled: () => {
@@ -80,27 +80,28 @@ const HeaderInRestoring = ({
       <div>
         <RestoringTitle />
       </div>
-      <div className=' flex items-center justify-end gap-x-2'>
+      <div className=" flex items-center justify-end gap-x-2">
         <Button
           onClick={handleRestore}
           disabled={!currentVersion || currentVersion.version === WorkflowVersion.Draft}
-          variant='primary'
+          variant="primary"
           className={cn(
-            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+            'rounded-lg border border-transparent',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
           )}
         >
-          {t('workflow.common.restore')}
+          {t('common.restore', { ns: 'workflow' })}
         </Button>
         <Button
           onClick={handleCancelRestore}
           className={cn(
-            'text-components-button-secondary-accent-text',
-            theme === 'dark' && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+            'rounded-lg border border-transparent text-components-button-secondary-accent-text',
+            theme === 'dark' && 'border-black/5 bg-white/10 backdrop-blur-sm',
           )}
         >
-          <div className='flex items-center gap-x-0.5'>
-            <RiHistoryLine className='h-4 w-4' />
-            <span className='px-0.5'>{t('workflow.common.exitVersions')}</span>
+          <div className="flex items-center gap-x-0.5">
+            <RiHistoryLine className="h-4 w-4" />
+            <span className="px-0.5">{t('common.exitVersions', { ns: 'workflow' })}</span>
           </div>
         </Button>
       </div>

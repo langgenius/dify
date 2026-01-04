@@ -1,29 +1,30 @@
 'use client'
 import type { FC, ReactNode } from 'react'
-import React, { useEffect, useState } from 'react'
-import { PencilIcon } from '@heroicons/react/24/outline'
-import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
-import { get } from 'lodash-es'
-import { useDocumentContext } from '../context'
-import s from './style.module.css'
-import { cn } from '@/utils/classnames'
-import Input from '@/app/components/base/input'
-import Button from '@/app/components/base/button'
-import Tooltip from '@/app/components/base/tooltip'
-import Radio from '@/app/components/base/radio'
-import Divider from '@/app/components/base/divider'
-import { ToastContext } from '@/app/components/base/toast'
-import { SimpleSelect } from '@/app/components/base/select'
-import Loading from '@/app/components/base/loading'
-import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
-import { asyncRunSafe, getTextWidthWithCanvas } from '@/utils'
-import { modifyDocMetadata } from '@/service/datasets'
+import type { inputType, metadataType } from '@/hooks/use-metadata'
 import type { CommonResponse } from '@/models/common'
 import type { DocType, FullDocumentDetail } from '@/models/datasets'
-import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
-import type { inputType, metadataType } from '@/hooks/use-metadata'
+import { PencilIcon } from '@heroicons/react/24/outline'
+import { get } from 'es-toolkit/compat'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import AutoHeightTextarea from '@/app/components/base/auto-height-textarea'
+import Button from '@/app/components/base/button'
+import Divider from '@/app/components/base/divider'
+import Input from '@/app/components/base/input'
+import Loading from '@/app/components/base/loading'
+import Radio from '@/app/components/base/radio'
+import { SimpleSelect } from '@/app/components/base/select'
+import { ToastContext } from '@/app/components/base/toast'
+import Tooltip from '@/app/components/base/tooltip'
 import { useBookCategories, useBusinessDocCategories, useLanguages, useMetadataMap, usePersonalDocCategories } from '@/hooks/use-metadata'
+import { CUSTOMIZABLE_DOC_TYPES } from '@/models/datasets'
+import { modifyDocMetadata } from '@/service/datasets'
+import { asyncRunSafe, getTextWidthWithCanvas } from '@/utils'
+import { cn } from '@/utils/classnames'
+import { useDocumentContext } from '../context'
+import s from './style.module.css'
 
 const map2Options = (map: { [key: string]: string }) => {
   return Object.keys(map).map(key => ({ value: key, name: map[key] }))
@@ -37,7 +38,7 @@ type IFieldInfoProps = {
   defaultValue?: string
   showEdit?: boolean
   inputType?: inputType
-  selectOptions?: Array<{ value: string; name: string }>
+  selectOptions?: Array<{ value: string, name: string }>
   onUpdate?: (v: any) => void
 }
 
@@ -62,31 +63,37 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
       return displayedValue
 
     if (inputType === 'select') {
-      return <SimpleSelect
-        onSelect={({ value }) => onUpdate?.(value as string)}
-        items={selectOptions}
-        defaultValue={value}
-        className={s.select}
-        wrapperClassName={s.selectWrapper}
-        placeholder={`${t('datasetDocuments.metadata.placeholder.select')}${label}`}
-      />
+      return (
+        <SimpleSelect
+          onSelect={({ value }) => onUpdate?.(value as string)}
+          items={selectOptions}
+          defaultValue={value}
+          className={s.select}
+          wrapperClassName={s.selectWrapper}
+          placeholder={`${t('metadata.placeholder.select', { ns: 'datasetDocuments' })}${label}`}
+        />
+      )
     }
 
     if (inputType === 'textarea') {
-      return <AutoHeightTextarea
-        onChange={e => onUpdate?.(e.target.value)}
-        value={value}
-        className={s.textArea}
-        placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
-      />
+      return (
+        <AutoHeightTextarea
+          onChange={e => onUpdate?.(e.target.value)}
+          value={value}
+          className={s.textArea}
+          placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
+        />
+      )
     }
 
-    return <Input
-      onChange={e => onUpdate?.(e.target.value)}
-      value={value}
-      defaultValue={defaultValue}
-      placeholder={`${t('datasetDocuments.metadata.placeholder.add')}${label}`}
-    />
+    return (
+      <Input
+        onChange={e => onUpdate?.(e.target.value)}
+        value={value}
+        defaultValue={defaultValue}
+        placeholder={`${t('metadata.placeholder.add', { ns: 'datasetDocuments' })}${label}`}
+      />
+    )
   }
 
   return (
@@ -100,9 +107,10 @@ export const FieldInfo: FC<IFieldInfoProps> = ({
   )
 }
 
-const TypeIcon: FC<{ iconName: string; className?: string }> = ({ iconName, className = '' }) => {
-  return <div className={cn(s.commonIcon, s[`${iconName}Icon`], className)}
-  />
+const TypeIcon: FC<{ iconName: string, className?: string }> = ({ iconName, className = '' }) => {
+  return (
+    <div className={cn(s.commonIcon, s[`${iconName}Icon`], className)} />
+  )
 }
 
 const IconButton: FC<{
@@ -152,9 +160,9 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   const [metadataParams, setMetadataParams] = useState<MetadataState>(
     doc_type
       ? {
-        documentType: doc_type as DocType,
-        metadata: (doc_metadata || {}) as Record<string, string>,
-      }
+          documentType: doc_type as DocType,
+          metadata: (doc_metadata || {}) as Record<string, string>,
+        }
       : { metadata: {} },
   )
   const [showDocTypes, setShowDocTypes] = useState(!doc_type) // whether show doc types
@@ -202,47 +210,58 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
 
     return (
       <>
-        {!doc_type && !documentType && <>
-          <div className={s.desc}>{t('datasetDocuments.metadata.desc')}</div>
-        </>}
+        {!doc_type && !documentType && (
+          <>
+            <div className={s.desc}>{t('metadata.desc', { ns: 'datasetDocuments' })}</div>
+          </>
+        )}
         <div className={s.operationWrapper}>
-          {!doc_type && !documentType && <>
-            <span className={s.title}>{t('datasetDocuments.metadata.docTypeSelectTitle')}</span>
-          </>}
-          {documentType && <>
-            <span className={s.title}>{t('datasetDocuments.metadata.docTypeChangeTitle')}</span>
-            <span className={s.changeTip}>{t('datasetDocuments.metadata.docTypeSelectWarning')}</span>
-          </>}
+          {!doc_type && !documentType && (
+            <>
+              <span className={s.title}>{t('metadata.docTypeSelectTitle', { ns: 'datasetDocuments' })}</span>
+            </>
+          )}
+          {documentType && (
+            <>
+              <span className={s.title}>{t('metadata.docTypeChangeTitle', { ns: 'datasetDocuments' })}</span>
+              <span className={s.changeTip}>{t('metadata.docTypeSelectWarning', { ns: 'datasetDocuments' })}</span>
+            </>
+          )}
           <Radio.Group value={tempDocType ?? documentType ?? ''} onChange={setTempDocType} className={s.radioGroup}>
             {CUSTOMIZABLE_DOC_TYPES.map((type, index) => {
               const currValue = tempDocType ?? documentType
-              return <Radio key={index} value={type} className={`${s.radio} ${currValue === type ? 'shadow-none' : ''}`}>
-                <IconButton
-                  type={type}
-                  isChecked={currValue === type}
-                />
-              </Radio>
+              return (
+                <Radio key={index} value={type} className={`${s.radio} ${currValue === type ? 'shadow-none' : ''}`}>
+                  <IconButton
+                    type={type}
+                    isChecked={currValue === type}
+                  />
+                </Radio>
+              )
             })}
           </Radio.Group>
           {!doc_type && !documentType && (
-            <Button variant='primary'
+            <Button
+              variant="primary"
               onClick={confirmDocType}
               disabled={!tempDocType}
             >
-              {t('datasetDocuments.metadata.firstMetaAction')}
+              {t('metadata.firstMetaAction', { ns: 'datasetDocuments' })}
             </Button>
           )}
-          {documentType && <div className={s.opBtnWrapper}>
-            <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant='primary' >{t('common.operation.save')}</Button>
-            <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
-          </div>}
-        </div >
+          {documentType && (
+            <div className={s.opBtnWrapper}>
+              <Button onClick={confirmDocType} className={`${s.opBtn} ${s.opSaveBtn}`} variant="primary">{t('operation.save', { ns: 'common' })}</Button>
+              <Button onClick={cancelDocType} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('operation.cancel', { ns: 'common' })}</Button>
+            </div>
+          )}
+        </div>
       </>
     )
   }
 
   // show metadata info and edit
-  const renderFieldInfos = ({ mainField = 'book', canEdit }: { mainField?: metadataType | ''; canEdit?: boolean }) => {
+  const renderFieldInfos = ({ mainField = 'book', canEdit }: { mainField?: metadataType | '', canEdit?: boolean }) => {
     if (!mainField)
       return null
     const fieldMap = metadataMap[mainField]?.subFieldsMap
@@ -274,22 +293,26 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
       return val
     }
 
-    return <div className='flex flex-col gap-1'>
-      {Object.keys(fieldMap).map((field) => {
-        return <FieldInfo
-          key={fieldMap[field]?.label}
-          label={fieldMap[field]?.label}
-          displayedValue={getTargetValue(field)}
-          value={get(sourceData, field, '')}
-          inputType={fieldMap[field]?.inputType || 'input'}
-          showEdit={canEdit}
-          onUpdate={(val) => {
-            setMetadataParams(pre => ({ ...pre, metadata: { ...pre.metadata, [field]: val } }))
-          }}
-          selectOptions={map2Options(getTargetMap(field))}
-        />
-      })}
-    </div>
+    return (
+      <div className="flex flex-col gap-1">
+        {Object.keys(fieldMap).map((field) => {
+          return (
+            <FieldInfo
+              key={fieldMap[field]?.label}
+              label={fieldMap[field]?.label}
+              displayedValue={getTargetValue(field)}
+              value={get(sourceData, field, '')}
+              inputType={fieldMap[field]?.inputType || 'input'}
+              showEdit={canEdit}
+              onUpdate={(val) => {
+                setMetadataParams(pre => ({ ...pre, metadata: { ...pre.metadata, [field]: val } }))
+              }}
+              selectOptions={map2Options(getTargetMap(field))}
+            />
+          )
+        })}
+      </div>
+    )
   }
 
   const enabledEdit = () => {
@@ -314,9 +337,9 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
       },
     }) as Promise<CommonResponse>)
     if (!e)
-      notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+      notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
     else
-      notify({ type: 'error', message: t('common.actionMsg.modifiedUnsuccessfully') })
+      notify({ type: 'error', message: t('actionMsg.modifiedUnsuccessfully', { ns: 'common' }) })
     onUpdate?.()
     setEditStatus(false)
     setSaveLoading(false)
@@ -325,63 +348,75 @@ const Metadata: FC<IMetadataProps> = ({ docDetail, loading, onUpdate }) => {
   return (
     <div className={`${s.main} ${editStatus ? 'bg-white' : 'bg-gray-25'}`}>
       {loading
-        ? (<Loading type='app' />)
+        ? (<Loading type="app" />)
         : (
-          <>
-            <div className={s.titleWrapper}>
-              <span className={s.title}>{t('datasetDocuments.metadata.title')}</span>
+            <>
+              <div className={s.titleWrapper}>
+                <span className={s.title}>{t('metadata.title', { ns: 'datasetDocuments' })}</span>
+                {!editStatus
+                  ? (
+                      <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
+                        <PencilIcon className={s.opIcon} />
+                        {t('operation.edit', { ns: 'common' })}
+                      </Button>
+                    )
+                  : showDocTypes
+                    ? null
+                    : (
+                        <div className={s.opBtnWrapper}>
+                          <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('operation.cancel', { ns: 'common' })}</Button>
+                          <Button
+                            onClick={onSave}
+                            className={`${s.opBtn} ${s.opSaveBtn}`}
+                            variant="primary"
+                            loading={saveLoading}
+                          >
+                            {t('operation.save', { ns: 'common' })}
+                          </Button>
+                        </div>
+                      )}
+              </div>
+              {/* show selected doc type and changing entry */}
               {!editStatus
-                ? <Button onClick={enabledEdit} className={`${s.opBtn} ${s.opEditBtn}`}>
-                  <PencilIcon className={s.opIcon} />
-                  {t('common.operation.edit')}
-                </Button>
+                ? (
+                    <div className={s.documentTypeShow}>
+                      <TypeIcon iconName={metadataMap[doc_type || 'book']?.iconName || ''} className={s.iconShow} />
+                      {metadataMap[doc_type || 'book'].text}
+                    </div>
+                  )
                 : showDocTypes
                   ? null
-                  : <div className={s.opBtnWrapper}>
-                    <Button onClick={onCancel} className={`${s.opBtn} ${s.opCancelBtn}`}>{t('common.operation.cancel')}</Button>
-                    <Button onClick={onSave}
-                      className={`${s.opBtn} ${s.opSaveBtn}`}
-                      variant='primary'
-                      loading={saveLoading}
-                    >
-                      {t('common.operation.save')}
-                    </Button>
-                  </div>}
-            </div>
-            {/* show selected doc type and changing entry */}
-            {!editStatus
-              ? <div className={s.documentTypeShow}>
-                <TypeIcon iconName={metadataMap[doc_type || 'book']?.iconName || ''} className={s.iconShow} />
-                {metadataMap[doc_type || 'book'].text}
-              </div>
-              : showDocTypes
-                ? null
-                : <div className={s.documentTypeShow}>
-                  {metadataParams.documentType && <>
-                    <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
-                    {metadataMap[metadataParams.documentType || 'book'].text}
-                    {editStatus && <div className='ml-1 inline-flex items-center gap-1'>
-                      ·
-                      <div
-                        onClick={() => { setShowDocTypes(true) }}
-                        className='cursor-pointer hover:text-text-accent'
-                      >
-                        {t('common.operation.change')}
+                  : (
+                      <div className={s.documentTypeShow}>
+                        {metadataParams.documentType && (
+                          <>
+                            <TypeIcon iconName={metadataMap[metadataParams.documentType || 'book'].iconName || ''} className={s.iconShow} />
+                            {metadataMap[metadataParams.documentType || 'book'].text}
+                            {editStatus && (
+                              <div className="ml-1 inline-flex items-center gap-1">
+                                ·
+                                <div
+                                  onClick={() => { setShowDocTypes(true) }}
+                                  className="cursor-pointer hover:text-text-accent"
+                                >
+                                  {t('operation.change', { ns: 'common' })}
+                                </div>
+                              </div>
+                            )}
+                          </>
+                        )}
                       </div>
-                    </div>}
-                  </>}
-                </div>
-            }
-            {(!doc_type && showDocTypes) ? null : <Divider />}
-            {showDocTypes ? renderSelectDocType() : renderFieldInfos({ mainField: metadataParams.documentType, canEdit: editStatus })}
-            {/* show fixed fields */}
-            <Divider />
-            {renderFieldInfos({ mainField: 'originInfo', canEdit: false })}
-            <div className={`${s.title} mt-8`}>{metadataMap.technicalParameters.text}</div>
-            <Divider />
-            {renderFieldInfos({ mainField: 'technicalParameters', canEdit: false })}
-          </>
-        )}
+                    )}
+              {(!doc_type && showDocTypes) ? null : <Divider />}
+              {showDocTypes ? renderSelectDocType() : renderFieldInfos({ mainField: metadataParams.documentType, canEdit: editStatus })}
+              {/* show fixed fields */}
+              <Divider />
+              {renderFieldInfos({ mainField: 'originInfo', canEdit: false })}
+              <div className={`${s.title} mt-8`}>{metadataMap.technicalParameters.text}</div>
+              <Divider />
+              {renderFieldInfos({ mainField: 'technicalParameters', canEdit: false })}
+            </>
+          )}
     </div>
   )
 }

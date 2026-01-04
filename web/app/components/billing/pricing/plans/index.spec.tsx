@@ -1,26 +1,29 @@
-import React from 'react'
+import type { Mock } from 'vitest'
+import type { UsagePlanInfo } from '../../type'
 import { render, screen } from '@testing-library/react'
-import Plans from './index'
-import { Plan, type UsagePlanInfo } from '../../type'
+import * as React from 'react'
+import { Plan } from '../../type'
 import { PlanRange } from '../plan-switcher/plan-range-switcher'
 import cloudPlanItem from './cloud-plan-item'
+import Plans from './index'
 import selfHostedPlanItem from './self-hosted-plan-item'
-import type { Mock } from 'vitest'
 
 vi.mock('./cloud-plan-item', () => ({
-  __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`cloud-plan-${props.plan}`} data-current-plan={props.currentPlan}>
-      Cloud {props.plan}
+      Cloud
+      {' '}
+      {props.plan}
     </div>
   )),
 }))
 
 vi.mock('./self-hosted-plan-item', () => ({
-  __esModule: true,
   default: vi.fn(props => (
     <div data-testid={`self-plan-${props.plan}`}>
-      Self {props.plan}
+      Self
+      {' '}
+      {props.plan}
     </div>
   )),
 }))
@@ -45,7 +48,7 @@ const buildPlan = (type: Plan) => {
 describe('Plans', () => {
   // Cloud plans visible only when currentPlan is cloud
   describe('Cloud plan rendering', () => {
-    test('should render sandbox, professional, and team cloud plans when workspace is cloud', () => {
+    it('should render sandbox, professional, and team cloud plans when workspace is cloud', () => {
       render(
         <Plans
           plan={buildPlan(Plan.enterprise)}
@@ -68,7 +71,7 @@ describe('Plans', () => {
 
   // Self-hosted plans visible for self-managed workspaces
   describe('Self-hosted plan rendering', () => {
-    test('should render all self-hosted plans when workspace type is self-hosted', () => {
+    it('should render all self-hosted plans when workspace type is self-hosted', () => {
       render(
         <Plans
           plan={buildPlan(Plan.sandbox)}

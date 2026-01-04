@@ -1,16 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import ResultItemMeta from './result-item-meta'
-import ResultItemFooter from './result-item-footer'
 import type { ExternalKnowledgeBaseHitTesting } from '@/models/datasets'
-import { cn } from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
+import { useBoolean } from 'ahooks'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import { FileAppearanceTypeEnum } from '@/app/components/base/file-uploader/types'
+import Modal from '@/app/components/base/modal'
+import { cn } from '@/utils/classnames'
+import ResultItemFooter from './result-item-footer'
+import ResultItemMeta from './result-item-meta'
 
-const i18nPrefix = 'datasetHitTesting'
+const i18nPrefix = ''
 type Props = {
   payload: ExternalKnowledgeBaseHitTesting
   positionId: number
@@ -27,11 +27,11 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
   return (
     <div className={cn('cursor-pointer rounded-xl bg-chat-bubble-bg pt-3 hover:shadow-lg')} onClick={showDetailModal}>
       {/* Meta info */}
-      <ResultItemMeta className='px-3' labelPrefix={'Chunk'} positionId={positionId} wordCount={content.length} score={score} />
+      <ResultItemMeta className="px-3" labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
 
       {/* Main */}
-      <div className='mt-1 px-3'>
-        <div className='body-md-regular line-clamp-2 break-all text-text-primary'>{content}</div>
+      <div className="mt-1 px-3">
+        <div className="body-md-regular line-clamp-2 break-all text-text-primary">{content}</div>
       </div>
 
       {/* Foot */}
@@ -39,14 +39,14 @@ const ResultItemExternal: FC<Props> = ({ payload, positionId }) => {
 
       {isShowDetailModal && (
         <Modal
-          title={t(`${i18nPrefix}.chunkDetail`)}
-          className={'!min-w-[800px]'}
+          title={t(`${i18nPrefix}chunkDetail`, { ns: 'datasetHitTesting' })}
+          className="!min-w-[800px]"
           closable
           onClose={hideDetailModal}
           isShow={isShowDetailModal}
         >
-          <div className='mt-4 flex-1'>
-            <ResultItemMeta labelPrefix={'Chunk'} positionId={positionId} wordCount={content.length} score={score} />
+          <div className="mt-4 flex-1">
+            <ResultItemMeta labelPrefix="Chunk" positionId={positionId} wordCount={content.length} score={score} />
             <div className={cn('body-md-regular mt-2 break-all text-text-secondary', 'h-[min(539px,_80vh)] overflow-y-auto')}>
               {content}
             </div>

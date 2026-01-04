@@ -1,30 +1,30 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
+import type { App } from '@/types/app'
 import { RiCloseLine } from '@remixicon/react'
-import AppIconPicker from '../../base/app-icon-picker'
-import { cn } from '@/utils/classnames'
-import Checkbox from '@/app/components/base/checkbox'
+import { noop } from 'es-toolkit/function'
+import { useRouter } from 'next/navigation'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import { useStore as useAppStore } from '@/app/components/app/store'
+import AppIcon from '@/app/components/base/app-icon'
 import Button from '@/app/components/base/button'
+import Checkbox from '@/app/components/base/checkbox'
+import Confirm from '@/app/components/base/confirm'
+import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
 import Input from '@/app/components/base/input'
 import Modal from '@/app/components/base/modal'
-import Confirm from '@/app/components/base/confirm'
 import { ToastContext } from '@/app/components/base/toast'
-import { deleteApp, switchApp } from '@/service/apps'
-import { useAppContext } from '@/context/app-context'
-import { useProviderContext } from '@/context/provider-context'
 import AppsFull from '@/app/components/billing/apps-full-in-dialog'
 import { NEED_REFRESH_APP_LIST_KEY } from '@/config'
-import { getRedirection } from '@/utils/app-redirection'
-import type { App } from '@/types/app'
-import { AlertTriangle } from '@/app/components/base/icons/src/vender/solid/alertsAndFeedback'
-import AppIcon from '@/app/components/base/app-icon'
-import { useStore as useAppStore } from '@/app/components/app/store'
-import { noop } from 'lodash-es'
+import { useAppContext } from '@/context/app-context'
+import { useProviderContext } from '@/context/provider-context'
+import { deleteApp, switchApp } from '@/service/apps'
 import { AppModeEnum } from '@/types/app'
+import { getRedirection } from '@/utils/app-redirection'
+import { cn } from '@/utils/classnames'
+import AppIconPicker from '../../base/app-icon-picker'
 
 type SwitchAppModalProps = {
   show: boolean
@@ -68,7 +68,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         onSuccess()
       if (onClose)
         onClose()
-      notify({ type: 'success', message: t('app.newApp.appCreated') })
+      notify({ type: 'success', message: t('newApp.appCreated', { ns: 'app' }) })
       if (inAppDetail)
         setAppDetail()
       if (removeOriginal)
@@ -84,7 +84,7 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
       )
     }
     catch {
-      notify({ type: 'error', message: t('app.newApp.appCreateFailed') })
+      notify({ type: 'error', message: t('newApp.appCreateFailed', { ns: 'app' }) })
     }
   }
 
@@ -100,25 +100,25 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
         isShow={show}
         onClose={noop}
       >
-        <div className='absolute right-4 top-4 cursor-pointer p-2' onClick={onClose}>
-          <RiCloseLine className='h-4 w-4 text-text-tertiary' />
+        <div className="absolute right-4 top-4 cursor-pointer p-2" onClick={onClose}>
+          <RiCloseLine className="h-4 w-4 text-text-tertiary" />
         </div>
-        <div className='h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl'>
-          <AlertTriangle className='h-6 w-6 text-[rgb(247,144,9)]' />
+        <div className="h-12 w-12 rounded-xl border-[0.5px] border-divider-regular bg-background-default-burn p-3 shadow-xl">
+          <AlertTriangle className="h-6 w-6 text-[rgb(247,144,9)]" />
         </div>
-        <div className='relative mt-3 text-xl font-semibold leading-[30px] text-text-primary'>{t('app.switch')}</div>
-        <div className='my-1 text-sm leading-5 text-text-tertiary'>
-          <span>{t('app.switchTipStart')}</span>
-          <span className='font-medium text-text-secondary'>{t('app.switchTip')}</span>
-          <span>{t('app.switchTipEnd')}</span>
+        <div className="relative mt-3 text-xl font-semibold leading-[30px] text-text-primary">{t('switch', { ns: 'app' })}</div>
+        <div className="my-1 text-sm leading-5 text-text-tertiary">
+          <span>{t('switchTipStart', { ns: 'app' })}</span>
+          <span className="font-medium text-text-secondary">{t('switchTip', { ns: 'app' })}</span>
+          <span>{t('switchTipEnd', { ns: 'app' })}</span>
         </div>
-        <div className='pb-4'>
-          <div className='py-2 text-sm font-medium leading-[20px] text-text-primary'>{t('app.switchLabel')}</div>
-          <div className='flex items-center justify-between space-x-2'>
+        <div className="pb-4">
+          <div className="py-2 text-sm font-medium leading-[20px] text-text-primary">{t('switchLabel', { ns: 'app' })}</div>
+          <div className="flex items-center justify-between space-x-2">
             <AppIcon
-              size='large'
+              size="large"
               onClick={() => { setShowAppIconPicker(true) }}
-              className='cursor-pointer'
+              className="cursor-pointer"
               iconType={appIcon.type}
               icon={appIcon.type === 'image' ? appIcon.fileId : appIcon.icon}
               background={appIcon.type === 'image' ? undefined : appIcon.background}
@@ -127,39 +127,41 @@ const SwitchAppModal = ({ show, appDetail, inAppDetail = false, onSuccess, onClo
             <Input
               value={name}
               onChange={e => setName(e.target.value)}
-              placeholder={t('app.newApp.appNamePlaceholder') || ''}
-              className='h-10 grow'
+              placeholder={t('newApp.appNamePlaceholder', { ns: 'app' }) || ''}
+              className="h-10 grow"
             />
           </div>
-          {showAppIconPicker && <AppIconPicker
-            onSelect={(payload) => {
-              setAppIcon(payload)
-              setShowAppIconPicker(false)
-            }}
-            onClose={() => {
-              setAppIcon(appDetail.icon_type === 'image'
-                ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
-                : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background })
-              setShowAppIconPicker(false)
-            }}
-          />}
+          {showAppIconPicker && (
+            <AppIconPicker
+              onSelect={(payload) => {
+                setAppIcon(payload)
+                setShowAppIconPicker(false)
+              }}
+              onClose={() => {
+                setAppIcon(appDetail.icon_type === 'image'
+                  ? { type: 'image' as const, url: appDetail.icon_url, fileId: appDetail.icon }
+                  : { type: 'emoji' as const, icon: appDetail.icon, background: appDetail.icon_background })
+                setShowAppIconPicker(false)
+              }}
+            />
+          )}
         </div>
-        {isAppsFull && <AppsFull loc='app-switch' />}
-        <div className='flex items-center justify-between pt-6'>
-          <div className='flex items-center'>
-            <Checkbox className='shrink-0' checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
-            <div className="ml-2 cursor-pointer text-sm leading-5 text-text-secondary" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('app.removeOriginal')}</div>
+        {isAppsFull && <AppsFull loc="app-switch" />}
+        <div className="flex items-center justify-between pt-6">
+          <div className="flex items-center">
+            <Checkbox className="shrink-0" checked={removeOriginal} onCheck={() => setRemoveOriginal(!removeOriginal)} />
+            <div className="ml-2 cursor-pointer text-sm leading-5 text-text-secondary" onClick={() => setRemoveOriginal(!removeOriginal)}>{t('removeOriginal', { ns: 'app' })}</div>
           </div>
-          <div className='flex items-center'>
-            <Button className='mr-2' onClick={onClose}>{t('app.newApp.Cancel')}</Button>
-            <Button className='border-red-700' disabled={isAppsFull || !name} variant="warning" onClick={goStart}>{t('app.switchStart')}</Button>
+          <div className="flex items-center">
+            <Button className="mr-2" onClick={onClose}>{t('newApp.Cancel', { ns: 'app' })}</Button>
+            <Button className="border-red-700" disabled={isAppsFull || !name} variant="warning" onClick={goStart}>{t('switchStart', { ns: 'app' })}</Button>
           </div>
         </div>
       </Modal>
       {showConfirmDelete && (
         <Confirm
-          title={t('app.deleteAppConfirmTitle')}
-          content={t('app.deleteAppConfirmContent')}
+          title={t('deleteAppConfirmTitle', { ns: 'app' })}
+          content={t('deleteAppConfirmContent', { ns: 'app' })}
           isShow={showConfirmDelete}
           onConfirm={() => setShowConfirmDelete(false)}
           onCancel={() => {

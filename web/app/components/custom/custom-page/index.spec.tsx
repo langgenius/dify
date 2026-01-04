@@ -1,16 +1,16 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import CustomPage from './index'
-import { Plan } from '@/app/components/billing/type'
+import * as React from 'react'
 import { createMockProviderContextValue } from '@/__mocks__/provider-context'
 import { contactSalesUrl } from '@/app/components/billing/config'
+import { Plan } from '@/app/components/billing/type'
+import { useModalContext } from '@/context/modal-context'
 // Get the mocked functions
 // const { useProviderContext } = vi.requireMock('@/context/provider-context')
 // const { useModalContext } = vi.requireMock('@/context/modal-context')
 import { useProviderContext } from '@/context/provider-context'
-import { useModalContext } from '@/context/modal-context'
+import CustomPage from './index'
 
 // Mock external dependencies only
 vi.mock('@/context/provider-context', () => ({
@@ -24,7 +24,6 @@ vi.mock('@/context/modal-context', () => ({
 // Mock the complex CustomWebAppBrand component to avoid dependency issues
 // This is acceptable because it has complex dependencies (fetch, APIs)
 vi.mock('../custom-web-app-brand', () => ({
-  __esModule: true,
   default: () => <div data-testid="custom-web-app-brand">CustomWebAppBrand</div>,
 }))
 

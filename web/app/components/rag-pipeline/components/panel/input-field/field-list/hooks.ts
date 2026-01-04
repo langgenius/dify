@@ -1,26 +1,26 @@
+import type { SortableItem } from './types'
+import type { MoreInfo, ValueSelector } from '@/app/components/workflow/types'
+import type { InputVar } from '@/models/pipeline'
+import { useBoolean } from 'ahooks'
+import { produce } from 'immer'
 import {
   useCallback,
   useRef,
   useState,
 } from 'react'
-import { produce } from 'immer'
-import type { InputVar } from '@/models/pipeline'
-import type { SortableItem } from './types'
-import type { MoreInfo, ValueSelector } from '@/app/components/workflow/types'
-import { ChangeType } from '@/app/components/workflow/types'
-import { useBoolean } from 'ahooks'
-import Toast from '@/app/components/base/toast'
-import { usePipeline } from '../../../../hooks/use-pipeline'
 import { useTranslation } from 'react-i18next'
+import Toast from '@/app/components/base/toast'
 import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
+import { ChangeType } from '@/app/components/workflow/types'
+import { usePipeline } from '../../../../hooks/use-pipeline'
 
 const VARIABLE_PREFIX = 'rag'
 
 type useFieldListProps = {
-  initialInputFields: InputVar[],
-  onInputFieldsChange: (value: InputVar[]) => void,
-  nodeId: string,
-  allVariableNames: string[],
+  initialInputFields: InputVar[]
+  onInputFieldsChange: (value: InputVar[]) => void
+  nodeId: string
+  allVariableNames: string[]
 }
 
 export const useFieldList = ({
@@ -90,7 +90,7 @@ export const useFieldList = ({
     if (isDuplicate) {
       Toast.notify({
         type: 'error',
-        message: t('datasetPipeline.inputFieldPanel.error.variableDuplicate'),
+        message: t('inputFieldPanel.error.variableDuplicate', { ns: 'datasetPipeline' }),
       })
       return
     }

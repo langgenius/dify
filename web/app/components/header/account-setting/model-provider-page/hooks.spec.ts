@@ -1,7 +1,7 @@
 import type { Mock } from 'vitest'
 import { renderHook } from '@testing-library/react'
+import { useLocale } from '@/context/i18n'
 import { useLanguage } from './hooks'
-import { useContext } from 'use-context-selector'
 
 vi.mock('@tanstack/react-query', () => ({
   useQuery: vi.fn(),
@@ -36,8 +36,7 @@ vi.mock('@/service/use-common', () => ({
 
 // mock context hooks
 vi.mock('@/context/i18n', () => ({
-  __esModule: true,
-  default: vi.fn(),
+  useLocale: vi.fn(() => 'en-US'),
 }))
 
 vi.mock('@/context/provider-context', () => ({
@@ -72,27 +71,20 @@ afterAll(() => {
 
 describe('useLanguage', () => {
   it('should replace hyphen with underscore in locale', () => {
-    (useContext as Mock).mockReturnValue({
-      locale: 'en-US',
-    })
+    ;(useLocale as Mock).mockReturnValue('en-US')
     const { result } = renderHook(() => useLanguage())
     expect(result.current).toBe('en_US')
   })
 
   it('should return locale as is if no hyphen exists', () => {
-    (useContext as Mock).mockReturnValue({
-      locale: 'enUS',
-    })
+    ;(useLocale as Mock).mockReturnValue('enUS')
 
     const { result } = renderHook(() => useLanguage())
     expect(result.current).toBe('enUS')
   })
 
   it('should handle multiple hyphens', () => {
-    // Mock the I18n context return value
-    (useContext as Mock).mockReturnValue({
-      locale: 'zh-Hans-CN',
-    })
+    ;(useLocale as Mock).mockReturnValue('zh-Hans-CN')
 
     const { result } = renderHook(() => useLanguage())
     expect(result.current).toBe('zh_Hans-CN')

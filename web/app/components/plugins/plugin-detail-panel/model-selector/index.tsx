@@ -2,32 +2,32 @@ import type {
   FC,
   ReactNode,
 } from 'react'
-import { useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   DefaultModel,
   FormValue,
   ModelFeatureEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
-import {
-  useModelList,
-} from '@/app/components/header/account-setting/model-provider-page/hooks'
-import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
-import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
 import type { TriggerProps } from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import { useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import LLMParamsPanel from './llm-params-panel'
-import TTSParamsPanel from './tts-params-panel'
+import Toast from '@/app/components/base/toast'
+import { ModelStatusEnum, ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import {
+  useModelList,
+} from '@/app/components/header/account-setting/model-provider-page/hooks'
+import AgentModelTrigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/agent-model-trigger'
+import Trigger from '@/app/components/header/account-setting/model-provider-page/model-parameter-modal/trigger'
+import ModelSelector from '@/app/components/header/account-setting/model-provider-page/model-selector'
 import { useProviderContext } from '@/context/provider-context'
 import { cn } from '@/utils/classnames'
-import Toast from '@/app/components/base/toast'
 import { fetchAndMergeValidCompletionParams } from '@/utils/completion-params'
+import LLMParamsPanel from './llm-params-panel'
+import TTSParamsPanel from './tts-params-panel'
 
 export type ModelParameterModalProps = {
   popupClassName?: string
@@ -145,12 +145,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
         if (keys.length) {
           Toast.notify({
             type: 'warning',
-            message: `${t('common.modelProvider.parametersInvalidRemoved')}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
+            message: `${t('modelProvider.parametersInvalidRemoved', { ns: 'common' })}: ${keys.map(k => `${k} (${removedDetails[k]})`).join(', ')}`,
           })
         }
       }
       catch {
-        Toast.notify({ type: 'error', message: t('common.error') })
+        Toast.notify({ type: 'error', message: t('error', { ns: 'common' }) })
       }
     }
 
@@ -158,10 +158,12 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       provider,
       model,
       model_type,
-      ...(model_type === ModelTypeEnum.textGeneration ? {
-        mode: targetModelItem?.model_properties.mode as string,
-        completion_params: nextCompletionParams,
-      } : {}),
+      ...(model_type === ModelTypeEnum.textGeneration
+        ? {
+            mode: targetModelItem?.model_properties.mode as string,
+            completion_params: nextCompletionParams,
+          }
+        : {}),
     })
   }
 
@@ -191,56 +193,60 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
       placement={isInWorkflow ? 'left' : 'bottom-end'}
       offset={4}
     >
-      <div className='relative'>
+      <div className="relative">
         <PortalToFollowElemTrigger
           onClick={() => {
             if (readonly)
               return
             setOpen(v => !v)
           }}
-          className='block'
+          className="block"
         >
           {
             renderTrigger
               ? renderTrigger({
-                open,
-                disabled,
-                modelDisabled,
-                hasDeprecated,
-                currentProvider,
-                currentModel,
-                providerName: value?.provider,
-                modelId: value?.model,
-              })
+                  open,
+                  disabled,
+                  modelDisabled,
+                  hasDeprecated,
+                  currentProvider,
+                  currentModel,
+                  providerName: value?.provider,
+                  modelId: value?.model,
+                })
               : (isAgentStrategy
-                ? <AgentModelTrigger
-                  disabled={disabled}
-                  hasDeprecated={hasDeprecated}
-                  currentProvider={currentProvider}
-                  currentModel={currentModel}
-                  providerName={value?.provider}
-                  modelId={value?.model}
-                  scope={scope}
-                />
-                : <Trigger
-                  disabled={disabled}
-                  isInWorkflow={isInWorkflow}
-                  modelDisabled={modelDisabled}
-                  hasDeprecated={hasDeprecated}
-                  currentProvider={currentProvider}
-                  currentModel={currentModel}
-                  providerName={value?.provider}
-                  modelId={value?.model}
-                />
-              )
+                  ? (
+                      <AgentModelTrigger
+                        disabled={disabled}
+                        hasDeprecated={hasDeprecated}
+                        currentProvider={currentProvider}
+                        currentModel={currentModel}
+                        providerName={value?.provider}
+                        modelId={value?.model}
+                        scope={scope}
+                      />
+                    )
+                  : (
+                      <Trigger
+                        disabled={disabled}
+                        isInWorkflow={isInWorkflow}
+                        modelDisabled={modelDisabled}
+                        hasDeprecated={hasDeprecated}
+                        currentProvider={currentProvider}
+                        currentModel={currentModel}
+                        providerName={value?.provider}
+                        modelId={value?.model}
+                      />
+                    )
+                )
           }
         </PortalToFollowElemTrigger>
         <PortalToFollowElemContent className={cn('z-50', portalToFollowElemContentClassName)}>
           <div className={cn(popupClassName, 'w-[389px] rounded-2xl border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg')}>
             <div className={cn('max-h-[420px] overflow-y-auto p-4 pt-3')}>
-              <div className='relative'>
+              <div className="relative">
                 <div className={cn('system-sm-semibold mb-1 flex h-6 items-center text-text-secondary')}>
-                  {t('common.modelProvider.model').toLocaleUpperCase()}
+                  {t('modelProvider.model', { ns: 'common' }).toLocaleUpperCase()}
                 </div>
                 <ModelSelector
                   defaultModel={(value?.provider || value?.model) ? { provider: value?.provider, model: value?.model } : undefined}
@@ -250,7 +256,7 @@ const ModelParameterModal: FC<ModelParameterModalProps> = ({
                 />
               </div>
               {(currentModel?.model_type === ModelTypeEnum.textGeneration || currentModel?.model_type === ModelTypeEnum.tts) && (
-                <div className='my-3 h-px bg-divider-subtle' />
+                <div className="my-3 h-px bg-divider-subtle" />
               )}
               {currentModel?.model_type === ModelTypeEnum.textGeneration && (
                 <LLMParamsPanel

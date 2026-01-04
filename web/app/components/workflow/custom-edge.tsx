@@ -1,32 +1,32 @@
+import type { EdgeProps } from 'reactflow'
+import type {
+  Edge,
+  OnSelectBlock,
+} from './types'
+import { intersection } from 'es-toolkit/array'
 import {
   memo,
   useCallback,
   useMemo,
   useState,
 } from 'react'
-import { intersection } from 'lodash-es'
-import type { EdgeProps } from 'reactflow'
 import {
   BaseEdge,
   EdgeLabelRenderer,
-  Position,
   getBezierPath,
+  Position,
 } from 'reactflow'
+import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
+import { cn } from '@/utils/classnames'
+import BlockSelector from './block-selector'
+import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
+import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
 import {
   useAvailableBlocks,
   useNodesInteractions,
 } from './hooks'
-import BlockSelector from './block-selector'
-import type {
-  Edge,
-  OnSelectBlock,
-} from './types'
 import { NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
-import { ITERATION_CHILDREN_Z_INDEX, LOOP_CHILDREN_Z_INDEX } from './constants'
-import CustomEdgeLinearGradientRender from './custom-edge-linear-gradient-render'
-import { cn } from '@/utils/classnames'
-import { ErrorHandleTypeEnum } from '@/app/components/workflow/nodes/_base/components/error-handle/types'
 
 const CustomEdge = ({
   id,
@@ -75,8 +75,9 @@ const CustomEdge = ({
         || _targetRunningStatus === NodeRunningStatus.Exception
         || _targetRunningStatus === NodeRunningStatus.Running
       )
-    )
+    ) {
       return id
+    }
   }, [_sourceRunningStatus, _targetRunningStatus, id])
 
   const handleOpenChange = useCallback((v: boolean) => {

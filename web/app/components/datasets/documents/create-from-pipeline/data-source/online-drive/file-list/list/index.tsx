@@ -1,12 +1,13 @@
-import React, { useEffect, useRef } from 'react'
-import { useTranslation } from 'react-i18next'
 import type { OnlineDriveFile } from '@/models/pipeline'
-import Item from './item'
+import { RiLoader2Line } from '@remixicon/react'
+import * as React from 'react'
+import { useEffect, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
+import Loading from '@/app/components/base/loading'
+import { useDataSourceStore } from '../../../store'
 import EmptyFolder from './empty-folder'
 import EmptySearchResult from './empty-search-result'
-import Loading from '@/app/components/base/loading'
-import { RiLoader2Line } from '@remixicon/react'
-import { useDataSourceStore } from '../../../store'
+import Item from './item'
 
 type FileListProps = {
   fileList: OnlineDriveFile[]
@@ -54,10 +55,10 @@ const List = ({
   const isSearchResultEmpty = !isLoading && fileList.length === 0 && keywords.length > 0
 
   return (
-    <div className='grow overflow-hidden p-1 pt-0'>
+    <div className="grow overflow-hidden p-1 pt-0">
       {
         isAllLoading && (
-          <Loading type='app' />
+          <Loading type="app" />
         )
       }
       {
@@ -71,7 +72,7 @@ const List = ({
         )
       }
       {fileList.length > 0 && (
-        <div className='flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5'>
+        <div className="flex h-full flex-col gap-y-px overflow-y-auto rounded-[10px] bg-background-section px-1 py-1.5">
           {
             fileList.map((file) => {
               const isSelected = selectedFileIds.includes(file.id)
@@ -90,16 +91,16 @@ const List = ({
           {
             isPartialLoading && (
               <div
-                className='flex items-center justify-center py-2'
-                role='status'
-                aria-live='polite'
-                aria-label={t('appApi.loading')}
+                className="flex items-center justify-center py-2"
+                role="status"
+                aria-live="polite"
+                aria-label={t('loading', { ns: 'appApi' })}
               >
-                <RiLoader2Line className='animation-spin size-4 text-text-tertiary' />
+                <RiLoader2Line className="animation-spin size-4 text-text-tertiary" />
               </div>
             )
           }
-          <div ref={anchorRef} className='h-0' />
+          <div ref={anchorRef} className="h-0" />
         </div>
       )}
     </div>

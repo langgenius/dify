@@ -1,8 +1,8 @@
 import type { ReactNode } from 'react'
-import React from 'react'
 import { act, render, screen, waitFor } from '@testing-library/react'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
 import Toast, { ToastProvider, useToastContext } from '.'
-import { noop } from 'lodash-es'
 
 const TestComponent = () => {
   const { notify, close } = useToastContext()
@@ -28,7 +28,7 @@ describe('Toast', () => {
   })
 
   describe('Toast Component', () => {
-    test('renders toast with correct type and message', () => {
+    it('renders toast with correct type and message', () => {
       render(
         <ToastProvider>
           <Toast type="success" message="Success message" />
@@ -38,7 +38,7 @@ describe('Toast', () => {
       expect(screen.getByText('Success message')).toBeInTheDocument()
     })
 
-    test('renders with different types', () => {
+    it('renders with different types', () => {
       const { rerender } = render(
         <ToastProvider>
           <Toast type="success" message="Success message" />
@@ -56,7 +56,7 @@ describe('Toast', () => {
       expect(document.querySelector('.text-text-destructive')).toBeInTheDocument()
     })
 
-    test('renders with custom component', () => {
+    it('renders with custom component', () => {
       render(
         <ToastProvider>
           <Toast
@@ -69,7 +69,7 @@ describe('Toast', () => {
       expect(screen.getByTestId('custom-component')).toBeInTheDocument()
     })
 
-    test('renders children content', () => {
+    it('renders children content', () => {
       render(
         <ToastProvider>
           <Toast message="Message with children">
@@ -81,7 +81,7 @@ describe('Toast', () => {
       expect(screen.getByText('Additional information')).toBeInTheDocument()
     })
 
-    test('does not render close button when close is undefined', () => {
+    it('does not render close button when close is undefined', () => {
       // Create a modified context where close is undefined
       const CustomToastContext = React.createContext({ notify: noop, close: undefined })
 
@@ -105,7 +105,7 @@ describe('Toast', () => {
   })
 
   describe('ToastProvider and Context', () => {
-    test('shows and hides toast using context', async () => {
+    it('shows and hides toast using context', async () => {
       render(
         <ToastProvider>
           <TestComponent />
@@ -128,7 +128,7 @@ describe('Toast', () => {
       expect(screen.queryByText('Notification message')).not.toBeInTheDocument()
     })
 
-    test('automatically hides toast after duration', async () => {
+    it('automatically hides toast after duration', async () => {
       render(
         <ToastProvider>
           <TestComponent />
@@ -154,7 +154,7 @@ describe('Toast', () => {
   })
 
   describe('Toast.notify static method', () => {
-    test('creates and removes toast from DOM', async () => {
+    it('creates and removes toast from DOM', async () => {
       act(() => {
         // Call the static method
         Toast.notify({ message: 'Static notification', type: 'warning' })
@@ -174,7 +174,7 @@ describe('Toast', () => {
       })
     })
 
-    test('calls onClose callback after duration', async () => {
+    it('calls onClose callback after duration', async () => {
       const onCloseMock = vi.fn()
       act(() => {
         Toast.notify({

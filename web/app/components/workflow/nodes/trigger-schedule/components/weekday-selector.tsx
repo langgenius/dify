@@ -1,4 +1,4 @@
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
 
 type WeekdaySelectorProps = {
@@ -32,7 +32,7 @@ const WeekdaySelector = ({ selectedDays, onChange }: WeekdaySelectorProps) => {
   return (
     <div className="space-y-2">
       <label className="mb-2 block text-xs font-medium text-text-tertiary">
-        {t('workflow.nodes.triggerSchedule.weekdays')}
+        {t('nodes.triggerSchedule.weekdays', { ns: 'workflow' })}
       </label>
       <div className="flex gap-1.5">
         {weekdays.map(day => (

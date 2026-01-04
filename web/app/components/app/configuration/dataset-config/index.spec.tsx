@@ -1,16 +1,14 @@
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DatasetConfig from './index'
-import type { DataSet } from '@/models/datasets'
-import { DataSourceType, DatasetPermission } from '@/models/datasets'
-import { AppModeEnum } from '@/types/app'
-import { ModelModeType } from '@/types/app'
-import { RETRIEVE_TYPE } from '@/types/app'
-import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
-import type { DatasetConfigs } from '@/models/debug'
 import { useContext } from 'use-context-selector'
-import { hasEditPermissionForDataset } from '@/utils/permission'
+import { ComparisonOperator, LogicalOperator } from '@/app/components/workflow/nodes/knowledge-retrieval/types'
 import { getSelectedDatasetsMode } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import { DatasetPermission, DataSourceType } from '@/models/datasets'
+import { AppModeEnum, ModelModeType, RETRIEVE_TYPE } from '@/types/app'
+import { hasEditPermissionForDataset } from '@/utils/permission'
+import DatasetConfig from './index'
 
 // Mock external dependencies
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/utils', () => ({
@@ -54,15 +52,17 @@ vi.mock('../debug/hooks', () => ({
   useFormattingChangedDispatcher: vi.fn(() => vi.fn()),
 }))
 
-vi.mock('lodash-es', () => ({
+vi.mock('es-toolkit/compat', () => ({
   intersectionBy: vi.fn((...arrays) => {
     // Mock realistic intersection behavior based on metadata name
     const validArrays = arrays.filter(Array.isArray)
-    if (validArrays.length === 0) return []
+    if (validArrays.length === 0)
+      return []
 
     // Start with first array and filter down
     return validArrays[0].filter((item: any) => {
-      if (!item || !item.name) return false
+      if (!item || !item.name)
+        return false
 
       // Only return items that exist in all arrays
       return validArrays.every(array =>
@@ -80,7 +80,6 @@ vi.mock('uuid', () => ({
 
 // Mock child components
 vi.mock('./card-item', () => ({
-  __esModule: true,
   default: ({ config, onRemove, onSave, editable }: any) => (
     <div data-testid={`card-item-${config.id}`}>
       <span>{config.name}</span>
@@ -91,16 +90,16 @@ vi.mock('./card-item', () => ({
 }))
 
 vi.mock('./params-config', () => ({
-  __esModule: true,
   default: ({ disabled, selectedDatasets }: any) => (
     <button data-testid="params-config" disabled={disabled}>
-      Params ({selectedDatasets.length})
+      Params (
+      {selectedDatasets.length}
+      )
     </button>
   ),
 }))
 
 vi.mock('./context-var', () => ({
-  __esModule: true,
   default: ({ value, options, onChange }: any) => (
     <select data-testid="context-var" value={value} onChange={e => onChange(e.target.value)}>
       <option value="">Select context variable</option>
@@ -112,7 +111,6 @@ vi.mock('./context-var', () => ({
 }))
 
 vi.mock('@/app/components/workflow/nodes/knowledge-retrieval/components/metadata/metadata-filter', () => ({
-  __esModule: true,
   default: ({
     metadataList,
     metadataFilterMode,
@@ -196,7 +194,6 @@ const mockConfigContext: any = {
 }
 
 vi.mock('@/context/debug-configuration', () => ({
-  __esModule: true,
   default: ({ children }: any) => (
     <div data-testid="config-context-provider">
       {children}
@@ -1008,8 +1005,7 @@ describe('DatasetConfig', () => {
             { name: 'category', type: 'string' } as any,
             { name: 'priority', type: 'number' } as any,
           ],
-        }),
-      )
+        }))
 
       renderDatasetConfig({
         dataSets: manyDatasets,

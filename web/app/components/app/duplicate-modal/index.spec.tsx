@@ -1,15 +1,14 @@
-import React from 'react'
+import type { ProviderContextState } from '@/context/provider-context'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DuplicateAppModal from './index'
+import * as React from 'react'
 import Toast from '@/app/components/base/toast'
-import type { ProviderContextState } from '@/context/provider-context'
-import { baseProviderContextValue } from '@/context/provider-context'
 import { Plan } from '@/app/components/billing/type'
+import { baseProviderContextValue } from '@/context/provider-context'
+import DuplicateAppModal from './index'
 
 const appsFullRenderSpy = vi.fn()
 vi.mock('@/app/components/billing/apps-full-in-dialog', () => ({
-  __esModule: true,
   default: ({ loc }: { loc: string }) => {
     appsFullRenderSpy(loc)
     return <div data-testid="apps-full">AppsFull</div>

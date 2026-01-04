@@ -1,13 +1,12 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import RunBatch from './index'
+import * as React from 'react'
 import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import RunBatch from './index'
 
 vi.mock('@/hooks/use-breakpoints', async (importOriginal) => {
   const actual = await importOriginal<typeof import('@/hooks/use-breakpoints')>()
   return {
-    __esModule: true,
     default: vi.fn(),
     MediaType: actual.MediaType,
   }
@@ -42,7 +41,7 @@ describe('RunBatch', () => {
     vi.clearAllMocks()
   })
 
-  test('should enable run button after CSV parsed and send data', async () => {
+  it('should enable run button after CSV parsed and send data', async () => {
     const onSend = vi.fn()
     render(
       <RunBatch
@@ -66,7 +65,7 @@ describe('RunBatch', () => {
     expect(onSend).toHaveBeenCalledWith([['row1']])
   })
 
-  test('should keep button disabled and show spinner when results still running on mobile', async () => {
+  it('should keep button disabled and show spinner when results still running on mobile', async () => {
     mockUseBreakpoints.mockReturnValue(MediaType.mobile)
     const onSend = vi.fn()
     const { container } = render(

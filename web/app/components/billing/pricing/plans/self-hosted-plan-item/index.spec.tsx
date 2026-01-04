@@ -1,11 +1,11 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
-import SelfHostedPlanItem from './index'
-import { SelfHostedPlan } from '../../../type'
-import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
+import * as React from 'react'
 import { useAppContext } from '@/context/app-context'
 import Toast from '../../../../base/toast'
+import { contactSalesUrl, getStartedWithCommunityUrl, getWithPremiumUrl } from '../../../config'
+import { SelfHostedPlan } from '../../../type'
+import SelfHostedPlanItem from './index'
 
 const featuresTranslations: Record<string, string[]> = {
   'billing.plans.community.features': ['community-feature-1', 'community-feature-2'],
@@ -16,16 +16,16 @@ const featuresTranslations: Record<string, string[]> = {
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string, options?: Record<string, unknown>) => {
+      const prefix = options?.ns ? `${options.ns}.` : ''
       if (options?.returnObjects)
-        return featuresTranslations[key] || []
-      return key
+        return featuresTranslations[`${prefix}${key}`] || []
+      return `${prefix}${key}`
     },
   }),
-  Trans: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
+  Trans: ({ i18nKey, ns }: { i18nKey: string, ns?: string }) => <span>{ns ? `${ns}.${i18nKey}` : i18nKey}</span>,
 }))
 
 vi.mock('../../../../base/toast', () => ({
-  __esModule: true,
   default: {
     notify: vi.fn(),
   },
@@ -79,7 +79,7 @@ beforeEach(() => {
 describe('SelfHostedPlanItem', () => {
   // Copy rendering for each plan
   describe('Rendering', () => {
-    test('should display community plan info', () => {
+    it('should display community plan info', () => {
       render(<SelfHostedPlanItem plan={SelfHostedPlan.community} />)
 
       expect(screen.getByText('billing.plans.community.name')).toBeInTheDocument()
@@ -89,7 +89,7 @@ describe('SelfHostedPlanItem', () => {
       expect(screen.getByText('community-feature-1')).toBeInTheDocument()
     })
 
-    test('should show premium extras such as cloud provider notice', () => {
+    it('should show premium extras such as cloud provider notice', () => {
       render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
 
       expect(screen.getByText('billing.plans.premium.price')).toBeInTheDocument()
@@ -99,7 +99,7 @@ describe('SelfHostedPlanItem', () => {
 
   // CTA behavior for each plan
   describe('CTA interactions', () => {
-    test('should show toast when non-manager tries to proceed', () => {
+    it('should show toast when non-manager tries to proceed', () => {
       mockUseAppContext.mockReturnValue({ isCurrentWorkspaceManager: false })
 
       render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
@@ -111,21 +111,21 @@ describe('SelfHostedPlanItem', () => {
       }))
     })
 
-    test('should redirect to community url when community plan button clicked', () => {
+    it('should redirect to community url when community plan button clicked', () => {
       render(<SelfHostedPlanItem plan={SelfHostedPlan.community} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'billing.plans.community.btnText' }))
       expect(assignedHref).toBe(getStartedWithCommunityUrl)
     })
 
-    test('should redirect to premium marketplace url when premium button clicked', () => {
+    it('should redirect to premium marketplace url when premium button clicked', () => {
       render(<SelfHostedPlanItem plan={SelfHostedPlan.premium} />)
 
       fireEvent.click(screen.getByRole('button', { name: /billing\.plans\.premium\.btnText/ }))
       expect(assignedHref).toBe(getWithPremiumUrl)
     })
 
-    test('should redirect to contact sales form when enterprise button clicked', () => {
+    it('should redirect to contact sales form when enterprise button clicked', () => {
       render(<SelfHostedPlanItem plan={SelfHostedPlan.enterprise} />)
 
       fireEvent.click(screen.getByRole('button', { name: 'billing.plans.enterprise.btnText' }))

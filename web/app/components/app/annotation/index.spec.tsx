@@ -1,10 +1,10 @@
 import type { Mock } from 'vitest'
-import React from 'react'
-import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
-import Annotation from './index'
 import type { AnnotationItem } from './type'
-import { JobStatus } from './type'
-import { type App, AppModeEnum } from '@/types/app'
+import type { App } from '@/types/app'
+import { act, fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import Toast from '@/app/components/base/toast'
+import { useProviderContext } from '@/context/provider-context'
 import {
   addAnnotation,
   delAnnotation,
@@ -13,11 +13,11 @@ import {
   fetchAnnotationList,
   queryAnnotationJobStatus,
 } from '@/service/annotation'
-import { useProviderContext } from '@/context/provider-context'
-import Toast from '@/app/components/base/toast'
+import { AppModeEnum } from '@/types/app'
+import Annotation from './index'
+import { JobStatus } from './type'
 
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: { notify: vi.fn() },
 }))
 

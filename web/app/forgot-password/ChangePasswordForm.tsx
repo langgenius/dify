@@ -1,17 +1,17 @@
 'use client'
+import { CheckCircleIcon } from '@heroicons/react/24/solid'
+import { useSearchParams } from 'next/navigation'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useSearchParams } from 'next/navigation'
-import { basePath } from '@/utils/var'
-import { cn } from '@/utils/classnames'
-import { CheckCircleIcon } from '@heroicons/react/24/solid'
-import Input from '../components/base/input'
 import Button from '@/app/components/base/button'
-import { changePasswordWithToken } from '@/service/common'
-import Toast from '@/app/components/base/toast'
 import Loading from '@/app/components/base/loading'
+import Toast from '@/app/components/base/toast'
 import { validPassword } from '@/config'
+import { changePasswordWithToken } from '@/service/common'
 import { useVerifyForgotPasswordToken } from '@/service/use-common'
+import { cn } from '@/utils/classnames'
+import { basePath } from '@/utils/var'
+import Input from '../components/base/input'
 
 const ChangePasswordForm = () => {
   const { t } = useTranslation()
@@ -37,15 +37,15 @@ const ChangePasswordForm = () => {
 
   const valid = useCallback(() => {
     if (!password.trim()) {
-      showErrorMessage(t('login.error.passwordEmpty'))
+      showErrorMessage(t('error.passwordEmpty', { ns: 'login' }))
       return false
     }
     if (!validPassword.test(password)) {
-      showErrorMessage(t('login.error.passwordInvalid'))
+      showErrorMessage(t('error.passwordInvalid', { ns: 'login' }))
       return false
     }
     if (password !== confirmPassword) {
-      showErrorMessage(t('common.account.notEqual'))
+      showErrorMessage(t('account.notEqual', { ns: 'common' }))
       return false
     }
     return true
@@ -79,70 +79,71 @@ const ChangePasswordForm = () => {
         'px-6',
         'md:px-[108px]',
       )
-    }>
+    }
+    >
       {!isTokenMissing && !verifyTokenRes && <Loading />}
       {(isTokenMissing || (verifyTokenRes && !verifyTokenRes.is_valid)) && (
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">🤷‍♂️</div>
-            <h2 className="text-[32px] font-bold text-text-primary">{t('login.invalid')}</h2>
+            <h2 className="text-[32px] font-bold text-text-primary">{t('invalid', { ns: 'login' })}</h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant='primary' className='w-full !text-sm'>
-              <a href="https://dify.ai">{t('login.explore')}</a>
+            <Button variant="primary" className="w-full !text-sm">
+              <a href="https://dify.ai">{t('explore', { ns: 'login' })}</a>
             </Button>
           </div>
         </div>
       )}
       {verifyTokenRes && verifyTokenRes.is_valid && !showSuccess && (
-        <div className='flex flex-col md:w-[400px]'>
+        <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <h2 className="text-[32px] font-bold text-text-primary">
-              {t('login.changePassword')}
+              {t('changePassword', { ns: 'login' })}
             </h2>
-            <p className='mt-1 text-sm text-text-secondary'>
-              {t('login.changePasswordTip')}
+            <p className="mt-1 text-sm text-text-secondary">
+              {t('changePasswordTip', { ns: 'login' })}
             </p>
           </div>
 
           <div className="mx-auto mt-6 w-full">
             <div className="relative">
               {/* Password */}
-              <div className='mb-5'>
+              <div className="mb-5">
                 <label htmlFor="password" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                  {t('common.account.newPassword')}
+                  {t('account.newPassword', { ns: 'common' })}
                 </label>
                 <Input
                   id="password"
-                  type='password'
+                  type="password"
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder={t('login.passwordPlaceholder') || ''}
-                  className='mt-1'
+                  placeholder={t('passwordPlaceholder', { ns: 'login' }) || ''}
+                  className="mt-1"
                 />
-                <div className='mt-1 text-xs text-text-secondary'>{t('login.error.passwordInvalid')}</div>
+                <div className="mt-1 text-xs text-text-secondary">{t('error.passwordInvalid', { ns: 'login' })}</div>
               </div>
               {/* Confirm Password */}
-              <div className='mb-5'>
+              <div className="mb-5">
                 <label htmlFor="confirmPassword" className="my-2 flex items-center justify-between text-sm font-medium text-text-primary">
-                  {t('common.account.confirmPassword')}
+                  {t('account.confirmPassword', { ns: 'common' })}
                 </label>
                 <Input
                   id="confirmPassword"
-                  type='password'
+                  type="password"
                   value={confirmPassword}
                   onChange={e => setConfirmPassword(e.target.value)}
-                  placeholder={t('login.confirmPasswordPlaceholder') || ''}
-                  className='mt-1'
+                  placeholder={t('confirmPasswordPlaceholder', { ns: 'login' }) || ''}
+                  className="mt-1"
                 />
               </div>
               <div>
                 <Button
-                  variant='primary'
-                  className='w-full !text-sm'
+                  variant="primary"
+                  className="w-full !text-sm"
                   onClick={handleChangePassword}
                 >
-                  {t('common.operation.reset')}
+                  {t('operation.reset', { ns: 'common' })}
                 </Button>
               </div>
             </div>
@@ -153,15 +154,15 @@ const ChangePasswordForm = () => {
         <div className="flex flex-col md:w-[400px]">
           <div className="mx-auto w-full">
             <div className="mb-3 flex h-20 w-20 items-center justify-center rounded-[20px] border border-divider-regular bg-components-option-card-option-bg p-5 text-[40px] font-bold shadow-lg">
-              <CheckCircleIcon className='h-10 w-10 text-[#039855]' />
+              <CheckCircleIcon className="h-10 w-10 text-[#039855]" />
             </div>
             <h2 className="text-[32px] font-bold text-text-primary">
-              {t('login.passwordChangedTip')}
+              {t('passwordChangedTip', { ns: 'login' })}
             </h2>
           </div>
           <div className="mx-auto mt-6 w-full">
-            <Button variant='primary' className='w-full'>
-              <a href={`${basePath}/signin`}>{t('login.passwordChanged')}</a>
+            <Button variant="primary" className="w-full">
+              <a href={`${basePath}/signin`}>{t('passwordChanged', { ns: 'login' })}</a>
             </Button>
           </div>
         </div>

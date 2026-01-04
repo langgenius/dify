@@ -9,14 +9,14 @@
  * - Loading states
  */
 
+import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import WorkflowAppLogList from './list'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
-import type { WorkflowAppLogDetail, WorkflowLogsResponse, WorkflowRunDetail } from '@/models/log'
-import { WorkflowRunTriggeredFrom } from '@/models/log'
 import { APP_PAGE_LIMIT } from '@/config'
+import { WorkflowRunTriggeredFrom } from '@/models/log'
+import WorkflowAppLogList from './list'
 
 // ============================================================================
 // Mocks
@@ -31,7 +31,6 @@ vi.mock('next/navigation', () => ({
 
 // Mock useTimestamp hook
 vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
   default: () => ({
     formatTime: (timestamp: number, _format: string) => `formatted-${timestamp}`,
   }),
@@ -39,7 +38,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 
 // Mock useBreakpoints hook
 vi.mock('@/hooks/use-breakpoints', () => ({
-  __esModule: true,
   default: () => 'pc', // Return desktop by default
   MediaType: {
     mobile: 'mobile',
@@ -49,8 +47,7 @@ vi.mock('@/hooks/use-breakpoints', () => ({
 
 // Mock the Run component
 vi.mock('@/app/components/workflow/run', () => ({
-  __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>
@@ -67,13 +64,11 @@ vi.mock('@/app/components/workflow/context', () => ({
 
 // Mock BlockIcon
 vi.mock('@/app/components/workflow/block-icon', () => ({
-  __esModule: true,
   default: () => <div data-testid="block-icon">BlockIcon</div>,
 }))
 
 // Mock useTheme
 vi.mock('@/hooks/use-theme', () => ({
-  __esModule: true,
   default: () => {
     return { theme: 'light' }
   },

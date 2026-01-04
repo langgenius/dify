@@ -1,20 +1,13 @@
-import { render, screen } from '@testing-library/react'
-import React from 'react'
-import Processing from './index'
-import type { InitialDocumentDetail } from '@/models/pipeline'
-import { DatasourceType } from '@/models/pipeline'
 import type { DocumentIndexingStatus } from '@/models/datasets'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import { render, screen } from '@testing-library/react'
+import * as React from 'react'
+import { DatasourceType } from '@/models/pipeline'
+import Processing from './index'
 
 // ==========================================
 // Mock External Dependencies
 // ==========================================
-
-// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
 
 // Mock useDocLink - returns a function that generates doc URLs
 // Strips leading slash from path to match actual implementation behavior
@@ -41,7 +34,6 @@ vi.mock('@/context/dataset-detail', () => ({
 // Mock the EmbeddingProcess component to track props
 let embeddingProcessProps: Record<string, unknown> = {}
 vi.mock('./embedding-process', () => ({
-  __esModule: true,
   default: (props: Record<string, unknown>) => {
     embeddingProcessProps = props
     return (
@@ -86,8 +78,7 @@ const createMockDocuments = (count: number): InitialDocumentDetail[] =>
       id: `doc-${index + 1}`,
       name: `document-${index + 1}.txt`,
       position: index,
-    }),
-  )
+    }))
 
 // ==========================================
 // Test Suite

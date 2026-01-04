@@ -1,18 +1,22 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import TimePicker from './index'
-import dayjs from '../utils/dayjs'
-import { isDayjsObject } from '../utils/dayjs'
 import type { TimePickerProps } from '../types'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import dayjs, { isDayjsObject } from '../utils/dayjs'
+import TimePicker from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
-      if (key === 'time.defaultPlaceholder') return 'Pick a time...'
-      if (key === 'time.operation.now') return 'Now'
-      if (key === 'time.operation.ok') return 'OK'
-      if (key === 'common.operation.clear') return 'Clear'
-      return key
+    t: (key: string, options?: { ns?: string }) => {
+      if (key === 'defaultPlaceholder')
+        return 'Pick a time...'
+      if (key === 'operation.now')
+        return 'Now'
+      if (key === 'operation.ok')
+        return 'OK'
+      if (key === 'operation.clear')
+        return 'Clear'
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))
@@ -45,7 +49,7 @@ describe('TimePicker', () => {
     vi.clearAllMocks()
   })
 
-  test('renders formatted value for string input (Issue #26692 regression)', () => {
+  it('renders formatted value for string input (Issue #26692 regression)', () => {
     render(
       <TimePicker
         {...baseProps}
@@ -57,7 +61,7 @@ describe('TimePicker', () => {
     expect(screen.getByDisplayValue('06:45 PM')).toBeInTheDocument()
   })
 
-  test('confirms cleared value when confirming without selection', () => {
+  it('confirms cleared value when confirming without selection', () => {
     render(
       <TimePicker
         {...baseProps}
@@ -80,7 +84,7 @@ describe('TimePicker', () => {
     expect(baseProps.onClear).not.toHaveBeenCalled()
   })
 
-  test('selecting current time emits timezone-aware value', () => {
+  it('selecting current time emits timezone-aware value', () => {
     const onChange = vi.fn()
     render(
       <TimePicker
@@ -100,7 +104,7 @@ describe('TimePicker', () => {
   })
 
   describe('Timezone Label Integration', () => {
-    test('should not display timezone label by default', () => {
+    it('should not display timezone label by default', () => {
       render(
         <TimePicker
           {...baseProps}
@@ -112,7 +116,7 @@ describe('TimePicker', () => {
       expect(screen.queryByTitle(/Timezone: Asia\/Shanghai/)).not.toBeInTheDocument()
     })
 
-    test('should not display timezone label when showTimezone is false', () => {
+    it('should not display timezone label when showTimezone is false', () => {
       render(
         <TimePicker
           {...baseProps}
@@ -125,7 +129,7 @@ describe('TimePicker', () => {
       expect(screen.queryByTitle(/Timezone: Asia\/Shanghai/)).not.toBeInTheDocument()
     })
 
-    test('should display timezone label when showTimezone is true', () => {
+    it('should display timezone label when showTimezone is true', () => {
       render(
         <TimePicker
           {...baseProps}
@@ -140,7 +144,7 @@ describe('TimePicker', () => {
       expect(timezoneLabel).toHaveTextContent(/UTC[+-]\d+/)
     })
 
-    test('should not display timezone label when showTimezone is true but timezone is not provided', () => {
+    it('should not display timezone label when showTimezone is true but timezone is not provided', () => {
       render(
         <TimePicker
           {...baseProps}

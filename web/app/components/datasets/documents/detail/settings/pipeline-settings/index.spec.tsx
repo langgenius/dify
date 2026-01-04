@@ -1,8 +1,8 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
-import PipelineSettings from './index'
-import { DatasourceType } from '@/models/pipeline'
 import type { PipelineExecutionLogResponse } from '@/models/pipeline'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import { DatasourceType } from '@/models/pipeline'
+import PipelineSettings from './index'
 
 // Mock Next.js router
 const mockPush = vi.fn()
@@ -17,7 +17,7 @@ vi.mock('next/navigation', () => ({
 // Mock dataset detail context
 const mockPipelineId = 'pipeline-123'
 vi.mock('@/context/dataset-detail', () => ({
-  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string; doc_form: string } }) => unknown) =>
+  useDatasetDetailContextWithSelector: (selector: (state: { dataset: { pipeline_id: string, doc_form: string } }) => unknown) =>
     selector({ dataset: { pipeline_id: mockPipelineId, doc_form: 'text_model' } }),
 }))
 
@@ -26,7 +26,7 @@ const mockUsePipelineExecutionLog = vi.fn()
 const mockMutateAsync = vi.fn()
 const mockUseRunPublishedPipeline = vi.fn()
 vi.mock('@/service/use-pipeline', () => ({
-  usePipelineExecutionLog: (params: { dataset_id: string; document_id: string }) => mockUsePipelineExecutionLog(params),
+  usePipelineExecutionLog: (params: { dataset_id: string, document_id: string }) => mockUsePipelineExecutionLog(params),
   useRunPublishedPipeline: () => mockUseRunPublishedPipeline(),
   // For ProcessDocuments component
   usePublishedPipelineProcessingParams: () => ({
@@ -55,7 +55,7 @@ vi.mock('../../../create-from-pipeline/process-documents/form', () => ({
   }: {
     ref: React.RefObject<{ submit: () => void }>
     initialData: Record<string, unknown>
-    configurations: Array<{ variable: string; label: string; type: string }>
+    configurations: Array<{ variable: string, label: string, type: string }>
     schema: unknown
     onSubmit: (data: Record<string, unknown>) => void
     onPreview: () => void

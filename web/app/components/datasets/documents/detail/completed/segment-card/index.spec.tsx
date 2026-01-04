@@ -1,19 +1,21 @@
-import React from 'react'
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import SegmentCard from './index'
-import { type Attachment, type ChildChunkDetail, ChunkingMode, type ParentMode, type SegmentDetailModel } from '@/models/datasets'
-import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
 import type { SegmentListContextValue } from '@/app/components/datasets/documents/detail/completed'
+import type { DocumentContextValue } from '@/app/components/datasets/documents/detail/context'
+import type { Attachment, ChildChunkDetail, ParentMode, SegmentDetailModel } from '@/models/datasets'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { ChunkingMode } from '@/models/datasets'
+import SegmentCard from './index'
 
 // Mock react-i18next - external dependency
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string, options?: { count?: number }) => {
-      if (key === 'datasetDocuments.segment.characters')
+    t: (key: string, options?: { count?: number, ns?: string }) => {
+      if (key === 'segment.characters')
         return options?.count === 1 ? 'character' : 'characters'
-      if (key === 'datasetDocuments.segment.childChunks')
+      if (key === 'segment.childChunks')
         return options?.count === 1 ? 'child chunk' : 'child chunks'
-      return key
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))
@@ -57,18 +59,18 @@ vi.mock('../index', () => ({
 
 // StatusItem uses React Query hooks which require QueryClientProvider
 vi.mock('../../../status-item', () => ({
-  __esModule: true,
-  default: ({ status, reverse, textCls }: { status: string; reverse?: boolean; textCls?: string }) => (
+  default: ({ status, reverse, textCls }: { status: string, reverse?: boolean, textCls?: string }) => (
     <div data-testid="status-item" data-status={status} data-reverse={reverse} className={textCls}>
-      Status: {status}
+      Status:
+      {' '}
+      {status}
     </div>
   ),
 }))
 
 // ImageList has deep dependency: FileThumb → file-uploader → react-pdf-highlighter (ESM)
 vi.mock('@/app/components/datasets/common/image-list', () => ({
-  __esModule: true,
-  default: ({ images, size, className }: { images: Array<{ sourceUrl: string; name: string }>; size?: string; className?: string }) => (
+  default: ({ images, size, className }: { images: Array<{ sourceUrl: string, name: string }>, size?: string, className?: string }) => (
     <div data-testid="image-list" data-image-count={images.length} data-size={size} className={className}>
       {images.map((img, idx: number) => (
         <img key={idx} src={img.sourceUrl} alt={img.name} />
@@ -79,8 +81,7 @@ vi.mock('@/app/components/datasets/common/image-list', () => ({
 
 // Markdown uses next/dynamic and react-syntax-highlighter (ESM)
 vi.mock('@/app/components/base/markdown', () => ({
-  __esModule: true,
-  Markdown: ({ content, className }: { content: string; className?: string }) => (
+  Markdown: ({ content, className }: { content: string, className?: string }) => (
     <div data-testid="markdown" className={`markdown-body ${className || ''}`}>{content}</div>
   ),
 }))

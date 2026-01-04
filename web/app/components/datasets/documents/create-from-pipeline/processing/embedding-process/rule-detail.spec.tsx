@@ -1,9 +1,10 @@
+import type { ProcessRuleResponse } from '@/models/datasets'
 import { render, screen } from '@testing-library/react'
-import React from 'react'
-import RuleDetail from './rule-detail'
-import { ProcessMode, type ProcessRuleResponse } from '@/models/datasets'
-import { RETRIEVE_METHOD } from '@/types/app'
+import * as React from 'react'
 import { IndexingType } from '@/app/components/datasets/create/step-two'
+import { ProcessMode } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
+import RuleDetail from './rule-detail'
 
 // ==========================================
 // Mock External Dependencies
@@ -11,16 +12,15 @@ import { IndexingType } from '@/app/components/datasets/create/step-two'
 
 // Mock next/image (using img element for simplicity in tests)
 vi.mock('next/image', () => ({
-  __esModule: true,
-  default: function MockImage({ src, alt, className }: { src: string; alt: string; className?: string }) {
-    // eslint-disable-next-line @next/next/no-img-element
+  default: function MockImage({ src, alt, className }: { src: string, alt: string, className?: string }) {
+    // eslint-disable-next-line next/no-img-element
     return <img src={src} alt={alt} className={className} data-testid="next-image" />
   },
 }))
 
 // Mock FieldInfo component
 vi.mock('@/app/components/datasets/documents/detail/metadata', () => ({
-  FieldInfo: ({ label, displayedValue, valueIcon }: { label: string; displayedValue: string; valueIcon?: React.ReactNode }) => (
+  FieldInfo: ({ label, displayedValue, valueIcon }: { label: string, displayedValue: string, valueIcon?: React.ReactNode }) => (
     <div data-testid="field-info" data-label={label}>
       <span data-testid="field-label">{label}</span>
       <span data-testid="field-value">{displayedValue}</span>

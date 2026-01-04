@@ -1,8 +1,7 @@
 'use client'
 import type { FC } from 'react'
-import { useUnmount } from 'ahooks'
-import React, { useCallback, useEffect, useState } from 'react'
-import { usePathname, useRouter } from 'next/navigation'
+import type { NavIcon } from '@/app/components/app-sidebar/navLink'
+import type { App } from '@/types/app'
 import {
   RiDashboard2Fill,
   RiDashboard2Line,
@@ -13,21 +12,24 @@ import {
   RiTerminalWindowFill,
   RiTerminalWindowLine,
 } from '@remixicon/react'
+import { useUnmount } from 'ahooks'
+import dynamic from 'next/dynamic'
+import { usePathname, useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useShallow } from 'zustand/react/shallow'
-import s from './style.module.css'
-import { cn } from '@/utils/classnames'
-import { useStore } from '@/app/components/app/store'
 import AppSideBar from '@/app/components/app-sidebar'
-import type { NavIcon } from '@/app/components/app-sidebar/navLink'
-import { fetchAppDetailDirect } from '@/service/apps'
-import { useAppContext } from '@/context/app-context'
+import { useStore } from '@/app/components/app/store'
 import Loading from '@/app/components/base/loading'
-import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
-import { type App, AppModeEnum } from '@/types/app'
-import useDocumentTitle from '@/hooks/use-document-title'
 import { useStore as useTagStore } from '@/app/components/base/tag-management/store'
-import dynamic from 'next/dynamic'
+import { useAppContext } from '@/context/app-context'
+import useBreakpoints, { MediaType } from '@/hooks/use-breakpoints'
+import useDocumentTitle from '@/hooks/use-document-title'
+import { fetchAppDetailDirect } from '@/service/apps'
+import { AppModeEnum } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import s from './style.module.css'
 
 const TagManagementModal = dynamic(() => import('@/app/components/base/tag-management'), {
   ssr: false,
@@ -68,32 +70,32 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     const navConfig = [
       ...(isCurrentWorkspaceEditor
         ? [{
-          name: t('common.appMenus.promptEng'),
-          href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
-          icon: RiTerminalWindowLine,
-          selectedIcon: RiTerminalWindowFill,
-        }]
+            name: t('appMenus.promptEng', { ns: 'common' }),
+            href: `/app/${appId}/${(mode === AppModeEnum.WORKFLOW || mode === AppModeEnum.ADVANCED_CHAT) ? 'workflow' : 'configuration'}`,
+            icon: RiTerminalWindowLine,
+            selectedIcon: RiTerminalWindowFill,
+          }]
         : []
       ),
       {
-        name: t('common.appMenus.apiAccess'),
+        name: t('appMenus.apiAccess', { ns: 'common' }),
         href: `/app/${appId}/develop`,
         icon: RiTerminalBoxLine,
         selectedIcon: RiTerminalBoxFill,
       },
       ...(isCurrentWorkspaceEditor
         ? [{
-          name: mode !== AppModeEnum.WORKFLOW
-            ? t('common.appMenus.logAndAnn')
-            : t('common.appMenus.logs'),
-          href: `/app/${appId}/logs`,
-          icon: RiFileList3Line,
-          selectedIcon: RiFileList3Fill,
-        }]
+            name: mode !== AppModeEnum.WORKFLOW
+              ? t('appMenus.logAndAnn', { ns: 'common' })
+              : t('appMenus.logs', { ns: 'common' }),
+            href: `/app/${appId}/logs`,
+            icon: RiFileList3Line,
+            selectedIcon: RiFileList3Fill,
+          }]
         : []
       ),
       {
-        name: t('common.appMenus.overview'),
+        name: t('appMenus.overview', { ns: 'common' }),
         href: `/app/${appId}/overview`,
         icon: RiDashboard2Line,
         selectedIcon: RiDashboard2Fill,
@@ -102,7 +104,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
     return navConfig
   }, [t])
 
-  useDocumentTitle(appDetail?.name || t('common.menus.appDetail'))
+  useDocumentTitle(appDetail?.name || t('menus.appDetail', { ns: 'common' }))
 
   useEffect(() => {
     if (appDetail) {
@@ -156,7 +158,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
 
   if (!appDetail) {
     return (
-      <div className='flex h-full items-center justify-center bg-background-body'>
+      <div className="flex h-full items-center justify-center bg-background-body">
         <Loading />
       </div>
     )
@@ -173,7 +175,7 @@ const AppDetailLayout: FC<IAppDetailLayoutProps> = (props) => {
         {children}
       </div>
       {showTagManagementModal && (
-        <TagManagementModal type='app' show={showTagManagementModal} />
+        <TagManagementModal type="app" show={showTagManagementModal} />
       )}
     </div>
   )

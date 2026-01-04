@@ -8,11 +8,11 @@
  * - Run component with detail/tracing URLs
  */
 
+import type { App, AppIconType, AppModeEnum } from '@/types/app'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DetailPanel from './detail'
 import { useStore as useAppStore } from '@/app/components/app/store'
-import type { App, AppIconType, AppModeEnum } from '@/types/app'
+import DetailPanel from './detail'
 
 // ============================================================================
 // Mocks
@@ -27,8 +27,7 @@ vi.mock('next/navigation', () => ({
 
 // Mock the Run component as it has complex dependencies
 vi.mock('@/app/components/workflow/run', () => ({
-  __esModule: true,
-  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string; tracingListUrl: string }) => (
+  default: ({ runDetailUrl, tracingListUrl }: { runDetailUrl: string, tracingListUrl: string }) => (
     <div data-testid="workflow-run">
       <span data-testid="run-detail-url">{runDetailUrl}</span>
       <span data-testid="tracing-list-url">{tracingListUrl}</span>

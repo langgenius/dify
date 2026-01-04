@@ -1,19 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
 import type { ToolWithProvider } from '../../types'
-import { BlockEnum } from '../../types'
 import type { ToolDefaultValue } from '../types'
-import Tooltip from '@/app/components/base/tooltip'
 import type { Tool } from '@/app/components/tools/types'
-import { useGetLanguage } from '@/context/i18n'
-import BlockIcon from '../../block-icon'
-import { cn } from '@/utils/classnames'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import Tooltip from '@/app/components/base/tooltip'
+import { useGetLanguage } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
 import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
-import { trackEvent } from '@/app/components/base/amplitude'
+import BlockIcon from '../../block-icon'
+import { BlockEnum } from '../../types'
 
 const normalizeProviderIcon = (icon?: ToolWithProvider['icon']) => {
   if (!icon)
@@ -59,27 +60,28 @@ const ToolItem: FC<Props> = ({
   return (
     <Tooltip
       key={payload.name}
-      position='right'
+      position="right"
       needsDelay={false}
-      popupClassName='!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg'
+      popupClassName="!p-0 !px-3 !py-2.5 !w-[200px] !leading-[18px] !text-xs !text-gray-700 !border-[0.5px] !border-black/5 !rounded-xl !shadow-lg"
       popupContent={(
         <div>
           <BlockIcon
-            size='md'
-            className='mb-2'
+            size="md"
+            className="mb-2"
             type={BlockEnum.Tool}
             toolIcon={providerIcon}
           />
-          <div className='mb-1 text-sm leading-5 text-text-primary'>{payload.label[language]}</div>
-          <div className='text-xs leading-[18px] text-text-secondary'>{payload.description[language]}</div>
+          <div className="mb-1 text-sm leading-5 text-text-primary">{payload.label[language]}</div>
+          <div className="text-xs leading-[18px] text-text-secondary">{payload.description[language]}</div>
         </div>
       )}
     >
       <div
         key={payload.name}
-        className='flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover'
+        className="flex cursor-pointer items-center justify-between rounded-lg pl-[21px] pr-1 hover:bg-state-base-hover"
         onClick={() => {
-          if (disabled) return
+          if (disabled)
+            return
           const params: Record<string, string> = {}
           if (payload.parameters) {
             payload.parameters.forEach((item) => {
@@ -113,10 +115,10 @@ const ToolItem: FC<Props> = ({
           <span className={cn(disabled && 'opacity-30')}>{payload.label[language]}</span>
         </div>
         {isAdded && (
-          <div className='system-xs-regular mr-4 text-text-tertiary'>{t('tools.addToolModal.added')}</div>
+          <div className="system-xs-regular mr-4 text-text-tertiary">{t('addToolModal.added', { ns: 'tools' })}</div>
         )}
       </div>
-    </Tooltip >
+    </Tooltip>
   )
 }
 export default React.memo(ToolItem)

@@ -1,30 +1,32 @@
-import type { Mock } from 'vitest'
 import type {
   PropsWithChildren,
 } from 'react'
-import React, {
+import type { Mock } from 'vitest'
+import type SettingBuiltInToolType from './setting-built-in-tool'
+import type { Tool, ToolParameter } from '@/app/components/tools/types'
+import type ToolPickerType from '@/app/components/workflow/block-selector/tool-picker'
+import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
+import type { ToolWithProvider } from '@/app/components/workflow/types'
+import type { ModelConfig } from '@/models/debug'
+import type { AgentTool } from '@/types/app'
+import { act, render, screen, waitFor } from '@testing-library/react'
+import userEvent from '@testing-library/user-event'
+import copy from 'copy-to-clipboard'
+import * as React from 'react'
+import {
   useEffect,
   useMemo,
   useState,
 } from 'react'
-import { act, render, screen, waitFor } from '@testing-library/react'
-import userEvent from '@testing-library/user-event'
-import AgentTools from './index'
-import ConfigContext from '@/context/debug-configuration'
-import type { AgentTool } from '@/types/app'
-import { CollectionType, type Tool, type ToolParameter } from '@/app/components/tools/types'
-import type { ToolWithProvider } from '@/app/components/workflow/types'
-import type { ToolDefaultValue } from '@/app/components/workflow/block-selector/types'
-import type { ModelConfig } from '@/models/debug'
-import { ModelModeType } from '@/types/app'
+import { CollectionType } from '@/app/components/tools/types'
 import {
   DEFAULT_AGENT_SETTING,
   DEFAULT_CHAT_PROMPT_CONFIG,
   DEFAULT_COMPLETION_PROMPT_CONFIG,
 } from '@/config'
-import copy from 'copy-to-clipboard'
-import type ToolPickerType from '@/app/components/workflow/block-selector/tool-picker'
-import type SettingBuiltInToolType from './setting-built-in-tool'
+import ConfigContext from '@/context/debug-configuration'
+import { ModelModeType } from '@/types/app'
+import AgentTools from './index'
 
 const formattingDispatcherMock = vi.fn()
 vi.mock('@/app/components/app/configuration/debug/hooks', () => ({
@@ -74,7 +76,6 @@ const ToolPickerMock = (props: ToolPickerProps) => (
   </div>
 )
 vi.mock('@/app/components/workflow/block-selector/tool-picker', () => ({
-  __esModule: true,
   default: (props: ToolPickerProps) => <ToolPickerMock {...props} />,
 }))
 
@@ -94,7 +95,6 @@ const SettingBuiltInToolMock = (props: SettingBuiltInToolProps) => {
   )
 }
 vi.mock('./setting-built-in-tool', () => ({
-  __esModule: true,
   default: (props: SettingBuiltInToolProps) => <SettingBuiltInToolMock {...props} />,
 }))
 
@@ -324,7 +324,7 @@ describe('AgentTools', () => {
     pluginInstallHandler = null
   })
 
-  test('should show enabled count and provider information', () => {
+  it('should show enabled count and provider information', () => {
     renderAgentTools([
       createAgentTool(),
       createAgentTool({
@@ -342,7 +342,7 @@ describe('AgentTools', () => {
     expect(screen.getByText('Translate Tool')).toBeInTheDocument()
   })
 
-  test('should copy tool name from tooltip action', async () => {
+  it('should copy tool name from tooltip action', async () => {
     renderAgentTools()
 
     await hoverInfoIcon()
@@ -351,21 +351,21 @@ describe('AgentTools', () => {
     expect(copyMock).toHaveBeenCalledWith('search')
   })
 
-  test('should toggle tool enabled state via switch', async () => {
+  it('should toggle tool enabled state via switch', async () => {
     const { getModelConfig } = renderAgentTools()
 
     const switchButton = screen.getByRole('switch')
     await userEvent.click(switchButton)
 
     await waitFor(() => {
-      const tools = getModelConfig().agentConfig.tools as Array<{ tool_name?: string; enabled?: boolean }>
+      const tools = getModelConfig().agentConfig.tools as Array<{ tool_name?: string, enabled?: boolean }>
       const toggledTool = tools.find(tool => tool.tool_name === 'search')
       expect(toggledTool?.enabled).toBe(false)
     })
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
-  test('should remove tool when delete action is clicked', async () => {
+  it('should remove tool when delete action is clicked', async () => {
     const { getModelConfig } = renderAgentTools()
     const deleteButton = screen.getByTestId('delete-removed-tool')
     if (!deleteButton)
@@ -377,7 +377,7 @@ describe('AgentTools', () => {
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
-  test('should add a tool when ToolPicker selects one', async () => {
+  it('should add a tool when ToolPicker selects one', async () => {
     const { getModelConfig } = renderAgentTools([])
     const addSingleButton = screen.getByRole('button', { name: 'pick-single' })
     await userEvent.click(addSingleButton)
@@ -388,7 +388,7 @@ describe('AgentTools', () => {
     expect(getModelConfig().agentConfig.tools).toHaveLength(1)
   })
 
-  test('should append multiple selected tools at once', async () => {
+  it('should append multiple selected tools at once', async () => {
     const { getModelConfig } = renderAgentTools([])
     await userEvent.click(screen.getByRole('button', { name: 'pick-multiple' }))
 
@@ -399,7 +399,7 @@ describe('AgentTools', () => {
     expect(getModelConfig().agentConfig.tools).toHaveLength(2)
   })
 
-  test('should open settings panel for not authorized tool', async () => {
+  it('should open settings panel for not authorized tool', async () => {
     renderAgentTools([
       createAgentTool({
         notAuthor: true,
@@ -412,7 +412,7 @@ describe('AgentTools', () => {
     expect(latestSettingPanelProps?.toolName).toBe('search')
   })
 
-  test('should persist tool parameters when SettingBuiltInTool saves values', async () => {
+  it('should persist tool parameters when SettingBuiltInTool saves values', async () => {
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         notAuthor: true,
@@ -427,7 +427,7 @@ describe('AgentTools', () => {
     })
   })
 
-  test('should update credential id when authorization selection changes', async () => {
+  it('should update credential id when authorization selection changes', async () => {
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         notAuthor: true,
@@ -443,7 +443,7 @@ describe('AgentTools', () => {
     expect(formattingDispatcherMock).toHaveBeenCalled()
   })
 
-  test('should reinstate deleted tools after plugin install success event', async () => {
+  it('should reinstate deleted tools after plugin install success event', async () => {
     const { getModelConfig } = renderAgentTools([
       createAgentTool({
         provider_id: 'provider-1',

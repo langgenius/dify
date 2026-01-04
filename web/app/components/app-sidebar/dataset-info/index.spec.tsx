@@ -1,18 +1,18 @@
-import React from 'react'
+import type { DataSet } from '@/models/datasets'
+import { RiEditLine } from '@remixicon/react'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import DatasetInfo from './index'
-import Dropdown from './dropdown'
-import Menu from './menu'
-import MenuItem from './menu-item'
-import type { DataSet } from '@/models/datasets'
+import * as React from 'react'
 import {
   ChunkingMode,
-  DataSourceType,
   DatasetPermission,
+  DataSourceType,
 } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
-import { RiEditLine } from '@remixicon/react'
+import Dropdown from './dropdown'
+import DatasetInfo from './index'
+import Menu from './menu'
+import MenuItem from './menu-item'
 
 let mockDataset: DataSet
 let mockIsDatasetOperator = false
@@ -132,7 +132,6 @@ vi.mock('@/hooks/use-knowledge', () => ({
 }))
 
 vi.mock('@/app/components/datasets/rename-modal', () => ({
-  __esModule: true,
   default: ({
     show,
     onClose,

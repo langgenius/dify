@@ -1,4 +1,3 @@
-import type { Mock } from 'vitest'
 import {
   asyncRunSafe,
   canFindTool,
@@ -8,7 +7,6 @@ import {
   getPurifyHref,
   getTextWidthWithCanvas,
   randomString,
-  removeSpecificQueryParam,
   sleep,
 } from './index'
 
@@ -231,72 +229,6 @@ describe('canFindTool', () => {
   })
 })
 
-describe('removeSpecificQueryParam', () => {
-  let originalLocation: Location
-  let originalReplaceState: typeof window.history.replaceState
-
-  beforeEach(() => {
-    originalLocation = window.location
-    originalReplaceState = window.history.replaceState
-
-    const mockUrl = new URL('https://example.com?param1=value1&param2=value2&param3=value3')
-
-    // Mock window.location using defineProperty to handle URL properly
-    delete (window as any).location
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      writable: true,
-      value: {
-        ...originalLocation,
-        href: mockUrl.href,
-        search: mockUrl.search,
-        toString: () => mockUrl.toString(),
-      },
-    })
-
-    window.history.replaceState = vi.fn()
-  })
-
-  afterEach(() => {
-    Object.defineProperty(window, 'location', {
-      configurable: true,
-      writable: true,
-      value: originalLocation,
-    })
-    window.history.replaceState = originalReplaceState
-  })
-
-  it('should remove a single query parameter', () => {
-    removeSpecificQueryParam('param2')
-    expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
-    expect(replaceStateCall[0]).toBe(null)
-    expect(replaceStateCall[1]).toBe('')
-    expect(replaceStateCall[2]).toMatch(/param1=value1/)
-    expect(replaceStateCall[2]).toMatch(/param3=value3/)
-    expect(replaceStateCall[2]).not.toMatch(/param2=value2/)
-  })
-
-  it('should remove multiple query parameters', () => {
-    removeSpecificQueryParam(['param1', 'param3'])
-    expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
-    expect(replaceStateCall[2]).toMatch(/param2=value2/)
-    expect(replaceStateCall[2]).not.toMatch(/param1=value1/)
-    expect(replaceStateCall[2]).not.toMatch(/param3=value3/)
-  })
-
-  it('should handle non-existent parameters gracefully', () => {
-    removeSpecificQueryParam('nonexistent')
-
-    expect(window.history.replaceState).toHaveBeenCalledTimes(1)
-    const replaceStateCall = (window.history.replaceState as Mock).mock.calls[0]
-    expect(replaceStateCall[2]).toMatch(/param1=value1/)
-    expect(replaceStateCall[2]).toMatch(/param2=value2/)
-    expect(replaceStateCall[2]).toMatch(/param3=value3/)
-  })
-})
-
 describe('sleep', () => {
   it('should resolve after specified milliseconds', async () => {
     const start = Date.now()
@@ -408,7 +340,7 @@ describe('randomString extended', () => {
   })
 
   it('should only contain valid characters', () => {
-    const validChars = /^[0-9a-zA-Z_-]+$/
+    const validChars = /^[\w-]+$/
     const str = randomString(100)
     expect(validChars.test(str)).toBe(true)
   })
@@ -558,49 +490,5 @@ describe('canFindTool extended', () => {
 
   it('should handle undefined oldToolId', () => {
     expect(canFindTool('openai', undefined)).toBe(false)
-  })
-})
-
-describe('removeSpecificQueryParam extended', () => {
-  beforeEach(() => {
-    // Reset window.location
-    delete (window as any).location
-    window.location = {
-      href: 'https://example.com?param1=value1&param2=value2&param3=value3',
-    } as any
-  })
-
-  it('should remove single query parameter', () => {
-    const mockReplaceState = vi.fn()
-    window.history.replaceState = mockReplaceState
-
-    removeSpecificQueryParam('param1')
-
-    expect(mockReplaceState).toHaveBeenCalled()
-    const newUrl = mockReplaceState.mock.calls[0][2]
-    expect(newUrl).not.toContain('param1')
-  })
-
-  it('should remove multiple query parameters', () => {
-    const mockReplaceState = vi.fn()
-    window.history.replaceState = mockReplaceState
-
-    removeSpecificQueryParam(['param1', 'param2'])
-
-    expect(mockReplaceState).toHaveBeenCalled()
-    const newUrl = mockReplaceState.mock.calls[0][2]
-    expect(newUrl).not.toContain('param1')
-    expect(newUrl).not.toContain('param2')
-  })
-
-  it('should preserve other parameters', () => {
-    const mockReplaceState = vi.fn()
-    window.history.replaceState = mockReplaceState
-
-    removeSpecificQueryParam('param1')
-
-    const newUrl = mockReplaceState.mock.calls[0][2]
-    expect(newUrl).toContain('param2')
-    expect(newUrl).toContain('param3')
   })
 })

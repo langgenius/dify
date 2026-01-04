@@ -1,8 +1,8 @@
-import { Fragment, useCallback, useEffect } from 'react'
 import type { ReactNode } from 'react'
 import { Dialog, DialogPanel, Transition, TransitionChild } from '@headlessui/react'
+import { noop } from 'es-toolkit/function'
+import { Fragment, useCallback, useEffect } from 'react'
 import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
 
 type DialogProps = {
   className?: string
@@ -45,15 +45,16 @@ const MenuDialog = ({
                 'data-[enter]:scale-100 data-[enter]:opacity-100',
                 'data-[enter]:scale-95 data-[leave]:opacity-0',
                 className,
-              )}>
-                <div className='absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg' />
+              )}
+              >
+                <div className="absolute right-0 top-0 h-full w-1/2 bg-components-panel-bg" />
                 {children}
               </DialogPanel>
             </TransitionChild>
           </div>
         </div>
       </Dialog>
-    </Transition >
+    </Transition>
   )
 }
 

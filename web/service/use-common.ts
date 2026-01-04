@@ -1,27 +1,30 @@
-import { get, post } from './base'
-import type {
-  AccountIntegrate,
-  CommonResponse,
-  DataSourceNotion,
-  FileUploadConfigResponse,
-  Member,
-  StructuredOutputRulesRequestBody,
-  StructuredOutputRulesResponse,
-} from '@/models/common'
-import { useMutation, useQuery } from '@tanstack/react-query'
 import type { FileTypesRes } from './datasets'
-import type { ICurrentWorkspace, IWorkspace, UserProfileResponse } from '@/models/common'
 import type {
   Model,
+  ModelParameterRule,
   ModelProvider,
   ModelTypeEnum,
 } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import type {
+  AccountIntegrate,
+  ApiBasedExtension,
+  CodeBasedExtension,
+  CommonResponse,
+  DataSourceNotion,
+  FileUploadConfigResponse,
+  ICurrentWorkspace,
+  IWorkspace,
+  LangGeniusVersionResponse,
+  Member,
+  PluginProvider,
+  StructuredOutputRulesRequestBody,
+  StructuredOutputRulesResponse,
+  UserProfileResponse,
+} from '@/models/common'
 import type { RETRIEVE_METHOD } from '@/types/app'
-import type { LangGeniusVersionResponse } from '@/models/common'
-import type { PluginProvider } from '@/models/common'
-import type { ApiBasedExtension } from '@/models/common'
-import type { ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { CodeBasedExtension } from '@/models/common'
+import { useMutation, useQuery } from '@tanstack/react-query'
+import { IS_DEV } from '@/config'
+import { get, post } from './base'
 import { useInvalid } from './use-base'
 
 const NAME_SPACE = 'common'
@@ -44,7 +47,7 @@ export const commonQueryKeys = {
   notionConnection: [NAME_SPACE, 'notion-connection'] as const,
   apiBasedExtensions: [NAME_SPACE, 'api-based-extensions'] as const,
   codeBasedExtensions: (module?: string) => [NAME_SPACE, 'code-based-extensions', module] as const,
-  invitationCheck: (params?: { workspace_id?: string; email?: string; token?: string }) => [
+  invitationCheck: (params?: { workspace_id?: string, email?: string, token?: string }) => [
     NAME_SPACE,
     'invitation-check',
     params?.workspace_id ?? '',
@@ -53,7 +56,7 @@ export const commonQueryKeys = {
   ] as const,
   notionBinding: (code?: string | null) => [NAME_SPACE, 'notion-binding', code] as const,
   modelParameterRules: (provider?: string, model?: string) => [NAME_SPACE, 'model-parameter-rules', provider, model] as const,
-  langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'lang-genius-version', currentVersion] as const,
+  langGeniusVersion: (currentVersion?: string | null) => [NAME_SPACE, 'langgenius-version', currentVersion] as const,
   forgotPasswordValidity: (token?: string | null) => [NAME_SPACE, 'forgot-password-validity', token] as const,
   dataSourceIntegrates: [NAME_SPACE, 'data-source-integrates'] as const,
 }
@@ -83,7 +86,7 @@ export const useUserProfile = () => {
         profile,
         meta: {
           currentVersion: response.headers.get('x-version'),
-          currentEnv: process.env.NODE_ENV === 'development'
+          currentEnv: IS_DEV
             ? 'DEVELOPMENT'
             : response.headers.get('x-env'),
         },
@@ -220,7 +223,7 @@ export const useIsLogin = () => {
         })
       }
       catch (e: any) {
-        if(e.status === 401)
+        if (e.status === 401)
           return { logged_in: false }
         return { logged_in: true }
       }
@@ -236,7 +239,7 @@ export const useLogout = () => {
   })
 }
 
-type ForgotPasswordValidity = CommonResponse & { is_valid: boolean; email: string }
+type ForgotPasswordValidity = CommonResponse & { is_valid: boolean, email: string }
 export const useVerifyForgotPasswordToken = (token?: string | null) => {
   return useQuery<ForgotPasswordValidity>({
     queryKey: commonQueryKeys.forgotPasswordValidity(token),
@@ -345,12 +348,12 @@ export const useApiBasedExtensions = () => {
   })
 }
 
-export const useInvitationCheck = (params?: { workspace_id?: string; email?: string; token?: string }, enabled?: boolean) => {
+export const useInvitationCheck = (params?: { workspace_id?: string, email?: string, token?: string }, enabled?: boolean) => {
   return useQuery({
     queryKey: commonQueryKeys.invitationCheck(params),
     queryFn: () => get<{
       is_valid: boolean
-      data: { workspace_name: string; email: string; workspace_id: string }
+      data: { workspace_name: string, email: string, workspace_id: string }
       result: string
     }>('/activate/check', { params }),
     enabled: enabled ?? !!params?.token,

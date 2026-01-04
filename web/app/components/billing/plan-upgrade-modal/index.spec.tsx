@@ -1,16 +1,15 @@
-import React from 'react'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
+import * as React from 'react'
 import PlanUpgradeModal from './index'
 
 const mockSetShowPricingModal = vi.fn()
 
 vi.mock('@/app/components/base/modal', () => {
-  const MockModal = ({ isShow, children }: { isShow: boolean; children: React.ReactNode }) => (
+  const MockModal = ({ isShow, children }: { isShow: boolean, children: React.ReactNode }) => (
     isShow ? <div data-testid="plan-upgrade-modal">{children}</div> : null
   )
   return {
-    __esModule: true,
     default: MockModal,
   }
 })

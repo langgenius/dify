@@ -1,6 +1,7 @@
-import React, { useEffect, useMemo, useState } from 'react'
-import { useRouter } from 'next/navigation'
-import { useTranslation } from 'react-i18next'
+import type { IndexingType } from '@/app/components/datasets/create/step-two'
+import type { IndexingStatusResponse } from '@/models/datasets'
+import type { InitialDocumentDetail } from '@/models/pipeline'
+import type { RETRIEVE_METHOD } from '@/types/app'
 import {
   RiAedFill,
   RiArrowRightLine,
@@ -9,25 +10,26 @@ import {
   RiLoader2Fill,
   RiTerminalBoxLine,
 } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
+import Link from 'next/link'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
-import type { IndexingStatusResponse } from '@/models/datasets'
+import Divider from '@/app/components/base/divider'
 import NotionIcon from '@/app/components/base/notion-icon'
+import Tooltip from '@/app/components/base/tooltip'
 import PriorityLabel from '@/app/components/billing/priority-label'
 import { Plan } from '@/app/components/billing/type'
 import UpgradeBtn from '@/app/components/billing/upgrade-btn'
-import { useProviderContext } from '@/context/provider-context'
-import Tooltip from '@/app/components/base/tooltip'
-import { useInvalidDocumentList } from '@/service/knowledge/use-document'
 import DocumentFileIcon from '@/app/components/datasets/common/document-file-icon'
-import RuleDetail from './rule-detail'
-import type { IndexingType } from '@/app/components/datasets/create/step-two'
-import type { RETRIEVE_METHOD } from '@/types/app'
-import { DatasourceType, type InitialDocumentDetail } from '@/models/pipeline'
-import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
-import Divider from '@/app/components/base/divider'
+import { useProviderContext } from '@/context/provider-context'
 import { useDatasetApiAccessUrl } from '@/hooks/use-api-access-url'
-import Link from 'next/link'
+import { DatasourceType } from '@/models/pipeline'
+import { useIndexingStatusBatch, useProcessRule } from '@/service/knowledge/use-dataset'
+import { useInvalidDocumentList } from '@/service/knowledge/use-document'
+import { cn } from '@/utils/classnames'
+import RuleDetail from './rule-detail'
 
 type EmbeddingProcessProps = {
   datasetId: string
@@ -89,15 +91,18 @@ const EmbeddingProcess = ({
   const apiReferenceUrl = useDatasetApiAccessUrl()
 
   const isEmbeddingWaiting = useMemo(() => {
-    if (!indexingStatusBatchDetail.length) return false
+    if (!indexingStatusBatchDetail.length)
+      return false
     return indexingStatusBatchDetail.every(indexingStatusDetail => ['waiting'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbedding = useMemo(() => {
-    if (!indexingStatusBatchDetail.length) return false
+    if (!indexingStatusBatchDetail.length)
+      return false
     return indexingStatusBatchDetail.some(indexingStatusDetail => ['indexing', 'splitting', 'parsing', 'cleaning'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
   const isEmbeddingCompleted = useMemo(() => {
-    if (!indexingStatusBatchDetail.length) return false
+    if (!indexingStatusBatchDetail.length)
+      return false
     return indexingStatusBatchDetail.every(indexingStatusDetail => ['completed', 'error', 'paused'].includes(indexingStatusDetail?.indexing_status || ''))
   }, [indexingStatusBatchDetail])
 
@@ -128,32 +133,32 @@ const EmbeddingProcess = ({
 
   return (
     <>
-      <div className='flex flex-col gap-y-3'>
-        <div className='system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary'>
+      <div className="flex flex-col gap-y-3">
+        <div className="system-md-semibold-uppercase flex items-center gap-x-1 text-text-secondary">
           {(isEmbeddingWaiting || isEmbedding) && (
             <>
-              <RiLoader2Fill className='size-4 animate-spin' />
+              <RiLoader2Fill className="size-4 animate-spin" />
               <span>
-                {isEmbeddingWaiting ? t('datasetDocuments.embedding.waiting') : t('datasetDocuments.embedding.processing')}
+                {isEmbeddingWaiting ? t('embedding.waiting', { ns: 'datasetDocuments' }) : t('embedding.processing', { ns: 'datasetDocuments' })}
               </span>
             </>
           )}
-          {isEmbeddingCompleted && t('datasetDocuments.embedding.completed')}
+          {isEmbeddingCompleted && t('embedding.completed', { ns: 'datasetDocuments' })}
         </div>
         {
           enableBilling && plan.type !== Plan.team && (
-            <div className='flex h-[52px] items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3'>
-              <div className='flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5'>
-                <RiAedFill className='size-4 text-text-primary-on-surface' />
+            <div className="flex h-[52px] items-center gap-x-2 rounded-xl border-[0.5px] border-components-panel-border-subtle bg-components-panel-on-panel-item-bg p-2.5 pl-3 shadow-xs shadow-shadow-shadow-3">
+              <div className="flex shrink-0 items-center justify-center rounded-lg border-[0.5px] border-divider-subtle bg-util-colors-blue-brand-blue-brand-500 shadow-md shadow-shadow-shadow-5">
+                <RiAedFill className="size-4 text-text-primary-on-surface" />
               </div>
-              <div className='system-md-medium grow text-text-primary'>
-                {t('billing.plansCommon.documentProcessingPriorityUpgrade')}
+              <div className="system-md-medium grow text-text-primary">
+                {t('plansCommon.documentProcessingPriorityUpgrade', { ns: 'billing' })}
               </div>
-              <UpgradeBtn loc='knowledge-speed-up' />
+              <UpgradeBtn loc="knowledge-speed-up" />
             </div>
           )
         }
-        <div className='flex flex-col gap-0.5 pb-2'>
+        <div className="flex flex-col gap-0.5 pb-2">
           {indexingStatusBatchDetail.map(indexingStatusDetail => (
             <div
               key={indexingStatusDetail.id}
@@ -164,84 +169,84 @@ const EmbeddingProcess = ({
             >
               {isSourceEmbedding(indexingStatusDetail) && (
                 <div
-                  className='absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress'
+                  className="absolute left-0 top-0 h-full min-w-0.5 border-r-[2px] border-r-components-progress-bar-progress-highlight bg-components-progress-bar-progress"
                   style={{ width: `${getSourcePercent(indexingStatusDetail)}%` }}
                 />
               )}
-              <div className='z-[1] flex h-full items-center gap-1 pl-[6px] pr-2'>
+              <div className="z-[1] flex h-full items-center gap-1 pl-[6px] pr-2">
                 {getSourceType(indexingStatusDetail.id) === DatasourceType.localFile && (
                   <DocumentFileIcon
-                    size='sm'
-                    className='shrink-0'
+                    size="sm"
+                    className="shrink-0"
                     name={getSourceName(indexingStatusDetail.id)}
                     extension={getFileType(getSourceName(indexingStatusDetail.id))}
                   />
                 )}
                 {getSourceType(indexingStatusDetail.id) === DatasourceType.onlineDocument && (
                   <NotionIcon
-                    className='shrink-0'
-                    type='page'
+                    className="shrink-0"
+                    type="page"
                     src={getIcon(indexingStatusDetail.id)}
                   />
                 )}
-                <div className='flex w-0 grow items-center gap-1' title={getSourceName(indexingStatusDetail.id)}>
-                  <div className='system-xs-medium truncate text-text-secondary'>
+                <div className="flex w-0 grow items-center gap-1" title={getSourceName(indexingStatusDetail.id)}>
+                  <div className="system-xs-medium truncate text-text-secondary">
                     {getSourceName(indexingStatusDetail.id)}
                   </div>
                   {
                     enableBilling && (
-                      <PriorityLabel className='ml-0' />
+                      <PriorityLabel className="ml-0" />
                     )
                   }
                 </div>
                 {isSourceEmbedding(indexingStatusDetail) && (
-                  <div className='shrink-0 text-xs text-text-secondary'>{`${getSourcePercent(indexingStatusDetail)}%`}</div>
+                  <div className="shrink-0 text-xs text-text-secondary">{`${getSourcePercent(indexingStatusDetail)}%`}</div>
                 )}
                 {indexingStatusDetail.indexing_status === 'error' && (
                   <Tooltip
-                    popupClassName='px-4 py-[14px] max-w-60 body-xs-regular text-text-secondary border-[0.5px] border-components-panel-border rounded-xl'
+                    popupClassName="px-4 py-[14px] max-w-60 body-xs-regular text-text-secondary border-[0.5px] border-components-panel-border rounded-xl"
                     offset={4}
                     popupContent={indexingStatusDetail.error}
                   >
                     <span>
-                      <RiErrorWarningFill className='size-4 shrink-0 text-text-destructive' />
+                      <RiErrorWarningFill className="size-4 shrink-0 text-text-destructive" />
                     </span>
                   </Tooltip>
                 )}
                 {indexingStatusDetail.indexing_status === 'completed' && (
-                  <RiCheckboxCircleFill className='size-4 shrink-0 text-text-success' />
+                  <RiCheckboxCircleFill className="size-4 shrink-0 text-text-success" />
                 )}
               </div>
             </div>
           ))}
         </div>
-        <Divider type='horizontal' className='my-0 bg-divider-subtle' />
+        <Divider type="horizontal" className="my-0 bg-divider-subtle" />
         <RuleDetail
           sourceData={ruleDetail}
           indexingType={indexingType}
           retrievalMethod={retrievalMethod}
         />
       </div>
-      <div className='mt-6 flex items-center gap-x-2 py-2'>
+      <div className="mt-6 flex items-center gap-x-2 py-2">
         <Link
           href={apiReferenceUrl}
-          target='_blank'
-          rel='noopener noreferrer'
+          target="_blank"
+          rel="noopener noreferrer"
         >
           <Button
-            className='w-fit gap-x-0.5 px-3'
+            className="w-fit gap-x-0.5 px-3"
           >
-            <RiTerminalBoxLine className='size-4' />
-            <span className='px-0.5'>Access the API</span>
+            <RiTerminalBoxLine className="size-4" />
+            <span className="px-0.5">Access the API</span>
           </Button>
         </Link>
         <Button
-          className='w-fit gap-x-0.5 px-3'
-          variant='primary'
+          className="w-fit gap-x-0.5 px-3"
+          variant="primary"
           onClick={navToDocumentList}
         >
-          <span className='px-0.5'>{t('datasetCreation.stepThree.navTo')}</span>
-          <RiArrowRightLine className='size-4 stroke-current stroke-1' />
+          <span className="px-0.5">{t('stepThree.navTo', { ns: 'datasetCreation' })}</span>
+          <RiArrowRightLine className="size-4 stroke-current stroke-1" />
         </Button>
       </div>
     </>

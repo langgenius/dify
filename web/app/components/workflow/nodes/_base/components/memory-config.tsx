@@ -1,17 +1,18 @@
 'use client'
 import type { FC } from 'react'
-import React, { useCallback } from 'react'
-import { useTranslation } from 'react-i18next'
-import { produce } from 'immer'
 import type { Memory } from '../../../types'
-import { MemoryRole } from '../../../types'
-import { cn } from '@/utils/classnames'
-import Field from '@/app/components/workflow/nodes/_base/components/field'
-import Switch from '@/app/components/base/switch'
-import Slider from '@/app/components/base/slider'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import Input from '@/app/components/base/input'
+import Slider from '@/app/components/base/slider'
+import Switch from '@/app/components/base/switch'
+import Field from '@/app/components/workflow/nodes/_base/components/field'
+import { cn } from '@/utils/classnames'
+import { MemoryRole } from '../../../types'
 
-const i18nPrefix = 'workflow.nodes.common.memory'
+const i18nPrefix = 'nodes.common.memory'
 const WINDOW_SIZE_MIN = 1
 const WINDOW_SIZE_MAX = 100
 const WINDOW_SIZE_DEFAULT = 50
@@ -31,14 +32,15 @@ const RoleItem: FC<RoleItemProps> = ({
     onChange(e.target.value)
   }, [onChange])
   return (
-    <div className='flex items-center justify-between'>
-      <div className='text-[13px] font-normal text-text-secondary'>{title}</div>
+    <div className="flex items-center justify-between">
+      <div className="text-[13px] font-normal text-text-secondary">{title}</div>
       <Input
         readOnly={readonly}
         value={value}
         onChange={handleChange}
-        className='h-8 w-[200px]'
-        type='text' />
+        className="h-8 w-[200px]"
+        type="text"
+      />
     </div>
   )
 }
@@ -130,33 +132,33 @@ const MemoryConfig: FC<Props> = ({
   return (
     <div className={cn(className)}>
       <Field
-        title={t(`${i18nPrefix}.memory`)}
-        tooltip={t(`${i18nPrefix}.memoryTip`)!}
-        operations={
+        title={t(`${i18nPrefix}.memory`, { ns: 'workflow' })}
+        tooltip={t(`${i18nPrefix}.memoryTip`, { ns: 'workflow' })!}
+        operations={(
           <Switch
             defaultValue={!!payload}
             onChange={handleMemoryEnabledChange}
-            size='md'
+            size="md"
             disabled={readonly}
           />
-        }
+        )}
       >
         {payload && (
           <>
             {/* window size */}
-            <div className='flex justify-between'>
-              <div className='flex h-8 items-center space-x-2'>
+            <div className="flex justify-between">
+              <div className="flex h-8 items-center space-x-2">
                 <Switch
                   defaultValue={payload?.window?.enabled}
                   onChange={handleWindowEnabledChange}
-                  size='md'
+                  size="md"
                   disabled={readonly}
                 />
-                <div className='system-xs-medium-uppercase text-text-tertiary'>{t(`${i18nPrefix}.windowSize`)}</div>
+                <div className="system-xs-medium-uppercase text-text-tertiary">{t(`${i18nPrefix}.windowSize`, { ns: 'workflow' })}</div>
               </div>
-              <div className='flex h-8 items-center space-x-2'>
+              <div className="flex h-8 items-center space-x-2">
                 <Slider
-                  className='w-[144px]'
+                  className="w-[144px]"
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
@@ -166,9 +168,9 @@ const MemoryConfig: FC<Props> = ({
                 />
                 <Input
                   value={(payload.window?.size || WINDOW_SIZE_DEFAULT) as number}
-                  wrapperClassName='w-12'
-                  className='appearance-none pr-0'
-                  type='number'
+                  wrapperClassName="w-12"
+                  className="appearance-none pr-0"
+                  type="number"
                   min={WINDOW_SIZE_MIN}
                   max={WINDOW_SIZE_MAX}
                   step={1}
@@ -179,18 +181,18 @@ const MemoryConfig: FC<Props> = ({
               </div>
             </div>
             {canSetRoleName && (
-              <div className='mt-4'>
-                <div className='text-xs font-medium uppercase leading-6 text-text-tertiary'>{t(`${i18nPrefix}.conversationRoleName`)}</div>
-                <div className='mt-1 space-y-2'>
+              <div className="mt-4">
+                <div className="text-xs font-medium uppercase leading-6 text-text-tertiary">{t(`${i18nPrefix}.conversationRoleName`, { ns: 'workflow' })}</div>
+                <div className="mt-1 space-y-2">
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.user`)}
+                    title={t(`${i18nPrefix}.user`, { ns: 'workflow' })}
                     value={payload.role_prefix?.user || ''}
                     onChange={handleRolePrefixChange(MemoryRole.user)}
                   />
                   <RoleItem
                     readonly={readonly}
-                    title={t(`${i18nPrefix}.assistant`)}
+                    title={t(`${i18nPrefix}.assistant`, { ns: 'workflow' })}
                     value={payload.role_prefix?.assistant || ''}
                     onChange={handleRolePrefixChange(MemoryRole.assistant)}
                   />

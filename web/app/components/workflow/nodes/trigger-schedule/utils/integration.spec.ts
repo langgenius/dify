@@ -1,7 +1,7 @@
-import { isValidCronExpression, parseCronExpression } from './cron-parser'
-import { getNextExecutionTime, getNextExecutionTimes } from './execution-time-calculator'
 import type { ScheduleTriggerNodeType } from '../types'
 import { BlockEnum } from '../../../types'
+import { isValidCronExpression, parseCronExpression } from './cron-parser'
+import { getNextExecutionTime, getNextExecutionTimes } from './execution-time-calculator'
 
 // Comprehensive integration tests for cron-parser and execution-time-calculator compatibility
 describe('cron-parser + execution-time-calculator integration', () => {
@@ -176,9 +176,12 @@ describe('cron-parser + execution-time-calculator integration', () => {
           expect(date.getHours()).toBe(hour)
           expect(date.getMinutes()).toBe(minute)
 
-          if (weekday !== undefined) expect(date.getDay()).toBe(weekday)
-          if (day !== undefined) expect(date.getDate()).toBe(day)
-          if (month !== undefined) expect(date.getMonth()).toBe(month)
+          if (weekday !== undefined)
+            expect(date.getDay()).toBe(weekday)
+          if (day !== undefined)
+            expect(date.getDate()).toBe(day)
+          if (month !== undefined)
+            expect(date.getMonth()).toBe(month)
         })
       })
     })

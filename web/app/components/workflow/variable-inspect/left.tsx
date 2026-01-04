@@ -1,17 +1,17 @@
+import type { currentVarType } from './panel'
+
+import type { VarInInspect } from '@/types/workflow'
 // import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-
-import { useStore } from '../store'
 import Button from '@/app/components/base/button'
+import { VarInInspectType } from '@/types/workflow'
+import { cn } from '@/utils/classnames'
+import useCurrentVars from '../hooks/use-inspect-vars-crud'
+import { useNodesInteractions } from '../hooks/use-nodes-interactions'
+import { useStore } from '../store'
 // import ActionButton from '@/app/components/base/action-button'
 // import Tooltip from '@/app/components/base/tooltip'
 import Group from './group'
-import useCurrentVars from '../hooks/use-inspect-vars-crud'
-import { useNodesInteractions } from '../hooks/use-nodes-interactions'
-import type { currentVarType } from './panel'
-import type { VarInInspect } from '@/types/workflow'
-import { VarInInspectType } from '@/types/workflow'
-import { cn } from '@/utils/classnames'
 
 type Props = {
   currentNodeVar?: currentVarType
@@ -51,12 +51,12 @@ const Left = ({
   return (
     <div className={cn('flex h-full flex-col')}>
       {/* header */}
-      <div className='flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2'>
-        <div className='system-sm-semibold-uppercase truncate text-text-primary'>{t('workflow.debug.variableInspect.title')}</div>
-        <Button variant='ghost' size='small' className='shrink-0' onClick={handleClearAll}>{t('workflow.debug.variableInspect.clearAll')}</Button>
+      <div className="flex shrink-0 items-center justify-between gap-1 pl-4 pr-1 pt-2">
+        <div className="system-sm-semibold-uppercase truncate text-text-primary">{t('debug.variableInspect.title', { ns: 'workflow' })}</div>
+        <Button variant="ghost" size="small" className="shrink-0" onClick={handleClearAll}>{t('debug.variableInspect.clearAll', { ns: 'workflow' })}</Button>
       </div>
       {/* content */}
-      <div className='grow overflow-y-auto py-1'>
+      <div className="grow overflow-y-auto py-1">
         {/* group ENV */}
         {environmentVariables.length > 0 && (
           <Group
@@ -86,8 +86,8 @@ const Left = ({
         )}
         {/* divider */}
         {showDivider && (
-          <div className='px-4 py-1'>
-            <div className='h-px bg-divider-subtle'></div>
+          <div className="px-4 py-1">
+            <div className="h-px bg-divider-subtle"></div>
           </div>
         )}
         {/* group nodes */}

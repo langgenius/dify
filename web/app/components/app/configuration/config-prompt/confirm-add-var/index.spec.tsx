@@ -1,9 +1,8 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import ConfirmAddVar from './index'
 
 vi.mock('../../base/var-highlight', () => ({
-  __esModule: true,
   default: ({ name }: { name: string }) => <span data-testid="var-highlight">{name}</span>,
 }))
 

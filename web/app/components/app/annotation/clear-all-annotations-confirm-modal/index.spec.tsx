@@ -1,16 +1,19 @@
-import React from 'react'
 import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import ClearAllAnnotationsConfirmModal from './index'
 
 vi.mock('react-i18next', () => ({
   useTranslation: () => ({
-    t: (key: string) => {
+    t: (key: string, options?: { ns?: string }) => {
       const translations: Record<string, string> = {
-        'appAnnotation.table.header.clearAllConfirm': 'Clear all annotations?',
-        'common.operation.confirm': 'Confirm',
-        'common.operation.cancel': 'Cancel',
+        'table.header.clearAllConfirm': 'Clear all annotations?',
+        'operation.confirm': 'Confirm',
+        'operation.cancel': 'Cancel',
       }
-      return translations[key] || key
+      if (translations[key])
+        return translations[key]
+      const prefix = options?.ns ? `${options.ns}.` : ''
+      return `${prefix}${key}`
     },
   }),
 }))
@@ -22,7 +25,7 @@ beforeEach(() => {
 describe('ClearAllAnnotationsConfirmModal', () => {
   // Rendering visibility toggled by isShow flag
   describe('Rendering', () => {
-    test('should show confirmation dialog when isShow is true', () => {
+    it('should show confirmation dialog when isShow is true', () => {
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
@@ -38,7 +41,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       expect(screen.getByRole('button', { name: 'Confirm' })).toBeInTheDocument()
     })
 
-    test('should not render anything when isShow is false', () => {
+    it('should not render anything when isShow is false', () => {
       // Arrange
       render(
         <ClearAllAnnotationsConfirmModal
@@ -55,7 +58,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
 
   // User confirms or cancels clearing annotations
   describe('Interactions', () => {
-    test('should trigger onHide when cancel is clicked', () => {
+    it('should trigger onHide when cancel is clicked', () => {
       const onHide = vi.fn()
       const onConfirm = vi.fn()
       // Arrange
@@ -75,7 +78,7 @@ describe('ClearAllAnnotationsConfirmModal', () => {
       expect(onConfirm).not.toHaveBeenCalled()
     })
 
-    test('should trigger onConfirm when confirm is clicked', () => {
+    it('should trigger onConfirm when confirm is clicked', () => {
       const onHide = vi.fn()
       const onConfirm = vi.fn()
       // Arrange

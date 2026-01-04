@@ -21,10 +21,10 @@ pnpm test
 pnpm test:watch
 
 # Generate coverage report
-pnpm test -- --coverage
+pnpm test:coverage
 
 # Run specific file
-pnpm test -- path/to/file.spec.tsx
+pnpm test path/to/file.spec.tsx
 ```
 
 ## Project Test Setup
@@ -33,7 +33,7 @@ pnpm test -- path/to/file.spec.tsx
 - **Global setup**: `vitest.setup.ts` already imports `@testing-library/jest-dom`, runs `cleanup()` after every test, and defines shared mocks (for example `react-i18next`, `next/image`). Add any environment-level mocks (for example `ResizeObserver`, `matchMedia`, `IntersectionObserver`, `TextEncoder`, `crypto`) here so they are shared consistently.
 - **Reusable mocks**: Place shared mock factories inside `web/__mocks__/` and use `vi.mock('module-name')` to point to them rather than redefining mocks in every spec.
 - **Mocking behavior**: Modules are not mocked automatically. Use `vi.mock(...)` in tests, or place global mocks in `vitest.setup.ts`.
-- **Script utilities**: `web/testing/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
+- **Script utilities**: `web/scripts/analyze-component.js` analyzes component complexity and generates test prompts for AI assistants. Commands:
   - `pnpm analyze-component <path>` - Analyze and generate test prompt
   - `pnpm analyze-component <path> --json` - Output analysis as JSON
   - `pnpm analyze-component <path> --review` - Generate test review prompt
@@ -266,8 +266,8 @@ const mockGithubStar = (status: number, body: Record<string, unknown>, delayMs =
 
 ### Example Structure
 
-```typescript
-import { render, screen, fireEvent, waitFor } from '@testing-library/react'
+```tsx
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
 import Component from './index'
 
 // ✅ Import real project components (DO NOT mock these)
@@ -286,18 +286,18 @@ let mockSharedState = false
 
 describe('ComponentName', () => {
   beforeEach(() => {
-    vi.clearAllMocks()  // ✅ Reset mocks before each test
-    mockSharedState = false  // ✅ Reset shared state if used in mocks
+    vi.clearAllMocks() // ✅ Reset mocks before each test
+    mockSharedState = false // ✅ Reset shared state if used in mocks
   })
 
   describe('Rendering', () => {
     it('should render without crashing', () => {
       // Arrange
       const props = { title: 'Test' }
-      
+
       // Act
       render(<Component {...props} />)
-      
+
       // Assert
       expect(screen.getByText('Test')).toBeInTheDocument()
     })
@@ -307,9 +307,9 @@ describe('ComponentName', () => {
     it('should handle click events', () => {
       const handleClick = vi.fn()
       render(<Component onClick={handleClick} />)
-      
+
       fireEvent.click(screen.getByRole('button'))
-      
+
       expect(handleClick).toHaveBeenCalledTimes(1)
     })
   })
@@ -329,45 +329,53 @@ describe('ComponentName', () => {
 
 1. **i18n**: Uses global mock in `web/vitest.setup.ts` (auto-loaded by Vitest setup)
 
-   The global mock returns translation keys as-is. For custom translations, override:
+   The global mock provides:
+
+   - `useTranslation` - returns translation keys with namespace prefix
+   - `Trans` component - renders i18nKey and components
+   - `useMixedTranslation` (from `@/app/components/plugins/marketplace/hooks`)
+   - `useGetLanguage` (from `@/context/i18n`) - returns `'en-US'`
+
+   **Default behavior**: Most tests should use the global mock (no local override needed).
+
+   **For custom translations**: Use the helper function from `@/test/i18n-mock`:
 
    ```typescript
-   vi.mock('react-i18next', () => ({
-     useTranslation: () => ({
-       t: (key: string) => {
-         const translations: Record<string, string> = {
-           'my.custom.key': 'Custom translation',
-         }
-         return translations[key] || key
-       },
-     }),
+   import { createReactI18nextMock } from '@/test/i18n-mock'
+
+   vi.mock('react-i18next', () => createReactI18nextMock({
+     'my.custom.key': 'Custom translation',
+     'button.save': 'Save',
    }))
    ```
+
+   **Avoid**: Manually defining `useTranslation` mocks that just return the key - the global mock already does this.
 
 1. **Forms**: Test validation logic thoroughly
 
 1. **Example - Correct mock with conditional rendering**:
 
-```typescript
+```tsx
 // ✅ CORRECT: Matches actual component behavior
 let mockPortalOpenState = false
 
 vi.mock('@/app/components/base/portal-to-follow-elem', () => ({
   PortalToFollowElem: ({ children, open, ...props }: any) => {
-    mockPortalOpenState = open || false  // Update shared state
+    mockPortalOpenState = open || false // Update shared state
     return <div data-open={open}>{children}</div>
   },
   PortalToFollowElemContent: ({ children }: any) => {
     // ✅ Matches actual: returns null when open is false
-    if (!mockPortalOpenState) return null
+    if (!mockPortalOpenState)
+      return null
     return <div>{children}</div>
   },
 }))
 
 describe('Component', () => {
   beforeEach(() => {
-    vi.clearAllMocks()  // ✅ Reset mock call history
-    mockPortalOpenState = false  // ✅ Reset shared state
+    vi.clearAllMocks() // ✅ Reset mock call history
+    mockPortalOpenState = false // ✅ Reset shared state
   })
 })
 ```

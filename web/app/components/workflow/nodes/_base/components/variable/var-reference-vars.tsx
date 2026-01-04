@@ -1,29 +1,31 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
+import type { StructuredOutput } from '../../../llm/types'
+import type { Field } from '@/app/components/workflow/nodes/llm/types'
+import type { NodeOutPutVar, ValueSelector, Var } from '@/app/components/workflow/types'
 import { useHover } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
-import { type NodeOutPutVar, type ValueSelector, type Var, VarType } from '@/app/components/workflow/types'
 import { ChevronRight } from '@/app/components/base/icons/src/vender/line/arrows'
+import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
+import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import Input from '@/app/components/base/input'
-import { checkKeys } from '@/utils/var'
-import type { StructuredOutput } from '../../../llm/types'
-import { Type } from '../../../llm/types'
-import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
-import { isSpecialVar, varTypeToStructType } from './utils'
-import type { Field } from '@/app/components/workflow/nodes/llm/types'
-import { noop } from 'lodash-es'
-import { CodeAssistant, MagicEdit } from '@/app/components/base/icons/src/vender/line/general'
-import ManageInputField from './manage-input-field'
-import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
-import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
 import { VAR_SHOW_NAME_MAP } from '@/app/components/workflow/constants'
+import PickerStructurePanel from '@/app/components/workflow/nodes/_base/components/variable/object-child-tree-panel/picker'
+import { VariableIconWithColor } from '@/app/components/workflow/nodes/_base/components/variable/variable-label'
+import { VarType } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
+import { checkKeys } from '@/utils/var'
+import { Type } from '../../../llm/types'
+import ManageInputField from './manage-input-field'
+import { isSpecialVar, varTypeToStructType } from './utils'
 
 type ItemProps = {
   nodeId: string
@@ -74,16 +76,16 @@ const Item: FC<ItemProps> = ({
     switch (variable) {
       case 'current':
         Icon = isInCodeGeneratorInstructionEditor ? CodeAssistant : MagicEdit
-        return <Icon className='h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600' />
+        return <Icon className="h-3.5 w-3.5 shrink-0 text-util-colors-violet-violet-600" />
       case 'error_message':
-        return <Variable02 className='h-3.5 w-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600' />
+        return <Variable02 className="h-3.5 w-3.5 shrink-0 text-util-colors-orange-dark-orange-dark-600" />
       default:
-        return <Variable02 className='h-3.5 w-3.5 shrink-0 text-text-accent' />
+        return <Variable02 className="h-3.5 w-3.5 shrink-0 text-text-accent" />
     }
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
   const varName = useMemo(() => {
-    if(VAR_SHOW_NAME_MAP[itemData.variable])
+    if (VAR_SHOW_NAME_MAP[itemData.variable])
       return VAR_SHOW_NAME_MAP[itemData.variable]
 
     if (!isFlat)
@@ -95,7 +97,8 @@ const Item: FC<ItemProps> = ({
   }, [isFlat, isInCodeGeneratorInstructionEditor, itemData.variable])
 
   const objStructuredOutput: StructuredOutput | null = useMemo(() => {
-    if (!isObj) return null
+    if (!isObj)
+      return null
     const properties: Record<string, Field> = {}
     const childrenVars = (itemData.children as Var[]) || []
     childrenVars.forEach((c) => {
@@ -160,19 +163,23 @@ const Item: FC<ItemProps> = ({
     }
   }
   const variableCategory = useMemo(() => {
-    if (isEnv) return 'environment'
-    if (isChatVar) return 'conversation'
-    if (isLoopVar) return 'loop'
-    if (isRagVariable) return 'rag'
+    if (isEnv)
+      return 'environment'
+    if (isChatVar)
+      return 'conversation'
+    if (isLoopVar)
+      return 'loop'
+    if (isRagVariable)
+      return 'rag'
     return 'system'
   }, [isEnv, isChatVar, isSys, isLoopVar, isRagVariable])
   return (
     <PortalToFollowElem
       open={open}
       onOpenChange={noop}
-      placement='left-start'
+      placement="left-start"
     >
-      <PortalToFollowElemTrigger className='w-full'>
+      <PortalToFollowElemTrigger className="w-full">
         <div
           ref={itemRef}
           className={cn(
@@ -180,43 +187,45 @@ const Item: FC<ItemProps> = ({
             isHovering && ((isObj || isStructureOutput) ? 'bg-components-panel-on-panel-item-bg-hover' : 'bg-state-base-hover'),
             'relative flex h-6 w-full cursor-pointer items-center rounded-md pl-3',
             className,
-          )
-          }
+          )}
           onClick={handleChosen}
           onMouseDown={e => e.preventDefault()}
         >
-          <div className='flex w-0 grow items-center'>
-            {!isFlat && <VariableIconWithColor
-              variables={itemData.variable.split('.')}
-              variableCategory={variableCategory}
-              isExceptionVariable={isException}
-            />}
+          <div className="flex w-0 grow items-center">
+            {!isFlat && (
+              <VariableIconWithColor
+                variables={itemData.variable.split('.')}
+                variableCategory={variableCategory}
+                isExceptionVariable={isException}
+              />
+            )}
             {isFlat && flatVarIcon}
 
             {!isEnv && !isChatVar && !isRagVariable && (
-              <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{varName}</div>
+              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{varName}</div>
             )}
             {isEnv && (
-              <div title={itemData.variable} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('env.', '')}</div>
+              <div title={itemData.variable} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('env.', '')}</div>
             )}
             {isChatVar && (
-              <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.replace('conversation.', '')}</div>
+              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.replace('conversation.', '')}</div>
             )}
             {isRagVariable && (
-              <div title={itemData.des} className='system-sm-medium ml-1 w-0 grow truncate text-text-secondary'>{itemData.variable.split('.').slice(-1)[0]}</div>
+              <div title={itemData.des} className="system-sm-medium ml-1 w-0 grow truncate text-text-secondary">{itemData.variable.split('.').slice(-1)[0]}</div>
             )}
           </div>
-          <div className='ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary'>{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
+          <div className="ml-1 shrink-0 text-xs font-normal capitalize text-text-tertiary">{(preferSchemaType && itemData.schemaType) ? itemData.schemaType : itemData.type}</div>
           {
             (isObj || isStructureOutput) && (
               <ChevronRight className={cn('ml-0.5 h-3 w-3 text-text-quaternary', isHovering && 'text-text-tertiary')} />
             )
           }
-        </div >
-      </PortalToFollowElemTrigger >
+        </div>
+      </PortalToFollowElemTrigger>
       <PortalToFollowElemContent style={{
         zIndex: zIndex || 100,
-      }}>
+      }}
+      >
         {(isStructureOutput || isObj) && (
           <PickerStructurePanel
             root={{ nodeId, nodeName: title, attrName: itemData.variable, attrAlias: itemData.schemaType }}
@@ -228,7 +237,7 @@ const Item: FC<ItemProps> = ({
           />
         )}
       </PortalToFollowElemContent>
-    </PortalToFollowElem >
+    </PortalToFollowElem>
   )
 }
 
@@ -308,11 +317,11 @@ const VarReferenceVars: FC<Props> = ({
           <>
             <div className={cn('var-search-input-wrapper mx-2 mb-2 mt-2', searchBoxClassName)} onClick={e => e.stopPropagation()}>
               <Input
-                className='var-search-input'
+                className="var-search-input"
                 showLeftIcon
                 showClearIcon
                 value={searchText}
-                placeholder={t('workflow.common.searchVar') || ''}
+                placeholder={t('common.searchVar', { ns: 'workflow' }) || ''}
                 onChange={e => setSearchText(e.target.value)}
                 onKeyDown={handleKeyDown}
                 onClear={() => setSearchText('')}
@@ -320,54 +329,63 @@ const VarReferenceVars: FC<Props> = ({
                 autoFocus={autoFocus}
               />
             </div>
-            <div className='relative left-[-4px] h-[0.5px] bg-black/5' style={{
-              width: 'calc(100% + 8px)',
-            }}></div>
+            <div
+              className="relative left-[-4px] h-[0.5px] bg-black/5"
+              style={{
+                width: 'calc(100% + 8px)',
+              }}
+            >
+            </div>
           </>
         )
       }
 
       {filteredVars.length > 0
-        ? <div className={cn('max-h-[85vh] overflow-y-auto', maxHeightClass)}>
+        ? (
+            <div className={cn('max-h-[85vh] overflow-y-auto', maxHeightClass)}>
 
-          {
-            filteredVars.map((item, i) => (
-              <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
-                {!item.isFlat && (
-                  <div
-                    className='system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary'
-                    title={item.title}
-                  >{item.title}</div>
-                )}
-                {item.vars.map((v, j) => (
-                  <Item
-                    key={j}
-                    title={item.title}
-                    nodeId={item.nodeId}
-                    objPath={[]}
-                    itemData={v}
-                    onChange={onChange}
-                    itemWidth={itemWidth}
-                    isSupportFileVar={isSupportFileVar}
-                    isException={v.isException}
-                    isLoopVar={item.isLoop}
-                    isFlat={item.isFlat}
-                    isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
-                    zIndex={zIndex}
-                    preferSchemaType={preferSchemaType}
-                  />
-                ))}
-                {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
-                  <div className='relative mt-[14px] flex  items-center space-x-1'>
-                    <div className='h-0 w-3 shrink-0 border border-divider-subtle'></div>
-                    <div className='system-2xs-semibold-uppercase text-text-tertiary'>{t('workflow.debug.lastOutput')}</div>
-                    <div className='h-0  shrink-0 grow border border-divider-subtle'></div>
+              {
+                filteredVars.map((item, i) => (
+                  <div key={i} className={cn(!item.isFlat && 'mt-3', i === 0 && item.isFlat && 'mt-2')}>
+                    {!item.isFlat && (
+                      <div
+                        className="system-xs-medium-uppercase truncate px-3 leading-[22px] text-text-tertiary"
+                        title={item.title}
+                      >
+                        {item.title}
+                      </div>
+                    )}
+                    {item.vars.map((v, j) => (
+                      <Item
+                        key={j}
+                        title={item.title}
+                        nodeId={item.nodeId}
+                        objPath={[]}
+                        itemData={v}
+                        onChange={onChange}
+                        itemWidth={itemWidth}
+                        isSupportFileVar={isSupportFileVar}
+                        isException={v.isException}
+                        isLoopVar={item.isLoop}
+                        isFlat={item.isFlat}
+                        isInCodeGeneratorInstructionEditor={isInCodeGeneratorInstructionEditor}
+                        zIndex={zIndex}
+                        preferSchemaType={preferSchemaType}
+                      />
+                    ))}
+                    {item.isFlat && !filteredVars[i + 1]?.isFlat && !!filteredVars.find(item => !item.isFlat) && (
+                      <div className="relative mt-[14px] flex  items-center space-x-1">
+                        <div className="h-0 w-3 shrink-0 border border-divider-subtle"></div>
+                        <div className="system-2xs-semibold-uppercase text-text-tertiary">{t('debug.lastOutput', { ns: 'workflow' })}</div>
+                        <div className="h-0  shrink-0 grow border border-divider-subtle"></div>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>))
-          }
-        </div>
-        : <div className='mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500'>{t('workflow.common.noVar')}</div>}
+                ))
+              }
+            </div>
+          )
+        : <div className="mt-2 pl-3 text-xs font-medium uppercase leading-[18px] text-gray-500">{t('common.noVar', { ns: 'workflow' })}</div>}
       {
         showManageInputField && (
           <ManageInputField

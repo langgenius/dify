@@ -1,11 +1,11 @@
 import type { NodeTracing } from '@/types/workflow'
+import { cloneDeep } from 'es-toolkit/object'
+import { BlockEnum } from '../../../types'
+import formatAgentNode from './agent'
 import { addChildrenToIterationNode } from './iteration'
 import { addChildrenToLoopNode } from './loop'
 import formatParallelNode from './parallel'
 import formatRetryNode from './retry'
-import formatAgentNode from './agent'
-import { cloneDeep } from 'lodash-es'
-import { BlockEnum } from '../../../types'
 
 const formatIterationAndLoopNode = (list: NodeTracing[], t: any) => {
   const clonedList = cloneDeep(list)

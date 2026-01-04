@@ -1,11 +1,11 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import DatasetUpdateForm from './index'
-import { ChunkingMode, DataSourceType, DatasetPermission } from '@/models/datasets'
-import type { DataSet } from '@/models/datasets'
-import { DataSourceProvider } from '@/models/common'
 import type { DataSourceAuth } from '@/app/components/header/account-setting/data-source-page-new/types'
+import type { DataSet } from '@/models/datasets'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
+import { DataSourceProvider } from '@/models/common'
+import { ChunkingMode, DatasetPermission, DataSourceType } from '@/models/datasets'
 import { RETRIEVE_METHOD } from '@/types/app'
+import DatasetUpdateForm from './index'
 
 // IndexingType values from step-two (defined here since we mock step-two)
 // Using type assertion to match the expected IndexingType enum from step-two
@@ -18,16 +18,9 @@ const IndexingTypeValues = {
 // Mock External Dependencies
 // ==========================================
 
-// Mock react-i18next (handled by global mock in web/vitest.setup.ts but we override for custom messages)
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
 // Mock next/link
 vi.mock('next/link', () => {
-  return function MockLink({ children, href }: { children: React.ReactNode; href: string }) {
+  return function MockLink({ children, href }: { children: React.ReactNode, href: string }) {
     return <a href={href}>{children}</a>
   }
 })
@@ -55,7 +48,7 @@ vi.mock('@/context/dataset-detail', () => ({
 }))
 
 // Mock useDefaultModel hook
-let mockEmbeddingsDefaultModel: { model: string; provider: string } | undefined
+let mockEmbeddingsDefaultModel: { model: string, provider: string } | undefined
 vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () => ({
   useDefaultModel: () => ({
     data: mockEmbeddingsDefaultModel,
@@ -88,7 +81,6 @@ let stepThreeProps: Record<string, any> = {}
 let _topBarProps: Record<string, any> = {}
 
 vi.mock('./step-one', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepOneProps = props
     return (
@@ -162,7 +154,6 @@ vi.mock('./step-one', () => ({
 }))
 
 vi.mock('./step-two', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepTwoProps = props
     return (
@@ -197,7 +188,6 @@ vi.mock('./step-two', () => ({
 }))
 
 vi.mock('./step-three', () => ({
-  __esModule: true,
   default: (props: Record<string, any>) => {
     stepThreeProps = props
     return (

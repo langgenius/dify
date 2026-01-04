@@ -1,11 +1,11 @@
 'use client'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
+import type { App } from '@/types/app'
 import {
   RiArrowDownSLine,
 } from '@remixicon/react'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
-import type { App } from '@/types/app'
 import { cn } from '@/utils/classnames'
 
 type Props = {
@@ -23,11 +23,12 @@ const AppTrigger = ({
       'group flex cursor-pointer items-center rounded-lg bg-components-input-bg-normal p-2 pl-3 hover:bg-state-base-hover-alt',
       open && 'bg-state-base-hover-alt',
       appDetail && 'py-1.5 pl-1.5',
-    )}>
+    )}
+    >
       {appDetail && (
         <AppIcon
-          className='mr-2'
-          size='xs'
+          className="mr-2"
+          size="xs"
           iconType={appDetail.icon_type}
           icon={appDetail.icon}
           background={appDetail.icon_background}
@@ -35,10 +36,10 @@ const AppTrigger = ({
         />
       )}
       {appDetail && (
-        <div title={appDetail.name} className='system-sm-medium grow text-components-input-text-filled'>{appDetail.name}</div>
+        <div title={appDetail.name} className="system-sm-medium grow text-components-input-text-filled">{appDetail.name}</div>
       )}
       {!appDetail && (
-        <div className='system-sm-regular grow truncate text-components-input-text-placeholder'>{t('app.appSelector.placeholder')}</div>
+        <div className="system-sm-regular grow truncate text-components-input-text-placeholder">{t('appSelector.placeholder', { ns: 'app' })}</div>
       )}
       <RiArrowDownSLine className={cn('ml-0.5 h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary', open && 'text-text-secondary')} />
     </div>

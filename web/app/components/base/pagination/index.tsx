@@ -1,12 +1,12 @@
 import type { FC } from 'react'
-import React from 'react'
-import { useTranslation } from 'react-i18next'
 import { RiArrowLeftLine, RiArrowRightLine } from '@remixicon/react'
 import { useDebounceFn } from 'ahooks'
-import { Pagination } from './pagination'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import { cn } from '@/utils/classnames'
+import { Pagination } from './pagination'
 
 export type Props = {
   className?: string
@@ -95,31 +95,31 @@ const CustomizedPagination: FC<Props> = ({
       middlePagesSiblingCount={1}
       setCurrentPage={onChange}
       totalPages={totalPages}
-      truncableClassName='flex items-center justify-center w-8 px-1 py-2 system-sm-medium text-text-tertiary'
-      truncableText='...'
+      truncableClassName="flex items-center justify-center w-8 px-1 py-2 system-sm-medium text-text-tertiary"
+      truncableText="..."
     >
-      <div className='flex items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5'>
+      <div className="flex items-center gap-0.5 rounded-[10px] bg-background-section-burn p-0.5">
         <Pagination.PrevButton
           as={<div></div>}
           disabled={current === 0}
         >
           <Button
-            variant='secondary'
-            className='h-7 w-7 px-1.5'
+            variant="secondary"
+            className="h-7 w-7 px-1.5"
             disabled={current === 0}
           >
-            <RiArrowLeftLine className='h-4 w-4' />
+            <RiArrowLeftLine className="h-4 w-4" />
           </Button>
         </Pagination.PrevButton>
         {!showInput && (
           <div
             ref={inputRef}
-            className='flex items-center gap-0.5 rounded-lg px-2 py-1.5 hover:cursor-text hover:bg-state-base-hover-alt'
+            className="flex items-center gap-0.5 rounded-lg px-2 py-1.5 hover:cursor-text hover:bg-state-base-hover-alt"
             onClick={() => setShowInput(true)}
           >
-            <div className='system-xs-medium text-text-secondary'>{current + 1}</div>
-            <div className='system-xs-medium text-text-quaternary'>/</div>
-            <div className='system-xs-medium text-text-secondary'>{totalPages}</div>
+            <div className="system-xs-medium text-text-secondary">{current + 1}</div>
+            <div className="system-xs-medium text-text-quaternary">/</div>
+            <div className="system-xs-medium text-text-secondary">{totalPages}</div>
           </div>
         )}
         {showInput && (
@@ -128,7 +128,7 @@ const CustomizedPagination: FC<Props> = ({
               height: '28px',
               width: `${inputRef.current?.clientWidth}px`,
             }}
-            placeholder=''
+            placeholder=""
             autoFocus
             value={inputValue}
             onChange={handleInputChange}
@@ -141,26 +141,26 @@ const CustomizedPagination: FC<Props> = ({
           disabled={current === totalPages - 1}
         >
           <Button
-            variant='secondary'
-            className='h-7 w-7 px-1.5'
+            variant="secondary"
+            className="h-7 w-7 px-1.5"
             disabled={current === totalPages - 1}
           >
-            <RiArrowRightLine className='h-4 w-4' />
+            <RiArrowRightLine className="h-4 w-4" />
           </Button>
         </Pagination.NextButton>
       </div>
       <div className={cn('flex grow list-none items-center justify-center gap-1')}>
         <Pagination.PageButton
-          className='system-sm-medium flex min-w-8 cursor-pointer items-center justify-center rounded-lg px-1 py-2 hover:bg-components-button-ghost-bg-hover'
-          activeClassName='bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover'
-          inactiveClassName='text-text-tertiary'
+          className="system-sm-medium flex min-w-8 cursor-pointer items-center justify-center rounded-lg px-1 py-2 hover:bg-components-button-ghost-bg-hover"
+          activeClassName="bg-components-button-tertiary-bg text-components-button-tertiary-text hover:bg-components-button-ghost-bg-hover"
+          inactiveClassName="text-text-tertiary"
         />
       </div>
       {onLimitChange && (
-        <div className='flex shrink-0 items-center gap-2'>
-          <div className='system-2xs-regular-uppercase w-[51px] shrink-0 text-end text-text-tertiary'>{showPerPageTip ? t('common.pagination.perPage') : ''}</div>
+        <div className="flex shrink-0 items-center gap-2">
+          <div className="system-2xs-regular-uppercase w-[51px] shrink-0 text-end text-text-tertiary">{showPerPageTip ? t('pagination.perPage', { ns: 'common' }) : ''}</div>
           <div
-            className='flex items-center gap-[1px] rounded-[10px] bg-components-segmented-control-bg-normal p-0.5'
+            className="flex items-center gap-[1px] rounded-[10px] bg-components-segmented-control-bg-normal p-0.5"
             onMouseEnter={() => setShowPerPageTip(true)}
             onMouseLeave={() => setShowPerPageTip(false)}
           >
@@ -170,21 +170,27 @@ const CustomizedPagination: FC<Props> = ({
                 limit === 10 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(10)}
-            >10</div>
+            >
+              10
+            </div>
             <div
               className={cn(
                 'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                 limit === 25 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(25)}
-            >25</div>
+            >
+              25
+            </div>
             <div
               className={cn(
                 'system-sm-medium cursor-pointer rounded-lg border-[0.5px] border-transparent px-2.5 py-1.5 text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
                 limit === 50 && 'border-components-segmented-control-item-active-border bg-components-segmented-control-item-active-bg text-text-secondary shadow-xs hover:bg-components-segmented-control-item-active-bg',
               )}
               onClick={() => onLimitChange?.(50)}
-            >50</div>
+            >
+              50
+            </div>
           </div>
         </div>
       )}

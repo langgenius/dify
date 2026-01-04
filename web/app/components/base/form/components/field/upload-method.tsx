@@ -1,11 +1,11 @@
-import { cn } from '@/utils/classnames'
 import type { LabelProps } from '../label'
+import { useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
+import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
+import { TransferMethod } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { useFieldContext } from '../..'
 import Label from '../label'
-import OptionCard from '@/app/components/workflow/nodes/_base/components/option-card'
-import { useTranslation } from 'react-i18next'
-import { TransferMethod } from '@/types/app'
-import { useCallback } from 'react'
 
 type UploadMethodFieldProps = {
   label: string
@@ -34,9 +34,9 @@ const UploadMethodField = ({
         label={label}
         {...(labelOptions ?? {})}
       />
-      <div className='grid grid-cols-3 gap-2'>
+      <div className="grid grid-cols-3 gap-2">
         <OptionCard
-          title={t('appDebug.variableConfig.localUpload')}
+          title={t('variableConfig.localUpload', { ns: 'appDebug' })}
           selected={value.length === 1 && value.includes(TransferMethod.local_file)}
           onSelect={handleUploadMethodChange.bind(null, TransferMethod.local_file)}
         />
@@ -46,7 +46,7 @@ const UploadMethodField = ({
           onSelect={handleUploadMethodChange.bind(null, TransferMethod.remote_url)}
         />
         <OptionCard
-          title={t('appDebug.variableConfig.both')}
+          title={t('variableConfig.both', { ns: 'appDebug' })}
           selected={value.includes(TransferMethod.local_file) && value.includes(TransferMethod.remote_url)}
           onSelect={handleUploadMethodChange.bind(null, TransferMethod.all)}
         />

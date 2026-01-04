@@ -1,6 +1,7 @@
+import type { IToastProps, ToastHandle } from '@/app/components/base/toast'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import Toast, { type IToastProps, type ToastHandle } from '@/app/components/base/toast'
+import Toast from '@/app/components/base/toast'
 import EditAnnotationModal from './index'
 
 const { mockAddAnnotation, mockEditAnnotation } = vi.hoisted(() => ({
@@ -25,7 +26,6 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 vi.mock('@/hooks/use-timestamp', () => ({
-  __esModule: true,
   default: () => ({
     formatTime: () => '2023-12-01 10:30:00',
   }),
@@ -34,7 +34,6 @@ vi.mock('@/hooks/use-timestamp', () => ({
 // Note: i18n is automatically mocked by Vitest via web/vitest.setup.ts
 
 vi.mock('@/app/components/billing/annotation-full', () => ({
-  __esModule: true,
   default: () => <div data-testid="annotation-full" />,
 }))
 

@@ -1,8 +1,16 @@
 import type { Mock } from 'vitest'
-import React from 'react'
 import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import { AppModeEnum } from '@/types/app'
+import * as React from 'react'
 import { AccessMode } from '@/models/access-control'
+// Mock API services - import for direct manipulation
+import * as appsService from '@/service/apps'
+
+import * as exploreService from '@/service/explore'
+import * as workflowService from '@/service/workflow'
+import { AppModeEnum } from '@/types/app'
+
+// Import component after mocks
+import AppCard from './app-card'
 
 // Mock next/navigation
 const mockPush = vi.fn()
@@ -15,18 +23,15 @@ vi.mock('next/navigation', () => ({
 // Mock use-context-selector with stable mockNotify reference for tracking calls
 // Include createContext for components that use it (like Toast)
 const mockNotify = vi.fn()
-vi.mock('use-context-selector', () => {
-  const React = require('react')
-  return {
-    createContext: (defaultValue: any) => React.createContext(defaultValue),
-    useContext: () => ({
-      notify: mockNotify,
-    }),
-    useContextSelector: (_context: any, selector: any) => selector({
-      notify: mockNotify,
-    }),
-  }
-})
+vi.mock('use-context-selector', () => ({
+  createContext: (defaultValue: any) => React.createContext(defaultValue),
+  useContext: () => ({
+    notify: mockNotify,
+  }),
+  useContextSelector: (_context: any, selector: any) => selector({
+    notify: mockNotify,
+  }),
+}))
 
 // Mock app context
 vi.mock('@/context/app-context', () => ({
@@ -53,11 +58,6 @@ vi.mock('@/context/global-public-context', () => ({
     },
   }),
 }))
-
-// Mock API services - import for direct manipulation
-import * as appsService from '@/service/apps'
-import * as workflowService from '@/service/workflow'
-import * as exploreService from '@/service/explore'
 
 vi.mock('@/service/apps', () => ({
   deleteApp: vi.fn(() => Promise.resolve()),
@@ -105,124 +105,96 @@ vi.mock('@/utils/time', () => ({
 }))
 
 // Mock dynamic imports
-vi.mock('next/dynamic', () => {
-  const React = require('react')
-  return {
-    default: (importFn: () => Promise<any>) => {
-      const fnString = importFn.toString()
+vi.mock('next/dynamic', () => ({
+  default: (importFn: () => Promise<any>) => {
+    const fnString = importFn.toString()
 
-      if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
-        return function MockEditAppModal({ show, onHide, onConfirm }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'edit-app-modal' },
-            React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-edit-modal' }, 'Close'),
-            React.createElement('button', {
-              'onClick': () => onConfirm?.({
-                name: 'Updated App',
-                icon_type: 'emoji',
-                icon: '🎯',
-                icon_background: '#FFEAD5',
-                description: 'Updated description',
-                use_icon_as_answer_icon: false,
-                max_active_requests: null,
-              }),
-              'data-testid': 'confirm-edit-modal',
-            }, 'Confirm'),
-          )
-        }
+    if (fnString.includes('create-app-modal') || fnString.includes('explore/create-app-modal')) {
+      return function MockEditAppModal({ show, onHide, onConfirm }: any) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'edit-app-modal' }, React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-edit-modal' }, 'Close'), React.createElement('button', {
+          'onClick': () => onConfirm?.({
+            name: 'Updated App',
+            icon_type: 'emoji',
+            icon: '🎯',
+            icon_background: '#FFEAD5',
+            description: 'Updated description',
+            use_icon_as_answer_icon: false,
+            max_active_requests: null,
+          }),
+          'data-testid': 'confirm-edit-modal',
+        }, 'Confirm'))
       }
-      if (fnString.includes('duplicate-modal')) {
-        return function MockDuplicateAppModal({ show, onHide, onConfirm }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'duplicate-modal' },
-            React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-duplicate-modal' }, 'Close'),
-            React.createElement('button', {
-              'onClick': () => onConfirm?.({
-                name: 'Copied App',
-                icon_type: 'emoji',
-                icon: '📋',
-                icon_background: '#E4FBCC',
-              }),
-              'data-testid': 'confirm-duplicate-modal',
-            }, 'Confirm'),
-          )
-        }
+    }
+    if (fnString.includes('duplicate-modal')) {
+      return function MockDuplicateAppModal({ show, onHide, onConfirm }: any) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'duplicate-modal' }, React.createElement('button', { 'onClick': onHide, 'data-testid': 'close-duplicate-modal' }, 'Close'), React.createElement('button', {
+          'onClick': () => onConfirm?.({
+            name: 'Copied App',
+            icon_type: 'emoji',
+            icon: '📋',
+            icon_background: '#E4FBCC',
+          }),
+          'data-testid': 'confirm-duplicate-modal',
+        }, 'Confirm'))
       }
-      if (fnString.includes('switch-app-modal')) {
-        return function MockSwitchAppModal({ show, onClose, onSuccess }: any) {
-          if (!show) return null
-          return React.createElement('div', { 'data-testid': 'switch-modal' },
-            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-switch-modal' }, 'Close'),
-            React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'confirm-switch-modal' }, 'Switch'),
-          )
-        }
+    }
+    if (fnString.includes('switch-app-modal')) {
+      return function MockSwitchAppModal({ show, onClose, onSuccess }: any) {
+        if (!show)
+          return null
+        return React.createElement('div', { 'data-testid': 'switch-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-switch-modal' }, 'Close'), React.createElement('button', { 'onClick': onSuccess, 'data-testid': 'confirm-switch-modal' }, 'Switch'))
       }
-      if (fnString.includes('base/confirm')) {
-        return function MockConfirm({ isShow, onCancel, onConfirm }: any) {
-          if (!isShow) return null
-          return React.createElement('div', { 'data-testid': 'confirm-dialog' },
-            React.createElement('button', { 'onClick': onCancel, 'data-testid': 'cancel-confirm' }, 'Cancel'),
-            React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-confirm' }, 'Confirm'),
-          )
-        }
+    }
+    if (fnString.includes('base/confirm')) {
+      return function MockConfirm({ isShow, onCancel, onConfirm }: any) {
+        if (!isShow)
+          return null
+        return React.createElement('div', { 'data-testid': 'confirm-dialog' }, React.createElement('button', { 'onClick': onCancel, 'data-testid': 'cancel-confirm' }, 'Cancel'), React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-confirm' }, 'Confirm'))
       }
-      if (fnString.includes('dsl-export-confirm-modal')) {
-        return function MockDSLExportModal({ onClose, onConfirm }: any) {
-          return React.createElement('div', { 'data-testid': 'dsl-export-modal' },
-            React.createElement('button', { 'onClick': () => onClose?.(), 'data-testid': 'close-dsl-export' }, 'Close'),
-            React.createElement('button', { 'onClick': () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' }, 'Export with secrets'),
-            React.createElement('button', { 'onClick': () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' }, 'Export without secrets'),
-          )
-        }
+    }
+    if (fnString.includes('dsl-export-confirm-modal')) {
+      return function MockDSLExportModal({ onClose, onConfirm }: any) {
+        return React.createElement('div', { 'data-testid': 'dsl-export-modal' }, React.createElement('button', { 'onClick': () => onClose?.(), 'data-testid': 'close-dsl-export' }, 'Close'), React.createElement('button', { 'onClick': () => onConfirm?.(true), 'data-testid': 'confirm-dsl-export' }, 'Export with secrets'), React.createElement('button', { 'onClick': () => onConfirm?.(false), 'data-testid': 'confirm-dsl-export-no-secrets' }, 'Export without secrets'))
       }
-      if (fnString.includes('app-access-control')) {
-        return function MockAccessControl({ onClose, onConfirm }: any) {
-          return React.createElement('div', { 'data-testid': 'access-control-modal' },
-            React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-access-control' }, 'Close'),
-            React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-access-control' }, 'Confirm'),
-          )
-        }
+    }
+    if (fnString.includes('app-access-control')) {
+      return function MockAccessControl({ onClose, onConfirm }: any) {
+        return React.createElement('div', { 'data-testid': 'access-control-modal' }, React.createElement('button', { 'onClick': onClose, 'data-testid': 'close-access-control' }, 'Close'), React.createElement('button', { 'onClick': onConfirm, 'data-testid': 'confirm-access-control' }, 'Confirm'))
       }
-      return () => null
-    },
-  }
-})
+    }
+    return () => null
+  },
+}))
 
 // Popover uses @headlessui/react portals - mock for controlled interaction testing
 vi.mock('@/app/components/base/popover', () => {
   const MockPopover = ({ htmlContent, btnElement, btnClassName }: any) => {
     const [isOpen, setIsOpen] = React.useState(false)
     const computedClassName = typeof btnClassName === 'function' ? btnClassName(isOpen) : ''
-    return React.createElement('div', { 'data-testid': 'custom-popover', 'className': computedClassName },
-      React.createElement('div', {
-        'onClick': () => setIsOpen(!isOpen),
-        'data-testid': 'popover-trigger',
-      }, btnElement),
-      isOpen && React.createElement('div', {
-        'data-testid': 'popover-content',
-        'onMouseLeave': () => setIsOpen(false),
-      },
-      typeof htmlContent === 'function' ? htmlContent({ open: isOpen, onClose: () => setIsOpen(false), onClick: () => setIsOpen(false) }) : htmlContent,
-      ),
-    )
+    return React.createElement('div', { 'data-testid': 'custom-popover', 'className': computedClassName }, React.createElement('div', {
+      'onClick': () => setIsOpen(!isOpen),
+      'data-testid': 'popover-trigger',
+    }, btnElement), isOpen && React.createElement('div', {
+      'data-testid': 'popover-content',
+      'onMouseLeave': () => setIsOpen(false),
+    }, typeof htmlContent === 'function' ? htmlContent({ open: isOpen, onClose: () => setIsOpen(false), onClick: () => setIsOpen(false) }) : htmlContent))
   }
   return { __esModule: true, default: MockPopover }
 })
 
 // Tooltip uses portals - minimal mock preserving popup content as title attribute
 vi.mock('@/app/components/base/tooltip', () => ({
-  __esModule: true,
   default: ({ children, popupContent }: any) => React.createElement('div', { title: popupContent }, children),
 }))
 
 // TagSelector has API dependency (service/tag) - mock for isolated testing
 vi.mock('@/app/components/base/tag-management/selector', () => ({
-  __esModule: true,
   default: ({ tags }: any) => {
-    const React = require('react')
-    return React.createElement('div', { 'aria-label': 'tag-selector' },
-      tags?.map((tag: any) => React.createElement('span', { key: tag.id }, tag.name)),
-    )
+    return React.createElement('div', { 'aria-label': 'tag-selector' }, tags?.map((tag: any) => React.createElement('span', { key: tag.id }, tag.name)))
   },
 }))
 
@@ -230,9 +202,6 @@ vi.mock('@/app/components/base/tag-management/selector', () => ({
 vi.mock('@/app/components/app/type-selector', () => ({
   AppTypeIcon: () => React.createElement('div', { 'data-testid': 'app-type-icon' }),
 }))
-
-// Import component after mocks
-import AppCard from './app-card'
 
 // ============================================================================
 // Test Data Factories

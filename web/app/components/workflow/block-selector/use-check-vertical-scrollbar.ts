@@ -5,7 +5,8 @@ const useCheckVerticalScrollbar = (ref: React.RefObject<HTMLElement>) => {
 
   useEffect(() => {
     const elem = ref.current
-    if (!elem) return
+    if (!elem)
+      return
 
     const checkScrollbar = () => {
       setHasVerticalScrollbar(elem.scrollHeight > elem.clientHeight)

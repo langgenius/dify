@@ -1,11 +1,12 @@
-import React, { useCallback } from 'react'
-import { RiAddLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
 import type { InputVar } from '@/models/pipeline'
+import { RiAddLine } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback } from 'react'
 import ActionButton from '@/app/components/base/action-button'
-import { useFieldList } from './hooks'
-import FieldListContainer from './field-list-container'
 import RemoveEffectVarConfirm from '@/app/components/workflow/nodes/_base/components/remove-effect-var-confirm'
+import { cn } from '@/utils/classnames'
+import FieldListContainer from './field-list-container'
+import { useFieldList } from './hooks'
 
 type FieldListProps = {
   nodeId: string
@@ -46,21 +47,22 @@ const FieldList = ({
   })
 
   return (
-    <div className='flex flex-col'>
+    <div className="flex flex-col">
       <div className={cn('flex items-center gap-x-2 px-4', labelClassName)}>
-        <div className='grow'>
+        <div className="grow">
           {LabelRightContent}
         </div>
         <ActionButton
+          data-testid="field-list-add-btn"
           onClick={() => handleOpenInputFieldEditor()}
           disabled={readonly}
           className={cn(readonly && 'cursor-not-allowed')}
         >
-          <RiAddLine className='h-4 w-4 text-text-tertiary' />
+          <RiAddLine className="h-4 w-4 text-text-tertiary" />
         </ActionButton>
       </div>
       <FieldListContainer
-        className='flex flex-col gap-y-1 px-4 pb-1'
+        className="flex flex-col gap-y-1 px-4 pb-1"
         inputFields={inputFields}
         onEditField={handleOpenInputFieldEditor}
         onRemoveField={handleRemoveField}

@@ -1,8 +1,8 @@
-import { memo } from 'react'
 import type { VariablePayload } from './types'
+import { memo } from 'react'
+import { cn } from '@/utils/classnames'
 import VariableLabel from './base/variable-label'
 import { useVarBgColorInEditor } from './hooks'
-import { cn } from '@/utils/classnames'
 
 type VariableLabelInEditorProps = {
   isSelected?: boolean

@@ -1,37 +1,37 @@
-import type { MockInstance, MockedFunction } from 'vitest'
-import * as React from 'react'
+import type { MockedFunction, MockInstance } from 'vitest'
+import type { DatasetConfigs } from '@/models/debug'
 import { render, screen, waitFor, within } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import ParamsConfig from './index'
-import ConfigContext from '@/context/debug-configuration'
-import type { DatasetConfigs } from '@/models/debug'
-import { RerankingModeEnum } from '@/models/datasets'
-import { RETRIEVE_TYPE } from '@/types/app'
+import * as React from 'react'
 import Toast from '@/app/components/base/toast'
 import {
   useCurrentProviderAndModel,
   useModelListAndDefaultModelAndCurrentProviderAndModel,
 } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import ConfigContext from '@/context/debug-configuration'
+import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import ParamsConfig from './index'
 
 vi.mock('@headlessui/react', () => ({
-  Dialog: ({ children, className }: { children: React.ReactNode; className?: string }) => (
+  Dialog: ({ children, className }: { children: React.ReactNode, className?: string }) => (
     <div role="dialog" className={className}>
       {children}
     </div>
   ),
-  DialogPanel: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+  DialogPanel: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
     <div className={className} {...props}>
       {children}
     </div>
   ),
-  DialogTitle: ({ children, className, ...props }: { children: React.ReactNode; className?: string }) => (
+  DialogTitle: ({ children, className, ...props }: { children: React.ReactNode, className?: string }) => (
     <div className={className} {...props}>
       {children}
     </div>
   ),
-  Transition: ({ show, children }: { show: boolean; children: React.ReactNode }) => (show ? <>{children}</> : null),
+  Transition: ({ show, children }: { show: boolean, children: React.ReactNode }) => (show ? <>{children}</> : null),
   TransitionChild: ({ children }: { children: React.ReactNode }) => <>{children}</>,
-  Switch: ({ checked, onChange, children, ...props }: { checked: boolean; onChange?: (value: boolean) => void; children?: React.ReactNode }) => (
+  Switch: ({ checked, onChange, children, ...props }: { checked: boolean, onChange?: (value: boolean) => void, children?: React.ReactNode }) => (
     <button
       type="button"
       role="switch"
@@ -51,8 +51,8 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-selector', () => {
   type Props = {
-    defaultModel?: { provider: string; model: string }
-    onSelect?: (model: { provider: string; model: string }) => void
+    defaultModel?: { provider: string, model: string }
+    onSelect?: (model: { provider: string, model: string }) => void
   }
 
   const MockModelSelector = ({ defaultModel, onSelect }: Props) => (
@@ -65,13 +65,11 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/model-selec
   )
 
   return {
-    __esModule: true,
     default: MockModelSelector,
   }
 })
 
 vi.mock('@/app/components/header/account-setting/model-provider-page/model-parameter-modal', () => ({
-  __esModule: true,
   default: () => <div data-testid="model-parameter-modal" />,
 }))
 

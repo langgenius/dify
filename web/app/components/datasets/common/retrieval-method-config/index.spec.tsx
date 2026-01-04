@@ -1,12 +1,12 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
 import type { RetrievalConfig } from '@/types/app'
-import { RETRIEVE_METHOD } from '@/types/app'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
 import {
   DEFAULT_WEIGHTED_SCORE,
   RerankingModeEnum,
   WeightedScoreEnum,
 } from '@/models/datasets'
+import { RETRIEVE_METHOD } from '@/types/app'
 import RetrievalMethodConfig from './index'
 
 // Mock provider context with controllable supportRetrievalMethods
@@ -23,7 +23,7 @@ vi.mock('@/context/provider-context', () => ({
 }))
 
 // Mock model hooks with controllable return values
-let mockRerankDefaultModel: { provider: { provider: string }; model: string } | undefined = {
+let mockRerankDefaultModel: { provider: { provider: string }, model: string } | undefined = {
   provider: { provider: 'test-provider' },
   model: 'test-rerank-model',
 }
@@ -38,7 +38,6 @@ vi.mock('@/app/components/header/account-setting/model-provider-page/hooks', () 
 
 // Mock child component RetrievalParamConfig to simplify testing
 vi.mock('../retrieval-param-config', () => ({
-  __esModule: true,
   default: ({ type, value, onChange, showMultiModalTip }: {
     type: RETRIEVE_METHOD
     value: RetrievalConfig
@@ -819,7 +818,7 @@ describe('RetrievalMethodConfig', () => {
         RETRIEVE_METHOD.hybrid,
       ]
 
-      test.each(methods)('should correctly highlight %s when active', (method) => {
+      it.each(methods)('should correctly highlight %s when active', (method) => {
         renderComponent({
           value: createMockRetrievalConfig({ search_method: method }),
         })

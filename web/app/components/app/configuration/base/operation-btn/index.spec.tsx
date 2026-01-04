@@ -3,10 +3,10 @@ import OperationBtn from './index'
 
 vi.mock('@remixicon/react', () => ({
   RiAddLine: (props: { className?: string }) => (
-    <svg data-testid='add-icon' className={props.className} />
+    <svg data-testid="add-icon" className={props.className} />
   ),
   RiEditLine: (props: { className?: string }) => (
-    <svg data-testid='edit-icon' className={props.className} />
+    <svg data-testid="edit-icon" className={props.className} />
   ),
 }))
 
@@ -22,7 +22,7 @@ describe('OperationBtn', () => {
       const customClass = 'custom-class'
 
       // Act
-      render(<OperationBtn type='add' className={customClass} />)
+      render(<OperationBtn type="add" className={customClass} />)
 
       // Assert
       expect(screen.getByText('common.operation.add').parentElement).toHaveClass(customClass)
@@ -32,7 +32,7 @@ describe('OperationBtn', () => {
       const onClick = vi.fn()
 
       // Act
-      render(<OperationBtn type='add' onClick={onClick} className='custom-class' />)
+      render(<OperationBtn type="add" onClick={onClick} className="custom-class" />)
 
       // Assert
       expect(screen.getByTestId('add-icon')).toBeInTheDocument()
@@ -44,7 +44,7 @@ describe('OperationBtn', () => {
       const actionName = 'Rename'
 
       // Act
-      render(<OperationBtn type='edit' actionName={actionName} />)
+      render(<OperationBtn type="edit" actionName={actionName} />)
 
       // Assert
       expect(screen.getByTestId('edit-icon')).toBeInTheDocument()
@@ -58,7 +58,7 @@ describe('OperationBtn', () => {
     it('should execute click handler when button is clicked', () => {
       // Arrange
       const onClick = vi.fn()
-      render(<OperationBtn type='add' onClick={onClick} />)
+      render(<OperationBtn type="add" onClick={onClick} />)
 
       // Act
       fireEvent.click(screen.getByText('common.operation.add'))

@@ -1,4 +1,5 @@
 import type { TFunction } from 'i18next'
+import type { CategoryKey, TagKey } from './constants'
 import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
@@ -8,7 +9,7 @@ import {
 import { PluginCategoryEnum } from './types'
 
 export type Tag = {
-  name: string
+  name: TagKey
   label: string
 }
 
@@ -20,7 +21,7 @@ export const useTags = (translateFromOut?: TFunction) => {
     return tagKeys.map((tag) => {
       return {
         name: tag,
-        label: t(`pluginTags.tags.${tag}`),
+        label: t(`tags.${tag}`, { ns: 'pluginTags' }),
       }
     })
   }, [t])
@@ -48,7 +49,7 @@ export const useTags = (translateFromOut?: TFunction) => {
 }
 
 type Category = {
-  name: string
+  name: CategoryKey
   label: string
 }
 
@@ -61,12 +62,12 @@ export const useCategories = (translateFromOut?: TFunction, isSingle?: boolean) 
       if (category === PluginCategoryEnum.agent) {
         return {
           name: PluginCategoryEnum.agent,
-          label: isSingle ? t('plugin.categorySingle.agent') : t('plugin.category.agents'),
+          label: isSingle ? t('categorySingle.agent', { ns: 'plugin' }) : t('category.agents', { ns: 'plugin' }),
         }
       }
       return {
         name: category,
-        label: isSingle ? t(`plugin.categorySingle.${category}`) : t(`plugin.category.${category}s`),
+        label: isSingle ? t(`categorySingle.${category}`, { ns: 'plugin' }) : t(`category.${category}s`, { ns: 'plugin' }),
       }
     })
   }, [t, isSingle])
@@ -92,8 +93,8 @@ export const PLUGIN_PAGE_TABS_MAP = {
 export const usePluginPageTabs = () => {
   const { t } = useTranslation()
   const tabs = [
-    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('common.menus.plugins') },
-    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('common.menus.exploreMarketplace') },
+    { value: PLUGIN_PAGE_TABS_MAP.plugins, text: t('menus.plugins', { ns: 'common' }) },
+    { value: PLUGIN_PAGE_TABS_MAP.marketplace, text: t('menus.exploreMarketplace', { ns: 'common' }) },
   ]
   return tabs
 }

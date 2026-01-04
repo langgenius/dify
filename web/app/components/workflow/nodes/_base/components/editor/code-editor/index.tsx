@@ -1,18 +1,19 @@
 'use client'
 import type { FC } from 'react'
 import Editor, { loader } from '@monaco-editor/react'
-import React, { useEffect, useMemo, useRef, useState } from 'react'
-import Base from '../base'
-import { cn } from '@/utils/classnames'
-import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import {
   getFilesInLogs,
 } from '@/app/components/base/file-uploader/utils'
-import { Theme } from '@/types/app'
+import { CodeLanguage } from '@/app/components/workflow/nodes/code/types'
 import useTheme from '@/hooks/use-theme'
-import './style.css'
-import { noop } from 'lodash-es'
+import { Theme } from '@/types/app'
+import { cn } from '@/utils/classnames'
 import { basePath } from '@/utils/var'
+import Base from '../base'
+import './style.css'
 
 // load file from local instead of cdn https://github.com/suren-atoyan/monaco-react/issues/482
 if (typeof window !== 'undefined')
@@ -145,7 +146,7 @@ const CodeEditor: FC<Props> = ({
         language={languageMap[language] || 'javascript'}
         theme={isMounted ? theme : 'default-theme'} // sometimes not load the default theme
         value={outPutValue}
-        loading={<span className='text-text-primary'>Loading...</span>}
+        loading={<span className="text-text-primary">Loading...</span>}
         onChange={handleEditorChange}
         // https://microsoft.github.io/monaco-editor/typedoc/interfaces/editor.IEditorOptions.html
         options={{
@@ -166,40 +167,45 @@ const CodeEditor: FC<Props> = ({
         }}
         onMount={handleEditorDidMount}
       />
-      {!outPutValue && !isFocus && <div className='pointer-events-none absolute left-[36px] top-0 text-[13px] font-normal leading-[18px] text-gray-300'>{placeholder}</div>}
+      {!outPutValue && !isFocus && <div className="pointer-events-none absolute left-[36px] top-0 text-[13px] font-normal leading-[18px] text-gray-300">{placeholder}</div>}
     </>
   )
 
   return (
     <div className={cn(isExpand && 'h-full', className)}>
       {noWrapper
-        ? <div className='no-wrapper relative' style={{
-          height: isExpand ? '100%' : (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
-          minHeight: CODE_EDITOR_LINE_HEIGHT,
-        }}>
-          {main}
-        </div>
+        ? (
+            <div
+              className="no-wrapper relative"
+              style={{
+                height: isExpand ? '100%' : (editorContentHeight) / 2 + CODE_EDITOR_LINE_HEIGHT, // In IDE, the last line can always be in lop line. So there is some blank space in the bottom.
+                minHeight: CODE_EDITOR_LINE_HEIGHT,
+              }}
+            >
+              {main}
+            </div>
+          )
         : (
-          <Base
-            nodeId={nodeId}
-            className='relative'
-            title={title}
-            value={outPutValue}
-            headerRight={headerRight}
-            isFocus={isFocus && !readOnly}
-            minHeight={minHeight}
-            isInNode={isInNode}
-            onGenerated={onGenerated}
-            codeLanguages={language}
-            fileList={fileList as any}
-            showFileList={showFileList}
-            showCodeGenerator={showCodeGenerator}
-            tip={tip}
-            footer={footer}
-          >
-            {main}
-          </Base>
-        )}
+            <Base
+              nodeId={nodeId}
+              className="relative"
+              title={title}
+              value={outPutValue}
+              headerRight={headerRight}
+              isFocus={isFocus && !readOnly}
+              minHeight={minHeight}
+              isInNode={isInNode}
+              onGenerated={onGenerated}
+              codeLanguages={language}
+              fileList={fileList as any}
+              showFileList={showFileList}
+              showCodeGenerator={showCodeGenerator}
+              tip={tip}
+              footer={footer}
+            >
+              {main}
+            </Base>
+          )}
     </div>
   )
 }

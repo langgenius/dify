@@ -1,9 +1,9 @@
-import React from 'react'
-import Button from '../base/button'
 import { RiArrowLeftSLine, RiArrowRightSLine } from '@remixicon/react'
-import { cn } from '@/utils/classnames'
-import Tooltip from '../base/tooltip'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
+import Button from '../base/button'
+import Tooltip from '../base/tooltip'
 import { getKeyboardKeyNameBySystem } from '../workflow/utils'
 
 type TooltipContentProps = {
@@ -18,14 +18,14 @@ const TooltipContent = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center gap-x-1'>
-      <span className='system-xs-medium px-0.5 text-text-secondary'>{expand ? t('layout.sidebar.collapseSidebar') : t('layout.sidebar.expandSidebar')}</span>
-      <div className='flex items-center gap-x-0.5'>
+    <div className="flex items-center gap-x-1">
+      <span className="system-xs-medium px-0.5 text-text-secondary">{expand ? t('sidebar.collapseSidebar', { ns: 'layout' }) : t('sidebar.expandSidebar', { ns: 'layout' })}</span>
+      <div className="flex items-center gap-x-0.5">
         {
           TOGGLE_SHORTCUT.map(key => (
             <span
               key={key}
-              className='system-kbd inline-flex items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary'
+              className="system-kbd inline-flex items-center justify-center rounded-[4px] bg-components-kbd-bg-gray px-1 text-text-tertiary"
             >
               {getKeyboardKeyNameBySystem(key)}
             </span>
@@ -50,18 +50,18 @@ const ToggleButton = ({
   return (
     <Tooltip
       popupContent={<TooltipContent expand={expand} />}
-      popupClassName='p-1.5 rounded-lg'
-      position='right'
+      popupClassName="p-1.5 rounded-lg"
+      position="right"
     >
       <Button
-        size='small'
+        size="small"
         onClick={handleToggle}
         className={cn('rounded-full px-1', className)}
       >
         {
           expand
-            ? <RiArrowLeftSLine className='size-4' />
-            : <RiArrowRightSLine className='size-4' />
+            ? <RiArrowLeftSLine className="size-4" />
+            : <RiArrowRightSLine className="size-4" />
         }
       </Button>
     </Tooltip>

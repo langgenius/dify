@@ -13,17 +13,15 @@ import type { Mock } from 'vitest'
  * - Returns human-readable relative time strings
  */
 import { renderHook } from '@testing-library/react'
+// Import after mock to get the mocked version
+import { useLocale } from '@/context/i18n'
+
 import { useFormatTimeFromNow } from './use-format-time-from-now'
 
 // Mock the i18n context
 vi.mock('@/context/i18n', () => ({
-  useI18N: vi.fn(() => ({
-    locale: 'en-US',
-  })),
+  useLocale: vi.fn(() => 'en-US'),
 }))
-
-// Import after mock to get the mocked version
-import { useI18N } from '@/context/i18n'
 
 describe('useFormatTimeFromNow', () => {
   beforeEach(() => {
@@ -47,7 +45,7 @@ describe('useFormatTimeFromNow', () => {
      * Should return human-readable relative time strings
      */
     it('should format time from now in English', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -65,7 +63,7 @@ describe('useFormatTimeFromNow', () => {
      * Very recent timestamps should show seconds
      */
     it('should format very recent times', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -81,7 +79,7 @@ describe('useFormatTimeFromNow', () => {
      * Should handle day-level granularity
      */
     it('should format times from days ago', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -98,7 +96,7 @@ describe('useFormatTimeFromNow', () => {
      * dayjs fromNow also supports future times (e.g., "in 2 hours")
      */
     it('should format future times', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -117,7 +115,7 @@ describe('useFormatTimeFromNow', () => {
      * Should use Chinese characters for time units
      */
     it('should format time in Chinese (Simplified)', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'zh-Hans' })
+      ;(useLocale as Mock).mockReturnValue('zh-Hans')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -134,7 +132,7 @@ describe('useFormatTimeFromNow', () => {
      * Should use Spanish words for relative time
      */
     it('should format time in Spanish', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'es-ES' })
+      ;(useLocale as Mock).mockReturnValue('es-ES')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -151,7 +149,7 @@ describe('useFormatTimeFromNow', () => {
      * Should use French words for relative time
      */
     it('should format time in French', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'fr-FR' })
+      ;(useLocale as Mock).mockReturnValue('fr-FR')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -168,7 +166,7 @@ describe('useFormatTimeFromNow', () => {
      * Should use Japanese characters
      */
     it('should format time in Japanese', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'ja-JP' })
+      ;(useLocale as Mock).mockReturnValue('ja-JP')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -185,7 +183,7 @@ describe('useFormatTimeFromNow', () => {
      * Should use pt-br locale mapping
      */
     it('should format time in Portuguese (Brazil)', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'pt-BR' })
+      ;(useLocale as Mock).mockReturnValue('pt-BR')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -202,7 +200,7 @@ describe('useFormatTimeFromNow', () => {
      * Unknown locales should default to English
      */
     it('should fallback to English for unsupported locale', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'xx-XX' as any })
+      ;(useLocale as Mock).mockReturnValue('xx-XX' as any)
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -222,7 +220,7 @@ describe('useFormatTimeFromNow', () => {
      * Should format as a very old date
      */
     it('should handle timestamp 0', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -238,7 +236,7 @@ describe('useFormatTimeFromNow', () => {
      * Should handle dates far in the future
      */
     it('should handle very large timestamps', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -260,12 +258,12 @@ describe('useFormatTimeFromNow', () => {
       const oneHourAgo = now - (60 * 60 * 1000)
 
       // First render with English
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
       rerender()
       const englishResult = result.current.formatTimeFromNow(oneHourAgo)
 
       // Second render with Spanish
-      ;(useI18N as Mock).mockReturnValue({ locale: 'es-ES' })
+      ;(useLocale as Mock).mockReturnValue('es-ES')
       rerender()
       const spanishResult = result.current.formatTimeFromNow(oneHourAgo)
 
@@ -280,7 +278,7 @@ describe('useFormatTimeFromNow', () => {
      * dayjs should automatically choose the appropriate unit
      */
     it('should use appropriate time units for different durations', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result } = renderHook(() => useFormatTimeFromNow())
 
@@ -315,17 +313,34 @@ describe('useFormatTimeFromNow', () => {
      */
     it('should handle all mapped locales', () => {
       const locales = [
-        'en-US', 'zh-Hans', 'zh-Hant', 'pt-BR', 'es-ES', 'fr-FR',
-        'de-DE', 'ja-JP', 'ko-KR', 'ru-RU', 'it-IT', 'th-TH',
-        'id-ID', 'uk-UA', 'vi-VN', 'ro-RO', 'pl-PL', 'hi-IN',
-        'tr-TR', 'fa-IR', 'sl-SI',
+        'en-US',
+        'zh-Hans',
+        'zh-Hant',
+        'pt-BR',
+        'es-ES',
+        'fr-FR',
+        'de-DE',
+        'ja-JP',
+        'ko-KR',
+        'ru-RU',
+        'it-IT',
+        'th-TH',
+        'id-ID',
+        'uk-UA',
+        'vi-VN',
+        'ro-RO',
+        'pl-PL',
+        'hi-IN',
+        'tr-TR',
+        'fa-IR',
+        'sl-SI',
       ]
 
       const now = Date.now()
       const oneHourAgo = now - (60 * 60 * 1000)
 
       locales.forEach((locale) => {
-        ;(useI18N as Mock).mockReturnValue({ locale })
+        ;(useLocale as Mock).mockReturnValue(locale)
 
         const { result } = renderHook(() => useFormatTimeFromNow())
         const formatted = result.current.formatTimeFromNow(oneHourAgo)
@@ -343,7 +358,7 @@ describe('useFormatTimeFromNow', () => {
      * The formatTimeFromNow function should be memoized with useCallback
      */
     it('should memoize formatTimeFromNow function', () => {
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
 
       const { result, rerender } = renderHook(() => useFormatTimeFromNow())
 
@@ -362,11 +377,11 @@ describe('useFormatTimeFromNow', () => {
     it('should create new function when locale changes', () => {
       const { result, rerender } = renderHook(() => useFormatTimeFromNow())
 
-      ;(useI18N as Mock).mockReturnValue({ locale: 'en-US' })
+      ;(useLocale as Mock).mockReturnValue('en-US')
       rerender()
       const englishFunction = result.current.formatTimeFromNow
 
-      ;(useI18N as Mock).mockReturnValue({ locale: 'es-ES' })
+      ;(useLocale as Mock).mockReturnValue('es-ES')
       rerender()
       const spanishFunction = result.current.formatTimeFromNow
 

@@ -1,10 +1,10 @@
 import { memo } from 'react'
 import Button from '@/app/components/base/button'
 import { GlobalVariable } from '@/app/components/base/icons/src/vender/line/others'
+import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import useTheme from '@/hooks/use-theme'
 import { cn } from '@/utils/classnames'
-import { useInputFieldPanel } from '@/app/components/rag-pipeline/hooks'
 
 const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
   const { theme } = useTheme()
@@ -26,14 +26,14 @@ const GlobalVariableButton = ({ disabled }: { disabled: boolean }) => {
   return (
     <Button
       className={cn(
-        'p-2',
-        theme === 'dark' && showGlobalVariablePanel && 'rounded-lg border border-black/5 bg-white/10 backdrop-blur-sm',
+        'rounded-lg border border-transparent p-2',
+        theme === 'dark' && showGlobalVariablePanel && 'border-black/5 bg-white/10 backdrop-blur-sm',
       )}
       disabled={disabled}
       onClick={handleClick}
-      variant='ghost'
+      variant="ghost"
     >
-      <GlobalVariable className='h-4 w-4 text-components-button-secondary-text' />
+      <GlobalVariable className="h-4 w-4 text-components-button-secondary-text" />
     </Button>
   )
 }

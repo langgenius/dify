@@ -1,15 +1,16 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect, useState } from 'react'
+import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import NotionIcon from '@/app/components/base/notion-icon'
+import Toast from '@/app/components/base/toast'
+import { useAppContext } from '@/context/app-context'
+import { useDataSourceIntegrates, useNotionConnection } from '@/service/use-common'
 import Panel from '../panel'
 import { DataSourceType } from '../panel/types'
-import type { DataSourceNotion as TDataSourceNotion } from '@/models/common'
-import { useAppContext } from '@/context/app-context'
-import NotionIcon from '@/app/components/base/notion-icon'
-import { noop } from 'lodash-es'
-import { useTranslation } from 'react-i18next'
-import Toast from '@/app/components/base/toast'
-import { useDataSourceIntegrates, useNotionConnection } from '@/service/use-common'
 
 const Icon: FC<{
   src: string
@@ -64,7 +65,7 @@ const DataSourceNotion: FC<Props> = ({
       else if (data.data === 'internal') {
         Toast.notify({
           type: 'info',
-          message: t('common.dataSource.notion.integratedAlert'),
+          message: t('dataSource.notion.integratedAlert', { ns: 'common' }),
         })
       }
     }
@@ -84,7 +85,8 @@ const DataSourceNotion: FC<Props> = ({
             src={workspace.source_info.workspace_icon!}
             name={workspace.source_info.workspace_name}
             className={className}
-          />),
+          />
+        ),
         name: workspace.source_info.workspace_name,
         isActive: workspace.is_bound,
         notionConfig: {

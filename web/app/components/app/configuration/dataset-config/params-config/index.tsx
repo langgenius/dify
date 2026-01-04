@@ -1,23 +1,23 @@
 'use client'
+import type { DataSet } from '@/models/datasets'
+import type { DatasetConfigs } from '@/models/debug'
+import { RiEqualizer2Line } from '@remixicon/react'
 import { memo, useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useContext } from 'use-context-selector'
-import { RiEqualizer2Line } from '@remixicon/react'
-import ConfigContent from './config-content'
-import { cn } from '@/utils/classnames'
-import ConfigContext from '@/context/debug-configuration'
-import Modal from '@/app/components/base/modal'
 import Button from '@/app/components/base/button'
-import { RETRIEVE_TYPE } from '@/types/app'
+import Modal from '@/app/components/base/modal'
 import Toast from '@/app/components/base/toast'
-import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import { RerankingModeEnum } from '@/models/datasets'
-import type { DataSet } from '@/models/datasets'
-import type { DatasetConfigs } from '@/models/debug'
+import { useCurrentProviderAndModel, useModelListAndDefaultModelAndCurrentProviderAndModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import {
   getMultipleRetrievalConfig,
 } from '@/app/components/workflow/nodes/knowledge-retrieval/utils'
+import ConfigContext from '@/context/debug-configuration'
+import { RerankingModeEnum } from '@/models/datasets'
+import { RETRIEVE_TYPE } from '@/types/app'
+import { cn } from '@/utils/classnames'
+import ConfigContent from './config-content'
 
 type ParamsConfigProps = {
   disabled?: boolean
@@ -62,8 +62,9 @@ const ParamsConfig = ({
       if (tempDataSetConfigs.reranking_enable
         && tempDataSetConfigs.reranking_mode === RerankingModeEnum.RerankingModel
         && !isCurrentRerankModelValid
-      )
-        errMsg = t('appDebug.datasetConfig.rerankModelRequired')
+      ) {
+        errMsg = t('datasetConfig.rerankModelRequired', { ns: 'appDebug' })
+      }
     }
     if (errMsg) {
       Toast.notify({
@@ -113,16 +114,16 @@ const ParamsConfig = ({
   return (
     <div>
       <Button
-        variant='ghost'
-        size='small'
+        variant="ghost"
+        size="small"
         className={cn('h-7', rerankSettingModalOpen && 'bg-components-button-ghost-bg-hover')}
         onClick={() => {
           setRerankSettingModalOpen(true)
         }}
         disabled={disabled}
       >
-        <RiEqualizer2Line className='mr-1 h-3.5 w-3.5' />
-        {t('dataset.retrievalSettings')}
+        <RiEqualizer2Line className="mr-1 h-3.5 w-3.5" />
+        {t('retrievalSettings', { ns: 'dataset' })}
       </Button>
       {
         rerankSettingModalOpen && (
@@ -131,7 +132,7 @@ const ParamsConfig = ({
             onClose={() => {
               setRerankSettingModalOpen(false)
             }}
-            className='sm:min-w-[528px]'
+            className="sm:min-w-[528px]"
           >
             <ConfigContent
               datasetConfigs={tempDataSetConfigs}
@@ -139,12 +140,17 @@ const ParamsConfig = ({
               selectedDatasets={selectedDatasets}
             />
 
-            <div className='mt-6 flex justify-end'>
-              <Button className='mr-2 shrink-0' onClick={() => {
-                setTempDataSetConfigs(datasetConfigs)
-                setRerankSettingModalOpen(false)
-              }}>{t('common.operation.cancel')}</Button>
-              <Button variant='primary' className='shrink-0' onClick={handleSave} >{t('common.operation.save')}</Button>
+            <div className="mt-6 flex justify-end">
+              <Button
+                className="mr-2 shrink-0"
+                onClick={() => {
+                  setTempDataSetConfigs(datasetConfigs)
+                  setRerankSettingModalOpen(false)
+                }}
+              >
+                {t('operation.cancel', { ns: 'common' })}
+              </Button>
+              <Button variant="primary" className="shrink-0" onClick={handleSave}>{t('operation.save', { ns: 'common' })}</Button>
             </div>
           </Modal>
         )

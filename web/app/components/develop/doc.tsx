@@ -1,34 +1,33 @@
 'use client'
-import { useEffect, useMemo, useState } from 'react'
-import { useContext } from 'use-context-selector'
-import { useTranslation } from 'react-i18next'
 import { RiCloseLine, RiListUnordered } from '@remixicon/react'
-import TemplateEn from './template/template.en.mdx'
-import TemplateZh from './template/template.zh.mdx'
-import TemplateJa from './template/template.ja.mdx'
-import TemplateAdvancedChatEn from './template/template_advanced_chat.en.mdx'
-import TemplateAdvancedChatZh from './template/template_advanced_chat.zh.mdx'
-import TemplateAdvancedChatJa from './template/template_advanced_chat.ja.mdx'
-import TemplateWorkflowEn from './template/template_workflow.en.mdx'
-import TemplateWorkflowZh from './template/template_workflow.zh.mdx'
-import TemplateWorkflowJa from './template/template_workflow.ja.mdx'
-import TemplateChatEn from './template/template_chat.en.mdx'
-import TemplateChatZh from './template/template_chat.zh.mdx'
-import TemplateChatJa from './template/template_chat.ja.mdx'
-import I18n from '@/context/i18n'
-import { LanguagesSupported } from '@/i18n-config/language'
+import { useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useLocale } from '@/context/i18n'
 import useTheme from '@/hooks/use-theme'
+import { LanguagesSupported } from '@/i18n-config/language'
 import { AppModeEnum, Theme } from '@/types/app'
 import { cn } from '@/utils/classnames'
+import TemplateEn from './template/template.en.mdx'
+import TemplateJa from './template/template.ja.mdx'
+import TemplateZh from './template/template.zh.mdx'
+import TemplateAdvancedChatEn from './template/template_advanced_chat.en.mdx'
+import TemplateAdvancedChatJa from './template/template_advanced_chat.ja.mdx'
+import TemplateAdvancedChatZh from './template/template_advanced_chat.zh.mdx'
+import TemplateChatEn from './template/template_chat.en.mdx'
+import TemplateChatJa from './template/template_chat.ja.mdx'
+import TemplateChatZh from './template/template_chat.zh.mdx'
+import TemplateWorkflowEn from './template/template_workflow.en.mdx'
+import TemplateWorkflowJa from './template/template_workflow.ja.mdx'
+import TemplateWorkflowZh from './template/template_workflow.zh.mdx'
 
 type IDocProps = {
   appDetail: any
 }
 
 const Doc = ({ appDetail }: IDocProps) => {
-  const { locale } = useContext(I18n)
+  const locale = useLocale()
   const { t } = useTranslation()
-  const [toc, setToc] = useState<Array<{ href: string; text: string }>>([])
+  const [toc, setToc] = useState<Array<{ href: string, text: string }>>([])
   const [isTocExpanded, setIsTocExpanded] = useState(false)
   const [activeSection, setActiveSection] = useState<string>('')
   const { theme } = useTheme()
@@ -58,7 +57,7 @@ const Doc = ({ appDetail }: IDocProps) => {
             }
           }
           return null
-        }).filter((item): item is { href: string; text: string } => item !== null)
+        }).filter((item): item is { href: string, text: string } => item !== null)
         setToc(tocItems)
         if (tocItems.length > 0)
           setActiveSection(tocItems[0].href.replace('#', ''))
@@ -97,7 +96,7 @@ const Doc = ({ appDetail }: IDocProps) => {
     }
   }, [toc, activeSection])
 
-  const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: { href: string; text: string }) => {
+  const handleTocClick = (e: React.MouseEvent<HTMLAnchorElement>, item: { href: string, text: string }) => {
     e.preventDefault()
     const targetId = item.href.replace('#', '')
     const element = document.getElementById(targetId)
@@ -163,75 +162,79 @@ const Doc = ({ appDetail }: IDocProps) => {
       <div className={`fixed right-20 top-32 z-10 transition-all duration-150 ease-out ${isTocExpanded ? 'w-[280px]' : 'w-11'}`}>
         {isTocExpanded
           ? (
-            <nav className="toc flex max-h-[calc(100vh-150px)] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-default-hover shadow-xl">
-              <div className="relative z-10 flex items-center justify-between border-b border-components-panel-border-subtle bg-background-default-hover px-4 py-2.5">
-                <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
-                  {t('appApi.develop.toc')}
-                </span>
-                <button type="button"
-                  onClick={() => setIsTocExpanded(false)}
-                  className="group flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-state-base-hover"
-                  aria-label="Close"
-                >
-                  <RiCloseLine className="h-3 w-3 text-text-quaternary transition-colors group-hover:text-text-secondary" />
-                </button>
-              </div>
+              <nav className="toc flex max-h-[calc(100vh-150px)] w-full flex-col overflow-hidden rounded-xl border-[0.5px] border-components-panel-border bg-background-default-hover shadow-xl">
+                <div className="relative z-10 flex items-center justify-between border-b border-components-panel-border-subtle bg-background-default-hover px-4 py-2.5">
+                  <span className="text-xs font-medium uppercase tracking-wide text-text-tertiary">
+                    {t('develop.toc', { ns: 'appApi' })}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => setIsTocExpanded(false)}
+                    className="group flex h-6 w-6 items-center justify-center rounded-md transition-colors hover:bg-state-base-hover"
+                    aria-label="Close"
+                  >
+                    <RiCloseLine className="h-3 w-3 text-text-quaternary transition-colors group-hover:text-text-secondary" />
+                  </button>
+                </div>
 
-              <div className="from-components-panel-border-subtle/20 pointer-events-none absolute left-0 right-0 top-[41px] z-10 h-2 bg-gradient-to-b to-transparent"></div>
-              <div className="pointer-events-none absolute left-0 right-0 top-[43px] z-10 h-3 bg-gradient-to-b from-background-default-hover to-transparent"></div>
+                <div className="from-components-panel-border-subtle/20 pointer-events-none absolute left-0 right-0 top-[41px] z-10 h-2 bg-gradient-to-b to-transparent"></div>
+                <div className="pointer-events-none absolute left-0 right-0 top-[43px] z-10 h-3 bg-gradient-to-b from-background-default-hover to-transparent"></div>
 
-              <div className="relative flex-1 overflow-y-auto px-3 py-3 pt-1">
-                {toc.length === 0 ? (
-                  <div className="px-2 py-8 text-center text-xs text-text-quaternary">
-                    {t('appApi.develop.noContent')}
-                  </div>
-                ) : (
-                  <ul className="space-y-0.5">
-                    {toc.map((item, index) => {
-                      const isActive = activeSection === item.href.replace('#', '')
-                      return (
-                        <li key={index}>
-                          <a
-                            href={item.href}
-                            onClick={e => handleTocClick(e, item)}
-                            className={cn(
-                              'group relative flex items-center rounded-md px-3 py-2 text-[13px] transition-all duration-200',
-                              isActive
-                                ? 'bg-state-base-hover font-medium text-text-primary'
-                                : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
-                            )}
-                          >
-                            <span
-                              className={cn(
-                                'mr-2 h-1.5 w-1.5 rounded-full transition-all duration-200',
-                                isActive
-                                  ? 'scale-100 bg-text-accent'
-                                  : 'scale-75 bg-components-panel-border',
-                              )}
-                            />
-                            <span className="flex-1 truncate">
-                              {item.text}
-                            </span>
-                          </a>
-                        </li>
+                <div className="relative flex-1 overflow-y-auto px-3 py-3 pt-1">
+                  {toc.length === 0
+                    ? (
+                        <div className="px-2 py-8 text-center text-xs text-text-quaternary">
+                          {t('develop.noContent', { ns: 'appApi' })}
+                        </div>
                       )
-                    })}
-                  </ul>
-                )}
-              </div>
+                    : (
+                        <ul className="space-y-0.5">
+                          {toc.map((item, index) => {
+                            const isActive = activeSection === item.href.replace('#', '')
+                            return (
+                              <li key={index}>
+                                <a
+                                  href={item.href}
+                                  onClick={e => handleTocClick(e, item)}
+                                  className={cn(
+                                    'group relative flex items-center rounded-md px-3 py-2 text-[13px] transition-all duration-200',
+                                    isActive
+                                      ? 'bg-state-base-hover font-medium text-text-primary'
+                                      : 'text-text-tertiary hover:bg-state-base-hover hover:text-text-secondary',
+                                  )}
+                                >
+                                  <span
+                                    className={cn(
+                                      'mr-2 h-1.5 w-1.5 rounded-full transition-all duration-200',
+                                      isActive
+                                        ? 'scale-100 bg-text-accent'
+                                        : 'scale-75 bg-components-panel-border',
+                                    )}
+                                  />
+                                  <span className="flex-1 truncate">
+                                    {item.text}
+                                  </span>
+                                </a>
+                              </li>
+                            )
+                          })}
+                        </ul>
+                      )}
+                </div>
 
-              <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-4 rounded-b-xl bg-gradient-to-t from-background-default-hover to-transparent"></div>
-            </nav>
-          )
+                <div className="pointer-events-none absolute bottom-0 left-0 right-0 z-10 h-4 rounded-b-xl bg-gradient-to-t from-background-default-hover to-transparent"></div>
+              </nav>
+            )
           : (
-            <button type="button"
-              onClick={() => setIsTocExpanded(true)}
-              className="group flex h-11 w-11 items-center justify-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-all duration-150 hover:bg-background-default-hover hover:shadow-xl"
-              aria-label="Open table of contents"
-            >
-              <RiListUnordered className="h-5 w-5 text-text-tertiary transition-colors group-hover:text-text-secondary" />
-            </button>
-          )}
+              <button
+                type="button"
+                onClick={() => setIsTocExpanded(true)}
+                className="group flex h-11 w-11 items-center justify-center rounded-full border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-lg transition-all duration-150 hover:bg-background-default-hover hover:shadow-xl"
+                aria-label="Open table of contents"
+              >
+                <RiListUnordered className="h-5 w-5 text-text-tertiary transition-colors group-hover:text-text-secondary" />
+              </button>
+            )}
       </div>
       <article className={cn('prose-xl prose', theme === Theme.dark && 'prose-invert')}>
         {Template}

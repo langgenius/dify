@@ -1,6 +1,10 @@
 import type { MockInstance } from 'vitest'
 import mime from 'mime'
+import { SupportUploadFileTypes } from '@/app/components/workflow/types'
 import { upload } from '@/service/base'
+import { TransferMethod } from '@/types/app'
+import { FILE_EXTS } from '../prompt-editor/constants'
+import { FileAppearanceTypeEnum } from './types'
 import {
   downloadFile,
   fileIsUploaded,
@@ -15,13 +19,8 @@ import {
   getSupportFileType,
   isAllowedFileExtension,
 } from './utils'
-import { FileAppearanceTypeEnum } from './types'
-import { SupportUploadFileTypes } from '@/app/components/workflow/types'
-import { TransferMethod } from '@/types/app'
-import { FILE_EXTS } from '../prompt-editor/constants'
 
 vi.mock('mime', () => ({
-  __esModule: true,
   default: {
     getAllExtensions: vi.fn(),
   },

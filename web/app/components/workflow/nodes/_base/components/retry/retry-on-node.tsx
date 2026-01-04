@@ -1,11 +1,11 @@
-import { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
+import type { Node } from '@/app/components/workflow/types'
 import {
   RiAlertFill,
   RiCheckboxCircleFill,
   RiLoader2Line,
 } from '@remixicon/react'
-import type { Node } from '@/app/components/workflow/types'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 import { cn } from '@/utils/classnames'
 
@@ -38,40 +38,41 @@ const RetryOnNode = ({
     return null
 
   return (
-    <div className='mb-1 px-3'>
+    <div className="mb-1 px-3">
       <div className={cn(
         'system-xs-medium-uppercase flex items-center justify-between rounded-md border-[0.5px] border-transparent bg-workflow-block-parma-bg px-[5px] py-1 text-text-tertiary',
         isRunning && 'border-state-accent-active bg-state-accent-hover text-text-accent',
         isSuccessful && 'border-state-success-active bg-state-success-hover text-text-success',
         (isException || isFailed) && 'border-state-warning-active bg-state-warning-hover text-text-warning',
-      )}>
-        <div className='flex items-center'>
+      )}
+      >
+        <div className="flex items-center">
           {
             showDefault && (
-              t('workflow.nodes.common.retry.retryTimes', { times: retry_config.max_retries })
+              t('nodes.common.retry.retryTimes', { ns: 'workflow', times: retry_config.max_retries })
             )
           }
           {
             isRunning && (
               <>
-                <RiLoader2Line className='mr-1 h-3.5 w-3.5 animate-spin' />
-                {t('workflow.nodes.common.retry.retrying')}
+                <RiLoader2Line className="mr-1 h-3.5 w-3.5 animate-spin" />
+                {t('nodes.common.retry.retrying', { ns: 'workflow' })}
               </>
             )
           }
           {
             isSuccessful && (
               <>
-                <RiCheckboxCircleFill className='mr-1 h-3.5 w-3.5' />
-                {t('workflow.nodes.common.retry.retrySuccessful')}
+                <RiCheckboxCircleFill className="mr-1 h-3.5 w-3.5" />
+                {t('nodes.common.retry.retrySuccessful', { ns: 'workflow' })}
               </>
             )
           }
           {
             (isFailed || isException) && (
               <>
-                <RiAlertFill className='mr-1 h-3.5 w-3.5' />
-                {t('workflow.nodes.common.retry.retryFailed')}
+                <RiAlertFill className="mr-1 h-3.5 w-3.5" />
+                {t('nodes.common.retry.retryFailed', { ns: 'workflow' })}
               </>
             )
           }
@@ -79,7 +80,9 @@ const RetryOnNode = ({
         {
           !showDefault && !!data._retryIndex && (
             <div>
-              {data._retryIndex}/{data.retry_config?.max_retries}
+              {data._retryIndex}
+              /
+              {data.retry_config?.max_retries}
             </div>
           )
         }

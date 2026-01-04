@@ -1,19 +1,12 @@
-import React from 'react'
+import type { AgentConfig } from '@/models/debug'
 import { render, screen } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import AgentSettingButton from './agent-setting-button'
-import type { AgentConfig } from '@/models/debug'
+import * as React from 'react'
 import { AgentStrategy } from '@/types/app'
-
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
+import AgentSettingButton from './agent-setting-button'
 
 let latestAgentSettingProps: any
 vi.mock('./agent/agent-setting', () => ({
-  __esModule: true,
   default: (props: any) => {
     latestAgentSettingProps = props
     return (

@@ -1,19 +1,19 @@
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  RiArrowDownSLine,
+  RiCheckLine,
+} from '@remixicon/react'
 import {
   useCallback,
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
 import {
-  RiArrowDownSLine,
-  RiCheckLine,
-} from '@remixicon/react'
-import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
-} from '@/app/components/base/portal-to-follow-elem'
-import type {
-  PortalToFollowElemOptions,
 } from '@/app/components/base/portal-to-follow-elem'
 import { cn } from '@/utils/classnames'
 
@@ -32,13 +32,13 @@ export type CustomSelectProps<T extends Option> = {
   }
   triggerProps?: {
     className?: string
-  },
+  }
   popupProps?: {
     wrapperClassName?: string
     className?: string
     itemClassName?: string
     title?: string
-  },
+  }
   CustomTrigger?: (option: T | undefined, open: boolean) => React.JSX.Element
   CustomOption?: (option: T, selected: boolean) => React.JSX.Element
 }
@@ -78,7 +78,7 @@ const CustomSelect = <T extends Option>({
   }, [onOpenChange])
 
   const selectedOption = options.find(option => option.value === value)
-  const triggerText = selectedOption?.label || t('common.placeholder.select')
+  const triggerText = selectedOption?.label || t('placeholder.select', { ns: 'common' })
 
   return (
     <PortalToFollowElem
@@ -99,28 +99,31 @@ const CustomSelect = <T extends Option>({
             triggerClassName,
           )}
         >
-          {CustomTrigger ? CustomTrigger(selectedOption, mergedOpen) : (
-            <>
-              <div
-                className='grow'
-                title={triggerText}
-              >
-                {triggerText}
-              </div>
-              <RiArrowDownSLine
-                className={cn(
-                  'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
-                  mergedOpen && 'text-text-secondary',
-                )}
-              />
-            </>
-          )}
+          {CustomTrigger
+            ? CustomTrigger(selectedOption, mergedOpen)
+            : (
+                <>
+                  <div
+                    className="grow"
+                    title={triggerText}
+                  >
+                    {triggerText}
+                  </div>
+                  <RiArrowDownSLine
+                    className={cn(
+                      'h-4 w-4 shrink-0 text-text-quaternary group-hover:text-text-secondary',
+                      mergedOpen && 'text-text-secondary',
+                    )}
+                  />
+                </>
+              )}
         </div>
       </PortalToFollowElemTrigger>
       <PortalToFollowElemContent className={cn(
         'z-10',
         popupWrapperClassName,
-      )}>
+      )}
+      >
         <div
           className={cn(
             'rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1 shadow-lg shadow-shadow-shadow-5',
@@ -143,16 +146,18 @@ const CustomSelect = <T extends Option>({
                     handleOpenChange(false)
                   }}
                 >
-                  {CustomOption ? CustomOption(option, selected) : (
-                    <>
-                      <div className='mr-1 grow truncate px-1'>
-                        {option.label}
-                      </div>
-                      {
-                        selected && <RiCheckLine className='h-4 w-4 shrink-0 text-text-accent' />
-                      }
-                    </>
-                  )}
+                  {CustomOption
+                    ? CustomOption(option, selected)
+                    : (
+                        <>
+                          <div className="mr-1 grow truncate px-1">
+                            {option.label}
+                          </div>
+                          {
+                            selected && <RiCheckLine className="h-4 w-4 shrink-0 text-text-accent" />
+                          }
+                        </>
+                      )}
                 </div>
               )
             })

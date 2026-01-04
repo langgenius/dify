@@ -1,5 +1,3 @@
-import { memo, useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
 import type {
   Credential,
   CustomConfigurationModelFixedFields,
@@ -8,26 +6,28 @@ import type {
   ModelLoadBalancingConfigEntry,
   ModelProvider,
 } from '../declarations'
-import {
-  ConfigurationMethodEnum,
-  FormTypeEnum,
-} from '../declarations'
-import ModelIcon from '../model-icon'
-import ModelName from '../model-name'
-import ModelLoadBalancingConfigs from './model-load-balancing-configs'
-import { cn } from '@/utils/classnames'
-import Modal from '@/app/components/base/modal'
+import { memo, useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import Loading from '@/app/components/base/loading'
+import Modal from '@/app/components/base/modal'
 import { useToastContext } from '@/app/components/base/toast'
 import { SwitchCredentialInLoadBalancing } from '@/app/components/header/account-setting/model-provider-page/model-auth'
 import {
   useGetModelCredential,
   useUpdateModelLoadBalancingConfig,
 } from '@/service/use-models'
-import { useAuth } from '../model-auth/hooks/use-auth'
-import Confirm from '@/app/components/base/confirm'
+import { cn } from '@/utils/classnames'
+import {
+  ConfigurationMethodEnum,
+  FormTypeEnum,
+} from '../declarations'
 import { useRefreshModel } from '../hooks'
+import { useAuth } from '../model-auth/hooks/use-auth'
+import ModelIcon from '../model-icon'
+import ModelName from '../model-name'
+import ModelLoadBalancingConfigs from './model-load-balancing-configs'
 
 export type ModelLoadBalancingModalProps = {
   provider: ModelProvider
@@ -158,7 +158,7 @@ const ModelLoadBalancingModal = ({
         },
       )
       if (res.result === 'success') {
-        notify({ type: 'success', message: t('common.actionMsg.modifiedSuccessfully') })
+        notify({ type: 'success', message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }) })
         handleRefreshModel(provider, currentCustomConfigurationModelFixedFields, false)
         onSave?.(provider.provider)
         onClose?.()
@@ -232,23 +232,25 @@ const ModelLoadBalancingModal = ({
       <Modal
         isShow={Boolean(model) && open}
         onClose={onClose}
-        className='w-[640px] max-w-none px-8 pt-8'
-        title={
-          <div className='pb-3 font-semibold'>
-            <div className='h-[30px]'>{
-              draftConfig?.enabled
-                ? t('common.modelProvider.auth.configLoadBalancing')
-                : t('common.modelProvider.auth.configModel')
-            }</div>
+        className="w-[640px] max-w-none px-8 pt-8"
+        title={(
+          <div className="pb-3 font-semibold">
+            <div className="h-[30px]">
+              {
+                draftConfig?.enabled
+                  ? t('modelProvider.auth.configLoadBalancing', { ns: 'common' })
+                  : t('modelProvider.auth.configModel', { ns: 'common' })
+              }
+            </div>
             {Boolean(model) && (
-              <div className='flex h-5 items-center'>
+              <div className="flex h-5 items-center">
                 <ModelIcon
-                  className='mr-2 shrink-0'
+                  className="mr-2 shrink-0"
                   provider={provider}
                   modelName={model!.model}
                 />
                 <ModelName
-                  className='system-md-regular grow text-text-secondary'
+                  className="system-md-regular grow text-text-secondary"
                   modelItem={model!}
                   showModelType
                   showMode
@@ -257,110 +259,115 @@ const ModelLoadBalancingModal = ({
               </div>
             )}
           </div>
-        }
+        )}
       >
         {!draftConfig
-          ? <Loading type='area' />
+          ? <Loading type="area" />
           : (
-            <>
-              <div className='py-2'>
-                <div
-                  className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors',
-                    draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')}
-                  onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
-                >
-                  <div className='flex select-none items-center gap-2 px-[15px] py-3'>
-                    <div className='flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg'>
-                      {Boolean(model) && (
-                        <ModelIcon className='shrink-0' provider={provider} modelName={model!.model} />
-                      )}
+              <>
+                <div className="py-2">
+                  <div
+                    className={cn('min-h-16 rounded-xl border bg-components-panel-bg transition-colors', draftConfig.enabled ? 'cursor-pointer border-components-panel-border' : 'cursor-default border-util-colors-blue-blue-600')}
+                    onClick={draftConfig.enabled ? () => toggleModalBalancing(false) : undefined}
+                  >
+                    <div className="flex select-none items-center gap-2 px-[15px] py-3">
+                      <div className="flex h-8 w-8 shrink-0 grow-0 items-center justify-center rounded-lg border border-components-card-border bg-components-card-bg">
+                        {Boolean(model) && (
+                          <ModelIcon className="shrink-0" provider={provider} modelName={model!.model} />
+                        )}
+                      </div>
+                      <div className="grow">
+                        <div className="text-sm text-text-secondary">
+                          {
+                            providerFormSchemaPredefined
+                              ? t('modelProvider.auth.providerManaged', { ns: 'common' })
+                              : t('modelProvider.auth.specifyModelCredential', { ns: 'common' })
+                          }
+                        </div>
+                        <div className="text-xs text-text-tertiary">
+                          {
+                            providerFormSchemaPredefined
+                              ? t('modelProvider.auth.providerManagedTip', { ns: 'common' })
+                              : t('modelProvider.auth.specifyModelCredentialTip', { ns: 'common' })
+                          }
+                        </div>
+                      </div>
+                      {
+                        !providerFormSchemaPredefined && (
+                          <SwitchCredentialInLoadBalancing
+                            provider={provider}
+                            customModelCredential={customModelCredential ?? initialCustomModelCredential}
+                            setCustomModelCredential={setCustomModelCredential}
+                            model={model}
+                            credentials={available_credentials}
+                            onUpdate={handleUpdateWhenSwitchCredential}
+                            onRemove={handleUpdateWhenSwitchCredential}
+                          />
+                        )
+                      }
                     </div>
-                    <div className='grow'>
-                      <div className='text-sm text-text-secondary'>{
-                        providerFormSchemaPredefined
-                          ? t('common.modelProvider.auth.providerManaged')
-                          : t('common.modelProvider.auth.specifyModelCredential')
-                      }</div>
-                      <div className='text-xs text-text-tertiary'>{
-                        providerFormSchemaPredefined
-                          ? t('common.modelProvider.auth.providerManagedTip')
-                          : t('common.modelProvider.auth.specifyModelCredentialTip')
-                      }</div>
-                    </div>
-                    {
-                      !providerFormSchemaPredefined && (
-                        <SwitchCredentialInLoadBalancing
-                          provider={provider}
-                          customModelCredential={customModelCredential ?? initialCustomModelCredential}
-                          setCustomModelCredential={setCustomModelCredential}
-                          model={model}
-                          credentials={available_credentials}
-                          onUpdate={handleUpdateWhenSwitchCredential}
-                          onRemove={handleUpdateWhenSwitchCredential}
-                        />
-                      )
-                    }
                   </div>
-                </div>
-                {
-                  modelCredential && (
-                    <ModelLoadBalancingConfigs {...{
-                      draftConfig,
-                      setDraftConfig,
-                      provider,
-                      currentCustomConfigurationModelFixedFields: {
-                        __model_name: model.model,
-                        __model_type: model.model_type,
-                      },
-                      configurationMethod: model.fetch_from,
-                      className: 'mt-2',
-                      modelCredential,
-                      onUpdate: handleUpdate,
-                      onRemove: handleUpdateWhenSwitchCredential,
-                      model: {
-                        model: model.model,
-                        model_type: model.model_type,
-                      },
-                    }} />
-                  )
-                }
-              </div>
-
-              <div className='mt-6 flex items-center justify-between gap-2'>
-                <div>
                   {
-                    !providerFormSchemaPredefined && (
-                      <Button
-                        onClick={() => openConfirmDelete(undefined, { model: model.model, model_type: model.model_type })}
-                        className='text-components-button-destructive-secondary-text'
-                      >
-                        {t('common.modelProvider.auth.removeModel')}
-                      </Button>
+                    modelCredential && (
+                      <ModelLoadBalancingConfigs {...{
+                        draftConfig,
+                        setDraftConfig,
+                        provider,
+                        currentCustomConfigurationModelFixedFields: {
+                          __model_name: model.model,
+                          __model_type: model.model_type,
+                        },
+                        configurationMethod: model.fetch_from,
+                        className: 'mt-2',
+                        modelCredential,
+                        onUpdate: handleUpdate,
+                        onRemove: handleUpdateWhenSwitchCredential,
+                        model: {
+                          model: model.model,
+                          model_type: model.model_type,
+                        },
+                      }}
+                      />
                     )
                   }
                 </div>
-                <div className='space-x-2'>
-                  <Button onClick={onClose}>{t('common.operation.cancel')}</Button>
-                  <Button
-                    variant='primary'
-                    onClick={handleSave}
-                    disabled={
-                      loading
-                      || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
-                      || isLoading
+
+                <div className="mt-6 flex items-center justify-between gap-2">
+                  <div>
+                    {
+                      !providerFormSchemaPredefined && (
+                        <Button
+                          onClick={() => openConfirmDelete(undefined, { model: model.model, model_type: model.model_type })}
+                          className="text-components-button-destructive-secondary-text"
+                        >
+                          {t('modelProvider.auth.removeModel', { ns: 'common' })}
+                        </Button>
+                      )
                     }
-                  >{t('common.operation.save')}</Button>
+                  </div>
+                  <div className="space-x-2">
+                    <Button onClick={onClose}>{t('operation.cancel', { ns: 'common' })}</Button>
+                    <Button
+                      variant="primary"
+                      onClick={handleSave}
+                      disabled={
+                        loading
+                        || (draftConfig?.enabled && (draftConfig?.configs.filter(config => config.enabled).length ?? 0) < 2)
+                        || isLoading
+                      }
+                    >
+                      {t('operation.save', { ns: 'common' })}
+                    </Button>
+                  </div>
                 </div>
-              </div>
-            </>
-          )
-        }
-      </Modal >
+              </>
+            )}
+      </Modal>
       {
         deleteModel && (
           <Confirm
             isShow
-            title={t('common.modelProvider.confirmDelete')}
+            title={t('modelProvider.confirmDelete', { ns: 'common' })}
             onCancel={closeConfirmDelete}
             onConfirm={handleDeleteModel}
             isDisabled={doingAction}

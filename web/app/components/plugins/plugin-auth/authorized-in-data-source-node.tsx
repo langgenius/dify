@@ -1,8 +1,8 @@
+import { RiEqualizer2Line } from '@remixicon/react'
 import {
   memo,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { RiEqualizer2Line } from '@remixicon/react'
 import Button from '@/app/components/base/button'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
@@ -19,17 +19,17 @@ const AuthorizedInDataSourceNode = ({
 
   return (
     <Button
-      size='small'
+      size="small"
       onClick={onJumpToDataSourcePage}
     >
       <Indicator
-        className='mr-1.5'
-        color='green'
+        className="mr-1.5"
+        color="green"
       />
       {
         authorizationsNum > 1
-          ? t('plugin.auth.authorizations')
-          : t('plugin.auth.authorization')
+          ? t('auth.authorizations', { ns: 'plugin' })
+          : t('auth.authorization', { ns: 'plugin' })
       }
       <RiEqualizer2Line
         className={cn(

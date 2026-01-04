@@ -1,9 +1,9 @@
-import { fireEvent, render, screen, waitFor } from '@testing-library/react'
-import React from 'react'
-import OnlineDocuments from './index'
-import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
 import type { DataSourceNodeType } from '@/app/components/workflow/nodes/data-source/types'
+import type { DataSourceNotionWorkspace, NotionPage } from '@/models/common'
+import { fireEvent, render, screen, waitFor } from '@testing-library/react'
+import * as React from 'react'
 import { VarKindType } from '@/app/components/workflow/nodes/_base/types'
+import OnlineDocuments from './index'
 
 // ==========================================
 // Mock Modules
@@ -44,7 +44,6 @@ const { mockToastNotify } = vi.hoisted(() => ({
 }))
 
 vi.mock('@/app/components/base/toast', () => ({
-  __esModule: true,
   default: {
     notify: mockToastNotify,
   },
@@ -99,7 +98,7 @@ vi.mock('../base/header', () => ({
 
 // Mock SearchInput component
 vi.mock('@/app/components/base/notion-page-selector/search-input', () => ({
-  default: ({ value, onChange }: { value: string; onChange: (v: string) => void }) => (
+  default: ({ value, onChange }: { value: string, onChange: (v: string) => void }) => (
     <div data-testid="search-input">
       <input
         data-testid="search-input-field"
@@ -179,7 +178,7 @@ const createMockWorkspace = (overrides?: Partial<DataSourceNotionWorkspace>): Da
   ...overrides,
 })
 
-const createMockCredential = (overrides?: Partial<{ id: string; name: string }>) => ({
+const createMockCredential = (overrides?: Partial<{ id: string, name: string }>) => ({
   id: 'cred-1',
   name: 'Test Credential',
   avatar_url: 'https://example.com/avatar.png',

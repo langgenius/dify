@@ -1,22 +1,22 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import { produce } from 'immer'
-import { ReactSortable } from 'react-sortablejs'
+import type { OpeningStatement } from '@/app/components/base/features/types'
+import type { InputVar } from '@/app/components/workflow/types'
+import type { PromptVariable } from '@/models/debug'
 import { RiAddLine, RiAsterisk, RiCloseLine, RiDeleteBinLine, RiDraggable } from '@remixicon/react'
-import Modal from '@/app/components/base/modal'
+import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import { produce } from 'immer'
+import * as React from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import { ReactSortable } from 'react-sortablejs'
+import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
+import { getInputKeys } from '@/app/components/base/block-input'
 import Button from '@/app/components/base/button'
 import Divider from '@/app/components/base/divider'
-import ConfirmAddVar from '@/app/components/app/configuration/config-prompt/confirm-add-var'
+import Modal from '@/app/components/base/modal'
 import PromptEditor from '@/app/components/base/prompt-editor'
-import type { OpeningStatement } from '@/app/components/base/features/types'
-import { getInputKeys } from '@/app/components/base/block-input'
-import type { PromptVariable } from '@/models/debug'
-import type { InputVar } from '@/app/components/workflow/types'
-import { getNewVar } from '@/utils/var'
 import { cn } from '@/utils/classnames'
-import { noop } from 'lodash-es'
-import { checkKeys } from '@/utils/var'
+import { checkKeys, getNewVar } from '@/utils/var'
 
 type OpeningSettingModalProps = {
   data: OpeningStatement
@@ -104,13 +104,17 @@ const OpeningSettingModal = ({
   const renderQuestions = () => {
     return (
       <div>
-        <div className='flex items-center py-2'>
-          <div className='flex shrink-0 space-x-0.5 text-xs font-medium leading-[18px] text-text-tertiary'>
-            <div className='uppercase'>{t('appDebug.openingStatement.openingQuestion')}</div>
+        <div className="flex items-center py-2">
+          <div className="flex shrink-0 space-x-0.5 text-xs font-medium leading-[18px] text-text-tertiary">
+            <div className="uppercase">{t('openingStatement.openingQuestion', { ns: 'appDebug' })}</div>
             <div>·</div>
-            <div>{tempSuggestedQuestions.length}/{MAX_QUESTION_NUM}</div>
+            <div>
+              {tempSuggestedQuestions.length}
+              /
+              {MAX_QUESTION_NUM}
+            </div>
           </div>
-          <Divider bgStyle='gradient' className='ml-3 h-px w-0 grow' />
+          <Divider bgStyle="gradient" className="ml-3 h-px w-0 grow" />
         </div>
         <ReactSortable
           className="space-y-1"
@@ -121,7 +125,7 @@ const OpeningSettingModal = ({
             }
           })}
           setList={list => setTempSuggestedQuestions(list.map(item => item.name))}
-          handle='.handle'
+          handle=".handle"
           ghostClass="opacity-50"
           animation={150}
         >
@@ -135,11 +139,11 @@ const OpeningSettingModal = ({
                 )}
                 key={index}
               >
-                <RiDraggable className='handle h-4 w-4 cursor-grab text-text-quaternary' />
+                <RiDraggable className="handle h-4 w-4 cursor-grab text-text-quaternary" />
                 <input
                   type="input"
                   value={question || ''}
-                  placeholder={t('appDebug.openingStatement.openingQuestionPlaceholder') as string}
+                  placeholder={t('openingStatement.openingQuestionPlaceholder', { ns: 'appDebug' }) as string}
                   onChange={(e) => {
                     const value = e.target.value
                     setTempSuggestedQuestions(tempSuggestedQuestions.map((item, i) => {
@@ -149,30 +153,32 @@ const OpeningSettingModal = ({
                       return item
                     }))
                   }}
-                  className={'h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-none'}
+                  className="h-9 w-full grow cursor-pointer overflow-x-auto rounded-lg border-0 bg-transparent pl-1.5 pr-8 text-sm leading-9 text-text-secondary focus:outline-none"
                   onFocus={() => setFocusID(index)}
                   onBlur={() => setFocusID(null)}
                 />
 
                 <div
-                  className='absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive'
+                  className="absolute right-1.5 top-1/2 block translate-y-[-50%] cursor-pointer rounded-md p-1 text-text-tertiary hover:bg-state-destructive-hover hover:text-text-destructive"
                   onClick={() => {
                     setTempSuggestedQuestions(tempSuggestedQuestions.filter((_, i) => index !== i))
                   }}
                   onMouseEnter={() => setDeletingID(index)}
                   onMouseLeave={() => setDeletingID(null)}
                 >
-                  <RiDeleteBinLine className='h-3.5 w-3.5' />
+                  <RiDeleteBinLine className="h-3.5 w-3.5" />
                 </div>
               </div>
             )
-          })}</ReactSortable>
+          })}
+        </ReactSortable>
         {tempSuggestedQuestions.length < MAX_QUESTION_NUM && (
           <div
             onClick={() => { setTempSuggestedQuestions([...tempSuggestedQuestions, '']) }}
-            className='mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3  text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover'>
-            <RiAddLine className='h-4 w-4' />
-            <div className='system-sm-medium text-[13px]'>{t('appDebug.variableConfig.addOption')}</div>
+            className="mt-1 flex h-9 cursor-pointer items-center gap-2 rounded-lg bg-components-button-tertiary-bg px-3  text-components-button-tertiary-text hover:bg-components-button-tertiary-bg-hover"
+          >
+            <RiAddLine className="h-4 w-4" />
+            <div className="system-sm-medium text-[13px]">{t('variableConfig.addOption', { ns: 'appDebug' })}</div>
           </div>
         )}
       </div>
@@ -183,21 +189,21 @@ const OpeningSettingModal = ({
     <Modal
       isShow
       onClose={noop}
-      className='!mt-14 !w-[640px] !max-w-none !bg-components-panel-bg-blur !p-6'
+      className="!mt-14 !w-[640px] !max-w-none !bg-components-panel-bg-blur !p-6"
     >
-      <div className='mb-6 flex items-center justify-between'>
-        <div className='title-2xl-semi-bold text-text-primary'>{t('appDebug.feature.conversationOpener.title')}</div>
-        <div className='cursor-pointer p-1' onClick={onCancel}><RiCloseLine className='h-4 w-4 text-text-tertiary' /></div>
+      <div className="mb-6 flex items-center justify-between">
+        <div className="title-2xl-semi-bold text-text-primary">{t('feature.conversationOpener.title', { ns: 'appDebug' })}</div>
+        <div className="cursor-pointer p-1" onClick={onCancel}><RiCloseLine className="h-4 w-4 text-text-tertiary" /></div>
       </div>
-      <div className='mb-8 flex gap-2'>
-        <div className='mt-1.5 h-8 w-8 shrink-0 rounded-lg border-components-panel-border bg-util-colors-orange-dark-orange-dark-500 p-1.5'>
-          <RiAsterisk className='h-5 w-5 text-text-primary-on-surface' />
+      <div className="mb-8 flex gap-2">
+        <div className="mt-1.5 h-8 w-8 shrink-0 rounded-lg border-components-panel-border bg-util-colors-orange-dark-orange-dark-500 p-1.5">
+          <RiAsterisk className="h-5 w-5 text-text-primary-on-surface" />
         </div>
-        <div className='grow rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg p-3 shadow-xs'>
+        <div className="grow rounded-2xl border-t border-divider-subtle bg-chat-bubble-bg p-3 shadow-xs">
           <PromptEditor
             value={tempValue}
             onChange={setTempValue}
-            placeholder={t('appDebug.openingStatement.placeholder') as string}
+            placeholder={t('openingStatement.placeholder', { ns: 'appDebug' }) as string}
             variableBlock={{
               show: true,
               variables: [
@@ -217,19 +223,19 @@ const OpeningSettingModal = ({
           {renderQuestions()}
         </div>
       </div>
-      <div className='flex items-center justify-end'>
+      <div className="flex items-center justify-end">
         <Button
           onClick={onCancel}
-          className='mr-2'
+          className="mr-2"
         >
-          {t('common.operation.cancel')}
+          {t('operation.cancel', { ns: 'common' })}
         </Button>
         <Button
-          variant='primary'
+          variant="primary"
           onClick={() => handleSave()}
           disabled={isSaveDisabled}
         >
-          {t('common.operation.save')}
+          {t('operation.save', { ns: 'common' })}
         </Button>
       </div>
       {isShowConfirmAddVar && (

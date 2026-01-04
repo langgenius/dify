@@ -1,37 +1,36 @@
+import type { Credential, PluginPayload } from '../types'
+import type {
+  PortalToFollowElemOptions,
+} from '@/app/components/base/portal-to-follow-elem'
+import {
+  RiArrowDownSLine,
+} from '@remixicon/react'
 import {
   memo,
   useCallback,
   useRef,
   useState,
 } from 'react'
-import {
-  RiArrowDownSLine,
-} from '@remixicon/react'
 import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import Confirm from '@/app/components/base/confirm'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
-import type {
-  PortalToFollowElemOptions,
-} from '@/app/components/base/portal-to-follow-elem'
-import Button from '@/app/components/base/button'
+import { useToastContext } from '@/app/components/base/toast'
 import Indicator from '@/app/components/header/indicator'
 import { cn } from '@/utils/classnames'
-import Confirm from '@/app/components/base/confirm'
 import Authorize from '../authorize'
-import type { Credential } from '../types'
-import { CredentialTypeEnum } from '../types'
 import ApiKeyModal from '../authorize/api-key-modal'
-import Item from './item'
-import { useToastContext } from '@/app/components/base/toast'
-import type { PluginPayload } from '../types'
 import {
   useDeletePluginCredentialHook,
   useSetPluginDefaultCredentialHook,
   useUpdatePluginCredentialHook,
 } from '../hooks/use-credential'
+import { CredentialTypeEnum } from '../types'
+import Item from './item'
 
 type AuthorizedProps = {
   pluginPayload: PluginPayload
@@ -118,7 +117,7 @@ const Authorized = ({
       await deletePluginCredential({ credential_id: pendingOperationCredentialId.current })
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       onUpdate?.()
       setDeleteCredentialId(null)
@@ -145,7 +144,7 @@ const Authorized = ({
       await setPluginDefaultCredential(id)
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       onUpdate?.()
     }
@@ -165,7 +164,7 @@ const Authorized = ({
       await updatePluginCredential(payload)
       notify({
         type: 'success',
-        message: t('common.api.actionSuccess'),
+        message: t('api.actionSuccess', { ns: 'common' }),
       })
       onUpdate?.()
     }
@@ -193,37 +192,40 @@ const Authorized = ({
             renderTrigger
               ? renderTrigger(mergedIsOpen)
               : (
-                <Button
-                  className={cn(
-                    'w-full',
-                    isOpen && 'bg-components-button-secondary-bg-hover',
-                  )}>
-                  <Indicator className='mr-2' color={unavailableCredential ? 'gray' : 'green'} />
-                  {credentials.length}&nbsp;
-                  {
-                    credentials.length > 1
-                      ? t('plugin.auth.authorizations')
-                      : t('plugin.auth.authorization')
-                  }
-                  {
-                    !!unavailableCredentials.length && (
-                      ` (${unavailableCredentials.length} ${t('plugin.auth.unavailable')})`
-                    )
-                  }
-                  <RiArrowDownSLine className='ml-0.5 h-4 w-4' />
-                </Button>
-              )
+                  <Button
+                    className={cn(
+                      'w-full',
+                      isOpen && 'bg-components-button-secondary-bg-hover',
+                    )}
+                  >
+                    <Indicator className="mr-2" color={unavailableCredential ? 'gray' : 'green'} />
+                    {credentials.length}
+&nbsp;
+                    {
+                      credentials.length > 1
+                        ? t('auth.authorizations', { ns: 'plugin' })
+                        : t('auth.authorization', { ns: 'plugin' })
+                    }
+                    {
+                      !!unavailableCredentials.length && (
+                        ` (${unavailableCredentials.length} ${t('auth.unavailable', { ns: 'plugin' })})`
+                      )
+                    }
+                    <RiArrowDownSLine className="ml-0.5 h-4 w-4" />
+                  </Button>
+                )
           }
         </PortalToFollowElemTrigger>
-        <PortalToFollowElemContent className='z-[100]'>
+        <PortalToFollowElemContent className="z-[100]">
           <div className={cn(
             'max-h-[360px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg',
             popupClassName,
-          )}>
-            <div className='py-1'>
+          )}
+          >
+            <div className="py-1">
               {
                 !!extraAuthorizationItems?.length && (
-                  <div className='p-1'>
+                  <div className="p-1">
                     {
                       extraAuthorizationItems.map(credential => (
                         <Item
@@ -245,11 +247,12 @@ const Authorized = ({
               }
               {
                 !!oAuthCredentials.length && (
-                  <div className='p-1'>
+                  <div className="p-1">
                     <div className={cn(
                       'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
                       showItemSelectedIcon && 'pl-7',
-                    )}>
+                    )}
+                    >
                       OAuth
                     </div>
                     {
@@ -274,11 +277,12 @@ const Authorized = ({
               }
               {
                 !!apiKeyCredentials.length && (
-                  <div className='p-1'>
+                  <div className="p-1">
                     <div className={cn(
                       'system-xs-medium px-3 pb-0.5 pt-1 text-text-tertiary',
                       showItemSelectedIcon && 'pl-7',
-                    )}>
+                    )}
+                    >
                       API Keys
                     </div>
                     {
@@ -306,11 +310,11 @@ const Authorized = ({
             {
               !notAllowCustomCredential && (
                 <>
-                  <div className='h-[1px] bg-divider-subtle'></div>
-                  <div className='p-2'>
+                  <div className="h-[1px] bg-divider-subtle"></div>
+                  <div className="p-2">
                     <Authorize
                       pluginPayload={pluginPayload}
-                      theme='secondary'
+                      theme="secondary"
                       showDivider={false}
                       canOAuth={canOAuth}
                       canApiKey={canApiKey}
@@ -328,7 +332,7 @@ const Authorized = ({
         deleteCredentialId && (
           <Confirm
             isShow
-            title={t('datasetDocuments.list.delete.title')}
+            title={t('list.delete.title', { ns: 'datasetDocuments' })}
             isDisabled={doingAction}
             onCancel={closeConfirm}
             onConfirm={handleConfirm}

@@ -1,10 +1,9 @@
-import React from 'react'
-import { fireEvent, render, screen } from '@testing-library/react'
-import EditModal from './edit-modal'
 import type { ConversationHistoriesRole } from '@/models/debug'
+import { fireEvent, render, screen } from '@testing-library/react'
+import * as React from 'react'
+import EditModal from './edit-modal'
 
 vi.mock('@/app/components/base/modal', () => ({
-  __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
 }))
 

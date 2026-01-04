@@ -1,9 +1,9 @@
 import type { ReactElement } from 'react'
+import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import { render, screen, waitFor } from '@testing-library/react'
 import userEvent from '@testing-library/user-event'
-import { Plan } from '@/app/components/billing/type'
-import type { AppPublisherProps } from '@/app/components/app/app-publisher'
 import { ToastContext } from '@/app/components/base/toast'
+import { Plan } from '@/app/components/billing/type'
 import { BlockEnum, InputVarType } from '@/app/components/workflow/types'
 import FeaturesTrigger from './features-trigger'
 
@@ -48,7 +48,6 @@ const mockWorkflowStore = {
 }
 
 vi.mock('@/app/components/workflow/hooks', () => ({
-  __esModule: true,
   useChecklist: (...args: unknown[]) => mockUseChecklist(...args),
   useChecklistBeforePublish: () => mockUseChecklistBeforePublish(),
   useNodesReadOnly: () => mockUseNodesReadOnly(),
@@ -57,7 +56,6 @@ vi.mock('@/app/components/workflow/hooks', () => ({
 }))
 
 vi.mock('@/app/components/workflow/store', () => ({
-  __esModule: true,
   useStore: (selector: (state: Record<string, unknown>) => unknown) => {
     const state: Record<string, unknown> = {
       publishedAt: null,
@@ -71,32 +69,27 @@ vi.mock('@/app/components/workflow/store', () => ({
 }))
 
 vi.mock('@/app/components/base/features/hooks', () => ({
-  __esModule: true,
   useFeatures: (selector: (state: Record<string, unknown>) => unknown) => mockUseFeatures(selector),
 }))
 
 vi.mock('@/context/provider-context', () => ({
-  __esModule: true,
   useProviderContext: () => mockUseProviderContext(),
 }))
 
 vi.mock('@/app/components/workflow/store/workflow/use-nodes', () => ({
-  __esModule: true,
   default: () => mockUseNodes(),
 }))
 
 vi.mock('reactflow', () => ({
-  __esModule: true,
   useEdges: () => mockUseEdges(),
 }))
 
 vi.mock('@/app/components/app/app-publisher', () => ({
-  __esModule: true,
   default: (props: AppPublisherProps) => {
     const inputs = props.inputs ?? []
     return (
       <div
-        data-testid='app-publisher'
+        data-testid="app-publisher"
         data-disabled={String(Boolean(props.disabled))}
         data-publish-disabled={String(Boolean(props.publishDisabled))}
         data-start-node-limit-exceeded={String(Boolean(props.startNodeLimitExceeded))}
@@ -124,30 +117,25 @@ vi.mock('@/app/components/app/app-publisher', () => ({
 }))
 
 vi.mock('@/service/use-workflow', () => ({
-  __esModule: true,
   useInvalidateAppWorkflow: () => mockUpdatePublishedWorkflow,
   usePublishWorkflow: () => ({ mutateAsync: mockPublishWorkflow }),
   useResetWorkflowVersionHistory: () => mockResetWorkflowVersionHistory,
 }))
 
 vi.mock('@/service/use-tools', () => ({
-  __esModule: true,
   useInvalidateAppTriggers: () => mockInvalidateAppTriggers,
 }))
 
 vi.mock('@/service/apps', () => ({
-  __esModule: true,
   fetchAppDetail: (...args: unknown[]) => mockFetchAppDetail(...args),
 }))
 
 vi.mock('@/hooks/use-theme', () => ({
-  __esModule: true,
   default: () => mockUseTheme(),
 }))
 
 vi.mock('@/app/components/app/store', () => ({
-  __esModule: true,
-  useStore: (selector: (state: { appDetail?: { id: string }; setAppDetail: typeof mockSetAppDetail }) => unknown) => mockUseAppStoreSelector(selector),
+  useStore: (selector: (state: { appDetail?: { id: string }, setAppDetail: typeof mockSetAppDetail }) => unknown) => mockUseAppStoreSelector(selector),
 }))
 
 const createProviderContext = ({

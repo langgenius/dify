@@ -1,19 +1,20 @@
 'use client'
 import type { FC } from 'react'
-import React, { useEffect } from 'react'
-import { useBoolean } from 'ahooks'
-import { useTranslation } from 'react-i18next'
-import { cn } from '@/utils/classnames'
 import type {
   Node,
   NodeOutPutVar,
 } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
-import PromptEditor from '@/app/components/base/prompt-editor'
+import { useBoolean } from 'ahooks'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Variable02 } from '@/app/components/base/icons/src/vender/solid/development'
+import PromptEditor from '@/app/components/base/prompt-editor'
 import Tooltip from '@/app/components/base/tooltip'
-import { noop } from 'lodash-es'
 import { useStore } from '@/app/components/workflow/store'
+import { BlockEnum } from '@/app/components/workflow/types'
+import { cn } from '@/utils/classnames'
 
 type Props = {
   instanceId?: string
@@ -100,7 +101,7 @@ const Editor: FC<Props> = ({
               }
               if (node.data.type === BlockEnum.Start) {
                 acc.sys = {
-                  title: t('workflow.blocks.start'),
+                  title: t('blocks.start', { ns: 'workflow' }),
                   type: BlockEnum.Start,
                 }
               }
@@ -115,20 +116,20 @@ const Editor: FC<Props> = ({
           onFocus={setFocus}
         />
         {/* to patch Editor not support dynamic change editable status */}
-        {readOnly && <div className='absolute inset-0 z-10'></div>}
+        {readOnly && <div className="absolute inset-0 z-10"></div>}
         {isFocus && (
           <div className={cn('absolute z-10', insertVarTipToLeft ? 'left-[-12px] top-1.5' : ' right-1 top-[-9px]')}>
             <Tooltip
-              popupContent={`${t('workflow.common.insertVarTip')}`}
+              popupContent={`${t('common.insertVarTip', { ns: 'workflow' })}`}
             >
-              <div className='cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg'>
-                <Variable02 className='h-3.5 w-3.5 text-components-button-secondary-accent-text' />
+              <div className="cursor-pointer rounded-[5px] border-[0.5px] border-divider-regular bg-components-badge-white-to-dark p-0.5 shadow-lg">
+                <Variable02 className="h-3.5 w-3.5 text-components-button-secondary-accent-text" />
               </div>
             </Tooltip>
           </div>
         )}
       </>
-    </div >
+    </div>
   )
 }
 export default React.memo(Editor)
