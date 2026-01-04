@@ -29,7 +29,7 @@ class ConversationVariablePersistenceLayer(GraphEngineLayer):
         outputs = event.node_run_result.outputs
         if not outputs:
             return
-        selector_keys = [key for key in outputs.keys() if key.startswith(f"{CONVERSATION_VARIABLE_NODE_ID}.")]
+        selector_keys = [key for key in outputs if key.startswith(f"{CONVERSATION_VARIABLE_NODE_ID}.")]
         if not selector_keys:
             return
 
