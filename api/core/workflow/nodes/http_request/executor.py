@@ -4,14 +4,14 @@ import secrets
 import string
 from collections.abc import Mapping
 from copy import deepcopy
-from typing import Any, Literal
+from typing import Any, Literal, Protocol
 from urllib.parse import urlencode, urlparse
 
 import httpx
 from json_repair import repair_json
 
 from configs import dify_config
-from core.file import file_manager
+from core.file import File, file_manager
 from core.file.enums import FileTransferMethod
 from core.helper import ssrf_proxy
 from core.variables.segments import ArrayFileSegment, FileSegment
@@ -39,6 +39,30 @@ BODY_TYPE_TO_CONTENT_TYPE = {
     "form-data": "multipart/form-data",
     "raw-text": "text/plain",
 }
+
+
+class HttpClientProtocol(Protocol):
+    MaxRetriesExceededError: type[Exception]
+
+    def get(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
+
+    def head(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
+
+    def post(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
+
+    def put(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
+
+    def delete(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
+
+    def patch(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
+
+
+class HttpxModuleProtocol(Protocol):
+    RequestError: type[Exception]
+
+
+class FileManagerProtocol(Protocol):
+    def download(self, f: File, /) -> bytes: ...
 
 
 class Executor:
@@ -78,6 +102,9 @@ class Executor:
         timeout: HttpRequestNodeTimeout,
         variable_pool: VariablePool,
         max_retries: int = dify_config.SSRF_DEFAULT_MAX_RETRIES,
+        http_client: HttpClientProtocol = ssrf_proxy,
+        httpx_module: HttpxModuleProtocol = httpx,
+        file_manager: FileManagerProtocol = file_manager,
     ):
         # If authorization API key is present, convert the API key using the variable pool
         if node_data.authorization.type == "api-key":
@@ -104,6 +131,9 @@ class Executor:
         self.data = None
         self.json = None
         self.max_retries = max_retries
+        self._http_client = http_client
+        self._httpx = httpx_module
+        self._file_manager = file_manager
 
         # init template
         self.variable_pool = variable_pool
@@ -200,7 +230,7 @@ class Executor:
                     if file_variable is None:
                         raise FileFetchError(f"cannot fetch file with selector {file_selector}")
                     file = file_variable.value
-                    self.content = file_manager.download(file)
+                    self.content = self._file_manager.download(file)
                 case "x-www-form-urlencoded":
                     form_data = {
                         self.variable_pool.convert_template(item.key).text: self.variable_pool.convert_template(
@@ -239,7 +269,7 @@ class Executor:
                             ):
                                 file_tuple = (
                                     file.filename,
-                                    file_manager.download(file),
+                                    self._file_manager.download(file),
                                     file.mime_type or "application/octet-stream",
                                 )
                                 if key not in files:
@@ -332,12 +362,12 @@ class Executor:
         do http request depending on api bundle
         """
         _METHOD_MAP = {
-            "get": ssrf_proxy.get,
-            "head": ssrf_proxy.head,
-            "post": ssrf_proxy.post,
-            "put": ssrf_proxy.put,
-            "delete": ssrf_proxy.delete,
-            "patch": ssrf_proxy.patch,
+            "get": self._http_client.get,
+            "head": self._http_client.head,
+            "post": self._http_client.post,
+            "put": self._http_client.put,
+            "delete": self._http_client.delete,
+            "patch": self._http_client.patch,
         }
         method_lc = self.method.lower()
         if method_lc not in _METHOD_MAP:
@@ -358,7 +388,7 @@ class Executor:
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
             response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
-        except (ssrf_proxy.MaxRetriesExceededError, httpx.RequestError) as e:
+        except (self._http_client.MaxRetriesExceededError, self._httpx.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
         return response
