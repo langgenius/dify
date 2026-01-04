@@ -77,7 +77,7 @@ class AppAnnotationService:
         if annotation_setting:
             add_annotation_to_index_task.delay(
                 annotation.id,
-                annotation.question,
+                question,
                 current_tenant_id,
                 app_id,
                 annotation_setting.collection_binding_id,
