@@ -1,6 +1,6 @@
 import json
-from collections.abc import Mapping, MutableMapping, Sequence
-from typing import Any, cast
+from collections.abc import Callable, Mapping, MutableMapping, Sequence
+from typing import TYPE_CHECKING, Any, TypeAlias, cast
 
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
@@ -25,6 +25,12 @@ from .exc import (
     OperationNotSupportedError,
     VariableNotFoundError,
 )
+
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
+
+_CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]
 
 
 def _target_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_id: str, item: VariableOperationItem):
@@ -52,6 +58,24 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
 
 class VariableAssignerNode(Node[VariableAssignerNodeData]):
     node_type = NodeType.VARIABLE_ASSIGNER
+    _conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY = conversation_variable_updater_factory,
+    ):
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._conv_var_updater_factory = conv_var_updater_factory
 
     def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
         """
@@ -69,9 +93,6 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
                 return True
 
         return False
-
-    def _conv_var_updater_factory(self) -> ConversationVariableUpdater:
-        return conversation_variable_updater_factory()
 
     @classmethod
     def version(cls) -> str:
