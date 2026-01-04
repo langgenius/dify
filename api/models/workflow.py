@@ -848,33 +848,6 @@ class WorkflowNodeExecutionModel(Base):  # This model is expected to have `offlo
     created_by: Mapped[str] = mapped_column(StringUUID)
     finished_at: Mapped[datetime | None] = mapped_column(DateTime)
 
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "tenant_id": self.tenant_id,
-            "app_id": self.app_id,
-            "workflow_id": self.workflow_id,
-            "triggered_from": self.triggered_from,
-            "workflow_run_id": self.workflow_run_id,
-            "index": self.index,
-            "predecessor_node_id": self.predecessor_node_id,
-            "node_execution_id": self.node_execution_id,
-            "node_id": self.node_id,
-            "node_type": self.node_type,
-            "title": self.title,
-            "inputs": self.inputs,
-            "process_data": self.process_data,
-            "outputs": self.outputs,
-            "status": self.status,
-            "error": self.error,
-            "elapsed_time": self.elapsed_time,
-            "execution_metadata": self.execution_metadata,
-            "created_at": self.created_at.isoformat(),
-            "created_by_role": self.created_by_role,
-            "created_by": self.created_by,
-            "finished_at": self.finished_at.isoformat() if self.finished_at else None,
-        }
-
     offload_data: Mapped[list["WorkflowNodeExecutionOffload"]] = orm.relationship(
         "WorkflowNodeExecutionOffload",
         primaryjoin="WorkflowNodeExecutionModel.id == foreign(WorkflowNodeExecutionOffload.node_execution_id)",
@@ -1086,17 +1059,6 @@ class WorkflowNodeExecutionOffload(Base):
         uselist=False,
         primaryjoin="WorkflowNodeExecutionOffload.file_id == UploadFile.id",
     )
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "created_at": self.created_at.isoformat(),
-            "tenant_id": self.tenant_id,
-            "app_id": self.app_id,
-            "node_execution_id": self.node_execution_id,
-            "type": self.type_,
-            "file_id": self.file_id,
-        }
 
 
 class WorkflowAppLogCreatedFrom(StrEnum):
@@ -1834,18 +1796,6 @@ class WorkflowPauseReason(DefaultFieldsMixin, Base):
         nullable=False,
         default="",
     )
-
-    def to_dict(self) -> dict[str, Any]:
-        return {
-            "id": self.id,
-            "pause_id": self.pause_id,
-            "type": self.type_,
-            "form_id": self.form_id,
-            "message": self.message,
-            "node_id": self.node_id,
-            "created_at": self.created_at.isoformat(),
-            "updated_at": self.updated_at.isoformat(),
-        }
 
     # Relationship to WorkflowPause
     pause: Mapped[WorkflowPause] = orm.relationship(
