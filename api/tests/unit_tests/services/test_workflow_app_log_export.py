@@ -156,9 +156,7 @@ class TestWorkflowAppLogExport:
 
     # ==================== CSV Export Tests ====================
 
-    def test_export_workflow_app_logs_to_csv_success(
-        self, workflow_app_service, mock_session
-    ):
+    def test_export_workflow_app_logs_to_csv_success(self, workflow_app_service, mock_session):
         """Test successful CSV export of workflow app logs."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         log = TestWorkflowAppLogExportFactory.create_workflow_app_log_mock()
@@ -181,15 +179,11 @@ class TestWorkflowAppLogExport:
         assert "log_id" in csv_content
         assert log.id in csv_content
 
-    def test_export_workflow_app_logs_to_csv_with_filters(
-        self, workflow_app_service, mock_session
-    ):
+    def test_export_workflow_app_logs_to_csv_with_filters(self, workflow_app_service, mock_session):
         """Test CSV export with status and keyword filters."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         log = TestWorkflowAppLogExportFactory.create_workflow_app_log_mock()
-        run = TestWorkflowAppLogExportFactory.create_workflow_run_mock(
-            status=WorkflowExecutionStatus.FAILED.value
-        )
+        run = TestWorkflowAppLogExportFactory.create_workflow_run_mock(status=WorkflowExecutionStatus.FAILED.value)
         account = TestWorkflowAppLogExportFactory.create_account_mock()
 
         mock_result = self._create_mock_yield_per_result([(log, run, account, None)])
@@ -206,9 +200,7 @@ class TestWorkflowAppLogExport:
         assert isinstance(response, Response)
         assert response.mimetype == "text/csv"
 
-    def test_export_workflow_app_logs_to_csv_empty_results(
-        self, workflow_app_service, mock_session
-    ):
+    def test_export_workflow_app_logs_to_csv_empty_results(self, workflow_app_service, mock_session):
         """Test CSV export with no matching logs."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         mock_result = self._create_mock_yield_per_result([])
@@ -227,9 +219,7 @@ class TestWorkflowAppLogExport:
 
     # ==================== NDJSON Export Tests ====================
 
-    def test_export_workflow_app_logs_to_ndjson_success(
-        self, workflow_app_service, mock_session
-    ):
+    def test_export_workflow_app_logs_to_ndjson_success(self, workflow_app_service, mock_session):
         """Test successful NDJSON export of workflow app logs."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         log = TestWorkflowAppLogExportFactory.create_workflow_app_log_mock()
@@ -256,9 +246,7 @@ class TestWorkflowAppLogExport:
         log_data = json.loads(lines[1])
         assert "log_id" in log_data
 
-    def test_export_workflow_app_logs_to_ndjson_with_multiple_logs(
-        self, workflow_app_service, mock_session
-    ):
+    def test_export_workflow_app_logs_to_ndjson_with_multiple_logs(self, workflow_app_service, mock_session):
         """Test NDJSON export with multiple workflow app logs."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         log1 = TestWorkflowAppLogExportFactory.create_workflow_app_log_mock(log_id="log-1")
@@ -284,9 +272,7 @@ class TestWorkflowAppLogExport:
 
     # ==================== Error Handling Tests ====================
 
-    def test_export_with_invalid_format_raises_error(
-        self, workflow_app_service, mock_session
-    ):
+    def test_export_with_invalid_format_raises_error(self, workflow_app_service, mock_session):
         """Test that invalid format raises ValueError."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
 
@@ -297,9 +283,7 @@ class TestWorkflowAppLogExport:
                 format_type="xml",
             )
 
-    def test_export_with_nonexistent_account_raises_error(
-        self, workflow_app_service, mock_session
-    ):
+    def test_export_with_nonexistent_account_raises_error(self, workflow_app_service, mock_session):
         """Test that filtering by non-existent account raises ValueError."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         mock_session.scalar.return_value = None
@@ -314,9 +298,7 @@ class TestWorkflowAppLogExport:
 
     # ==================== Stream-Specific Tests ====================
 
-    def test_csv_export_uses_yield_per(
-        self, workflow_app_service, mock_session
-    ):
+    def test_csv_export_uses_yield_per(self, workflow_app_service, mock_session):
         """Test that CSV export uses yield_per for batch fetching."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         log = TestWorkflowAppLogExportFactory.create_workflow_app_log_mock()
@@ -341,9 +323,7 @@ class TestWorkflowAppLogExport:
         # Verify that yield_per was called on the result
         mock_result.yield_per.assert_called_once_with(1000)
 
-    def test_ndjson_export_uses_yield_per(
-        self, workflow_app_service, mock_session
-    ):
+    def test_ndjson_export_uses_yield_per(self, workflow_app_service, mock_session):
         """Test that NDJSON export uses yield_per for batch fetching."""
         app = TestWorkflowAppLogExportFactory.create_app_mock()
         log = TestWorkflowAppLogExportFactory.create_workflow_app_log_mock()

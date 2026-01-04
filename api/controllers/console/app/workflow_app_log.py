@@ -127,9 +127,11 @@ class WorkflowAppLogApi(Resource):
 
 @console_ns.route("/apps/<uuid:app_id>/workflow-app-logs/export")
 class WorkflowAppLogExportApi(Resource):
-    @console_ns.doc("export_workflow_app_logs",
-                    description="Export workflow application logs to CSV or JSON format",
-                    params={"app_id": "Application ID"})
+    @console_ns.doc(
+        "export_workflow_app_logs",
+        description="Export workflow application logs to CSV or JSON format",
+        params={"app_id": "Application ID"},
+    )
     @console_ns.expect(console_ns.models[WorkflowAppLogExportQuery.__name__])
     @console_ns.response(200, "Logs exported successfully")
     @console_ns.response(400, "Invalid parameters")

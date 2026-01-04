@@ -354,11 +354,20 @@ class WorkflowAppService:
     def _stream_logs_csv(self, session: Session, stmt, app_id: str) -> Response:
         """Stream workflow app logs as CSV."""
         headers = [
-            "log_id", "workflow_run_id", "created_from", "created_by_role",
-            "created_by_account", "created_by_end_user_session_id", "created_at",
-            "workflow_run_status", "workflow_run_inputs", "workflow_run_outputs",
-            "workflow_run_error", "workflow_run_total_tokens",
-            "workflow_run_total_steps", "workflow_run_elapsed_time",
+            "log_id",
+            "workflow_run_id",
+            "created_from",
+            "created_by_role",
+            "created_by_account",
+            "created_by_end_user_session_id",
+            "created_at",
+            "workflow_run_status",
+            "workflow_run_inputs",
+            "workflow_run_outputs",
+            "workflow_run_error",
+            "workflow_run_total_tokens",
+            "workflow_run_total_steps",
+            "workflow_run_elapsed_time",
         ]
 
         def generate_csv():
@@ -402,6 +411,7 @@ class WorkflowAppService:
 
     def _stream_logs_json(self, session: Session, stmt, app_id: str) -> Response:
         """Stream workflow app logs as JSONL (JSON Lines)."""
+
         def generate_jsonl():
             metadata = {
                 "export_info": {
