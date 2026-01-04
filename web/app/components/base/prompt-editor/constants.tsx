@@ -1,4 +1,5 @@
-import { SupportUploadFileTypes, type ValueSelector } from '../../workflow/types'
+import type { ValueSelector } from '../../workflow/types'
+import { SupportUploadFileTypes } from '../../workflow/types'
 
 export const CONTEXT_PLACEHOLDER_TEXT = '{{#context#}}'
 export const HISTORY_PLACEHOLDER_TEXT = '{{#histories#}}'
@@ -37,7 +38,7 @@ export const getInputVars = (text: string): ValueSelector[] => {
   if (!text || typeof text !== 'string')
     return []
 
-  const allVars = text.match(/{{#([^#]*)#}}/g)
+  const allVars = text.match(/\{\{#([^#]*)#\}\}/g)
   if (allVars && allVars?.length > 0) {
     // {{#context#}}, {{#query#}} is not input vars
     const inputVars = allVars

@@ -41,3 +41,8 @@ class AliyunOSSStorageConfig(BaseSettings):
         description="Base path within the bucket to store objects (e.g., 'my-app-data/')",
         default=None,
     )
+
+    ALIYUN_CLOUDBOX_ID: str | None = Field(
+        description="Cloudbox id for aliyun cloudbox service",
+        default=None,
+    )

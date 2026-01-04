@@ -2,7 +2,7 @@ import { isSupportMCP } from './plugin-version-feature'
 
 describe('plugin-version-feature', () => {
   beforeEach(() => {
-    jest.clearAllMocks()
+    vi.clearAllMocks()
   })
 
   describe('isSupportMCP', () => {

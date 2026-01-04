@@ -45,11 +45,11 @@ const PARAMS: ParamConfig[] = [
 ]
 
 const ParamItemPlayground = () => {
-  const [state, setState] = useState<Record<string, { value: number; enabled: boolean }>>(() => {
+  const [state, setState] = useState<Record<string, { value: number, enabled: boolean }>>(() => {
     return PARAMS.reduce((acc, item) => {
       acc[item.id] = { value: item.value, enabled: true }
       return acc
-    }, {} as Record<string, { value: number; enabled: boolean }>)
+    }, {} as Record<string, { value: number, enabled: boolean }>)
   })
 
   const handleChange = (id: string, value: number) => {

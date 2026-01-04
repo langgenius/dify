@@ -1,7 +1,7 @@
-import React from 'react'
-import Breadcrumbs from './breadcrumbs'
-import Input from '@/app/components/base/input'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import Input from '@/app/components/base/input'
+import Breadcrumbs from './breadcrumbs'
 
 type HeaderProps = {
   breadcrumbs: string[]
@@ -27,7 +27,7 @@ const Header = ({
   const { t } = useTranslation()
 
   return (
-    <div className='flex items-center gap-x-2 bg-components-panel-bg p-1 pl-3'>
+    <div className="flex items-center gap-x-2 bg-components-panel-bg p-1 pl-3">
       <Breadcrumbs
         breadcrumbs={breadcrumbs}
         keywords={keywords}
@@ -39,10 +39,10 @@ const Header = ({
         value={inputValue}
         onChange={handleInputChange}
         onClear={handleResetKeywords}
-        placeholder={t('datasetPipeline.onlineDrive.breadcrumbs.searchPlaceholder')}
+        placeholder={t('onlineDrive.breadcrumbs.searchPlaceholder', { ns: 'datasetPipeline' })}
         showLeftIcon
         showClearIcon
-        wrapperClassName='w-[200px] h-8 shrink-0'
+        wrapperClassName="w-[200px] h-8 shrink-0"
       />
     </div>
   )
