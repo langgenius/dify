@@ -1,9 +1,6 @@
 from collections.abc import Mapping, Sequence
-from dataclasses import dataclass
 from decimal import Decimal
 from typing import Any, ClassVar, cast
-
-from configs import dify_config as default_dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
@@ -14,36 +11,13 @@ from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.entities import CodeNodeData
+from core.workflow.nodes.code.limits import CodeNodeLimits, ResolvedCodeNodeLimits, resolve_code_node_limits
 
 from .exc import (
     CodeNodeError,
     DepthLimitError,
     OutputValidationError,
 )
-
-
-@dataclass(frozen=True)
-class CodeNodeLimits:
-    max_string_length: int | None = None
-    max_number: int | float | None = None
-    min_number: int | float | None = None
-    max_precision: int | None = None
-    max_depth: int | None = None
-    max_number_array_length: int | None = None
-    max_string_array_length: int | None = None
-    max_object_array_length: int | None = None
-
-
-@dataclass(frozen=True)
-class _ResolvedCodeNodeLimits:
-    max_string_length: int
-    max_number: int | float
-    min_number: int | float
-    max_precision: int
-    max_depth: int
-    max_number_array_length: int
-    max_string_array_length: int
-    max_object_array_length: int
 
 
 class CodeNode(Node[CodeNodeData]):
@@ -54,7 +28,7 @@ class CodeNode(Node[CodeNodeData]):
     )
     _code_executor: type[CodeExecutor] = CodeExecutor
     _code_providers: tuple[type[CodeNodeProvider], ...] = _DEFAULT_CODE_PROVIDERS
-    _limits: _ResolvedCodeNodeLimits
+    _limits: ResolvedCodeNodeLimits
 
     def __init__(
         self,
@@ -77,27 +51,7 @@ class CodeNode(Node[CodeNodeData]):
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
             tuple(code_providers) if code_providers else self._DEFAULT_CODE_PROVIDERS
         )
-        limits = code_limits or CodeNodeLimits()
-        self._limits = _ResolvedCodeNodeLimits(
-            max_string_length=default_dify_config.CODE_MAX_STRING_LENGTH
-            if limits.max_string_length is None
-            else limits.max_string_length,
-            max_number=default_dify_config.CODE_MAX_NUMBER if limits.max_number is None else limits.max_number,
-            min_number=default_dify_config.CODE_MIN_NUMBER if limits.min_number is None else limits.min_number,
-            max_precision=default_dify_config.CODE_MAX_PRECISION
-            if limits.max_precision is None
-            else limits.max_precision,
-            max_depth=default_dify_config.CODE_MAX_DEPTH if limits.max_depth is None else limits.max_depth,
-            max_number_array_length=default_dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH
-            if limits.max_number_array_length is None
-            else limits.max_number_array_length,
-            max_string_array_length=default_dify_config.CODE_MAX_STRING_ARRAY_LENGTH
-            if limits.max_string_array_length is None
-            else limits.max_string_array_length,
-            max_object_array_length=default_dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH
-            if limits.max_object_array_length is None
-            else limits.max_object_array_length,
-        )
+        self._limits = resolve_code_node_limits(code_limits)
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:

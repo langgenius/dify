@@ -10,7 +10,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.workflow.enums import NodeType
 from core.workflow.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
-from core.workflow.nodes.code.code_node import CodeNodeLimits
+from core.workflow.nodes.code.limits import CodeNodeLimits
 from libs.typing import is_str, is_str_dict
 
 from .node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
