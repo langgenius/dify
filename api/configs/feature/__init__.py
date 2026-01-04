@@ -1250,10 +1250,6 @@ class WorkflowLogConfig(BaseSettings):
         default=100, description="Batch size for workflow run log cleanup operations"
     )
 
-    ENABLE_PAID_PLAN_WORKFLOW_RUN_ARCHIVE_TASK: bool = Field(
-        default=False, description="Enable scheduled archiving task for paid plan workflow runs"
-    )
-
 
 class SwaggerUIConfig(BaseSettings):
     SWAGGER_UI_ENABLED: bool = Field(
@@ -1289,22 +1285,6 @@ class SandboxExpiredRecordsCleanConfig(BaseSettings):
     )
 
 
-class PaidPlanWorkflowRunArchiveConfig(BaseSettings):
-    PAID_PLAN_WORKFLOW_RUN_ARCHIVE_RETENTION_DAYS: PositiveInt = Field(
-        description="Retention days before archiving paid plan workflow runs",
-        default=90,
-        validation_alias=AliasChoices("ARCHIVE_RETENTION_DAYS"),
-    )
-    PAID_PLAN_WORKFLOW_RUN_ARCHIVE_BATCH_SIZE: PositiveInt = Field(
-        description="Batch size for paid plan workflow run archiving",
-        default=100,
-    )
-    PAID_PLAN_WORKFLOW_RUN_ARCHIVE_TENANT_IDS: str = Field(
-        default="",
-        description="Comma-separated tenant IDs for grayscale archiving (optional)",
-    )
-
-
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1330,7 +1310,6 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
-    PaidPlanWorkflowRunArchiveConfig,
     SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,

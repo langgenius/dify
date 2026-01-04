@@ -159,12 +159,6 @@ def init_app(app: DifyApp) -> Celery:
             "task": "schedule.clean_workflow_runlogs_precise.clean_workflow_runlogs_precise",
             "schedule": crontab(minute="0", hour="2"),
         }
-    if dify_config.ENABLE_PAID_PLAN_WORKFLOW_RUN_ARCHIVE_TASK:
-        imports.append("schedule.archive_workflow_runs_task")
-        beat_schedule["archive_workflow_runs_task"] = {
-            "task": "schedule.archive_workflow_runs_task.archive_workflow_runs_task",
-            "schedule": crontab(minute="0", hour="1"),
-        }
     if dify_config.ENABLE_WORKFLOW_SCHEDULE_POLLER_TASK:
         imports.append("schedule.workflow_schedule_task")
         beat_schedule["workflow_schedule_task"] = {
