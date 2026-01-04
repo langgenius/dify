@@ -310,7 +310,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
         tenant_ids: Sequence[str] | None,
         start_date: datetime,
         end_date: datetime,
-        limit: int | None = None,
+        limit: int,
     ) -> Sequence[WorkflowRun]:
         """
         Get archived workflow runs in a time range.

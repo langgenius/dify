@@ -496,7 +496,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         tenant_ids: Sequence[str] | None,
         start_date: datetime,
         end_date: datetime,
-        limit: int | None = None,
+        limit: int,
     ) -> Sequence[WorkflowRun]:
         conditions = [
             WorkflowRun.is_archived == True,
@@ -508,8 +508,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
             stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
 
         stmt = stmt.order_by(WorkflowRun.created_at.asc(), WorkflowRun.id.asc())
-        if limit is not None:
-            stmt = stmt.limit(limit)
+        stmt = stmt.limit(limit)
 
         return list(session.scalars(stmt).all())
 
