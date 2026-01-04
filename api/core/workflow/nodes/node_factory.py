@@ -1,5 +1,5 @@
 from collections.abc import Sequence
-from typing import TYPE_CHECKING, final
+from typing import TYPE_CHECKING, final, cast
 
 from typing_extensions import override
 
@@ -11,6 +11,7 @@ from core.helper.code_executor.python3.python3_code_provider import Python3CodeP
 from core.workflow.enums import NodeType
 from core.workflow.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
+from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
 from libs.typing import is_str, is_str_dict
 
@@ -98,7 +99,8 @@ class DifyNodeFactory(NodeFactory):
 
         # Create node instance
         if node_type == NodeType.CODE:
-            return node_class(
+            code_node_class = cast(type[CodeNode], node_class)
+            return code_node_class(
                 id=node_id,
                 config=node_config,
                 graph_init_params=self.graph_init_params,

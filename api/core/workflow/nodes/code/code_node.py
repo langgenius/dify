@@ -1,6 +1,6 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any, ClassVar, cast
+from typing import TYPE_CHECKING, Any, ClassVar, cast
 
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
@@ -20,6 +20,10 @@ from .exc import (
     OutputValidationError,
 )
 
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
+
 
 class CodeNode(Node[CodeNodeData]):
     node_type = NodeType.CODE
@@ -27,8 +31,6 @@ class CodeNode(Node[CodeNodeData]):
         Python3CodeProvider,
         JavascriptCodeProvider,
     )
-    _code_executor: type[CodeExecutor] = CodeExecutor
-    _code_providers: tuple[type[CodeNodeProvider], ...] = _DEFAULT_CODE_PROVIDERS
     _limits: CodeNodeLimits
 
     def __init__(
