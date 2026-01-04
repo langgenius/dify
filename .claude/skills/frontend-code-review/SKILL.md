@@ -34,7 +34,6 @@ Found <N> urgent issues need to be fixed:
 ## 1 <brief description of bug>
 FilePath: <path> line <line>
 <relevant code snippet or pointer>
-<!-- two blank line for split -->
 
 
 ### Suggested fix
@@ -63,6 +62,8 @@ If there are no urgent issues, omit that section. If there are no suggestions, o
 If the issue number is more than 10, summarize as "10+ urgent issues" or "10+ suggestions" and just output the first 10 issues.
 
 Don't compress the blank lines between sections; keep them as-is for readability.
+
+If you use Template A (i.e., there are issues to fix) and at least one issue requires code changes, append a brief follow-up question after the structured output asking whether the user wants you to apply the suggested fix(es). For example: "Would you like me to use the Suggested fix section to address these issues?"
 
 ### Template B (no issues)
 ```
