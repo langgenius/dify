@@ -576,7 +576,7 @@ class AppApi(Resource):
     @login_required
     @account_initialization_required
     @enterprise_license_required
-    @get_app_model
+    @get_app_model(mode=None)
     def get(self, app_model):
         """Get app detail"""
         app_service = AppService()
@@ -600,7 +600,7 @@ class AppApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=None)
     @edit_permission_required
     def put(self, app_model):
         """Update app"""
@@ -650,7 +650,7 @@ class AppCopyApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=None)
     @edit_permission_required
     def post(self, app_model):
         """Copy app"""
@@ -718,7 +718,7 @@ class AppNameApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=None)
     @edit_permission_required
     def post(self, app_model):
         args = AppNamePayload.model_validate(console_ns.payload)
@@ -740,7 +740,7 @@ class AppIconApi(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=None)
     @edit_permission_required
     def post(self, app_model):
         args = AppIconPayload.model_validate(console_ns.payload or {})
@@ -762,7 +762,7 @@ class AppSiteStatus(Resource):
     @setup_required
     @login_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=None)
     @edit_permission_required
     def post(self, app_model):
         args = AppSiteStatusPayload.model_validate(console_ns.payload)
@@ -785,7 +785,7 @@ class AppApiStatus(Resource):
     @login_required
     @is_admin_or_owner_required
     @account_initialization_required
-    @get_app_model
+    @get_app_model(mode=None)
     def post(self, app_model):
         args = AppApiStatusPayload.model_validate(console_ns.payload)
 
