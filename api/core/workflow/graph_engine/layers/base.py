@@ -6,6 +6,7 @@ intercept and respond to GraphEngine events.
 """
 
 from abc import ABC, abstractmethod
+from typing import cast
 
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent
@@ -28,7 +29,7 @@ class GraphEngineLayer(ABC):
 
     def __init__(self) -> None:
         """Initialize the layer. Subclasses can override with custom parameters."""
-        self.graph_runtime_state: ReadOnlyGraphRuntimeState | None = None
+        self.graph_runtime_state: ReadOnlyGraphRuntimeState = cast(ReadOnlyGraphRuntimeState, None)
         self.command_channel: CommandChannel | None = None
 
     def initialize(self, graph_runtime_state: ReadOnlyGraphRuntimeState, command_channel: CommandChannel) -> None:
