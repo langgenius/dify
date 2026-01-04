@@ -74,6 +74,10 @@ class CodeNode(Node[CodeNodeData]):
         return code_provider.get_default_config()
 
     @classmethod
+    def default_code_providers(cls) -> tuple[type[CodeNodeProvider], ...]:
+        return cls._DEFAULT_CODE_PROVIDERS
+
+    @classmethod
     def version(cls) -> str:
         return "1"
 

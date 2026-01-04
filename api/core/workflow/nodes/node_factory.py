@@ -6,8 +6,6 @@ from typing_extensions import override
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
-from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
-from core.helper.code_executor.python3.python3_code_provider import Python3CodeProvider
 from core.workflow.enums import NodeType
 from core.workflow.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
@@ -44,7 +42,7 @@ class DifyNodeFactory(NodeFactory):
         self.graph_runtime_state = graph_runtime_state
         self._code_executor: type[CodeExecutor] = code_executor or CodeExecutor
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
-            tuple(code_providers) if code_providers else CodeNode._DEFAULT_CODE_PROVIDERS
+            tuple(code_providers) if code_providers else CodeNode.default_code_providers()
         )
         self._code_limits = code_limits or CodeNodeLimits(
             max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
