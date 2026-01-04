@@ -31,6 +31,7 @@ jobs:
           # Skip check for manual trigger, translate all files
           if [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
             echo "FILES_CHANGED=true" >> $GITHUB_ENV
+            echo "FILE_ARGS=" >> $GITHUB_ENV
             echo "Manual trigger: translating all files"
           else
             git fetch origin "${{ github.event.before }}" || true
