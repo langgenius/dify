@@ -30,7 +30,7 @@ class CodeNode(Node[CodeNodeData]):
     )
     _code_executor: type[CodeExecutor] = CodeExecutor
     _code_providers: tuple[type[CodeNodeProvider], ...] = _DEFAULT_CODE_PROVIDERS
-    _dify_config: DifyConfig = default_dify_config
+    _dify_config: DifyConfig | None = None
 
     def __init__(
         self,
@@ -53,7 +53,7 @@ class CodeNode(Node[CodeNodeData]):
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
             tuple(code_providers) if code_providers else self._DEFAULT_CODE_PROVIDERS
         )
-        self._dify_config: DifyConfig = dify_config or default_dify_config
+        self._dify_config = dify_config
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -114,6 +114,10 @@ class CodeNode(Node[CodeNodeData]):
                 return provider
         raise CodeNodeError(f"Unsupported code language: {code_language}")
 
+    @property
+    def _config(self) -> DifyConfig:
+        return self._dify_config or default_dify_config
+
     def _check_string(self, value: str | None, variable: str) -> str | None:
         """
         Check string
@@ -124,10 +128,10 @@ class CodeNode(Node[CodeNodeData]):
         if value is None:
             return None
 
-        if len(value) > self._dify_config.CODE_MAX_STRING_LENGTH:
+        if len(value) > self._config.CODE_MAX_STRING_LENGTH:
             raise OutputValidationError(
                 f"The length of output variable `{variable}` must be"
-                f" less than {self._dify_config.CODE_MAX_STRING_LENGTH} characters"
+                f" less than {self._config.CODE_MAX_STRING_LENGTH} characters"
             )
 
         return value.replace("\x00", "")
@@ -148,20 +152,20 @@ class CodeNode(Node[CodeNodeData]):
         if value is None:
             return None
 
-        if value > self._dify_config.CODE_MAX_NUMBER or value < self._dify_config.CODE_MIN_NUMBER:
+        if value > self._config.CODE_MAX_NUMBER or value < self._config.CODE_MIN_NUMBER:
             raise OutputValidationError(
                 f"Output variable `{variable}` is out of range,"
-                f" it must be between {self._dify_config.CODE_MIN_NUMBER} and {self._dify_config.CODE_MAX_NUMBER}."
+                f" it must be between {self._config.CODE_MIN_NUMBER} and {self._config.CODE_MAX_NUMBER}."
             )
 
         if isinstance(value, float):
             decimal_value = Decimal(str(value)).normalize()
             precision = -decimal_value.as_tuple().exponent if decimal_value.as_tuple().exponent < 0 else 0  # type: ignore[operator]
             # raise error if precision is too high
-            if precision > self._dify_config.CODE_MAX_PRECISION:
+            if precision > self._config.CODE_MAX_PRECISION:
                 raise OutputValidationError(
                     f"Output variable `{variable}` has too high precision,"
-                    f" it must be less than {self._dify_config.CODE_MAX_PRECISION} digits."
+                    f" it must be less than {self._config.CODE_MAX_PRECISION} digits."
                 )
 
         return value
@@ -176,8 +180,8 @@ class CodeNode(Node[CodeNodeData]):
         # TODO(QuantumGhost): Replace native Python lists with `Array*Segment` classes.
         # Note that `_transform_result` may produce lists containing `None` values,
         # which don't conform to the type requirements of `Array*Segment` classes.
-        if depth > self._dify_config.CODE_MAX_DEPTH:
-            raise DepthLimitError(f"Depth limit {self._dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+        if depth > self._config.CODE_MAX_DEPTH:
+            raise DepthLimitError(f"Depth limit {self._config.CODE_MAX_DEPTH} reached, object too deep.")
 
         transformed_result: dict[str, Any] = {}
         if output_schema is None:
@@ -311,10 +315,10 @@ class CodeNode(Node[CodeNodeData]):
                             f"Output {prefix}{dot}{output_name} is not an array, got {type(value)} instead."
                         )
                 else:
-                    if len(value) > self._dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
+                    if len(value) > self._config.CODE_MAX_NUMBER_ARRAY_LENGTH:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {self._dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements."
+                            f" less than {self._config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements."
                         )
 
                     for i, inner_value in enumerate(value):
@@ -344,10 +348,10 @@ class CodeNode(Node[CodeNodeData]):
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
-                    if len(result[output_name]) > self._dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
+                    if len(result[output_name]) > self._config.CODE_MAX_STRING_ARRAY_LENGTH:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {self._dify_config.CODE_MAX_STRING_ARRAY_LENGTH} elements."
+                            f" less than {self._config.CODE_MAX_STRING_ARRAY_LENGTH} elements."
                         )
 
                     transformed_result[output_name] = [
@@ -365,10 +369,10 @@ class CodeNode(Node[CodeNodeData]):
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
-                    if len(result[output_name]) > self._dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH:
+                    if len(result[output_name]) > self._config.CODE_MAX_OBJECT_ARRAY_LENGTH:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {self._dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH} elements."
+                            f" less than {self._config.CODE_MAX_OBJECT_ARRAY_LENGTH} elements."
                         )
 
                     for i, value in enumerate(result[output_name]):
