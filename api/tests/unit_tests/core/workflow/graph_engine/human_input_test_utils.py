@@ -4,7 +4,7 @@ from __future__ import annotations
 
 from collections.abc import Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from typing import Any
 
 from core.workflow.nodes.human_input.enums import HumanInputFormStatus
@@ -114,6 +114,7 @@ class InMemoryHumanInputFormRepository(HumanInputFormRepository):
         entity.data = form_data or {}
         entity.is_submitted = True
         entity.status_value = HumanInputFormStatus.SUBMITTED
+        entity.expiration = naive_utc_now() + timedelta(days=1)
 
     def clear_submission(self) -> None:
         if not self.created_forms:

@@ -1,3 +1,4 @@
+import datetime
 import uuid
 from types import SimpleNamespace
 
@@ -8,9 +9,11 @@ from core.workflow.graph_events import (
     NodeRunHumanInputFormFilledEvent,
     NodeRunStartedEvent,
 )
+from core.workflow.nodes.human_input.enums import HumanInputFormStatus
 from core.workflow.nodes.human_input.human_input_node import HumanInputNode
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from libs.datetime_utils import naive_utc_now
 from models.enums import UserFrom
 
 
@@ -69,6 +72,8 @@ def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#
         submitted=True,
         selected_action_id="Accept",
         submitted_data={"name": "Alice"},
+        status=HumanInputFormStatus.SUBMITTED,
+        expiration_time=naive_utc_now() + datetime.timedelta(days=1),
     )
 
     repo = _FakeFormRepository(fake_form)

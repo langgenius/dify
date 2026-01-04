@@ -10,6 +10,7 @@ from pydantic import ValidationError
 
 from core.workflow.entities import GraphInitParams
 from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
+from core.workflow.node_events.node import StreamCompletedEvent
 from core.workflow.nodes.human_input.entities import (
     EmailDeliveryConfig,
     EmailDeliveryMethod,
@@ -435,6 +436,8 @@ class TestHumanInputNodeRenderedContent:
 
         form_repository.set_submission(action_id="approve", form_data={"name": "Alice"})
 
-        result = node._run()
-        assert isinstance(result, NodeRunResult)
-        assert result.outputs["__rendered_content"] == "Name: Alice"
+        events = list(node._run())
+        last_event = events[-1]
+        assert isinstance(last_event, StreamCompletedEvent)
+        node_run_result = last_event.node_run_result
+        assert node_run_result.outputs["__rendered_content"] == "Name: Alice"

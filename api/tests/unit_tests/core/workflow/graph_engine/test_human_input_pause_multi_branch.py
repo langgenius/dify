@@ -1,3 +1,4 @@
+import datetime
 import time
 from collections.abc import Iterable
 from unittest.mock import MagicMock
@@ -15,6 +16,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.graph_events.node import NodeRunHumanInputFormFilledEvent
 from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
@@ -32,6 +34,7 @@ from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from libs.datetime_utils import naive_utc_now
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -272,12 +275,14 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
 
         pre_chunk_count = sum(len(chunks) for _, chunks in scenario["expected_pre_chunks"])
         post_chunk_count = sum(len(chunks) for _, chunks in scenario["expected_post_chunks"])
+        expected_pre_chunk_events_in_resumption = [
+            GraphRunStartedEvent,
+            NodeRunStartedEvent,
+            NodeRunHumanInputFormFilledEvent,
+        ]
 
         expected_resume_sequence: list[type] = (
-            [
-                GraphRunStartedEvent,
-                NodeRunStartedEvent,
-            ]
+            expected_pre_chunk_events_in_resumption
             + [NodeRunStreamChunkEvent] * pre_chunk_count
             + [
                 NodeRunSucceededEvent,
@@ -301,6 +306,7 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
         submitted_form.submitted = True
         submitted_form.selected_action_id = scenario["handle"]
         submitted_form.submitted_data = {}
+        submitted_form.expiration_time = naive_utc_now() + datetime.timedelta(days=1)
         mock_get_repo.get_form.return_value = submitted_form
 
         def resume_graph_factory(
@@ -353,7 +359,8 @@ def test_human_input_llm_streaming_across_multiple_branches() -> None:
             for index, event in enumerate(resume_events)
             if isinstance(event, NodeRunStreamChunkEvent) and index < human_success_index
         ]
-        assert pre_indices == list(range(2, 2 + pre_chunk_count))
+        expected_pre_chunk_events_count_in_resumption = len(expected_pre_chunk_events_in_resumption)
+        assert pre_indices == list(range(expected_pre_chunk_events_count_in_resumption, human_success_index))
 
         resume_chunk_indices = [
             index

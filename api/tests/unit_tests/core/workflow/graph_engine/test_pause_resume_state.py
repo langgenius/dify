@@ -1,3 +1,4 @@
+import datetime
 import time
 from typing import Any
 from unittest.mock import MagicMock
@@ -10,6 +11,7 @@ from core.workflow.graph_events import (
     GraphEngineEvent,
     GraphRunPausedEvent,
     GraphRunSucceededEvent,
+    NodeRunStartedEvent,
     NodeRunSucceededEvent,
 )
 from core.workflow.graph_events.graph import GraphRunStartedEvent
@@ -26,6 +28,7 @@ from core.workflow.repositories.human_input_form_repository import (
 )
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from libs.datetime_utils import naive_utc_now
 
 
 def _build_runtime_state() -> GraphRuntimeState:
@@ -52,6 +55,7 @@ def _mock_form_repository_with_submission(action_id: str) -> HumanInputFormRepos
     form_entity.submitted = True
     form_entity.selected_action_id = action_id
     form_entity.submitted_data = {}
+    form_entity.expiration_time = naive_utc_now() + datetime.timedelta(days=1)
     repo.get_form.return_value = form_entity
     return repo
 
@@ -146,6 +150,13 @@ def _node_successes(events: list[GraphEngineEvent]) -> list[str]:
     return [event.node_id for event in events if isinstance(event, NodeRunSucceededEvent)]
 
 
+def _node_start_event(events: list[GraphEngineEvent], node_id: str) -> NodeRunStartedEvent | None:
+    for event in events:
+        if isinstance(event, NodeRunStartedEvent) and event.node_id == node_id:
+            return event
+    return None
+
+
 def _segment_value(variable_pool: VariablePool, selector: tuple[str, str]) -> Any:
     segment = variable_pool.get(selector)
     assert segment is not None
@@ -190,6 +201,12 @@ def test_engine_resume_restores_state_and_completion():
 
     combined_success_nodes = _node_successes(paused_events) + _node_successes(resumed_events)
     assert combined_success_nodes == baseline_success_nodes
+
+    paused_human_started = _node_start_event(paused_events, "human")
+    resumed_human_started = _node_start_event(resumed_events, "human")
+    assert paused_human_started is not None
+    assert resumed_human_started is not None
+    assert paused_human_started.id == resumed_human_started.id
 
     assert baseline_state.outputs == resumed_state.outputs
     assert _segment_value(baseline_state.variable_pool, ("human", "__action_id")) == _segment_value(

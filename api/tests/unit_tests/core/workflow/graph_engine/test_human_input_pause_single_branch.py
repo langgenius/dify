@@ -1,3 +1,4 @@
+import datetime
 import time
 from unittest.mock import MagicMock
 
@@ -14,6 +15,7 @@ from core.workflow.graph_events import (
     NodeRunStreamChunkEvent,
     NodeRunSucceededEvent,
 )
+from core.workflow.graph_events.node import NodeRunHumanInputFormFilledEvent
 from core.workflow.nodes.base.entities import OutputVariableEntity, OutputVariableType
 from core.workflow.nodes.end.end_node import EndNode
 from core.workflow.nodes.end.entities import EndNodeData
@@ -31,6 +33,7 @@ from core.workflow.nodes.start.start_node import StartNode
 from core.workflow.repositories.human_input_form_repository import HumanInputFormEntity, HumanInputFormRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
 from core.workflow.system_variable import SystemVariable
+from libs.datetime_utils import naive_utc_now
 
 from .test_mock_config import MockConfig
 from .test_mock_nodes import MockLLMNode
@@ -235,6 +238,8 @@ def test_human_input_llm_streaming_order_across_pause() -> None:
     expected_resume_sequence: list[type] = [
         GraphRunStartedEvent,  # resumed graph run begins
         NodeRunStartedEvent,  # human node restarts
+        # Form Filled should be generated first, then the node execution ends and stream chunk is generated.
+        NodeRunHumanInputFormFilledEvent,
         NodeRunStreamChunkEvent,  # cached llm_initial chunk 1
         NodeRunStreamChunkEvent,  # cached llm_initial chunk 2
         NodeRunStreamChunkEvent,  # cached llm_initial final chunk
@@ -259,6 +264,7 @@ def test_human_input_llm_streaming_order_across_pause() -> None:
     submitted_form.submitted = True
     submitted_form.selected_action_id = "accept"
     submitted_form.submitted_data = {}
+    submitted_form.expiration_time = naive_utc_now() + datetime.timedelta(days=1)
     mock_get_repo.get_form.return_value = submitted_form
 
     def resume_graph_factory() -> tuple[Graph, GraphRuntimeState]:
