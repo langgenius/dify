@@ -192,73 +192,70 @@ class WorkflowRunArchiver:
         last_seen: tuple[datetime.datetime, str] | None = None
         archived_count = 0
 
-        while True:
-            # Check limit
-            if self.limit and archived_count >= self.limit:
-                click.echo(click.style(f"Reached limit of {self.limit} runs", fg="yellow"))
-                break
-
-            # Fetch batch of runs
-            runs = self._get_runs_batch(last_seen)
-
-            if not runs:
-                break
-
-            last_seen = (runs[-1].created_at, runs[-1].id)
-
-            # Filter to paid tenants only
-            tenant_ids = {run.tenant_id for run in runs}
-            paid_tenants = self._filter_paid_tenants(tenant_ids)
-
-            runs_to_process: list[WorkflowRun] = []
-            for run in runs:
-                summary.total_runs_processed += 1
-
-                # Skip non-paid tenants
-                if run.tenant_id not in paid_tenants:
-                    summary.runs_skipped += 1
-                    continue
-
-                # Skip already archived runs
-                if run.is_archived:
-                    summary.runs_skipped += 1
-                    continue
-
+        with ThreadPoolExecutor(max_workers=self.workers) as executor:
+            while True:
                 # Check limit
-                if self.limit and archived_count + len(runs_to_process) >= self.limit:
+                if self.limit and archived_count >= self.limit:
+                    click.echo(click.style(f"Reached limit of {self.limit} runs", fg="yellow"))
                     break
 
-                runs_to_process.append(run)
+                # Fetch batch of runs
+                runs = self._get_runs_batch(last_seen)
 
-            if not runs_to_process:
-                continue
+                if not runs:
+                    break
 
-            if self.workers > 1:
-                with ThreadPoolExecutor(max_workers=self.workers) as executor:
-                    results = list(executor.map(_archive_with_session, runs_to_process))
-            else:
-                results = [_archive_with_session(run) for run in runs_to_process]
+                last_seen = (runs[-1].created_at, runs[-1].id)
 
-            for run, result in zip(runs_to_process, results):
-                if result.success:
-                    summary.runs_archived += 1
-                    archived_count += 1
-                    click.echo(
-                        click.style(
-                            f"{'[DRY RUN] Would archive' if self.dry_run else 'Archived'} "
-                            f"run {run.id} (tenant={run.tenant_id}, "
-                            f"tables={len(result.tables)}, time={result.elapsed_time:.2f}s)",
-                            fg="green",
+                # Filter to paid tenants only
+                tenant_ids = {run.tenant_id for run in runs}
+                paid_tenants = self._filter_paid_tenants(tenant_ids)
+
+                runs_to_process: list[WorkflowRun] = []
+                for run in runs:
+                    summary.total_runs_processed += 1
+
+                    # Skip non-paid tenants
+                    if run.tenant_id not in paid_tenants:
+                        summary.runs_skipped += 1
+                        continue
+
+                    # Skip already archived runs
+                    if run.is_archived:
+                        summary.runs_skipped += 1
+                        continue
+
+                    # Check limit
+                    if self.limit and archived_count + len(runs_to_process) >= self.limit:
+                        break
+
+                    runs_to_process.append(run)
+
+                if not runs_to_process:
+                    continue
+
+                results = list(executor.map(_archive_with_session, runs_to_process))
+
+                for run, result in zip(runs_to_process, results):
+                    if result.success:
+                        summary.runs_archived += 1
+                        archived_count += 1
+                        click.echo(
+                            click.style(
+                                f"{'[DRY RUN] Would archive' if self.dry_run else 'Archived'} "
+                                f"run {run.id} (tenant={run.tenant_id}, "
+                                f"tables={len(result.tables)}, time={result.elapsed_time:.2f}s)",
+                                fg="green",
+                            )
                         )
-                    )
-                else:
-                    summary.runs_failed += 1
-                    click.echo(
-                        click.style(
-                            f"Failed to archive run {run.id}: {result.error}",
-                            fg="red",
+                    else:
+                        summary.runs_failed += 1
+                        click.echo(
+                            click.style(
+                                f"Failed to archive run {run.id}: {result.error}",
+                                fg="red",
+                            )
                         )
-                    )
 
         summary.total_elapsed_time = time.time() - start_time
         click.echo(
