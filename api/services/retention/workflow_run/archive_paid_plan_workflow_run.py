@@ -432,7 +432,10 @@ class WorkflowRunArchiver:
     @staticmethod
     def _row_to_dict(row: Any) -> dict[str, Any]:
         mapper = inspect(row).mapper
-        return {attr.key: getattr(row, attr.key) for attr in mapper.column_attrs}
+        return {
+            str(column.name): getattr(row, mapper.get_property_by_column(column).key)
+            for column in mapper.columns
+        }
 
     def _get_archive_key(self, run: WorkflowRun) -> str:
         """Get the storage key for the archive bundle."""
