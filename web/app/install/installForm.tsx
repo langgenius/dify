@@ -20,7 +20,7 @@ import useDocumentTitle from '@/hooks/use-document-title'
 import { fetchInitValidateStatus, fetchSetupStatus, login, setup } from '@/service/common'
 import { cn } from '@/utils/classnames'
 import Loading from '../components/base/loading'
-import { encryptPassword } from '@/utils/encryption'
+import { encryptPassword as encodePassword } from '@/utils/encryption'
 
 const accountFormSchema = z.object({
   email: z
@@ -69,7 +69,7 @@ const InstallForm = () => {
       url: '/login',
       body: {
         email: data.email,
-        password: encryptPassword(data.password),
+        password: encodePassword(data.password),
       },
     })
 
