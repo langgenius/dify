@@ -1,5 +1,5 @@
 from collections.abc import Mapping, Sequence
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
@@ -8,11 +8,33 @@ from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.template_transform.entities import TemplateTransformNodeData
 
+if TYPE_CHECKING:
+    from core.workflow.entities import GraphInitParams
+    from core.workflow.runtime import GraphRuntimeState
+
 MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH = dify_config.TEMPLATE_TRANSFORM_MAX_LENGTH
 
 
 class TemplateTransformNode(Node[TemplateTransformNodeData]):
     node_type = NodeType.TEMPLATE_TRANSFORM
+    _code_executor: type[CodeExecutor]
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        code_executor: type[CodeExecutor] | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._code_executor = code_executor or CodeExecutor
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -39,7 +61,7 @@ class TemplateTransformNode(Node[TemplateTransformNodeData]):
             variables[variable_name] = value.to_object() if value else None
         # Run code
         try:
-            result = CodeExecutor.execute_workflow_code_template(
+            result = self._code_executor.execute_workflow_code_template(
                 language=CodeLanguage.JINJA2, code=self.node_data.template, inputs=variables
             )
         except CodeExecutionError as e:

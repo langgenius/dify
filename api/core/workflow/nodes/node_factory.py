@@ -107,9 +107,13 @@ class DifyNodeFactory(NodeFactory):
                 code_limits=self._code_limits,
             )
 
-        return node_class(
-            id=node_id,
-            config=node_config,
-            graph_init_params=self.graph_init_params,
-            graph_runtime_state=self.graph_runtime_state,
-        )
+        node_kwargs: dict[str, object] = {
+            "id": node_id,
+            "config": node_config,
+            "graph_init_params": self.graph_init_params,
+            "graph_runtime_state": self.graph_runtime_state,
+        }
+        if node_type == NodeType.TEMPLATE_TRANSFORM:
+            node_kwargs["code_executor"] = self._code_executor
+
+        return node_class(**node_kwargs)
