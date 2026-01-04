@@ -16,7 +16,9 @@ import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
+  submitHumanInputForm,
 } from '@/service/share'
+import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import Avatar from '../../avatar'
@@ -174,6 +176,13 @@ const ChatWrapper = () => {
     }
   }, [inputsForms.length, isMobile, currentConversationId, collapsed, allInputsHidden])
 
+  const handleSubmitHumanInputForm = useCallback(async (formID: string, formData: any) => {
+    if (isInstalledApp)
+      await submitHumanInputFormService(formID, formData)
+    else
+      await submitHumanInputForm(formID, formData)
+  }, [isInstalledApp])
+
   const welcome = useMemo(() => {
     const welcomeMessage = chatList.find(item => item.isOpeningStatement)
     if (respondingState)
@@ -217,7 +226,7 @@ const ChatWrapper = () => {
         </div>
       </div>
     )
-  }, [appData?.site.icon, appData?.site.icon_background, appData?.site.icon_type, appData?.site.icon_url, chatList, collapsed, currentConversationId, inputsForms.length, respondingState, allInputsHidden])
+  }, [chatList, respondingState, currentConversationId, collapsed, inputsForms.length, allInputsHidden, isMobile, appData?.site.icon_type, appData?.site.icon, appData?.site.icon_background, appData?.site.icon_url])
 
   const answerIcon = isDify()
     ? <LogoAvatar className="relative shrink-0" />
@@ -246,6 +255,7 @@ const ChatWrapper = () => {
       inputsForm={inputsForms}
       onRegenerate={doRegenerate}
       onStopResponding={handleStop}
+      onHumanInputFormSubmit={handleSubmitHumanInputForm}
       chatNode={(
         <>
           {chatNode}

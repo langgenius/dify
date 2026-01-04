@@ -15,7 +15,9 @@ import {
   fetchSuggestedQuestions,
   getUrl,
   stopChatMessageResponding,
+  submitHumanInputForm,
 } from '@/service/share'
+import { submitHumanInputForm as submitHumanInputFormService } from '@/service/workflow'
 import { TransferMethod } from '@/types/app'
 import { cn } from '@/utils/classnames'
 import { formatBooleanInputs } from '@/utils/model-config'
@@ -146,7 +148,7 @@ const ChatWrapper = () => {
         isPublicAPI: !isInstalledApp,
       },
     )
-  }, [chatList, handleNewConversationCompleted, handleSend, currentConversationId, currentConversationInputs, newConversationInputs, isInstalledApp, appId])
+  }, [inputsForms, currentConversationId, currentConversationInputs, newConversationInputs, chatList, handleSend, isInstalledApp, appId, handleNewConversationCompleted])
 
   const doRegenerate = useCallback((chatItem: ChatItem, editedQuestion?: { message: string, files?: FileEntity[] }) => {
     const question = editedQuestion ? chatItem : chatList.find(item => item.id === chatItem.parentMessageId)!
@@ -159,7 +161,14 @@ const ChatWrapper = () => {
       return chatList
     // Without messages we are in the welcome screen, so hide the opening statement from chatlist
     return chatList.filter(item => !item.isOpeningStatement)
-  }, [chatList])
+  }, [chatList, currentConversationId])
+
+  const handleSubmitHumanInputForm = useCallback(async (formID: string, formData: any) => {
+    if (isInstalledApp)
+      await submitHumanInputFormService(formID, formData)
+    else
+      await submitHumanInputForm(formID, formData)
+  }, [isInstalledApp])
 
   const [collapsed, setCollapsed] = useState(!!currentConversationId)
 
@@ -268,6 +277,7 @@ const ChatWrapper = () => {
         inputsForm={inputsForms}
         onRegenerate={doRegenerate}
         onStopResponding={handleStop}
+        onHumanInputFormSubmit={handleSubmitHumanInputForm}
         chatNode={(
           <>
             {chatNode}
