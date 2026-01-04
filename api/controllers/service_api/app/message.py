@@ -14,7 +14,7 @@ from controllers.service_api import service_api_ns
 from controllers.service_api.app.error import NotChatAppError
 from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate_app_token
 from core.app.entities.app_invoke_entities import InvokeFrom
-from fields.conversation_fields import build_message_file_model
+from fields.conversation_fields import build_message_file_model, message_detail_fields
 from fields.message_fields import build_agent_thought_model, build_feedback_model
 from fields.raws import FilesContainedField
 from libs.helper import TimestampField
@@ -185,6 +185,37 @@ class AppGetFeedbacksApi(Resource):
         query_args = FeedbackListQuery.model_validate(request.args.to_dict())
         feedbacks = MessageService.get_all_messages_feedbacks(app_model, page=query_args.page, limit=query_args.limit)
         return {"data": feedbacks}
+
+
+@service_api_ns.route("/messages/<uuid:message_id>")
+class MessageDetailApi(Resource):
+    # Use the centralized message_detail_fields from conversation_fields.py
+    # This ensures consistency across the application and reduces code duplication
+    @service_api_ns.doc("get_message_detail")
+    @service_api_ns.doc(description="Get message detail including workflow_run_id")
+    @service_api_ns.doc(params={"message_id": "Message ID"})
+    @service_api_ns.doc(
+        responses={
+            200: "Message detail retrieved successfully",
+            401: "Unauthorized - invalid API token",
+            404: "Message not found",
+        }
+    )
+    @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
+    @service_api_ns.marshal_with(message_detail_fields)
+    def get(self, app_model: App, end_user: EndUser, message_id):
+        """
+        Get message detail including workflow_run_id
+        """
+        message_id = str(message_id)
+
+        try:
+            # Use MessageService.get_message with the end_user from API token validation
+            # The validate_app_token decorator ensures end_user is always provided
+            message = MessageService.get_message(app_model=app_model, user=end_user, message_id=message_id)
+            return message
+        except MessageNotExistsError:
+            raise NotFound("Message Not Exists.")
 
 
 @service_api_ns.route("/messages/<uuid:message_id>/suggested")
