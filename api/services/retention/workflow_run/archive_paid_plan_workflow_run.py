@@ -26,6 +26,7 @@ from dataclasses import dataclass, field
 from typing import Any
 
 import click
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from configs import dify_config
@@ -412,8 +413,8 @@ class WorkflowRunArchiver:
             session,
             node_exec_ids,
         )
-        table_data["workflow_node_executions"] = [row.to_dict() for row in node_exec_records]
-        table_data["workflow_node_execution_offload"] = [row.to_dict() for row in offload_records]
+        table_data["workflow_node_executions"] = [self._row_to_dict(row) for row in node_exec_records]
+        table_data["workflow_node_execution_offload"] = [self._row_to_dict(row) for row in offload_records]
         repo = self._get_workflow_run_repo()
         pause_records = repo.get_pause_records_by_run_id(session, run.id)
         pause_ids = [pause.id for pause in pause_records]
@@ -421,12 +422,17 @@ class WorkflowRunArchiver:
             session,
             pause_ids,
         )
-        table_data["workflow_pauses"] = [row.to_dict() for row in pause_records]
-        table_data["workflow_pause_reasons"] = [row.to_dict() for row in pause_reason_records]
+        table_data["workflow_pauses"] = [self._row_to_dict(row) for row in pause_records]
+        table_data["workflow_pause_reasons"] = [self._row_to_dict(row) for row in pause_reason_records]
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         trigger_records = trigger_repo.list_by_run_id(run.id)
-        table_data["workflow_trigger_logs"] = [row.to_dict() for row in trigger_records]
+        table_data["workflow_trigger_logs"] = [self._row_to_dict(row) for row in trigger_records]
         return table_data
+
+    @staticmethod
+    def _row_to_dict(row: Any) -> dict[str, Any]:
+        mapper = inspect(row).mapper
+        return {attr.key: getattr(row, attr.key) for attr in mapper.column_attrs}
 
     def _get_archive_key(self, run: WorkflowRun) -> str:
         """Get the storage key for the archive bundle."""

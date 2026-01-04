@@ -13,6 +13,7 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
+from sqlalchemy import inspect
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
@@ -142,7 +143,7 @@ class WorkflowRunExportService:
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             # Add workflow run metadata
-            run_data = run.to_dict()
+            run_data = self._row_to_dict(run)
             zf.writestr(
                 "workflow_run.json",
                 json.dumps(run_data, indent=2, default=str),
@@ -202,7 +203,7 @@ class WorkflowRunExportService:
 
         with zipfile.ZipFile(zip_buffer, "w", zipfile.ZIP_DEFLATED) as zf:
             # Add workflow run metadata from DB
-            run_data = run.to_dict()
+            run_data = self._row_to_dict(run)
             zf.writestr(
                 "workflow_run.json",
                 json.dumps(run_data, indent=2, default=str),
@@ -286,23 +287,28 @@ class WorkflowRunExportService:
             session,
             node_exec_ids,
         )
-        table_data["workflow_node_executions"] = [row.to_dict() for row in node_exec_records]
-        table_data["workflow_node_execution_offload"] = [row.to_dict() for row in offload_records]
+        table_data["workflow_node_executions"] = [self._row_to_dict(row) for row in node_exec_records]
+        table_data["workflow_node_execution_offload"] = [self._row_to_dict(row) for row in offload_records]
 
         pause_records = repo.get_pause_records_by_run_id(session, run.id)
         pause_ids = [pause.id for pause in pause_records]
         pause_reason_records = repo.get_pause_reason_records_by_run_id(session, pause_ids)
-        table_data["workflow_pauses"] = [row.to_dict() for row in pause_records]
-        table_data["workflow_pause_reasons"] = [row.to_dict() for row in pause_reason_records]
+        table_data["workflow_pauses"] = [self._row_to_dict(row) for row in pause_records]
+        table_data["workflow_pause_reasons"] = [self._row_to_dict(row) for row in pause_reason_records]
 
         trigger_repo = SQLAlchemyWorkflowTriggerLogRepository(session)
         trigger_records = trigger_repo.list_by_run_id(run.id)
-        table_data["workflow_trigger_logs"] = [row.to_dict() for row in trigger_records]
+        table_data["workflow_trigger_logs"] = [self._row_to_dict(row) for row in trigger_records]
 
         app_logs = repo.get_app_logs_by_run_id(session, run.id)
-        table_data["workflow_app_logs"] = [row.to_dict() for row in app_logs]
+        table_data["workflow_app_logs"] = [self._row_to_dict(row) for row in app_logs]
 
         return table_data
+
+    @staticmethod
+    def _row_to_dict(row: Any) -> dict[str, Any]:
+        mapper = inspect(row).mapper
+        return {attr.key: getattr(row, attr.key) for attr in mapper.column_attrs}
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
