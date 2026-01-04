@@ -14,17 +14,19 @@ from datetime import UTC, datetime, timedelta
 from typing import Any
 from uuid import uuid4
 
-from sqlalchemy import inspect
+from sqlalchemy import inspect, select
 from sqlalchemy.orm import Session, sessionmaker
 
 from extensions.ext_database import db
 from extensions.ext_redis import redis_client
+from extensions.ext_storage import storage
 from libs.archive_storage import (
     ArchiveStorage,
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
     get_export_storage,
 )
+from models.model import UploadFile
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -164,6 +166,12 @@ class WorkflowRunExportService:
                         json.dumps(records, indent=2, default=str),
                     )
 
+            offload_files = self._export_offload_files(
+                session,
+                table_data.get("workflow_node_execution_offload", []),
+                zf,
+            )
+
             table_stats["workflow_run"] = {"row_count": 1}
             manifest = {
                 "schema_version": "1.0",
@@ -171,11 +179,13 @@ class WorkflowRunExportService:
                 "tenant_id": run.tenant_id,
                 "app_id": run.app_id,
                 "workflow_id": run.workflow_id,
-                "created_at": run.created_at.isoformat() if run.created_at else None,
+                "created_at": run.created_at.isoformat(),
                 "exported_at": datetime.now(UTC).isoformat(),
                 "source": "database",
                 "tables": table_stats,
             }
+            if offload_files:
+                manifest["offload_files"] = offload_files
             zf.writestr(
                 "manifest.json",
                 json.dumps(manifest, indent=2),
@@ -199,7 +209,7 @@ class WorkflowRunExportService:
             ZIP file bytes
         """
         try:
-            storage = get_archive_storage()
+            archive_storage = get_archive_storage()
         except ArchiveStorageNotConfiguredError as e:
             raise WorkflowRunExportError(f"Archive storage not configured: {e}")
 
@@ -220,7 +230,7 @@ class WorkflowRunExportService:
             )
             archive_key = f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
             try:
-                archive_data = storage.get_object(archive_key)
+                archive_data = archive_storage.get_object(archive_key)
             except FileNotFoundError:
                 raise WorkflowRunExportError(f"Archive bundle not found: {archive_key}")
 
@@ -233,6 +243,7 @@ class WorkflowRunExportService:
                     raise WorkflowRunExportError("manifest.json missing from archive bundle")
                 manifest = json.loads(fileobj.read().decode("utf-8"))
 
+                offload_records: list[dict[str, Any]] = []
                 # Download and add each archived table's data
                 tables = manifest.get("tables", {})
                 for table_name, info in tables.items():
@@ -255,6 +266,8 @@ class WorkflowRunExportService:
                         f"{table_name}.json",
                         json.dumps(records, indent=2, default=str),
                     )
+                    if table_name == "workflow_node_execution_offload":
+                        offload_records = records
 
             # Add DB-resident tables (workflow_app_logs)
             table_data = self._collect_db_table_data(session, run)
@@ -264,6 +277,8 @@ class WorkflowRunExportService:
                     "workflow_app_logs.json",
                     json.dumps(app_logs, indent=2, default=str),
                 )
+            offload_files = self._export_offload_files(session, offload_records, zf)
+
             # Update manifest tables info
             tables["workflow_run"] = {"row_count": 1}
             tables["workflow_app_logs"] = {"row_count": len(app_logs)}
@@ -271,6 +286,8 @@ class WorkflowRunExportService:
             # Update manifest with export info
             manifest["exported_at"] = datetime.now(UTC).isoformat()
             manifest["source"] = "archive"
+            if offload_files:
+                manifest["offload_files"] = offload_files
             zf.writestr(
                 "manifest.json",
                 json.dumps(manifest, indent=2),
@@ -326,6 +343,43 @@ class WorkflowRunExportService:
     def _row_to_dict(row: Any) -> dict[str, Any]:
         mapper = inspect(row).mapper
         return {str(column.name): getattr(row, mapper.get_property_by_column(column).key) for column in mapper.columns}
+
+    def _export_offload_files(
+        self,
+        session: Session,
+        offload_records: list[dict[str, Any]],
+        zf: zipfile.ZipFile,
+    ) -> list[dict[str, Any]]:
+        file_ids = {record.get("file_id") for record in offload_records if record.get("file_id")}
+        if not file_ids:
+            return []
+
+        upload_files = session.scalars(select(UploadFile).where(UploadFile.id.in_(file_ids))).all()
+        upload_files_by_id = {upload_file.id: upload_file for upload_file in upload_files}
+        exported: list[dict[str, Any]] = []
+
+        for file_id in sorted(file_ids):
+            upload_file = upload_files_by_id.get(file_id)
+            if not upload_file:
+                logger.warning("UploadFile not found for offload file_id: %s", file_id)
+                continue
+            filename = f"offload_files/{upload_file.id}.{upload_file.extension}"
+            try:
+                data = storage.load(upload_file.key)
+            except Exception:
+                logger.exception("Failed to load offload file %s", upload_file.key)
+                continue
+            zf.writestr(filename, data)
+            exported.append(
+                {
+                    "file_id": upload_file.id,
+                    "path": filename,
+                    "name": upload_file.name,
+                    "size": upload_file.size,
+                    "mime_type": upload_file.mime_type,
+                }
+            )
+        return exported
 
     def _get_workflow_run_repo(self) -> APIWorkflowRunRepository:
         if self.workflow_run_repo is not None:
