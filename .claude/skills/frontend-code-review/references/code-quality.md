@@ -27,8 +27,6 @@ Favor Tailwind CSS utility classes instead of adding new `.module.css` files unl
 
 Update this file when adding, editing, or removing Code Quality rules so the catalog remains accurate.
 
-### Classname ordering for easy overrides
-
 ## Classname ordering for easy overrides
 
 ### Description
@@ -43,8 +41,4 @@ import { cn } from '@/utils/classnames'
 const Button = ({ className }) => {
   return <div className={cn('bg-primary-600', className)}></div>
 }
-
-<Button className="bg-white" /> // renders with `className="bg-white"`
 ```
-
-If you accidentally emit `<div className={cn(className, 'bg-primary-600')}>`, external styles would be layered underneath, making it harder to override defaults cleanly.
