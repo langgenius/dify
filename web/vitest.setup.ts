@@ -88,26 +88,10 @@ vi.mock('next/image')
 // mock react-i18next
 vi.mock('react-i18next', async () => {
   const actual = await vi.importActual<typeof import('react-i18next')>('react-i18next')
+  const { createReactI18nextMock } = await import('./test/i18n-mock')
   return {
     ...actual,
-    useTranslation: (defaultNs?: string) => ({
-      t: (key: string, options?: Record<string, unknown>) => {
-        if (options?.returnObjects)
-          return [`${key}-feature-1`, `${key}-feature-2`]
-        const ns = options?.ns ?? defaultNs
-        if (options || ns) {
-          const { ns: _ns, ...rest } = options ?? {}
-          const prefix = ns ? `${ns}.` : ''
-          const suffix = Object.keys(rest).length > 0 ? `:${JSON.stringify(rest)}` : ''
-          return `${prefix}${key}${suffix}`
-        }
-        return key
-      },
-      i18n: {
-        language: 'en',
-        changeLanguage: vi.fn(),
-      },
-    }),
+    ...createReactI18nextMock(),
   }
 })
 

@@ -306,6 +306,8 @@
   "variableConfig.displayName": "Отображаемое имя",
   "variableConfig.editModalTitle": "Редактировать поле ввода",
   "variableConfig.errorMsg.atLeastOneOption": "Требуется хотя бы один вариант",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "JSON Schema не является корректным JSON",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "JSON Schema должна иметь тип \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "Имя метки обязательно",
   "variableConfig.errorMsg.optionRepeat": "Есть повторяющиеся варианты",
   "variableConfig.errorMsg.varNameCanBeRepeat": "Имя переменной не может повторяться",

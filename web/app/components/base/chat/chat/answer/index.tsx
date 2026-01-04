@@ -113,7 +113,7 @@ const Answer: FC<AnswerProps> = ({
     }
   }, [switchSibling, item.prevSibling, item.nextSibling])
 
-  const contentIsEmpty = content.trim() === ''
+  const contentIsEmpty = typeof content === 'string' && content.trim() === ''
 
   return (
     <div className="mb-2 flex last:mb-0">

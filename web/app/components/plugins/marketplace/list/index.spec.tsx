@@ -49,11 +49,9 @@ vi.mock('../context', () => ({
   useMarketplaceContext: (selector: (v: typeof mockContextValues) => unknown) => selector(mockContextValues),
 }))
 
-// Mock useI18N context
+// Mock useLocale context
 vi.mock('@/context/i18n', () => ({
-  useI18N: () => ({
-    locale: 'en-US',
-  }),
+  useLocale: () => 'en-US',
 }))
 
 // Mock next-themes

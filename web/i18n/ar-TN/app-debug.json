@@ -306,6 +306,8 @@
   "variableConfig.displayName": "اسم العرض",
   "variableConfig.editModalTitle": "تعديل حقل إدخال",
   "variableConfig.errorMsg.atLeastOneOption": "خيار واحد على الأقل مطلوب",
+  "variableConfig.errorMsg.jsonSchemaInvalid": "مخطط JSON ليس JSON صالحًا",
+  "variableConfig.errorMsg.jsonSchemaMustBeObject": "يجب أن يكون نوع مخطط JSON \"object\"",
   "variableConfig.errorMsg.labelNameRequired": "اسم التسمية مطلوب",
   "variableConfig.errorMsg.optionRepeat": "يوجد خيارات مكررة",
   "variableConfig.errorMsg.varNameCanBeRepeat": "اسم المتغير لا يمكن تكراره",
