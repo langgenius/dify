@@ -257,7 +257,7 @@ class APIWorkflowRunRepository(WorkflowExecutionRepository, Protocol):
 
     def get_runs_batch_by_time_range(
         self,
-        start_after: datetime | None,
+        start_from: datetime | None,
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,

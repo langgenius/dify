@@ -284,7 +284,7 @@ class WorkflowRunArchiver:
         """Fetch a batch of workflow runs to archive."""
         repo = self._get_workflow_run_repo()
         return repo.get_runs_batch_by_time_range(
-            start_after=self.start_from,
+            start_from=self.start_from,
             end_before=self.end_before,
             last_seen=last_seen,
             batch_size=self.batch_size,

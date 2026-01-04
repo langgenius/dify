@@ -315,7 +315,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
 
     def get_runs_batch_by_time_range(
         self,
-        start_after: datetime | None,
+        start_from: datetime | None,
         end_before: datetime,
         last_seen: tuple[datetime, str] | None,
         batch_size: int,
@@ -325,7 +325,7 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
         Fetch ended workflow runs in a time window for archival and clean batching.
 
         Query scope:
-        - created_at in [start_after, end_before)
+        - created_at in [start_from, end_before)
         - type in (workflow, rag-pipeline)
         - status is an ended state
         - optional tenant_id filter and cursor (last_seen) for pagination
@@ -342,8 +342,8 @@ class DifyAPISQLAlchemyWorkflowRunRepository(APIWorkflowRunRepository):
                 .limit(batch_size)
             )
 
-            if start_after:
-                stmt = stmt.where(WorkflowRun.created_at >= start_after)
+            if start_from:
+                stmt = stmt.where(WorkflowRun.created_at >= start_from)
 
             if tenant_ids:
                 stmt = stmt.where(WorkflowRun.tenant_id.in_(tenant_ids))
