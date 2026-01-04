@@ -71,6 +71,3 @@ If you use Template A (i.e., there are issues to fix) and at least one issue req
 No issues found.
 ```
 
-
-## Maintenance Notes
-- To add or remove review points, edit `references/code-quality.md`, `references/performance.md` or `references/business-logic.md` as appropriate; this keeps the SKILL lean while the reference files remain the single source of truth. Keeping the review point short ensures the skill stays fast to read when triggered.
