@@ -329,20 +329,27 @@ describe('ComponentName', () => {
 
 1. **i18n**: Uses global mock in `web/vitest.setup.ts` (auto-loaded by Vitest setup)
 
-   The global mock returns translation keys as-is. For custom translations, override:
+   The global mock provides:
+
+   - `useTranslation` - returns translation keys with namespace prefix
+   - `Trans` component - renders i18nKey and components
+   - `useMixedTranslation` (from `@/app/components/plugins/marketplace/hooks`)
+   - `useGetLanguage` (from `@/context/i18n`) - returns `'en-US'`
+
+   **Default behavior**: Most tests should use the global mock (no local override needed).
+
+   **For custom translations**: Use the helper function from `@/test/i18n-mock`:
 
    ```typescript
-   vi.mock('react-i18next', () => ({
-     useTranslation: () => ({
-       t: (key: string) => {
-         const translations: Record<string, string> = {
-           'my.custom.key': 'Custom translation',
-         }
-         return translations[key] || key
-       },
-     }),
+   import { createReactI18nextMock } from '@/test/i18n-mock'
+
+   vi.mock('react-i18next', () => createReactI18nextMock({
+     'my.custom.key': 'Custom translation',
+     'button.save': 'Save',
    }))
    ```
+
+   **Avoid**: Manually defining `useTranslation` mocks that just return the key - the global mock already does this.
 
 1. **Forms**: Test validation logic thoroughly
 

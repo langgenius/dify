@@ -1,7 +1,7 @@
 import type {
   Node,
 } from '../../../../types'
-import { isEqual } from 'es-toolkit/compat'
+import { isEqual } from 'es-toolkit/predicate'
 import { memo, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import {

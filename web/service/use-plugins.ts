@@ -33,7 +33,7 @@ import {
   useQuery,
   useQueryClient,
 } from '@tanstack/react-query'
-import { cloneDeep } from 'es-toolkit/compat'
+import { cloneDeep } from 'es-toolkit/object'
 import { useCallback, useEffect, useState } from 'react'
 import useRefreshPluginList from '@/app/components/plugins/install-plugin/hooks/use-refresh-plugin-list'
 import { getFormattedPlugin } from '@/app/components/plugins/marketplace/utils'
@@ -677,20 +677,21 @@ export const useMutationCheckDependencies = () => {
 }
 
 export const useModelInList = (currentProvider?: ModelProvider, modelId?: string) => {
+  const provider = currentProvider?.provider
   return useQuery({
-    queryKey: ['modelInList', currentProvider?.provider, modelId],
+    queryKey: ['modelInList', provider, modelId],
     queryFn: async () => {
-      if (!modelId || !currentProvider)
+      if (!modelId || !provider)
         return false
       try {
-        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider}/models`)
         return !!modelId && !!modelsData.data.find(item => item.model === modelId)
       }
       catch {
         return false
       }
     },
-    enabled: !!modelId && !!currentProvider,
+    enabled: !!modelId && !!provider,
   })
 }
 
@@ -742,7 +743,7 @@ export const usePluginReadme = ({ plugin_unique_identifier, language }: { plugin
 export const usePluginReadmeAsset = ({ file_name, plugin_unique_identifier }: { file_name?: string, plugin_unique_identifier?: string }) => {
   const normalizedFileName = file_name?.replace(/(^\.\/_assets\/|^_assets\/)/, '')
   return useQuery({
-    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, file_name],
+    queryKey: ['pluginReadmeAsset', plugin_unique_identifier, normalizedFileName],
     queryFn: () => get<Blob>('/workspaces/current/plugin/asset', { params: { plugin_unique_identifier, file_name: normalizedFileName } }, { silent: true }),
     enabled: !!plugin_unique_identifier && !!file_name && /(^\.\/_assets|^_assets)/.test(file_name),
   })
