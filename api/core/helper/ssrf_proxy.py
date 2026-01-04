@@ -14,6 +14,7 @@ from core.tools.errors import ToolSSRFError
 logger = logging.getLogger(__name__)
 
 SSRF_DEFAULT_MAX_RETRIES = dify_config.SSRF_DEFAULT_MAX_RETRIES
+RequestError = httpx.RequestError
 
 BACKOFF_FACTOR = 0.5
 STATUS_FORCELIST = [429, 500, 502, 503, 504]
