@@ -25,7 +25,7 @@ import {
   useAvailableBlocks,
   useNodesInteractions,
 } from './hooks'
-import { NodeRunningStatus } from './types'
+import { BlockEnum, NodeRunningStatus } from './types'
 import { getEdgeColor } from './utils'
 
 const CustomEdge = ({
@@ -136,7 +136,7 @@ const CustomEdge = ({
           stroke,
           strokeWidth: 2,
           opacity: data._dimmed ? 0.3 : (data._waitingRun ? 0.7 : 1),
-          strokeDasharray: data._isTemp ? '8 8' : undefined,
+          strokeDasharray: (data._isTemp && data.sourceType !== BlockEnum.Group && data.targetType !== BlockEnum.Group) ? '8 8' : undefined,
         }}
       />
       <EdgeLabelRenderer>
