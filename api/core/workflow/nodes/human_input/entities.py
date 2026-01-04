@@ -232,6 +232,15 @@ class HumanInputNodeData(BaseNodeData):
 
         return variable_mappings
 
+    def find_action_text(self, action_id: str) -> str:
+        """
+        Resolve action display text by id.
+        """
+        for action in self.user_actions:
+            if action.id == action_id:
+                return action.title
+        return action_id
+
 
 class FormDefinition(BaseModel):
     form_content: str

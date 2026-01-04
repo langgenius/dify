@@ -6,7 +6,7 @@ from typing import TYPE_CHECKING, Any
 from core.repositories.human_input_reposotiry import HumanInputFormRepositoryImpl
 from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
-from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
+from core.workflow.node_events import HumanInputFormFilledEvent, NodeRunResult, PauseRequestedEvent
 from core.workflow.node_events.base import NodeEventBase
 from core.workflow.nodes.base.node import Node
 from core.workflow.repositories.human_input_form_repository import (
@@ -217,11 +217,21 @@ class HumanInputNode(Node[HumanInputNodeData]):
             submitted_data = form.submitted_data or {}
             outputs: dict[str, Any] = dict(submitted_data)
             outputs["__action_id"] = selected_action_id
-            outputs["__rendered_content"] = self._render_form_content_with_outputs(
+            rendered_content = self._render_form_content_with_outputs(
                 form.rendered_content,
                 outputs,
                 self._node_data.outputs_field_names(),
             )
+            outputs["__rendered_content"] = rendered_content
+
+            action_text = self._node_data.find_action_text(selected_action_id)
+
+            yield HumanInputFormFilledEvent(
+                rendered_content=rendered_content,
+                action_id=selected_action_id,
+                action_text=action_text,
+            )
+
             return NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs=outputs,

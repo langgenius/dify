@@ -8,6 +8,7 @@ from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import (
     AppQueueEvent,
     QueueAgentLogEvent,
+    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -41,6 +42,7 @@ from core.workflow.graph_events import (
     NodeRunAgentLogEvent,
     NodeRunExceptionEvent,
     NodeRunFailedEvent,
+    NodeRunHumanInputFormFilledEvent,
     NodeRunIterationFailedEvent,
     NodeRunIterationNextEvent,
     NodeRunIterationStartedEvent,
@@ -378,6 +380,17 @@ class WorkflowBasedAppRunner:
                     reasons=event.reasons,
                     outputs=event.outputs,
                     paused_nodes=paused_nodes,
+                )
+            )
+        elif isinstance(event, NodeRunHumanInputFormFilledEvent):
+            self._publish_event(
+                QueueHumanInputFormFilledEvent(
+                    node_execution_id=event.id,
+                    node_id=event.node_id,
+                    node_type=event.node_type,
+                    rendered_content=event.rendered_content,
+                    action_id=event.action_id,
+                    action_text=event.action_text,
                 )
             )
         elif isinstance(event, NodeRunRetryEvent):

@@ -24,6 +24,7 @@ from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
     QueueAnnotationReplyEvent,
     QueueErrorEvent,
+    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -656,6 +657,14 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """Handle message replace events."""
         yield self._message_cycle_manager.message_replace_to_stream_response(answer=event.text, reason=event.reason)
 
+    def _handle_human_input_form_filled_event(
+        self, event: QueueHumanInputFormFilledEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle human input form filled events."""
+        yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
+            event=event, task_id=self._application_generate_entity.task_id
+        )
+
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
         """Handle agent log events."""
         yield self._workflow_response_converter.handle_agent_log(
@@ -695,6 +704,7 @@ class AdvancedChatAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueMessageReplaceEvent: self._handle_message_replace_event,
             QueueAdvancedChatMessageEndEvent: self._handle_advanced_chat_message_end_event,
             QueueAgentLogEvent: self._handle_agent_log_event,
+            QueueHumanInputFormFilledEvent: self._handle_human_input_form_filled_event,
         }
 
     def _dispatch_event(

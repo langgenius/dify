@@ -8,6 +8,7 @@ from typing import Any, NewType, Union
 from core.app.entities.app_invoke_entities import AdvancedChatAppGenerateEntity, InvokeFrom, WorkflowAppGenerateEntity
 from core.app.entities.queue_entities import (
     QueueAgentLogEvent,
+    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -23,6 +24,7 @@ from core.app.entities.queue_entities import (
 )
 from core.app.entities.task_entities import (
     AgentLogStreamResponse,
+    HumanInputFormFilledResponse,
     HumanInputRequiredResponse,
     IterationNodeCompletedStreamResponse,
     IterationNodeNextStreamResponse,
@@ -317,6 +319,21 @@ class WorkflowResponseConverter:
         )
 
         return responses
+
+    def human_input_form_filled_to_stream_response(
+        self, *, event: QueueHumanInputFormFilledEvent, task_id: str
+    ) -> HumanInputFormFilledResponse:
+        run_id = self._ensure_workflow_run_id()
+        return HumanInputFormFilledResponse(
+            task_id=task_id,
+            workflow_run_id=run_id,
+            data=HumanInputFormFilledResponse.Data(
+                node_id=event.node_id,
+                rendered_content=event.rendered_content,
+                action_id=event.action_id,
+                action_text=event.action_text,
+            ),
+        )
 
     @classmethod
     def workflow_run_result_to_finish_response(

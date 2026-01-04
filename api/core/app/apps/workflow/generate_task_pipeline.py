@@ -17,6 +17,7 @@ from core.app.entities.queue_entities import (
     MessageQueueMessage,
     QueueAgentLogEvent,
     QueueErrorEvent,
+    QueueHumanInputFormFilledEvent,
     QueueIterationCompletedEvent,
     QueueIterationNextEvent,
     QueueIterationStartEvent,
@@ -514,6 +515,14 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             task_id=self._application_generate_entity.task_id, event=event
         )
 
+    def _handle_human_input_form_filled_event(
+        self, event: QueueHumanInputFormFilledEvent, **kwargs
+    ) -> Generator[StreamResponse, None, None]:
+        """Handle human input form filled events."""
+        yield self._workflow_response_converter.human_input_form_filled_to_stream_response(
+            event=event, task_id=self._application_generate_entity.task_id
+        )
+
     def _get_event_handlers(self) -> dict[type, Callable]:
         """Get mapping of event types to their handlers using fluent pattern."""
         return {
@@ -540,6 +549,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             QueueLoopCompletedEvent: self._handle_loop_completed_event,
             # Agent events
             QueueAgentLogEvent: self._handle_agent_log_event,
+            QueueHumanInputFormFilledEvent: self._handle_human_input_form_filled_event,
         }
 
     def _dispatch_event(

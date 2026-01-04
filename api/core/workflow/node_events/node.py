@@ -47,3 +47,11 @@ class StreamCompletedEvent(NodeEventBase):
 
 class PauseRequestedEvent(NodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")
+
+
+class HumanInputFormFilledEvent(NodeEventBase):
+    """Event emitted when a human input form is submitted."""
+
+    rendered_content: str
+    action_id: str
+    action_text: str

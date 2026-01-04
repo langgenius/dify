@@ -16,6 +16,7 @@ from core.workflow.graph_events import (
     GraphNodeEventBase,
     NodeRunAgentLogEvent,
     NodeRunFailedEvent,
+    NodeRunHumanInputFormFilledEvent,
     NodeRunIterationFailedEvent,
     NodeRunIterationNextEvent,
     NodeRunIterationStartedEvent,
@@ -32,6 +33,7 @@ from core.workflow.graph_events import (
 )
 from core.workflow.node_events import (
     AgentLogEvent,
+    HumanInputFormFilledEvent,
     IterationFailedEvent,
     IterationNextEvent,
     IterationStartedEvent,
@@ -610,6 +612,17 @@ class Node(Generic[NodeDataT]):
             status=event.status,
             data=event.data,
             metadata=event.metadata,
+        )
+
+    @_dispatch.register
+    def _(self, event: HumanInputFormFilledEvent):
+        return NodeRunHumanInputFormFilledEvent(
+            id=self.execution_id,
+            node_id=self._node_id,
+            node_type=self.node_type,
+            rendered_content=event.rendered_content,
+            action_id=event.action_id,
+            action_text=event.action_text,
         )
 
     @_dispatch.register

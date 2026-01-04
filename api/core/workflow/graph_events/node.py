@@ -55,5 +55,13 @@ class NodeRunRetryEvent(NodeRunStartedEvent):
     retry_index: int = Field(..., description="which retry attempt is about to be performed")
 
 
+class NodeRunHumanInputFormFilledEvent(GraphNodeEventBase):
+    """Emitted when a HumanInput form is submitted and before the node finishes."""
+
+    rendered_content: str = Field(..., description="Markdown content rendered with user inputs.")
+    action_id: str = Field(..., description="User action identifier chosen in the form.")
+    action_text: str = Field(..., description="Display text of the chosen action button.")
+
+
 class NodeRunPauseRequestedEvent(GraphNodeEventBase):
     reason: PauseReason = Field(..., description="pause reason")

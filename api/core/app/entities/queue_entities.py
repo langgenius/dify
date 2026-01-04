@@ -48,6 +48,7 @@ class QueueEvent(StrEnum):
     STOP = "stop"
     RETRY = "retry"
     PAUSE = "pause"
+    HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
 
 
 class AppQueueEvent(BaseModel):
@@ -489,6 +490,21 @@ class QueueStopEvent(AppQueueEvent):
         }
 
         return reason_mapping.get(self.stopped_by, "Stopped by unknown reason.")
+
+
+class QueueHumanInputFormFilledEvent(AppQueueEvent):
+    """
+    QueueHumanInputFormFilledEvent entity
+    """
+
+    event: QueueEvent = QueueEvent.HUMAN_INPUT_FORM_FILLED
+
+    node_execution_id: str
+    node_id: str
+    node_type: NodeType
+    rendered_content: str
+    action_id: str
+    action_text: str
 
 
 class QueueMessage(BaseModel):

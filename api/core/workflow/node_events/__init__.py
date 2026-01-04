@@ -13,6 +13,7 @@ from .loop import (
     LoopSucceededEvent,
 )
 from .node import (
+    HumanInputFormFilledEvent,
     ModelInvokeCompletedEvent,
     PauseRequestedEvent,
     RunRetrieverResourceEvent,
@@ -23,6 +24,7 @@ from .node import (
 
 __all__ = [
     "AgentLogEvent",
+    "HumanInputFormFilledEvent",
     "IterationFailedEvent",
     "IterationNextEvent",
     "IterationStartedEvent",

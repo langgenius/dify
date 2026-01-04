@@ -85,6 +85,7 @@ class StreamEvent(StrEnum):
     TEXT_REPLACE = "text_replace"
     AGENT_LOG = "agent_log"
     HUMAN_INPUT_REQUIRED = "human_input_required"
+    HUMAN_INPUT_FORM_FILLED = "human_input_form_filled"
 
 
 class StreamResponse(BaseModel):
@@ -280,6 +281,22 @@ class HumanInputRequiredResponse(StreamResponse):
         resolved_placeholder_values: Mapping[str, Any] = Field(default_factory=dict)
 
     event: StreamEvent = StreamEvent.HUMAN_INPUT_REQUIRED
+    workflow_run_id: str
+    data: Data
+
+
+class HumanInputFormFilledResponse(StreamResponse):
+    class Data(BaseModel):
+        """
+        Data entity
+        """
+
+        node_id: str
+        rendered_content: str
+        action_id: str
+        action_text: str
+
+    event: StreamEvent = StreamEvent.HUMAN_INPUT_FORM_FILLED
     workflow_run_id: str
     data: Data
 
