@@ -11,6 +11,10 @@ from core.workflow.graph import NodeFactory
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.code_node import CodeNode
 from core.workflow.nodes.code.limits import CodeNodeLimits
+from core.workflow.nodes.template_transform.template_renderer import (
+    CodeExecutorJinja2TemplateRenderer,
+    Jinja2TemplateRenderer,
+)
 from libs.typing import is_str, is_str_dict
 
 from .node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
@@ -37,6 +41,7 @@ class DifyNodeFactory(NodeFactory):
         code_executor: type[CodeExecutor] | None = None,
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
         code_limits: CodeNodeLimits | None = None,
+        template_renderer: Jinja2TemplateRenderer | None = None,
     ) -> None:
         self.graph_init_params = graph_init_params
         self.graph_runtime_state = graph_runtime_state
@@ -54,6 +59,7 @@ class DifyNodeFactory(NodeFactory):
             max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
             max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
         )
+        self._template_renderer = template_renderer or CodeExecutorJinja2TemplateRenderer()
 
     @override
     def create_node(self, node_config: dict[str, object]) -> Node:
@@ -114,6 +120,6 @@ class DifyNodeFactory(NodeFactory):
             "graph_runtime_state": self.graph_runtime_state,
         }
         if node_type == NodeType.TEMPLATE_TRANSFORM:
-            node_kwargs["code_executor"] = self._code_executor
+            node_kwargs["template_renderer"] = self._template_renderer
 
         return node_class(**node_kwargs)
