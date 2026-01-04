@@ -1,8 +1,9 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
-from typing import Any, cast
+from typing import Any, ClassVar, cast
 
-from configs import dify_config
+from configs import dify_config as default_dify_config
+from configs.app_config import DifyConfig
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
@@ -23,6 +24,36 @@ from .exc import (
 
 class CodeNode(Node[CodeNodeData]):
     node_type = NodeType.CODE
+    _DEFAULT_CODE_PROVIDERS: ClassVar[tuple[type[CodeNodeProvider], ...]] = (
+        Python3CodeProvider,
+        JavascriptCodeProvider,
+    )
+    _code_executor: type[CodeExecutor] = CodeExecutor
+    _code_providers: tuple[type[CodeNodeProvider], ...] = _DEFAULT_CODE_PROVIDERS
+    _dify_config: DifyConfig = default_dify_config
+
+    def __init__(
+        self,
+        id: str,
+        config: Mapping[str, Any],
+        graph_init_params: "GraphInitParams",
+        graph_runtime_state: "GraphRuntimeState",
+        *,
+        code_executor: type[CodeExecutor] | None = None,
+        code_providers: Sequence[type[CodeNodeProvider]] | None = None,
+        dify_config: DifyConfig | None = None,
+    ) -> None:
+        super().__init__(
+            id=id,
+            config=config,
+            graph_init_params=graph_init_params,
+            graph_runtime_state=graph_runtime_state,
+        )
+        self._code_executor: type[CodeExecutor] = code_executor or CodeExecutor
+        self._code_providers: tuple[type[CodeNodeProvider], ...] = (
+            tuple(code_providers) if code_providers else self._DEFAULT_CODE_PROVIDERS
+        )
+        self._dify_config: DifyConfig = dify_config or default_dify_config
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:
@@ -35,8 +66,9 @@ class CodeNode(Node[CodeNodeData]):
         if filters:
             code_language = cast(CodeLanguage, filters.get("code_language", CodeLanguage.PYTHON3))
 
-        providers: list[type[CodeNodeProvider]] = [Python3CodeProvider, JavascriptCodeProvider]
-        code_provider: type[CodeNodeProvider] = next(p for p in providers if p.is_accept_language(code_language))
+        code_provider: type[CodeNodeProvider] = next(
+            provider for provider in cls._DEFAULT_CODE_PROVIDERS if provider.is_accept_language(code_language)
+        )
 
         return code_provider.get_default_config()
 
@@ -60,7 +92,8 @@ class CodeNode(Node[CodeNodeData]):
                 variables[variable_name] = variable.to_object() if variable else None
         # Run code
         try:
-            result = CodeExecutor.execute_workflow_code_template(
+            _ = self._select_code_provider(code_language)
+            result = self._code_executor.execute_workflow_code_template(
                 language=code_language,
                 code=code,
                 inputs=variables,
@@ -75,6 +108,12 @@ class CodeNode(Node[CodeNodeData]):
 
         return NodeRunResult(status=WorkflowNodeExecutionStatus.SUCCEEDED, inputs=variables, outputs=result)
 
+    def _select_code_provider(self, code_language: CodeLanguage) -> type[CodeNodeProvider]:
+        for provider in self._code_providers:
+            if provider.is_accept_language(code_language):
+                return provider
+        raise CodeNodeError(f"Unsupported code language: {code_language}")
+
     def _check_string(self, value: str | None, variable: str) -> str | None:
         """
         Check string
@@ -85,10 +124,10 @@ class CodeNode(Node[CodeNodeData]):
         if value is None:
             return None
 
-        if len(value) > dify_config.CODE_MAX_STRING_LENGTH:
+        if len(value) > self._dify_config.CODE_MAX_STRING_LENGTH:
             raise OutputValidationError(
                 f"The length of output variable `{variable}` must be"
-                f" less than {dify_config.CODE_MAX_STRING_LENGTH} characters"
+                f" less than {self._dify_config.CODE_MAX_STRING_LENGTH} characters"
             )
 
         return value.replace("\x00", "")
@@ -109,20 +148,20 @@ class CodeNode(Node[CodeNodeData]):
         if value is None:
             return None
 
-        if value > dify_config.CODE_MAX_NUMBER or value < dify_config.CODE_MIN_NUMBER:
+        if value > self._dify_config.CODE_MAX_NUMBER or value < self._dify_config.CODE_MIN_NUMBER:
             raise OutputValidationError(
                 f"Output variable `{variable}` is out of range,"
-                f" it must be between {dify_config.CODE_MIN_NUMBER} and {dify_config.CODE_MAX_NUMBER}."
+                f" it must be between {self._dify_config.CODE_MIN_NUMBER} and {self._dify_config.CODE_MAX_NUMBER}."
             )
 
         if isinstance(value, float):
             decimal_value = Decimal(str(value)).normalize()
             precision = -decimal_value.as_tuple().exponent if decimal_value.as_tuple().exponent < 0 else 0  # type: ignore[operator]
             # raise error if precision is too high
-            if precision > dify_config.CODE_MAX_PRECISION:
+            if precision > self._dify_config.CODE_MAX_PRECISION:
                 raise OutputValidationError(
                     f"Output variable `{variable}` has too high precision,"
-                    f" it must be less than {dify_config.CODE_MAX_PRECISION} digits."
+                    f" it must be less than {self._dify_config.CODE_MAX_PRECISION} digits."
                 )
 
         return value
@@ -137,8 +176,8 @@ class CodeNode(Node[CodeNodeData]):
         # TODO(QuantumGhost): Replace native Python lists with `Array*Segment` classes.
         # Note that `_transform_result` may produce lists containing `None` values,
         # which don't conform to the type requirements of `Array*Segment` classes.
-        if depth > dify_config.CODE_MAX_DEPTH:
-            raise DepthLimitError(f"Depth limit {dify_config.CODE_MAX_DEPTH} reached, object too deep.")
+        if depth > self._dify_config.CODE_MAX_DEPTH:
+            raise DepthLimitError(f"Depth limit {self._dify_config.CODE_MAX_DEPTH} reached, object too deep.")
 
         transformed_result: dict[str, Any] = {}
         if output_schema is None:
@@ -272,10 +311,10 @@ class CodeNode(Node[CodeNodeData]):
                             f"Output {prefix}{dot}{output_name} is not an array, got {type(value)} instead."
                         )
                 else:
-                    if len(value) > dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
+                    if len(value) > self._dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements."
+                            f" less than {self._dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH} elements."
                         )
 
                     for i, inner_value in enumerate(value):
@@ -305,10 +344,10 @@ class CodeNode(Node[CodeNodeData]):
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
-                    if len(result[output_name]) > dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
+                    if len(result[output_name]) > self._dify_config.CODE_MAX_STRING_ARRAY_LENGTH:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {dify_config.CODE_MAX_STRING_ARRAY_LENGTH} elements."
+                            f" less than {self._dify_config.CODE_MAX_STRING_ARRAY_LENGTH} elements."
                         )
 
                     transformed_result[output_name] = [
@@ -326,10 +365,10 @@ class CodeNode(Node[CodeNodeData]):
                             f" got {type(result.get(output_name))} instead."
                         )
                 else:
-                    if len(result[output_name]) > dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH:
+                    if len(result[output_name]) > self._dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH:
                         raise OutputValidationError(
                             f"The length of output variable `{prefix}{dot}{output_name}` must be"
-                            f" less than {dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH} elements."
+                            f" less than {self._dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH} elements."
                         )
 
                     for i, value in enumerate(result[output_name]):
