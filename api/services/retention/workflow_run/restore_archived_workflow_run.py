@@ -269,9 +269,8 @@ class WorkflowRunRestore:
         )
         return self.workflow_run_repo
 
-    def _get_archive_key(self, prefix: str, *, bundle_name: str | None = None) -> str:
-        bundle = bundle_name or self.ARCHIVE_BUNDLE_NAME
-        return f"{prefix}/{bundle}"
+    def _get_archive_key(self, prefix: str) -> str:
+        return f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
 
     @staticmethod
     def _get_table_member_path(table_name: str) -> str:
