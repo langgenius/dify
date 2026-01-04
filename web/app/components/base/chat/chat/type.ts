@@ -64,6 +64,17 @@ export type CitationItem = {
   word_count: number
 }
 
+export type ToolCallItem = {
+  is_thought?: boolean
+  tool_call_id?: string
+  tool_name?: string
+  tool_arguments?: string
+  tool_files?: string[]
+  tool_error?: string
+  tool_output?: string
+  tool_elapsed_time?: number
+}
+
 export type IChatItem = {
   id: string
   content: string
@@ -104,6 +115,7 @@ export type IChatItem = {
   siblingIndex?: number
   prevSibling?: string
   nextSibling?: string
+  toolCalls?: ToolCallItem[]
 }
 
 export type Metadata = {

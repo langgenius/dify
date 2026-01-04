@@ -40,6 +40,13 @@ export type IOnDataMoreInfo = {
   messageId: string
   errorMessage?: string
   errorCode?: string
+  chunk_type?: 'text' | 'tool_call' | 'tool_result' | 'thought' | 'thought_start'
+  tool_call_id?: string
+  tool_name?: string
+  tool_arguments?: string
+  tool_files?: string[]
+  tool_error?: string
+  tool_elapsed_time?: number
 }
 
 export type IOnData = (message: string, isFirstMessage: boolean, moreInfo: IOnDataMoreInfo) => void
@@ -234,6 +241,13 @@ export const handleStream = (
                 conversationId: bufferObj.conversation_id,
                 taskId: bufferObj.task_id,
                 messageId: bufferObj.id,
+                chunk_type: bufferObj.chunk_type,
+                tool_call_id: bufferObj.tool_call_id,
+                tool_name: bufferObj.tool_name,
+                tool_arguments: bufferObj.tool_arguments,
+                tool_files: bufferObj.tool_files,
+                tool_error: bufferObj.tool_error,
+                tool_elapsed_time: bufferObj.tool_elapsed_time,
               })
               isFirstMessage = false
             }

@@ -270,8 +270,52 @@ export const useChat = (
     handleRun(
       bodyParams,
       {
-        onData: (message: string, isFirstMessage: boolean, { conversationId: newConversationId, messageId, taskId }: any) => {
+        onData: (message: string, isFirstMessage: boolean, {
+          conversationId: newConversationId,
+          messageId,
+          taskId,
+          chunk_type,
+          tool_call_id,
+          tool_name,
+          tool_arguments,
+          tool_files,
+          tool_error,
+          tool_elapsed_time,
+        }: any) => {
           responseItem.content = responseItem.content + message
+
+          if (chunk_type === 'tool_call') {
+            if (!responseItem.toolCalls)
+              responseItem.toolCalls = []
+            responseItem.toolCalls?.push({
+              tool_call_id,
+              tool_name,
+              tool_arguments,
+              tool_files,
+              tool_error,
+              tool_elapsed_time,
+            })
+          }
+
+          if (chunk_type === 'tool_result') {
+            const currentToolCallIndex = responseItem.toolCalls?.findIndex(item => item.tool_call_id === tool_call_id) ?? -1
+
+            if (currentToolCallIndex > -1)
+              responseItem.toolCalls![currentToolCallIndex].tool_output = message
+          }
+
+          if (chunk_type === 'thought_start') {
+            responseItem.toolCalls?.push({
+              is_thought: true,
+              tool_elapsed_time,
+            })
+          }
+
+          if (chunk_type === 'thought') {
+            const currentThoughtIndex = responseItem.toolCalls?.findIndex(item => item.is_thought) ?? -1
+            if (currentThoughtIndex > -1)
+              responseItem.toolCalls![currentThoughtIndex].tool_output = message
+          }
 
           if (messageId && !hasSetResponseId) {
             questionItem.id = `question-${messageId}`
