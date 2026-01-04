@@ -12,7 +12,7 @@ Ensure conditional CSS is handled via the shared `classNames` instead of custom 
 ### Suggested Fix
 
 ```ts
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 const classNames = cn(isActive ? 'text-primary-600' : 'text-gray-500')
 ```
 
@@ -38,7 +38,7 @@ When writing components, always place the incoming `className` prop after the co
 Example:
 
 ```tsx
-import cn from '@/utils/classnames'
+import { cn } from '@/utils/classnames'
 
 const Button = ({ className }) => {
   return <div className={cn('bg-primary-600', className)}></div>
