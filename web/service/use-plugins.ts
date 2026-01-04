@@ -677,20 +677,21 @@ export const useMutationCheckDependencies = () => {
 }
 
 export const useModelInList = (currentProvider?: ModelProvider, modelId?: string) => {
+  const provider = currentProvider?.provider
   return useQuery({
-    queryKey: ['modelInList', currentProvider, modelId],
+    queryKey: ['modelInList', provider, modelId],
     queryFn: async () => {
-      if (!modelId || !currentProvider)
+      if (!modelId || !provider)
         return false
       try {
-        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${currentProvider?.provider}/models`)
+        const modelsData = await fetchModelProviderModelList(`/workspaces/current/model-providers/${provider}/models`)
         return !!modelId && !!modelsData.data.find(item => item.model === modelId)
       }
       catch {
         return false
       }
     },
-    enabled: !!modelId && !!currentProvider,
+    enabled: !!modelId && !!provider,
   })
 }
 
