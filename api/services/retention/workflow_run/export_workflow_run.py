@@ -23,7 +23,6 @@ from libs.archive_storage import (
     get_archive_storage,
     get_export_storage,
 )
-from libs.retention_utils import build_workflow_run_prefix
 from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.factory import DifyAPIRepositoryFactory
@@ -210,11 +209,10 @@ class WorkflowRunExportService:
             )
 
             # Load manifest
-            prefix = build_workflow_run_prefix(
-                tenant_id=run.tenant_id,
-                app_id=run.app_id,
-                created_at=run.created_at,
-                run_id=run.id,
+            created_at = run.created_at
+            prefix = (
+                f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
+                f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
             )
             manifest_key = f"{prefix}/manifest.json"
             try:

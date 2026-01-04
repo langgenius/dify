@@ -36,7 +36,6 @@ from libs.archive_storage import (
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
 )
-from libs.retention_utils import build_workflow_run_prefix
 from models.workflow import (
     WorkflowRun,
 )
@@ -438,11 +437,10 @@ class WorkflowRunArchiver:
 
     def _get_archive_key(self, run: WorkflowRun, *, bundle_name: str | None = None) -> str:
         """Get the storage key for the archive bundle."""
-        prefix = build_workflow_run_prefix(
-            tenant_id=run.tenant_id,
-            app_id=run.app_id,
-            created_at=run.created_at,
-            run_id=run.id,
+        created_at = run.created_at
+        prefix = (
+            f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
+            f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
         )
         bundle = bundle_name or self.ARCHIVE_BUNDLE_NAME
         return f"{prefix}/{bundle}"
