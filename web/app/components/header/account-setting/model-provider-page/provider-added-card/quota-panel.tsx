@@ -95,20 +95,21 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   return (
     <div className={cn('my-2 min-w-[72px] shrink-0 rounded-xl border-[0.5px] pb-2.5 pl-4 pr-2.5 pt-3 shadow-xs', credits <= 0 ? 'border-state-destructive-border hover:bg-state-destructive-hover' : 'border-components-panel-border bg-third-party-model-bg-default')}>
       <div className="system-xs-medium-uppercase mb-2 flex h-4 items-center text-text-tertiary">
-        {t('common.modelProvider.quota')}
-        <Tooltip popupContent={t('common.modelProvider.card.tip')} />
+        {t('modelProvider.quota', { ns: 'common' })}
+        <Tooltip popupContent={t('modelProvider.card.tip', { ns: 'common' })} />
       </div>
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-1 text-xs text-text-tertiary">
           <span className="system-md-semibold-uppercase mr-0.5 text-text-secondary">{formatNumber(credits)}</span>
-          <span>{t('common.modelProvider.credits')}</span>
+          <span>{t('modelProvider.credits', { ns: 'common' })}</span>
           {currentWorkspace.next_credit_reset_date
             ? (
                 <>
                   <span>·</span>
                   <span>
-                    {t('common.modelProvider.resetDate', {
-                      date: formatTime(currentWorkspace.next_credit_reset_date, t('appLog.dateFormat') as string),
+                    {t('modelProvider.resetDate', {
+                      ns: 'common',
+                      date: formatTime(currentWorkspace.next_credit_reset_date, t('dateFormat', { ns: 'appLog' })),
                       interpolation: { escapeValue: false },
                     })}
                   </span>
@@ -122,15 +123,15 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
             const usingQuota = providerType === PreferredProviderTypeEnum.system
             const getTooltipKey = () => {
               if (usingQuota)
-                return 'common.modelProvider.card.modelSupported'
+                return 'modelProvider.card.modelSupported'
               if (providerType === PreferredProviderTypeEnum.custom)
-                return 'common.modelProvider.card.modelAPI'
-              return 'common.modelProvider.card.modelNotSupported'
+                return 'modelProvider.card.modelAPI'
+              return 'modelProvider.card.modelNotSupported'
             }
             return (
               <Tooltip
                 key={key}
-                popupContent={t(getTooltipKey(), { modelName: modelNameMap[key] })}
+                popupContent={t(getTooltipKey(), { modelName: modelNameMap[key], ns: 'common' })}
               >
                 <div
                   className={cn('relative h-6 w-6', !providerType && 'cursor-pointer hover:opacity-80')}
