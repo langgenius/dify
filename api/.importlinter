@@ -33,6 +33,15 @@ ignore_imports =
     core.workflow.nodes.loop.loop_node -> core.workflow.graph
     core.workflow.nodes.loop.loop_node -> core.workflow.graph_engine.command_channels
 
+[importlinter:contract:workflow-infrastructure-dependencies]
+name = Workflow Infrastructure Dependencies
+type = forbidden
+source_modules =
+    core.workflow
+forbidden_modules =
+    extensions.ext_database
+    extensions.ext_redis
+
 [importlinter:contract:rsc]
 name = RSC
 type = layers
