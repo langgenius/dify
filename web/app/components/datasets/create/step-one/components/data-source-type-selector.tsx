@@ -1,5 +1,6 @@
 'use client'
 
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { ENABLE_WEBSITE_FIRECRAWL, ENABLE_WEBSITE_JINAREADER, ENABLE_WEBSITE_WATERCRAWL } from '@/config'
 import { DataSourceType } from '@/models/datasets'
@@ -54,18 +55,18 @@ function DataSourceTypeSelector({
 
   const isWebEnabled = ENABLE_WEBSITE_FIRECRAWL || ENABLE_WEBSITE_JINAREADER || ENABLE_WEBSITE_WATERCRAWL
 
-  const handleTypeChange = (type: DataSourceType) => {
+  const handleTypeChange = useCallback((type: DataSourceType) => {
     if (disabled)
       return
     onChange(type)
     onClearPreviews(type)
-  }
+  }, [disabled, onChange, onClearPreviews])
 
-  const visibleOptions = DATA_SOURCE_OPTIONS.filter((option) => {
+  const visibleOptions = useMemo(() => DATA_SOURCE_OPTIONS.filter((option) => {
     if (option.type === DataSourceType.WEB)
       return isWebEnabled
     return true
-  })
+  }), [isWebEnabled])
 
   return (
     <div className="mb-8 grid grid-cols-3 gap-4">
