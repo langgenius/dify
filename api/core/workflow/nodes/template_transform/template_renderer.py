@@ -18,7 +18,7 @@ class Jinja2TemplateRenderer(Protocol):
         raise NotImplementedError
 
 
-class CodeExecutorJinja2TemplateRenderer:
+class CodeExecutorJinja2TemplateRenderer(Jinja2TemplateRenderer):
     """Adapter that renders Jinja2 templates via CodeExecutor."""
 
     _code_executor: type[CodeExecutor]
