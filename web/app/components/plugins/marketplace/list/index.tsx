@@ -1,17 +1,18 @@
 'use client'
 import type { Plugin } from '../../types'
 import type { MarketplaceCollection } from '../types'
-import ListWithCollection from './list-with-collection'
-import CardWrapper from './card-wrapper'
+import type { Locale } from '@/i18n-config'
+import { cn } from '@/utils/classnames'
 import Empty from '../empty'
-import cn from '@/utils/classnames'
+import CardWrapper from './card-wrapper'
+import ListWithCollection from './list-with-collection'
 
 type ListProps = {
   marketplaceCollections: MarketplaceCollection[]
   marketplaceCollectionPluginsMap: Record<string, Plugin[]>
   plugins?: Plugin[]
   showInstallButton?: boolean
-  locale: string
+  locale: Locale
   cardContainerClassName?: string
   cardRender?: (plugin: Plugin) => React.JSX.Element | null
   onMoreClick?: () => void
@@ -48,7 +49,8 @@ const List = ({
           <div className={cn(
             'grid grid-cols-4 gap-3',
             cardContainerClassName,
-          )}>
+          )}
+          >
             {
               plugins.map((plugin) => {
                 if (cardRender)

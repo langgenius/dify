@@ -1,13 +1,31 @@
 import base64
+from typing import Literal
 
-from flask_restx import Resource, fields, reqparse
+from flask import request
+from flask_restx import Resource, fields
+from pydantic import BaseModel, Field
 from werkzeug.exceptions import BadRequest
 
-from controllers.console import api, console_ns
+from controllers.console import console_ns
 from controllers.console.wraps import account_initialization_required, only_edition_cloud, setup_required
 from enums.cloud_plan import CloudPlan
 from libs.login import current_account_with_tenant, login_required
 from services.billing_service import BillingService
+
+DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
+
+
+class SubscriptionQuery(BaseModel):
+    plan: Literal[CloudPlan.PROFESSIONAL, CloudPlan.TEAM] = Field(..., description="Subscription plan")
+    interval: Literal["month", "year"] = Field(..., description="Billing interval")
+
+
+class PartnerTenantsPayload(BaseModel):
+    click_id: str = Field(..., description="Click Id from partner referral link")
+
+
+for model in (SubscriptionQuery, PartnerTenantsPayload):
+    console_ns.schema_model(model.__name__, model.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0))
 
 
 @console_ns.route("/billing/subscription")
@@ -18,20 +36,9 @@ class Subscription(Resource):
     @only_edition_cloud
     def get(self):
         current_user, current_tenant_id = current_account_with_tenant()
-        parser = (
-            reqparse.RequestParser()
-            .add_argument(
-                "plan",
-                type=str,
-                required=True,
-                location="args",
-                choices=[CloudPlan.PROFESSIONAL, CloudPlan.TEAM],
-            )
-            .add_argument("interval", type=str, required=True, location="args", choices=["month", "year"])
-        )
-        args = parser.parse_args()
+        args = SubscriptionQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
         BillingService.is_tenant_owner_or_admin(current_user)
-        return BillingService.get_subscription(args["plan"], args["interval"], current_user.email, current_tenant_id)
+        return BillingService.get_subscription(args.plan, args.interval, current_user.email, current_tenant_id)
 
 
 @console_ns.route("/billing/invoices")
@@ -48,28 +55,27 @@ class Invoices(Resource):
 
 @console_ns.route("/billing/partners/<string:partner_key>/tenants")
 class PartnerTenants(Resource):
-    @api.doc("sync_partner_tenants_bindings")
-    @api.doc(description="Sync partner tenants bindings")
-    @api.doc(params={"partner_key": "Partner key"})
-    @api.expect(
-        api.model(
+    @console_ns.doc("sync_partner_tenants_bindings")
+    @console_ns.doc(description="Sync partner tenants bindings")
+    @console_ns.doc(params={"partner_key": "Partner key"})
+    @console_ns.expect(
+        console_ns.model(
             "SyncPartnerTenantsBindingsRequest",
             {"click_id": fields.String(required=True, description="Click Id from partner referral link")},
         )
     )
-    @api.response(200, "Tenants synced to partner successfully")
-    @api.response(400, "Invalid partner information")
+    @console_ns.response(200, "Tenants synced to partner successfully")
+    @console_ns.response(400, "Invalid partner information")
     @setup_required
     @login_required
     @account_initialization_required
     @only_edition_cloud
     def put(self, partner_key: str):
         current_user, _ = current_account_with_tenant()
-        parser = reqparse.RequestParser().add_argument("click_id", required=True, type=str, location="json")
-        args = parser.parse_args()
 
         try:
-            click_id = args["click_id"]
+            args = PartnerTenantsPayload.model_validate(console_ns.payload or {})
+            click_id = args.click_id
             decoded_partner_key = base64.b64decode(partner_key).decode("utf-8")
         except Exception:
             raise BadRequest("Invalid partner_key")

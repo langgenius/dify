@@ -1,4 +1,4 @@
-module.exports = ({ theme }) => ({
+export default ({ theme }) => ({
   DEFAULT: {
     css: {
       '--tw-prose-body': theme('colors.zinc.700'),

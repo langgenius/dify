@@ -6,7 +6,7 @@ from core.model_runtime.entities.llm_entities import LLMResultChunk
 from core.model_runtime.entities.message_entities import PromptMessage, PromptMessageTool
 from core.model_runtime.entities.model_entities import AIModelEntity
 from core.model_runtime.entities.rerank_entities import RerankResult
-from core.model_runtime.entities.text_embedding_entities import TextEmbeddingResult
+from core.model_runtime.entities.text_embedding_entities import EmbeddingResult
 from core.model_runtime.utils.encoders import jsonable_encoder
 from core.plugin.entities.plugin_daemon import (
     PluginBasicBooleanResponse,
@@ -243,14 +243,14 @@ class PluginModelClient(BasePluginClient):
         credentials: dict,
         texts: list[str],
         input_type: str,
-    ) -> TextEmbeddingResult:
+    ) -> EmbeddingResult:
         """
         Invoke text embedding
         """
         response = self._request_with_plugin_daemon_response_stream(
             method="POST",
             path=f"plugin/{tenant_id}/dispatch/text_embedding/invoke",
-            type_=TextEmbeddingResult,
+            type_=EmbeddingResult,
             data=jsonable_encoder(
                 {
                     "user_id": user_id,
@@ -274,6 +274,48 @@ class PluginModelClient(BasePluginClient):
             return resp
 
         raise ValueError("Failed to invoke text embedding")
+
+    def invoke_multimodal_embedding(
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict,
+        documents: list[dict],
+        input_type: str,
+    ) -> EmbeddingResult:
+        """
+        Invoke file embedding
+        """
+        response = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/multimodal_embedding/invoke",
+            type_=EmbeddingResult,
+            data=jsonable_encoder(
+                {
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider,
+                        "model_type": "text-embedding",
+                        "model": model,
+                        "credentials": credentials,
+                        "documents": documents,
+                        "input_type": input_type,
+                    },
+                }
+            ),
+            headers={
+                "X-Plugin-ID": plugin_id,
+                "Content-Type": "application/json",
+            },
+        )
+
+        for resp in response:
+            return resp
+
+        raise ValueError("Failed to invoke file embedding")
 
     def get_text_embedding_num_tokens(
         self,
@@ -360,6 +402,51 @@ class PluginModelClient(BasePluginClient):
             return resp
 
         raise ValueError("Failed to invoke rerank")
+
+    def invoke_multimodal_rerank(
+        self,
+        tenant_id: str,
+        user_id: str,
+        plugin_id: str,
+        provider: str,
+        model: str,
+        credentials: dict,
+        query: dict,
+        docs: list[dict],
+        score_threshold: float | None = None,
+        top_n: int | None = None,
+    ) -> RerankResult:
+        """
+        Invoke multimodal rerank
+        """
+        response = self._request_with_plugin_daemon_response_stream(
+            method="POST",
+            path=f"plugin/{tenant_id}/dispatch/multimodal_rerank/invoke",
+            type_=RerankResult,
+            data=jsonable_encoder(
+                {
+                    "user_id": user_id,
+                    "data": {
+                        "provider": provider,
+                        "model_type": "rerank",
+                        "model": model,
+                        "credentials": credentials,
+                        "query": query,
+                        "docs": docs,
+                        "score_threshold": score_threshold,
+                        "top_n": top_n,
+                    },
+                }
+            ),
+            headers={
+                "X-Plugin-ID": plugin_id,
+                "Content-Type": "application/json",
+            },
+        )
+        for resp in response:
+            return resp
+
+        raise ValueError("Failed to invoke multimodal rerank")
 
     def invoke_tts(
         self,

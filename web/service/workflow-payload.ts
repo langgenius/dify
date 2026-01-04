@@ -1,8 +1,8 @@
-import { produce } from 'immer'
-import type { Edge, Node } from '@/app/components/workflow/types'
-import { BlockEnum } from '@/app/components/workflow/types'
 import type { PluginTriggerNodeType } from '@/app/components/workflow/nodes/trigger-plugin/types'
+import type { Edge, Node } from '@/app/components/workflow/types'
 import type { FetchWorkflowDraftResponse } from '@/types/workflow'
+import { produce } from 'immer'
+import { BlockEnum } from '@/app/components/workflow/types'
 
 export type TriggerPluginNodePayload = {
   title: string

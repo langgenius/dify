@@ -1,10 +1,11 @@
-import cn from '@/utils/classnames'
+import type { VariantProps } from 'class-variance-authority'
+import type { ChangeEventHandler, CSSProperties, FocusEventHandler } from 'react'
 import { RiCloseCircleFill, RiErrorWarningLine, RiSearchLine } from '@remixicon/react'
-import { type VariantProps, cva } from 'class-variance-authority'
-import { noop } from 'lodash-es'
-import type { CSSProperties, ChangeEventHandler, FocusEventHandler } from 'react'
-import React from 'react'
+import { cva } from 'class-variance-authority'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
+import { cn } from '@/utils/classnames'
 import { CopyFeedbackNew } from '../copy-feedback'
 
 export const inputVariants = cva(
@@ -100,8 +101,8 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
           className,
         )}
         placeholder={placeholder ?? (showLeftIcon
-          ? (t('common.operation.search') || '')
-          : (t('common.placeholder.input') || ''))}
+          ? (t('operation.search', { ns: 'common' }) || '')
+          : (t('placeholder.input', { ns: 'common' }) || ''))}
         value={value}
         onChange={props.type === 'number' ? handleNumberChange : onChange}
         onBlur={props.type === 'number' ? handleNumberBlur : onBlur}
@@ -109,24 +110,28 @@ const Input = React.forwardRef<HTMLInputElement, InputProps>(({
         {...props}
       />
       {showClearIcon && value && !disabled && !destructive && (
-        <div className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')} onClick={onClear}>
-          <RiCloseCircleFill className='h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary' />
+        <div
+          className={cn('group absolute right-2 top-1/2 -translate-y-1/2 cursor-pointer p-[1px]')}
+          onClick={onClear}
+          data-testid="input-clear"
+        >
+          <RiCloseCircleFill className="h-3.5 w-3.5 cursor-pointer text-text-quaternary group-hover:text-text-tertiary" />
         </div>
       )}
       {destructive && (
-        <RiErrorWarningLine className='absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary' />
+        <RiErrorWarningLine className="absolute right-2 top-1/2 h-4 w-4 -translate-y-1/2 text-text-destructive-secondary" />
       )}
       {showCopyIcon && (
         <div className={cn('group absolute right-0 top-1/2 -translate-y-1/2 cursor-pointer')}>
           <CopyFeedbackNew
             content={String(value ?? '')}
-            className='!h-7 !w-7 hover:bg-transparent'
+            className="!h-7 !w-7 hover:bg-transparent"
           />
         </div>
       )}
       {
         unit && (
-          <div className='system-sm-regular absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary'>
+          <div className="system-sm-regular absolute right-2 top-1/2 -translate-y-1/2 text-text-tertiary">
             {unit}
           </div>
         )

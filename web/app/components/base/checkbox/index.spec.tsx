@@ -26,7 +26,7 @@ describe('Checkbox Component', () => {
   })
 
   it('handles click events when not disabled', () => {
-    const onCheck = jest.fn()
+    const onCheck = vi.fn()
     render(<Checkbox {...mockProps} onCheck={onCheck} />)
     const checkbox = screen.getByTestId('checkbox-test')
 
@@ -35,7 +35,7 @@ describe('Checkbox Component', () => {
   })
 
   it('does not handle click events when disabled', () => {
-    const onCheck = jest.fn()
+    const onCheck = vi.fn()
     render(<Checkbox {...mockProps} disabled onCheck={onCheck} />)
     const checkbox = screen.getByTestId('checkbox-test')
 

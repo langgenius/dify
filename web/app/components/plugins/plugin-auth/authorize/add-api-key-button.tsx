@@ -1,12 +1,12 @@
+import type { PluginPayload } from '../types'
+import type { ButtonProps } from '@/app/components/base/button'
+import type { FormSchema } from '@/app/components/base/form/types'
 import {
   memo,
   useState,
 } from 'react'
 import Button from '@/app/components/base/button'
-import type { ButtonProps } from '@/app/components/base/button'
 import ApiKeyModal from './api-key-modal'
-import type { PluginPayload } from '../types'
-import type { FormSchema } from '@/app/components/base/form/types'
 
 export type AddApiKeyButtonProps = {
   pluginPayload: PluginPayload
@@ -29,7 +29,7 @@ const AddApiKeyButton = ({
   return (
     <>
       <Button
-        className='w-full'
+        className="w-full"
         variant={buttonVariant}
         onClick={() => setIsApiKeyModalOpen(true)}
         disabled={disabled}

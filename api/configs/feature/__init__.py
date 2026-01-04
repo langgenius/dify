@@ -73,6 +73,10 @@ class AppExecutionConfig(BaseSettings):
         description="Maximum allowed execution time for the application in seconds",
         default=1200,
     )
+    APP_DEFAULT_ACTIVE_REQUESTS: NonNegativeInt = Field(
+        description="Default number of concurrent active requests per app (0 for unlimited)",
+        default=0,
+    )
     APP_MAX_ACTIVE_REQUESTS: NonNegativeInt = Field(
         description="Maximum number of concurrent active requests per app (0 for unlimited)",
         default=0,
@@ -214,7 +218,7 @@ class PluginConfig(BaseSettings):
 
     PLUGIN_DAEMON_TIMEOUT: PositiveFloat | None = Field(
         description="Timeout in seconds for requests to the plugin daemon (set to None to disable)",
-        default=300.0,
+        default=600.0,
     )
 
     INNER_API_KEY_FOR_PLUGIN: str = Field(description="Inner api key for plugin", default="inner-api-key")
@@ -354,6 +358,57 @@ class FileUploadConfig(BaseSettings):
     WORKFLOW_FILE_UPLOAD_LIMIT: PositiveInt = Field(
         description="Maximum number of files allowed in a workflow upload operation",
         default=10,
+    )
+
+    IMAGE_FILE_BATCH_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a image batch upload operation",
+        default=10,
+    )
+
+    SINGLE_CHUNK_ATTACHMENT_LIMIT: PositiveInt = Field(
+        description="Maximum number of files allowed in a single chunk attachment",
+        default=10,
+    )
+
+    ATTACHMENT_IMAGE_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed image file size for attachments in megabytes",
+        default=2,
+    )
+
+    ATTACHMENT_IMAGE_DOWNLOAD_TIMEOUT: NonNegativeInt = Field(
+        description="Timeout for downloading image attachments in seconds",
+        default=60,
+    )
+
+    # Annotation Import Security Configurations
+    ANNOTATION_IMPORT_FILE_SIZE_LIMIT: NonNegativeInt = Field(
+        description="Maximum allowed CSV file size for annotation import in megabytes",
+        default=2,
+    )
+
+    ANNOTATION_IMPORT_MAX_RECORDS: PositiveInt = Field(
+        description="Maximum number of annotation records allowed in a single import",
+        default=10000,
+    )
+
+    ANNOTATION_IMPORT_MIN_RECORDS: PositiveInt = Field(
+        description="Minimum number of annotation records required in a single import",
+        default=1,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_MINUTE: PositiveInt = Field(
+        description="Maximum number of annotation import requests per minute per tenant",
+        default=5,
+    )
+
+    ANNOTATION_IMPORT_RATE_LIMIT_PER_HOUR: PositiveInt = Field(
+        description="Maximum number of annotation import requests per hour per tenant",
+        default=20,
+    )
+
+    ANNOTATION_IMPORT_MAX_CONCURRENT: PositiveInt = Field(
+        description="Maximum number of concurrent annotation import tasks per tenant",
+        default=2,
     )
 
     inner_UPLOAD_FILE_EXTENSION_BLACKLIST: str = Field(
@@ -532,6 +587,11 @@ class LoggingConfig(BaseSettings):
         default="INFO",
     )
 
+    LOG_OUTPUT_FORMAT: Literal["text", "json"] = Field(
+        description="Log output format: 'text' for human-readable, 'json' for structured JSON logs.",
+        default="text",
+    )
+
     LOG_FILE: str | None = Field(
         description="File path for log output.",
         default=None,
@@ -549,7 +609,10 @@ class LoggingConfig(BaseSettings):
 
     LOG_FORMAT: str = Field(
         description="Format string for log messages",
-        default="%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] [%(filename)s:%(lineno)d] - %(message)s",
+        default=(
+            "%(asctime)s.%(msecs)03d %(levelname)s [%(threadName)s] "
+            "[%(filename)s:%(lineno)d] %(trace_id)s - %(message)s"
+        ),
     )
 
     LOG_DATEFORMAT: str | None = Field(
@@ -1212,6 +1275,21 @@ class TenantIsolatedTaskQueueConfig(BaseSettings):
     )
 
 
+class SandboxExpiredRecordsCleanConfig(BaseSettings):
+    SANDBOX_EXPIRED_RECORDS_CLEAN_GRACEFUL_PERIOD: NonNegativeInt = Field(
+        description="Graceful period in days for sandbox records clean after subscription expiration",
+        default=21,
+    )
+    SANDBOX_EXPIRED_RECORDS_CLEAN_BATCH_SIZE: PositiveInt = Field(
+        description="Maximum number of records to process in each batch",
+        default=1000,
+    )
+    SANDBOX_EXPIRED_RECORDS_RETENTION_DAYS: PositiveInt = Field(
+        description="Retention days for sandbox expired workflow_run records and message records",
+        default=30,
+    )
+
+
 class FeatureConfig(
     # place the configs in alphabet order
     AppExecutionConfig,
@@ -1237,6 +1315,7 @@ class FeatureConfig(
     PositionConfig,
     RagEtlConfig,
     RepositoryConfig,
+    SandboxExpiredRecordsCleanConfig,
     SecurityConfig,
     TenantIsolatedTaskQueueConfig,
     ToolConfig,
