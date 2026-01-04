@@ -1,6 +1,5 @@
 import time
 import uuid
-from unittest import mock
 from uuid import uuid4
 
 from core.app.entities.app_invoke_entities import InvokeFrom
@@ -393,7 +392,7 @@ def test_remove_last_from_empty_array():
     assert got.to_object() == []
 
 
-def test_node_factory_injects_conv_var_updater_factory():
+def test_node_factory_creates_variable_assigner_node():
     graph_config = {
         "edges": [],
         "nodes": [
@@ -422,14 +421,11 @@ def test_node_factory_injects_conv_var_updater_factory():
     )
     graph_runtime_state = GraphRuntimeState(variable_pool=variable_pool, start_at=time.perf_counter())
 
-    mock_conv_var_updater_factory = mock.Mock()
     node_factory = DifyNodeFactory(
         graph_init_params=init_params,
         graph_runtime_state=graph_runtime_state,
-        conv_var_updater_factory=mock_conv_var_updater_factory,
     )
 
     node = node_factory.create_node(graph_config["nodes"][0])
 
     assert isinstance(node, VariableAssignerNode)
-    assert node._conv_var_updater_factory is mock_conv_var_updater_factory

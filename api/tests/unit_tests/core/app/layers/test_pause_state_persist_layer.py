@@ -1,4 +1,5 @@
 import json
+from collections.abc import Sequence
 from time import time
 from unittest.mock import Mock
 
@@ -66,8 +67,10 @@ class MockReadOnlyVariablePool:
     def __init__(self, variables: dict[tuple[str, str], object] | None = None):
         self._variables = variables or {}
 
-    def get(self, node_id: str, variable_key: str) -> Segment | None:
-        value = self._variables.get((node_id, variable_key))
+    def get(self, selector: Sequence[str]) -> Segment | None:
+        if len(selector) < 2:
+            return None
+        value = self._variables.get((selector[0], selector[1]))
         if value is None:
             return None
         mock_segment = Mock(spec=Segment)

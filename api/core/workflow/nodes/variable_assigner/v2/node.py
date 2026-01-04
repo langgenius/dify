@@ -1,24 +1,20 @@
 import json
-from collections.abc import Callable, Mapping, MutableMapping, Sequence
-from typing import TYPE_CHECKING, Any, TypeAlias, cast
+from collections.abc import Mapping, MutableMapping, Sequence
+from typing import TYPE_CHECKING, Any
 
-from core.app.entities.app_invoke_entities import InvokeFrom
 from core.variables import SegmentType, Variable
 from core.variables.consts import SELECTORS_LENGTH
 from core.workflow.constants import CONVERSATION_VARIABLE_NODE_ID
-from core.workflow.conversation_variable_updater import ConversationVariableUpdater
 from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.variable_assigner.common import helpers as common_helpers
 from core.workflow.nodes.variable_assigner.common.exc import VariableOperatorNodeError
-from core.workflow.nodes.variable_assigner.common.impl import conversation_variable_updater_factory
 
 from . import helpers
 from .entities import VariableAssignerNodeData, VariableOperationItem
 from .enums import InputType, Operation
 from .exc import (
-    ConversationIDNotFoundError,
     InputTypeNotSupportedError,
     InvalidDataError,
     InvalidInputValueError,
@@ -29,8 +25,6 @@ from .exc import (
 if TYPE_CHECKING:
     from core.workflow.entities import GraphInitParams
     from core.workflow.runtime import GraphRuntimeState
-
-_CONV_VAR_UPDATER_FACTORY: TypeAlias = Callable[[], ConversationVariableUpdater]
 
 
 def _target_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_id: str, item: VariableOperationItem):
@@ -58,7 +52,6 @@ def _source_mapping_from_item(mapping: MutableMapping[str, Sequence[str]], node_
 
 class VariableAssignerNode(Node[VariableAssignerNodeData]):
     node_type = NodeType.VARIABLE_ASSIGNER
-    _conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY
 
     def __init__(
         self,
@@ -66,8 +59,6 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
         config: Mapping[str, Any],
         graph_init_params: "GraphInitParams",
         graph_runtime_state: "GraphRuntimeState",
-        *,
-        conv_var_updater_factory: _CONV_VAR_UPDATER_FACTORY = conversation_variable_updater_factory,
     ):
         super().__init__(
             id=id,
@@ -75,7 +66,6 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
             graph_init_params=graph_init_params,
             graph_runtime_state=graph_runtime_state,
         )
-        self._conv_var_updater_factory = conv_var_updater_factory
 
     def blocks_variable_output(self, variable_selectors: set[tuple[str, ...]]) -> bool:
         """
@@ -200,38 +190,33 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
         # remove the duplicated items first.
         updated_variable_selectors = list(set(map(tuple, updated_variable_selectors)))
 
-        conv_var_updater = self._conv_var_updater_factory()
-        # Update variables
         for selector in updated_variable_selectors:
             variable = self.graph_runtime_state.variable_pool.get(selector)
             if not isinstance(variable, Variable):
                 raise VariableNotFoundError(variable_selector=selector)
             process_data[variable.name] = variable.value
 
-            if variable.selector[0] == CONVERSATION_VARIABLE_NODE_ID:
-                conversation_id = self.graph_runtime_state.variable_pool.get(["sys", "conversation_id"])
-                if not conversation_id:
-                    if self.invoke_from != InvokeFrom.DEBUGGER:
-                        raise ConversationIDNotFoundError
-                else:
-                    conversation_id = conversation_id.value
-                    conv_var_updater.update(
-                        conversation_id=cast(str, conversation_id),
-                        variable=variable,
-                    )
-        conv_var_updater.flush()
         updated_variables = [
             common_helpers.variable_to_processed_data(selector, seg)
             for selector in updated_variable_selectors
             if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
         ]
 
+        output_variables: dict[str, Any] = {}
+        for selector in updated_variable_selectors:
+            variable = self.graph_runtime_state.variable_pool.get(selector)
+            if not isinstance(variable, Variable):
+                continue
+            if variable.selector[0] != CONVERSATION_VARIABLE_NODE_ID:
+                continue
+            selector_key = ".".join(variable.selector)
+            output_variables[selector_key] = variable.value
         process_data = common_helpers.set_updated_variables(process_data, updated_variables)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs={},
+            outputs=output_variables,
         )
 
     def _handle_item(
