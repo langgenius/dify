@@ -338,9 +338,7 @@ class CompletionConversationApi(Resource):
         current_user, _ = current_account_with_tenant()
         args = CompletionConversationQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
 
-        query = sa.select(Conversation).where(
-            Conversation.app_id == app_model.id, Conversation.mode == "completion", Conversation.is_deleted.is_(False)
-        )
+        query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.mode == "completion")
 
         if args.keyword:
             query = query.join(Message, Message.conversation_id == Conversation.id).where(
@@ -452,7 +450,7 @@ class ChatConversationApi(Resource):
             .subquery()
         )
 
-        query = sa.select(Conversation).where(Conversation.app_id == app_model.id, Conversation.is_deleted.is_(False))
+        query = sa.select(Conversation).where(Conversation.app_id == app_model.id)
 
         if args.keyword:
             keyword_filter = f"%{args.keyword}%"
