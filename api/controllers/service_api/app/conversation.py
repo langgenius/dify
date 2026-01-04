@@ -3,8 +3,7 @@ from uuid import UUID
 
 from flask import request
 from flask_restx import Resource
-from flask_restx._http import HTTPStatus
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, TypeAdapter, field_validator, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, NotFound
 
@@ -16,9 +15,9 @@ from controllers.service_api.wraps import FetchUserArg, WhereisUserArg, validate
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
 from fields.conversation_fields import (
-    build_conversation_delete_model,
-    build_conversation_infinite_scroll_pagination_model,
-    build_simple_conversation_model,
+    ConversationDelete,
+    ConversationInfiniteScrollPagination,
+    SimpleConversation,
 )
 from fields.conversation_variable_fields import (
     build_conversation_variable_infinite_scroll_pagination_model,
@@ -105,7 +104,6 @@ class ConversationApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.QUERY))
-    @service_api_ns.marshal_with(build_conversation_infinite_scroll_pagination_model(service_api_ns))
     def get(self, app_model: App, end_user: EndUser):
         """List all conversations for the current user.
 
@@ -120,7 +118,7 @@ class ConversationApi(Resource):
 
         try:
             with Session(db.engine) as session:
-                return ConversationService.pagination_by_last_id(
+                pagination = ConversationService.pagination_by_last_id(
                     session=session,
                     app_model=app_model,
                     user=end_user,
@@ -129,6 +127,13 @@ class ConversationApi(Resource):
                     invoke_from=InvokeFrom.SERVICE_API,
                     sort_by=query_args.sort_by,
                 )
+                adapter = TypeAdapter(SimpleConversation)
+                conversations = [adapter.validate_python(item, from_attributes=True) for item in pagination.data]
+                return ConversationInfiniteScrollPagination(
+                    limit=pagination.limit,
+                    has_more=pagination.has_more,
+                    data=conversations,
+                ).model_dump(mode="json")
         except services.errors.conversation.LastConversationNotExistsError:
             raise NotFound("Last Conversation Not Exists.")
 
@@ -146,7 +151,6 @@ class ConversationDetailApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    @service_api_ns.marshal_with(build_conversation_delete_model(service_api_ns), code=HTTPStatus.NO_CONTENT)
     def delete(self, app_model: App, end_user: EndUser, c_id):
         """Delete a specific conversation."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -159,7 +163,7 @@ class ConversationDetailApi(Resource):
             ConversationService.delete(app_model, conversation_id, end_user)
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
-        return {"result": "success"}, 204
+        return ConversationDelete(result="success").model_dump(mode="json"), 204
 
 
 @service_api_ns.route("/conversations/<uuid:c_id>/name")
@@ -176,7 +180,6 @@ class ConversationRenameApi(Resource):
         }
     )
     @validate_app_token(fetch_user_arg=FetchUserArg(fetch_from=WhereisUserArg.JSON))
-    @service_api_ns.marshal_with(build_simple_conversation_model(service_api_ns))
     def post(self, app_model: App, end_user: EndUser, c_id):
         """Rename a conversation or auto-generate a name."""
         app_mode = AppMode.value_of(app_model.mode)
@@ -188,7 +191,14 @@ class ConversationRenameApi(Resource):
         payload = ConversationRenamePayload.model_validate(service_api_ns.payload or {})
 
         try:
-            return ConversationService.rename(app_model, conversation_id, end_user, payload.name, payload.auto_generate)
+            conversation = ConversationService.rename(
+                app_model, conversation_id, end_user, payload.name, payload.auto_generate
+            )
+            return (
+                TypeAdapter(SimpleConversation)
+                .validate_python(conversation, from_attributes=True)
+                .model_dump(mode="json")
+            )
         except services.errors.conversation.ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
 
