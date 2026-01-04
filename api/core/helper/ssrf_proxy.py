@@ -34,6 +34,10 @@ class MaxRetriesExceededError(ValueError):
     pass
 
 
+request_error = httpx.RequestError
+max_retries_exceeded_error = MaxRetriesExceededError
+
+
 def _create_proxy_mounts() -> dict[str, httpx.HTTPTransport]:
     return {
         "http://": httpx.HTTPTransport(

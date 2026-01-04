@@ -43,10 +43,10 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 class HttpClientProtocol(Protocol):
     @property
-    def MaxRetriesExceededError(self) -> type[Exception]: ...  # noqa: N802
+    def max_retries_exceeded_error(self) -> type[Exception]: ...
 
     @property
-    def RequestError(self) -> type[Exception]: ...  # noqa: N802
+    def request_error(self) -> type[Exception]: ...
 
     def get(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
 
@@ -389,7 +389,7 @@ class Executor:
                 **request_args,
                 max_retries=self.max_retries,
             )
-        except (self._http_client.MaxRetriesExceededError, self._http_client.RequestError) as e:
+        except (self._http_client.max_retries_exceeded_error, self._http_client.request_error) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
         return response
