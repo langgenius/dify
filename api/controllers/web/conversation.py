@@ -1,5 +1,3 @@
-from flask_restx import reqparse
-from flask_restx.inputs import int_range
 from pydantic import TypeAdapter
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import NotFound

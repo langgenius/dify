@@ -1,5 +1,3 @@
-from flask_restx import reqparse
-from flask_restx.inputs import int_range
 from pydantic import TypeAdapter
 from werkzeug.exceptions import NotFound
 
@@ -9,7 +7,6 @@ from controllers.web.error import NotCompletionAppError
 from controllers.web.wraps import WebApiResource
 from fields.conversation_fields import ResultResponse
 from fields.message_fields import SavedMessageInfiniteScrollPagination, SavedMessageItem
-from libs.helper import uuid_value
 from services.errors.message import MessageNotExistsError
 from services.saved_message_service import SavedMessageService
 
