@@ -1,5 +1,6 @@
 // @ts-check
 import antfu from '@antfu/eslint-config'
+import pluginQuery from '@tanstack/eslint-plugin-query'
 import sonar from 'eslint-plugin-sonarjs'
 import storybook from 'eslint-plugin-storybook'
 import tailwind from 'eslint-plugin-tailwindcss'
@@ -13,6 +14,24 @@ export default antfu(
         'react/no-forward-ref': 'off',
         'react/no-use-context': 'off',
         'react/prefer-namespace-import': 'error',
+
+        // React Compiler rules
+        // Set to warn for gradual adoption
+        'react-hooks/config': 'warn',
+        'react-hooks/error-boundaries': 'warn',
+        'react-hooks/component-hook-factories': 'warn',
+        'react-hooks/gating': 'warn',
+        'react-hooks/globals': 'warn',
+        'react-hooks/immutability': 'warn',
+        'react-hooks/preserve-manual-memoization': 'warn',
+        'react-hooks/purity': 'warn',
+        'react-hooks/refs': 'warn',
+        'react-hooks/set-state-in-effect': 'warn',
+        'react-hooks/set-state-in-render': 'warn',
+        'react-hooks/static-components': 'warn',
+        'react-hooks/unsupported-syntax': 'warn',
+        'react-hooks/use-memo': 'warn',
+        'react-hooks/incompatible-library': 'warn',
       },
     },
     nextjs: true,
@@ -61,6 +80,7 @@ export default antfu(
     },
   },
   storybook.configs['flat/recommended'],
+  ...pluginQuery.configs['flat/recommended'],
   // sonar
   {
     rules: {
