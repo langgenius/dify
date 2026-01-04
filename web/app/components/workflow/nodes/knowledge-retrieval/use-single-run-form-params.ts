@@ -10,7 +10,7 @@ import { useDatasetsDetailStore } from '../../datasets-detail-store/store'
 import useAvailableVarList from '../_base/hooks/use-available-var-list'
 import { findVariableWhenOnLLMVision } from '../utils'
 
-const i18nPrefix = 'workflow.nodes.knowledgeRetrieval'
+const i18nPrefix = 'nodes.knowledgeRetrieval'
 
 type Params = {
   id: string
@@ -70,7 +70,7 @@ const useSingleRunFormParams = ({
     const inputFields: FormProps[] = [
       {
         inputs: [{
-          label: t(`${i18nPrefix}.queryText`)!,
+          label: t(`${i18nPrefix}.queryText`, { ns: 'workflow' })!,
           variable: 'query',
           type: InputVarType.paragraph,
           required: false,
@@ -84,7 +84,7 @@ const useSingleRunFormParams = ({
       inputFields.push(
         {
           inputs: [{
-            label: t(`${i18nPrefix}.queryAttachment`)!,
+            label: t(`${i18nPrefix}.queryAttachment`, { ns: 'workflow' })!,
             variable: 'queryAttachment',
             type: currentVariable?.formType as InputVarType,
             required: false,

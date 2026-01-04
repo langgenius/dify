@@ -36,7 +36,7 @@ const UploadMethodField = ({
       />
       <div className="grid grid-cols-3 gap-2">
         <OptionCard
-          title={t('appDebug.variableConfig.localUpload')}
+          title={t('variableConfig.localUpload', { ns: 'appDebug' })}
           selected={value.length === 1 && value.includes(TransferMethod.local_file)}
           onSelect={handleUploadMethodChange.bind(null, TransferMethod.local_file)}
         />
@@ -46,7 +46,7 @@ const UploadMethodField = ({
           onSelect={handleUploadMethodChange.bind(null, TransferMethod.remote_url)}
         />
         <OptionCard
-          title={t('appDebug.variableConfig.both')}
+          title={t('variableConfig.both', { ns: 'appDebug' })}
           selected={value.includes(TransferMethod.local_file) && value.includes(TransferMethod.remote_url)}
           onSelect={handleUploadMethodChange.bind(null, TransferMethod.all)}
         />

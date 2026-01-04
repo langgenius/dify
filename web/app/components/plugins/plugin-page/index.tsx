@@ -7,19 +7,18 @@ import {
   RiEqualizer2Line,
 } from '@remixicon/react'
 import { useBoolean } from 'ahooks'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import Link from 'next/link'
 import { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import TabSlider from '@/app/components/base/tab-slider'
 import Tooltip from '@/app/components/base/tooltip'
-import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal/modal'
+import ReferenceSettingModal from '@/app/components/plugins/reference-setting-modal'
 import { getDocsUrl } from '@/app/components/plugins/utils'
 import { MARKETPLACE_API_PREFIX, SUPPORT_INSTALL_LOCAL_FILE_EXTENSIONS } from '@/config'
 import { useGlobalPublicStore } from '@/context/global-public-context'
-import I18n from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import useDocumentTitle from '@/hooks/use-document-title'
 import { usePluginInstallation } from '@/hooks/use-query-params'
 import { fetchBundleInfoFromMarketPlace, fetchManifestFromMarketPlace } from '@/service/plugins'
@@ -48,8 +47,8 @@ const PluginPage = ({
   marketplace,
 }: PluginPageProps) => {
   const { t } = useTranslation()
-  const { locale } = useContext(I18n)
-  useDocumentTitle(t('plugin.metadata.title'))
+  const locale = useLocale()
+  useDocumentTitle(t('metadata.title', { ns: 'plugin' }))
 
   // Use nuqs hook for installation state
   const [{ packageId, bundleInfo }, setInstallState] = usePluginInstallation()
@@ -172,7 +171,7 @@ const PluginPage = ({
                       variant="ghost"
                       className="text-text-tertiary"
                     >
-                      {t('plugin.requestAPlugin')}
+                      {t('requestAPlugin', { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <Link
@@ -184,7 +183,7 @@ const PluginPage = ({
                       variant="secondary-accent"
                     >
                       <RiBookOpenLine className="mr-1 h-4 w-4" />
-                      {t('plugin.publishPlugins')}
+                      {t('publishPlugins', { ns: 'plugin' })}
                     </Button>
                   </Link>
                   <div className="mx-1 h-3.5 w-[1px] shrink-0 bg-divider-regular"></div>
@@ -205,7 +204,7 @@ const PluginPage = ({
             {
               canSetPermissions && (
                 <Tooltip
-                  popupContent={t('plugin.privilege.title')}
+                  popupContent={t('privilege.title', { ns: 'plugin' })}
                 >
                   <Button
                     className="group h-full w-full p-2 text-components-button-secondary-text"
@@ -231,7 +230,7 @@ const PluginPage = ({
           )}
           <div className={`flex items-center justify-center gap-2 py-4 ${dragging ? 'text-text-accent' : 'text-text-quaternary'}`}>
             <RiDragDropLine className="h-4 w-4" />
-            <span className="system-xs-regular">{t('plugin.installModal.dropPluginToInstall')}</span>
+            <span className="system-xs-regular">{t('installModal.dropPluginToInstall', { ns: 'plugin' })}</span>
           </div>
           {currentFile && (
             <InstallFromLocalPackage

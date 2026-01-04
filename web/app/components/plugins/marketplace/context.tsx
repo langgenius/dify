@@ -3,6 +3,7 @@
 import type {
   ReactNode,
 } from 'react'
+import type { TagKey } from '../constants'
 import type { Plugin } from '../types'
 import type {
   MarketplaceCollection,
@@ -10,7 +11,8 @@ import type {
   SearchParams,
   SearchParamsFromCollection,
 } from './types'
-import { debounce, noop } from 'es-toolkit/compat'
+import { debounce } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import {
   useCallback,
   useEffect,
@@ -118,7 +120,7 @@ export const MarketplaceContextProvider = ({
 
   // Initialize from URL params (legacy support) or use nuqs state
   const queryFromSearchParams = searchParams?.q || urlFilters.q
-  const tagsFromSearchParams = getValidTagKeys(urlFilters.tags)
+  const tagsFromSearchParams = getValidTagKeys(urlFilters.tags as TagKey[])
   const hasValidTags = !!tagsFromSearchParams.length
   const hasValidCategory = getValidCategoryKeys(urlFilters.category)
   const categoryFromSearchParams = hasValidCategory || PLUGIN_TYPE_SEARCH_MAP.all

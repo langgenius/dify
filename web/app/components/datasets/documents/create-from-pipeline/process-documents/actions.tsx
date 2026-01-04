@@ -24,14 +24,14 @@ const Actions = ({
         className="gap-x-0.5"
       >
         <RiArrowLeftLine className="size-4" />
-        <span className="px-0.5">{t('datasetPipeline.operations.dataSource')}</span>
+        <span className="px-0.5">{t('operations.dataSource', { ns: 'datasetPipeline' })}</span>
       </Button>
       <Button
         variant="primary"
         disabled={runDisabled}
         onClick={onProcess}
       >
-        {t('datasetPipeline.operations.saveAndProcess')}
+        {t('operations.saveAndProcess', { ns: 'datasetPipeline' })}
       </Button>
     </div>
   )

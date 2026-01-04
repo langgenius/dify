@@ -140,7 +140,7 @@ const AgentModelTrigger: FC<AgentModelTriggerProps> = ({
             <>
               <div className="flex grow items-center gap-1 p-1 pl-2">
                 <span className="system-sm-regular overflow-hidden text-ellipsis whitespace-nowrap text-components-input-text-placeholder">
-                  {t('workflow.nodes.agent.configureModel')}
+                  {t('nodes.agent.configureModel', { ns: 'workflow' })}
                 </span>
               </div>
               <div className="flex items-center pr-1">

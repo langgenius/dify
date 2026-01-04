@@ -33,7 +33,7 @@ const Apps = ({
 }: AppsProps) => {
   const { t } = useTranslation()
   const { hasEditPermission } = useContext(ExploreContext)
-  const allCategoriesEn = t('explore.apps.allCategories', { lng: 'en' })
+  const allCategoriesEn = t('apps.allCategories', { ns: 'explore', lng: 'en' })
 
   const [keywords, setKeywords] = useState('')
   const [searchKeywords, setSearchKeywords] = useState('')
@@ -139,8 +139,8 @@ const Apps = ({
     >
 
       <div className="shrink-0 px-12 pt-6">
-        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('explore.apps.title')}</div>
-        <div className="text-sm text-text-tertiary">{t('explore.apps.description')}</div>
+        <div className={`mb-1 ${s.textGradient} text-xl font-semibold`}>{t('apps.title', { ns: 'explore' })}</div>
+        <div className="text-sm text-text-tertiary">{t('apps.description', { ns: 'explore' })}</div>
       </div>
 
       <div className={cn(

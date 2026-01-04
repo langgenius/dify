@@ -24,15 +24,15 @@ export const useAddDocumentsSteps = () => {
 
   const steps = [
     {
-      label: t('datasetPipeline.addDocuments.steps.chooseDatasource'),
+      label: t('addDocuments.steps.chooseDatasource', { ns: 'datasetPipeline' }),
       value: AddDocumentsStep.dataSource,
     },
     {
-      label: t('datasetPipeline.addDocuments.steps.processDocuments'),
+      label: t('addDocuments.steps.processDocuments', { ns: 'datasetPipeline' }),
       value: AddDocumentsStep.processDocuments,
     },
     {
-      label: t('datasetPipeline.addDocuments.steps.processingDocuments'),
+      label: t('addDocuments.steps.processingDocuments', { ns: 'datasetPipeline' }),
       value: AddDocumentsStep.processingDocuments,
     },
   ]

@@ -153,7 +153,7 @@ const AllStartBlocks = ({
             )}
             {shouldShowTriggerListTitle && (
               <div className="px-3 pb-1 pt-2">
-                <span className="system-xs-medium text-text-primary">{t('workflow.tabs.allTriggers')}</span>
+                <span className="system-xs-medium text-text-primary">{t('tabs.allTriggers', { ns: 'workflow' })}</span>
               </div>
             )}
             <StartBlocks
@@ -189,7 +189,7 @@ const AllStartBlocks = ({
             <div className="flex h-full flex-col items-center justify-center gap-3 py-12 text-center">
               <SearchMenu className="h-8 w-8 text-text-quaternary" />
               <div className="text-sm font-medium text-text-secondary">
-                {t('workflow.tabs.noPluginsFound')}
+                {t('tabs.noPluginsFound', { ns: 'workflow' })}
               </div>
               <Link
                 href="https://github.com/langgenius/dify-plugins/issues/new?template=plugin_request.yaml"
@@ -200,7 +200,7 @@ const AllStartBlocks = ({
                   variant="secondary-accent"
                   className="h-6 cursor-pointer px-3 text-xs"
                 >
-                  {t('workflow.tabs.requestToCommunity')}
+                  {t('tabs.requestToCommunity', { ns: 'workflow' })}
                 </Button>
               </Link>
             </div>
@@ -214,7 +214,7 @@ const AllStartBlocks = ({
             href={getMarketplaceUrl('', { category: PluginCategoryEnum.trigger })}
             target="_blank"
           >
-            <span>{t('plugin.findMoreInMarketplace')}</span>
+            <span>{t('findMoreInMarketplace', { ns: 'plugin' })}</span>
             <RiArrowRightUpLine className="ml-0.5 h-3 w-3" />
           </Link>
         )}
