@@ -36,9 +36,7 @@ from libs.archive_storage import (
     ArchiveStorageNotConfiguredError,
     get_archive_storage,
 )
-from models.workflow import (
-    WorkflowRun,
-)
+from models.workflow import WorkflowRun
 from repositories.api_workflow_run_repository import APIWorkflowRunRepository
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -141,10 +139,8 @@ class WorkflowRunArchiver:
         if start_from or end_before:
             if start_from is None or end_before is None:
                 raise ValueError("start_from and end_before must be provided together")
-            if start_from.tzinfo is None:
-                start_from = start_from.replace(tzinfo=datetime.UTC)
-            if end_before.tzinfo is None:
-                end_before = end_before.replace(tzinfo=datetime.UTC)
+            start_from = start_from.replace(tzinfo=datetime.UTC)
+            end_before = end_before.replace(tzinfo=datetime.UTC)
             if start_from >= end_before:
                 raise ValueError("start_from must be earlier than end_before")
             self.start_from = start_from
@@ -155,7 +151,7 @@ class WorkflowRunArchiver:
         if workers < 1:
             raise ValueError("workers must be at least 1")
         self.workers = workers
-        self.tenant_ids = set(tenant_ids) if tenant_ids else set()
+        self.tenant_ids = sorted(set(tenant_ids)) if tenant_ids else []
         self.limit = limit
         self.dry_run = dry_run
         self.workflow_run_repo = workflow_run_repo
@@ -288,7 +284,7 @@ class WorkflowRunArchiver:
             end_before=self.end_before,
             last_seen=last_seen,
             batch_size=self.batch_size,
-            tenant_ids=list(self.tenant_ids) if self.tenant_ids else None,
+            tenant_ids=self.tenant_ids or None,
         )
 
     def _build_start_message(self) -> str:
@@ -298,7 +294,7 @@ class WorkflowRunArchiver:
         return (
             f"{'[DRY RUN] ' if self.dry_run else ''}Starting workflow run archiving "
             f"for runs {range_desc} "
-            f"(batch_size={self.batch_size}, tenant_ids={','.join(sorted(self.tenant_ids)) or 'all'})"
+            f"(batch_size={self.batch_size}, tenant_ids={','.join(self.tenant_ids) or 'all'})"
         )
 
     def _filter_paid_tenants(self, tenant_ids: set[str]) -> set[str]:
