@@ -129,6 +129,7 @@ services:
       - ./middleware.env
     environment:
       # Use the shared environment variables.
+      LOG_OUTPUT_FORMAT: ${LOG_OUTPUT_FORMAT:-text}
       DB_DATABASE: ${DB_PLUGIN_DATABASE:-dify_plugin}
       REDIS_HOST: ${REDIS_HOST:-redis}
       REDIS_PORT: ${REDIS_PORT:-6379}
