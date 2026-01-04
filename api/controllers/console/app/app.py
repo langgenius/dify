@@ -333,7 +333,7 @@ class Site(ResponseModel):
     updated_by: str | None = None
     updated_at: int | None = None
 
-    @computed_field(return_type=str | None) # type: ignore
+    @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
         return _build_icon_url(self.icon_type, self.icon)
@@ -383,7 +383,7 @@ class AppPartial(ResponseModel):
     author_name: str | None = None
     has_draft_trigger: bool | None = None
 
-    @computed_field(return_type=str | None) # type: ignore
+    @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
         return _build_icon_url(self.icon_type, self.icon)
@@ -431,7 +431,7 @@ class AppDetailWithSite(AppDetail):
     deleted_tools: list[DeletedTool] = Field(default_factory=list)
     site: Site | None = None
 
-    @computed_field(return_type=str | None) # type: ignore
+    @computed_field(return_type=str | None)  # type: ignore
     @property
     def icon_url(self) -> str | None:
         return _build_icon_url(self.icon_type, self.icon)
