@@ -73,7 +73,7 @@ export const useUpdateAccessMode = () => {
 export const useGetUserCanAccessApp = ({ appId, isInstalledApp = true, enabled }: { appId?: string, isInstalledApp?: boolean, enabled?: boolean }) => {
   const systemFeatures = useGlobalPublicStore(s => s.systemFeatures)
   return useQuery({
-    queryKey: [NAME_SPACE, 'user-can-access-app', appId],
+    queryKey: [NAME_SPACE, 'user-can-access-app', appId, systemFeatures.webapp_auth.enabled, isInstalledApp],
     queryFn: () => {
       if (systemFeatures.webapp_auth.enabled)
         return getUserCanAccess(appId!, isInstalledApp)
