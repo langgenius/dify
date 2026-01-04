@@ -28,8 +28,8 @@ Favor Tailwind CSS utility classes instead of adding new `.module.css` files unl
 Update this file when adding, editing, or removing Code Quality rules so the catalog remains accurate.
 
 ### Classname ordering for easy overrides
-
-## Description
+## Classname ordering for easy overrides
+### Description
 
 When writing components, always place the incoming `className` prop after the component’s own class values so that downstream consumers can override or extend the styling. This keeps your component’s defaults but still lets external callers change or remove specific styles.
 
