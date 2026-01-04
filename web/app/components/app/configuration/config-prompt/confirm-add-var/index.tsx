@@ -1,9 +1,10 @@
 'use client'
 import type { FC } from 'react'
-import React, { useRef } from 'react'
+import * as React from 'react'
+import { useRef } from 'react'
 import { useTranslation } from 'react-i18next'
-import VarHighlight from '../../base/var-highlight'
 import Button from '@/app/components/base/button'
+import VarHighlight from '../../base/var-highlight'
 
 export type IConfirmAddVarProps = {
   varNameArr: string[]
@@ -33,33 +34,37 @@ const ConfirmAddVar: FC<IConfirmAddVarProps> = ({
   //   onHide()
   // }, mainContentRef)
   return (
-    <div className='absolute inset-0  flex items-center justify-center rounded-xl'
+    <div
+      className="absolute inset-0  flex items-center justify-center rounded-xl"
       style={{
         backgroundColor: 'rgba(35, 56, 118, 0.2)',
-      }}>
+      }}
+    >
       <div
         ref={mainContentRef}
-        className='w-[420px] rounded-xl bg-components-panel-bg p-6'
+        className="w-[420px] rounded-xl bg-components-panel-bg p-6"
         style={{
           boxShadow: '0px 12px 16px -4px rgba(16, 24, 40, 0.08), 0px 4px 6px -2px rgba(16, 24, 40, 0.03)',
         }}
       >
-        <div className='flex items-start space-x-3'>
+        <div className="flex items-start space-x-3">
           <div
-            className='flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg-alt shadow-lg'
-          >{VarIcon}</div>
-          <div className='grow-1'>
-            <div className='text-sm font-medium text-text-primary'>{t('appDebug.autoAddVar')}</div>
-            <div className='mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1'>
+            className="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl border border-components-card-border bg-components-card-bg-alt shadow-lg"
+          >
+            {VarIcon}
+          </div>
+          <div className="grow-1">
+            <div className="text-sm font-medium text-text-primary">{t('autoAddVar', { ns: 'appDebug' })}</div>
+            <div className="mt-[15px] flex max-h-[66px] flex-wrap space-x-1 overflow-y-auto px-1">
               {varNameArr.map(name => (
                 <VarHighlight key={name} name={name} />
               ))}
             </div>
           </div>
         </div>
-        <div className='mt-7 flex justify-end space-x-2'>
-          <Button onClick={onCancel}>{t('common.operation.cancel')}</Button>
-          <Button variant='primary' onClick={onConfirm}>{t('common.operation.add')}</Button>
+        <div className="mt-7 flex justify-end space-x-2">
+          <Button onClick={onCancel}>{t('operation.cancel', { ns: 'common' })}</Button>
+          <Button variant="primary" onClick={onConfirm}>{t('operation.add', { ns: 'common' })}</Button>
         </div>
       </div>
 

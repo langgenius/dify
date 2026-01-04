@@ -1,3 +1,4 @@
+import re
 import uuid
 from typing import Literal
 
@@ -31,7 +32,6 @@ from fields.app_fields import (
 from fields.workflow_fields import workflow_partial_fields as _workflow_partial_fields_dict
 from libs.helper import AppIconUrlField, TimestampField
 from libs.login import current_account_with_tenant, login_required
-from libs.validators import validate_description_length
 from models import App, Workflow
 from services.app_dsl_service import AppDslService, ImportMode
 from services.app_service import AppService
@@ -74,52 +74,88 @@ class AppListQuery(BaseModel):
             raise ValueError("Invalid UUID format in tag_ids.") from exc
 
 
+# XSS prevention: patterns that could lead to XSS attacks
+# Includes: script tags, iframe tags, javascript: protocol, SVG with onload, etc.
+_XSS_PATTERNS = [
+    r"<script[^>]*>.*?</script>",  # Script tags
+    r"<iframe\b[^>]*?(?:/>|>.*?</iframe>)",  # Iframe tags (including self-closing)
+    r"javascript:",  # JavaScript protocol
+    r"<svg[^>]*?\s+onload\s*=[^>]*>",  # SVG with onload handler (attribute-aware, flexible whitespace)
+    r"<.*?on\s*\w+\s*=",  # Event handlers like onclick, onerror, etc.
+    r"<object\b[^>]*(?:\s*/>|>.*?</object\s*>)",  # Object tags (opening tag)
+    r"<embed[^>]*>",  # Embed tags (self-closing)
+    r"<link[^>]*>",  # Link tags with javascript
+]
+
+
+def _validate_xss_safe(value: str | None, field_name: str = "Field") -> str | None:
+    """
+    Validate that a string value doesn't contain potential XSS payloads.
+
+    Args:
+        value: The string value to validate
+        field_name: Name of the field for error messages
+
+    Returns:
+        The original value if safe
+
+    Raises:
+        ValueError: If the value contains XSS patterns
+    """
+    if value is None:
+        return None
+
+    value_lower = value.lower()
+    for pattern in _XSS_PATTERNS:
+        if re.search(pattern, value_lower, re.DOTALL | re.IGNORECASE):
+            raise ValueError(
+                f"{field_name} contains invalid characters or patterns. "
+                "HTML tags, JavaScript, and other potentially dangerous content are not allowed."
+            )
+
+    return value
+
+
 class CreateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     mode: Literal["chat", "agent-chat", "advanced-chat", "workflow", "completion"] = Field(..., description="App mode")
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
-    @field_validator("description")
+    @field_validator("name", "description", mode="before")
     @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
+    def validate_xss_safe(cls, value: str | None, info) -> str | None:
+        return _validate_xss_safe(value, info.field_name)
 
 
 class UpdateAppPayload(BaseModel):
     name: str = Field(..., min_length=1, description="App name")
-    description: str | None = Field(default=None, description="App description (max 400 chars)")
+    description: str | None = Field(default=None, description="App description (max 400 chars)", max_length=400)
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
     use_icon_as_answer_icon: bool | None = Field(default=None, description="Use icon as answer icon")
     max_active_requests: int | None = Field(default=None, description="Maximum active requests")
 
-    @field_validator("description")
+    @field_validator("name", "description", mode="before")
     @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
+    def validate_xss_safe(cls, value: str | None, info) -> str | None:
+        return _validate_xss_safe(value, info.field_name)
 
 
 class CopyAppPayload(BaseModel):
     name: str | None = Field(default=None, description="Name for the copied app")
-    description: str | None = Field(default=None, description="Description for the copied app")
+    description: str | None = Field(default=None, description="Description for the copied app", max_length=400)
     icon_type: str | None = Field(default=None, description="Icon type")
     icon: str | None = Field(default=None, description="Icon")
     icon_background: str | None = Field(default=None, description="Icon background color")
 
-    @field_validator("description")
+    @field_validator("name", "description", mode="before")
     @classmethod
-    def validate_description(cls, value: str | None) -> str | None:
-        if value is None:
-            return value
-        return validate_description_length(value)
+    def validate_xss_safe(cls, value: str | None, info) -> str | None:
+        return _validate_xss_safe(value, info.field_name)
 
 
 class AppExportQuery(BaseModel):
@@ -146,7 +182,14 @@ class AppApiStatusPayload(BaseModel):
 
 class AppTracePayload(BaseModel):
     enabled: bool = Field(..., description="Enable or disable tracing")
-    tracing_provider: str = Field(..., description="Tracing provider")
+    tracing_provider: str | None = Field(default=None, description="Tracing provider")
+
+    @field_validator("tracing_provider")
+    @classmethod
+    def validate_tracing_provider(cls, value: str | None, info) -> str | None:
+        if info.data.get("enabled") and not value:
+            raise ValueError("tracing_provider is required when enabled is True")
+        return value
 
 
 def reg(cls: type[BaseModel]):
@@ -324,10 +367,13 @@ class AppListApi(Resource):
                 NodeType.TRIGGER_PLUGIN,
             }
             for workflow in draft_workflows:
-                for _, node_data in workflow.walk_nodes():
-                    if node_data.get("type") in trigger_node_types:
-                        draft_trigger_app_ids.add(str(workflow.app_id))
-                        break
+                try:
+                    for _, node_data in workflow.walk_nodes():
+                        if node_data.get("type") in trigger_node_types:
+                            draft_trigger_app_ids.add(str(workflow.app_id))
+                            break
+                except Exception:
+                    continue
 
         for app in app_pagination.items:
             app.has_draft_trigger = str(app.id) in draft_trigger_app_ids

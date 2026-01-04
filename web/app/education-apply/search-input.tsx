@@ -5,13 +5,13 @@ import {
   useState,
 } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useEducation } from './hooks'
 import Input from '@/app/components/base/input'
 import {
   PortalToFollowElem,
   PortalToFollowElemContent,
   PortalToFollowElemTrigger,
 } from '@/app/components/base/portal-to-follow-elem'
+import { useEducation } from './hooks'
 
 type SearchInputProps = {
   value?: string
@@ -77,30 +77,30 @@ const SearchInput = ({
     <PortalToFollowElem
       open={open}
       onOpenChange={setOpen}
-      placement='bottom'
+      placement="bottom"
       offset={4}
       triggerPopupSameWidth
     >
-      <PortalToFollowElemTrigger className='block w-full'>
+      <PortalToFollowElemTrigger className="block w-full">
         <Input
-          className='w-full'
-          placeholder={t('education.form.schoolName.placeholder')}
+          className="w-full"
+          placeholder={t('form.schoolName.placeholder', { ns: 'education' })}
           value={value}
           onChange={handleValueChange}
         />
       </PortalToFollowElemTrigger>
-      <PortalToFollowElemContent className='z-[32]'>
+      <PortalToFollowElemContent className="z-[32]">
         {
           !!schools.length && value && (
             <div
-              className='max-h-[330px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1'
+              className="max-h-[330px] overflow-y-auto rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur p-1"
               onScroll={handleScroll as any}
             >
               {
                 schools.map((school, index) => (
                   <div
                     key={index}
-                    className='system-md-regular flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover'
+                    className="system-md-regular flex h-8 cursor-pointer items-center truncate rounded-lg px-2 py-1.5 text-text-secondary hover:bg-state-base-hover"
                     title={school}
                     onClick={() => {
                       onChange(school)

@@ -1,7 +1,9 @@
+import json
 from collections.abc import Sequence
 from enum import StrEnum, auto
 from typing import Any, Literal
 
+from jsonschema import Draft7Validator, SchemaError
 from pydantic import BaseModel, Field, field_validator
 
 from core.file import FileTransferMethod, FileType, FileUploadConfig
@@ -98,6 +100,7 @@ class VariableEntityType(StrEnum):
     FILE = "file"
     FILE_LIST = "file-list"
     CHECKBOX = "checkbox"
+    JSON_OBJECT = "json_object"
 
 
 class VariableEntity(BaseModel):
@@ -118,6 +121,7 @@ class VariableEntity(BaseModel):
     allowed_file_types: Sequence[FileType] | None = Field(default_factory=list)
     allowed_file_extensions: Sequence[str] | None = Field(default_factory=list)
     allowed_file_upload_methods: Sequence[FileTransferMethod] | None = Field(default_factory=list)
+    json_schema: str | None = Field(default=None)
 
     @field_validator("description", mode="before")
     @classmethod
@@ -128,6 +132,23 @@ class VariableEntity(BaseModel):
     @classmethod
     def convert_none_options(cls, v: Any) -> Sequence[str]:
         return v or []
+
+    @field_validator("json_schema")
+    @classmethod
+    def validate_json_schema(cls, schema: str | None) -> str | None:
+        if schema is None:
+            return None
+
+        try:
+            json_schema = json.loads(schema)
+        except json.JSONDecodeError:
+            raise ValueError(f"invalid json_schema value {schema}")
+
+        try:
+            Draft7Validator.check_schema(json_schema)
+        except SchemaError as e:
+            raise ValueError(f"Invalid JSON schema: {e.message}")
+        return schema
 
 
 class RagPipelineVariableEntity(VariableEntity):

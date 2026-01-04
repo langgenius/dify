@@ -12,12 +12,29 @@ jobs:
     if: github.repository == 'langgenius/dify'
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
-      # Use uv to ensure we have the same ruff version in CI and locally.
-      - uses: astral-sh/setup-uv@v6
+      - name: Check Docker Compose inputs
+        id: docker-compose-changes
+        uses: tj-actions/changed-files@v46
+        with:
+          files: |
+            docker/generate_docker_compose
+            docker/.env.example
+            docker/docker-compose-template.yaml
+            docker/docker-compose.yaml
+      - uses: actions/setup-python@v5
         with:
           python-version: "3.11"
+
+      - uses: astral-sh/setup-uv@v7
+
+      - name: Generate Docker Compose
+        if: steps.docker-compose-changes.outputs.any_changed == 'true'
+        run: |
+          cd docker
+          ./generate_docker_compose
+
       - run: |
           cd api
           uv sync --dev
@@ -35,10 +52,11 @@ jobs:
 
       - name: ast-grep
         run: |
-          uvx --from ast-grep-cli sg --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all
-          uvx --from ast-grep-cli sg --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all
-          uvx --from ast-grep-cli sg -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all
-          uvx --from ast-grep-cli sg -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all
+          # ast-grep exits 1 if no matches are found; allow idempotent runs.
+          uvx --from ast-grep-cli ast-grep --pattern 'db.session.query($WHATEVER).filter($HERE)' --rewrite 'db.session.query($WHATEVER).where($HERE)' -l py --update-all || true
+          uvx --from ast-grep-cli ast-grep --pattern 'session.query($WHATEVER).filter($HERE)' --rewrite 'session.query($WHATEVER).where($HERE)' -l py --update-all || true
+          uvx --from ast-grep-cli ast-grep -p '$A = db.Column($$$B)' -r '$A = mapped_column($$$B)' -l py --update-all || true
+          uvx --from ast-grep-cli ast-grep -p '$A : $T = db.Column($$$B)' -r '$A : $T = mapped_column($$$B)' -l py --update-all || true
           # Convert Optional[T] to T | None (ignoring quoted types)
           cat > /tmp/optional-rule.yml << 'EOF'
           id: convert-optional-to-union
@@ -56,35 +74,14 @@ jobs:
                     pattern: $T
           fix: $T | None
           EOF
-          uvx --from ast-grep-cli sg scan --inline-rules "$(cat /tmp/optional-rule.yml)" --update-all
+          uvx --from ast-grep-cli ast-grep scan . --inline-rules "$(cat /tmp/optional-rule.yml)" --update-all
           # Fix forward references that were incorrectly converted (Python doesn't support "Type" | None syntax)
           find . -name "*.py" -type f -exec sed -i.bak -E 's/"([^"]+)" \| None/Optional["\1"]/g; s/'"'"'([^'"'"']+)'"'"' \| None/Optional['"'"'\1'"'"']/g' {} \;
           find . -name "*.py.bak" -type f -delete
 
+      # mdformat breaks YAML front matter in markdown files. Add --exclude for directories containing YAML front matter.
       - name: mdformat
         run: |
-          uvx mdformat .
-
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-        with:
-          package_json_file: web/package.json
-          run_install: false
-
-      - name: Setup NodeJS
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-          cache: pnpm
-          cache-dependency-path: ./web/package.json
-
-      - name: Web dependencies
-        working-directory: ./web
-        run: pnpm install --frozen-lockfile
-
-      - name: oxlint
-        working-directory: ./web
-        run: |
-          pnpx oxlint --fix
+          uvx --python 3.13 mdformat . --exclude ".claude/skills/**/SKILL.md"
 
       - uses: autofix-ci/action@635ffb0c9798bd160680f18fd73371e355b85f27

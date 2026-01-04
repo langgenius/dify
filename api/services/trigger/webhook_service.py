@@ -33,6 +33,11 @@ from services.errors.app import QuotaExceededError
 from services.trigger.app_trigger_service import AppTriggerService
 from services.workflow.entities import WebhookTriggerData
 
+try:
+    import magic
+except ImportError:
+    magic = None  # type: ignore[assignment]
+
 logger = logging.getLogger(__name__)
 
 
@@ -317,7 +322,8 @@ class WebhookService:
         try:
             file_content = request.get_data()
             if file_content:
-                file_obj = cls._create_file_from_binary(file_content, "application/octet-stream", webhook_trigger)
+                mimetype = cls._detect_binary_mimetype(file_content)
+                file_obj = cls._create_file_from_binary(file_content, mimetype, webhook_trigger)
                 return {"raw": file_obj.to_dict()}, {}
             else:
                 return {"raw": None}, {}
@@ -340,6 +346,18 @@ class WebhookService:
             logger.warning("Failed to extract text body")
             body = {"raw": ""}
         return body, {}
+
+    @staticmethod
+    def _detect_binary_mimetype(file_content: bytes) -> str:
+        """Guess MIME type for binary payloads using python-magic when available."""
+        if magic is not None:
+            try:
+                detected = magic.from_buffer(file_content[:1024], mime=True)
+                if detected:
+                    return detected
+            except Exception:
+                logger.debug("python-magic detection failed for octet-stream payload")
+        return "application/octet-stream"
 
     @classmethod
     def _process_file_uploads(
@@ -845,10 +863,18 @@ class WebhookService:
                 not_found_in_cache.append(node_id)
                 continue
 
-        with Session(db.engine) as session:
-            try:
-                # lock the concurrent webhook trigger creation
-                redis_client.lock(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock", timeout=10)
+        lock_key = f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock"
+        lock = redis_client.lock(lock_key, timeout=10)
+        lock_acquired = False
+
+        try:
+            # acquire the lock with blocking and timeout
+            lock_acquired = lock.acquire(blocking=True, blocking_timeout=10)
+            if not lock_acquired:
+                logger.warning("Failed to acquire lock for webhook sync, app %s", app.id)
+                raise RuntimeError("Failed to acquire lock for webhook trigger synchronization")
+
+            with Session(db.engine) as session:
                 # fetch the non-cached nodes from DB
                 all_records = session.scalars(
                     select(WorkflowWebhookTrigger).where(
@@ -885,11 +911,16 @@ class WebhookService:
                         session.delete(nodes_id_in_db[node_id])
                         redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:{app.id}:{node_id}")
                 session.commit()
-            except Exception:
-                logger.exception("Failed to sync webhook relationships for app %s", app.id)
-                raise
-            finally:
-                redis_client.delete(f"{cls.__WEBHOOK_NODE_CACHE_KEY__}:apps:{app.id}:lock")
+        except Exception:
+            logger.exception("Failed to sync webhook relationships for app %s", app.id)
+            raise
+        finally:
+            # release the lock only if it was acquired
+            if lock_acquired:
+                try:
+                    lock.release()
+                except Exception:
+                    logger.exception("Failed to release lock for webhook sync, app %s", app.id)
 
     @classmethod
     def generate_webhook_id(cls) -> str:

@@ -1,7 +1,7 @@
-import React from 'react'
+import { noop } from 'es-toolkit/function'
+import * as React from 'react'
+import { cn } from '@/utils/classnames'
 import Drawer from './drawer'
-import cn from '@/utils/classnames'
-import { noop } from 'lodash-es'
 
 type IFullScreenDrawerProps = {
   isOpen: boolean
@@ -28,7 +28,7 @@ const FullScreenDrawer = ({
       panelClassName={cn(
         fullScreen
           ? 'w-full'
-          : 'w-[560px] pb-2 pr-2 pt-16',
+          : 'w-[568px] pb-2 pr-2 pt-16',
       )}
       panelContentClassName={cn(
         'bg-components-panel-bg',
@@ -39,7 +39,8 @@ const FullScreenDrawer = ({
       modal={modal}
     >
       {children}
-    </Drawer>)
+    </Drawer>
+  )
 }
 
 export default FullScreenDrawer

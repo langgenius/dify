@@ -73,6 +73,7 @@ import pytest
 
 from core.rag.datasource.retrieval_service import RetrievalService
 from core.rag.models.document import Document
+from core.rag.retrieval.dataset_retrieval import DatasetRetrieval
 from core.rag.retrieval.retrieval_methods import RetrievalMethod
 from models.dataset import Dataset
 
@@ -421,19 +422,30 @@ class TestRetrievalService:
             # In real code, this waits for all futures to complete
             # In tests, futures complete immediately, so wait is a no-op
             with patch("core.rag.datasource.retrieval_service.concurrent.futures.wait"):
-                yield mock_executor
+                # Mock concurrent.futures.as_completed for early error propagation
+                # In real code, this yields futures as they complete
+                # In tests, we yield all futures immediately since they're already done
+                def mock_as_completed(futures_list, timeout=None):
+                    """Mock as_completed that yields futures immediately."""
+                    yield from futures_list
+
+                with patch(
+                    "core.rag.datasource.retrieval_service.concurrent.futures.as_completed",
+                    side_effect=mock_as_completed,
+                ):
+                    yield mock_executor
 
     # ==================== Vector Search Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_vector_search_basic(self, mock_get_dataset, mock_embedding_search, mock_dataset, sample_documents):
+    def test_vector_search_basic(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test basic vector/semantic search functionality.
 
         This test validates the core vector search flow:
         1. Dataset is retrieved from database
-        2. embedding_search is called via ThreadPoolExecutor
+        2. _retrieve is called via ThreadPoolExecutor
         3. Documents are added to shared all_documents list
         4. Results are returned to caller
 
@@ -447,28 +459,28 @@ class TestRetrievalService:
         # Set up the mock dataset that will be "retrieved" from database
         mock_get_dataset.return_value = mock_dataset
 
-        # Create a side effect function that simulates embedding_search behavior
-        # In the real implementation, embedding_search:
-        # 1. Gets the dataset
-        # 2. Creates a Vector instance
-        # 3. Calls search_by_vector with embeddings
-        # 4. Extends all_documents with results
-        def side_effect_embedding_search(
+        # Create a side effect function that simulates _retrieve behavior
+        # _retrieve modifies the all_documents list in place
+        def side_effect_retrieve(
             flask_app,
-            dataset_id,
-            query,
-            top_k,
-            score_threshold,
-            reranking_model,
-            all_documents,
             retrieval_method,
-            exceptions,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
             document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
-            """Simulate embedding_search adding documents to the shared list."""
-            all_documents.extend(sample_documents)
+            """Simulate _retrieve adding documents to the shared list."""
+            if all_documents is not None:
+                all_documents.extend(sample_documents)
 
-        mock_embedding_search.side_effect = side_effect_embedding_search
+        mock_retrieve.side_effect = side_effect_retrieve
 
         # Define test parameters
         query = "What is Python?"  # Natural language query
@@ -481,7 +493,7 @@ class TestRetrievalService:
         # 1. Check if query is empty (early return if so)
         # 2. Get the dataset using _get_dataset
         # 3. Create ThreadPoolExecutor
-        # 4. Submit embedding_search task
+        # 4. Submit _retrieve task
         # 5. Wait for completion
         # 6. Return all_documents list
         results = RetrievalService.retrieve(
@@ -502,15 +514,13 @@ class TestRetrievalService:
         # Verify documents maintain their scores (highest score first in sample_documents)
         assert results[0].metadata["score"] == 0.95, "First document should have highest score from sample_documents"
 
-        # Verify embedding_search was called exactly once
+        # Verify _retrieve was called exactly once
         # This confirms the search method was invoked by ThreadPoolExecutor
-        mock_embedding_search.assert_called_once()
+        mock_retrieve.assert_called_once()
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_vector_search_with_document_filter(
-        self, mock_get_dataset, mock_embedding_search, mock_dataset, sample_documents
-    ):
+    def test_vector_search_with_document_filter(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test vector search with document ID filtering.
 
@@ -522,21 +532,25 @@ class TestRetrievalService:
         mock_get_dataset.return_value = mock_dataset
         filtered_docs = [sample_documents[0]]
 
-        def side_effect_embedding_search(
+        def side_effect_retrieve(
             flask_app,
-            dataset_id,
-            query,
-            top_k,
-            score_threshold,
-            reranking_model,
-            all_documents,
             retrieval_method,
-            exceptions,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
             document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
-            all_documents.extend(filtered_docs)
+            if all_documents is not None:
+                all_documents.extend(filtered_docs)
 
-        mock_embedding_search.side_effect = side_effect_embedding_search
+        mock_retrieve.side_effect = side_effect_retrieve
         document_ids_filter = [sample_documents[0].metadata["document_id"]]
 
         # Act
@@ -552,12 +566,12 @@ class TestRetrievalService:
         assert len(results) == 1
         assert results[0].metadata["doc_id"] == "doc1"
         # Verify document_ids_filter was passed
-        call_kwargs = mock_embedding_search.call_args.kwargs
+        call_kwargs = mock_retrieve.call_args.kwargs
         assert call_kwargs["document_ids_filter"] == document_ids_filter
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_vector_search_empty_results(self, mock_get_dataset, mock_embedding_search, mock_dataset):
+    def test_vector_search_empty_results(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test vector search when no results match the query.
 
@@ -567,8 +581,8 @@ class TestRetrievalService:
         """
         # Arrange
         mock_get_dataset.return_value = mock_dataset
-        # embedding_search doesn't add anything to all_documents
-        mock_embedding_search.side_effect = lambda *args, **kwargs: None
+        # _retrieve doesn't add anything to all_documents
+        mock_retrieve.side_effect = lambda *args, **kwargs: None
 
         # Act
         results = RetrievalService.retrieve(
@@ -583,9 +597,9 @@ class TestRetrievalService:
 
     # ==================== Keyword Search Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_keyword_search_basic(self, mock_get_dataset, mock_keyword_search, mock_dataset, sample_documents):
+    def test_keyword_search_basic(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test basic keyword search functionality.
 
@@ -597,12 +611,25 @@ class TestRetrievalService:
         # Arrange
         mock_get_dataset.return_value = mock_dataset
 
-        def side_effect_keyword_search(
-            flask_app, dataset_id, query, top_k, all_documents, exceptions, document_ids_filter=None
+        def side_effect_retrieve(
+            flask_app,
+            retrieval_method,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
+            document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
-            all_documents.extend(sample_documents)
+            if all_documents is not None:
+                all_documents.extend(sample_documents)
 
-        mock_keyword_search.side_effect = side_effect_keyword_search
+        mock_retrieve.side_effect = side_effect_retrieve
 
         query = "Python programming"
         top_k = 3
@@ -618,7 +645,7 @@ class TestRetrievalService:
         # Assert
         assert len(results) == 3
         assert all(isinstance(doc, Document) for doc in results)
-        mock_keyword_search.assert_called_once()
+        mock_retrieve.assert_called_once()
 
     @patch("core.rag.datasource.retrieval_service.RetrievalService.keyword_search")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
@@ -1147,11 +1174,9 @@ class TestRetrievalService:
 
     # ==================== Metadata Filtering Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_vector_search_with_metadata_filter(
-        self, mock_get_dataset, mock_embedding_search, mock_dataset, sample_documents
-    ):
+    def test_vector_search_with_metadata_filter(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test vector search with metadata-based document filtering.
 
@@ -1166,21 +1191,25 @@ class TestRetrievalService:
         filtered_doc = sample_documents[0]
         filtered_doc.metadata["category"] = "programming"
 
-        def side_effect_embedding(
+        def side_effect_retrieve(
             flask_app,
-            dataset_id,
-            query,
-            top_k,
-            score_threshold,
-            reranking_model,
-            all_documents,
             retrieval_method,
-            exceptions,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
             document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
-            all_documents.append(filtered_doc)
+            if all_documents is not None:
+                all_documents.append(filtered_doc)
 
-        mock_embedding_search.side_effect = side_effect_embedding
+        mock_retrieve.side_effect = side_effect_retrieve
 
         # Act
         results = RetrievalService.retrieve(
@@ -1243,9 +1272,9 @@ class TestRetrievalService:
         # Assert
         assert results == []
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_retrieve_with_exception_handling(self, mock_get_dataset, mock_embedding_search, mock_dataset):
+    def test_retrieve_with_exception_handling(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test that exceptions during retrieval are properly handled.
 
@@ -1256,22 +1285,26 @@ class TestRetrievalService:
         # Arrange
         mock_get_dataset.return_value = mock_dataset
 
-        # Make embedding_search add an exception to the exceptions list
+        # Make _retrieve add an exception to the exceptions list
         def side_effect_with_exception(
             flask_app,
-            dataset_id,
-            query,
-            top_k,
-            score_threshold,
-            reranking_model,
-            all_documents,
             retrieval_method,
-            exceptions,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
             document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
-            exceptions.append("Search failed")
+            if exceptions is not None:
+                exceptions.append("Search failed")
 
-        mock_embedding_search.side_effect = side_effect_with_exception
+        mock_retrieve.side_effect = side_effect_with_exception
 
         # Act & Assert
         with pytest.raises(ValueError) as exc_info:
@@ -1286,9 +1319,9 @@ class TestRetrievalService:
 
     # ==================== Score Threshold Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_vector_search_with_score_threshold(self, mock_get_dataset, mock_embedding_search, mock_dataset):
+    def test_vector_search_with_score_threshold(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test vector search with score threshold filtering.
 
@@ -1306,21 +1339,25 @@ class TestRetrievalService:
             provider="dify",
         )
 
-        def side_effect_embedding(
+        def side_effect_retrieve(
             flask_app,
-            dataset_id,
-            query,
-            top_k,
-            score_threshold,
-            reranking_model,
-            all_documents,
             retrieval_method,
-            exceptions,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
             document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
-            all_documents.append(high_score_doc)
+            if all_documents is not None:
+                all_documents.append(high_score_doc)
 
-        mock_embedding_search.side_effect = side_effect_embedding
+        mock_retrieve.side_effect = side_effect_retrieve
 
         score_threshold = 0.8
 
@@ -1339,9 +1376,9 @@ class TestRetrievalService:
 
     # ==================== Top-K Limiting Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_retrieve_respects_top_k_limit(self, mock_get_dataset, mock_embedding_search, mock_dataset):
+    def test_retrieve_respects_top_k_limit(self, mock_get_dataset, mock_retrieve, mock_dataset):
         """
         Test that retrieval respects top_k parameter.
 
@@ -1362,22 +1399,26 @@ class TestRetrievalService:
             for i in range(10)
         ]
 
-        def side_effect_embedding(
+        def side_effect_retrieve(
             flask_app,
-            dataset_id,
-            query,
-            top_k,
-            score_threshold,
-            reranking_model,
-            all_documents,
             retrieval_method,
-            exceptions,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
             document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
             # Return only top_k documents
-            all_documents.extend(many_docs[:top_k])
+            if all_documents is not None:
+                all_documents.extend(many_docs[:top_k])
 
-        mock_embedding_search.side_effect = side_effect_embedding
+        mock_retrieve.side_effect = side_effect_retrieve
 
         top_k = 3
 
@@ -1390,9 +1431,9 @@ class TestRetrievalService:
         )
 
         # Assert
-        # Verify top_k was passed to embedding_search
-        assert mock_embedding_search.called
-        call_kwargs = mock_embedding_search.call_args.kwargs
+        # Verify _retrieve was called
+        assert mock_retrieve.called
+        call_kwargs = mock_retrieve.call_args.kwargs
         assert call_kwargs["top_k"] == top_k
         # Verify we got the right number of results
         assert len(results) == top_k
@@ -1421,11 +1462,9 @@ class TestRetrievalService:
 
     # ==================== Reranking Tests ====================
 
-    @patch("core.rag.datasource.retrieval_service.RetrievalService.embedding_search")
+    @patch("core.rag.datasource.retrieval_service.RetrievalService._retrieve")
     @patch("core.rag.datasource.retrieval_service.RetrievalService._get_dataset")
-    def test_semantic_search_with_reranking(
-        self, mock_get_dataset, mock_embedding_search, mock_dataset, sample_documents
-    ):
+    def test_semantic_search_with_reranking(self, mock_get_dataset, mock_retrieve, mock_dataset, sample_documents):
         """
         Test semantic search with reranking model.
 
@@ -1439,22 +1478,26 @@ class TestRetrievalService:
         # Simulate reranking changing order
         reranked_docs = list(reversed(sample_documents))
 
-        def side_effect_embedding(
+        def side_effect_retrieve(
             flask_app,
-            dataset_id,
-            query,
-            top_k,
-            score_threshold,
-            reranking_model,
-            all_documents,
             retrieval_method,
-            exceptions,
+            dataset,
+            query=None,
+            top_k=4,
+            score_threshold=None,
+            reranking_model=None,
+            reranking_mode="reranking_model",
+            weights=None,
             document_ids_filter=None,
+            attachment_id=None,
+            all_documents=None,
+            exceptions=None,
         ):
-            # embedding_search handles reranking internally
-            all_documents.extend(reranked_docs)
+            # _retrieve handles reranking internally
+            if all_documents is not None:
+                all_documents.extend(reranked_docs)
 
-        mock_embedding_search.side_effect = side_effect_embedding
+        mock_retrieve.side_effect = side_effect_retrieve
 
         reranking_model = {
             "reranking_provider_name": "cohere",
@@ -1473,8 +1516,284 @@ class TestRetrievalService:
         # Assert
         # For semantic search with reranking, reranking_model should be passed
         assert len(results) == 3
-        call_kwargs = mock_embedding_search.call_args.kwargs
+        call_kwargs = mock_retrieve.call_args.kwargs
         assert call_kwargs["reranking_model"] == reranking_model
+
+    # ==================== Multiple Retrieve Thread Tests ====================
+
+    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor")
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever")
+    def test_multiple_retrieve_thread_skips_second_reranking_with_single_dataset(
+        self, mock_retriever, mock_data_processor_class, mock_flask_app, mock_dataset
+    ):
+        """
+        Test that _multiple_retrieve_thread skips second reranking when dataset_count is 1.
+
+        When there is only one dataset, the second reranking is unnecessary
+        because the documents are already ranked from the first retrieval.
+        This optimization avoids the overhead of reranking when it won't
+        provide any benefit.
+
+        Verifies:
+        - DataPostProcessor is NOT called when dataset_count == 1
+        - Documents are still added to all_documents
+        - Standard scoring logic is applied instead
+        """
+        # Arrange
+        dataset_retrieval = DatasetRetrieval()
+        tenant_id = str(uuid4())
+
+        # Create test documents
+        doc1 = Document(
+            page_content="Test content 1",
+            metadata={"doc_id": "doc1", "score": 0.9, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+            provider="dify",
+        )
+        doc2 = Document(
+            page_content="Test content 2",
+            metadata={"doc_id": "doc2", "score": 0.8, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+            provider="dify",
+        )
+
+        # Mock _retriever to return documents
+        def side_effect_retriever(
+            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+        ):
+            all_documents.extend([doc1, doc2])
+
+        mock_retriever.side_effect = side_effect_retriever
+
+        # Set up dataset with high_quality indexing
+        mock_dataset.indexing_technique = "high_quality"
+
+        all_documents = []
+
+        # Act - Call with dataset_count = 1
+        dataset_retrieval._multiple_retrieve_thread(
+            flask_app=mock_flask_app,
+            available_datasets=[mock_dataset],
+            metadata_condition=None,
+            metadata_filter_document_ids=None,
+            all_documents=all_documents,
+            tenant_id=tenant_id,
+            reranking_enable=True,
+            reranking_mode="reranking_model",
+            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
+            weights=None,
+            top_k=5,
+            score_threshold=0.5,
+            query="test query",
+            attachment_id=None,
+            dataset_count=1,  # Single dataset - should skip second reranking
+        )
+
+        # Assert
+        # DataPostProcessor should NOT be called (second reranking skipped)
+        mock_data_processor_class.assert_not_called()
+
+        # Documents should still be added to all_documents
+        assert len(all_documents) == 2
+        assert all_documents[0].page_content == "Test content 1"
+        assert all_documents[1].page_content == "Test content 2"
+
+    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor")
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever")
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.calculate_vector_score")
+    def test_multiple_retrieve_thread_performs_second_reranking_with_multiple_datasets(
+        self, mock_calculate_vector_score, mock_retriever, mock_data_processor_class, mock_flask_app, mock_dataset
+    ):
+        """
+        Test that _multiple_retrieve_thread performs second reranking when dataset_count > 1.
+
+        When there are multiple datasets, the second reranking is necessary
+        to merge and re-rank results from different datasets. This ensures
+        the most relevant documents across all datasets are returned.
+
+        Verifies:
+        - DataPostProcessor IS called when dataset_count > 1
+        - Reranking is applied with correct parameters
+        - Documents are processed correctly
+        """
+        # Arrange
+        dataset_retrieval = DatasetRetrieval()
+        tenant_id = str(uuid4())
+
+        # Create test documents
+        doc1 = Document(
+            page_content="Test content 1",
+            metadata={"doc_id": "doc1", "score": 0.7, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+            provider="dify",
+        )
+        doc2 = Document(
+            page_content="Test content 2",
+            metadata={"doc_id": "doc2", "score": 0.6, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+            provider="dify",
+        )
+
+        # Mock _retriever to return documents
+        def side_effect_retriever(
+            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+        ):
+            all_documents.extend([doc1, doc2])
+
+        mock_retriever.side_effect = side_effect_retriever
+
+        # Set up dataset with high_quality indexing
+        mock_dataset.indexing_technique = "high_quality"
+
+        # Mock DataPostProcessor instance and its invoke method
+        mock_processor_instance = Mock()
+        # Simulate reranking - return documents in reversed order with updated scores
+        reranked_docs = [
+            Document(
+                page_content="Test content 2",
+                metadata={"doc_id": "doc2", "score": 0.95, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+                provider="dify",
+            ),
+            Document(
+                page_content="Test content 1",
+                metadata={"doc_id": "doc1", "score": 0.85, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+                provider="dify",
+            ),
+        ]
+        mock_processor_instance.invoke.return_value = reranked_docs
+        mock_data_processor_class.return_value = mock_processor_instance
+
+        all_documents = []
+
+        # Create second dataset
+        mock_dataset2 = Mock(spec=Dataset)
+        mock_dataset2.id = str(uuid4())
+        mock_dataset2.indexing_technique = "high_quality"
+        mock_dataset2.provider = "dify"
+
+        # Act - Call with dataset_count = 2
+        dataset_retrieval._multiple_retrieve_thread(
+            flask_app=mock_flask_app,
+            available_datasets=[mock_dataset, mock_dataset2],
+            metadata_condition=None,
+            metadata_filter_document_ids=None,
+            all_documents=all_documents,
+            tenant_id=tenant_id,
+            reranking_enable=True,
+            reranking_mode="reranking_model",
+            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
+            weights=None,
+            top_k=5,
+            score_threshold=0.5,
+            query="test query",
+            attachment_id=None,
+            dataset_count=2,  # Multiple datasets - should perform second reranking
+        )
+
+        # Assert
+        # DataPostProcessor SHOULD be called (second reranking performed)
+        mock_data_processor_class.assert_called_once_with(
+            tenant_id,
+            "reranking_model",
+            {"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
+            None,
+            False,
+        )
+
+        # Verify invoke was called with correct parameters
+        mock_processor_instance.invoke.assert_called_once()
+
+        # Documents should be added to all_documents after reranking
+        assert len(all_documents) == 2
+        # The reranked order should be reflected
+        assert all_documents[0].page_content == "Test content 2"
+        assert all_documents[1].page_content == "Test content 1"
+
+    @patch("core.rag.retrieval.dataset_retrieval.DataPostProcessor")
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval._retriever")
+    @patch("core.rag.retrieval.dataset_retrieval.DatasetRetrieval.calculate_vector_score")
+    def test_multiple_retrieve_thread_single_dataset_uses_standard_scoring(
+        self, mock_calculate_vector_score, mock_retriever, mock_data_processor_class, mock_flask_app, mock_dataset
+    ):
+        """
+        Test that _multiple_retrieve_thread uses standard scoring when dataset_count is 1
+        and reranking is enabled.
+
+        When there's only one dataset, instead of using DataPostProcessor,
+        the method should fall through to the standard scoring logic
+        (calculate_vector_score for high_quality datasets).
+
+        Verifies:
+        - DataPostProcessor is NOT called
+        - calculate_vector_score IS called for high_quality indexing
+        - Documents are scored correctly
+        """
+        # Arrange
+        dataset_retrieval = DatasetRetrieval()
+        tenant_id = str(uuid4())
+
+        # Create test documents
+        doc1 = Document(
+            page_content="Test content 1",
+            metadata={"doc_id": "doc1", "score": 0.9, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+            provider="dify",
+        )
+        doc2 = Document(
+            page_content="Test content 2",
+            metadata={"doc_id": "doc2", "score": 0.8, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+            provider="dify",
+        )
+
+        # Mock _retriever to return documents
+        def side_effect_retriever(
+            flask_app, dataset_id, query, top_k, all_documents, document_ids_filter, metadata_condition, attachment_ids
+        ):
+            all_documents.extend([doc1, doc2])
+
+        mock_retriever.side_effect = side_effect_retriever
+
+        # Set up dataset with high_quality indexing
+        mock_dataset.indexing_technique = "high_quality"
+
+        # Mock calculate_vector_score to return scored documents
+        scored_docs = [
+            Document(
+                page_content="Test content 1",
+                metadata={"doc_id": "doc1", "score": 0.95, "document_id": str(uuid4()), "dataset_id": mock_dataset.id},
+                provider="dify",
+            ),
+        ]
+        mock_calculate_vector_score.return_value = scored_docs
+
+        all_documents = []
+
+        # Act - Call with dataset_count = 1
+        dataset_retrieval._multiple_retrieve_thread(
+            flask_app=mock_flask_app,
+            available_datasets=[mock_dataset],
+            metadata_condition=None,
+            metadata_filter_document_ids=None,
+            all_documents=all_documents,
+            tenant_id=tenant_id,
+            reranking_enable=True,  # Reranking enabled but should be skipped for single dataset
+            reranking_mode="reranking_model",
+            reranking_model={"reranking_provider_name": "cohere", "reranking_model_name": "rerank-v2"},
+            weights=None,
+            top_k=5,
+            score_threshold=0.5,
+            query="test query",
+            attachment_id=None,
+            dataset_count=1,
+        )
+
+        # Assert
+        # DataPostProcessor should NOT be called
+        mock_data_processor_class.assert_not_called()
+
+        # calculate_vector_score SHOULD be called for high_quality datasets
+        mock_calculate_vector_score.assert_called_once()
+        call_args = mock_calculate_vector_score.call_args
+        assert call_args[0][1] == 5  # top_k
+
+        # Documents should be added after standard scoring
+        assert len(all_documents) == 1
+        assert all_documents[0].page_content == "Test content 1"
 
 
 class TestRetrievalMethods:

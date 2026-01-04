@@ -59,7 +59,7 @@ class OutputVariableEntity(BaseModel):
     """
 
     variable: str
-    value_type: OutputVariableType
+    value_type: OutputVariableType = OutputVariableType.ANY
     value_selector: Sequence[str]
 
     @field_validator("value_type", mode="before")

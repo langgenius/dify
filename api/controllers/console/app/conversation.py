@@ -13,7 +13,6 @@ from controllers.console.app.wraps import get_app_model
 from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
 from core.app.entities.app_invoke_entities import InvokeFrom
 from extensions.ext_database import db
-from fields.conversation_fields import MessageTextField
 from fields.raws import FilesContainedField
 from libs.datetime_utils import naive_utc_now, parse_time_range
 from libs.helper import TimestampField
@@ -49,7 +48,6 @@ class CompletionConversationQuery(BaseConversationQuery):
 
 
 class ChatConversationQuery(BaseConversationQuery):
-    message_count_gte: int | None = Field(default=None, ge=1, description="Minimum message count")
     sort_by: Literal["created_at", "-created_at", "updated_at", "-updated_at"] = Field(
         default="-updated_at", description="Sort field and direction"
     )
@@ -177,6 +175,12 @@ annotation_hit_history_model = console_ns.model(
         "created_at": TimestampField,
     },
 )
+
+
+class MessageTextField(fields.Raw):
+    def format(self, value):
+        return value[0]["text"] if value else ""
+
 
 # Simple message detail model
 simple_message_detail_model = console_ns.model(
@@ -507,14 +511,6 @@ class ChatConversationApi(Resource):
                 query.outerjoin(MessageAnnotation, MessageAnnotation.conversation_id == Conversation.id)
                 .group_by(Conversation.id)
                 .having(func.count(MessageAnnotation.id) == 0)
-            )
-
-        if args.message_count_gte and args.message_count_gte >= 1:
-            query = (
-                query.options(joinedload(Conversation.messages))  # type: ignore
-                .join(Message, Message.conversation_id == Conversation.id)
-                .group_by(Conversation.id)
-                .having(func.count(Message.id) >= args.message_count_gte)
             )
 
         if app_model.mode == AppMode.ADVANCED_CHAT:

@@ -1,8 +1,9 @@
-import React, { type FC } from 'react'
-import Button from '@/app/components/base/button'
-import { useTranslation } from 'react-i18next'
-import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
+import type { FC } from 'react'
 import { useKeyPress } from 'ahooks'
+import * as React from 'react'
+import { useTranslation } from 'react-i18next'
+import Button from '@/app/components/base/button'
+import { getKeyboardKeyCodeBySystem, getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
 
 type AdvancedActionsProps = {
   isConfirmDisabled: boolean
@@ -13,7 +14,7 @@ type AdvancedActionsProps = {
 const Key = (props: { keyName: string }) => {
   const { keyName } = props
   return (
-    <kbd className='system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-white px-px text-text-primary-on-surface'>
+    <kbd className="system-kbd flex h-4 min-w-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-white px-px text-text-primary-on-surface">
       {keyName}
     </kbd>
   )
@@ -35,21 +36,21 @@ const AdvancedActions: FC<AdvancedActionsProps> = ({
   })
 
   return (
-    <div className='flex items-center gap-x-1'>
-      <Button size='small' variant='secondary' onClick={onCancel}>
-        {t('common.operation.cancel')}
+    <div className="flex items-center gap-x-1">
+      <Button size="small" variant="secondary" onClick={onCancel}>
+        {t('operation.cancel', { ns: 'common' })}
       </Button>
       <Button
-        className='flex items-center gap-x-1'
+        className="flex items-center gap-x-1"
         disabled={isConfirmDisabled}
-        size='small'
-        variant='primary'
+        size="small"
+        variant="primary"
         onClick={onConfirm}
       >
-        <span>{t('common.operation.confirm')}</span>
-        <div className='flex items-center gap-x-0.5'>
+        <span>{t('operation.confirm', { ns: 'common' })}</span>
+        <div className="flex items-center gap-x-0.5">
           <Key keyName={getKeyboardKeyNameBySystem('ctrl')} />
-          <Key keyName='⏎' />
+          <Key keyName="⏎" />
         </div>
       </Button>
     </div>

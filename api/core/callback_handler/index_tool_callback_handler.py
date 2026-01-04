@@ -7,7 +7,7 @@ from core.app.apps.base_app_queue_manager import AppQueueManager, PublishFrom
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.app.entities.queue_entities import QueueRetrieverResourcesEvent
 from core.rag.entities.citation_metadata import RetrievalSourceMetadata
-from core.rag.index_processor.constant.index_type import IndexType
+from core.rag.index_processor.constant.index_type import IndexStructureType
 from core.rag.models.document import Document
 from extensions.ext_database import db
 from models.dataset import ChildChunk, DatasetQuery, DocumentSegment
@@ -49,27 +49,34 @@ class DatasetIndexToolCallbackHandler:
     def on_tool_end(self, documents: list[Document]):
         """Handle tool end."""
         for document in documents:
-            document_id = document.metadata["document_id"]
-            dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document_id)
-            dataset_document = db.session.scalar(dataset_document_stmt)
-            if not dataset_document:
-                _logger.warning(
-                    "Expected DatasetDocument record to exist, but none was found, document_id=%s",
-                    document_id,
-                )
-                continue
-            if dataset_document.doc_form == IndexType.PARENT_CHILD_INDEX:
-                child_chunk_stmt = select(ChildChunk).where(
-                    ChildChunk.index_node_id == document.metadata["doc_id"],
-                    ChildChunk.dataset_id == dataset_document.dataset_id,
-                    ChildChunk.document_id == dataset_document.id,
-                )
-                child_chunk = db.session.scalar(child_chunk_stmt)
-                if child_chunk:
-                    _ = (
-                        db.session.query(DocumentSegment)
-                        .where(DocumentSegment.id == child_chunk.segment_id)
-                        .update({DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False)
+            if document.metadata is not None:
+                document_id = document.metadata["document_id"]
+                dataset_document_stmt = select(DatasetDocument).where(DatasetDocument.id == document_id)
+                dataset_document = db.session.scalar(dataset_document_stmt)
+                if not dataset_document:
+                    _logger.warning(
+                        "Expected DatasetDocument record to exist, but none was found, document_id=%s",
+                        document_id,
+                    )
+                    continue
+                if dataset_document.doc_form == IndexStructureType.PARENT_CHILD_INDEX:
+                    child_chunk_stmt = select(ChildChunk).where(
+                        ChildChunk.index_node_id == document.metadata["doc_id"],
+                        ChildChunk.dataset_id == dataset_document.dataset_id,
+                        ChildChunk.document_id == dataset_document.id,
+                    )
+                    child_chunk = db.session.scalar(child_chunk_stmt)
+                    if child_chunk:
+                        _ = (
+                            db.session.query(DocumentSegment)
+                            .where(DocumentSegment.id == child_chunk.segment_id)
+                            .update(
+                                {DocumentSegment.hit_count: DocumentSegment.hit_count + 1}, synchronize_session=False
+                            )
+                        )
+                else:
+                    query = db.session.query(DocumentSegment).where(
+                        DocumentSegment.index_node_id == document.metadata["doc_id"]
                     )
             else:
                 query = db.session.query(DocumentSegment).where(
