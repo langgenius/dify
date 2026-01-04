@@ -1865,7 +1865,9 @@ class MessageAgentThought(TypeBase):
     answer: Mapped[str | None] = mapped_column(LongText, nullable=True)
     answer_token: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     answer_unit_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True)
-    answer_price_unit: Mapped[Decimal] = mapped_column(sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001"))
+    answer_price_unit: Mapped[Decimal] = mapped_column(
+        sa.Numeric(10, 7), nullable=False, server_default=sa.text("0.001")
+    )
     tokens: Mapped[int | None] = mapped_column(sa.Integer, nullable=True)
     total_price: Mapped[Decimal | None] = mapped_column(sa.Numeric, nullable=True)
     currency: Mapped[str | None] = mapped_column(String(255), nullable=True)
