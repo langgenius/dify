@@ -30,6 +30,9 @@ export const useShortcuts = (): void => {
     hasBundledNodes,
     getCanMakeGroup,
     handleMakeGroup,
+    getCanUngroup,
+    getSelectedGroupId,
+    handleUngroup,
   } = useNodesInteractions()
   const { shortcutsEnabled: workflowHistoryShortcutsEnabled } = useWorkflowHistoryStore()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
@@ -110,6 +113,16 @@ export const useShortcuts = (): void => {
       // Close selection context menu if open
       workflowStore.setState({ selectionMenu: undefined })
       handleMakeGroup()
+    }
+  }, { exactMatch: true, useCapture: true })
+
+  useKeyPress(`${getKeyboardKeyCodeBySystem('ctrl')}.shift.g`, (e) => {
+    // Only intercept when the selection can be ungrouped
+    if (shouldHandleShortcut(e) && getCanUngroup()) {
+      e.preventDefault()
+      const groupId = getSelectedGroupId()
+      if (groupId)
+        handleUngroup(groupId)
     }
   }, { exactMatch: true, useCapture: true })
 

@@ -2529,6 +2529,77 @@ export const useNodesInteractions = () => {
     })
   }, [handleSyncWorkflowDraft, saveStateToHistory, store, t, workflowStore])
 
+  // check if the current selection can be ungrouped (single selected Group node)
+  const getCanUngroup = useCallback(() => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const selectedNodes = nodes.filter(node => node.selected)
+
+    if (selectedNodes.length !== 1)
+      return false
+
+    return selectedNodes[0].data.type === BlockEnum.Group
+  }, [store])
+
+  // get the selected group node id for ungroup operation
+  const getSelectedGroupId = useCallback(() => {
+    const { getNodes } = store.getState()
+    const nodes = getNodes()
+    const selectedNodes = nodes.filter(node => node.selected)
+
+    if (selectedNodes.length === 1 && selectedNodes[0].data.type === BlockEnum.Group)
+      return selectedNodes[0].id
+
+    return undefined
+  }, [store])
+
+  const handleUngroup = useCallback((groupId: string) => {
+    const { getNodes, setNodes, edges, setEdges } = store.getState()
+    const nodes = getNodes()
+    const groupNode = nodes.find(n => n.id === groupId)
+
+    if (!groupNode || groupNode.data.type !== BlockEnum.Group)
+      return
+
+    const memberIds = new Set((groupNode.data.members || []).map((m: { id: string }) => m.id))
+
+    // restore hidden member nodes
+    const newNodes = produce(nodes, (draft) => {
+      draft.forEach((node) => {
+        if (memberIds.has(node.id)) {
+          node.hidden = false
+          delete node.data._hiddenInGroupId
+        }
+      })
+      // remove group node
+      const groupIndex = draft.findIndex(n => n.id === groupId)
+      if (groupIndex !== -1)
+        draft.splice(groupIndex, 1)
+    })
+
+    // restore hidden edges and remove temp edges
+    const newEdges = produce(edges, (draft) => {
+      // restore hidden edges that involve member nodes
+      draft.forEach((edge) => {
+        if (edge.hidden && (memberIds.has(edge.source) || memberIds.has(edge.target)))
+          edge.hidden = false
+      })
+      // remove temp edges connected to group (iterate backwards to safely splice)
+      for (let i = draft.length - 1; i >= 0; i--) {
+        const edge = draft[i]
+        if (edge.data?._isTemp && (edge.source === groupId || edge.target === groupId))
+          draft.splice(i, 1)
+      }
+    })
+
+    setNodes(newNodes)
+    setEdges(newEdges)
+    handleSyncWorkflowDraft()
+    saveStateToHistory(WorkflowHistoryEvent.NodeDelete, {
+      nodeId: groupId,
+    })
+  }, [handleSyncWorkflowDraft, saveStateToHistory, store])
+
   return {
     handleNodeDragStart,
     handleNodeDrag,
@@ -2550,6 +2621,7 @@ export const useNodesInteractions = () => {
     handleNodesDuplicate,
     handleNodesDelete,
     handleMakeGroup,
+    handleUngroup,
     handleNodeResize,
     handleNodeDisconnect,
     handleHistoryBack,
@@ -2558,5 +2630,7 @@ export const useNodesInteractions = () => {
     undimAllNodes,
     hasBundledNodes,
     getCanMakeGroup,
+    getCanUngroup,
+    getSelectedGroupId,
   }
 }

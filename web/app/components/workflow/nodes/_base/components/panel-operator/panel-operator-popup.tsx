@@ -41,13 +41,14 @@ const PanelOperatorPopup = ({
     handleNodesDuplicate,
     handleNodeSelect,
     handleNodesCopy,
+    handleUngroup,
   } = useNodesInteractions()
   const { handleNodeDataUpdate } = useNodeDataUpdate()
   const { handleSyncWorkflowDraft } = useNodesSyncDraft()
   const { nodesReadOnly } = useNodesReadOnly()
   const edge = edges.find(edge => edge.target === id)
   const nodeMetaData = useNodeMetaData({ id, data } as Node)
-  const showChangeBlock = !nodeMetaData.isTypeFixed && !nodesReadOnly
+  const showChangeBlock = !nodeMetaData.isTypeFixed && !nodesReadOnly && data.type !== BlockEnum.Group
   const isChildNode = !!(data.isInIteration || data.isInLoop)
 
   const { data: workflowTools } = useAllWorkflowTools()
@@ -61,6 +62,25 @@ const PanelOperatorPopup = ({
 
   return (
     <div className="w-[240px] rounded-lg border-[0.5px] border-components-panel-border bg-components-panel-bg shadow-xl">
+      {
+        !nodesReadOnly && data.type === BlockEnum.Group && (
+          <>
+            <div className="p-1">
+              <div
+                className="flex h-8 cursor-pointer items-center justify-between rounded-lg px-3 text-sm text-text-secondary hover:bg-state-base-hover"
+                onClick={() => {
+                  onClosePopup()
+                  handleUngroup(id)
+                }}
+              >
+                {t('panel.ungroup', { ns: 'workflow' })}
+                <ShortcutsName keys={['ctrl', 'shift', 'g']} />
+              </div>
+            </div>
+            <div className="h-px bg-divider-regular"></div>
+          </>
+        )
+      }
       {
         (showChangeBlock || canRunBySingle(data.type, isChildNode)) && (
           <>

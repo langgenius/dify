@@ -965,6 +965,7 @@
   "panel.scrollToSelectedNode": "滚动至选中节点",
   "panel.selectNextStep": "选择下一个节点",
   "panel.startNode": "开始节点",
+  "panel.ungroup": "取消编组",
   "panel.userInputField": "用户输入字段",
   "publishLimit.startNodeDesc": "您已达到此计划上每个工作流最多 2 个触发器的限制。请升级后再发布此工作流。",
   "publishLimit.startNodeTitlePrefix": "升级以",
