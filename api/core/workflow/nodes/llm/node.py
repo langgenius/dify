@@ -1649,6 +1649,7 @@ class LLMNode(Node[LLMNodeData]):
             "output": tool_call.output,
             "files": files,
             "status": tool_call.status.value if hasattr(tool_call.status, "value") else tool_call.status,
+            "elapsed_time": tool_call.elapsed_time,
         }
 
     def _flush_thought_segment(self, buffers: StreamBuffers, trace_state: TraceState) -> None:
@@ -1707,6 +1708,7 @@ class LLMNode(Node[LLMNodeData]):
                     id=tool_call_id,
                     name=tool_name,
                     arguments=tool_arguments,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 ),
             )
             trace_state.trace_segments.append(tool_call_segment)
@@ -1755,6 +1757,7 @@ class LLMNode(Node[LLMNodeData]):
                     id=tool_call_id,
                     name=tool_name,
                     arguments=None,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 ),
             )
             if existing_tool_segment is None:
@@ -1767,6 +1770,7 @@ class LLMNode(Node[LLMNodeData]):
                     id=tool_call_id,
                     name=tool_name,
                     arguments=None,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 )
             tool_call_segment.tool_call.output = (
                 str(tool_output) if tool_output is not None else str(tool_error) if tool_error is not None else None
@@ -1785,6 +1789,7 @@ class LLMNode(Node[LLMNodeData]):
                     output=result_output,
                     files=tool_files,
                     status=ToolResultStatus.ERROR if tool_error else ToolResultStatus.SUCCESS,
+                    elapsed_time=output.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if output.metadata else None,
                 ),
                 is_final=False,
             )
@@ -1960,6 +1965,7 @@ class LLMNode(Node[LLMNodeData]):
                     arguments=json.dumps(tool_args) if tool_args else "",
                     output=result_text,
                     status=status,
+                    elapsed_time=log.metadata.get(AgentLog.LogMetadata.ELAPSED_TIME) if log.metadata else None,
                 )
             )
 

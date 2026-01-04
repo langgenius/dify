@@ -130,6 +130,16 @@ class MessageStreamResponse(StreamResponse):
     """file IDs produced by tool"""
     tool_error: str | None = None
     """error message if tool failed"""
+    tool_elapsed_time: float | None = None
+    """elapsed time spent executing the tool"""
+
+    def model_dump(self, *args, **kwargs) -> dict[str, object]:
+        kwargs.setdefault("exclude_none", True)
+        return super().model_dump(*args, **kwargs)
+
+    def model_dump_json(self, *args, **kwargs) -> str:
+        kwargs.setdefault("exclude_none", True)
+        return super().model_dump_json(*args, **kwargs)
 
 
 class MessageAudioStreamResponse(StreamResponse):
@@ -635,10 +645,22 @@ class TextChunkStreamResponse(StreamResponse):
         """accumulated tool arguments JSON"""
 
         # Tool result fields (when chunk_type == TOOL_RESULT)
-        tool_files: list[str] = Field(default_factory=list)
+        tool_files: list[str] | None = None
         """file IDs produced by tool"""
         tool_error: str | None = None
         """error message if tool failed"""
+
+        # Tool elapsed time fields (when chunk_type == TOOL_RESULT)
+        tool_elapsed_time: float | None = None
+        """elapsed time spent executing the tool"""
+
+        def model_dump(self, *args, **kwargs) -> dict[str, object]:
+            kwargs.setdefault("exclude_none", True)
+            return super().model_dump(*args, **kwargs)
+
+        def model_dump_json(self, *args, **kwargs) -> str:
+            kwargs.setdefault("exclude_none", True)
+            return super().model_dump_json(*args, **kwargs)
 
     event: StreamEvent = StreamEvent.TEXT_CHUNK
     data: Data

@@ -490,6 +490,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_call_id = tool_payload.id if tool_payload and tool_payload.id else None
         tool_name = tool_payload.name if tool_payload and tool_payload.name else None
         tool_arguments = tool_call.arguments if tool_call else None
+        tool_elapsed_time = tool_result.elapsed_time if tool_result else None
         tool_files = tool_result.files if tool_result else []
 
         # only publish tts message at text chunk streaming
@@ -504,6 +505,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
             tool_name=tool_name,
             tool_arguments=tool_arguments,
             tool_files=tool_files,
+            tool_elapsed_time=tool_elapsed_time,
         )
 
     def _handle_agent_log_event(self, event: QueueAgentLogEvent, **kwargs) -> Generator[StreamResponse, None, None]:
@@ -676,6 +678,7 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         tool_arguments: str | None = None,
         tool_files: list[str] | None = None,
         tool_error: str | None = None,
+        tool_elapsed_time: float | None = None,
     ) -> TextChunkStreamResponse:
         """
         Handle completed event.
@@ -684,18 +687,37 @@ class WorkflowAppGenerateTaskPipeline(GraphRuntimeStateSupport):
         """
         from core.app.entities.task_entities import ChunkType as ResponseChunkType
 
+        response_chunk_type = ResponseChunkType(chunk_type.value) if chunk_type else ResponseChunkType.TEXT
+
+        data = TextChunkStreamResponse.Data(
+            text=text,
+            from_variable_selector=from_variable_selector,
+            chunk_type=response_chunk_type,
+        )
+
+        if response_chunk_type == ResponseChunkType.TOOL_CALL:
+            data = data.model_copy(
+                update={
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "tool_arguments": tool_arguments,
+                }
+            )
+        elif response_chunk_type == ResponseChunkType.TOOL_RESULT:
+            data = data.model_copy(
+                update={
+                    "tool_call_id": tool_call_id,
+                    "tool_name": tool_name,
+                    "tool_arguments": tool_arguments,
+                    "tool_files": tool_files,
+                    "tool_error": tool_error,
+                    "tool_elapsed_time": tool_elapsed_time,
+                }
+            )
+
         response = TextChunkStreamResponse(
             task_id=self._application_generate_entity.task_id,
-            data=TextChunkStreamResponse.Data(
-                text=text,
-                from_variable_selector=from_variable_selector,
-                chunk_type=ResponseChunkType(chunk_type.value) if chunk_type else ResponseChunkType.TEXT,
-                tool_call_id=tool_call_id,
-                tool_name=tool_name,
-                tool_arguments=tool_arguments,
-                tool_files=tool_files or [],
-                tool_error=tool_error,
-            ),
+            data=data,
         )
 
         return response

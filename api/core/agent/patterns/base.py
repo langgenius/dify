@@ -200,7 +200,8 @@ class AgentPattern(ABC):
         log.metadata = {
             **log.metadata,
             AgentLog.LogMetadata.FINISHED_AT: finished_at,
-            AgentLog.LogMetadata.ELAPSED_TIME: finished_at - started_at,
+            # Calculate elapsed time in seconds
+            AgentLog.LogMetadata.ELAPSED_TIME: round(finished_at - started_at, 4),
         }
 
         # Add usage information if provided
