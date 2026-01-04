@@ -8,6 +8,7 @@ from core.workflow.entities.pause_reason import HumanInputRequired
 from core.workflow.enums import NodeExecutionType, NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import HumanInputFormFilledEvent, NodeRunResult, PauseRequestedEvent
 from core.workflow.node_events.base import NodeEventBase
+from core.workflow.node_events.node import StreamCompletedEvent
 from core.workflow.nodes.base.node import Node
 from core.workflow.repositories.human_input_form_repository import (
     FormCreateParams,
@@ -166,34 +167,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
             resolved_placeholder_values=resolved_placeholder_values,
         )
 
-    def _create_form(self) -> Generator[NodeEventBase, None, None] | NodeRunResult:
-        try:
-            params = FormCreateParams(
-                workflow_execution_id=self._workflow_execution_id,
-                node_id=self.id,
-                form_config=self._node_data,
-                rendered_content=self._render_form_content(),
-                resolved_placeholder_values=self._resolve_inputs(),
-            )
-            form_entity = self._form_repository.create_form(params)
-            # Create human input required event
-
-            logger.info(
-                "Human Input node suspended workflow for form. workflow_run_id=%s, node_id=%s, form_id=%s",
-                self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id,
-                self.id,
-                form_entity.id,
-            )
-            yield self._form_to_pause_event(form_entity)
-        except Exception as e:
-            logger.exception("Human Input node failed to execute, node_id=%s", self.id)
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.FAILED,
-                error=str(e),
-                error_type="HumanInputNodeError",
-            )
-
-    def _run(self) -> NodeRunResult | Generator[NodeEventBase, None, None]:
+    def _run(self) -> Generator[NodeEventBase, None, None]:
         """
         Execute the human input node.
 
@@ -208,56 +182,69 @@ class HumanInputNode(Node[HumanInputNodeData]):
         repo = self._form_repository
         form = repo.get_form(self._workflow_execution_id, self.id)
         if form is None:
-            return self._create_form()
-
-        if form.submitted:
-            selected_action_id = form.selected_action_id
-            if selected_action_id is None:
-                raise AssertionError(f"selected_action_id should not be None when form submitted, form_id={form.id}")
-            submitted_data = form.submitted_data or {}
-            outputs: dict[str, Any] = dict(submitted_data)
-            outputs["__action_id"] = selected_action_id
-            rendered_content = self._render_form_content_with_outputs(
-                form.rendered_content,
-                outputs,
-                self._node_data.outputs_field_names(),
+            params = FormCreateParams(
+                workflow_execution_id=self._workflow_execution_id,
+                node_id=self.id,
+                form_config=self._node_data,
+                rendered_content=self._render_form_content_before_submission(),
+                resolved_placeholder_values=self._resolve_inputs(),
             )
-            outputs["__rendered_content"] = rendered_content
+            form_entity = self._form_repository.create_form(params)
+            # Create human input required event
 
-            action_text = self._node_data.find_action_text(selected_action_id)
-
-            yield HumanInputFormFilledEvent(
-                rendered_content=rendered_content,
-                action_id=selected_action_id,
-                action_text=action_text,
+            logger.info(
+                "Human Input node suspended workflow for form. workflow_run_id=%s, node_id=%s, form_id=%s",
+                self.graph_runtime_state.variable_pool.system_variables.workflow_execution_id,
+                self.id,
+                form_entity.id,
             )
+            yield self._form_to_pause_event(form_entity)
+            return
 
-            return NodeRunResult(
+        if form.status == HumanInputFormStatus.TIMEOUT or form.expiration_time <= naive_utc_now():
+            yield StreamCompletedEvent(
+                node_run_result=NodeRunResult(
+                    status=WorkflowNodeExecutionStatus.SUCCEEDED,
+                    outputs={},
+                    edge_source_handle="__timeout",
+                )
+            )
+            return
+
+        if not form.submitted:
+            yield self._form_to_pause_event(form)
+            return
+
+        selected_action_id = form.selected_action_id
+        if selected_action_id is None:
+            raise AssertionError(f"selected_action_id should not be None when form submitted, form_id={form.id}")
+        submitted_data = form.submitted_data or {}
+        outputs: dict[str, Any] = dict(submitted_data)
+        outputs["__action_id"] = selected_action_id
+        rendered_content = self._render_form_content_with_outputs(
+            form.rendered_content,
+            outputs,
+            self._node_data.outputs_field_names(),
+        )
+        outputs["__rendered_content"] = rendered_content
+
+        action_text = self._node_data.find_action_text(selected_action_id)
+
+        yield HumanInputFormFilledEvent(
+            rendered_content=rendered_content,
+            action_id=selected_action_id,
+            action_text=action_text,
+        )
+
+        yield StreamCompletedEvent(
+            node_run_result=NodeRunResult(
                 status=WorkflowNodeExecutionStatus.SUCCEEDED,
                 outputs=outputs,
                 edge_source_handle=selected_action_id,
             )
+        )
 
-        if form.status == HumanInputFormStatus.TIMEOUT or form.expiration_time <= naive_utc_now():
-            outputs: dict[str, Any] = {
-                "__rendered_content": self._render_form_content_with_outputs(
-                    form.rendered_content,
-                    {},
-                    self._node_data.outputs_field_names(),
-                )
-            }
-            return NodeRunResult(
-                status=WorkflowNodeExecutionStatus.SUCCEEDED,
-                outputs=outputs,
-                edge_source_handle="__timeout",
-            )
-
-        return self._pause_with_form(form)
-
-    def _pause_with_form(self, form_entity: HumanInputFormEntity) -> Generator[NodeEventBase, None, None]:
-        yield self._form_to_pause_event(form_entity)
-
-    def _render_form_content(self) -> str:
+    def _render_form_content_before_submission(self) -> str:
         """
         Process form content by substituting variables.
 

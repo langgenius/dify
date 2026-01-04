@@ -9,7 +9,7 @@ import pytest
 from pydantic import ValidationError
 
 from core.workflow.entities import GraphInitParams
-from core.workflow.node_events import NodeRunResult, PauseRequestedEvent
+from core.workflow.node_events import PauseRequestedEvent
 from core.workflow.node_events.node import StreamCompletedEvent
 from core.workflow.nodes.human_input.entities import (
     EmailDeliveryConfig,

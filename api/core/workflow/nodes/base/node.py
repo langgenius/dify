@@ -260,9 +260,32 @@ class Node(Generic[NodeDataT]):
         return self._node_execution_id
 
     def ensure_execution_id(self) -> str:
-        if not self._node_execution_id:
-            self._node_execution_id = str(uuid4())
+        if self._node_execution_id:
+            return self._node_execution_id
+
+        resumed_execution_id = self._restore_execution_id_from_runtime_state()
+        if resumed_execution_id:
+            self._node_execution_id = resumed_execution_id
+            return self._node_execution_id
+
+        self._node_execution_id = str(uuid4())
         return self._node_execution_id
+
+    def _restore_execution_id_from_runtime_state(self) -> str | None:
+        graph_execution = self.graph_runtime_state.graph_execution
+        try:
+            node_executions = graph_execution.node_executions
+        except AttributeError:
+            return None
+        if not isinstance(node_executions, dict):
+            return None
+        node_execution = node_executions.get(self._node_id)
+        if node_execution is None:
+            return None
+        execution_id = node_execution.execution_id
+        if not execution_id:
+            return None
+        return str(execution_id)
 
     def _hydrate_node_data(self, data: Mapping[str, Any]) -> NodeDataT:
         return cast(NodeDataT, self._node_data_type.model_validate(data))

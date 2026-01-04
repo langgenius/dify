@@ -5,6 +5,7 @@ from uuid import uuid4
 import pytest
 from sqlalchemy.orm import Session
 
+from core.workflow.enums import WorkflowNodeExecutionStatus
 from models.workflow import WorkflowNodeExecutionModel
 from repositories.sqlalchemy_api_workflow_node_execution_repository import (
     DifyAPISQLAlchemyWorkflowNodeExecutionRepository,
@@ -52,6 +53,9 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         call_args = mock_session.scalar.call_args[0][0]
         assert hasattr(call_args, "compile")  # It's a SQLAlchemy statement
 
+        compiled = call_args.compile()
+        assert WorkflowNodeExecutionStatus.PAUSED in compiled.params.values()
+
     def test_get_node_last_execution_not_found(self, repository):
         """Test getting the last execution for a node when it doesn't exist."""
         # Arrange
@@ -92,6 +96,9 @@ class TestSQLAlchemyWorkflowNodeExecutionServiceRepository:
         # Verify the query was constructed correctly
         call_args = mock_session.execute.call_args[0][0]
         assert hasattr(call_args, "compile")  # It's a SQLAlchemy statement
+
+        compiled = call_args.compile()
+        assert WorkflowNodeExecutionStatus.PAUSED in compiled.params.values()
 
     def test_get_executions_by_workflow_run_empty(self, repository):
         """Test getting executions for a workflow run when none exist."""

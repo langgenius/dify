@@ -465,6 +465,27 @@ class TestWorkflowRunService:
             db.session.add(node_execution)
             node_executions.append(node_execution)
 
+        paused_node_execution = WorkflowNodeExecutionModel(
+            tenant_id=app.tenant_id,
+            app_id=app.id,
+            workflow_id=workflow_run.workflow_id,
+            triggered_from="workflow-run",
+            workflow_run_id=workflow_run.id,
+            index=99,
+            node_id="node_paused",
+            node_type="human_input",
+            title="Paused Node",
+            inputs=json.dumps({"input": "paused"}),
+            process_data=json.dumps({"process": "paused"}),
+            status="paused",
+            elapsed_time=0.5,
+            execution_metadata=json.dumps({"tokens": 0}),
+            created_by_role=CreatorUserRole.ACCOUNT,
+            created_by=account.id,
+            created_at=datetime.now(UTC),
+        )
+        db.session.add(paused_node_execution)
+
         db.session.commit()
 
         # Act: Execute the method under test
@@ -477,6 +498,7 @@ class TestWorkflowRunService:
 
         # Verify node execution properties
         for node_execution in result:
+            assert node_execution.status != "paused"
             assert node_execution.tenant_id == app.tenant_id
             assert node_execution.app_id == app.id
             assert node_execution.workflow_run_id == workflow_run.id
