@@ -9,6 +9,9 @@ import type {
   WorkflowLogsResponse,
 } from '@/models/log'
 import { useQuery } from '@tanstack/react-query'
+import Cookies from 'js-cookie'
+import { API_PREFIX, CSRF_COOKIE_NAME, CSRF_HEADER_NAME } from '@/config'
+import { downloadFile } from '@/utils/format'
 import { get } from './base'
 
 const NAME_SPACE = 'log'
@@ -86,4 +89,50 @@ export const useWorkflowLogs = ({ appId, params }: WorkflowLogsParams) => {
     queryFn: () => get<WorkflowLogsResponse>(`/apps/${appId}/workflow-app-logs`, { params }),
     enabled: !!appId,
   })
+}
+
+// ============ Export Workflow Logs ============
+
+type ExportWorkflowLogsParams = {
+  appId: string
+  params?: Record<string, string | number | boolean | undefined>
+}
+
+export const exportWorkflowLogs = async ({ appId, params }: ExportWorkflowLogsParams) => {
+  // Build URL with query parameters
+  const url = new URL(`${API_PREFIX}/apps/${appId}/workflow-app-logs/export`, globalThis.location.origin)
+  if (params) {
+    Object.entries(params).forEach(([key, value]) => {
+      if (value !== undefined && value !== null && value !== '') {
+        url.searchParams.append(key, String(value))
+      }
+    })
+  }
+
+  // Use fetch directly to get the raw response
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Content-Type': 'application/json',
+      [CSRF_HEADER_NAME]: Cookies.get(CSRF_COOKIE_NAME()) || '',
+    },
+    credentials: 'include',
+  })
+
+  if (!response.ok) {
+    throw new Error(`Export failed: ${response.statusText}`)
+  }
+
+  const blob = await response.blob()
+  const contentDisposition = response.headers.get('Content-Disposition')
+  const format = params?.format || 'csv'
+  const extension = format === 'json' ? 'jsonl' : 'csv'
+  let fileName = `workflow-logs-export-${Date.now()}.${extension}`
+  if (contentDisposition) {
+    const fileNameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/)
+    if (fileNameMatch && fileNameMatch[1]) {
+      fileName = fileNameMatch[1].replace(/['"]/g, '')
+    }
+  }
+  downloadFile({ data: blob, fileName })
 }

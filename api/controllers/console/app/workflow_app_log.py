@@ -1,16 +1,17 @@
 from datetime import datetime
+from typing import Literal
 
 from dateutil.parser import isoparse
 from flask import request
 from flask_restx import Resource, marshal_with
 from pydantic import BaseModel, Field, field_validator
-from sqlalchemy.orm import Session
+from werkzeug.exceptions import InternalServerError
 
 from controllers.console import console_ns
 from controllers.console.app.wraps import get_app_model
-from controllers.console.wraps import account_initialization_required, setup_required
+from controllers.console.wraps import account_initialization_required, edit_permission_required, setup_required
+from core.db.session_factory import session_factory
 from core.workflow.enums import WorkflowExecutionStatus
-from extensions.ext_database import db
 from fields.workflow_app_log_fields import build_workflow_app_log_pagination_model
 from libs.login import login_required
 from models import App
@@ -55,8 +56,31 @@ class WorkflowAppLogQuery(BaseModel):
         raise ValueError("Invalid boolean value for detail")
 
 
+class WorkflowAppLogExportQuery(BaseModel):
+    keyword: str | None = Field(default=None, description="Search keyword for filtering logs")
+    status: WorkflowExecutionStatus | None = Field(
+        default=None, description="Execution status filter (succeeded, failed, stopped, partial-succeeded)"
+    )
+    created_at__before: datetime | None = Field(default=None, description="Filter logs created before this timestamp")
+    created_at__after: datetime | None = Field(default=None, description="Filter logs created after this timestamp")
+    created_by_end_user_session_id: str | None = Field(default=None, description="Filter by end user session ID")
+    created_by_account: str | None = Field(default=None, description="Filter by account")
+    format: Literal["csv", "json"] = Field(default="csv", description="Export format")
+
+    @field_validator("created_at__before", "created_at__after", mode="before")
+    @classmethod
+    def parse_datetime(cls, value: str | None) -> datetime | None:
+        if value in (None, ""):
+            return None
+        return isoparse(value)  # type: ignore
+
+
 console_ns.schema_model(
     WorkflowAppLogQuery.__name__, WorkflowAppLogQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0)
+)
+console_ns.schema_model(
+    WorkflowAppLogExportQuery.__name__,
+    WorkflowAppLogExportQuery.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
 )
 
 # Register model for flask_restx to avoid dict type issues in Swagger
@@ -83,7 +107,7 @@ class WorkflowAppLogApi(Resource):
 
         # get paginate workflow app logs
         workflow_app_service = WorkflowAppService()
-        with Session(db.engine) as session:
+        with session_factory.create_session() as session:
             workflow_app_log_pagination = workflow_app_service.get_paginate_workflow_app_logs(
                 session=session,
                 app_model=app_model,
@@ -99,3 +123,43 @@ class WorkflowAppLogApi(Resource):
             )
 
             return workflow_app_log_pagination
+
+
+@console_ns.route("/apps/<uuid:app_id>/workflow-app-logs/export")
+class WorkflowAppLogExportApi(Resource):
+    @console_ns.doc("export_workflow_app_logs",
+                    description="Export workflow application logs to CSV or JSON format",
+                    params={"app_id": "Application ID"})
+    @console_ns.expect(console_ns.models[WorkflowAppLogExportQuery.__name__])
+    @console_ns.response(200, "Logs exported successfully")
+    @console_ns.response(400, "Invalid parameters")
+    @console_ns.response(500, "Internal server error")
+    @setup_required
+    @login_required
+    @account_initialization_required
+    @edit_permission_required
+    @get_app_model(mode=[AppMode.WORKFLOW])
+    def get(self, app_model: App):
+        """
+        Export workflow app logs
+        """
+        args = WorkflowAppLogExportQuery.model_validate(request.args.to_dict(flat=True))  # type: ignore
+
+        workflow_app_service = WorkflowAppService()
+        try:
+            with session_factory.create_session() as session:
+                return workflow_app_service.export_workflow_app_logs(
+                    session=session,
+                    app_model=app_model,
+                    keyword=args.keyword,
+                    status=args.status,
+                    created_at_before=args.created_at__before,
+                    created_at_after=args.created_at__after,
+                    created_by_end_user_session_id=args.created_by_end_user_session_id,
+                    created_by_account=args.created_by_account,
+                    format_type=args.format,
+                )
+        except ValueError as e:
+            return {"error": f"Parameter validation error: {str(e)}"}, 400
+        except Exception:
+            raise InternalServerError()
