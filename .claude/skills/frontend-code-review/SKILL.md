@@ -44,7 +44,7 @@ FilePath: <path> line <line>
 
 Found <M> suggestions for improvement:
 
-## 1<brief description of suggestion>
+## 1 <brief description of suggestion>
 FilePath: <path> line <line>
 <relevant code snippet or pointer>
 
