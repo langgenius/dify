@@ -341,7 +341,7 @@
   "modelProvider.card.callTimes": "通話回数",
   "modelProvider.card.modelAPI": "{{modelName}} は現在 APIキーを使用しています。",
   "modelProvider.card.modelNotSupported": "{{modelName}} 未インストール。",
-  "modelProvider.card.modelSupported": "このクォータは現在{{modelName}}に使用されでいます。",
+  "modelProvider.card.modelSupported": "このクォータは現在{{modelName}}に使用されています。",
   "modelProvider.card.onTrial": "トライアル中",
   "modelProvider.card.paid": "有料",
   "modelProvider.card.priorityUse": "優先利用",

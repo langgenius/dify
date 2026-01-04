@@ -1,5 +1,6 @@
 import type { FC } from 'react'
 import type { ModelProvider } from '../declarations'
+import type { Plugin } from '@/app/components/plugins/types'
 import { useBoolean } from 'ahooks'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
@@ -46,7 +47,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
 }) => {
   const { t } = useTranslation()
   const { currentWorkspace } = useAppContext()
-  const credits = Math.max(currentWorkspace.trial_credits - currentWorkspace.trial_credits_used || 0, 0)
+  const credits = Math.max((currentWorkspace.trial_credits - currentWorkspace.trial_credits_used) || 0, 0)
   const providerMap = useMemo(() => new Map(
     providers.map(p => [p.provider, p.preferred_provider_type]),
   ), [providers])
@@ -54,7 +55,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
   const {
     plugins: allPlugins,
   } = useMarketplaceAllPlugins(providers, '')
-  const [selectedPlugin, setSelectedPlugin] = useState<any>(null)
+  const [selectedPlugin, setSelectedPlugin] = useState<Plugin | null>(null)
   const [isShowInstallModal, {
     setTrue: showInstallFromMarketplace,
     setFalse: hideInstallFromMarketplace,
@@ -147,7 +148,7 @@ const QuotaPanel: FC<QuotaPanelProps> = ({
           })}
         </div>
       </div>
-      {isShowInstallModal && (
+      {isShowInstallModal && selectedPlugin && (
         <InstallFromMarketplace
           manifest={selectedPlugin}
           uniqueIdentifier={selectedPlugin.latest_package_identifier}
