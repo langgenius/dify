@@ -4,12 +4,11 @@ import { RiArrowLeftLine, RiMailSendFill } from '@remixicon/react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { useContext } from 'use-context-selector'
 import Button from '@/app/components/base/button'
 import Input from '@/app/components/base/input'
 import Toast from '@/app/components/base/toast'
 import Countdown from '@/app/components/signin/countdown'
-import I18NContext from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useMailValidity, useSendMail } from '@/service/use-common'
 
 export default function CheckCode() {
@@ -20,7 +19,7 @@ export default function CheckCode() {
   const [token, setToken] = useState(decodeURIComponent(searchParams.get('token') as string))
   const [code, setVerifyCode] = useState('')
   const [loading, setIsLoading] = useState(false)
-  const { locale } = useContext(I18NContext)
+  const locale = useLocale()
   const { mutateAsync: submitMail } = useSendMail()
   const { mutateAsync: verifyCode } = useMailValidity()
 

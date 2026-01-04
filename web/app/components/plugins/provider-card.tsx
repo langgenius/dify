@@ -10,7 +10,7 @@ import { useTranslation } from 'react-i18next'
 import Button from '@/app/components/base/button'
 import InstallFromMarketplace from '@/app/components/plugins/install-plugin/install-from-marketplace'
 import { getPluginLinkInMarketplace } from '@/app/components/plugins/marketplace/utils'
-import { useI18N } from '@/context/i18n'
+import { useLocale } from '@/context/i18n'
 import { useRenderI18nObject } from '@/hooks/use-i18n'
 import { cn } from '@/utils/classnames'
 import Badge from '../base/badge'
@@ -36,7 +36,7 @@ const ProviderCardComponent: FC<Props> = ({
     setFalse: hideInstallFromMarketplace,
   }] = useBoolean(false)
   const { org, label } = payload
-  const { locale } = useI18N()
+  const locale = useLocale()
 
   // Memoize the marketplace link params to prevent unnecessary re-renders
   const marketplaceLinkParams = useMemo(() => ({ language: locale, theme }), [locale, theme])
@@ -92,7 +92,7 @@ const ProviderCardComponent: FC<Props> = ({
             manifest={payload}
             uniqueIdentifier={payload.latest_package_identifier}
             onClose={hideInstallFromMarketplace}
-            onSuccess={() => hideInstallFromMarketplace()}
+            onSuccess={hideInstallFromMarketplace}
           />
         )
       }

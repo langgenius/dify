@@ -69,7 +69,7 @@ ${this.getSpecificGuidelines(analysis)}
 📋 PROMPT FOR AI ASSISTANT (COPY THIS TO YOUR AI ASSISTANT):
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Generate a comprehensive test file for @${analysis.path}
+Generate a comprehensive test file for all files in @${path.dirname(analysis.path)}
 
 Including but not limited to:
 ${this.buildFocusPoints(analysis)}

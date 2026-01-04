@@ -11,7 +11,7 @@ import {
   RiLoader4Line,
   RiMoreLine,
 } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { produce } from 'immer'
 import * as React from 'react'
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
