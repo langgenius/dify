@@ -289,7 +289,6 @@ class BaseAgentRunner(AppRunner):
         Create agent thought
         """
         thought = MessageAgentThought(
-            id=str(uuid.uuid4()),
             message_id=message_id,
             message_chain_id=None,
             tool_process_data=None,
