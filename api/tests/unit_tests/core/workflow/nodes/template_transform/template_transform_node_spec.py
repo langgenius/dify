@@ -6,8 +6,8 @@ from core.workflow.graph_engine.entities.graph_init_params import GraphInitParam
 from core.workflow.graph_engine.entities.graph_runtime_state import GraphRuntimeState
 
 from core.workflow.enums import ErrorStrategy, NodeType, WorkflowNodeExecutionStatus
-from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from core.workflow.nodes.template_transform.template_renderer import TemplateRenderError
+from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from models.workflow import WorkflowType
 
 
@@ -127,7 +127,9 @@ class TestTemplateTransformNode:
         """Test version class method."""
         assert TemplateTransformNode.version() == "1"
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_simple_template(
         self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
@@ -162,7 +164,9 @@ class TestTemplateTransformNode:
         assert result.inputs["name"] == "Alice"
         assert result.inputs["age"] == 30
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_none_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with None variable values."""
         node_data = {
@@ -187,7 +191,9 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.inputs["value"] is None
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_code_execution_error(
         self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
@@ -208,7 +214,9 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Template syntax error" in result.error
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     @patch("core.workflow.nodes.template_transform.template_transform_node.MAX_TEMPLATE_TRANSFORM_OUTPUT_LENGTH", 10)
     def test_run_output_length_exceeds_limit(
         self, mock_execute, basic_node_data, mock_graph, mock_graph_runtime_state, graph_init_params
@@ -230,7 +238,9 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.FAILED
         assert "Output length exceeds" in result.error
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_complex_jinja2_template(
         self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params
     ):
@@ -292,7 +302,9 @@ class TestTemplateTransformNode:
         assert mapping["node_123.var1"] == ["sys", "input1"]
         assert mapping["node_123.var2"] == ["sys", "input2"]
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_empty_variables(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with no variables (static template)."""
         node_data = {
@@ -317,7 +329,9 @@ class TestTemplateTransformNode:
         assert result.outputs["output"] == "This is a static message."
         assert result.inputs == {}
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_numeric_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with numeric variable values."""
         node_data = {
@@ -354,7 +368,9 @@ class TestTemplateTransformNode:
         assert result.status == WorkflowNodeExecutionStatus.SUCCEEDED
         assert result.outputs["output"] == "Total: $31.5"
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_dict_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with dictionary variable values."""
         node_data = {
@@ -383,7 +399,9 @@ class TestTemplateTransformNode:
         assert "John Doe" in result.outputs["output"]
         assert "john@example.com" in result.outputs["output"]
 
-    @patch("core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template")
+    @patch(
+        "core.workflow.nodes.template_transform.template_transform_node.CodeExecutorJinja2TemplateRenderer.render_template"
+    )
     def test_run_with_list_values(self, mock_execute, mock_graph, mock_graph_runtime_state, graph_init_params):
         """Test _run with list variable values."""
         node_data = {
