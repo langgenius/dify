@@ -42,8 +42,11 @@ BODY_TYPE_TO_CONTENT_TYPE = {
 
 
 class HttpClientProtocol(Protocol):
-    MaxRetriesExceededError: type[Exception]
-    RequestError: type[Exception]
+    @property
+    def MaxRetriesExceededError(self) -> type[Exception]: ...
+
+    @property
+    def RequestError(self) -> type[Exception]: ...
 
     def get(self, url: str, max_retries: int = ..., **kwargs: object) -> httpx.Response: ...
 
@@ -369,7 +372,6 @@ class Executor:
             raise InvalidHttpMethodError(f"Invalid http method {self.method}")
 
         request_args = {
-            "url": self.url,
             "data": self.data,
             "files": self.files,
             "json": self.json,
@@ -382,7 +384,11 @@ class Executor:
         }
         # request_args = {k: v for k, v in request_args.items() if v is not None}
         try:
-            response: httpx.Response = _METHOD_MAP[method_lc](**request_args, max_retries=self.max_retries)
+            response: httpx.Response = _METHOD_MAP[method_lc](
+                url=self.url,
+                **request_args,
+                max_retries=self.max_retries,
+            )
         except (self._http_client.MaxRetriesExceededError, self._http_client.RequestError) as e:
             raise HttpRequestNodeError(str(e)) from e
         # FIXME: fix type ignore, this maybe httpx type issue
