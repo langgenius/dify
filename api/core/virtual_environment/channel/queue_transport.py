@@ -74,7 +74,11 @@ class QueueTransportReadCloser(TransportReadCloser):
 
         to_return = self._drain_buffer(n)
 
-        while len(to_return) < n and not self._closed and self.q.qsize() > 0:
+        # At the first round reading from queue, hanging is required to wait for the data
+        # But after that, return immediately if no data is available
+        round = 0
+
+        while len(to_return) < n and not self._closed and (self.q.qsize() > 0 or round == 0):
             chunk = self.q.get()
             if chunk is None:
                 self._closed = True
@@ -91,6 +95,8 @@ class QueueTransportReadCloser(TransportReadCloser):
             else:
                 # No more data needed, break
                 break
+
+            round += 1
 
         return to_return
 
