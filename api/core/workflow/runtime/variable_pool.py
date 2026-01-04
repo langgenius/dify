@@ -234,6 +234,37 @@ class VariablePool(BaseModel):
                 segments.append(variable_factory.build_segment(part))
         return SegmentGroup(value=segments)
 
+    def render_template(self, template: Any, /) -> Any:
+        if template is None:
+            return None
+
+        if isinstance(template, (int, float, bool, complex, bytes, bytearray, memoryview)):
+            return template
+
+        if isinstance(template, str):
+            return self.convert_template(template).text
+
+        if isinstance(template, list):
+            return [self.render_template(value) for value in template]
+
+        if isinstance(template, tuple):
+            return tuple(self.render_template(value) for value in template)
+
+        if isinstance(template, dict):
+            return {key: self.render_template(value) for key, value in template.items()}
+
+        if isinstance(template, set):
+            return {self.render_template(value) for value in template}
+
+        if isinstance(template, BaseModel):
+            copy_template = template.model_copy(deep=True)
+            for key in template.model_fields_set:
+                setattr(copy_template, key, self.render_template(getattr(copy_template, key)))
+
+            return copy_template
+
+        raise TypeError(f"unsupported template type {type(template).__name__}")
+
     def get_file(self, selector: Sequence[str], /) -> FileSegment | None:
         segment = self.get(selector)
         if isinstance(segment, FileSegment):
