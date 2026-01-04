@@ -73,7 +73,7 @@ persistent_request_timeout 30 seconds
 pconn_timeout 1 minute
 
 # Connection pool and concurrency limits
-client_db_limit 1000
+client_db on
 server_idle_pconn_timeout 2 minutes
 client_idle_pconn_timeout 2 minutes
 
@@ -97,8 +97,8 @@ dns_retransmit_interval 5 seconds
 # dns_nameservers 8.8.8.8 8.8.4.4
 
 # Logging format for better debugging
-logformat combined %ts.%03tu %6tr %>a %Ss/%03>Hs %<st %rm %ru %[un %Sh/%<a %mt
-access_log daemon:/var/log/squid/access.log combined
+logformat dify_log %ts.%03tu %6tr %>a %Ss/%03>Hs %<st %rm %ru %[un %Sh/%<a %mt
+access_log daemon:/var/log/squid/access.log dify_log
 
 # Access log to track concurrent requests and timeouts
 logfile_rotate 10
