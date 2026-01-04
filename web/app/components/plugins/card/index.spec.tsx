@@ -21,33 +21,6 @@ import Card from './index'
 // Mock External Dependencies Only
 // ================================
 
-// Mock react-i18next (translation hook)
-vi.mock('react-i18next', () => ({
-  useTranslation: () => ({
-    t: (key: string) => key,
-  }),
-}))
-
-// Mock useMixedTranslation hook
-vi.mock('../marketplace/hooks', () => ({
-  useMixedTranslation: (_locale?: string) => ({
-    t: (key: string, options?: { ns?: string }) => {
-      const fullKey = options?.ns ? `${options.ns}.${key}` : key
-      const translations: Record<string, string> = {
-        'plugin.marketplace.partnerTip': 'Partner plugin',
-        'plugin.marketplace.verifiedTip': 'Verified plugin',
-        'plugin.installModal.installWarning': 'Install warning message',
-      }
-      return translations[fullKey] || key
-    },
-  }),
-}))
-
-// Mock useGetLanguage context
-vi.mock('@/context/i18n', () => ({
-  useGetLanguage: () => 'en-US',
-}))
-
 // Mock useTheme hook
 vi.mock('@/hooks/use-theme', () => ({
   default: () => ({ theme: 'light' }),
