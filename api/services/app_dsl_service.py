@@ -155,6 +155,7 @@ class AppDslService:
                     parsed_url.scheme == "https"
                     and parsed_url.netloc == "github.com"
                     and parsed_url.path.endswith((".yml", ".yaml"))
+                    and "/blob/" in parsed_url.path
                 ):
                     yaml_url = yaml_url.replace("https://github.com", "https://raw.githubusercontent.com")
                     yaml_url = yaml_url.replace("/blob/", "/")
@@ -550,7 +551,7 @@ class AppDslService:
             "app": {
                 "name": app_model.name,
                 "mode": app_model.mode,
-                "icon": "🤖" if app_model.icon_type == "image" else app_model.icon,
+                "icon": app_model.icon if app_model.icon_type == "image" else "🤖",
                 "icon_background": "#FFEAD5" if app_model.icon_type == "image" else app_model.icon_background,
                 "description": app_model.description,
                 "use_icon_as_answer_icon": app_model.use_icon_as_answer_icon,

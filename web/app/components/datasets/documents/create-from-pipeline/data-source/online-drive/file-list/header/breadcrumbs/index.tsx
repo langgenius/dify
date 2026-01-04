@@ -1,10 +1,11 @@
-import React, { useCallback, useMemo } from 'react'
+import * as React from 'react'
+import { useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useDataSourceStore, useDataSourceStoreWithSelector } from '../../../../store'
 import Bucket from './bucket'
-import BreadcrumbItem from './item'
-import Dropdown from './dropdown'
 import Drive from './drive'
+import Dropdown from './dropdown'
+import BreadcrumbItem from './item'
 
 type BreadcrumbsProps = {
   breadcrumbs: string[]
@@ -80,22 +81,23 @@ const Breadcrumbs = ({
   }, [dataSourceStore])
 
   return (
-    <div className='flex grow items-center overflow-hidden'>
+    <div className="flex grow items-center overflow-hidden">
       {showSearchResult && (
-        <div className='system-sm-medium text-test-secondary px-[5px]'>
-          {t('datasetPipeline.onlineDrive.breadcrumbs.searchResult', {
+        <div className="system-sm-medium text-test-secondary px-[5px]">
+          {t('onlineDrive.breadcrumbs.searchResult', {
+            ns: 'datasetPipeline',
             searchResultsLength,
             folderName: breadcrumbs.length > 0 ? breadcrumbs[breadcrumbs.length - 1] : bucket,
           })}
         </div>
       )}
       {!showSearchResult && showBucketListTitle && (
-        <div className='system-sm-medium text-test-secondary px-[5px]'>
-          {t('datasetPipeline.onlineDrive.breadcrumbs.allBuckets')}
+        <div className="system-sm-medium text-test-secondary px-[5px]">
+          {t('onlineDrive.breadcrumbs.allBuckets', { ns: 'datasetPipeline' })}
         </div>
       )}
       {!showSearchResult && !showBucketListTitle && (
-        <div className='flex w-full items-center gap-x-0.5 overflow-hidden'>
+        <div className="flex w-full items-center gap-x-0.5 overflow-hidden">
           {hasBucket && bucket && (
             <Bucket
               bucketName={bucket}

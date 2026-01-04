@@ -1,14 +1,14 @@
+import type { SortableItem } from './types'
+import type { InputVar } from '@/models/pipeline'
+import { isEqual } from 'es-toolkit/predicate'
 import {
   memo,
   useCallback,
   useMemo,
 } from 'react'
 import { ReactSortable } from 'react-sortablejs'
-import cn from '@/utils/classnames'
-import type { InputVar } from '@/models/pipeline'
+import { cn } from '@/utils/classnames'
 import FieldItem from './field-item'
-import type { SortableItem } from './types'
-import { isEqual } from 'lodash-es'
 
 type FieldListContainerProps = {
   className?: string
@@ -48,8 +48,8 @@ const FieldListContainer = ({
       className={cn(className)}
       list={list}
       setList={handleListSortChange}
-      handle='.handle'
-      ghostClass='opacity-50'
+      handle=".handle"
+      ghostClass="opacity-50"
       animation={150}
       disabled={readonly}
     >

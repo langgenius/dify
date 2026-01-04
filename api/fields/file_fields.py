@@ -1,4 +1,4 @@
-from flask_restx import Api, Namespace, fields
+from flask_restx import Namespace, fields
 
 from libs.helper import TimestampField
 
@@ -9,10 +9,12 @@ upload_config_fields = {
     "video_file_size_limit": fields.Integer,
     "audio_file_size_limit": fields.Integer,
     "workflow_file_upload_limit": fields.Integer,
+    "image_file_batch_limit": fields.Integer,
+    "single_chunk_attachment_limit": fields.Integer,
 }
 
 
-def build_upload_config_model(api_or_ns: Api | Namespace):
+def build_upload_config_model(api_or_ns: Namespace):
     """Build the upload config model for the API or Namespace.
 
     Args:
@@ -37,7 +39,7 @@ file_fields = {
 }
 
 
-def build_file_model(api_or_ns: Api | Namespace):
+def build_file_model(api_or_ns: Namespace):
     """Build the file model for the API or Namespace.
 
     Args:
@@ -55,7 +57,7 @@ remote_file_info_fields = {
 }
 
 
-def build_remote_file_info_model(api_or_ns: Api | Namespace):
+def build_remote_file_info_model(api_or_ns: Namespace):
     """Build the remote file info model for the API or Namespace.
 
     Args:
@@ -79,7 +81,7 @@ file_fields_with_signed_url = {
 }
 
 
-def build_file_with_signed_url_model(api_or_ns: Api | Namespace):
+def build_file_with_signed_url_model(api_or_ns: Namespace):
     """Build the file with signed URL model for the API or Namespace.
 
     Args:

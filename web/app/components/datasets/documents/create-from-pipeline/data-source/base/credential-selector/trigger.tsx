@@ -1,23 +1,18 @@
-import React from 'react'
 import type { DataSourceCredential } from '@/types/pipeline'
-import { useTranslation } from 'react-i18next'
 import { RiArrowDownSLine } from '@remixicon/react'
-import cn from '@/utils/classnames'
+import * as React from 'react'
 import { CredentialIcon } from '@/app/components/datasets/common/credential-icon'
+import { cn } from '@/utils/classnames'
 
 type TriggerProps = {
   currentCredential: DataSourceCredential | undefined
-  pluginName: string
   isOpen: boolean
 }
 
 const Trigger = ({
   currentCredential,
-  pluginName,
   isOpen,
 }: TriggerProps) => {
-  const { t } = useTranslation()
-
   const {
     avatar_url,
     name = '',
@@ -31,18 +26,15 @@ const Trigger = ({
       )}
     >
       <CredentialIcon
-        avatar_url={avatar_url}
+        avatarUrl={avatar_url}
         name={name}
         size={20}
       />
-      <div className='flex grow items-center gap-x-1 overflow-hidden'>
-        <span className='system-md-semibold grow truncate text-text-secondary'>
-          {t('datasetPipeline.credentialSelector.name', {
-            credentialName: name,
-            pluginName,
-          })}
+      <div className="flex grow items-center gap-x-1 overflow-hidden">
+        <span className="system-md-semibold grow truncate text-text-secondary">
+          {name}
         </span>
-        <RiArrowDownSLine className='size-4 shrink-0 text-text-secondary' />
+        <RiArrowDownSLine className="size-4 shrink-0 text-text-secondary" />
       </div>
     </div>
   )

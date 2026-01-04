@@ -1,17 +1,20 @@
-import React, { useCallback, useEffect, useRef } from 'react'
+import type { TestRunMenuRef, TriggerOption } from './test-run-menu'
+import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
+import * as React from 'react'
+import { useCallback, useEffect, useRef } from 'react'
 import { useTranslation } from 'react-i18next'
+import { trackEvent } from '@/app/components/base/amplitude'
+import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { useToastContext } from '@/app/components/base/toast'
 import { useWorkflowRun, useWorkflowRunValidation, useWorkflowStartRun } from '@/app/components/workflow/hooks'
 import { useStore } from '@/app/components/workflow/store'
 import { WorkflowRunningStatus } from '@/app/components/workflow/types'
-import { useEventEmitterContextContext } from '@/context/event-emitter'
-import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
 import { getKeyboardKeyNameBySystem } from '@/app/components/workflow/utils'
-import cn from '@/utils/classnames'
-import { RiLoader2Line, RiPlayLargeLine } from '@remixicon/react'
-import { StopCircle } from '@/app/components/base/icons/src/vender/line/mediaAndDevices'
+import { EVENT_WORKFLOW_STOP } from '@/app/components/workflow/variable-inspect/types'
+import { useEventEmitterContextContext } from '@/context/event-emitter'
+import { cn } from '@/utils/classnames'
 import { useDynamicTestRunOptions } from '../hooks/use-dynamic-test-run-options'
-import TestRunMenu, { type TestRunMenuRef, type TriggerOption, TriggerType } from './test-run-menu'
-import { useToastContext } from '@/app/components/base/toast'
+import TestRunMenu, { TriggerType } from './test-run-menu'
 
 type RunModeProps = {
   text?: string
@@ -63,28 +66,33 @@ const RunMode = ({
         isValid = false
     })
     if (!isValid) {
-      notify({ type: 'error', message: t('workflow.panel.checklistTip') })
+      notify({ type: 'error', message: t('panel.checklistTip', { ns: 'workflow' }) })
       return
     }
 
     if (option.type === TriggerType.UserInput) {
       handleWorkflowStartRunInWorkflow()
+      trackEvent('app_start_action_time', { action_type: 'user_input' })
     }
     else if (option.type === TriggerType.Schedule) {
       handleWorkflowTriggerScheduleRunInWorkflow(option.nodeId)
+      trackEvent('app_start_action_time', { action_type: 'schedule' })
     }
     else if (option.type === TriggerType.Webhook) {
       if (option.nodeId)
         handleWorkflowTriggerWebhookRunInWorkflow({ nodeId: option.nodeId })
+      trackEvent('app_start_action_time', { action_type: 'webhook' })
     }
     else if (option.type === TriggerType.Plugin) {
       if (option.nodeId)
         handleWorkflowTriggerPluginRunInWorkflow(option.nodeId)
+      trackEvent('app_start_action_time', { action_type: 'plugin' })
     }
     else if (option.type === TriggerType.All) {
       const targetNodeIds = option.relatedNodeIds?.filter(Boolean)
       if (targetNodeIds && targetNodeIds.length > 0)
         handleWorkflowRunAllTriggersInWorkflow(targetNodeIds)
+      trackEvent('app_start_action_time', { action_type: 'all' })
     }
     else {
       // Placeholder for trigger-specific execution logic for schedule, webhook, plugin types
@@ -106,57 +114,57 @@ const RunMode = ({
   })
 
   return (
-    <div className='flex items-center gap-x-px'>
+    <div className="flex items-center gap-x-px">
       {
         isRunning
           ? (
-            <button
-              type='button'
-              className={cn(
-                'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
-              )}
-              disabled={true}
-            >
-              <RiLoader2Line className='mr-1 size-4 animate-spin' />
-              {isListening ? t('workflow.common.listening') : t('workflow.common.running')}
-            </button>
-          )
-          : (
-            <TestRunMenu
-              ref={testRunMenuRef}
-              options={dynamicOptions}
-              onSelect={handleTriggerSelect}
-            >
-              <div
+              <button
+                type="button"
                 className={cn(
-                  'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
+                  'system-xs-medium flex h-7 cursor-not-allowed items-center gap-x-1 rounded-l-md bg-state-accent-hover px-1.5 text-text-accent',
                 )}
-                style={{ userSelect: 'none' }}
+                disabled={true}
               >
-                <RiPlayLargeLine className='mr-1 size-4' />
-                {text ?? t('workflow.common.run')}
-                <div className='system-kbd flex items-center gap-x-0.5 text-text-tertiary'>
-                  <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
-                    {getKeyboardKeyNameBySystem('alt')}
-                  </div>
-                  <div className='flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray'>
-                    R
+                <RiLoader2Line className="mr-1 size-4 animate-spin" />
+                {isListening ? t('common.listening', { ns: 'workflow' }) : t('common.running', { ns: 'workflow' })}
+              </button>
+            )
+          : (
+              <TestRunMenu
+                ref={testRunMenuRef}
+                options={dynamicOptions}
+                onSelect={handleTriggerSelect}
+              >
+                <div
+                  className={cn(
+                    'system-xs-medium flex h-7 cursor-pointer items-center gap-x-1 rounded-md px-1.5 text-text-accent hover:bg-state-accent-hover',
+                  )}
+                  style={{ userSelect: 'none' }}
+                >
+                  <RiPlayLargeLine className="mr-1 size-4" />
+                  {text ?? t('common.run', { ns: 'workflow' })}
+                  <div className="system-kbd flex items-center gap-x-0.5 text-text-tertiary">
+                    <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
+                      {getKeyboardKeyNameBySystem('alt')}
+                    </div>
+                    <div className="flex size-4 items-center justify-center rounded-[4px] bg-components-kbd-bg-gray">
+                      R
+                    </div>
                   </div>
                 </div>
-              </div>
-            </TestRunMenu>
-          )
+              </TestRunMenu>
+            )
       }
       {
         isRunning && (
           <button
-            type='button'
+            type="button"
             className={cn(
               'flex size-7 items-center justify-center rounded-r-md bg-state-accent-active',
             )}
             onClick={handleStop}
           >
-            <StopCircle className='size-4 text-text-accent' />
+            <StopCircle className="size-4 text-text-accent" />
           </button>
         )
       }

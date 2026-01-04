@@ -285,6 +285,7 @@ class BuiltinToolManageService:
             except Exception as e:
                 session.rollback()
                 raise ValueError(str(e))
+
         return {"result": "success"}
 
     @staticmethod
@@ -423,6 +424,7 @@ class BuiltinToolManageService:
             # set new default provider
             target_provider.is_default = True
             session.commit()
+
         return {"result": "success"}
 
     @staticmethod

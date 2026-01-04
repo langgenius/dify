@@ -1,9 +1,9 @@
-import { mergeValidCompletionParams } from './completion-params'
 import type { FormValue, ModelParameterRule } from '@/app/components/header/account-setting/model-provider-page/declarations'
+import { mergeValidCompletionParams } from './completion-params'
 
 describe('completion-params', () => {
   describe('mergeValidCompletionParams', () => {
-    test('returns empty params and removedDetails for undefined oldParams', () => {
+    it('returns empty params and removedDetails for undefined oldParams', () => {
       const rules: ModelParameterRule[] = []
       const result = mergeValidCompletionParams(undefined, rules)
 
@@ -11,7 +11,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('returns empty params and removedDetails for empty oldParams', () => {
+    it('returns empty params and removedDetails for empty oldParams', () => {
       const rules: ModelParameterRule[] = []
       const result = mergeValidCompletionParams({}, rules)
 
@@ -19,7 +19,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('validates int type parameter within range', () => {
+    it('validates int type parameter within range', () => {
       const rules: ModelParameterRule[] = [
         { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
       ]
@@ -30,7 +30,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('removes int parameter below minimum', () => {
+    it('removes int parameter below minimum', () => {
       const rules: ModelParameterRule[] = [
         { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
       ]
@@ -41,7 +41,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({ max_tokens: 'out of range (1-4096)' })
     })
 
-    test('removes int parameter above maximum', () => {
+    it('removes int parameter above maximum', () => {
       const rules: ModelParameterRule[] = [
         { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
       ]
@@ -52,7 +52,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({ max_tokens: 'out of range (1-4096)' })
     })
 
-    test('removes int parameter with invalid type', () => {
+    it('removes int parameter with invalid type', () => {
       const rules: ModelParameterRule[] = [
         { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
       ]
@@ -63,7 +63,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({ max_tokens: 'invalid type' })
     })
 
-    test('validates float type parameter', () => {
+    it('validates float type parameter', () => {
       const rules: ModelParameterRule[] = [
         { name: 'temperature', type: 'float', min: 0, max: 2, label: { en_US: 'Temperature', zh_Hans: '温度' }, required: false },
       ]
@@ -74,7 +74,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('validates float at boundary values', () => {
+    it('validates float at boundary values', () => {
       const rules: ModelParameterRule[] = [
         { name: 'temperature', type: 'float', min: 0, max: 2, label: { en_US: 'Temperature', zh_Hans: '温度' }, required: false },
       ]
@@ -86,7 +86,7 @@ describe('completion-params', () => {
       expect(result2.params).toEqual({ temperature: 2 })
     })
 
-    test('validates boolean type parameter', () => {
+    it('validates boolean type parameter', () => {
       const rules: ModelParameterRule[] = [
         { name: 'stream', type: 'boolean', label: { en_US: 'Stream', zh_Hans: '流' }, required: false },
       ]
@@ -97,7 +97,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('removes boolean parameter with invalid type', () => {
+    it('removes boolean parameter with invalid type', () => {
       const rules: ModelParameterRule[] = [
         { name: 'stream', type: 'boolean', label: { en_US: 'Stream', zh_Hans: '流' }, required: false },
       ]
@@ -108,7 +108,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({ stream: 'invalid type' })
     })
 
-    test('validates string type parameter', () => {
+    it('validates string type parameter', () => {
       const rules: ModelParameterRule[] = [
         { name: 'model', type: 'string', label: { en_US: 'Model', zh_Hans: '模型' }, required: false },
       ]
@@ -119,7 +119,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('validates string parameter with options', () => {
+    it('validates string parameter with options', () => {
       const rules: ModelParameterRule[] = [
         { name: 'model', type: 'string', options: ['gpt-3.5-turbo', 'gpt-4'], label: { en_US: 'Model', zh_Hans: '模型' }, required: false },
       ]
@@ -130,7 +130,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('removes string parameter with invalid option', () => {
+    it('removes string parameter with invalid option', () => {
       const rules: ModelParameterRule[] = [
         { name: 'model', type: 'string', options: ['gpt-3.5-turbo', 'gpt-4'], label: { en_US: 'Model', zh_Hans: '模型' }, required: false },
       ]
@@ -141,7 +141,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({ model: 'unsupported option' })
     })
 
-    test('validates text type parameter', () => {
+    it('validates text type parameter', () => {
       const rules: ModelParameterRule[] = [
         { name: 'prompt', type: 'text', label: { en_US: 'Prompt', zh_Hans: '提示' }, required: false },
       ]
@@ -152,7 +152,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('removes unsupported parameters', () => {
+    it('removes unsupported parameters', () => {
       const rules: ModelParameterRule[] = [
         { name: 'temperature', type: 'float', min: 0, max: 2, label: { en_US: 'Temperature', zh_Hans: '温度' }, required: false },
       ]
@@ -163,7 +163,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({ unsupported_param: 'unsupported' })
     })
 
-    test('keeps stop parameter in advanced mode even without rule', () => {
+    it('keeps stop parameter in advanced mode even without rule', () => {
       const rules: ModelParameterRule[] = []
       const oldParams: FormValue = { stop: ['END'] }
       const result = mergeValidCompletionParams(oldParams, rules, true)
@@ -172,7 +172,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('removes stop parameter in normal mode without rule', () => {
+    it('removes stop parameter in normal mode without rule', () => {
       const rules: ModelParameterRule[] = []
       const oldParams: FormValue = { stop: ['END'] }
       const result = mergeValidCompletionParams(oldParams, rules, false)
@@ -181,7 +181,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({ stop: 'unsupported' })
     })
 
-    test('handles multiple parameters with mixed validity', () => {
+    it('handles multiple parameters with mixed validity', () => {
       const rules: ModelParameterRule[] = [
         { name: 'temperature', type: 'float', min: 0, max: 2, label: { en_US: 'Temperature', zh_Hans: '温度' }, required: false },
         { name: 'max_tokens', type: 'int', min: 1, max: 4096, label: { en_US: 'Max Tokens', zh_Hans: '最大标记' }, required: false },
@@ -205,7 +205,7 @@ describe('completion-params', () => {
       })
     })
 
-    test('handles parameters without min/max constraints', () => {
+    it('handles parameters without min/max constraints', () => {
       const rules: ModelParameterRule[] = [
         { name: 'value', type: 'int', label: { en_US: 'Value', zh_Hans: '值' }, required: false },
       ]
@@ -216,7 +216,7 @@ describe('completion-params', () => {
       expect(result.removedDetails).toEqual({})
     })
 
-    test('removes parameter with unsupported rule type', () => {
+    it('removes parameter with unsupported rule type', () => {
       const rules: ModelParameterRule[] = [
         { name: 'custom', type: 'unknown_type', label: { en_US: 'Custom', zh_Hans: '自定义' }, required: false } as any,
       ]
