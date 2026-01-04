@@ -163,14 +163,14 @@
  * - `/` - Execute slash commands (theme, language, etc.)
  */
 
-import { appAction } from './app'
-import { knowledgeAction } from './knowledge'
-import { pluginAction } from './plugin'
-import { workflowNodesAction } from './workflow-nodes'
-import { ragPipelineNodesAction } from './rag-pipeline-nodes'
 import type { ActionItem, SearchResult } from './types'
+import { appAction } from './app'
 import { slashAction } from './commands'
 import { slashCommandRegistry } from './commands/registry'
+import { knowledgeAction } from './knowledge'
+import { pluginAction } from './plugin'
+import { ragPipelineNodesAction } from './rag-pipeline-nodes'
+import { workflowNodesAction } from './workflow-nodes'
 
 // Create dynamic Actions based on context
 export const createActions = (isWorkflowPage: boolean, isRagPipelinePage: boolean) => {
@@ -294,6 +294,6 @@ export const matchAction = (query: string, actions: Record<string, ActionItem>) 
   })
 }
 
-export * from './types'
 export * from './commands'
+export * from './types'
 export { appAction, knowledgeAction, pluginAction, workflowNodesAction }

@@ -1,9 +1,4 @@
-import React, { useMemo } from 'react'
-import { useTranslation } from 'react-i18next'
-import { useBoolean } from 'ahooks'
-import { useContext } from 'use-context-selector'
-import { useRouter } from 'next/navigation'
-import DatasetDetailContext from '@/context/dataset-detail'
+import type { DataSourceProvider, NotionPage } from '@/models/common'
 import type {
   CrawlOptions,
   CustomFile,
@@ -14,14 +9,19 @@ import type {
   OnlineDocumentInfo,
   WebsiteCrawlInfo,
 } from '@/models/datasets'
-import type { DataSourceProvider } from '@/models/common'
+import { useBoolean } from 'ahooks'
+import { useRouter } from 'next/navigation'
+import * as React from 'react'
+import { useMemo } from 'react'
+import { useTranslation } from 'react-i18next'
+import { useContext } from 'use-context-selector'
+import AppUnavailable from '@/app/components/base/app-unavailable'
 import Loading from '@/app/components/base/loading'
 import StepTwo from '@/app/components/datasets/create/step-two'
 import AccountSetting from '@/app/components/header/account-setting'
-import AppUnavailable from '@/app/components/base/app-unavailable'
-import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
 import { ModelTypeEnum } from '@/app/components/header/account-setting/model-provider-page/declarations'
-import type { NotionPage } from '@/models/common'
+import { useDefaultModel } from '@/app/components/header/account-setting/model-provider-page/hooks'
+import DatasetDetailContext from '@/context/dataset-detail'
 import { useDocumentDetail, useInvalidDocumentDetail, useInvalidDocumentList } from '@/service/knowledge/use-document'
 
 type DocumentSettingsProps = {
@@ -126,12 +126,12 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
   const websiteCrawlJobId = websiteInfo?.job_id ?? legacyInfo?.job_id
 
   if (error)
-    return <AppUnavailable code={500} unknownReason={t('datasetCreation.error.unavailable') as string} />
+    return <AppUnavailable code={500} unknownReason={t('error.unavailable', { ns: 'datasetCreation' }) as string} />
 
   return (
-    <div className='flex' style={{ height: 'calc(100vh - 56px)' }}>
-      <div className='grow'>
-        {!documentDetail && <Loading type='app' />}
+    <div className="flex" style={{ height: 'calc(100vh - 56px)' }}>
+      <div className="grow">
+        {!documentDetail && <Loading type="app" />}
         {dataset && documentDetail && (
           <StepTwo
             isAPIKeySet={!!embeddingsDefaultModel}
@@ -153,9 +153,14 @@ const DocumentSettings = ({ datasetId, documentId }: DocumentSettingsProps) => {
           />
         )}
       </div>
-      {isShowSetAPIKey && <AccountSetting activeTab='provider' onCancel={async () => {
-        hideSetAPIkey()
-      }} />}
+      {isShowSetAPIKey && (
+        <AccountSetting
+          activeTab="provider"
+          onCancel={async () => {
+            hideSetAPIkey()
+          }}
+        />
+      )}
     </div>
   )
 }

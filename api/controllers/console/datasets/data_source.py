@@ -140,6 +140,18 @@ class DataSourceNotionListApi(Resource):
         credential_id = request.args.get("credential_id", default=None, type=str)
         if not credential_id:
             raise ValueError("Credential id is required.")
+
+        # Get datasource_parameters from query string (optional, for GitHub and other datasources)
+        datasource_parameters_str = request.args.get("datasource_parameters", default=None, type=str)
+        datasource_parameters = {}
+        if datasource_parameters_str:
+            try:
+                datasource_parameters = json.loads(datasource_parameters_str)
+                if not isinstance(datasource_parameters, dict):
+                    raise ValueError("datasource_parameters must be a JSON object.")
+            except json.JSONDecodeError:
+                raise ValueError("Invalid datasource_parameters JSON format.")
+
         datasource_provider_service = DatasourceProviderService()
         credential = datasource_provider_service.get_datasource_credentials(
             tenant_id=current_tenant_id,
@@ -189,7 +201,7 @@ class DataSourceNotionListApi(Resource):
             online_document_result: Generator[OnlineDocumentPagesMessage, None, None] = (
                 datasource_runtime.get_online_document_pages(
                     user_id=current_user.id,
-                    datasource_parameters={},
+                    datasource_parameters=datasource_parameters,
                     provider_type=datasource_runtime.datasource_provider_type(),
                 )
             )

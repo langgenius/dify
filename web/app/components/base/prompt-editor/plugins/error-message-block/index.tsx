@@ -1,15 +1,15 @@
-import {
-  memo,
-  useEffect,
-} from 'react'
+import type { ErrorMessageBlockType } from '../../types'
+import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
+import { mergeRegister } from '@lexical/utils'
 import {
   $insertNodes,
   COMMAND_PRIORITY_EDITOR,
   createCommand,
 } from 'lexical'
-import { mergeRegister } from '@lexical/utils'
-import { useLexicalComposerContext } from '@lexical/react/LexicalComposerContext'
-import type { ErrorMessageBlockType } from '../../types'
+import {
+  memo,
+  useEffect,
+} from 'react'
 import {
   $createErrorMessageBlockNode,
   ErrorMessageBlockNode,
@@ -61,5 +61,5 @@ const ErrorMessageBlock = memo(({
 ErrorMessageBlock.displayName = 'ErrorMessageBlock'
 
 export { ErrorMessageBlock }
-export { ErrorMessageBlockNode } from './node'
 export { default as ErrorMessageBlockReplacementBlock } from './error-message-block-replacement-block'
+export { ErrorMessageBlockNode } from './node'

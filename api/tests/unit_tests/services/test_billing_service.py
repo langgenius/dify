@@ -1156,6 +1156,235 @@ class TestBillingServiceEdgeCases:
             assert "Only team owner or team admin can perform this action" in str(exc_info.value)
 
 
+class TestBillingServiceSubscriptionOperations:
+    """Unit tests for subscription operations in BillingService.
+
+    Tests cover:
+    - Bulk plan retrieval with chunking
+    - Expired subscription cleanup whitelist retrieval
+    """
+
+    @pytest.fixture
+    def mock_send_request(self):
+        """Mock _send_request method."""
+        with patch.object(BillingService, "_send_request") as mock:
+            yield mock
+
+    def test_get_plan_bulk_with_empty_list(self, mock_send_request):
+        """Test bulk plan retrieval with empty tenant list."""
+        # Arrange
+        tenant_ids = []
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert
+        assert result == {}
+        mock_send_request.assert_not_called()
+
+    def test_get_plan_bulk_with_chunking(self, mock_send_request):
+        """Test bulk plan retrieval with more than 200 tenants (chunking logic)."""
+        # Arrange - 250 tenants to test chunking (chunk_size = 200)
+        tenant_ids = [f"tenant-{i}" for i in range(250)]
+
+        # First chunk: tenants 0-199
+        first_chunk_response = {
+            "data": {f"tenant-{i}": {"plan": "sandbox", "expiration_date": 1735689600} for i in range(200)}
+        }
+
+        # Second chunk: tenants 200-249
+        second_chunk_response = {
+            "data": {f"tenant-{i}": {"plan": "professional", "expiration_date": 1767225600} for i in range(200, 250)}
+        }
+
+        mock_send_request.side_effect = [first_chunk_response, second_chunk_response]
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert
+        assert len(result) == 250
+        assert result["tenant-0"]["plan"] == "sandbox"
+        assert result["tenant-199"]["plan"] == "sandbox"
+        assert result["tenant-200"]["plan"] == "professional"
+        assert result["tenant-249"]["plan"] == "professional"
+        assert mock_send_request.call_count == 2
+
+        # Verify first chunk call
+        first_call = mock_send_request.call_args_list[0]
+        assert first_call[0][0] == "POST"
+        assert first_call[0][1] == "/subscription/plan/batch"
+        assert len(first_call[1]["json"]["tenant_ids"]) == 200
+
+        # Verify second chunk call
+        second_call = mock_send_request.call_args_list[1]
+        assert len(second_call[1]["json"]["tenant_ids"]) == 50
+
+    def test_get_plan_bulk_with_partial_batch_failure(self, mock_send_request):
+        """Test bulk plan retrieval when one batch fails but others succeed."""
+        # Arrange - 250 tenants, second batch will fail
+        tenant_ids = [f"tenant-{i}" for i in range(250)]
+
+        # First chunk succeeds
+        first_chunk_response = {
+            "data": {f"tenant-{i}": {"plan": "sandbox", "expiration_date": 1735689600} for i in range(200)}
+        }
+
+        # Second chunk fails - need to create a mock that raises when called
+        def side_effect_func(*args, **kwargs):
+            if mock_send_request.call_count == 1:
+                return first_chunk_response
+            else:
+                raise ValueError("API error")
+
+        mock_send_request.side_effect = side_effect_func
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert - should only have data from first batch
+        assert len(result) == 200
+        assert result["tenant-0"]["plan"] == "sandbox"
+        assert result["tenant-199"]["plan"] == "sandbox"
+        assert "tenant-200" not in result
+        assert mock_send_request.call_count == 2
+
+    def test_get_plan_bulk_with_all_batches_failing(self, mock_send_request):
+        """Test bulk plan retrieval when all batches fail."""
+        # Arrange
+        tenant_ids = [f"tenant-{i}" for i in range(250)]
+
+        # All chunks fail
+        def side_effect_func(*args, **kwargs):
+            raise ValueError("API error")
+
+        mock_send_request.side_effect = side_effect_func
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert - should return empty dict
+        assert result == {}
+        assert mock_send_request.call_count == 2
+
+    def test_get_plan_bulk_with_exactly_200_tenants(self, mock_send_request):
+        """Test bulk plan retrieval with exactly 200 tenants (boundary condition)."""
+        # Arrange
+        tenant_ids = [f"tenant-{i}" for i in range(200)]
+        mock_send_request.return_value = {
+            "data": {f"tenant-{i}": {"plan": "sandbox", "expiration_date": 1735689600} for i in range(200)}
+        }
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert
+        assert len(result) == 200
+        assert mock_send_request.call_count == 1
+
+    def test_get_plan_bulk_with_empty_data_response(self, mock_send_request):
+        """Test bulk plan retrieval with empty data in response."""
+        # Arrange
+        tenant_ids = ["tenant-1", "tenant-2"]
+        mock_send_request.return_value = {"data": {}}
+
+        # Act
+        result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert
+        assert result == {}
+
+    def test_get_plan_bulk_with_invalid_tenant_plan_skipped(self, mock_send_request):
+        """Test bulk plan retrieval when one tenant has invalid plan data (should skip that tenant)."""
+        # Arrange
+        tenant_ids = ["tenant-valid-1", "tenant-invalid", "tenant-valid-2"]
+
+        # Response with one invalid tenant plan (missing expiration_date) and two valid ones
+        mock_send_request.return_value = {
+            "data": {
+                "tenant-valid-1": {"plan": "sandbox", "expiration_date": 1735689600},
+                "tenant-invalid": {"plan": "professional"},  # Missing expiration_date field
+                "tenant-valid-2": {"plan": "team", "expiration_date": 1767225600},
+            }
+        }
+
+        # Act
+        with patch("services.billing_service.logger") as mock_logger:
+            result = BillingService.get_plan_bulk(tenant_ids)
+
+        # Assert - should only contain valid tenants
+        assert len(result) == 2
+        assert "tenant-valid-1" in result
+        assert "tenant-valid-2" in result
+        assert "tenant-invalid" not in result
+
+        # Verify valid tenants have correct data
+        assert result["tenant-valid-1"]["plan"] == "sandbox"
+        assert result["tenant-valid-1"]["expiration_date"] == 1735689600
+        assert result["tenant-valid-2"]["plan"] == "team"
+        assert result["tenant-valid-2"]["expiration_date"] == 1767225600
+
+        # Verify exception was logged for the invalid tenant
+        mock_logger.exception.assert_called_once()
+        log_call_args = mock_logger.exception.call_args[0]
+        assert "get_plan_bulk: failed to validate subscription plan for tenant" in log_call_args[0]
+        assert "tenant-invalid" in log_call_args[1]
+
+    def test_get_expired_subscription_cleanup_whitelist_success(self, mock_send_request):
+        """Test successful retrieval of expired subscription cleanup whitelist."""
+        # Arrange
+        api_response = [
+            {
+                "created_at": "2025-10-16T01:56:17",
+                "tenant_id": "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6",
+                "contact": "example@dify.ai",
+                "id": "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe5",
+                "expired_at": "2026-01-01T01:56:17",
+                "updated_at": "2025-10-16T01:56:17",
+            },
+            {
+                "created_at": "2025-10-16T02:00:00",
+                "tenant_id": "tenant-2",
+                "contact": "test@example.com",
+                "id": "whitelist-id-2",
+                "expired_at": "2026-02-01T00:00:00",
+                "updated_at": "2025-10-16T02:00:00",
+            },
+            {
+                "created_at": "2025-10-16T03:00:00",
+                "tenant_id": "tenant-3",
+                "contact": "another@example.com",
+                "id": "whitelist-id-3",
+                "expired_at": "2026-03-01T00:00:00",
+                "updated_at": "2025-10-16T03:00:00",
+            },
+        ]
+        mock_send_request.return_value = {"data": api_response}
+
+        # Act
+        result = BillingService.get_expired_subscription_cleanup_whitelist()
+
+        # Assert - should return only tenant_ids
+        assert result == ["36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6", "tenant-2", "tenant-3"]
+        assert len(result) == 3
+        assert result[0] == "36bd55ec-2ea9-4d75-a9ea-1f26aeb4ffe6"
+        assert result[1] == "tenant-2"
+        assert result[2] == "tenant-3"
+        mock_send_request.assert_called_once_with("GET", "/subscription/cleanup/whitelist")
+
+    def test_get_expired_subscription_cleanup_whitelist_empty_list(self, mock_send_request):
+        """Test retrieval of empty cleanup whitelist."""
+        # Arrange
+        mock_send_request.return_value = {"data": []}
+
+        # Act
+        result = BillingService.get_expired_subscription_cleanup_whitelist()
+
+        # Assert
+        assert result == []
+        assert len(result) == 0
+
+
 class TestBillingServiceIntegrationScenarios:
     """Integration-style tests simulating real-world usage scenarios.
 

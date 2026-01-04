@@ -1,10 +1,11 @@
-import { useBoolean } from 'ahooks'
-import { type MetadataBatchEditToServer, type MetadataItemInBatchEdit, type MetadataItemWithEdit, type MetadataItemWithValue, UpdateType } from '../types'
+import type { MetadataBatchEditToServer, MetadataItemInBatchEdit, MetadataItemWithEdit, MetadataItemWithValue } from '../types'
 import type { SimpleDocumentDetail } from '@/models/datasets'
-import { useMemo } from 'react'
-import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
-import Toast from '@/app/components/base/toast'
+import { useBoolean } from 'ahooks'
 import { t } from 'i18next'
+import { useMemo } from 'react'
+import Toast from '@/app/components/base/toast'
+import { useBatchUpdateDocMetadata } from '@/service/knowledge/use-metadata'
+import { UpdateType } from '../types'
 
 type Props = {
   datasetId: string
@@ -133,7 +134,7 @@ const useBatchEditDocumentMetadata = ({
     hideEditModal()
     Toast.notify({
       type: 'success',
-      message: t('common.actionMsg.modifiedSuccessfully'),
+      message: t('actionMsg.modifiedSuccessfully', { ns: 'common' }),
     })
   }
 

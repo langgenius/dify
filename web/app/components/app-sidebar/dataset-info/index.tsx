@@ -1,14 +1,15 @@
 'use client'
 import type { FC } from 'react'
-import React, { useMemo } from 'react'
+import type { DataSet } from '@/models/datasets'
+import * as React from 'react'
+import { useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
+import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
+import { useKnowledge } from '@/hooks/use-knowledge'
+import { DOC_FORM_TEXT } from '@/models/datasets'
+import { cn } from '@/utils/classnames'
 import AppIcon from '../../base/app-icon'
 import Effect from '../../base/effect'
-import { useDatasetDetailContextWithSelector } from '@/context/dataset-detail'
-import type { DataSet } from '@/models/datasets'
-import { DOC_FORM_TEXT } from '@/models/datasets'
-import { useKnowledge } from '@/hooks/use-knowledge'
-import cn from '@/utils/classnames'
 import Dropdown from './dropdown'
 
 type DatasetInfoProps = {
@@ -35,11 +36,11 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
   return (
     <div className={cn('relative flex flex-col', expand ? '' : 'p-1')}>
       {expand && (
-        <Effect className='-left-5 top-[-22px] opacity-15' />
+        <Effect className="-left-5 top-[-22px] opacity-15" />
       )}
 
-      <div className='flex flex-col gap-2 p-2'>
-        <div className='flex items-center gap-1'>
+      <div className="flex flex-col gap-2 p-2">
+        <div className="flex items-center gap-1">
           <div className={cn(!expand && '-ml-1')}>
             <AppIcon
               size={expand ? 'large' : 'small'}
@@ -50,35 +51,35 @@ const DatasetInfo: FC<DatasetInfoProps> = ({
             />
           </div>
           {expand && (
-            <div className='ml-auto'>
+            <div className="ml-auto">
               <Dropdown expand />
             </div>
           )}
         </div>
         {!expand && (
-          <div className='-mb-2 -mt-1 flex items-center justify-center'>
+          <div className="-mb-2 -mt-1 flex items-center justify-center">
             <Dropdown expand={false} />
           </div>
         )}
         {expand && (
-          <div className='flex flex-col gap-y-1 pb-0.5'>
+          <div className="flex flex-col gap-y-1 pb-0.5">
             <div
-              className='system-md-semibold truncate text-text-secondary'
+              className="system-md-semibold truncate text-text-secondary"
               title={dataset.name}
             >
               {dataset.name}
             </div>
-            <div className='system-2xs-medium-uppercase text-text-tertiary'>
-              {isExternalProvider && t('dataset.externalTag')}
+            <div className="system-2xs-medium-uppercase text-text-tertiary">
+              {isExternalProvider && t('externalTag', { ns: 'dataset' })}
               {!isExternalProvider && isPipelinePublished && dataset.doc_form && dataset.indexing_technique && (
-                <div className='flex items-center gap-x-2'>
-                  <span>{t(`dataset.chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`)}</span>
+                <div className="flex items-center gap-x-2">
+                  <span>{t(`chunkingMode.${DOC_FORM_TEXT[dataset.doc_form]}`, { ns: 'dataset' })}</span>
                   <span>{formatIndexingTechniqueAndMethod(dataset.indexing_technique, dataset.retrieval_model_dict?.search_method)}</span>
                 </div>
               )}
             </div>
             {!!dataset.description && (
-              <p className='system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize'>
+              <p className="system-xs-regular line-clamp-3 text-text-tertiary first-letter:capitalize">
                 {dataset.description}
               </p>
             )}

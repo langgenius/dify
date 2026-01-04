@@ -1,10 +1,8 @@
 import logging
 from typing import Literal
-from uuid import UUID
 
 from flask import request
-from flask_restx import marshal_with
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, TypeAdapter
 from werkzeug.exceptions import InternalServerError, NotFound
 
 from controllers.common.schema import register_schema_models
@@ -24,8 +22,10 @@ from controllers.console.explore.wraps import InstalledAppResource
 from core.app.entities.app_invoke_entities import InvokeFrom
 from core.errors.error import ModelCurrentlyNotSupportError, ProviderTokenNotInitError, QuotaExceededError
 from core.model_runtime.errors.invoke import InvokeError
-from fields.message_fields import message_infinite_scroll_pagination_fields
+from fields.conversation_fields import ResultResponse
+from fields.message_fields import MessageInfiniteScrollPagination, MessageListItem, SuggestedQuestionsResponse
 from libs import helper
+from libs.helper import UUIDStrOrEmpty
 from libs.login import current_account_with_tenant
 from models.model import AppMode
 from services.app_generate_service import AppGenerateService
@@ -44,8 +44,8 @@ logger = logging.getLogger(__name__)
 
 
 class MessageListQuery(BaseModel):
-    conversation_id: UUID
-    first_id: UUID | None = None
+    conversation_id: UUIDStrOrEmpty
+    first_id: UUIDStrOrEmpty | None = None
     limit: int = Field(default=20, ge=1, le=100)
 
 
@@ -66,7 +66,6 @@ register_schema_models(console_ns, MessageListQuery, MessageFeedbackPayload, Mor
     endpoint="installed_app_messages",
 )
 class MessageListApi(InstalledAppResource):
-    @marshal_with(message_infinite_scroll_pagination_fields)
     @console_ns.expect(console_ns.models[MessageListQuery.__name__])
     def get(self, installed_app):
         current_user, _ = current_account_with_tenant()
@@ -78,13 +77,20 @@ class MessageListApi(InstalledAppResource):
         args = MessageListQuery.model_validate(request.args.to_dict())
 
         try:
-            return MessageService.pagination_by_first_id(
+            pagination = MessageService.pagination_by_first_id(
                 app_model,
                 current_user,
                 str(args.conversation_id),
                 str(args.first_id) if args.first_id else None,
                 args.limit,
             )
+            adapter = TypeAdapter(MessageListItem)
+            items = [adapter.validate_python(message, from_attributes=True) for message in pagination.data]
+            return MessageInfiniteScrollPagination(
+                limit=pagination.limit,
+                has_more=pagination.has_more,
+                data=items,
+            ).model_dump(mode="json")
         except ConversationNotExistsError:
             raise NotFound("Conversation Not Exists.")
         except FirstMessageNotExistsError:
@@ -116,7 +122,7 @@ class MessageFeedbackApi(InstalledAppResource):
         except MessageNotExistsError:
             raise NotFound("Message Not Exists.")
 
-        return {"result": "success"}
+        return ResultResponse(result="success").model_dump(mode="json")
 
 
 @console_ns.route(
@@ -201,4 +207,4 @@ class MessageSuggestedQuestionApi(InstalledAppResource):
             logger.exception("internal server error.")
             raise InternalServerError()
 
-        return {"data": questions}
+        return SuggestedQuestionsResponse(data=questions).model_dump(mode="json")

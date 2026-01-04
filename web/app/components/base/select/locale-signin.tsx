@@ -1,10 +1,10 @@
 'use client'
 import { Menu, MenuButton, MenuItem, MenuItems, Transition } from '@headlessui/react'
-import { Fragment } from 'react'
 import { GlobeAltIcon } from '@heroicons/react/24/outline'
+import { Fragment } from 'react'
 
 type ISelectProps = {
-  items: Array<{ value: string; name: string }>
+  items: Array<{ value: string, name: string }>
   value?: string
   className?: string
   onChange?: (value: string) => void
@@ -38,17 +38,20 @@ export default function LocaleSigninSelect({
           <MenuItems className="absolute right-0 z-10 mt-2 w-[200px] origin-top-right divide-y divide-divider-regular rounded-xl border-[0.5px] border-components-panel-border bg-components-panel-bg-blur shadow-lg focus:outline-none">
             <div className="max-h-96 overflow-y-auto px-1 py-1 [mask-image:linear-gradient(to_bottom,transparent_0px,black_8px,black_calc(100%-8px),transparent_100%)]">
               {items.map((item) => {
-                return <MenuItem key={item.value}>
-                  <button type="button"
-                    className={'group flex w-full items-center rounded-lg px-3 py-2 text-sm text-text-secondary data-[active]:bg-state-base-hover'}
-                    onClick={(evt) => {
-                      evt.preventDefault()
-                      onChange?.(item.value)
-                    }}
-                  >
-                    {item.name}
-                  </button>
-                </MenuItem>
+                return (
+                  <MenuItem key={item.value}>
+                    <button
+                      type="button"
+                      className="group flex w-full items-center rounded-lg px-3 py-2 text-sm text-text-secondary data-[active]:bg-state-base-hover"
+                      onClick={(evt) => {
+                        evt.preventDefault()
+                        onChange?.(item.value)
+                      }}
+                    >
+                      {item.name}
+                    </button>
+                  </MenuItem>
+                )
               })}
 
             </div>

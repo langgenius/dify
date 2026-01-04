@@ -1,7 +1,7 @@
-import { useMemo } from 'react'
 import type {
   ModelProvider,
 } from '../../declarations'
+import { useMemo } from 'react'
 
 export const useCredentialStatus = (provider: ModelProvider) => {
   const {

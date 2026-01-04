@@ -1,8 +1,8 @@
+import type { PluginStatus } from '@/app/components/plugins/types'
 import {
   useCallback,
 } from 'react'
 import { TaskStatus } from '@/app/components/plugins/types'
-import type { PluginStatus } from '@/app/components/plugins/types'
 import {
   useMutationClearTaskPlugin,
   usePluginTaskList,
