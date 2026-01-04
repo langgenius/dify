@@ -617,6 +617,8 @@ class ChunkType(StrEnum):
     TOOL_CALL = "tool_call"  # Tool call arguments streaming
     TOOL_RESULT = "tool_result"  # Tool execution result
     THOUGHT = "thought"  # Agent thinking process (ReAct)
+    THOUGHT_START = "thought_start"  # Agent thought start
+    THOUGHT_END = "thought_end"  # Agent thought end
 
 
 class TextChunkStreamResponse(StreamResponse):

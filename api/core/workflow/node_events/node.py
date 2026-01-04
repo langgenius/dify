@@ -41,6 +41,8 @@ class ChunkType(StrEnum):
     TOOL_CALL = "tool_call"  # Tool call arguments streaming
     TOOL_RESULT = "tool_result"  # Tool execution result
     THOUGHT = "thought"  # Agent thinking process (ReAct)
+    THOUGHT_START = "thought_start"  # Agent thought start
+    THOUGHT_END = "thought_end"  # Agent thought end
 
 
 class StreamChunkEvent(NodeEventBase):
@@ -68,6 +70,18 @@ class ToolResultChunkEvent(StreamChunkEvent):
 
     chunk_type: ChunkType = Field(default=ChunkType.TOOL_RESULT, frozen=True)
     tool_result: ToolResult | None = Field(default=None, description="structured tool result payload")
+
+
+class ThoughtStartChunkEvent(StreamChunkEvent):
+    """Agent thought start streaming event - Agent thinking process (ReAct)."""
+
+    chunk_type: ChunkType = Field(default=ChunkType.THOUGHT_START, frozen=True)
+
+
+class ThoughtEndChunkEvent(StreamChunkEvent):
+    """Agent thought end streaming event - Agent thinking process (ReAct)."""
+
+    chunk_type: ChunkType = Field(default=ChunkType.THOUGHT_END, frozen=True)
 
 
 class ThoughtChunkEvent(StreamChunkEvent):
