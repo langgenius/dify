@@ -6,7 +6,9 @@ from sqlalchemy import DateTime, String
 from sqlalchemy.orm import Mapped, mapped_column
 
 from libs.datetime_utils import naive_utc_now
-from models.base import TypeBase
+
+from .base import TypeBase
+from .types import BinaryData, LongText
 
 
 class CeleryTask(TypeBase):
@@ -19,17 +21,18 @@ class CeleryTask(TypeBase):
     )
     task_id: Mapped[str] = mapped_column(String(155), unique=True)
     status: Mapped[str] = mapped_column(String(50), default=states.PENDING)
-    result: Mapped[bytes | None] = mapped_column(sa.PickleType, nullable=True, default=None)
+    result: Mapped[bytes | None] = mapped_column(BinaryData, nullable=True, default=None)
     date_done: Mapped[datetime | None] = mapped_column(
         DateTime,
-        default=naive_utc_now,
+        insert_default=naive_utc_now,
+        default=None,
         onupdate=naive_utc_now,
         nullable=True,
     )
-    traceback: Mapped[str | None] = mapped_column(sa.Text, nullable=True, default=None)
+    traceback: Mapped[str | None] = mapped_column(LongText, nullable=True, default=None)
     name: Mapped[str | None] = mapped_column(String(155), nullable=True, default=None)
-    args: Mapped[bytes | None] = mapped_column(sa.LargeBinary, nullable=True, default=None)
-    kwargs: Mapped[bytes | None] = mapped_column(sa.LargeBinary, nullable=True, default=None)
+    args: Mapped[bytes | None] = mapped_column(BinaryData, nullable=True, default=None)
+    kwargs: Mapped[bytes | None] = mapped_column(BinaryData, nullable=True, default=None)
     worker: Mapped[str | None] = mapped_column(String(155), nullable=True, default=None)
     retries: Mapped[int | None] = mapped_column(sa.Integer, nullable=True, default=None)
     queue: Mapped[str | None] = mapped_column(String(155), nullable=True, default=None)
@@ -44,5 +47,7 @@ class CeleryTaskSet(TypeBase):
         sa.Integer, sa.Sequence("taskset_id_sequence"), autoincrement=True, primary_key=True, init=False
     )
     taskset_id: Mapped[str] = mapped_column(String(155), unique=True)
-    result: Mapped[bytes | None] = mapped_column(sa.PickleType, nullable=True, default=None)
-    date_done: Mapped[datetime | None] = mapped_column(DateTime, default=naive_utc_now, nullable=True)
+    result: Mapped[bytes | None] = mapped_column(BinaryData, nullable=True, default=None)
+    date_done: Mapped[datetime | None] = mapped_column(
+        DateTime, insert_default=naive_utc_now, default=None, nullable=True
+    )

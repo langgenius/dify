@@ -87,15 +87,16 @@ class OpenDALStorage(BaseStorage):
         if not self.exists(path):
             raise FileNotFoundError("Path not found")
 
-        all_files = self.op.list(path=path)
+        # Use the new OpenDAL 0.46.0+ API with recursive listing
+        lister = self.op.list(path, recursive=True)
         if files and directories:
             logger.debug("files and directories on %s scanned", path)
-            return [f.path for f in all_files]
+            return [entry.path for entry in lister]
         if files:
             logger.debug("files on %s scanned", path)
-            return [f.path for f in all_files if not f.path.endswith("/")]
+            return [entry.path for entry in lister if not entry.metadata.is_dir]
         elif directories:
             logger.debug("directories on %s scanned", path)
-            return [f.path for f in all_files if f.path.endswith("/")]
+            return [entry.path for entry in lister if entry.metadata.is_dir]
         else:
             raise ValueError("At least one of files or directories must be True")

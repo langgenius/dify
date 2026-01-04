@@ -1,12 +1,12 @@
 'use client'
 import type { FC } from 'react'
-import React from 'react'
+import * as React from 'react'
 import { useTranslation } from 'react-i18next'
-import KeyValueItem from '../base/key-value-item'
 import Modal from '../../base/modal'
+import KeyValueItem from '../base/key-value-item'
 import { convertRepoToUrl } from '../install-plugin/utils'
 
-const i18nPrefix = 'plugin.pluginInfoModal'
+const i18nPrefix = 'pluginInfoModal'
 type Props = {
   repository?: string
   release?: string
@@ -24,16 +24,16 @@ const PlugInfo: FC<Props> = ({
   const labelWidthClassName = 'w-[96px]'
   return (
     <Modal
-      title={t(`${i18nPrefix}.title`)}
-      className='w-[480px]'
+      title={t(`${i18nPrefix}.title`, { ns: 'plugin' })}
+      className="w-[480px]"
       isShow
       onClose={onHide}
       closable
     >
-      <div className='mt-5 space-y-3'>
-        {repository && <KeyValueItem label={t(`${i18nPrefix}.repository`)} labelWidthClassName={labelWidthClassName} value={`${convertRepoToUrl(repository)}`} valueMaxWidthClassName='max-w-[190px]' />}
-        {release && <KeyValueItem label={t(`${i18nPrefix}.release`)} labelWidthClassName={labelWidthClassName} value={release} />}
-        {packageName && <KeyValueItem label={t(`${i18nPrefix}.packageName`)} labelWidthClassName={labelWidthClassName} value={packageName} />}
+      <div className="mt-5 space-y-3">
+        {repository && <KeyValueItem label={t(`${i18nPrefix}.repository`, { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={`${convertRepoToUrl(repository)}`} valueMaxWidthClassName="max-w-[190px]" />}
+        {release && <KeyValueItem label={t(`${i18nPrefix}.release`, { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={release} />}
+        {packageName && <KeyValueItem label={t(`${i18nPrefix}.packageName`, { ns: 'plugin' })} labelWidthClassName={labelWidthClassName} value={packageName} />}
       </div>
     </Modal>
   )

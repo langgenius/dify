@@ -1,5 +1,6 @@
 """Test authentication security to prevent user enumeration."""
 
+import base64
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -9,6 +10,11 @@ from flask_restx import Api
 import services.errors.account
 from controllers.console.auth.error import AuthenticationFailedError
 from controllers.console.auth.login import LoginApi
+
+
+def encode_password(password: str) -> str:
+    """Helper to encode password as Base64 for testing."""
+    return base64.b64encode(password.encode("utf-8")).decode()
 
 
 class TestAuthenticationSecurity:
@@ -42,7 +48,9 @@ class TestAuthenticationSecurity:
 
         # Act
         with self.app.test_request_context(
-            "/login", method="POST", json={"email": "nonexistent@example.com", "password": "WrongPass123!"}
+            "/login",
+            method="POST",
+            json={"email": "nonexistent@example.com", "password": encode_password("WrongPass123!")},
         ):
             login_api = LoginApi()
 
@@ -72,7 +80,9 @@ class TestAuthenticationSecurity:
 
         # Act
         with self.app.test_request_context(
-            "/login", method="POST", json={"email": "existing@example.com", "password": "WrongPass123!"}
+            "/login",
+            method="POST",
+            json={"email": "existing@example.com", "password": encode_password("WrongPass123!")},
         ):
             login_api = LoginApi()
 
@@ -104,7 +114,9 @@ class TestAuthenticationSecurity:
 
         # Act
         with self.app.test_request_context(
-            "/login", method="POST", json={"email": "nonexistent@example.com", "password": "WrongPass123!"}
+            "/login",
+            method="POST",
+            json={"email": "nonexistent@example.com", "password": encode_password("WrongPass123!")},
         ):
             login_api = LoginApi()
 

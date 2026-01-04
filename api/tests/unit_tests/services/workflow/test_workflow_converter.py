@@ -70,12 +70,13 @@ def test__convert_to_http_request_node_for_chatbot(default_variables):
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
-        id=api_based_extension_id,
+        tenant_id="tenant_id",
         name="api-1",
         api_key="encrypted_api_key",
         api_endpoint="https://dify.ai",
     )
 
+    mock_api_based_extension.id = api_based_extension_id
     workflow_converter = WorkflowConverter()
     workflow_converter._get_api_based_extension = MagicMock(return_value=mock_api_based_extension)
 
@@ -131,11 +132,12 @@ def test__convert_to_http_request_node_for_workflow_app(default_variables):
 
     api_based_extension_id = "api_based_extension_id"
     mock_api_based_extension = APIBasedExtension(
-        id=api_based_extension_id,
+        tenant_id="tenant_id",
         name="api-1",
         api_key="encrypted_api_key",
         api_endpoint="https://dify.ai",
     )
+    mock_api_based_extension.id = api_based_extension_id
 
     workflow_converter = WorkflowConverter()
     workflow_converter._get_api_based_extension = MagicMock(return_value=mock_api_based_extension)
@@ -281,6 +283,7 @@ def test__convert_to_llm_node_for_chatbot_simple_chat_model(default_variables):
     assert llm_node["data"]["model"]["name"] == model
     assert llm_node["data"]["model"]["mode"] == model_mode.value
     template = prompt_template.simple_prompt_template
+    assert template is not None
     for v in default_variables:
         template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")
     assert llm_node["data"]["prompt_template"][0]["text"] == template + "\n"
@@ -323,6 +326,7 @@ def test__convert_to_llm_node_for_chatbot_simple_completion_model(default_variab
     assert llm_node["data"]["model"]["name"] == model
     assert llm_node["data"]["model"]["mode"] == model_mode.value
     template = prompt_template.simple_prompt_template
+    assert template is not None
     for v in default_variables:
         template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")
     assert llm_node["data"]["prompt_template"]["text"] == template + "\n"
@@ -374,6 +378,7 @@ def test__convert_to_llm_node_for_chatbot_advanced_chat_model(default_variables)
     assert llm_node["data"]["model"]["name"] == model
     assert llm_node["data"]["model"]["mode"] == model_mode.value
     assert isinstance(llm_node["data"]["prompt_template"], list)
+    assert prompt_template.advanced_chat_prompt_template is not None
     assert len(llm_node["data"]["prompt_template"]) == len(prompt_template.advanced_chat_prompt_template.messages)
     template = prompt_template.advanced_chat_prompt_template.messages[0].text
     for v in default_variables:
@@ -420,6 +425,7 @@ def test__convert_to_llm_node_for_workflow_advanced_completion_model(default_var
     assert llm_node["data"]["model"]["name"] == model
     assert llm_node["data"]["model"]["mode"] == model_mode.value
     assert isinstance(llm_node["data"]["prompt_template"], dict)
+    assert prompt_template.advanced_completion_prompt_template is not None
     template = prompt_template.advanced_completion_prompt_template.prompt
     for v in default_variables:
         template = template.replace("{{" + v.variable + "}}", "{{#start." + v.variable + "#}}")

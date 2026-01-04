@@ -1,8 +1,12 @@
+import logging
+
 from core.tools.tool_manager import ToolManager
 from core.tools.utils.configuration import ToolParameterConfigurationManager
 from core.workflow.nodes import NodeType
 from core.workflow.nodes.tool.entities import ToolEntity
 from events.app_event import app_draft_workflow_was_synced
+
+logger = logging.getLogger(__name__)
 
 
 @app_draft_workflow_was_synced.connect
@@ -30,6 +34,10 @@ def handle(sender, **kwargs):
                     identity_id=f"WORKFLOW.{app.id}.{node_data.get('id')}",
                 )
                 manager.delete_tool_parameters_cache()
-            except:
+            except Exception:
                 # tool dose not exist
-                pass
+                logger.exception(
+                    "Failed to delete tool parameters cache for workflow %s node %s",
+                    app.id,
+                    node_data.get("id"),
+                )

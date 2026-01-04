@@ -1,8 +1,8 @@
 'use client'
 
 import type { ReactNode } from 'react'
-import { createContext, useContext } from 'use-context-selector'
 import type { ChatProps } from './index'
+import { createContext, useContext } from 'use-context-selector'
 
 export type ChatContextValue = Pick<ChatProps, 'config'
   | 'isResponding'
@@ -15,8 +15,7 @@ export type ChatContextValue = Pick<ChatProps, 'config'
   | 'onAnnotationEdited'
   | 'onAnnotationAdded'
   | 'onAnnotationRemoved'
-  | 'onFeedback'
->
+  | 'onFeedback'>
 
 const ChatContext = createContext<ChatContextValue>({
   chatList: [],
@@ -55,7 +54,8 @@ export const ChatContextProvider = ({
       onAnnotationAdded,
       onAnnotationRemoved,
       onFeedback,
-    }}>
+    }}
+    >
       {children}
     </ChatContext.Provider>
   )

@@ -1,6 +1,6 @@
 import type { FC } from 'react'
-import React from 'react'
 import type { Variable } from '@/app/components/workflow/types'
+import * as React from 'react'
 
 type OutputVariablesContentProps = {
   variables?: Variable[]
@@ -27,11 +27,14 @@ type VarItemProps = {
 
 const VarItem: FC<VarItemProps> = ({ prefix, name, type }) => {
   return (
-    <div className='py-1'>
-      <div className='flex items-center leading-[18px]'>
-        <span className='code-sm-regular text-text-tertiary'>{prefix}.</span>
-        <span className='code-sm-semibold text-text-secondary'>{name}</span>
-        <span className='system-xs-regular ml-2 text-text-tertiary'>{type}</span>
+    <div className="py-1">
+      <div className="flex items-center leading-[18px]">
+        <span className="code-sm-regular text-text-tertiary">
+          {prefix}
+          .
+        </span>
+        <span className="code-sm-semibold text-text-secondary">{name}</span>
+        <span className="system-xs-regular ml-2 text-text-tertiary">{type}</span>
       </div>
     </div>
   )
@@ -52,7 +55,7 @@ export const OutputVariablesContent: FC<OutputVariablesContentProps> = ({ variab
     const labelA = typeof a.label === 'string' ? a.label : ''
     const labelB = typeof b.label === 'string' ? b.label : ''
     return (LABEL_ORDER[labelA as keyof typeof LABEL_ORDER] || 999)
-           - (LABEL_ORDER[labelB as keyof typeof LABEL_ORDER] || 999)
+      - (LABEL_ORDER[labelB as keyof typeof LABEL_ORDER] || 999)
   })
 
   return (

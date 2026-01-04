@@ -1,5 +1,5 @@
-import { del, get, patch, post, put } from './base'
-import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import type { CommonResponse } from '@/models/common'
+import type { FlowType } from '@/types/common'
 import type {
   FetchWorkflowDraftPageParams,
   FetchWorkflowDraftPageResponse,
@@ -9,10 +9,11 @@ import type {
   UpdateWorkflowParams,
   VarInInspect,
   WorkflowConfigResponse,
+  WorkflowRunHistoryResponse,
 } from '@/types/workflow'
-import type { CommonResponse } from '@/models/common'
+import { useInfiniteQuery, useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { del, get, patch, post, put } from './base'
 import { useInvalid, useReset } from './use-base'
-import type { FlowType } from '@/types/common'
 import { getFlowPrefix } from './utils'
 
 const NAME_SPACE = 'workflow'
@@ -25,13 +26,22 @@ export const useAppWorkflow = (appID: string) => {
   })
 }
 
+export const useWorkflowRunHistory = (url?: string, enabled = true) => {
+  return useQuery<WorkflowRunHistoryResponse>({
+    queryKey: [NAME_SPACE, 'runHistory', url],
+    queryFn: () => get<WorkflowRunHistoryResponse>(url as string),
+    enabled: !!url && enabled,
+  })
+}
+
 export const useInvalidateAppWorkflow = () => {
   const queryClient = useQueryClient()
   return (appID: string) => {
     queryClient.invalidateQueries(
       {
         queryKey: [NAME_SPACE, 'publish', appID],
-      })
+      },
+    )
   }
 }
 
@@ -123,7 +133,7 @@ export const useInvalidLastRun = (flowType: FlowType, flowId: string, nodeId: st
 
 // Rerun workflow or change the version of workflow
 export const useInvalidAllLastRun = (flowType?: FlowType, flowId?: string) => {
-  return useInvalid([NAME_SPACE, flowType, 'last-run', flowId])
+  return useInvalid([...useLastRunKey, flowType, flowId])
 }
 
 export const useConversationVarValues = (flowType?: FlowType, flowId?: string) => {

@@ -67,6 +67,7 @@ class TestWebhookService:
         )
         TenantService.create_owner_tenant_if_not_exist(account, name=fake.company())
         tenant = account.current_tenant
+        assert tenant is not None
 
         # Create app
         app = App(
@@ -131,7 +132,7 @@ class TestWebhookService:
             app_id=app.id,
             node_id="webhook_node",
             tenant_id=tenant.id,
-            webhook_id=webhook_id,
+            webhook_id=str(webhook_id),
             created_by=account.id,
         )
         db_session_with_containers.add(webhook_trigger)
@@ -143,6 +144,7 @@ class TestWebhookService:
             app_id=app.id,
             node_id="webhook_node",
             trigger_type=AppTriggerType.TRIGGER_WEBHOOK,
+            provider_name="webhook",
             title="Test Webhook",
             status=AppTriggerStatus.ENABLED,
         )
@@ -231,7 +233,7 @@ class TestWebhookService:
             "/webhook",
             method="POST",
             headers={"Content-Type": "multipart/form-data"},
-            data={"message": "test", "upload": file_storage},
+            data={"message": "test", "file": file_storage},
         ):
             webhook_trigger = MagicMock()
             webhook_trigger.tenant_id = "test_tenant"
@@ -240,7 +242,7 @@ class TestWebhookService:
 
             assert webhook_data["method"] == "POST"
             assert webhook_data["body"]["message"] == "test"
-            assert "upload" in webhook_data["files"]
+            assert "file" in webhook_data["files"]
 
             # Verify file processing was called
             mock_external_dependencies["tool_file_manager"].assert_called_once()
@@ -412,7 +414,7 @@ class TestWebhookService:
                 "data": {
                     "method": "post",
                     "content_type": "multipart/form-data",
-                    "body": [{"name": "upload", "type": "file", "required": True}],
+                    "body": [{"name": "file", "type": "file", "required": True}],
                 }
             }
 

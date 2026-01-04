@@ -1,7 +1,6 @@
 'use client'
 
 import type { RefObject } from 'react'
-import { createContext, useContext } from 'use-context-selector'
 import type {
   ChatConfig,
   ChatItem,
@@ -14,7 +13,8 @@ import type {
   AppMeta,
   ConversationItem,
 } from '@/models/share'
-import { noop } from 'lodash-es'
+import { noop } from 'es-toolkit/function'
+import { createContext, useContext } from 'use-context-selector'
 
 export type EmbeddedChatbotContextValue = {
   appMeta: AppMeta | null
@@ -45,9 +45,9 @@ export type EmbeddedChatbotContextValue = {
   clearChatList?: boolean
   setClearChatList: (state: boolean) => void
   isResponding?: boolean
-  setIsResponding: (state: boolean) => void,
-  currentConversationInputs: Record<string, any> | null,
-  setCurrentConversationInputs: (v: Record<string, any>) => void,
+  setIsResponding: (state: boolean) => void
+  currentConversationInputs: Record<string, any> | null
+  setCurrentConversationInputs: (v: Record<string, any>) => void
   allInputsHidden: boolean
   initUserVariables?: {
     name?: string
