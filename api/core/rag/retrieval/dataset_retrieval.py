@@ -1470,37 +1470,37 @@ class DatasetRetrieval:
                     if cancel_event and cancel_event.is_set():
                         break
 
-            if reranking_enable:
-                # do rerank for searched documents
-                data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
-                if query:
-                    all_documents_item = data_post_processor.invoke(
-                        query=query,
-                        documents=all_documents_item,
-                        score_threshold=score_threshold,
-                        top_n=top_k,
-                        query_type=QueryType.TEXT_QUERY,
-                    )
-                if attachment_id:
-                    all_documents_item = data_post_processor.invoke(
-                        documents=all_documents_item,
-                        score_threshold=score_threshold,
-                        top_n=top_k,
-                        query_type=QueryType.IMAGE_QUERY,
-                        query=attachment_id,
-                    )
-            else:
-                if index_type == IndexTechniqueType.ECONOMY:
-                    if not query:
-                        all_documents_item = []
-                    else:
-                        all_documents_item = self.calculate_keyword_score(query, all_documents_item, top_k)
-                elif index_type == IndexTechniqueType.HIGH_QUALITY:
-                    all_documents_item = self.calculate_vector_score(all_documents_item, top_k, score_threshold)
+                if reranking_enable:
+                    # do rerank for searched documents
+                    data_post_processor = DataPostProcessor(tenant_id, reranking_mode, reranking_model, weights, False)
+                    if query:
+                        all_documents_item = data_post_processor.invoke(
+                            query=query,
+                            documents=all_documents_item,
+                            score_threshold=score_threshold,
+                            top_n=top_k,
+                            query_type=QueryType.TEXT_QUERY,
+                        )
+                    if attachment_id:
+                        all_documents_item = data_post_processor.invoke(
+                            documents=all_documents_item,
+                            score_threshold=score_threshold,
+                            top_n=top_k,
+                            query_type=QueryType.IMAGE_QUERY,
+                            query=attachment_id,
+                        )
                 else:
-                    all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
-            if all_documents_item:
-                all_documents.extend(all_documents_item)
+                    if index_type == IndexTechniqueType.ECONOMY:
+                        if not query:
+                            all_documents_item = []
+                        else:
+                            all_documents_item = self.calculate_keyword_score(query, all_documents_item, top_k)
+                    elif index_type == IndexTechniqueType.HIGH_QUALITY:
+                        all_documents_item = self.calculate_vector_score(all_documents_item, top_k, score_threshold)
+                    else:
+                        all_documents_item = all_documents_item[:top_k] if top_k else all_documents_item
+                if all_documents_item:
+                    all_documents.extend(all_documents_item)
         except Exception as e:
             if cancel_event:
                 cancel_event.set()
