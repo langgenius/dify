@@ -102,7 +102,16 @@ vi.mock('@/app/components/workflow/store', () => {
   }
 })
 
-// Mock workflow hooks
+// Mock workflow hooks - extract mock functions for assertions using vi.hoisted
+const {
+  mockHandlePaneContextmenuCancel,
+  mockExportCheck,
+  mockHandleExportDSL,
+} = vi.hoisted(() => ({
+  mockHandlePaneContextmenuCancel: vi.fn(),
+  mockExportCheck: vi.fn(),
+  mockHandleExportDSL: vi.fn(),
+}))
 vi.mock('@/app/components/workflow/hooks', () => {
   return {
     useNodesSyncDraft: () => ({
@@ -111,11 +120,11 @@ vi.mock('@/app/components/workflow/hooks', () => {
       handleSyncWorkflowDraft: vi.fn(),
     }),
     usePanelInteractions: () => ({
-      handlePaneContextmenuCancel: vi.fn(),
+      handlePaneContextmenuCancel: mockHandlePaneContextmenuCancel,
     }),
     useDSL: () => ({
-      exportCheck: vi.fn(),
-      handleExportDSL: vi.fn(),
+      exportCheck: mockExportCheck,
+      handleExportDSL: mockHandleExportDSL,
     }),
     useChecklistBeforePublish: () => ({
       handleCheckBeforePublish: vi.fn().mockResolvedValue(true),
@@ -133,8 +142,8 @@ vi.mock('@/app/components/workflow/hooks', () => {
 vi.mock('../hooks', () => ({
   useAvailableNodesMetaData: () => ({}),
   useDSL: () => ({
-    exportCheck: vi.fn(),
-    handleExportDSL: vi.fn(),
+    exportCheck: mockExportCheck,
+    handleExportDSL: mockHandleExportDSL,
   }),
   useNodesSyncDraft: () => ({
     doSyncWorkflowDraft: vi.fn(),
@@ -875,11 +884,7 @@ describe('PublishAsKnowledgePipelineModal', () => {
     it('should call onCancel when close icon is clicked', () => {
       render(<PublishAsKnowledgePipelineModal {...defaultProps} />)
 
-      // Find the close icon (RiCloseLine container)
-      const closeIcon = screen.getByText('pipeline.common.publishAs')
-        .closest('div')
-        ?.querySelector('.cursor-pointer')
-      fireEvent.click(closeIcon!)
+      fireEvent.click(screen.getByTestId('publish-modal-close-btn'))
 
       expect(mockOnCancel).toHaveBeenCalledTimes(1)
     })
@@ -1138,14 +1143,16 @@ describe('RagPipelineChildren', () => {
       render(<RagPipelineChildren />)
 
       fireEvent.click(screen.getByTestId('dsl-backup'))
-      // The exportCheck function should be called
+
+      expect(mockExportCheck).toHaveBeenCalledTimes(1)
     })
 
     it('should call handlePaneContextmenuCancel when onImport is clicked', () => {
       render(<RagPipelineChildren />)
 
       fireEvent.click(screen.getByTestId('dsl-import'))
-      // The handlePaneContextmenuCancel function should be called
+
+      expect(mockHandlePaneContextmenuCancel).toHaveBeenCalledTimes(1)
     })
   })
 
@@ -1221,7 +1228,8 @@ describe('RagPipelineChildren', () => {
 
       // Confirm export
       fireEvent.click(screen.getByTestId('dsl-export-confirm'))
-      // The handleExportDSL function should be called
+
+      expect(mockHandleExportDSL).toHaveBeenCalledTimes(1)
     })
   })
 

@@ -330,12 +330,7 @@ describe('InputFieldEditorPanel', () => {
 
       // Act
       renderWithProviders(<InputFieldEditorPanel {...props} />)
-      const closeButtons = screen.getAllByRole('button')
-      const closeButton = closeButtons.find(btn =>
-        btn.querySelector('svg'),
-      )
-      if (closeButton)
-        fireEvent.click(closeButton)
+      fireEvent.click(screen.getByTestId('input-field-editor-close-btn'))
 
       // Assert
       expect(onClose).toHaveBeenCalledTimes(1)

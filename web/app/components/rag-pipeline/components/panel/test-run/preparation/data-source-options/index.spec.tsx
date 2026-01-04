@@ -1003,7 +1003,7 @@ describe('DataSourceOptions', () => {
     })
 
     it('should not call onSelect when option value not found', () => {
-      // Arrange - This tests the early return in handelSelect
+      // Arrange - This tests the early return in handleSelect
       const onSelect = vi.fn()
       mockDatasourceOptions = []
 
@@ -1204,7 +1204,7 @@ describe('DataSourceOptions', () => {
   // Callback Stability Tests
   // -------------------------------------------------------------------------
   describe('Callback Stability', () => {
-    it('should maintain stable handelSelect callback', () => {
+    it('should maintain stable handleSelect callback', () => {
       // Arrange
       const onSelect = vi.fn()
       const optionData = createNodeData()
@@ -1233,7 +1233,7 @@ describe('DataSourceOptions', () => {
       expect(onSelect).toHaveBeenCalledTimes(3) // 1 auto-select + 2 clicks
     })
 
-    it('should update handelSelect when onSelect prop changes', () => {
+    it('should update handleSelect when onSelect prop changes', () => {
       // Arrange
       const onSelect1 = vi.fn()
       const onSelect2 = vi.fn()
@@ -1263,7 +1263,7 @@ describe('DataSourceOptions', () => {
       expect(onSelect2).toHaveBeenCalledTimes(1)
     })
 
-    it('should update handelSelect when options change', () => {
+    it('should update handleSelect when options change', () => {
       // Arrange
       const onSelect = vi.fn()
       const data1 = createNodeData({ title: 'Data 1' })
@@ -1393,7 +1393,7 @@ describe('DataSourceOptions', () => {
     })
 
     it('should handle click on non-existent option value gracefully', () => {
-      // Arrange - Test the early return in handelSelect when selectedOption is not found
+      // Arrange - Test the early return in handleSelect when selectedOption is not found
       // This is a bit tricky to test directly since options are rendered from the same array
       // We'll test by verifying the component doesn't crash with empty options
       const onSelect = vi.fn()
@@ -1722,10 +1722,10 @@ describe('DataSourceOptions Integration', () => {
 })
 
 // ============================================================================
-// handelSelect Early Return Branch Coverage
+// handleSelect Early Return Branch Coverage
 // ============================================================================
 
-describe('handelSelect Early Return Coverage', () => {
+describe('handleSelect Early Return Coverage', () => {
   beforeEach(() => {
     vi.clearAllMocks()
     mockDatasourceOptions = []
@@ -1750,7 +1750,7 @@ describe('handelSelect Early Return Coverage', () => {
       />,
     )
 
-    // Now we need to cause the handelSelect to not find the option.
+    // Now we need to cause the handleSelect to not find the option.
     // The callback is memoized with [onSelect, options], so if we change
     // the options, the callback should be updated too.
 

@@ -2019,11 +2019,7 @@ describe('handleSubmitField', () => {
     )
 
     // Click add button to open editor
-    const addButton = screen.getAllByRole('button').find(btn =>
-      btn.closest('.flex.items-center.gap-x-2.px-4'),
-    )
-    if (addButton)
-      fireEvent.click(addButton)
+    fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
     // Get the onSubmit callback that was passed to toggleInputFieldEditPanel
     expect(mockToggleInputFieldEditPanel).toHaveBeenCalled()
@@ -2295,11 +2291,7 @@ describe('handleSubmitField', () => {
     )
 
     // Click add button
-    const addButton = screen.getAllByRole('button').find(btn =>
-      btn.closest('.flex.items-center.gap-x-2.px-4'),
-    )
-    if (addButton)
-      fireEvent.click(addButton)
+    fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
     // Get the onSubmit callback
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
@@ -2329,11 +2321,7 @@ describe('handleSubmitField', () => {
     )
 
     // Click add button
-    const addButton = screen.getAllByRole('button').find(btn =>
-      btn.closest('.flex.items-center.gap-x-2.px-4'),
-    )
-    if (addButton)
-      fireEvent.click(addButton)
+    fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
     // Get the onClose callback
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
@@ -2376,11 +2364,7 @@ describe('Duplicate Variable Name Handling', () => {
     )
 
     // Click add button
-    const addButton = screen.getAllByRole('button').find(btn =>
-      btn.closest('.flex.items-center.gap-x-2.px-4'),
-    )
-    if (addButton)
-      fireEvent.click(addButton)
+    fireEvent.click(screen.getByTestId('field-list-add-btn'))
 
     // Get the onSubmit callback
     const editorProps = mockToggleInputFieldEditPanel.mock.calls[0][0]
@@ -2495,11 +2479,7 @@ describe('Integration Tests', () => {
       )
 
       // Step 1: Click add button (in header, outside sortable container)
-      const addButton = screen.getAllByRole('button').find(btn =>
-        btn.closest('.flex.items-center.gap-x-2.px-4'),
-      )
-      if (addButton)
-        fireEvent.click(addButton)
+      fireEvent.click(screen.getByTestId('field-list-add-btn'))
       expect(mockToggleInputFieldEditPanel).toHaveBeenCalled()
 
       // Step 2: Edit on existing field

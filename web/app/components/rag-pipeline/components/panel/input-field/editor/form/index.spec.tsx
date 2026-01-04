@@ -299,8 +299,8 @@ describe('InputFieldForm', () => {
       // Act
       renderWithProviders(<InputFieldForm {...props} />)
 
-      // Find and change the variable input by id
-      const variableInput = document.getElementById('variable') as HTMLInputElement
+      // Find and change the variable input by label
+      const variableInput = screen.getByLabelText('appDebug.variableConfig.varName')
       fireEvent.change(variableInput, { target: { value: 'new_var' } })
 
       // Submit the form
@@ -1661,16 +1661,16 @@ describe('InitialFields', () => {
       renderWithProviders(<InputFieldForm {...props} />)
 
       // Find the variable input and trigger blur with a value
-      const variableInput = document.getElementById('variable') as HTMLInputElement
+      const variableInput = screen.getByLabelText('appDebug.variableConfig.varName')
       fireEvent.change(variableInput, { target: { value: 'test_var' } })
       fireEvent.blur(variableInput)
 
       // Assert - The label field should be updated via setFieldValue when variable blurs
       // The getFieldValue is called to check if label is empty
       await waitFor(() => {
-        const labelInput = document.getElementById('label') as HTMLInputElement
+        const labelInput = screen.getByLabelText('appDebug.variableConfig.displayName')
         // Label should be set to the variable value when it was empty
-        expect(labelInput.value).toBe('test_var')
+        expect(labelInput).toHaveValue('test_var')
       })
     })
 
@@ -1686,14 +1686,14 @@ describe('InitialFields', () => {
       renderWithProviders(<InputFieldForm {...props} />)
 
       // Find the variable input and trigger blur with a value
-      const variableInput = document.getElementById('variable') as HTMLInputElement
+      const variableInput = screen.getByLabelText('appDebug.variableConfig.varName')
       fireEvent.change(variableInput, { target: { value: 'new_var' } })
       fireEvent.blur(variableInput)
 
       // Assert - The label field should remain unchanged because it already has a value
       await waitFor(() => {
-        const labelInput = document.getElementById('label') as HTMLInputElement
-        expect(labelInput.value).toBe('Existing Label')
+        const labelInput = screen.getByLabelText('appDebug.variableConfig.displayName')
+        expect(labelInput).toHaveValue('Existing Label')
       })
     })
 
@@ -1709,13 +1709,13 @@ describe('InitialFields', () => {
       renderWithProviders(<InputFieldForm {...props} />)
 
       // Find the label input, clear it, and trigger blur
-      const labelInput = document.getElementById('label') as HTMLInputElement
+      const labelInput = screen.getByLabelText('appDebug.variableConfig.displayName')
       fireEvent.change(labelInput, { target: { value: '' } })
       fireEvent.blur(labelInput)
 
       // Assert - When label is cleared and blurred, it should be reset to variable name
       await waitFor(() => {
-        expect(labelInput.value).toBe('original_var')
+        expect(labelInput).toHaveValue('original_var')
       })
     })
 
@@ -1731,13 +1731,13 @@ describe('InitialFields', () => {
       renderWithProviders(<InputFieldForm {...props} />)
 
       // Find the label input, change it to a new value, and trigger blur
-      const labelInput = document.getElementById('label') as HTMLInputElement
+      const labelInput = screen.getByLabelText('appDebug.variableConfig.displayName')
       fireEvent.change(labelInput, { target: { value: 'New Label' } })
       fireEvent.blur(labelInput)
 
       // Assert - Label should keep the new non-empty value
       await waitFor(() => {
-        expect(labelInput.value).toBe('New Label')
+        expect(labelInput).toHaveValue('New Label')
       })
     })
   })
