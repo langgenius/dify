@@ -56,10 +56,20 @@ RUN groupadd -r -g ${dify_uid} dify && \
 
 RUN \
     apt-get update \
+    && apt-get install -y --no-install-recommends \
+        ca-certificates \
+        curl \
+        gnupg \
+    && mkdir -p /etc/apt/keyrings \
+    && curl -fsSL https://deb.nodesource.com/gpgkey/nodesource-repo.gpg.key \
+        | gpg --dearmor -o /etc/apt/keyrings/nodesource.gpg \
+    && echo "deb [signed-by=/etc/apt/keyrings/nodesource.gpg] https://deb.nodesource.com/node_20.x nodistro main" \
+        > /etc/apt/sources.list.d/nodesource.list \
+    && apt-get update \
     # Install dependencies
     && apt-get install -y --no-install-recommends \
         # basic environment
-        curl nodejs \
+        nodejs \
         # for gmpy2 \
         libgmp-dev libmpfr-dev libmpc-dev \
         # For Security
