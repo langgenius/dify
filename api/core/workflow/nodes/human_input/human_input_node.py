@@ -264,7 +264,7 @@ class HumanInputNode(Node[HumanInputNodeData]):
         This method should:
         1. Parse the form_content markdown
         2. Substitute {{#node_name.var_name#}} with actual values
-        3. Keep {{#$outputs.field_name#}} placeholders for form inputs
+        3. Keep {{#$output.field_name#}} placeholders for form inputs
         """
         rendered_form_content = self.graph_runtime_state.variable_pool.convert_template(
             self._node_data.form_content,
@@ -278,11 +278,11 @@ class HumanInputNode(Node[HumanInputNodeData]):
         field_names: Sequence[str],
     ) -> str:
         """
-        Replace {{#$outputs.xxx#}} placeholders with submitted values.
+        Replace {{#$output.xxx#}} placeholders with submitted values.
         """
         rendered_content = form_content
         for field_name in field_names:
-            placeholder = "{{#$outputs." + field_name + "#}}"
+            placeholder = "{{#$output." + field_name + "#}}"
             value = outputs.get(field_name)
             if value is None:
                 replacement = ""

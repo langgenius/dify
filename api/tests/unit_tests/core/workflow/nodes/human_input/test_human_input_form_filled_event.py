@@ -22,7 +22,7 @@ class _FakeFormRepository:
         return self._form
 
 
-def _build_node(form_content: str = "Please enter your name:\n\n{{#$outputs.name#}}") -> HumanInputNode:
+def _build_node(form_content: str = "Please enter your name:\n\n{{#$output.name#}}") -> HumanInputNode:
     system_variables = SystemVariable.empty()
     system_variables.workflow_execution_id = str(uuid.uuid4())
     graph_runtime_state = GraphRuntimeState(

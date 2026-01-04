@@ -778,7 +778,7 @@ class WorkflowService:
             variable_pool=variable_pool,
         )
 
-        rendered_content = node._render_form_content()
+        rendered_content = node._render_form_content_before_submission()
         resolved_placeholder_values = node._resolve_inputs()
         node_data = cast(HumanInputNodeData, node.get_base_node_data())
         human_input_required = HumanInputRequired(
@@ -823,7 +823,7 @@ class WorkflowService:
             node_config=node_config,
             variable_pool=variable_pool,
         )
-        node_data = cast(HumanInputNodeData, node.get_base_node_data())
+        node_data = node.node_data
 
         available_actions = {user_action.id for user_action in node_data.user_actions}
         if action not in available_actions:
@@ -835,21 +835,12 @@ class WorkflowService:
             missing_list = ", ".join(sorted(missing_inputs))
             raise ValueError(f"Missing inputs: {missing_list}")
 
-        rendered_content = node._render_form_content()
+        rendered_content = node._render_form_content_before_submission()
         outputs: dict[str, Any] = dict(form_inputs)
         outputs["__action_id"] = action
-        rendered_content_with_outputs = rendered_content
-        for field_name in node_data.outputs_field_names():
-            placeholder = f"{{{{#$outputs.{field_name}#}}}}"
-            value = outputs.get(field_name)
-            if value is None:
-                replacement = ""
-            elif isinstance(value, (dict, list)):
-                replacement = json.dumps(value, ensure_ascii=False)
-            else:
-                replacement = str(value)
-            rendered_content_with_outputs = rendered_content_with_outputs.replace(placeholder, replacement)
-        outputs["__rendered_content"] = rendered_content_with_outputs
+        outputs["__rendered_content"] = node._render_form_content_with_outputs(
+            node_data.form_content, outputs, node_data.outputs_field_names()
+        )
 
         enclosing_node_type_and_id = draft_workflow.get_enclosing_node_type_and_id(node_config)
         enclosing_node_id = enclosing_node_type_and_id[1] if enclosing_node_type_and_id else None

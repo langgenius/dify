@@ -16,7 +16,7 @@ from core.workflow.nodes.base.variable_template_parser import VariableTemplatePa
 
 from .enums import ButtonStyle, DeliveryMethodType, EmailRecipientType, FormInputType, PlaceholderType, TimeoutUnit
 
-_OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$outputs\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
+_OUTPUT_VARIABLE_PATTERN = re.compile(r"\{\{#\$output\.(?P<field_name>[a-zA-Z_][a-zA-Z0-9_]{0,29})#\}\}")
 
 
 class _WebAppDeliveryConfig(BaseModel):

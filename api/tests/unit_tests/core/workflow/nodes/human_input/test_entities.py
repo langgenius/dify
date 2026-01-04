@@ -221,11 +221,11 @@ class TestHumanInputNodeData:
 
         A content is required:
 
-        {{#$outputs.content#}}
+        {{#$output.content#}}
 
         A ending is required:
 
-        {{#$outputs.ending#}}
+        {{#$output.ending#}}
         """
 
         node_data = HumanInputNodeData(title="Human Input", form_content=content)
@@ -407,7 +407,7 @@ class TestHumanInputNodeRenderedContent:
 
         node_data = HumanInputNodeData(
             title="Human Input",
-            form_content="Name: {{#$outputs.name#}}",
+            form_content="Name: {{#$output.name#}}",
             inputs=[
                 FormInput(
                     type=FormInputType.TEXT_INPUT,
