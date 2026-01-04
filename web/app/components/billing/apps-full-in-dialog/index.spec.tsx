@@ -75,9 +75,6 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     created_at: 0,
     role: 'normal',
     providers: [],
-    trial_credits: 200,
-    trial_credits_used: 0,
-    next_credit_reset_date: 0,
   }
   const langGeniusVersionInfo: LangGeniusVersionResponse = {
     current_env: '',
@@ -99,7 +96,6 @@ const buildAppContext = (overrides: Partial<AppContextValue> = {}): AppContextVa
     mutateCurrentWorkspace: vi.fn(),
     langGeniusVersionInfo,
     isLoadingCurrentWorkspace: false,
-    isValidatingCurrentWorkspace: false,
   }
   const useSelector: AppContextValue['useSelector'] = selector => selector({ ...base, useSelector })
   return {
