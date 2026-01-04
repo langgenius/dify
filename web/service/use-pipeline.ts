@@ -81,7 +81,7 @@ export const usePipelineTemplateById = (params: PipelineTemplateByIdRequest, ena
   return useQuery<PipelineTemplateByIdResponse>({
     queryKey: [NAME_SPACE, 'template', type, template_id],
     queryFn: () => {
-      return fetchPipelineTemplateById(params)
+      return fetchPipelineTemplateById({ template_id, type })
     },
     enabled,
     staleTime: 0,
@@ -165,7 +165,7 @@ export const useDraftPipelineProcessingParams = (params: PipelineProcessingParam
   return useQuery<PipelineProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'draft-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return fetchDraftPipelineProcessingParams(params)
+      return fetchDraftPipelineProcessingParams({ pipeline_id, node_id })
     },
     staleTime: 0,
     enabled,
@@ -177,7 +177,7 @@ export const usePublishedPipelineProcessingParams = (params: PipelineProcessingP
   return useQuery<PipelineProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'published-pipeline-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return fetchPublishedPipelineProcessingParams(params)
+      return fetchPublishedPipelineProcessingParams({ pipeline_id, node_id })
     },
     staleTime: 0,
   })
@@ -248,7 +248,7 @@ export const useUpdateDataSourceCredentials = (
       pluginId,
       credentials,
       name,
-    }: { provider: string, pluginId: string, credentials: Record<string, any>, name: string }) => {
+    }: { provider: string, pluginId: string, credentials: Record<string, unknown>, name: string }) => {
       return updateDataSourceCredentials({ provider, pluginId, credentials, name }).then(() => {
         queryClient.invalidateQueries({
           queryKey: [NAME_SPACE, 'datasource'],
@@ -263,7 +263,7 @@ export const useDraftPipelinePreProcessingParams = (params: PipelinePreProcessin
   return useQuery<PipelinePreProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'draft-pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return fetchDraftPipelinePreProcessingParams(params)
+      return fetchDraftPipelinePreProcessingParams({ pipeline_id, node_id })
     },
     staleTime: 0,
     enabled,
@@ -275,7 +275,7 @@ export const usePublishedPipelinePreProcessingParams = (params: PipelinePreProce
   return useQuery<PipelinePreProcessingParamsResponse>({
     queryKey: [NAME_SPACE, 'published-pipeline-pre-processing-params', pipeline_id, node_id],
     queryFn: () => {
-      return fetchPublishedPipelinePreProcessingParams(params)
+      return fetchPublishedPipelinePreProcessingParams({ pipeline_id, node_id })
     },
     staleTime: 0,
     enabled,
@@ -318,7 +318,7 @@ export const usePipelineExecutionLog = (params: PipelineExecutionLogRequest) => 
   return useQuery<PipelineExecutionLogResponse>({
     queryKey: [NAME_SPACE, 'pipeline-execution-log', dataset_id, document_id],
     queryFn: () => {
-      return fetchPipelineExecutionLog(params)
+      return fetchPipelineExecutionLog({ dataset_id, document_id })
     },
     staleTime: 0,
   })
