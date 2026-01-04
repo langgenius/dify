@@ -83,7 +83,7 @@ function DataSourceTypeSelector({
         >
           <span className={cn(s.datasetIcon, option.iconClass)} />
           <span
-            title={t(option.labelKey, { ns: 'datasetCreation' })}
+            title={t(option.labelKey, { ns: 'datasetCreation' }) || undefined}
             className="truncate"
           >
             {t(option.labelKey, { ns: 'datasetCreation' })}

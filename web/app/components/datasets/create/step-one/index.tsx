@@ -112,7 +112,10 @@ const StepOne = ({
   // Computed values
   const shouldShowDataSourceTypeList = !datasetId || (datasetId && !dataset?.data_source_type)
   const isInCreatePage = shouldShowDataSourceTypeList
-  const dataSourceType = isInCreatePage ? inCreatePageDataSourceType : dataset?.data_source_type
+  // Default to FILE type when no type is provided from either source
+  const dataSourceType = isInCreatePage
+    ? (inCreatePageDataSourceType ?? DataSourceType.FILE)
+    : (dataset?.data_source_type ?? DataSourceType.FILE)
 
   const allFileLoaded = files.length > 0 && files.every(file => file.file.id)
   const hasNotion = notionPages.length > 0
@@ -166,7 +169,7 @@ const StepOne = ({
                     {t('steps.one', { ns: 'datasetCreation' })}
                   </div>
                   <DataSourceTypeSelector
-                    currentType={dataSourceType!}
+                    currentType={dataSourceType}
                     disabled={dataSourceTypeDisable}
                     onChange={changeType}
                     onClearPreviews={handleClearPreviews}
