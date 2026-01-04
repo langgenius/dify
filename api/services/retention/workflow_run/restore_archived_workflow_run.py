@@ -153,7 +153,7 @@ class WorkflowRunRestore:
                     f"{run.tenant_id}/app_id={run.app_id}/year={created_at.strftime('%Y')}/"
                     f"month={created_at.strftime('%m')}/workflow_run_id={run.id}"
                 )
-                archive_key = self._get_archive_key(prefix)
+                archive_key = f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
                 try:
                     archive_data = storage.get_object(archive_key)
                 except FileNotFoundError:
@@ -170,8 +170,7 @@ class WorkflowRunRestore:
                         return result
 
                     tables = manifest.get("tables", {})
-                    schema_version = self._resolve_schema_version(manifest)
-                    self._validate_schema_version(schema_version)
+                    schema_version = self._get_schema_version(manifest)
                     for table_name, info in tables.items():
                         row_count = info.get("row_count", 0)
                         if row_count == 0:
@@ -188,7 +187,7 @@ class WorkflowRunRestore:
                             result.restored_counts[table_name] = row_count
                             continue
 
-                        member_path = self._get_table_member_path(table_name)
+                        member_path = f"{table_name}.jsonl.gz"
                         try:
                             fileobj = tar.extractfile(member_path)
                         except KeyError:
@@ -268,13 +267,6 @@ class WorkflowRunRestore:
             sessionmaker(bind=db.engine, expire_on_commit=False)
         )
         return self.workflow_run_repo
-
-    def _get_archive_key(self, prefix: str) -> str:
-        return f"{prefix}/{self.ARCHIVE_BUNDLE_NAME}"
-
-    @staticmethod
-    def _get_table_member_path(table_name: str) -> str:
-        return f"{table_name}.jsonl.gz"
 
     @staticmethod
     def _load_manifest_from_tar(tar: tarfile.TarFile) -> dict[str, Any]:
@@ -372,16 +364,15 @@ class WorkflowRunRestore:
 
         return result
 
-    def _resolve_schema_version(self, manifest: dict[str, Any]) -> str:
+    def _get_schema_version(self, manifest: dict[str, Any]) -> str:
         schema_version = manifest.get("schema_version")
         if not schema_version:
             logger.warning("Manifest missing schema_version; defaulting to 1.0")
-            return "1.0"
-        return str(schema_version)
-
-    def _validate_schema_version(self, schema_version: str) -> None:
+            schema_version = "1.0"
+        schema_version = str(schema_version)
         if schema_version not in SCHEMA_MAPPERS:
             raise ValueError(f"Unsupported schema_version {schema_version}. Add a mapping before restoring.")
+        return schema_version
 
     def _apply_schema_mapping(
         self,
@@ -389,6 +380,7 @@ class WorkflowRunRestore:
         schema_version: str,
         record: dict[str, Any],
     ) -> dict[str, Any]:
+        # Keep hook for forward/backward compatibility when schema evolves.
         mapper = SCHEMA_MAPPERS.get(schema_version, {}).get(table_name)
         if mapper is None:
             return dict(record)
