@@ -15,6 +15,7 @@ from core.workflow.nodes.template_transform.template_renderer import (
     CodeExecutorJinja2TemplateRenderer,
     Jinja2TemplateRenderer,
 )
+from core.workflow.nodes.template_transform.template_transform_node import TemplateTransformNode
 from libs.typing import is_str, is_str_dict
 
 from .node_mapping import LATEST_VERSION, NODE_TYPE_CLASSES_MAPPING
@@ -113,13 +114,18 @@ class DifyNodeFactory(NodeFactory):
                 code_limits=self._code_limits,
             )
 
-        node_kwargs: dict[str, object] = {
-            "id": node_id,
-            "config": node_config,
-            "graph_init_params": self.graph_init_params,
-            "graph_runtime_state": self.graph_runtime_state,
-        }
         if node_type == NodeType.TEMPLATE_TRANSFORM:
-            node_kwargs["template_renderer"] = self._template_renderer
+            return TemplateTransformNode(
+                id=node_id,
+                config=node_config,
+                graph_init_params=self.graph_init_params,
+                graph_runtime_state=self.graph_runtime_state,
+                template_renderer=self._template_renderer,
+            )
 
-        return node_class(**node_kwargs)
+        return node_class(
+            id=node_id,
+            config=node_config,
+            graph_init_params=self.graph_init_params,
+            graph_runtime_state=self.graph_runtime_state,
+        )

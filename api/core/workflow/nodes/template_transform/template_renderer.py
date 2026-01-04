@@ -6,7 +6,7 @@ from typing import Any, Protocol
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 
 
-class TemplateRenderError(RuntimeError):
+class TemplateRenderError(ValueError):
     """Raised when rendering a Jinja2 template fails."""
 
 
