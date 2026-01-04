@@ -2577,19 +2577,23 @@ export const useNodesInteractions = () => {
         draft.splice(groupIndex, 1)
     })
 
-    // restore hidden edges and remove temp edges
+    // restore hidden edges and remove temp edges in single pass O(E)
     const newEdges = produce(edges, (draft) => {
-      // restore hidden edges that involve member nodes
-      draft.forEach((edge) => {
+      const indicesToRemove: number[] = []
+
+      for (let i = 0; i < draft.length; i++) {
+        const edge = draft[i]
+        // restore hidden edges that involve member nodes
         if (edge.hidden && (memberIds.has(edge.source) || memberIds.has(edge.target)))
           edge.hidden = false
-      })
-      // remove temp edges connected to group (iterate backwards to safely splice)
-      for (let i = draft.length - 1; i >= 0; i--) {
-        const edge = draft[i]
+        // collect temp edges connected to group for removal
         if (edge.data?._isTemp && (edge.source === groupId || edge.target === groupId))
-          draft.splice(i, 1)
+          indicesToRemove.push(i)
       }
+
+      // remove collected indices in reverse order to avoid index shift
+      for (let i = indicesToRemove.length - 1; i >= 0; i--)
+        draft.splice(indicesToRemove[i], 1)
     })
 
     setNodes(newNodes)
