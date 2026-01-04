@@ -19,6 +19,7 @@ jobs:
       run:
         working-directory: web
     steps:
+      # Keep use old checkout action version for https://github.com/peter-evans/create-pull-request/issues/4272
       - uses: actions/checkout@v4
         with:
           fetch-depth: 0
