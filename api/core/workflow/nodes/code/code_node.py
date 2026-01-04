@@ -1,6 +1,7 @@
 from collections.abc import Mapping, Sequence
 from decimal import Decimal
 from typing import Any, ClassVar, cast
+
 from core.helper.code_executor.code_executor import CodeExecutionError, CodeExecutor, CodeLanguage
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
@@ -11,7 +12,7 @@ from core.workflow.enums import NodeType, WorkflowNodeExecutionStatus
 from core.workflow.node_events import NodeRunResult
 from core.workflow.nodes.base.node import Node
 from core.workflow.nodes.code.entities import CodeNodeData
-from core.workflow.nodes.code.limits import CodeNodeLimits, ResolvedCodeNodeLimits, resolve_code_node_limits
+from core.workflow.nodes.code.limits import CodeNodeLimits
 
 from .exc import (
     CodeNodeError,
@@ -28,7 +29,7 @@ class CodeNode(Node[CodeNodeData]):
     )
     _code_executor: type[CodeExecutor] = CodeExecutor
     _code_providers: tuple[type[CodeNodeProvider], ...] = _DEFAULT_CODE_PROVIDERS
-    _limits: ResolvedCodeNodeLimits
+    _limits: CodeNodeLimits
 
     def __init__(
         self,
@@ -39,7 +40,7 @@ class CodeNode(Node[CodeNodeData]):
         *,
         code_executor: type[CodeExecutor] | None = None,
         code_providers: Sequence[type[CodeNodeProvider]] | None = None,
-        code_limits: CodeNodeLimits | None = None,
+        code_limits: CodeNodeLimits,
     ) -> None:
         super().__init__(
             id=id,
@@ -51,7 +52,7 @@ class CodeNode(Node[CodeNodeData]):
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
             tuple(code_providers) if code_providers else self._DEFAULT_CODE_PROVIDERS
         )
-        self._limits = resolve_code_node_limits(code_limits)
+        self._limits = code_limits
 
     @classmethod
     def get_default_config(cls, filters: Mapping[str, object] | None = None) -> Mapping[str, object]:

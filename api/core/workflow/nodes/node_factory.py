@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING, final
 
 from typing_extensions import override
 
+from configs import dify_config
 from core.helper.code_executor.code_executor import CodeExecutor
 from core.helper.code_executor.code_node_provider import CodeNodeProvider
 from core.helper.code_executor.javascript.javascript_code_provider import JavascriptCodeProvider
@@ -44,7 +45,16 @@ class DifyNodeFactory(NodeFactory):
         self._code_providers: tuple[type[CodeNodeProvider], ...] = (
             tuple(code_providers) if code_providers else (Python3CodeProvider, JavascriptCodeProvider)
         )
-        self._code_limits = code_limits
+        self._code_limits = code_limits or CodeNodeLimits(
+            max_string_length=dify_config.CODE_MAX_STRING_LENGTH,
+            max_number=dify_config.CODE_MAX_NUMBER,
+            min_number=dify_config.CODE_MIN_NUMBER,
+            max_precision=dify_config.CODE_MAX_PRECISION,
+            max_depth=dify_config.CODE_MAX_DEPTH,
+            max_number_array_length=dify_config.CODE_MAX_NUMBER_ARRAY_LENGTH,
+            max_string_array_length=dify_config.CODE_MAX_STRING_ARRAY_LENGTH,
+            max_object_array_length=dify_config.CODE_MAX_OBJECT_ARRAY_LENGTH,
+        )
 
     @override
     def create_node(self, node_config: dict[str, object]) -> Node:
