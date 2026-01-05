@@ -18,7 +18,6 @@ from core.variables.segments import ArrayFileSegment, FileSegment
 from core.workflow.runtime import VariablePool
 
 from ..protocols import FileManagerProtocol, HttpClientProtocol
-
 from .entities import (
     HttpRequestNodeAuthorization,
     HttpRequestNodeData,
