@@ -329,14 +329,15 @@ export class HttpClient {
       }
     }
 
-    const abortController = new AbortController();
-    const timeoutId = setTimeout(() => abortController.abort(), timeout * 1000);
-
     let attempt = 0;
     // `attempt` is a zero-based retry counter
     // Total attempts = 1 (initial) + maxRetries
     // e.g., maxRetries=3 means: attempt 0 (initial), then retries at 1, 2, 3
     while (true) {
+      // Create a new AbortController for each attempt to handle timeouts properly
+      const abortController = new AbortController();
+      const timeoutId = setTimeout(() => abortController.abort(), timeout * 1000);
+
       try {
         const response = await fetch(url, {
           method,
@@ -373,6 +374,9 @@ export class HttpClient {
           // For Node.js, we need to convert web streams to Node.js streams
           if (response.body) {
             const { Readable } = await import("node:stream");
+            // Type assertion needed: DOM ReadableStream vs Node.js stream types are incompatible
+            // but Readable.fromWeb handles the conversion correctly at runtime
+            // eslint-disable-next-line @typescript-eslint/no-explicit-any, @typescript-eslint/no-unsafe-argument
             responseData = Readable.fromWeb(response.body as any);
           } else {
             throw new Error("Response body is null");
