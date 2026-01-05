@@ -89,9 +89,6 @@ class VariableAssignerNode(Node[VariableAssignerData]):
         self.graph_runtime_state.variable_pool.add(assigned_variable_selector, updated_variable)
 
         updated_variables = [common_helpers.variable_to_processed_data(assigned_variable_selector, updated_variable)]
-        selector_key = ".".join(updated_variable.selector)
-        output_variables = {selector_key: updated_variable.value}
-
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs={
@@ -101,5 +98,5 @@ class VariableAssignerNode(Node[VariableAssignerData]):
             # we still set `output_variables` as a list to ensure the schema of output is
             # compatible with `v2.VariableAssignerNode`.
             process_data=common_helpers.set_updated_variables({}, updated_variables),
-            outputs=output_variables,
+            outputs={},
         )

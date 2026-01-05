@@ -202,21 +202,12 @@ class VariableAssignerNode(Node[VariableAssignerNodeData]):
             if (seg := self.graph_runtime_state.variable_pool.get(selector)) is not None
         ]
 
-        output_variables: dict[str, Any] = {}
-        for selector in updated_variable_selectors:
-            variable = self.graph_runtime_state.variable_pool.get(selector)
-            if not isinstance(variable, Variable):
-                continue
-            if variable.selector[0] != CONVERSATION_VARIABLE_NODE_ID:
-                continue
-            selector_key = ".".join(variable.selector)
-            output_variables[selector_key] = variable.value
         process_data = common_helpers.set_updated_variables(process_data, updated_variables)
         return NodeRunResult(
             status=WorkflowNodeExecutionStatus.SUCCEEDED,
             inputs=inputs,
             process_data=process_data,
-            outputs=output_variables,
+            outputs={},
         )
 
     def _handle_item(
