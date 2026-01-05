@@ -28,7 +28,6 @@ from core.workflow.enums import WorkflowType
 from core.workflow.graph_engine.command_channels.redis_channel import RedisChannel
 from core.workflow.graph_engine.layers.base import GraphEngineLayer
 from core.workflow.graph_engine.layers.persistence import PersistenceWorkflowInfo, WorkflowPersistenceLayer
-from services.conversation_variable_updater import conversation_variable_updater_factory
 from core.workflow.repositories.workflow_execution_repository import WorkflowExecutionRepository
 from core.workflow.repositories.workflow_node_execution_repository import WorkflowNodeExecutionRepository
 from core.workflow.runtime import GraphRuntimeState, VariablePool
@@ -42,6 +41,7 @@ from models import Workflow
 from models.enums import UserFrom
 from models.model import App, Conversation, Message, MessageAnnotation
 from models.workflow import ConversationVariable
+from services.conversation_variable_updater import conversation_variable_updater_factory
 
 logger = logging.getLogger(__name__)
 
