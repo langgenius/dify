@@ -45,9 +45,8 @@ class UpdateVariablesCommandHandler(CommandHandler):
         for update in command.updates:
             try:
                 variable = update.value
-                selector = list(variable.selector)
-                self._variable_pool.add(selector, variable)
-                logger.debug("Updated variable %s for workflow %s", selector, execution.workflow_id)
+                self._variable_pool.add(variable.selector, variable)
+                logger.debug("Updated variable %s for workflow %s", variable.selector, execution.workflow_id)
             except ValueError as exc:
                 logger.warning(
                     "Skipping invalid variable selector %s for workflow %s: %s",
