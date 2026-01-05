@@ -70,6 +70,7 @@ class AppMode(StrEnum):
 class IconType(StrEnum):
     IMAGE = auto()
     EMOJI = auto()
+    LINK = auto()
 
 
 class App(Base):
