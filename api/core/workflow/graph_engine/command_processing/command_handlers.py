@@ -46,8 +46,6 @@ class UpdateVariablesCommandHandler(CommandHandler):
             try:
                 variable = update.value
                 selector = list(variable.selector)
-                if len(selector) < 2:
-                    raise ValueError(f"Invalid selector: expected 2 elements, got {len(selector)} elements")
                 self._variable_pool.add(selector, variable)
                 logger.debug("Updated variable %s for workflow %s", selector, execution.workflow_id)
             except ValueError as exc:
