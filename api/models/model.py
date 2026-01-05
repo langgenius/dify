@@ -82,7 +82,7 @@ class App(Base):
     name: Mapped[str] = mapped_column(String(255))
     description: Mapped[str] = mapped_column(LongText, default=sa.text("''"))
     mode: Mapped[str] = mapped_column(String(255))
-    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji
+    icon_type: Mapped[str | None] = mapped_column(String(255))  # image, emoji, link
     icon = mapped_column(String(255))
     icon_background: Mapped[str | None] = mapped_column(String(255))
     app_model_config_id = mapped_column(StringUUID, nullable=True)
