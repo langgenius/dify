@@ -11,20 +11,6 @@ from libs.login import current_account_with_tenant, login_required
 from models import TenantAccountRole
 from services.model_load_balancing_service import ModelLoadBalancingService
 
-DEFAULT_REF_TEMPLATE_SWAGGER_2_0 = "#/definitions/{model}"
-
-
-class LoadBalancingCredentialPayload(BaseModel):
-    model: str
-    model_type: ModelType
-    credentials: dict
-
-
-console_ns.schema_model(
-    LoadBalancingCredentialPayload.__name__,
-    LoadBalancingCredentialPayload.model_json_schema(ref_template=DEFAULT_REF_TEMPLATE_SWAGGER_2_0),
-)
-
 
 class LoadBalancingCredentialPayload(BaseModel):
     model: str
