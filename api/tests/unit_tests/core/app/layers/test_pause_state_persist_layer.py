@@ -15,10 +15,7 @@ from core.app.layers.pause_state_persist_layer import (
 from core.variables.segments import Segment
 from core.workflow.entities.pause_reason import SchedulingPause
 from core.workflow.graph_engine.entities.commands import GraphEngineCommand
-from core.workflow.graph_engine.layers.base import (
-    GraphEngineLayerNotInitializedError,
-    UninitializedReadOnlyGraphRuntimeState,
-)
+from core.workflow.graph_engine.layers.base import GraphEngineLayerNotInitializedError
 from core.workflow.graph_events.graph import (
     GraphRunFailedEvent,
     GraphRunPausedEvent,
@@ -213,7 +210,8 @@ class TestPauseStatePersistenceLayer:
 
         assert layer._session_maker is session_factory
         assert layer._state_owner_user_id == state_owner_user_id
-        assert isinstance(layer.graph_runtime_state, UninitializedReadOnlyGraphRuntimeState)
+        with pytest.raises(GraphEngineLayerNotInitializedError):
+            _ = layer.graph_runtime_state
         assert layer.command_channel is None
 
     def test_initialize_sets_dependencies(self):

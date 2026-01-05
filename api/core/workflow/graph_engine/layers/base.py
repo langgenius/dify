@@ -6,14 +6,11 @@ intercept and respond to GraphEngine events.
 """
 
 from abc import ABC, abstractmethod
-from typing import Any, NoReturn
 
-from core.model_runtime.entities.llm_entities import LLMUsage
 from core.workflow.graph_engine.protocols.command_channel import CommandChannel
 from core.workflow.graph_events import GraphEngineEvent
 from core.workflow.nodes.base.node import Node
-from core.workflow.runtime import ReadOnlyGraphRuntimeState, ReadOnlyVariablePool
-from core.workflow.system_variable import SystemVariableReadOnlyView
+from core.workflow.runtime import ReadOnlyGraphRuntimeState
 
 
 class GraphEngineLayerNotInitializedError(Exception):
@@ -22,61 +19,6 @@ class GraphEngineLayerNotInitializedError(Exception):
     def __init__(self, layer_name: str | None = None) -> None:
         name = layer_name or "GraphEngineLayer"
         super().__init__(f"{name} runtime state is not initialized. Bind the layer to a GraphEngine before access.")
-
-
-class UninitializedReadOnlyGraphRuntimeState(ReadOnlyGraphRuntimeState):
-    """Placeholder runtime state that raises until the layer is initialized."""
-
-    def __init__(self, layer_name: str | None = None) -> None:
-        self._layer_name = layer_name
-
-    def _raise(self) -> NoReturn:
-        raise GraphEngineLayerNotInitializedError(self._layer_name)
-
-    def __bool__(self) -> bool:
-        self._raise()
-
-    @property
-    def system_variable(self) -> SystemVariableReadOnlyView:
-        self._raise()
-
-    @property
-    def variable_pool(self) -> ReadOnlyVariablePool:
-        self._raise()
-
-    @property
-    def start_at(self) -> float:
-        self._raise()
-
-    @property
-    def total_tokens(self) -> int:
-        self._raise()
-
-    @property
-    def llm_usage(self) -> LLMUsage:
-        self._raise()
-
-    @property
-    def outputs(self) -> dict[str, Any]:
-        self._raise()
-
-    @property
-    def node_run_steps(self) -> int:
-        self._raise()
-
-    @property
-    def ready_queue_size(self) -> int:
-        self._raise()
-
-    @property
-    def exceptions_count(self) -> int:
-        self._raise()
-
-    def get_output(self, key: str, default: Any = None) -> Any:
-        self._raise()
-
-    def dumps(self) -> str:
-        self._raise()
 
 
 class GraphEngineLayer(ABC):
@@ -94,10 +36,14 @@ class GraphEngineLayer(ABC):
 
     def __init__(self) -> None:
         """Initialize the layer. Subclasses can override with custom parameters."""
-        self.graph_runtime_state: ReadOnlyGraphRuntimeState = UninitializedReadOnlyGraphRuntimeState(
-            type(self).__name__
-        )
+        self._graph_runtime_state: ReadOnlyGraphRuntimeState | None = None
         self.command_channel: CommandChannel | None = None
+
+    @property
+    def graph_runtime_state(self) -> ReadOnlyGraphRuntimeState:
+        if self._graph_runtime_state is None:
+            raise GraphEngineLayerNotInitializedError(type(self).__name__)
+        return self._graph_runtime_state
 
     def initialize(self, graph_runtime_state: ReadOnlyGraphRuntimeState, command_channel: CommandChannel) -> None:
         """
@@ -110,7 +56,7 @@ class GraphEngineLayer(ABC):
             graph_runtime_state: Read-only view of the runtime state
             command_channel: Channel for sending commands to the engine
         """
-        self.graph_runtime_state = graph_runtime_state
+        self._graph_runtime_state = graph_runtime_state
         self.command_channel = command_channel
 
     @abstractmethod

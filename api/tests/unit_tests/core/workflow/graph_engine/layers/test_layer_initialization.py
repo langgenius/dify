@@ -28,10 +28,7 @@ def test_layer_runtime_state_raises_when_uninitialized() -> None:
     layer = LayerForTest()
 
     with pytest.raises(GraphEngineLayerNotInitializedError):
-        _ = layer.graph_runtime_state.outputs
-
-    with pytest.raises(GraphEngineLayerNotInitializedError):
-        layer.graph_runtime_state.dumps()
+        _ = layer.graph_runtime_state
 
 
 def test_layer_runtime_state_available_after_engine_layer() -> None:

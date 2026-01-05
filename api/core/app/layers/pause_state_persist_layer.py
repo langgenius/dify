@@ -99,8 +99,6 @@ class PauseStatePersistenceLayer(GraphEngineLayer):
         if not isinstance(event, GraphRunPausedEvent):
             return
 
-        assert self.graph_runtime_state is not None
-
         entity_wrapper: _GenerateEntityUnion
         if isinstance(self._generate_entity, WorkflowAppGenerateEntity):
             entity_wrapper = _WorkflowGenerateEntityWrapper(entity=self._generate_entity)
