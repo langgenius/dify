@@ -2,7 +2,7 @@
 import type { AppIconSelection } from '@/app/components/base/app-icon-picker'
 import type { IconInfo } from '@/models/datasets'
 import { RiCloseLine } from '@remixicon/react'
-import { noop } from 'es-toolkit/compat'
+import { noop } from 'es-toolkit/function'
 import { useCallback, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import AppIcon from '@/app/components/base/app-icon'
@@ -85,7 +85,11 @@ const PublishAsKnowledgePipelineModal = ({
       >
         <div className="title-2xl-semi-bold relative flex items-center p-6 pb-3 pr-14 text-text-primary">
           {t('common.publishAs', { ns: 'pipeline' })}
-          <div className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center" onClick={onCancel}>
+          <div
+            data-testid="publish-modal-close-btn"
+            className="absolute right-5 top-5 flex h-8 w-8 cursor-pointer items-center justify-center"
+            onClick={onCancel}
+          >
             <RiCloseLine className="h-4 w-4 text-text-tertiary" />
           </div>
         </div>

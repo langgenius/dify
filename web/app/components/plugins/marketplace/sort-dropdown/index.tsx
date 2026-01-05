@@ -44,7 +44,7 @@ const SortDropdown = ({
   const sort = useMarketplaceContext(v => v.sort)
   const handleSortChange = useMarketplaceContext(v => v.handleSortChange)
   const [open, setOpen] = useState(false)
-  const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder)!
+  const selectedOption = options.find(option => option.value === sort.sortBy && option.order === sort.sortOrder) ?? options[0]
 
   return (
     <PortalToFollowElem
