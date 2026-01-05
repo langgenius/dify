@@ -69,7 +69,7 @@ const Operation: FC<OperationProps> = ({
     feedback,
     adminFeedback,
     agent_thoughts,
-    humanInputFormData,
+    humanInputFormDataList,
   } = item
   const [userLocalFeedback, setUserLocalFeedback] = useState(feedback)
   const [adminLocalFeedback, setAdminLocalFeedback] = useState(adminFeedback)
@@ -304,7 +304,7 @@ const Operation: FC<OperationProps> = ({
             <Log logItem={item} />
           </div>
         )}
-        {!isOpeningStatement && !humanInputFormData && (
+        {!isOpeningStatement && !humanInputFormDataList?.length && (
           <div className="ml-1 hidden items-center gap-0.5 rounded-[10px] border-[0.5px] border-components-actionbar-border bg-components-actionbar-bg p-0.5 shadow-md backdrop-blur-sm group-hover:flex">
             {(config?.text_to_speech?.enabled) && (
               <NewAudioButton

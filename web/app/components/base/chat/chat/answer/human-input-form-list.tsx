@@ -1,0 +1,68 @@
+import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
+import type { HumanInputFormData } from '@/types/workflow'
+import { useMemo } from 'react'
+import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
+import ContentWrapper from './human-input-content/content-wrapper'
+import { UnsubmittedHumanInputContent } from './human-input-content/unsubmitted'
+
+type HumanInputFormListProps = {
+  humanInputFormDataList: HumanInputFormData[]
+  onHumanInputFormSubmit?: (formID: string, formData: any) => Promise<void>
+  getHumanInputNodeData?: (nodeID: string) => any
+}
+
+const HumanInputFormList = ({
+  humanInputFormDataList,
+  onHumanInputFormSubmit,
+  getHumanInputNodeData,
+}: HumanInputFormListProps) => {
+  const deliveryMethodsConfig = useMemo((): Record<string, { showEmailTip: boolean, isEmailDebugMode: boolean, showDebugModeTip: boolean }> => {
+    if (!humanInputFormDataList.length)
+      return {}
+    return humanInputFormDataList.reduce((acc, formData) => {
+      const deliveryMethodsConfig = getHumanInputNodeData?.(formData.node_id)?.data.delivery_methods || []
+      if (!deliveryMethodsConfig.length) {
+        acc[formData.node_id] = {
+          showEmailTip: false,
+          isEmailDebugMode: false,
+          showDebugModeTip: false,
+        }
+        return acc
+      }
+      const isWebappEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.WebApp && method.enabled)
+      const isEmailEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.Email && method.enabled)
+      const isEmailDebugMode = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.Email && method.config?.debug_mode)
+      acc[formData.node_id] = {
+        showEmailTip: isEmailEnabled,
+        isEmailDebugMode,
+        showDebugModeTip: !isWebappEnabled,
+      }
+      return acc
+    }, {} as Record<string, { showEmailTip: boolean, isEmailDebugMode: boolean, showDebugModeTip: boolean }>)
+  }, [getHumanInputNodeData, humanInputFormDataList])
+
+  return (
+    <div className="mt-2">
+      {
+        humanInputFormDataList.map(formData => (
+          <ContentWrapper
+            key={formData.node_id}
+            nodeTitle={formData.node_title}
+            className="mb-2 last:mb-0"
+          >
+            <UnsubmittedHumanInputContent
+              key={formData.node_id}
+              formData={formData}
+              showEmailTip={!!deliveryMethodsConfig[formData.node_id]?.showEmailTip}
+              isEmailDebugMode={!!deliveryMethodsConfig[formData.node_id]?.isEmailDebugMode}
+              showDebugModeTip={!!deliveryMethodsConfig[formData.node_id]?.showDebugModeTip}
+              onSubmit={onHumanInputFormSubmit}
+            />
+          </ContentWrapper>
+        ))
+      }
+    </div>
+  )
+}
+
+export default HumanInputFormList

@@ -331,7 +331,7 @@ export type HumanInputRequiredResponse = {
   data: HumanInputFormData
 }
 
-export type HumanInputFormFilledData = {
+export type HumanInputFilledFormData = {
   node_id: string
   rendered_content: string
   action_id: string
@@ -342,7 +342,7 @@ export type HumanInputFormFilledResponse = {
   task_id: string
   workflow_run_id: string
   event: string
-  data: HumanInputFormFilledData
+  data: HumanInputFilledFormData
 }
 
 export type WorkflowRunHistory = {

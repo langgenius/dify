@@ -6,24 +6,21 @@ import type {
   ChatConfig,
   ChatItem,
 } from '../../types'
-import type { ExecutedAction } from './human-input-content/type'
-import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
 import type { AppData } from '@/models/share'
-import type { HumanInputFormData } from '@/types/workflow'
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from 'react'
+import { memo, useCallback, useEffect, useRef, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { EditTitle } from '@/app/components/app/annotation/edit-annotation-modal/edit-item'
 import AnswerIcon from '@/app/components/base/answer-icon'
 import Citation from '@/app/components/base/chat/chat/citation'
 import LoadingAnim from '@/app/components/base/chat/chat/loading-anim'
 import { FileList } from '@/app/components/base/file-uploader'
-import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
 import { cn } from '@/utils/classnames'
 import ContentSwitch from '../content-switch'
 import { useChatContext } from '../context'
 import AgentContent from './agent-content'
 import BasicContent from './basic-content'
-import HumanInputContent from './human-input-content'
+import HumanInputFilledFormList from './human-input-filled-form-list'
+import HumanInputFormList from './human-input-form-list'
 import More from './more'
 import Operation from './operation'
 import SuggestedQuestions from './suggested-questions'
@@ -71,8 +68,8 @@ const Answer: FC<AnswerProps> = ({
     workflowProcess,
     allFiles,
     message_files,
-    humanInputFormData,
-    humanInputFormFilledData,
+    humanInputFormDataList,
+    humanInputFilledFormDataList,
   } = item
   const hasAgentThoughts = !!agent_thoughts?.length
 
@@ -84,49 +81,6 @@ const Answer: FC<AnswerProps> = ({
   const {
     getHumanInputNodeData,
   } = useChatContext()
-
-  const deliveryMethodsConfig = useMemo(() => {
-    const deliveryMethodsConfig = getHumanInputNodeData?.(humanInputFormData?.node_id as any)?.data.delivery_methods || []
-    if (!deliveryMethodsConfig.length) {
-      return {
-        showEmailTip: false,
-        isEmailDebugMode: false,
-        showDebugModeTip: false,
-      }
-    }
-    const isWebappEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.WebApp && method.enabled)
-    const isEmailEnabled = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.Email && method.enabled)
-    const isEmailDebugMode = deliveryMethodsConfig.some((method: DeliveryMethod) => method.type === DeliveryMethodType.Email && method.config?.debug_mode)
-    return {
-      showEmailTip: isEmailEnabled,
-      isEmailDebugMode,
-      showDebugModeTip: !isWebappEnabled,
-    }
-  }, [getHumanInputNodeData, humanInputFormData?.node_id])
-
-  const filledFormData = useMemo((): HumanInputFormData | undefined => {
-    if (!humanInputFormFilledData)
-      return
-    return {
-      form_id: '',
-      node_id: humanInputFormFilledData.node_id,
-      node_title: '',
-      form_content: humanInputFormFilledData.rendered_content,
-      inputs: [],
-      actions: [],
-      web_app_form_token: '',
-      resolved_placeholder_values: {},
-    }
-  }, [humanInputFormFilledData])
-
-  const executedAction = useMemo((): ExecutedAction | undefined => {
-    if (!humanInputFormFilledData)
-      return
-    return {
-      id: humanInputFormFilledData.action_id,
-      title: humanInputFormFilledData.action_text,
-    }
-  }, [humanInputFormFilledData])
 
   const getContainerWidth = () => {
     if (containerRef.current)
@@ -228,21 +182,18 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              humanInputFormData && (
-                <HumanInputContent
-                  formData={humanInputFormData}
-                  showEmailTip={deliveryMethodsConfig.showEmailTip}
-                  isEmailDebugMode={deliveryMethodsConfig.isEmailDebugMode}
-                  showDebugModeTip={deliveryMethodsConfig.showDebugModeTip}
-                  onSubmit={onHumanInputFormSubmit}
+              humanInputFormDataList && humanInputFormDataList.length > 0 && (
+                <HumanInputFormList
+                  humanInputFormDataList={humanInputFormDataList}
+                  onHumanInputFormSubmit={onHumanInputFormSubmit}
+                  getHumanInputNodeData={getHumanInputNodeData}
                 />
               )
             }
             {
-              filledFormData && (
-                <HumanInputContent
-                  formData={filledFormData}
-                  executedAction={executedAction}
+              humanInputFilledFormDataList && humanInputFilledFormDataList.length > 0 && (
+                <HumanInputFilledFormList
+                  humanInputFilledFormDataList={humanInputFilledFormDataList}
                 />
               )
             }

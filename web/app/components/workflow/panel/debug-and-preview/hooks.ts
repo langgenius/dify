@@ -249,6 +249,8 @@ export const useChat = (
       isAnswer: true,
       parentMessageId: questionItem.id,
       siblingIndex: parentMessage?.children?.length ?? chatTree.length,
+      humanInputFormDataList: [],
+      humanInputFilledFormDataList: [],
     }
 
     handleResponding(true)
@@ -527,7 +529,18 @@ export const useChat = (
           }
         },
         onHumanInputRequired: ({ data }) => {
-          responseItem.humanInputFormData = data
+          if (!responseItem.humanInputFormDataList) {
+            responseItem.humanInputFormDataList = [data]
+          }
+          else {
+            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === data.node_id)
+            if (currentFormIndex > -1) {
+              responseItem.humanInputFormDataList[currentFormIndex] = data
+            }
+            else {
+              responseItem.humanInputFormDataList.push(data)
+            }
+          }
           const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === data.node_id)
           if (currentTracingIndex > -1) {
             responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
@@ -540,8 +553,16 @@ export const useChat = (
           }
         },
         onHumanInputFormFilled: ({ data }) => {
-          delete responseItem.humanInputFormData
-          responseItem.humanInputFormFilledData = data
+          if (responseItem.humanInputFormDataList?.length) {
+            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === data.node_id)
+            responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+          }
+          if (!responseItem.humanInputFilledFormDataList) {
+            responseItem.humanInputFilledFormDataList = [data]
+          }
+          else {
+            responseItem.humanInputFilledFormDataList.push(data)
+          }
           updateCurrentQAOnTree({
             placeholderQuestionId,
             questionItem,

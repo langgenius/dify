@@ -1,20 +1,23 @@
 import type { FormInputItem } from '@/app/components/workflow/nodes/human-input/types'
-import type { HumanInputFormData } from '@/types/workflow'
+import type { HumanInputFilledFormData, HumanInputFormData } from '@/types/workflow'
 
 export type ExecutedAction = {
   id: string
   title: string
 }
 
-export type HumanInputContentProps = {
+export type UnsubmittedHumanInputContentProps = {
   formData: HumanInputFormData
-  executedAction?: ExecutedAction
   showEmailTip?: boolean
   isEmailDebugMode?: boolean
   showDebugModeTip?: boolean
   showTimeout?: boolean
   expirationTime?: number
   onSubmit?: (formID: string, data: any) => Promise<void>
+}
+
+export type SubmittedHumanInputContentProps = {
+  formData: HumanInputFilledFormData
 }
 
 export type HumanInputFormProps = {

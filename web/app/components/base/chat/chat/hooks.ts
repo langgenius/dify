@@ -652,7 +652,18 @@ export const useChat = (
         })
       },
       onHumanInputRequired: ({ data: humanInputRequiredData }) => {
-        responseItem.humanInputFormData = humanInputRequiredData
+        if (!responseItem.humanInputFormDataList) {
+          responseItem.humanInputFormDataList = [humanInputRequiredData]
+        }
+        else {
+          const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
+          if (currentFormIndex > -1) {
+            responseItem.humanInputFormDataList[currentFormIndex] = humanInputRequiredData
+          }
+          else {
+            responseItem.humanInputFormDataList.push(humanInputRequiredData)
+          }
+        }
         const currentTracingIndex = responseItem.workflowProcess!.tracing!.findIndex(item => item.node_id === humanInputRequiredData.node_id)
         if (currentTracingIndex > -1) {
           responseItem.workflowProcess!.tracing[currentTracingIndex].status = NodeRunningStatus.Paused
@@ -664,9 +675,17 @@ export const useChat = (
           })
         }
       },
-      onHumanInputFormFilled: ({ data: humanInputFormFilledData }) => {
-        delete responseItem.humanInputFormData
-        responseItem.humanInputFormFilledData = humanInputFormFilledData
+      onHumanInputFormFilled: ({ data: humanInputFilledFormData }) => {
+        if (responseItem.humanInputFormDataList?.length) {
+          const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === humanInputFilledFormData.node_id)
+          responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
+        }
+        if (!responseItem.humanInputFilledFormDataList) {
+          responseItem.humanInputFilledFormDataList = [humanInputFilledFormData]
+        }
+        else {
+          responseItem.humanInputFilledFormDataList.push(humanInputFilledFormData)
+        }
         updateCurrentQAOnTree({
           placeholderQuestionId,
           questionItem,

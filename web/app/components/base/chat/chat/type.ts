@@ -4,8 +4,8 @@ import type { InputVarType } from '@/app/components/workflow/types'
 import type { Annotation, MessageRating } from '@/models/log'
 import type {
   FileResponse,
+  HumanInputFilledFormData,
   HumanInputFormData,
-  HumanInputFormFilledData,
 } from '@/types/workflow'
 
 export type MessageMore = {
@@ -109,8 +109,8 @@ export type IChatItem = {
   prevSibling?: string
   nextSibling?: string
   // for human input
-  humanInputFormData?: HumanInputFormData
-  humanInputFormFilledData?: HumanInputFormFilledData
+  humanInputFormDataList?: HumanInputFormData[]
+  humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
 export type Metadata = {
