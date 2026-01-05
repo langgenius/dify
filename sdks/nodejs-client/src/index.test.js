@@ -3,6 +3,31 @@ import { ChatClient, DifyClient, WorkflowClient, BASE_URL, routes } from "./inde
 
 const mockFetch = vi.fn();
 
+// Helper to create a mock fetch response
+const createMockResponse = (options = {}) => {
+  const {
+    ok = true,
+    status = 200,
+    headers = {},
+    body = null,
+    data = null,
+  } = options;
+
+  const headersObj = new Headers(headers);
+  const response = {
+    ok,
+    status,
+    headers: headersObj,
+    body,
+    json: vi.fn().mockResolvedValue(data),
+    text: vi.fn().mockResolvedValue(typeof data === 'string' ? data : JSON.stringify(data)),
+    blob: vi.fn().mockResolvedValue(new Blob()),
+    arrayBuffer: vi.fn().mockResolvedValue(new ArrayBuffer(0)),
+  };
+
+  return response;
+};
+
 beforeEach(() => {
   vi.restoreAllMocks();
   mockFetch.mockReset();
@@ -29,12 +54,12 @@ describe("Send Requests", () => {
     const difyClient = new DifyClient("test");
     const method = "GET";
     const endpoint = routes.application.url();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "response",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "response",
+      })
+    );
 
     await difyClient.sendRequest(method, endpoint);
 
@@ -46,12 +71,12 @@ describe("Send Requests", () => {
 
   it("uses the getMeta route configuration", async () => {
     const difyClient = new DifyClient("test");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "ok",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "ok",
+      })
+    );
 
     await difyClient.getMeta("end-user");
 
@@ -85,12 +110,12 @@ describe("File uploads", () => {
   it("does not override multipart boundary headers for FormData", async () => {
     const difyClient = new DifyClient("test");
     const form = new globalThis.FormData();
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "ok",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "ok",
+      })
+    );
 
     await difyClient.fileUpload(form, "end-user");
 
@@ -106,12 +131,12 @@ describe("File uploads", () => {
 describe("Workflow client", () => {
   it("uses tasks stop path for workflow stop", async () => {
     const workflowClient = new WorkflowClient("test");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "stopped",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "stopped",
+      })
+    );
 
     await workflowClient.stop("task-1", "end-user");
 
@@ -125,12 +150,12 @@ describe("Workflow client", () => {
 
   it("maps workflow log filters to service api params", async () => {
     const workflowClient = new WorkflowClient("test");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "ok",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "ok",
+      })
+    );
 
     await workflowClient.getLogs({
       createdAtAfter: "2024-01-01T00:00:00Z",
@@ -157,12 +182,12 @@ describe("Workflow client", () => {
 describe("Chat client", () => {
   it("places user in query for suggested messages", async () => {
     const chatClient = new ChatClient("test");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "ok",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "ok",
+      })
+    );
 
     await chatClient.getSuggested("msg-1", "end-user");
 
@@ -175,12 +200,12 @@ describe("Chat client", () => {
 
   it("uses last_id when listing conversations", async () => {
     const chatClient = new ChatClient("test");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "ok",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "ok",
+      })
+    );
 
     await chatClient.getConversations("end-user", "last-1", 10);
 
@@ -195,12 +220,12 @@ describe("Chat client", () => {
 
   it("lists app feedbacks without user params", async () => {
     const chatClient = new ChatClient("test");
-    mockFetch.mockResolvedValue({
-      ok: true,
-      status: 200,
-      headers: new Headers(),
-      json: async () => "ok",
-    });
+    mockFetch.mockResolvedValue(
+      createMockResponse({
+        status: 200,
+        data: "ok",
+      })
+    );
 
     await chatClient.getAppFeedbacks(1, 20);
 
