@@ -1,6 +1,7 @@
 import type {
   Connection,
 } from 'reactflow'
+import type { GroupNodeData } from '../nodes/group/types'
 import type { IterationNodeType } from '../nodes/iteration/types'
 import type { LoopNodeType } from '../nodes/loop/types'
 import type {
@@ -410,11 +411,25 @@ export const useWorkflow = () => {
       const sourceNodeAvailableNextNodes = getAvailableBlocks(actualSourceType, !!sourceNode.parentId).availableNextBlocks
       const targetNodeAvailablePrevNodes = getAvailableBlocks(targetNode.data.type, !!targetNode.parentId).availablePrevBlocks
 
-      if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
-        return false
+      if (targetNode.data.type === BlockEnum.Group) {
+        const groupData = targetNode.data as GroupNodeData
+        const headNodeIds = groupData.headNodeIds || []
+        if (headNodeIds.length > 0) {
+          const headNode = nodes.find(node => node.id === headNodeIds[0])
+          if (headNode) {
+            const headNodeAvailablePrevNodes = getAvailableBlocks(headNode.data.type, !!targetNode.parentId).availablePrevBlocks
+            if (!headNodeAvailablePrevNodes.includes(actualSourceType))
+              return false
+          }
+        }
+      }
+      else {
+        if (!sourceNodeAvailableNextNodes.includes(targetNode.data.type))
+          return false
 
-      if (!targetNodeAvailablePrevNodes.includes(actualSourceType))
-        return false
+        if (!targetNodeAvailablePrevNodes.includes(actualSourceType))
+          return false
+      }
     }
 
     const hasCycle = (node: Node, visited = new Set()) => {

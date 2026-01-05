@@ -269,14 +269,15 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
       // Inbound edge: source outside group, target is a head node
       // Use Set to dedupe since multiple head nodes may share same external source
       if (!memberSet.has(edge.source) && headSet.has(edge.target)) {
-        const edgeId = `${edge.source}-${edge.sourceHandle}-${groupNode.id}-target`
+        const sourceHandle = edge.sourceHandle || 'source'
+        const edgeId = `${edge.source}-${sourceHandle}-${groupNode.id}-target`
         if (!inboundEdgeIds.has(edgeId)) {
           inboundEdgeIds.add(edgeId)
           groupTempEdges.push({
             id: edgeId,
             type: 'custom',
             source: edge.source,
-            sourceHandle: edge.sourceHandle,
+            sourceHandle,
             target: groupNode.id,
             targetHandle: 'target',
             data: {
@@ -290,8 +291,9 @@ export const preprocessNodesAndEdges = (nodes: Node[], edges: Edge[]) => {
 
       // Outbound edge: source is a leaf node, target outside group
       if (leafSet.has(edge.source) && !memberSet.has(edge.target)) {
+        const edgeSourceHandle = edge.sourceHandle || 'source'
         const handler = handlers.find(
-          h => h.nodeId === edge.source && h.sourceHandle === edge.sourceHandle,
+          h => h.nodeId === edge.source && h.sourceHandle === edgeSourceHandle,
         )
         if (handler) {
           groupTempEdges.push({
