@@ -2,8 +2,8 @@ import logging
 from typing import Any
 
 from flask import make_response, redirect, request
-from flask_restx import Resource, reqparse
-from pydantic import BaseModel, Field, model_validator
+from flask_restx import Resource
+from pydantic import BaseModel, model_validator
 from sqlalchemy.orm import Session
 from werkzeug.exceptions import BadRequest, Forbidden
 
@@ -37,13 +37,11 @@ logger = logging.getLogger(__name__)
 class TriggerSubscriptionBuilderCreatePayload(BaseModel):
     credential_type: str | None = None
 
-
     @model_validator(mode="after")
     def check_at_least_one_field(self):
         if all(v is None for v in (self.name, self.credentials, self.parameters, self.properties)):
             raise ValueError("At least one of name, credentials, parameters, or properties must be provided")
         return self
-
 
 
 class TriggerSubscriptionBuilderUpdatePayload(BaseModel):
