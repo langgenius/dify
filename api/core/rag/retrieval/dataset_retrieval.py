@@ -1473,7 +1473,7 @@ class DatasetRetrieval:
                             break
                     if cancel_event and cancel_event.is_set():
                         break
-    
+
                 # Skip second reranking when there is only one dataset
                 if reranking_enable and dataset_count > 1:
                     # do rerank for searched documents
