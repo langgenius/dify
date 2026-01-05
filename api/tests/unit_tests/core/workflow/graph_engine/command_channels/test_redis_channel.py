@@ -171,11 +171,9 @@ class TestRedisChannel:
         update_command = UpdateVariablesCommand(
             updates=[
                 VariableUpdate(
-                    selector=["node1", "foo"],
                     value=StringVariable(name="foo", value="bar", selector=["node1", "foo"]),
                 ),
                 VariableUpdate(
-                    selector=["node2", "baz"],
                     value=IntegerVariable(name="baz", value=123, selector=["node2", "baz"]),
                 ),
             ]
@@ -190,8 +188,8 @@ class TestRedisChannel:
 
         assert len(commands) == 1
         assert isinstance(commands[0], UpdateVariablesCommand)
-        assert commands[0].updates[0].selector == ("node1", "foo")
         assert isinstance(commands[0].updates[0].value, StringVariable)
+        assert list(commands[0].updates[0].value.selector) == ["node1", "foo"]
         assert commands[0].updates[0].value.value == "bar"
 
     def test_fetch_commands_skips_invalid_json(self):

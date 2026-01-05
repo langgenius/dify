@@ -46,7 +46,6 @@ class PauseCommand(GraphEngineCommand):
 class VariableUpdate(BaseModel):
     """Represents a single variable update instruction."""
 
-    selector: tuple[str, str] = Field(description="Variable selector (node_id, variable_name)")
     value: VariableUnion = Field(description="New variable value")
 
 

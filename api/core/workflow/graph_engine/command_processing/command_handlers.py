@@ -45,14 +45,15 @@ class UpdateVariablesCommandHandler(CommandHandler):
         for update in command.updates:
             try:
                 variable = update.value
-                if list(variable.selector) != list(update.selector):
-                    variable = variable.model_copy(update={"selector": list(update.selector), "name": update.selector[1]})
-                self._variable_pool.add(update.selector, variable)
-                logger.debug("Updated variable %s for workflow %s", update.selector, execution.workflow_id)
+                selector = list(variable.selector)
+                if len(selector) < 2:
+                    raise ValueError(f"Invalid selector: expected 2 elements, got {len(selector)} elements")
+                self._variable_pool.add(selector, variable)
+                logger.debug("Updated variable %s for workflow %s", selector, execution.workflow_id)
             except ValueError as exc:
                 logger.warning(
                     "Skipping invalid variable selector %s for workflow %s: %s",
-                    update.selector,
+                    getattr(update.value, "selector", None),
                     execution.workflow_id,
                     exc,
                 )

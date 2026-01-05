@@ -233,11 +233,9 @@ def test_update_variables_command_updates_pool():
     update_command = UpdateVariablesCommand(
         updates=[
             VariableUpdate(
-                selector=["node1", "foo"],
                 value=StringVariable(name="foo", value="new value", selector=["node1", "foo"]),
             ),
             VariableUpdate(
-                selector=["node2", "bar"],
                 value=IntegerVariable(name="bar", value=123, selector=["node2", "bar"]),
             ),
         ]
