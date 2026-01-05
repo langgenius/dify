@@ -24,7 +24,7 @@ const extractNonceFromCSP = (cspHeader: string | null): string | undefined => {
   if (!cspHeader)
     return undefined
   const nonceMatch = NONCE_PATTERN.exec(cspHeader)
-  return nonceMatch ? nonceMatch[1] : undefined
+  return nonceMatch?.[1]
 }
 
 const GA: FC<IGAProps> = ({
