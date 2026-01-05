@@ -57,7 +57,7 @@ const DEFAULT_ICON = { type: 'emoji', icon: '🔗', background: '#6366F1' }
 const FILE_ID_PATTERN = /files\/(.+?)\/file-preview/
 const extractFileId = (url: string) => {
   const match = FILE_ID_PATTERN.exec(url)
-  return match ? match[1] : null
+  return match?.[1] ?? null
 }
 const getIcon = (data?: ToolWithProvider) => {
   if (!data)
