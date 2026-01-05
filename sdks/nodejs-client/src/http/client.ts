@@ -119,11 +119,50 @@ const parseRetryAfterSeconds = (headerValue?: string): number | undefined => {
   return undefined;
 };
 
+const shouldParseJson = (contentType: string | null, text: string): boolean => {
+  if (contentType) {
+    return contentType.toLowerCase().includes("application/json");
+  }
+  return text.length > 0;
+};
+
+const parseResponseBody = (text: string, contentType: string | null): unknown => {
+  if (!shouldParseJson(contentType, text)) {
+    return text;
+  }
+  if (!text) {
+    return null;
+  }
+  try {
+    return JSON.parse(text);
+  } catch {
+    // Fallback to raw text if JSON parsing fails
+    return text;
+  }
+};
+
 const isReadableStream = (value: unknown): value is Readable => {
   if (!value || typeof value !== "object") {
     return false;
   }
   return typeof (value as { pipe?: unknown }).pipe === "function";
+};
+
+const createBodyFactory = (
+  method: RequestMethod,
+  data?: unknown
+): { getBody: () => BodyInit | undefined; canRetry: boolean } => {
+  if (method === "GET" || data === undefined) {
+    return { getBody: () => undefined, canRetry: true };
+  }
+  if (isReadableStream(data)) {
+    return { getBody: () => data as unknown as BodyInit, canRetry: false };
+  }
+  if (isFormData(data)) {
+    return { getBody: () => data as BodyInit, canRetry: true };
+  }
+  const jsonBody = JSON.stringify(data);
+  return { getBody: () => jsonBody, canRetry: true };
 };
 
 const isUploadLikeRequest = (url: string): boolean => {
@@ -320,14 +359,7 @@ export class HttpClient {
       console.info(`dify-client-node request ${method} ${url}`);
     }
 
-    let body: BodyInit | undefined;
-    if (method !== "GET" && data !== undefined) {
-      if (isFormData(data) || isReadableStream(data)) {
-        body = data as BodyInit;
-      } else {
-        body = JSON.stringify(data);
-      }
-    }
+    const { getBody, canRetry: canRetryBody } = createBodyFactory(method, data);
 
     let attempt = 0;
     // `attempt` is a zero-based retry counter
@@ -342,27 +374,17 @@ export class HttpClient {
         const response = await fetch(url, {
           method,
           headers: requestHeaders,
-          body,
+          body: getBody(),
           signal: abortController.signal,
         });
 
         clearTimeout(timeoutId);
 
         if (!response.ok) {
-          const contentType = response.headers.get("content-type") || "";
-          let responseBody: unknown;
+          const contentType = response.headers.get("content-type");
           // Read body as text first to avoid "Body has already been read" error
           const text = await response.text();
-          if (contentType.includes("application/json")) {
-            try {
-              responseBody = text ? JSON.parse(text) : null;
-            } catch {
-              // Fallback to raw text if JSON parsing fails
-              responseBody = text;
-            }
-          } else {
-            responseBody = text;
-          }
+          const responseBody = parseResponseBody(text, contentType);
           throw mapFetchError(new Error(`HTTP ${response.status}`), url, response, responseBody);
         }
 
@@ -392,19 +414,10 @@ export class HttpClient {
           responseData = await response.arrayBuffer();
         } else {
           // json or default
-          const contentType = response.headers.get("content-type") || "";
+          const contentType = response.headers.get("content-type");
           // Read body as text first to handle malformed JSON gracefully
           const text = await response.text();
-          if (contentType.includes("application/json")) {
-            try {
-              responseData = text ? JSON.parse(text) : null;
-            } catch {
-              // Fallback to raw text if JSON parsing fails
-              responseData = text;
-            }
-          } else {
-            responseData = text;
-          }
+          responseData = parseResponseBody(text, contentType);
         }
 
         return {
@@ -422,7 +435,7 @@ export class HttpClient {
           mapped = mapFetchError(error, url);
         }
 
-        if (!shouldRetry(mapped, attempt, maxRetries)) {
+        if (!canRetryBody || !shouldRetry(mapped, attempt, maxRetries)) {
           throw mapped;
         }
         const retryAfterSeconds =
