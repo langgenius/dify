@@ -1,26 +1,37 @@
 import type { DeliveryMethod } from '@/app/components/workflow/nodes/human-input/types'
 import type { HumanInputFormData } from '@/types/workflow'
-import { useMemo } from 'react'
+import { useCallback, useMemo } from 'react'
+import { useStoreApi } from 'reactflow'
+import ContentWrapper from '@/app/components/base/chat/chat/answer/human-input-content/content-wrapper'
+import { UnsubmittedHumanInputContent } from '@/app/components/base/chat/chat/answer/human-input-content/unsubmitted'
+import { CUSTOM_NODE } from '@/app/components/workflow/constants'
 import { DeliveryMethodType } from '@/app/components/workflow/nodes/human-input/types'
-import ContentWrapper from './human-input-content/content-wrapper'
-import { UnsubmittedHumanInputContent } from './human-input-content/unsubmitted'
 
 type HumanInputFormListProps = {
   humanInputFormDataList: HumanInputFormData[]
   onHumanInputFormSubmit?: (formID: string, formData: any) => Promise<void>
-  getHumanInputNodeData?: (nodeID: string) => any
 }
 
 const HumanInputFormList = ({
   humanInputFormDataList,
   onHumanInputFormSubmit,
-  getHumanInputNodeData,
 }: HumanInputFormListProps) => {
+  const store = useStoreApi()
+
+  const getHumanInputNodeData = useCallback((nodeID: string) => {
+    const {
+      getNodes,
+    } = store.getState()
+    const nodes = getNodes().filter(node => node.type === CUSTOM_NODE)
+    const node = nodes.find(n => n.id === nodeID)
+    return node
+  }, [store])
+
   const deliveryMethodsConfig = useMemo((): Record<string, { showEmailTip: boolean, isEmailDebugMode: boolean, showDebugModeTip: boolean }> => {
     if (!humanInputFormDataList.length)
       return {}
     return humanInputFormDataList.reduce((acc, formData) => {
-      const deliveryMethodsConfig = getHumanInputNodeData?.(formData.node_id)?.data.delivery_methods || []
+      const deliveryMethodsConfig = getHumanInputNodeData(formData.node_id)?.data.delivery_methods || []
       if (!deliveryMethodsConfig.length) {
         acc[formData.node_id] = {
           showEmailTip: false,
@@ -42,12 +53,13 @@ const HumanInputFormList = ({
   }, [getHumanInputNodeData, humanInputFormDataList])
 
   return (
-    <div className="mt-2 flex flex-col gap-y-2">
+    <div className="flex flex-col gap-y-3">
       {
         humanInputFormDataList.map(formData => (
           <ContentWrapper
             key={formData.node_id}
             nodeTitle={formData.node_title}
+            className="bg-components-panel-bg"
           >
             <UnsubmittedHumanInputContent
               key={formData.node_id}

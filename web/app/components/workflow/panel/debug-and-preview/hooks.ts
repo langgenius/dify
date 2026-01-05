@@ -533,7 +533,7 @@ export const useChat = (
             responseItem.humanInputFormDataList = [data]
           }
           else {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === data.node_id)
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
             if (currentFormIndex > -1) {
               responseItem.humanInputFormDataList[currentFormIndex] = data
             }
@@ -554,7 +554,7 @@ export const useChat = (
         },
         onHumanInputFormFilled: ({ data }) => {
           if (responseItem.humanInputFormDataList?.length) {
-            const currentFormIndex = responseItem.humanInputFormDataList!.findIndex(item => item.node_id === data.node_id)
+            const currentFormIndex = responseItem.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
             responseItem.humanInputFormDataList.splice(currentFormIndex, 1)
           }
           if (!responseItem.humanInputFilledFormDataList) {

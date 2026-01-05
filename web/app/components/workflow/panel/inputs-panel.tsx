@@ -44,15 +44,18 @@ const InputsPanel = ({ onRun }: Props) => {
   const startVariables = startNode?.data.variables
   const { checkInputsForm } = useCheckInputsForms()
 
-  const initialInputs = { ...inputs }
-  if (startVariables) {
-    startVariables.forEach((variable) => {
-      if (variable.default)
-        initialInputs[variable.variable] = variable.default
-      if (inputs[variable.variable] !== undefined)
-        initialInputs[variable.variable] = inputs[variable.variable]
-    })
-  }
+  const initialInputs = useMemo(() => {
+    const result = { ...inputs }
+    if (startVariables) {
+      startVariables.forEach((variable) => {
+        if (variable.default)
+          result[variable.variable] = variable.default
+        if (inputs[variable.variable] !== undefined)
+          result[variable.variable] = inputs[variable.variable]
+      })
+    }
+    return result
+  }, [inputs, startVariables])
 
   const variables = useMemo(() => {
     const data = startVariables || []

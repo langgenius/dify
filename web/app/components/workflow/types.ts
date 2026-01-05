@@ -17,7 +17,13 @@ import type { VarType as VarKindType } from '@/app/components/workflow/nodes/too
 import type { ChatVarType } from '@/app/components/workflow/panel/chat-variable-panel/type'
 import type { SchemaTypeDefinition } from '@/service/use-common'
 import type { Resolution, TransferMethod } from '@/types/app'
-import type { FileResponse, NodeTracing, PanelProps } from '@/types/workflow'
+import type {
+  FileResponse,
+  HumanInputFilledFormData,
+  HumanInputFormData,
+  NodeTracing,
+  PanelProps,
+} from '@/types/workflow'
 
 export enum BlockEnum {
   Start = 'start',
@@ -429,6 +435,8 @@ export type WorkflowRunningData = {
     exceptions_count?: number
   }
   tracing?: NodeTracing[]
+  humanInputFormDataList?: HumanInputFormData[]
+  humanInputFilledFormDataList?: HumanInputFilledFormData[]
 }
 
 export type HistoryWorkflowData = {

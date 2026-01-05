@@ -80,6 +80,7 @@ export const useWorkflowRun = () => {
     handleWorkflowNodeStarted,
     handleWorkflowNodeFinished,
     handleWorkflowNodeHumanInputRequired,
+    handleWorkflowNodeHumanInputFormFilled,
     handleWorkflowNodeIterationStarted,
     handleWorkflowNodeIterationNext,
     handleWorkflowNodeIterationFinished,
@@ -795,6 +796,7 @@ export const useWorkflowRun = () => {
           onHumanInputRequired(params)
       },
       onHumanInputFormFilled: (params) => {
+        handleWorkflowNodeHumanInputFormFilled(params)
         if (onHumanInputFormFilled)
           onHumanInputFormFilled(params)
       },
@@ -808,7 +810,7 @@ export const useWorkflowRun = () => {
       },
       finalCallbacks,
     )
-  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowResume, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired])
+  }, [store, doSyncWorkflowDraft, workflowStore, pathname, handleWorkflowFailed, flowId, handleWorkflowResume, handleWorkflowStarted, handleWorkflowFinished, fetchInspectVars, invalidAllLastRun, handleWorkflowNodeStarted, handleWorkflowNodeFinished, handleWorkflowNodeIterationStarted, handleWorkflowNodeIterationNext, handleWorkflowNodeIterationFinished, handleWorkflowNodeLoopStarted, handleWorkflowNodeLoopNext, handleWorkflowNodeLoopFinished, handleWorkflowNodeRetry, handleWorkflowAgentLog, handleWorkflowTextChunk, handleWorkflowTextReplace, handleWorkflowPaused, handleWorkflowNodeHumanInputRequired, handleWorkflowNodeHumanInputFormFilled])
 
   const handleStopRun = useCallback((taskId: string) => {
     const setStoppedState = () => {

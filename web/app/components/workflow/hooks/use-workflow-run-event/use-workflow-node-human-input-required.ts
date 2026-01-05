@@ -4,14 +4,36 @@ import { useCallback } from 'react'
 import {
   useStoreApi,
 } from 'reactflow'
+import { useWorkflowStore } from '@/app/components/workflow/store'
 import { NodeRunningStatus } from '@/app/components/workflow/types'
 
 export const useWorkflowNodeHumanInputRequired = () => {
   const store = useStoreApi()
+  const workflowStore = useWorkflowStore()
 
-  // ! Human input required !== Workflow Paused
+  // Notice: Human input required !== Workflow Paused
   const handleWorkflowNodeHumanInputRequired = useCallback((params: HumanInputRequiredResponse) => {
     const { data } = params
+    const {
+      workflowRunningData,
+      setWorkflowRunningData,
+    } = workflowStore.getState()
+
+    const newWorkflowRunningData = produce(workflowRunningData!, (draft) => {
+      if (!draft.humanInputFormDataList) {
+        draft.humanInputFormDataList = [data]
+      }
+      else {
+        const currentFormIndex = draft.humanInputFormDataList.findIndex(item => item.node_id === data.node_id)
+        if (currentFormIndex > -1) {
+          draft.humanInputFormDataList[currentFormIndex] = data
+        }
+        else {
+          draft.humanInputFormDataList.push(data)
+        }
+      }
+    })
+    setWorkflowRunningData(newWorkflowRunningData)
 
     const {
       getNodes,
@@ -23,7 +45,7 @@ export const useWorkflowNodeHumanInputRequired = () => {
       draft[currentNodeIndex].data._runningStatus = NodeRunningStatus.Paused
     })
     setNodes(newNodes)
-  }, [store])
+  }, [store, workflowStore])
 
   return {
     handleWorkflowNodeHumanInputRequired,

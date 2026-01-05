@@ -177,11 +177,6 @@ const Answer: FC<AnswerProps> = ({
               )
             }
             {
-              !contentIsEmpty && !hasAgentThoughts && (
-                <BasicContent item={item} />
-              )
-            }
-            {
               humanInputFormDataList && humanInputFormDataList.length > 0 && (
                 <HumanInputFormList
                   humanInputFormDataList={humanInputFormDataList}
@@ -195,6 +190,11 @@ const Answer: FC<AnswerProps> = ({
                 <HumanInputFilledFormList
                   humanInputFilledFormDataList={humanInputFilledFormDataList}
                 />
+              )
+            }
+            {
+              !contentIsEmpty && !hasAgentThoughts && (
+                <BasicContent item={item} />
               )
             }
             {

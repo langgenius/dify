@@ -3,6 +3,7 @@ import {
   useWorkflowFailed,
   useWorkflowFinished,
   useWorkflowNodeFinished,
+  useWorkflowNodeHumanInputFormFilled,
   useWorkflowNodeHumanInputRequired,
   useWorkflowNodeIterationFinished,
   useWorkflowNodeIterationNext,
@@ -37,6 +38,7 @@ export const useWorkflowRunEvent = () => {
   const { handleWorkflowAgentLog } = useWorkflowAgentLog()
   const { handleWorkflowPaused } = useWorkflowPaused()
   const { handleWorkflowNodeHumanInputRequired } = useWorkflowNodeHumanInputRequired()
+  const { handleWorkflowNodeHumanInputFormFilled } = useWorkflowNodeHumanInputFormFilled()
   const { handleWorkflowResume } = useWorkflowResume()
 
   return {
@@ -56,6 +58,7 @@ export const useWorkflowRunEvent = () => {
     handleWorkflowTextReplace,
     handleWorkflowAgentLog,
     handleWorkflowPaused,
+    handleWorkflowNodeHumanInputFormFilled,
     handleWorkflowNodeHumanInputRequired,
     handleWorkflowResume,
   }
